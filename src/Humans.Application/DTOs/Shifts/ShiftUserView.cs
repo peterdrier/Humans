@@ -28,7 +28,7 @@ public sealed record ShiftUserView(
     /// (<see cref="SignupStatus.Pending"/> or <see cref="SignupStatus.Confirmed"/>)
     /// in the active event. Refused / Bailed / Cancelled / NoShow signups
     /// don't count — they're no longer commitments. Mirrors the convention
-    /// used by <c>ShiftSignupRepository</c>, <c>ShiftManagementService</c>,
+    /// used by <c>ShiftRepository</c>, <c>ShiftManagementService</c>,
     /// and the agent snapshot.
     /// </summary>
     public bool HasShift => Signups.Any(s =>

@@ -23,6 +23,7 @@ namespace Humans.Application.Services.Shifts;
 /// </summary>
 public sealed class ShiftSignupService(
     IShiftSignupRepository repo,
+    IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
     IMembershipCalculator membership,
     IAuditLogService auditLogService,
@@ -1099,7 +1100,7 @@ public sealed class ShiftSignupService(
             .ToDictionary(id => id, id => teamsByIdLookup[id].Name);
 
         var volunteerEventProfiles = await repo.GetVolunteerEventProfilesForUserAsync(userId, ct);
-        var generalAvailability = await repo.GetGeneralAvailabilityForUserAsync(userId, ct);
+        var generalAvailability = await trackingRepo.GetAvailabilityByUserAsync(userId, ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUserAsync(userId, ct);
 
         var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new

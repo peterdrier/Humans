@@ -11,7 +11,6 @@ namespace Humans.Application.Services.Shifts;
 public sealed class VolunteerTrackingService(
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementRepository shiftManagement,
-    IGeneralAvailabilityRepository availability,
     IUserService userService,
     IShiftViewInvalidator viewInvalidator,
     IClock clock) : IVolunteerTrackingService
@@ -126,7 +125,7 @@ public sealed class VolunteerTrackingService(
                 dayOffSummaries));
         }
 
-        var availabilityRows = await availability.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var availabilityRows = await trackingRepo.GetAvailabilityByEventAsync(es.Id, ct).ConfigureAwait(false);
         var availabilityByUser = availabilityRows
             .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
 

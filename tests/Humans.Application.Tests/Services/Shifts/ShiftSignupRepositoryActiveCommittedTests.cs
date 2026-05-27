@@ -11,16 +11,16 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// Covers the narrow read used by Mailer audience computations:
 /// "users with at least one Pending or Confirmed signup for the given event".
 /// </summary>
-public sealed class ShiftSignupRepositoryActiveCommittedTests : ServiceTestHarness
+public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly ShiftSignupRepository _repo;
+    private readonly ShiftRepository _repo;
 
-    public ShiftSignupRepositoryActiveCommittedTests()
+    public ShiftRepositoryActiveCommittedTests()
         : base(TestNow)
     {
-        _repo = new ShiftSignupRepository(Db, Clock);
+        _repo = new ShiftRepository(DbFactory, Db, Clock);
     }
 
     [HumansFact]

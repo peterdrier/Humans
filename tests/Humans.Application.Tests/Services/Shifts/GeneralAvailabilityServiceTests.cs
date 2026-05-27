@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
 {
-    private readonly GeneralAvailabilityRepository _repo;
+    private readonly VolunteerTrackingRepository _repo;
     private readonly GeneralAvailabilityService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -20,7 +20,7 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
     public GeneralAvailabilityServiceTests()
         : base(TestNow)
     {
-        _repo = new GeneralAvailabilityRepository(DbFactory);
+        _repo = new VolunteerTrackingRepository(Db);
         _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), Clock);
     }
 

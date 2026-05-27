@@ -25,8 +25,9 @@ internal static class ShiftsSectionExtensions
 {
     internal static IServiceCollection AddShiftsSection(this IServiceCollection services)
     {
-        // Shift management — see #541a. IShiftAuthorizationInvalidator aliases the same Scoped instance so Profile/User writes drop the 60s shift-auth cache.
-        services.AddSingleton<IShiftManagementRepository, ShiftManagementRepository>();
+        // ShiftRepository backs both management and signup interfaces; authorization invalidation remains on the management service.
+        services.AddScoped<ShiftRepository>();
+        services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftsShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
@@ -41,20 +42,19 @@ internal static class ShiftsSectionExtensions
         // CantinaAdminOrAdmin authorization policy, not a bespoke service.
         services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
 
-        // ShiftSignup — see #541b. Repository is Scoped so multi-step mutation transactions share one change-tracker.
-        services.AddScoped<IShiftSignupRepository, ShiftSignupRepository>();
+        // ShiftSignup keeps a scoped repository surface so multi-step mutation transactions share one change-tracker.
+        services.AddScoped<IShiftSignupRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
-        // GeneralAvailability — see #541c. No caching decorator (Option A, small surface).
-        services.AddSingleton<IGeneralAvailabilityRepository, GeneralAvailabilityRepository>();
+        // GeneralAvailability - no caching decorator (Option A, small surface); persistence is user-oriented with VolunteerTracking.
         services.AddScoped<ShiftsGeneralAvailabilityService>();
         services.AddScoped<IGeneralAvailabilityService>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
 
-        // VolunteerTracking — Scoped repository so multi-step camp-setup + blocked-day mutations share one change-tracker.
+        // VolunteerTracking - scoped user-oriented repository for build status and availability mutations.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
         services.AddScoped<Humans.Application.Services.Shifts.VolunteerTrackingExportService>();

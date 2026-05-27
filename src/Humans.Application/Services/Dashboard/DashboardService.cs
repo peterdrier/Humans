@@ -134,7 +134,7 @@ public class DashboardService(
                 {
                     try
                     {
-                        // Shift/Rota navs populated by ShiftSignupRepository.GetByUserAsync; upstream filtered non-null Rota.
+                        // Shift/Rota navs populated by ShiftRepository.GetByUserAsync; upstream filtered non-null Rota.
                         var item = new DashboardSignup(
                             RotaName: s.Shift.Rota.Name,
                             DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),

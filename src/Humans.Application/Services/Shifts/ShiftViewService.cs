@@ -10,18 +10,15 @@ public sealed class ShiftViewService : IShiftView
 {
     private readonly IShiftManagementRepository _management;
     private readonly IShiftSignupRepository _signups;
-    private readonly IGeneralAvailabilityRepository _availability;
     private readonly IVolunteerTrackingRepository _tracking;
 
     public ShiftViewService(
         IShiftManagementRepository management,
         IShiftSignupRepository signups,
-        IGeneralAvailabilityRepository availability,
         IVolunteerTrackingRepository tracking)
     {
         _management = management;
         _signups = signups;
-        _availability = availability;
         _tracking = tracking;
     }
 
@@ -37,8 +34,8 @@ public sealed class ShiftViewService : IShiftView
         IReadOnlyList<ShiftSignup> signups = [];
         if (activeEvent is not null)
         {
-            availability = await _availability
-                .GetByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            availability = await _tracking
+                .GetAvailabilityByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
             buildStatus = await _tracking
                 .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
             signups = await _signups
@@ -85,8 +82,8 @@ public sealed class ShiftViewService : IShiftView
 
         if (activeEvent is not null)
         {
-            var avail = await _availability
-                .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+            var avail = await _tracking
+                .GetAvailabilityByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
             availabilityByUser = avail.ToDictionary(a => a.UserId);
 
             var builds = await _tracking
