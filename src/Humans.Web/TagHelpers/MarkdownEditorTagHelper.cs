@@ -247,7 +247,8 @@ public class MarkdownEditorTagHelper(
                     }}, className: 'fa-solid fa-square-check', title: 'Task list' }},
                     'quote',
                     '|',
-                    'code', 'horizontal-rule', 'link', 'table',
+                    'code', 'horizontal-rule', 'link',
+                    {{ name: 'insert-table', action: EasyMDE.drawTable, className: 'fa-solid fa-table', title: 'Insert Table' }},
                     '|',
                     'preview',
                     {{ name: 'guide', action: function() {{
