@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -150,5 +151,47 @@ public sealed class OnboardingServiceTests
             Arg.Is<UserProfileOnboardingCommand>(cmd =>
                 cmd.Mutation == UserProfileOnboardingMutation.SetConsentCheckPending),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_FlaggedUserAlreadyApproved_StillAppearsInFlagged()
+    {
+        // Invariant: anyone with ConsentCheckStatus.Flagged must appear in the review queue,
+        // so a Consent Coordinator can resolve them — even if a prior admin override flipped
+        // IsApproved=true while the flag was still on the profile.
+        var approvedFlaggedId = Guid.NewGuid();
+        var now = Instant.FromUnixTimeSeconds(1);
+        var approvedFlaggedProfile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = approvedFlaggedId,
+            BurnerName = "Burner",
+            FirstName = "Flagged",
+            LastName = "Approved",
+            State = ProfileState.Active,
+            ConsentCheckStatus = ConsentCheckStatus.Flagged,
+            IsApproved = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
+                [UserInfoStubHelpers.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]));
+        _applicationDecisionService.GetUserIdsWithPendingApplicationAsync(
+                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
+        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(
+                Status: Humans.Domain.Enums.MembershipStatus.Pending,
+                IsVolunteerMember: false,
+                RequiredConsentCount: 0,
+                PendingConsentCount: 0,
+                MissingConsentVersionIds: []));
+
+        var data = await BuildSut().GetReviewQueueAsync();
+
+        data.Flagged.Should().ContainSingle(u => u.Id == approvedFlaggedId);
+        data.Pending.Should().NotContain(u => u.Id == approvedFlaggedId);
     }
 }
