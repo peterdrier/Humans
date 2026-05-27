@@ -303,6 +303,15 @@ public sealed record UserInfo(
     public bool NeedsConsentReview =>
         IsActive && HasRequiredNameFields && !Profile!.IsApproved;
 
+    /// <summary>
+    /// Carries an unresolved Flagged consent check. Excludes rejected profiles — those have already
+    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue.
+    /// Drives the /OnboardingReview flagged section.
+    /// </summary>
+    public bool IsConsentCheckFlagged =>
+        Profile?.ConsentCheckStatus == ConsentCheckStatus.Flagged
+        && Profile.RejectedAt is null;
+
     /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
     public static UserInfo Create(
         User user,

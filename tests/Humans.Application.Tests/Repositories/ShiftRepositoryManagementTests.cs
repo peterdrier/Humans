@@ -11,26 +11,26 @@ using NodaTime.Testing;
 namespace Humans.Application.Tests.Repositories;
 
 /// <summary>
-/// Smoke tests for <see cref="ShiftManagementRepository"/>, the EF-backed
+/// Smoke tests for <see cref="ShiftRepository"/>, the EF-backed
 /// repository introduced in issue #541a. Covers the repository primitives
 /// most likely to regress: the narrow-field pending-signup count, the
 /// active-event lookup, and the tag reconcile.
 /// </summary>
-public sealed class ShiftManagementRepositoryTests : IDisposable
+public sealed class ShiftRepositoryManagementTests : IDisposable
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 4, 1, 12, 0);
 
     private readonly HumansDbContext _dbContext;
-    private readonly ShiftManagementRepository _repo;
+    private readonly ShiftRepository _repo;
     private readonly FakeClock _clock = new(TestNow);
 
-    public ShiftManagementRepositoryTests()
+    public ShiftRepositoryManagementTests()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+        _repo = new ShiftRepository(new TestDbContextFactory(options), _dbContext, _clock);
     }
 
     public void Dispose()

@@ -18,7 +18,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         "Profile.IsSuspended is [Obsolete]. New writers must mutate " +
         "Profile.State (= ProfileState.Suspended) instead. The only sites permitted " +
         "to dual-write IsSuspended + State until the legacy column is dropped are " +
-        "UserService, ProfileService, and ProfileRepository (Issue #635 section 15i).";
+        "UserService, ProfileService, and UserRepository (Issue #635 section 15i).";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -29,7 +29,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
             "Issue #635 section 15i makes Profile.State the canonical lifecycle marker. " +
-            "Profile.IsSuspended is dual-written by UserService / ProfileService / ProfileRepository " +
+            "Profile.IsSuspended is dual-written by UserService / ProfileService / UserRepository " +
             "until the lazy-State-backfill follow-up drops the column.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
@@ -41,7 +41,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         ImmutableHashSet.Create(System.StringComparer.Ordinal,
             "Humans.Application.Services.Users.UserService",
             "Humans.Application.Services.Profiles.ProfileService",
-            "Humans.Infrastructure.Repositories.Profiles.ProfileRepository");
+            "Humans.Infrastructure.Repositories.Users.UserRepository");
 
     public override void Initialize(AnalysisContext context)
     {

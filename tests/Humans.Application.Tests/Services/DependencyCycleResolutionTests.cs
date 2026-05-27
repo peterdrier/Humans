@@ -41,8 +41,6 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<IUserEmailRepository>(_ => Substitute.For<IUserEmailRepository>());
-        services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
-        services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
@@ -97,8 +95,6 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<IUserEmailRepository>(_ => Substitute.For<IUserEmailRepository>());
-        services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
-        services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());

@@ -18,8 +18,6 @@ namespace Humans.Application.Services.Users;
 public sealed class UserService(
     IUserRepository repo,
     IUserEmailRepository userEmailRepo,
-    IProfileRepository profileRepo,
-    IContactFieldRepository contactFieldRepo,
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
     IClock clock,
@@ -50,13 +48,13 @@ public sealed class UserService(
             ? logins
             : [];
 
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
         IReadOnlyList<ContactField> contactFields = [];
         IReadOnlyList<ProfileLanguage> languages = [];
         IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
-            contactFields = await contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            contactFields = await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
             languages = profile.Languages.ToList();
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
@@ -84,10 +82,10 @@ public sealed class UserService(
 
         var loginsByUser = await repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 
-        var profiles = await profileRepo.GetAllAsync(ct);
+        var profiles = await repo.GetAllProfilesAsync(ct);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
-        var allContactFields = await contactFieldRepo.GetAllAsync(ct);
+        var allContactFields = await repo.GetAllContactFieldsAsync(ct);
         var contactFieldsByProfile = allContactFields
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
@@ -252,7 +250,7 @@ public sealed class UserService(
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = await profileRepo.GetByUserIdAsync(userId, ct);
+            var existing = await repo.GetByUserIdAsync(userId, ct);
             if (existing is not null) return false;
 
             var info = await GetUserInfoAsync(userId, ct);
@@ -277,7 +275,7 @@ public sealed class UserService(
                 State = ProfileState.Stub,
             };
 
-            await profileRepo.AddAsync(profile, ct);
+            await repo.AddAsync(profile, ct);
             return true;
         }
         finally
@@ -291,7 +289,7 @@ public sealed class UserService(
         MembershipTier tier,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
         {
             logger.LogWarning(
@@ -301,7 +299,7 @@ public sealed class UserService(
 
         profile.MembershipTier = tier;
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return true;
     }
 
@@ -312,7 +310,7 @@ public sealed class UserService(
     {
         ValidateProfileOnboardingCommand(command);
 
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -353,7 +351,7 @@ public sealed class UserService(
                 throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
         }
 
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return new OnboardingResult(true);
     }
 
@@ -367,7 +365,7 @@ public sealed class UserService(
         try
         {
             var now = clock.GetCurrentInstant();
-            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+            var profile = await repo.GetByUserIdAsync(userId, ct);
 
             if (profile is null)
             {
@@ -379,7 +377,7 @@ public sealed class UserService(
                     UpdatedAt = now,
                     State = ProfileState.Stub,
                 };
-                await profileRepo.AddAsync(profile, ct);
+                await repo.AddAsync(profile, ct);
             }
 
             var previousPictureContentType = profile.ProfilePictureContentType;
@@ -443,7 +441,7 @@ public sealed class UserService(
                 profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
             }
 
-            await profileRepo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
 
             return new UserProfileSaveResult(
@@ -467,7 +465,7 @@ public sealed class UserService(
         try
         {
             var now = clock.GetCurrentInstant();
-            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+            var profile = await repo.GetByUserIdAsync(userId, ct);
             if (profile is null)
             {
                 profile = new Profile
@@ -478,7 +476,7 @@ public sealed class UserService(
                     UpdatedAt = now,
                     State = ProfileState.Stub,
                 };
-                await profileRepo.AddAsync(profile, ct);
+                await repo.AddAsync(profile, ct);
             }
 
             profile.DietaryPreference = command.DietaryPreference;
@@ -489,7 +487,7 @@ public sealed class UserService(
             profile.MedicalConditions = command.MedicalConditions;
             profile.UpdatedAt = now;
 
-            await profileRepo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct);
         }
         finally
         {
@@ -502,14 +500,14 @@ public sealed class UserService(
         string contentType,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new UserProfilePictureContentTypeResult(false, null, null, null);
 
         var previousContentType = profile.ProfilePictureContentType;
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
 
         return new UserProfilePictureContentTypeResult(
             true,
@@ -522,8 +520,8 @@ public sealed class UserService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        var anonymized = await profileRepo.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+        var anonymized = await repo.AnonymizeForDeletionByUserIdAsync(userId, ct);
         return new UserProfileAnonymizeResult(
             anonymized,
             profile?.Id,
@@ -535,11 +533,11 @@ public sealed class UserService(
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
-        await profileRepo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+        await repo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
         return true;
     }
 
@@ -548,8 +546,8 @@ public sealed class UserService(
         IReadOnlyList<ProfileLanguage> languages,
         CancellationToken ct = default)
     {
-        await profileRepo.ReplaceLanguagesAsync(profileId, languages, ct);
-        var ownerUserId = await profileRepo.GetOwnerUserIdAsync(profileId, ct);
+        await repo.ReplaceLanguagesAsync(profileId, languages, ct);
+        var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
         return new UserProfileLanguagesSaveResult(
             ownerUserId is not null,
             ownerUserId);
@@ -557,13 +555,13 @@ public sealed class UserService(
 
     public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
         profile.Iban = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return true;
     }
 
@@ -571,7 +569,7 @@ public sealed class UserService(
         IReadOnlyCollection<Guid> userIds,
         Instant now,
         CancellationToken ct = default) =>
-        profileRepo.SuspendManyAsync(userIds, now, ct);
+        repo.SuspendManyAsync(userIds, now, ct);
 
     public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
         DowngradeMembershipTierForExpiredAsync(
@@ -580,7 +578,7 @@ public sealed class UserService(
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default) =>
-        profileRepo.DowngradeTierForExpiredAsync(
+        repo.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(
@@ -897,10 +895,10 @@ public sealed class UserService(
             })
             .ToList();
 
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
         var contactFields = profile is not null
-            ? await contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
+            ? await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
             : [];
 
         var volunteerHistory = profile?.VolunteerHistory
@@ -909,7 +907,7 @@ public sealed class UserService(
             .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
         var profileLanguages = profile is not null
-            ? await profileRepo.GetLanguagesAsync(profile.Id, ct)
+            ? await repo.GetLanguagesAsync(profile.Id, ct)
             : [];
 
         var communicationPreferences = await communicationPreferenceRepo
@@ -1235,7 +1233,7 @@ public sealed class UserService(
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
         await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await profileRepo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
 
     public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(

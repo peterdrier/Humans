@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -10,25 +11,25 @@ using NodaTime.Testing;
 namespace Humans.Application.Tests.Repositories;
 
 /// <summary>
-/// Unit tests for <see cref="ShiftSignupRepository"/> — focused on the
+/// Unit tests for <see cref="ShiftRepository"/> — focused on the
 /// behaviors the service relies on (duplicate detection, capacity counting,
 /// active-signup filtering, block load-for-mutation). Full state-machine
 /// coverage lives in <c>ShiftSignupServiceTests</c>.
 /// </summary>
-public class ShiftSignupRepositoryTests : IDisposable
+public class ShiftRepositorySignupTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
-    private readonly ShiftSignupRepository _repo;
+    private readonly ShiftRepository _repo;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    public ShiftSignupRepositoryTests()
+    public ShiftRepositorySignupTests()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftSignupRepository(_dbContext, new FakeClock(TestNow));
+        _repo = new ShiftRepository(new TestDbContextFactory(options), _dbContext, new FakeClock(TestNow));
     }
 
     public void Dispose()

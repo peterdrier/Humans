@@ -1,15 +1,12 @@
 using Humans.Domain.Entities;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the <c>contact_fields</c> table.
-/// The only non-test file that may write to this DbSet.
+/// Contact-field operations on <see cref="IUserRepository"/>.
 /// </summary>
-[Section("Humans")]
-public interface IContactFieldRepository : IRepository
+public partial interface IUserRepository
 {
     /// <summary>
     /// Returns all contact fields for a profile, read-only, ordered by
@@ -25,7 +22,7 @@ public interface IContactFieldRepository : IRepository
     /// per-profile round-trips. Trivial at ~500-user scale; the row count
     /// across all profiles is far smaller than the user count.
     /// </summary>
-    Task<IReadOnlyList<ContactField>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns detached entities intended to be mutated in-memory and passed back

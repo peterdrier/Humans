@@ -1,6 +1,5 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -103,9 +102,9 @@ public class EndpointAuthorizationTests
     // --- Event guide admin endpoints ---
 
     [HumansFact]
-    public void EventsAdminController_RequiresEventsAdminOrAdminRoles()
+    public void EventsAdminController_RequiresEventsAdminOrAdminPolicy()
     {
-        AssertHasRoles(typeof(EventsAdminController), null, RoleGroups.EventsAdminOrAdmin);
+        AssertHasPolicy(typeof(EventsAdminController), null, "EventsAdminOrAdmin");
     }
 
     // --- Shift dashboard endpoints ---
@@ -311,16 +310,6 @@ public class EndpointAuthorizationTests
             $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have [Authorize]");
         attr.Policy.Should().Be(expectedPolicy,
             $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have Policy='{expectedPolicy}'");
-    }
-
-    private static void AssertHasRoles(Type controllerType, string? actionName, string expectedRoles)
-    {
-        var attr = GetAuthorizeAttribute(controllerType, actionName);
-
-        attr.Should().NotBeNull(
-            $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have [Authorize]");
-        attr.Roles.Should().Be(expectedRoles,
-            $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have Roles='{expectedRoles}'");
     }
 
     private static AuthorizeAttribute? GetAuthorizeAttribute(Type controllerType, string? actionName)

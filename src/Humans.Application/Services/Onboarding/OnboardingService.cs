@@ -32,13 +32,23 @@ public sealed class OnboardingService(
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
-        // Review queue = not approved, not rejected, oldest first.
-        var reviewable = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.NeedsConsentReview)
+        // Invariant: anyone with an unresolved Flagged consent check must appear in the queue so a
+        // CC can resolve them — even if a prior admin override flipped IsApproved=true. Rejected
+        // profiles are excluded (see UserInfo.IsConsentCheckFlagged): Clear is blocked on them and
+        // the row would otherwise be unresolvable. Pending list keeps the NeedsConsentReview gate.
+        var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+
+        var flagged = all
+            .Where(u => u.IsConsentCheckFlagged)
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
-        var allUserIds = reviewable.Select(u => u.Id).ToList();
+        var pending = all
+            .Where(u => u.NeedsConsentReview && !u.IsConsentCheckFlagged)
+            .OrderBy(u => u.Profile!.CreatedAt)
+            .ToList();
+
+        var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
         var pendingAppUserIds = await applicationDecisionService
             .GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
 
@@ -50,11 +60,6 @@ public sealed class OnboardingService(
                 snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
                 snapshot.RequiredConsentCount);
         }
-
-        var flagged = reviewable
-            .Where(u => u.Profile!.ConsentCheckStatus == ConsentCheckStatus.Flagged)
-            .ToList();
-        var pending = reviewable.Except(flagged).ToList();
 
         // ReviewQueueData types PendingAppUserIds as HashSet<Guid>; Governance returns IReadOnlySet.
         var pendingAppHashSet = pendingAppUserIds.ToHashSet();

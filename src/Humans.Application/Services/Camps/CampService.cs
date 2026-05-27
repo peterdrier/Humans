@@ -23,7 +23,6 @@ namespace Humans.Application.Services.Camps;
 public sealed class CampService : ICampService, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private readonly ICampRepository _repo;
-    private readonly ICampRoleRepository _roleRepo;
     private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -42,7 +41,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public CampService(
         ICampRepository repo,
-        ICampRoleRepository roleRepo,
         IUserServiceRead userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
@@ -55,7 +53,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         ILogger<CampService> logger)
     {
         _repo = repo;
-        _roleRepo = roleRepo;
         _userService = userService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
@@ -119,7 +116,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ConfirmedByUserId = createdByUserId,
         };
 
-        var leadDef = await _roleRepo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
+        var leadDef = await _repo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
         CampRoleAssignment? leadAssignment = null;
         if (leadDef is not null)
         {
@@ -281,7 +278,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         IReadOnlyList<Camp> leadCamps = [];
         if (userId.HasValue)
         {
-            var leadCampIdList = await _roleRepo.GetCampIdsBySpecialRolesForUserAsync(
+            var leadCampIdList = await _repo.GetCampIdsBySpecialRolesForUserAsync(
                 userId.Value, LeadOnly, cancellationToken);
             leadCampIds = leadCampIdList.ToHashSet();
             // Re-derive from the already-loaded year camps (avoids a second camp load);
@@ -1083,7 +1080,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default) =>
         // Source of truth: CampRoleAssignment against the Camp Lead special role.
-        _roleRepo.GetCampSpecialRoleSeasonIdForYearAsync(
+        _repo.GetCampSpecialRoleSeasonIdForYearAsync(
             userId, year, CampSpecialRole.Lead, cancellationToken);
 
     // --- Authorization checks ---
@@ -1095,13 +1092,13 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public Task<bool> IsUserCampLeadAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
         // Source of truth: CampRoleAssignment against the Camp Lead special role.
-        _roleRepo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOnly, cancellationToken);
+        _repo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOnly, cancellationToken);
 
     public async Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
         // Role-based: camps where the user holds Lead or Workshop for any season.
-        var roleCampIds = await _roleRepo.GetCampIdsBySpecialRolesForUserAsync(
+        var roleCampIds = await _repo.GetCampIdsBySpecialRolesForUserAsync(
             userId, LeadOrWorkshop, cancellationToken);
 
         var allCampIds = roleCampIds.ToHashSet();
@@ -1121,7 +1118,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         // Authorizes camp-event submission (EventsController). Lead OR Workshop on
         // the camp's current season. Camp leads inherit Workshop power because the
         // role set is the OR — no separate "lead-implies-workshop" logic.
-        _roleRepo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOrWorkshop, cancellationToken);
+        _repo.IsUserSpecialRoleHolderForCampAsync(userId, campId, LeadOrWorkshop, cancellationToken);
 
     public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
     {
@@ -1359,7 +1356,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var leadUserIds = new HashSet<Guid>();
         foreach (var season in camp.Seasons)
         {
-            foreach (var leadUserId in await _roleRepo.GetSpecialRoleHolderUserIdsForSeasonAsync(
+            foreach (var leadUserId in await _repo.GetSpecialRoleHolderUserIdsForSeasonAsync(
                 season.Id, CampSpecialRole.Lead, cancellationToken))
             {
                 leadUserIds.Add(leadUserId);
@@ -1739,7 +1736,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         Guid userId, CancellationToken cancellationToken = default) =>
         // Source of truth: pending-membership count over camps where the user
         // holds the Camp Lead special role.
-        _roleRepo.CountPendingMembershipsForSpecialRoleHolderAsync(
+        _repo.CountPendingMembershipsForSpecialRoleHolderAsync(
             userId, CampSpecialRole.Lead, cancellationToken);
 
     public async Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
@@ -1767,7 +1764,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         // AccountMergeService.AcceptAsync wraps the save in its TransactionScope.
         // Camp Lead is a CampRoleAssignment now, so the role-side reassignment moves leads too.
-        await _roleRepo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _repo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Lead moves change Barrio Leads team membership + lead-badge cache for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
@@ -1792,7 +1789,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             LeftAt = cl.LeftAt.ToInvariantInstantString()
         }).ToList();
 
-        var roleAssignments = await _roleRepo.GetAllAssignmentsForUserAsync(userId, ct);
+        var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new
         {

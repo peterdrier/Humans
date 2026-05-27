@@ -21,16 +21,13 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
     public UserServiceProfileOnboardingMutationTests()
     {
-        var profileRepository = new ProfileRepository(DbFactory, Clock);
+        var userRepository = new UserRepository(DbFactory, Clock);
         var userEmailRepository = new UserEmailRepository(DbFactory);
-        var contactFieldRepository = new ContactFieldRepository(DbFactory);
         var communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
 
         _service = new UserService(
-            new UserRepository(DbFactory),
+            userRepository,
             userEmailRepository,
-            profileRepository,
-            contactFieldRepository,
             communicationPreferenceRepository,
             AdminAuthorization,
             Clock,
@@ -300,14 +297,21 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         SeedUser(userId);
         await Db.SaveChangesAsync();
 
-        var fakeRepo = Substitute.For<IProfileRepository>();
+        var fakeRepo = Substitute.For<IUserRepository>();
         Profile? stored = null;
+        fakeRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                DisplayName = "Test User",
+                PreferredLanguage = "en",
+            });
         fakeRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(stored));
         fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>()))
             .Do(call => stored = call.Arg<Profile>());
 
-        var service = BuildWithProfileRepository(fakeRepo);
+        var service = BuildWithUserRepository(fakeRepo);
 
 #pragma warning disable VSTHRD003
         await Task.WhenAll(
@@ -435,12 +439,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         return profile.Id;
     }
 
-    private UserService BuildWithProfileRepository(IProfileRepository profileRepository) =>
+    private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
-            new UserRepository(DbFactory),
+            userRepository,
             new UserEmailRepository(DbFactory),
-            profileRepository,
-            new ContactFieldRepository(DbFactory),
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
             Clock,

@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
-public sealed class ProfileService(IProfileRepository profileRepository,
+public sealed class ProfileService(IUserRepository userRepository,
     IUserService userService,
     IFileStorage fileStorage,
     ILogger<ProfileService> logger) : IProfilePictureService
@@ -62,7 +62,7 @@ public sealed class ProfileService(IProfileRepository profileRepository,
         Guid profileId, CancellationToken ct = default)
     {
         // GDPR gate: content-type column is the source of truth — don't serve from disk if cleared.
-        var dbContentType = await profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
+        var dbContentType = await userRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
             return null;
@@ -76,7 +76,7 @@ public sealed class ProfileService(IProfileRepository profileRepository,
     public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
         CancellationToken ct = default)
     {
-        var rows = await profileRepository.GetCustomPictureRowsAsync(ct);
+        var rows = await userRepository.GetCustomPictureRowsAsync(ct);
         if (rows.Count == 0)
         {
             return new ProfilePictureMigrationSnapshot(0, 0, []);

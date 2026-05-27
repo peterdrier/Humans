@@ -45,7 +45,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 | Actor | Capabilities |
 |-------|--------------|
 | Admin, CantinaAdmin | View weekly/daily roster and download CSV |
-| All other authenticated humans | **HTTP 403** on the routes; CANTINA nav link is hidden |
+| All other authenticated humans | **HTTP 403** on the routes; Cantina admin sidebar entry is hidden |
 | Anonymous | Standard `[Authorize]` challenge — redirected to sign-in |
 
 `CantinaAdmin` is a grantable role (the permissions page surfaces it via `RoleNames.All`), aligned with the other per-area `<Area>AdminOrAdmin` policies. There is no team-name-based access path.
@@ -62,7 +62,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 
 ## Negative Access Rules
 
-- Pre-volunteer humans (Guest dashboard, profile not yet active) **cannot** see the CANTINA nav link — the link is gated by the same `CantinaAdminOrAdmin` policy used by the controller (`authorize-policy="CantinaAdminOrAdmin"` in `_Layout`).
+- Pre-volunteer humans (Guest dashboard, profile not yet active) **cannot** see the Cantina admin sidebar entry — it lives under the `Cantina` group in `AdminNavTree` and is gated by the same `CantinaAdminOrAdmin` policy used by the controller. The entry is reachable only via the Admin shell (`/Admin/*`); there is no member-shell top-nav link.
 - Any human (including Cantina-team members and Cantina coordinators) **cannot** see another human's `MedicalConditions` through this section — the field is not in the DTO and not in the view. The only surface for medical data remains `_VolunteerProfileBadges` with `ShowMedical=true` (NoInfoAdmin / Admin only).
 - Authenticated humans who fail the access gate **cannot** read the roster or download the CSV — both routes return HTTP 403 (`Forbid()`), not a redirect.
 - Team coordinators and Cantina-team members **cannot** see the roster on that basis alone — access requires the `Admin` or `CantinaAdmin` role. Team membership grants nothing here.

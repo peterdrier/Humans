@@ -221,6 +221,72 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
+            Guid profileId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
+            Guid profileId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task BatchSaveAsync(
+            IReadOnlyList<ContactField> toAdd,
+            IReadOnlyList<ContactField> toUpdate,
+            IReadOnlyList<ContactField> toRemove,
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> ReassignToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<string?> GetProfilePictureContentTypeAsync(
+            Guid profileId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+            GetCustomPictureRowsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
+            Guid profileId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task ReplaceLanguagesAsync(
+            Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task AddAsync(Profile profile, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlySet<Guid>> SuspendManyAsync(
+            IReadOnlyCollection<Guid> userIds, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> ReassignSubAggregatesToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task ReconcileCVEntriesAsync(
+            Guid profileId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> WriteBackStateIfNullAsync(
+            Guid userId, ProfileState state, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     /// <summary>

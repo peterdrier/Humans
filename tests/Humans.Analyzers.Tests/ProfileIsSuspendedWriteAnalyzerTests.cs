@@ -85,13 +85,13 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_in_allowlisted_ProfileRepository_in_Infrastructure()
+    public async Task Does_not_fire_in_allowlisted_UserRepository_in_Infrastructure()
     {
         var source = DomainStub + """
 
-            namespace Humans.Infrastructure.Repositories.Profiles
+            namespace Humans.Infrastructure.Repositories.Users
             {
-                public class ProfileRepository
+                public class UserRepository
                 {
                     public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended = true;
                 }

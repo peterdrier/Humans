@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
-using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsDashboardController(IEventService guide, ICampServiceRead camps, IUserServiceRead userService)

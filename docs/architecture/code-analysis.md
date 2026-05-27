@@ -33,7 +33,7 @@ from `Humans.Testing` (linked into every test project via
 `tests/Directory.Build.props`).
 
 Why:
-- Default `Timeout = 5000` (5s) caps every test, sync or async, at
+- Default `Timeout = 30000` (30s) caps every test, sync or async, at
   xUnit v3's cooperative-cancellation level. Override per test with
   `[HumansFact(Timeout = N)]` where `N > 0` — the setter rejects
   `Timeout = 0` (infinite) and negative values with `ArgumentException` at

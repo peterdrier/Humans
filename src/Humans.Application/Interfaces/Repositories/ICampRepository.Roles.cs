@@ -1,14 +1,11 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the camp-roles aggregate: <c>camp_role_definitions</c> and
-/// <c>camp_role_assignments</c>. The only non-test file that touches those
-/// DbSets after the AddCampRoles migration lands.
+/// Camp role operations on <see cref="ICampRepository"/>.
 /// </summary>
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
@@ -17,8 +14,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// context. Cross-domain navigation is not resolved here; the application
 /// service stitches display names from <see cref="Users.IUserService"/>.
 /// </remarks>
-[Section("Camps")]
-public interface ICampRoleRepository : IRepository
+public partial interface ICampRepository
 {
     // Definitions
 

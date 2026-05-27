@@ -48,7 +48,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             .With<IUserService>()
             .Build();
 
-        var repo = new ShiftManagementRepository(DbFactory);
+        var repo = new ShiftRepository(DbFactory, Db, Clock);
 
         _service = new ShiftManagementService(
             repo,

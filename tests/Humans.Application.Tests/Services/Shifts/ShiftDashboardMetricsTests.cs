@@ -47,7 +47,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             .With<IRoleAssignmentService>()
             .Build();
 
-        var repo = new ShiftManagementRepository(DbFactory);
+        var repo = new ShiftRepository(DbFactory, Db, Clock);
 
         _service = new ShiftManagementService(
             repo,

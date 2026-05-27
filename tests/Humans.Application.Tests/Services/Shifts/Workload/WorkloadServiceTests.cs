@@ -26,7 +26,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
-        var repo = new ShiftManagementRepository(DbFactory);
+        var repo = new ShiftRepository(DbFactory, Db, Clock);
 
         // IShiftView source-of-truth path uses GetRotaAsync only — the inner
         // ShiftViewService also takes signup/availability/tracking repos for
@@ -34,7 +34,6 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         var view = new ShiftViewService(
             repo,
             Substitute.For<IShiftSignupRepository>(),
-            Substitute.For<IGeneralAvailabilityRepository>(),
             Substitute.For<IVolunteerTrackingRepository>());
 
         _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

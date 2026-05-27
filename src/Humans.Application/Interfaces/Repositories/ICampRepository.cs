@@ -7,9 +7,9 @@ namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
 /// Repository for the camps aggregate: <c>camps</c>, <c>camp_seasons</c>,
-/// <c>camp_leads</c>, <c>camp_images</c>, <c>camp_historical_names</c>, and
-/// <c>camp_settings</c>. The only non-test file that touches those DbSets
-/// after the Camps migration lands.
+/// <c>camp_members</c>, <c>camp_role_definitions</c>,
+/// <c>camp_role_assignments</c>, <c>camp_leads</c>, <c>camp_images</c>,
+/// <c>camp_historical_names</c>, and <c>camp_settings</c>.
 /// </summary>
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
@@ -21,7 +21,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
 [Section("Camps")]
-public interface ICampRepository : IRepository
+public partial interface ICampRepository : IRepository
 {
     // ==========================================================================
     // Reads — Camp

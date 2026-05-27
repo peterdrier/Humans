@@ -15,11 +15,10 @@ public class ShiftViewServiceTests
 {
     private readonly IShiftManagementRepository _management = Substitute.For<IShiftManagementRepository>();
     private readonly IShiftSignupRepository _signups = Substitute.For<IShiftSignupRepository>();
-    private readonly IGeneralAvailabilityRepository _availability = Substitute.For<IGeneralAvailabilityRepository>();
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
 
     private ShiftViewService CreateSut() =>
-        new(_management, _signups, _availability, _tracking);
+        new(_management, _signups, _tracking);
 
     [HumansFact]
     public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
@@ -62,7 +61,7 @@ public class ShiftViewServiceTests
             .Returns([]);
         _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _availability.GetByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
+        _tracking.GetAvailabilityByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
             .Returns(availability);
         _tracking.GetAsync(userId, eventId, Arg.Any<CancellationToken>())
             .Returns(buildStatus);

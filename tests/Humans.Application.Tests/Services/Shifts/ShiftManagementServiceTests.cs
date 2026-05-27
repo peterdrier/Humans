@@ -83,7 +83,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .With(_roleAssignmentService)
             .Build();
 
-        var repo = new ShiftManagementRepository(DbFactory);
+        var repo = new ShiftRepository(DbFactory, Db, Clock);
 
         _service = new ShiftManagementService(
             repo,

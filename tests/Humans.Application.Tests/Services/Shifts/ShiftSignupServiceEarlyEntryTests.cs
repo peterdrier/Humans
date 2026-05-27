@@ -11,6 +11,7 @@ using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Shifts;
@@ -22,7 +23,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
 {
     private readonly ShiftManagementService _shiftMgmt;
-    private readonly ShiftSignupRepository _repo;
+    private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -38,7 +39,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftManagementRepository(DbFactory);
+        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -50,14 +51,16 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftSignupRepository(Db, Clock);
+        _repo = new ShiftRepository(DbFactory, Db, Clock);
         var membership = Substitute.For<IMembershipCalculator>();
         membership.HasAllRequiredConsentsForTeamAsync(
             Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
         _service = new ShiftSignupService(
             _repo,
+            Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             membership,
             AuditLog,
             Substitute.For<INotificationService>(),

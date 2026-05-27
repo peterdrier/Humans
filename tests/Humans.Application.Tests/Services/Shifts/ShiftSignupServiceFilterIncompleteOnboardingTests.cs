@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
@@ -42,7 +43,7 @@ public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceT
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftManagementRepository(DbFactory);
+        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
@@ -53,10 +54,12 @@ public sealed class ShiftSignupServiceFilterIncompleteOnboardingTests : ServiceT
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        var repo = new ShiftSignupRepository(Db, Clock);
+        var repo = new ShiftRepository(DbFactory, Db, Clock);
         _service = new ShiftSignupService(
             repo,
+            Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             _membership,
             AuditLog,
             Substitute.For<INotificationService>(),

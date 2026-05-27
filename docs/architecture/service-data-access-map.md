@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-05-26
+**Generated:** 2026-05-27
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -93,7 +93,7 @@ Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
 
 ### ProfileService (Scoped — `IProfilePictureService`)
 
-Repository: `IProfileRepository` (read-only — fetches profile row to resolve
+Repository: `IUserRepository` (read-only profile methods - fetches profile row to resolve
 storage paths).
 
 | Table | R/W |
@@ -113,7 +113,7 @@ the picture file. No `IMemoryCache`.
 
 ### ContactFieldService (Scoped)
 
-Repositories: `IContactFieldRepository`, `IProfileRepository`.
+Repository: `IUserRepository` (profile and contact-field methods).
 
 | Table | R/W |
 |-------|-----|
@@ -173,14 +173,14 @@ caches; the unified read-model is evicted via `IUserInfoInvalidator`.
 
 ### DuplicateAccountService (Scoped)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`, `IProfileRepository`.
+Repositories: `IUserRepository`, `IUserEmailRepository`.
 
 | Table | R/W |
 |-------|-----|
 | Profiles | R/W |
-| ContactFields | R/W (via `IProfileRepository`) |
-| ProfileLanguages | R/W (via `IProfileRepository`) |
-| VolunteerHistoryEntries | R/W (via `IProfileRepository`) |
+| ContactFields | R/W (via `IUserRepository`) |
+| ProfileLanguages | R/W (via `IUserRepository`) |
+| VolunteerHistoryEntries | R/W (via `IUserRepository`) |
 | UserEmails | R/W |
 | Users | R/W |
 | EventParticipations | R/W (via `IUserRepository`) |
@@ -219,7 +219,6 @@ interface's `[SurfaceBudget]` is intentionally suspended for now.
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
 Repositories: `IUserRepository`, `IUserEmailRepository`,
-`IProfileRepository`, `IContactFieldRepository`,
 `ICommunicationPreferenceRepository`.
 
 | Table | R/W | Repo |
@@ -228,13 +227,13 @@ Repositories: `IUserRepository`, `IUserEmailRepository`,
 | UserEmails | R | IUserEmailRepository |
 | EventParticipations | R/W | IUserRepository |
 | IdentityUserLogins | R | IUserRepository |
-| Profiles | R/W | IProfileRepository |
-| ContactFields | R | IContactFieldRepository |
+| Profiles | R/W | IUserRepository |
+| ContactFields | R | IUserRepository |
 | CommunicationPreferences | R | ICommunicationPreferenceRepository |
-| ProfileLanguages | R/W | IProfileRepository |
-| VolunteerHistoryEntries | R | IProfileRepository |
+| ProfileLanguages | R/W | IUserRepository |
+| VolunteerHistoryEntries | R | IUserRepository |
 
-The five-repo injection composes the `UserInfo` projection inside
+The three-repo injection composes the `UserInfo` projection inside
 `CachingUserService` — a single cached read-model fanning out from the
 inner `UserService` over the User + Profile section repositories.
 Implements `IUserDataContributor`, `IUserMerge`.
@@ -637,7 +636,7 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 
 ### CampService (Scoped — wrapped by CachingCampService Singleton decorator)
 
-Repositories: `ICampRepository`, `ICampRoleRepository`.
+Repository: `ICampRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -673,7 +672,7 @@ Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
 
 ### CampRoleService (Scoped)
 
-Repository: `ICampRoleRepository`.
+Repository: `ICampRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -814,7 +813,7 @@ for cycle-breaking. Implements `IShiftAuthorizationInvalidator`,
 
 ### ShiftSignupService (Scoped)
 
-Repository: `IShiftSignupRepository`.
+Repositories: `IShiftSignupRepository`, `IVolunteerTrackingRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -823,12 +822,9 @@ Repository: `IShiftSignupRepository`.
 | Rotas | R (via repo) |
 | VolunteerEventProfiles | R/W (via repo) |
 | VolunteerTagPreferences | R (via repo) |
+| GeneralAvailability | R (via `IVolunteerTrackingRepository`, GDPR export) |
 
-> **Change since prior sweep:** `ShiftSignupRepository` no longer reads
-> `GeneralAvailability` directly — conflict-detection has been refactored
-> so cross-table availability checks go through the service layer.
-
-Cross-section calls via `IShiftManagementService`,
+Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
 `IMembershipCalculator`, `IAuditLogService`, `INotificationService`,
 `IAdminAuthorizationService`, `IShiftViewInvalidator`,
 `IEarlyEntryInvalidator`, `IServiceProvider`. Implements
@@ -836,7 +832,7 @@ Cross-section calls via `IShiftManagementService`,
 
 ### GeneralAvailabilityService (Scoped)
 
-Repository: `IGeneralAvailabilityRepository`.
+Repository: `IVolunteerTrackingRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -847,8 +843,7 @@ No `IMemoryCache`.
 
 ### VolunteerTrackingService (Scoped)
 
-Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`,
-`IGeneralAvailabilityRepository`.
+Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -883,7 +878,7 @@ direct DB access beyond the export query.
 ### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
 
 Repositories: `IShiftManagementRepository`, `IShiftSignupRepository`,
-`IGeneralAvailabilityRepository`, `IVolunteerTrackingRepository`.
+`IVolunteerTrackingRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -929,17 +924,21 @@ shifts surface. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 
-Repository: `IShiftSignupRepository`.
+Repositories: `IShiftSignupRepository`, `IShiftManagementRepository`.
 
 | Table | R/W |
 |-------|-----|
 | ShiftSignups | R |
-| Rotas | R (via repo) |
-| Shifts | R (via repo) |
+| Rotas | R (via repos) |
+| Shifts | R (via repos) |
+| EventSettings | R (via `IShiftManagementRepository.GetActiveEventSettingsAsync` — team-level dispatch path) |
 
-Cross-section calls via `IUserServiceRead`, `IEmailService`,
-`IAuditLogService`. Groups active signups by user and enqueues one
-personalised email per recipient via the outbox. No cache.
+Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`,
+`IEmailService`, `IAuditLogService`. Implements per-rota
+(`SendRotaMessageAsync`) and team-level (`SendTeamRotasMessageAsync`,
+PR #795) dispatch — groups active signups by user across one or many
+rotas and enqueues one personalised email per recipient via the outbox.
+No cache.
 
 ### WorkloadService (Scoped) — `Shifts/Workload/`
 
@@ -1216,7 +1215,6 @@ Repository: `ITicketRepository`.
 | TicketOrders | R |
 | TicketAttendees | R |
 | TicketSyncStates | R |
-| UserEmails | R (via `ITicketRepository` projections — attendee/email matching for ticket counts; reached via `ctx.Set<UserEmail>()`) |
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
@@ -1225,10 +1223,12 @@ inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 Implements `IUserDataContributor` (the GDPR contributor is the inner, one
 per section).
 
-**Cross-section table read (design-rule violation):** `TicketRepository`
-materialises `UserEmail` projections for attendee matching.
-`IUserEmailService` does not yet expose a bulk lookup; this is the
-cleanest single fix to retire the violation.
+> **Change since prior sweep:** `TicketRepository` no longer reads
+> `UserEmails` directly (PR #802) — the prior `GetAllUserEmailLookupEntriesAsync`
+> projection has been retired. Email-to-user matching for ticket sync now
+> routes through `IUserServiceRead.GetAllUserInfosAsync` (see
+> `TicketSyncService.BuildEmailLookupAsync`). The cross-section
+> design-rule violation on `UserEmails` is closed.
 
 ### CachingTicketQueryService (Singleton, Infrastructure)
 
@@ -1262,8 +1262,11 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | `Tickets.Orders` / `Tickets.UserHoldings` tracked slices (via `ITicketCacheInvalidator`) | per-process | | | yes |
 
 Cross-section calls via `ITicketVendorService`, `IStripeService`,
-`IUserService`, `ICampaignService`, `IShiftManagementService`,
-`ITicketCacheInvalidator`. Implements `ITicketSyncService`, `IUserMerge`.
+`IUserServiceRead`, `IUserService`, `ICampaignService`,
+`IShiftManagementService`, `ITicketCacheInvalidator`. Implements
+`ITicketSyncService`, `IUserMerge`. `BuildEmailLookupAsync` builds the
+verified-email → user-id map by fanning out over `IUserServiceRead.GetAllUserInfosAsync`
+(replaces the prior `TicketRepository` projection — PR #802).
 
 ### TicketTransferService (Scoped)
 
@@ -1775,14 +1778,14 @@ formatters with no DI dependencies.
 After the §15 / `IUserMerge` consolidation and the more recent
 `GoogleAdminService` / `CampRepository.GetCampLeadsAsync` /
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
-`ShiftSignupRepository` cleanups, only a handful of repositories still
-reach across boundaries directly. These are the remaining design-rule
-violations.
+`ShiftSignupRepository` / `TicketRepository` cleanups, only a handful
+of repositories still reach across boundaries directly. These are the
+remaining design-rule violations.
 
 | Table | Owning Section | Cross-Section Repo Readers (violations) |
 |-------|----------------|-----------------------------------------|
 | **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email` and the `UserEmailWithUser` read; `DuplicateAccountService` via `IUserRepository`), Google Integration (`DriveActivityMonitorRepository.TryResolveEmailByGoogleUserIdAsync` reads via IdentityUserLogins join) |
-| **UserEmails** | Profiles | Tickets (`TicketRepository` `UserEmail` projections for attendee matching via `ctx.Set<UserEmail>()`) |
+| **UserEmails** | Profiles | Users (`UserRepository.Include(u => u.UserEmails)` — `UserInfo` projection bridge; tracked under HUM0025 grandfathering as the read-model boundary) |
 | **EventParticipations** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **IdentityUserLogins** | Users | Google Integration (`DriveActivityMonitorRepository`), Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
@@ -1791,7 +1794,7 @@ violations.
 
 1. **`IUserMerge` retired most cross-section profile/identity writes.**
    `AccountMergeService` no longer injects `IUserRepository` /
-   `IProfileRepository` directly — it fans out over
+   profile-owned repositories directly — it fans out over
    `IEnumerable<IUserMerge>`, with each section's service implementing
    `IUserMerge` to reassign its own owned rows. `DuplicateAccountService`
    still uses direct repositories pending convergence on the same pattern.
@@ -1814,10 +1817,13 @@ violations.
    Application-layer service named `ProfileService` is now a thin
    `IProfilePictureService` implementation for picture-bytes IO.
 
-4. **Tickets ↔ Profiles email lookup.** `TicketRepository`
-   materialises `UserEmail` projections for attendee matching via
-   `ctx.Set<UserEmail>()`. `IUserEmailService` does not yet expose a bulk
-   lookup; this is the cleanest single fix to retire the violation.
+4. **Tickets ↔ Profiles email lookup retired (PR #802).**
+   `TicketRepository` no longer projects `UserEmail` rows directly.
+   `TicketSyncService.BuildEmailLookupAsync` fans out over
+   `IUserServiceRead.GetAllUserInfosAsync` and synthesises the
+   verified-email → user-id map from the cached `UserInfo` slices.
+   `UserEmails` is now only read cross-section by `UserRepository`
+   itself for `UserInfo` projection (the unified read-model bridge).
 
 5. **Teams ↔ Google outbox.** `TeamRepository` writes
    `GoogleSyncOutboxEvents` so each team mutation is atomic with its

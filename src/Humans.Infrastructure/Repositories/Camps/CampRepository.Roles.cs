@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,13 +7,11 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
-[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampMembers")]
-[Grandfathered("HUM0025", justification: "Camps-section table also accessed by CampRepository; converge the Camps repositories on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "CampRoleAssignments")]
-internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> factory) : ICampRoleRepository
+internal sealed partial class CampRepository
 {
     public async Task<IReadOnlyList<CampRoleDefinition>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var query = ctx.CampRoleDefinitions.AsNoTracking().AsQueryable();
         if (!includeDeactivated)
             query = query.Where(d => d.DeactivatedAt == null);
@@ -23,13 +20,13 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleDefinitions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, ct);
     }
 
     public async Task<CampRoleDefinition?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var lowered = slug.ToLowerInvariant();
         return await ctx.CampRoleDefinitions.AsNoTracking()
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -41,14 +38,14 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     {
         if (specialRole == CampSpecialRole.None)
             throw new ArgumentException("CampSpecialRole.None has no special definition.", nameof(specialRole));
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleDefinitions.AsNoTracking()
             .FirstOrDefaultAsync(d => d.SpecialRole == specialRole, ct);
     }
 
     public async Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleDefinitions.AsNoTracking()
             .Where(d => d.SpecialRole != CampSpecialRole.None)
             .Select(d => d.SpecialRole)
@@ -61,7 +58,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     {
         if (specialRoles.Count == 0) return false;
         var roleList = specialRoles.ToList();
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .AnyAsync(a => a.CampMember.UserId == userId
                 && a.CampSeason.CampId == campId
@@ -74,7 +71,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     {
         if (specialRoles.Count == 0) return [];
         var roleList = specialRoles.ToList();
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampMember.UserId == userId
                 && roleList.Contains(a.Definition.SpecialRole)
@@ -87,7 +84,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<Guid?> GetCampSpecialRoleSeasonIdForYearAsync(
         Guid userId, int year, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampMember.UserId == userId
                 && a.CampSeason.Year == year
@@ -101,7 +98,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
         Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Camps where the user holds the given special role on any active season.
         var leadCampIds = ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampMember.UserId == userId
@@ -121,7 +118,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
         CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.Definition.SpecialRole == specialRole
                 && a.Definition.DeactivatedAt == null)
@@ -133,7 +130,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsForSeasonAsync(
         Guid campSeasonId, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments
             .AsNoTracking()
             .Where(a => a.CampSeasonId == campSeasonId
@@ -147,7 +144,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<bool> IsSpecialRoleHolderAnywhereAsync(
         Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .AnyAsync(a => a.CampMember.UserId == userId
                 && a.Definition.SpecialRole == specialRole
@@ -156,7 +153,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<bool> DefinitionSlugExistsAsync(string slug, Guid? excludingId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var lowered = slug.ToLowerInvariant();
         var query = ctx.CampRoleDefinitions.AsNoTracking()
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -169,7 +166,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var lowered = name.ToLowerInvariant();
         var query = ctx.CampRoleDefinitions.AsNoTracking()
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
@@ -182,14 +179,14 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task AddDefinitionAsync(CampRoleDefinition definition, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampRoleDefinitions.Add(definition);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<bool> UpdateDefinitionAsync(Guid id, Action<CampRoleDefinition> mutate, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var def = await ctx.CampRoleDefinitions.FirstOrDefaultAsync(d => d.Id == id, ct);
         if (def is null) return false;
         mutate(def);
@@ -199,7 +196,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.Definition)
             .Include(a => a.CampMember)
@@ -210,7 +207,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.CampMember)
             .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
@@ -218,14 +215,14 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<int> CountAssignmentsForSeasonAndDefinitionAsync(Guid campSeasonId, Guid definitionId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .CountAsync(a => a.CampSeasonId == campSeasonId && a.CampRoleDefinitionId == definitionId, ct);
     }
 
     public async Task<bool> AssignmentExistsAsync(Guid campSeasonId, Guid definitionId, Guid campMemberId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .AnyAsync(a => a.CampSeasonId == campSeasonId
                         && a.CampRoleDefinitionId == definitionId
@@ -234,7 +231,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampRoleAssignments.Add(assignment);
         try
         {
@@ -250,7 +247,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var assignment = await ctx.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
         if (assignment is null) return false;
         ctx.CampRoleAssignments.Remove(assignment);
@@ -260,7 +257,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
 
     public async Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Load-then-RemoveRange so unit tests using the EF InMemory provider
         // still cover the path. ExecuteDeleteAsync would be cheaper at scale
         // but is not supported by the InMemory provider.
@@ -276,7 +273,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.Definition)
             .Include(a => a.CampMember)
@@ -289,7 +286,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(
         int year, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var rows = await ctx.CampRoleAssignments.AsNoTracking()
             .Where(a => a.CampSeason.Year == year)
             .GroupBy(a => new { a.CampSeasonId, a.CampRoleDefinitionId })
@@ -301,7 +298,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
     public async Task<IReadOnlyList<CampRoleAssignment>> GetAssignmentsForDefinitionInYearAsync(
         Guid definitionId, int year, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Display sort happens in the service (CampRoleService.BuildDrillDownAsync).
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.CampMember)
@@ -313,7 +310,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
         IReadOnlyCollection<int> years, CancellationToken ct = default)
     {
         if (years.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var yearList = years.Distinct().ToList();
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.CampMember)
@@ -333,7 +330,7 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         // CampRoleAssignment is keyed by CampMemberId, not UserId. To "move
         // by user" we walk source's CampMembers and find target's CampMember
@@ -427,3 +424,4 @@ internal sealed class CampRoleRepository(IDbContextFactory<HumansDbContext> fact
             .CountAsync(a => a.CampMember.UserId == targetUserId, ct);
     }
 }
+

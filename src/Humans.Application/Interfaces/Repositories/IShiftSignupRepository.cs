@@ -8,23 +8,15 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the Shifts section's <c>shift_signups</c> table plus the
 /// narrow within-section cross-service reads ShiftSignupService currently
 /// performs on <c>rotas</c>, <c>shifts</c>, <c>volunteer_event_profiles</c>,
-/// <c>general_availabilities</c>, and <c>volunteer_tag_preferences</c>.
+/// and <c>volunteer_tag_preferences</c>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Only non-test file that may write to or query
-/// <c>DbContext.ShiftSignups</c> from the <c>ShiftSignupService</c> migration
-/// onward (issue #541 sub-task b).
-/// </para>
-/// <para>
-/// Within-section cross-service reads (rotas, shifts, volunteer_event_profiles,
-/// general_availability, volunteer_tag_preferences) live here for now — they
-/// are acceptable per <c>docs/sections/Shifts.md</c> "within-section
-/// cross-service direct DbContext reads" provisional rule until the other
-/// Shifts services land behind their own repositories (#541a, #541c surface
-/// expansion). When those migrations land, these reads should move to
-/// <c>IShiftManagementRepository</c> / <c>IGeneralAvailabilityRepository</c>
-/// / etc.
+/// <c>ShiftRepository</c> is now the single concrete persistence adapter for
+/// Shifts, but this contract remains the signup mutation surface. A few
+/// read-only helpers for rotas, shifts, volunteer profiles, and tag preferences
+/// remain here because the signup workflow needs them immediately next to
+/// signup state-machine operations.
 /// </para>
 /// <para>
 /// Read methods are <c>AsNoTracking</c> by default; methods named
@@ -146,7 +138,7 @@ public interface IShiftSignupRepository : IRepository
     Task<IReadOnlyList<ShiftSignup>> GetForGdprExportAsync(Guid userId, CancellationToken ct = default);
 
     // ============================================================
-    // Reads — within-section cross-service (pending #541a / #541c)
+    // Reads - signup-adjacent Shifts data
     // ============================================================
 
     /// <summary>
@@ -154,9 +146,8 @@ public interface IShiftSignupRepository : IRepository
     /// and its sibling signups for capacity checks. Read-only.
     /// </summary>
     /// <remarks>
-    /// Within-section cross-service read: <c>shifts</c> and <c>rotas</c> are
-    /// owned by <c>ShiftManagementService</c> (#541a). Move to
-    /// <c>IShiftManagementRepository</c> when #541a lands.
+    /// Signup-adjacent read implemented on the same concrete
+    /// <c>ShiftRepository</c> as <c>IShiftManagementRepository</c>.
     /// </remarks>
     Task<Shift?> GetShiftWithContextAsync(Guid shiftId, CancellationToken ct = default);
 
@@ -165,9 +156,8 @@ public interface IShiftSignupRepository : IRepository
     /// operations. Read-only.
     /// </summary>
     /// <remarks>
-    /// Within-section cross-service read: <c>rotas</c> are owned by
-    /// <c>ShiftManagementService</c> (#541a). Move to
-    /// <c>IShiftManagementRepository</c> when #541a lands.
+    /// Signup-adjacent read implemented on the same concrete
+    /// <c>ShiftRepository</c> as <c>IShiftManagementRepository</c>.
     /// </remarks>
     Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
 
@@ -177,15 +167,6 @@ public interface IShiftSignupRepository : IRepository
     /// in a follow-up.
     /// </summary>
     Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// GDPR contributor read: all <c>GeneralAvailability</c> rows for a user
-    /// with <c>EventSettings</c> included. Within-section cross-service read,
-    /// will move through <c>IGeneralAvailabilityRepository</c> (#541c) when
-    /// that surface expands.
-    /// </summary>
-    Task<IReadOnlyList<GeneralAvailability>> GetGeneralAvailabilityForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>

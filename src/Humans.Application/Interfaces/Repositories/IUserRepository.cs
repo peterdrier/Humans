@@ -18,7 +18,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// status/source business rules before persisting.
 /// </remarks>
 [Section("Humans")]
-public interface IUserRepository : IRepository
+public partial interface IUserRepository : IRepository
 {
     // ==========================================================================
     // Reads — User
