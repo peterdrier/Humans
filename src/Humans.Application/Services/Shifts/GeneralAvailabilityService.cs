@@ -44,7 +44,7 @@ public sealed class GeneralAvailabilityService(
             availability.EventSettingsId,
             availability.AvailableDayOffsets);
 
-    public async Task SetDayAvailabilityAsync(
+    public async Task<bool> SetDayAvailabilityAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool available,
         CancellationToken ct = default)
     {
@@ -53,17 +53,18 @@ public sealed class GeneralAvailabilityService(
 
         if (available)
         {
-            if (dayOffset >= 0 || offsets.Contains(dayOffset)) return; // event-day or no-op
+            if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false; // event-day or no-op
             offsets.Add(dayOffset);
         }
         else if (!offsets.Remove(dayOffset))
         {
-            return; // nothing to remove
+            return false; // nothing to remove
         }
 
         offsets.Sort();
         await repo.UpsertAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(userId);
+        return true;
     }
 
     public async Task DeleteAsync(Guid userId, Guid eventSettingsId)

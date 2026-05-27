@@ -617,6 +617,9 @@ public class VolunteerTrackingControllerTests
         var esId = Guid.NewGuid();
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
+        _availabilityService
+            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
+            .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
@@ -634,6 +637,25 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
+    public async Task SetAvailabilityDay_NoChange_DoesNotAudit()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        _shiftMgmt.GetActiveAsync().Returns(es);
+        // Default: SetDayAvailabilityAsync returns false → no audit row (service short-circuited).
+        var ctrl = BuildSut(current);
+
+        await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.VolunteerAvailabilitySet,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndAuditsAndRedirects()
     {
         var current = new User { Id = Guid.NewGuid() };
@@ -641,6 +663,9 @@ public class VolunteerTrackingControllerTests
         var esId = Guid.NewGuid();
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
+        _availabilityService
+            .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
+            .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
@@ -655,6 +680,25 @@ public class VolunteerTrackingControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
         ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_AvailabilityCleared");
+    }
+
+    [HumansFact]
+    public async Task ClearAvailabilityDay_NoChange_DoesNotAudit()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        _shiftMgmt.GetActiveAsync().Returns(es);
+        // Default: SetDayAvailabilityAsync returns false → no audit row.
+        var ctrl = BuildSut(current);
+
+        await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.VolunteerAvailabilityCleared,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

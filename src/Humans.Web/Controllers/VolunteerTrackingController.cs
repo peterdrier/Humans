@@ -344,10 +344,13 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
-            $"DayOffset={dayOffset}; marked available by coordinator", current.Id);
+        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
+        if (changed)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; marked available by coordinator", current.Id);
+        }
         SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
         return RedirectBack(returnUrl);
     }
@@ -364,10 +367,13 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
-            $"DayOffset={dayOffset}; availability cleared by coordinator", current.Id);
+        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
+        if (changed)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; availability cleared by coordinator", current.Id);
+        }
         SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
         return RedirectBack(returnUrl);
     }
