@@ -144,8 +144,6 @@ public class UserArchitectureTests
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IUserRepository>());
         services.AddSingleton(Substitute.For<IUserEmailRepository>());
-        services.AddSingleton(Substitute.For<IProfileRepository>());
-        services.AddSingleton(Substitute.For<IContactFieldRepository>());
         services.AddSingleton(Substitute.For<ICommunicationPreferenceRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
         services.AddSingleton(Substitute.For<ILogger<CachingUserService>>());

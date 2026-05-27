@@ -18,7 +18,6 @@ public sealed class DuplicateAccountService(
     IUserRepository userRepository,
     IUserService userService,
     IUserEmailRepository userEmailRepository,
-    IProfileRepository profileRepository,
     IAuditLogService auditLogService,
     IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
@@ -219,7 +218,7 @@ public sealed class DuplicateAccountService(
                 await userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
 
                 // 6. Anonymize source. NOTE: does NOT migrate VolunteerHistory/Languages (asymmetric vs AccountMergeService.AcceptAsync).
-                await profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
+                await userRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
                 await userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
                 // 7. Audit inside scope (no ghost row on rollback).

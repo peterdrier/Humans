@@ -6,24 +6,24 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Application.Tests.Repositories;
 
-public sealed class ProfileRepositoryTests : IDisposable
+public sealed class UserRepositoryProfileTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly ProfileRepository _repo;
+    private readonly UserRepository _repo;
 
-    public ProfileRepositoryTests()
+    public UserRepositoryProfileTests()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new ProfileRepository(new TestDbContextFactory(options), _clock);
+        _repo = new UserRepository(new TestDbContextFactory(options), _clock);
     }
 
     public void Dispose()
