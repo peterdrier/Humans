@@ -16,9 +16,19 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(order.Label) ? "Store order" : order.Label)</h1>
-    <div>
-        <span class="badge bg-info text-dark fs-6 me-2">@order.CounterpartyType</span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
         <span class="badge bg-secondary fs-6">@order.State</span>
+        @if (Model.CanDelete)
+        {
+            <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        data-confirm="Delete this zero-balance order? This cannot be undone.">
+                    <i class="fa-solid fa-trash me-1"></i> Delete
+                </button>
+            </form>
+        }
     </div>
 </div>
 

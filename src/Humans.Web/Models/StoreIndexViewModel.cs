@@ -19,14 +19,17 @@ public sealed class StoreOrderViewModel
     public bool CanPay { get; init; }
     /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
     public bool IsStripeConfigured { get; init; }
+    /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
+    public bool CanDelete { get; init; }
 
-    public static StoreOrderViewModel FromPageData(StoreOrderPageData pageData) => new()
+    public static StoreOrderViewModel FromPageData(StoreOrderPageData pageData, bool canDelete) => new()
     {
         Order = pageData.Order,
         Catalog = pageData.Catalog,
         CounterpartyDisplayName = pageData.CounterpartyDisplayName,
         CanEdit = pageData.CanEdit,
         CanPay = pageData.CanPay,
-        IsStripeConfigured = pageData.IsStripeConfigured
+        IsStripeConfigured = pageData.IsStripeConfigured,
+        CanDelete = canDelete
     };
 }

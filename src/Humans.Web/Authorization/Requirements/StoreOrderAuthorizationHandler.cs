@@ -97,6 +97,9 @@ public class StoreOrderAuthorizationHandler(
                  req == StoreOrderOperationRequirement.Pay))
                 continue;
 
+            // Delete is admin-only; camp leads and team coordinators never delete their own orders.
+            if (req == StoreOrderOperationRequirement.Delete) continue;
+
             var isMutating = req == StoreOrderOperationRequirement.AddLine
                 || req == StoreOrderOperationRequirement.RemoveLine
                 || req == StoreOrderOperationRequirement.EditCounterparty;

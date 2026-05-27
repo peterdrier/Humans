@@ -27,6 +27,14 @@ public interface IStoreService : IApplicationService
         CancellationToken ct = default);
     Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Hard-deletes the order. Permitted only when the order's balance is zero
+    /// (no outstanding charges, no payments needing reversal). Authorization is
+    /// enforced at the controller via <c>StoreOrderOperationRequirement.Delete</c>;
+    /// the service rejects non-zero balances as a defense-in-depth invariant.
+    /// </summary>
+    Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default);
+
     // Orders (team coordinator — non-billable)
     /// <summary>
     /// Creates a non-billable team order for <paramref name="teamId"/> in the

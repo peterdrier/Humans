@@ -56,8 +56,9 @@ public class StoreController(
 
         var canEdit = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
         var canPay = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded;
+        var canDeleteAuth = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
-        return View(StoreOrderViewModel.FromPageData(pageData));
+        return View(StoreOrderViewModel.FromPageData(pageData, canDeleteAuth && order.BalanceEur == 0m));
     }
 
     [HttpPost("Order/{id:guid}/Pay")]
@@ -139,6 +140,32 @@ public class StoreController(
             SetError(ex.Message);
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    [HttpPost("Order/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            await storeService.DeleteOrderAsync(id, user.Id, ct);
+            SetSuccess("Order deleted.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Order), new { id });
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Order/{id:guid}/AddLine")]

@@ -320,6 +320,83 @@ public class StoreServiceTeamOrdersTests
             ManagementRoleHolderUserIds: new HashSet<Guid> { coordinatorUserId });
     }
 
+    // ==========================================================================
+    // DeleteOrderAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task DeleteOrderAsync_removes_zero_balance_order_and_audits()
+    {
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, CampSeasonId = Guid.NewGuid(), Year = 2026 });
+
+        await _service.DeleteOrderAsync(orderId, actor);
+
+        await _repo.Received(1).DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreOrderDeleted, nameof(StoreOrder), orderId,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task DeleteOrderAsync_rejects_non_zero_balance_camp_order()
+    {
+        var orderId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = Guid.NewGuid(),
+                        Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid()));
+
+        await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteOrderAsync_throws_when_order_not_found()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns((StoreOrder?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid()));
+    }
+
+    // ==========================================================================
+    // CreateOrderAsync uniqueness (camp side — one order per camp-season-year)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateOrderAsync_throws_when_camp_season_already_has_order_for_year()
+    {
+        var seasonId = Guid.NewGuid();
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+                "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
+        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreOrder>
+            {
+                new() { Id = Guid.NewGuid(), CampSeasonId = seasonId, Year = 2026 }
+            });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.CreateOrderAsync(seasonId, null, Guid.NewGuid()));
+    }
+
     private static OrderDto MakeOrderDto(
         StoreOrderCounterpartyType counterpartyType,
         decimal balanceEur)

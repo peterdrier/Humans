@@ -117,6 +117,7 @@ public enum AuditAction
     ShiftSignupCreated,
     ShiftSignupReassigned,
     StoreOrderCreated,
+    StoreOrderDeleted,
     StoreLineAdded,
     StoreLineRemoved,
     StoreCounterpartyEdited,

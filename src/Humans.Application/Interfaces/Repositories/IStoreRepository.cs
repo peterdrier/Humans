@@ -83,6 +83,11 @@ public interface IStoreRepository : IRepository
 
     Task AddOrderAsync(StoreOrder order, CancellationToken ct = default);
     Task UpdateOrderAsync(StoreOrder order, CancellationToken ct = default);
+    /// <summary>
+    /// Hard-deletes the order. Cascade FKs remove its lines and payments. The
+    /// service is responsible for enforcing balance/state preconditions.
+    /// </summary>
+    Task DeleteOrderAsync(Guid orderId, CancellationToken ct = default);
 
     // Lines
     Task AddLineAsync(StoreOrderLine line, CancellationToken ct = default);

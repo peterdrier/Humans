@@ -44,7 +44,13 @@ public class StoreService(
             var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
             if (season is not null)
             {
-                var orders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+                // One order per camp-season; if legacy data has multiple, surface
+                // only the highest-balance one and let the admin delete the rest.
+                var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+                var primary = allOrders
+                    .OrderByDescending(o => o.BalanceEur)
+                    .FirstOrDefault();
+                IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
                 counterparties.Add(new StoreCounterpartyOrders(
                     StoreOrderCounterpartyType.Camp,
                     season.Id,
@@ -282,6 +288,10 @@ public class StoreService(
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
             ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
 
+        var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
+        if (existing.Any(o => o.Year == season.Year))
+            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order for {season.Year}.");
+
         var now = clock.GetCurrentInstant();
         var order = new StoreOrder
         {
@@ -301,6 +311,23 @@ public class StoreService(
             (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
             actorUserId);
         return order.Id;
+    }
+
+    public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+
+        var balance = BalanceCalculator.Compute(order).BalanceEur;
+        if (balance != 0m)
+            throw new InvalidOperationException(
+                $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
+
+        await repo.DeleteOrderAsync(orderId, ct);
+        await audit.LogAsync(
+            AuditAction.StoreOrderDeleted, nameof(StoreOrder), orderId,
+            $"Deleted store order {orderId}",
+            actorUserId);
     }
 
     public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)

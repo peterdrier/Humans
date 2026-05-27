@@ -161,6 +161,15 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task DeleteOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var order = await ctx.StoreOrders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        if (order is null) return;
+        ctx.StoreOrders.Remove(order);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     // ==========================================================================
     // Lines
     // ==========================================================================
