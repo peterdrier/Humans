@@ -43,7 +43,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         });
 
         _stripeService = Substitute.For<IStripeService>();
-        _userService = Substitute.For<IUserService>();
+        _userService = NewDbBackedUserService();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
@@ -60,6 +60,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
+            _userService,
             _userService,
             _campaignService,
             _shiftManagementService);
@@ -265,6 +266,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             settings,
             NullLogger<TicketSyncService>.Instance,
             Substitute.For<ITicketCacheInvalidator>(),
+            _userService,
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());

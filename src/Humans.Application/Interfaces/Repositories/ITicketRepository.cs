@@ -57,25 +57,6 @@ public interface ITicketRepository : IRepository
     /// </summary>
     Task ResetSyncStateLastSyncAsync(CancellationToken ct = default);
 
-    // ── Email lookup (cross-section projection over user_emails) ─────────────
-
-    /// <summary>
-    /// Returns every row of <c>user_emails</c> projected to the three fields
-    /// needed to build the email → userId lookup. Read-only; ordering is
-    /// unspecified — the service performs grouping and OAuth tie-breaking in
-    /// memory.
-    /// </summary>
-    /// <remarks>
-    /// This projection is narrow (three columns) and non-mutating, so reading
-    /// it from the Tickets repository does not violate table ownership — the
-    /// Profile section's owning service (<c>IUserEmailService</c>) does not
-    /// expose a shape that fits bulk email-matching. If TicketSync ever needs
-    /// to <i>write</i> user-email data, it must go through
-    /// <c>IUserEmailService</c> instead.
-    /// </remarks>
-    Task<IReadOnlyList<UserEmailLookupEntry>> GetAllUserEmailLookupEntriesAsync(
-        CancellationToken ct = default);
-
     // ── TicketOrder reads (all detached / AsNoTracking) ──────────────────────
 
     /// <summary>

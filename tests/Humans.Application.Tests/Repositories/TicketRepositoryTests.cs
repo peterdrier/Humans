@@ -138,52 +138,6 @@ public sealed class TicketRepositoryTests : IDisposable
         rows[1].VendorOrderId.Should().Be("ord_new");
     }
 
-    // ── GetAllUserEmailLookupEntriesAsync ────────────────────────────────────
-
-    [HumansFact]
-    public async Task GetAllUserEmailLookupEntriesAsync_ReturnsOnlyVerifiedRows()
-    {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            UserName = "u@x.com",
-            Email = "u@x.com",
-            DisplayName = "U",
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Email = "primary@example.com",
-            Provider = "Google",
-            ProviderKey = "test-primary",
-            IsGoogle = true,
-            IsVerified = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Email = "alt@example.com",
-            IsGoogle = false,
-            IsVerified = false,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        await _dbContext.SaveChangesAsync();
-
-        var entries = await _repo.GetAllUserEmailLookupEntriesAsync();
-
-        // Verified-only: the unverified "alt@example.com" row must NOT be returned
-        // (issue nobodies-collective/Humans#645).
-        entries.Should().HaveCount(1);
-        entries.Should().Contain(e => e.Email == "primary@example.com");
-        entries.Should().NotContain(e => e.Email == "alt@example.com");
-    }
-
     // ── GetMatchedAttendeesForEventAsync ─────────────────────────────────────
 
     [HumansFact]

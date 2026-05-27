@@ -55,6 +55,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             Options.Create(new TicketVendorSettings { EventId = "ev_t07", ApiKey = "k", SyncIntervalMinutes = 15 }),
             NullLogger<TicketSyncService>.Instance,
             invalidator,
+            Substitute.For<IUserServiceRead>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());
