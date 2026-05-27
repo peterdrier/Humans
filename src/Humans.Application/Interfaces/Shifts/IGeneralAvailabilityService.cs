@@ -11,4 +11,12 @@ public interface IGeneralAvailabilityService : IApplicationService
     Task<GeneralAvailabilitySnapshot?> GetByUserAsync(Guid userId, Guid eventSettingsId);
     Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(Guid eventSettingsId, int dayOffset);
     Task DeleteAsync(Guid userId, Guid eventSettingsId);
+
+    /// Add (available=true) or remove (available=false) one build-day offset from
+    /// the user's declared availability. Read-modify-write; preserves other
+    /// offsets; invalidates the user's shift view cache. No-op for positive
+    /// (event-day) offsets — build availability is negative offsets only.
+    Task SetDayAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset, bool available,
+        CancellationToken ct = default);
 }

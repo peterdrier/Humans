@@ -110,6 +110,65 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
         await _service.DeleteAsync(Guid.NewGuid(), Guid.NewGuid());
     }
 
+    [HumansFact]
+    public async Task SetDayAvailability_AddsOffset_PreservingExisting()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-3]);
+
+        await _service.SetDayAvailabilityAsync(userId, esId, -2, available: true);
+
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_RemovesOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
+
+        await _service.SetDayAvailabilityAsync(userId, esId, -2, available: false);
+
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_CreatesRowWhenNoneExists()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+
+        await _service.SetDayAvailabilityAsync(userId, esId, -1, available: true);
+
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.Should().NotBeNull();
+        rec!.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_RejectsPositiveOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+
+        await _service.SetDayAvailabilityAsync(userId, esId, 2, available: true);
+
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.Should().BeNull(); // no-op, no row created
+    }
+
     private Guid SeedEventSettings()
     {
         var es = new EventSettings
