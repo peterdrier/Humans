@@ -158,7 +158,7 @@
         {
             <hr />
             <h6 class="text-muted mb-2">@Localizer["Profile_Bio"]</h6>
-            <p class="mb-0" style="white-space: pre-line">@Model.Bio</p>
+            <div class="mb-0">@Html.SanitizedMarkdown(Model.Bio)</div>
         }
 
         @if (!string.IsNullOrEmpty(Model.ContributionInterests))

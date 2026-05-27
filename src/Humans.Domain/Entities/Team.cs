@@ -24,6 +24,7 @@ public class Team
     /// <summary>
     /// Team description.
     /// </summary>
+    [MarkdownContent]
     public string? Description { get; set; }
 
     /// <summary>

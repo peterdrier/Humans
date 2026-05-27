@@ -65,7 +65,7 @@
         @if (!string.IsNullOrWhiteSpace(Model.Event.Description))
         {
             <dt class="col-sm-3">Description</dt>
-            <dd class="col-sm-9">@Model.Event.Description</dd>
+            <dd class="col-sm-9">@Html.SanitizedMarkdown(Model.Event.Description)</dd>
         }
 
         @if (!string.IsNullOrWhiteSpace(Model.Event.RecurrenceRule))

@@ -107,9 +107,9 @@ else
                             </h5>
                             @if (!string.IsNullOrEmpty(team.Description))
                             {
-                                <p class="card-text text-muted small mb-0">
-                                    @(team.Description.Length > 200 ? team.Description.Substring(0, 200) + "..." : team.Description)
-                                </p>
+                                <div class="card-text text-muted small mb-0">
+                                    @Html.SanitizedMarkdown(team.Description.Length > 200 ? team.Description.Substring(0, 200) + "..." : team.Description)
+                                </div>
                             }
                         </div>
                         <div class="card-footer bg-transparent">

@@ -91,7 +91,7 @@ else
                             <div class="col-md-8">
                                 <dl class="row mb-0">
                                     <dt class="col-sm-3">Description</dt>
-                                    <dd class="col-sm-9">@evt.Description</dd>
+                                    <dd class="col-sm-9">@Html.SanitizedMarkdown(evt.Description)</dd>
 
                                     <dt class="col-sm-3">Submitter</dt>
                                     <dd class="col-sm-9">
