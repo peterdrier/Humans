@@ -169,6 +169,12 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         if (type is not INamedTypeSymbol named)
             return false;
 
+        // Roslyn's AllInterfaces does not include the interface symbol itself,
+        // so a parameter typed as the marker (e.g. bare `IRepository`) would
+        // otherwise slip past this check. Equality first covers that case.
+        if (SymbolEqualityComparer.Default.Equals(named, marker))
+            return true;
+
         foreach (var iface in named.AllInterfaces)
         {
             if (SymbolEqualityComparer.Default.Equals(iface, marker))

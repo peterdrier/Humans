@@ -114,6 +114,85 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task HUM0026_fires_when_orchestrator_injects_bare_IRepository_marker()
+    {
+        // Roslyn's AllInterfaces excludes the interface symbol itself, so a
+        // parameter typed as the bare IRepository marker must be detected via
+        // equality, not interface-list scan.
+        var source = Stubs + """
+
+            namespace Humans.Application.Services.Demo
+            {
+                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                {
+                    public DemoOrchestrator(Humans.Application.Interfaces.Repositories.IRepository repo)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new OrchestratorRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0026).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task HUM0026_fires_when_orchestrator_injects_repository_via_service_interface()
+    {
+        // Production pattern: class implements IOrchestrator transitively via
+        // its service interface, not directly. Guards against a regression
+        // from AllInterfaces (correct) to Interfaces (would silently miss
+        // every real orchestrator).
+        var source = Stubs + """
+
+            namespace Humans.Application.Services.Demo
+            {
+                public interface IDemoOrchestrator : Humans.Application.Interfaces.IOrchestrator { }
+
+                public sealed class DemoOrchestratorImpl : IDemoOrchestrator
+                {
+                    public DemoOrchestratorImpl(Humans.Application.Interfaces.Repositories.IUserRepository repo)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new OrchestratorRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0026).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task HUM0027_fires_when_both_markers_held_via_separate_interfaces()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Application.Services.Demo
+            {
+                public interface IDemoOrchestrator : Humans.Application.Interfaces.IOrchestrator { }
+                public interface IDemoSection : Humans.Application.Interfaces.IApplicationService { }
+
+                public sealed class DualMarkerService : IDemoOrchestrator, IDemoSection { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new OrchestratorRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0027).Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task HUM0026_does_not_fire_on_pure_service_injection()
     {
         var source = Stubs + """
