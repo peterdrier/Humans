@@ -226,7 +226,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var member = await SeedActiveMemberAsync(season.Id);
         var actor = Guid.NewGuid();
 
-        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, actor);
+        var outcome = await _service.SetEarlyEntryAsync(
+            new CampEarlyEntryInput(camp.Id, member.Id, granted: true, actor));
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
@@ -247,7 +248,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
         var actor = Guid.NewGuid();
 
-        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: false, actor);
+        var outcome = await _service.SetEarlyEntryAsync(
+            new CampEarlyEntryInput(camp.Id, member.Id, granted: false, actor));
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
@@ -269,7 +271,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         await SeedActiveMemberWithEarlyEntryAsync(season.Id);
         var newMember = await SeedActiveMemberAsync(season.Id);
 
-        var outcome = await _service.SetEarlyEntryAsync(camp.Id, newMember.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(
+            new CampEarlyEntryInput(camp.Id, newMember.Id, granted: true, Guid.NewGuid()));
 
         outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
 
@@ -299,7 +302,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         Db.CampMembers.Add(member);
         await Db.SaveChangesAsync();
 
-        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(
+            new CampEarlyEntryInput(camp.Id, member.Id, granted: true, Guid.NewGuid()));
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotActive);
 
@@ -314,7 +318,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
         var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
 
-        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(
+            new CampEarlyEntryInput(camp.Id, member.Id, granted: true, Guid.NewGuid()));
 
         outcome.Should().Be(SetEarlyEntryOutcome.NoChange);
 
@@ -335,7 +340,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         // Attacker scopes the call to campA but targets campB's member.
         var outcome = await _service.SetEarlyEntryAsync(
-            campA.Id, memberInB.Id, granted: true, Guid.NewGuid());
+            new CampEarlyEntryInput(campA.Id, memberInB.Id, granted: true, Guid.NewGuid()));
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotFound);
 

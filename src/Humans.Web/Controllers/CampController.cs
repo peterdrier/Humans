@@ -894,7 +894,8 @@ public class CampController(
         if (errorResult is not null) return errorResult;
 
         var outcome = await _campService.SetEarlyEntryAsync(
-            camp.Id, campMemberId, granted, user.Id, cancellationToken);
+            new CampEarlyEntryInput(camp.Id, campMemberId, granted, user.Id),
+            cancellationToken);
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
         ApplyEarlyEntryFlash(outcome, granted);
