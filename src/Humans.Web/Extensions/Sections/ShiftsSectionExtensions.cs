@@ -15,6 +15,7 @@ using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Infrastructure.Services.Shifts;
+using Humans.Web.Helpers;
 using Humans.Web.Models.Shifts;
 using Humans.Web.Models.VolunteerTracking;
 
@@ -75,6 +76,7 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
+        services.AddScoped<ShiftVolunteerSearchBuilder>();
 
         // Workload — see #734. No service-level cache; invalidation rides on IShiftViewInvalidator.
         services.AddScoped<IWorkloadService, ShiftsWorkloadService>();

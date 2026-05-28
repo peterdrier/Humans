@@ -23,11 +23,11 @@ public class ShiftAdminController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
     IShiftView shiftView,
-    IVolunteerTrackingService volunteerTrackingService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ShiftAdminPageBuilder pageBuilder,
+    ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     IRotaCoordinatorMessageService rotaMessenger,
     ILogger<ShiftAdminController> logger) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
@@ -662,15 +662,10 @@ public class ShiftAdminController(
 
         try
         {
-            var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
+            var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await GetShiftForTeamAsync(shiftId, team.Id),
                 query,
-                shiftMgmt.GetActiveAsync,
-                ShiftRoleChecks.CanViewMedical(User),
-                UserService,
-                shiftView,
-                signupService,
-                volunteerTrackingService);
+                ShiftRoleChecks.CanViewMedical(User));
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)
