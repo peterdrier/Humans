@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
 namespace Humans.Infrastructure.Services.Camps;
@@ -555,42 +554,7 @@ public sealed class CachingCampService(
             await InvalidateCampAsync(season.CampId, ct);
     }
 
-    // Projection + filter helpers
-
-    private static CampInfo ProjectCampInfo(Camp camp) => new(
-        camp.Id,
-        camp.Slug,
-        camp.ContactEmail,
-        camp.ContactPhone,
-        camp.IsSwissCamp,
-        camp.TimesAtNowhere,
-        camp.Seasons.Select(s => ProjectSeasonInfo(s, camp.Slug)).ToList());
-
-    private static CampSeasonInfo ProjectSeasonInfo(CampSeason season, string campSlug) => new(
-        season.Id,
-        season.CampId,
-        campSlug,
-        season.Year,
-        season.NameLockDate,
-        season.Name,
-        season.BlurbShort,
-        season.Languages,
-        season.Vibes.ToList(),
-        season.Status,
-        season.AcceptingMembers,
-        season.KidsWelcome,
-        season.AdultPlayspace,
-        season.MemberCount,
-        season.SoundZone,
-        season.SpaceRequirement,
-        season.ElectricalGrid,
-        season.EeSlotCount,
-        season.Members is { Count: > 0 }
-            ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
-            : 0,
-        season.Members is { Count: > 0 }
-            ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
-            : 0);
+    // Filter helpers
 
     private static CampInfo FilterToYear(CampInfo camp, int year) =>
         camp with
