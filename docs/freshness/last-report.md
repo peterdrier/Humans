@@ -1,118 +1,100 @@
-# Freshness Sweep — 2026-05-28
+# Freshness Sweep — 2026-05-29
 
 | | |
 |---|---|
-| Previous anchor | `1c4c6ad2` |
-| New anchor | `cdd850bd` |
+| Previous anchor | `cdd850bd` |
+| New anchor | `cd9a9345` |
 | Mode | diff |
-| Mechanical entries dirty | 10 of 11 |
-| Editorial flag-on-change triggered | 68 |
-| Editorial unmarked (review needed) | 22 |
-| Husks pruned | 6 files (−9,891 lines) |
-| Wheat migrated | 3 invariants → Camps.md / CityPlanning.md |
-| Docs tree | 131,711 → 121,820 lines (−7.51%) |
-
-> **Note on the −7.51% (over the 7% soft cap):** the last two husks (`barrios-design`, `barrio-map` specs) were deleted only *after* their three durable invariants were code-verified and migrated into living section docs (below). Leaving fully-mined husks for "next sweep" is the deferral anti-pattern, so they were removed now; the 0.5% overage is fully wheat-extracted dead weight.
+| Mechanical entries dirty | 8 of 11 |
+| Mechanical files changed | 5 |
+| Editorial flag-on-change triggered | 36 |
+| Editorial unmarked (review needed) | 18 |
+| Husks pruned | 11 files (−7,065 lines) |
+| Wheat migrated | 0 (cluster pre-extracted by prior sweeps; re-verified) |
+| Docs tree | 121,855 → 114,790 lines (−5.80%) |
 
 ## Updated automatically
 
-- **dev-stats** — appended today's row (`docs/development-stats.md`)
-- **reforge-history** — appended today's row (`docs/reforge-history.csv`)
-- **docs-readme-index** — indexed 64 features / 33 sections / 25 guide docs; added missing `features/profiles/public-coordinator-popover.md` entry
-- **authorization-inventory** — re-scanned ~210 `[Authorize]` attributes across 80 controllers, 11 resource-based handlers, 4 composite handlers, ~50 `AuthorizeAsync` call sites; folded in Events Guide controllers' migration from `Roles=RoleGroups.EventsAdminOrAdmin` → `Policy=PolicyNames.EventsAdminOrAdmin`, the corresponding `_Layout.cshtml` flag refactor, removed Cantina nav link, `AdminDetail.cshtml` isAdmin flag refactor, `_GuideLayout.cshtml` authorize-policy fix, updated `StoreController`/`ProfileController` call-site line numbers
-- **controller-architecture-audit** — refreshed 80 controllers; added 5 new actions (`ProfileController.PublicPopover`, `StoreController.CreateTeamOrder` + `Delete`, `VolunteerTrackingController.SetAvailabilityDay` + `ClearAvailabilityDay`); 0 new rename suggestions
-- **dependency-graph** — 84 services scanned, 278 edges (262 eager incl. pending dashed, 16 lazy). Added 5 eager edges: Store→Team, DriveMon→User, ShiftSign→BurnSettings, RotaMsg→Team, Workload→ShiftView; added `UserEmailProviderBackfillService` node (→Audit). Updated fan-in counts: User 53→54, Team 26→28, Audit 34→35. Reindexed lazy `linkStyle`
-- **service-data-access-map** — refreshed against repo consolidations (#806/#809/#810/#811): Profiles 3-repos and CampRole repo folded into `IUserRepository`/`ICampRepository`, Shift mgmt+signup back to one `ShiftRepository` class; cross-section violations table now lists 4 remaining (`GoogleSyncOutboxEvents`, Shifts-internal `EventSettings`/`ShiftSignups` under HUM0025, `SystemSettings` disjoint-keys)
+- **dev-stats** — appended today's row (`docs/development-stats.md`); reforge data lacked a 2026-05-29 row so class/interface counts for today came from the regex fallback (script's intended behavior)
+- **authorization-inventory** — re-scanned all controllers/handlers/`AuthorizeAsync` sites; corrected `DevSeedController.ResetDashboard` (now `PolicyNames.AdminOnly`, not `[Authorize(Roles)]`), updated the §7 note to reflect zero `[Authorize(Roles)]` attributes remain, fixed §6 line drifts (`HumansCampControllerBase` 55/85→58/88, `CityPlanningApiController` 276/301/339→274/299/337), bumped refresh date
+- **service-data-access-map** — refreshed Camps (CampService folds in the EarlyEntry projection + adds `IEarlyEntryInvalidator`/`ICampRoleCampAccess`; `CampRoleService` now uses narrow `ICampRoleCampAccess` + `IUserServiceRead`/`IUserEmailService`/`ICampInfoInvalidator` + `IGoogleGroupMembershipSource`) and corrected CityPlanning/Store/NotificationMeterProvider/OnsiteRoster to the read-split `ICampServiceRead`/`ITeamServiceRead`/`IUserServiceRead` surfaces
+- **dependency-graph** — verified all service ctors against the Mermaid graph (edges/nodes/lazy edges all current, no diagram body changes); fixed stale prose that claimed `CampRoleService` injects `ICampService` (it now uses the narrow `ICampRoleCampAccess` port)
+- **controller-architecture-audit** — verified all 9 trigger-changed controllers (CampController, CampApiController, AccountController, CityPlanningController, CityPlanningApiController, EventsController, HumansCampControllerBase, MailerAdminController, ProfileBackfillAdminController) against live source — every action/route/verb still matches; no additions/removals/renames; header date bumped to 2026-05-29
 
 ### Already current — no change needed
 
-- **data-model-index** — 95 entities verified against `src/Humans.Domain/Entities/`; all already present in the entity-index table
-- **guid-reservations** — 6 blocks / 26 GUIDs across `SystemTeamIds.cs` + 5 configuration files; no additions/removals
-- **code-analysis-suppressions** — 10 suppressions indexed (8 root `NoWarn` + 2 test `NoWarn`); current block already matches `Directory.Build.props` and `tests/Directory.Build.props`
+- **docs-readme-index** — 33 sections / 63 features / 25 guide docs all present with matching descriptions; the 5 changed section docs (Budget, Camps, CityPlanning, Mailer, Tickets) already had accurate index rows
+- **data-model-index** — entity-index table verified against `src/Humans.Domain/Entities/`; the `CampSeason.cs` change (the trigger) is already covered by the existing Camps row; no rows to add/remove/relink
+- **reforge-history** — script reported "No new days to snapshot" (last snapshot 2026-05-28); no row appended
 
 ### Skipped (not dirty)
 
 - **about-page-packages** — no `Directory.Packages.props` or `*.csproj` changes since previous anchor
+- **guid-reservations** — no `Data/Configurations/**` or `Domain/Constants/**` changes
+- **code-analysis-suppressions** — no `Directory.Build.props` / `tests/BannedSymbols.txt` changes
 
 ## Pruned
 
-Goal: ~5% reduction (soft), 7% (soft cap). This sweep: 7.51% (fully wheat-extracted — see note above).
+Goal: ~5% reduction (soft), 7% (soft cap). This sweep: **5.80%** — above the soft target, comfortably under the hard cap.
+
+This sweep cleared the **Barrios / CityPlanning plan+spec cluster** plus two small migration plans that the previous sweep (PR #819) had explicitly deferred "by line budget" after confirming their wheat was already extracted into living section docs. A read-only prune analyst re-verified all 11 in full against the living targets (`Camps.md`, `CityPlanning.md`, `Governance.md`, `design-rules.md`, `conventions.md`) — **zero un-migrated wheat found**, so no migrations were needed; all 11 are safe husks.
 
 **Husks deleted:**
 
-- `docs/superpowers/plans/2026-04-21-agent-section-phase-1.md` (4,384 lines) — *all chaff: Agent Phase 1 ships; durable Agent wheat (10 invariants, data model, tool API, cross-section boundaries) already in `docs/sections/Agent.md`. Maintenance-log notes 2026-04-21 'Agent section Phase 1'.*
-- `docs/superpowers/plans/2026-04-26-issue-489-camp-roles.md` (3,720 lines) — *all chaff: implementation complete; per-camp-role wheat (CampRoleDefinition/Assignment entities, SpecialRole enum, slot semantics, cascade rules, audit triggers, IGoogleGroupMembershipSource integration, scope invariant) all in `docs/sections/Camps.md`.*
-- `docs/superpowers/plans/2026-04-19-volunteer-coordinator-dashboard.md` (559 lines) — *all chaff: 9 analytics methods, ShiftDashboardAccess policy, 5-min cache + invalidation, period/date-range mutex, sub-team unfolding — all captured in `docs/sections/Shifts.md`.*
-- `docs/superpowers/plans/2026-03-30-barrio-map-sound-zone-colors.md` (501 lines) — *all chaff: MapLibre layer config + hex color mappings are pure rendering implementation, all code in `src/Humans.Web/wwwroot/js/city-planning/`.*
-- `docs/superpowers/specs/2026-03-13-barrios-design.md` (412 lines) — *wheat-extracted then deleted: name-lock auto-history-log + returning-season auto-approval invariants migrated to `docs/sections/Camps.md` (code-verified against `CampService`). Remainder chaff.*
-- `docs/superpowers/specs/2026-03-14-barrio-map.md` (321 lines) — *wheat-extracted then deleted: GeoJSON-stored-as-`text`-not-`jsonb` rationale migrated to `docs/sections/CityPlanning.md` (code-verified against `CampPolygonConfiguration`). Remainder chaff.*
+- `docs/superpowers/plans/2026-03-13-barrios.md` (3,030 lines) — *implementation plan: file lists, entity/enum/EF-config code samples, service skeletons, task checklists. Durable Camps signal (concepts, lifecycle, name-lock auto-log, returning-camp opt-in auto-approve, role-definition catalogue, IFileStorage keying) already in `docs/sections/Camps.md`, including the two wheat-tagged invariants from the (previously deleted) design spec.*
+- `docs/superpowers/plans/2026-03-14-barrio-map.md` (2,041 lines) — *implementation plan (entity code, EF configs, SignalR hub, controllers, test block). Durable CityPlanning signal in `docs/sections/CityPlanning.md`: CampPolygon/History model, one-polygon-per-season constraint, append-only history, edit-authz, placement gating, SignalR broadcast, and the wheat-tagged `text`-not-`jsonb` storage rationale.*
+- `docs/superpowers/plans/2026-04-04-barrio-map-official-zones.md` (372 lines) — *mechanical: add `OfficialZonesGeoJson` field + upload/delete + admin card + JS layer. Result (column, admin routes, client-side overlap detection) already in CityPlanning.md.*
+- `docs/superpowers/plans/2026-04-04-barrio-map-placement-dates.md` (381 lines) — *mechanical: add `PlacementOpensAt`/`PlacementClosesAt` fields + form. The only non-obvious fact (informational, NOT enforced) is already noted in CityPlanning.md.*
+- `docs/superpowers/plans/2026-04-25-city-planning-import.md` (452 lines) — *mostly an admin-import.js block + modal markup + manual smoke steps. The history-Note conventions are already in CityPlanning.md; the rest is import-tool UX detail.*
+- `docs/superpowers/plans/2026-04-26-city-planning-marquee-selection.md` (233 lines) — *pure frontend: MapboxDraw custom-mode JS + smoke checklist. No backend/section invariant — code is the spec.*
+- `docs/superpowers/specs/2026-03-30-barrio-map-sound-zone-colors-design.md` (59 lines) — *the one surviving system fact (soundZone on the SignalR broadcast) is in CityPlanning.md line 132; the rest is hex-color/rendering presentation detail.*
+- `docs/superpowers/specs/2026-04-25-city-planning-import-design.md` (145 lines) — *companion design spec to the import plan; same content at design altitude. Reused endpoints + history-Note conventions already in CityPlanning.md.*
+- `docs/superpowers/specs/2026-04-26-city-planning-marquee-selection-design.md` (79 lines) — *design spec for the marquee vertex-selection frontend feature; entirely client-side editor interaction, no durable invariant.*
+- `docs/superpowers/plans/2026-04-15-governance-migration.md` (165 lines) — *Governance repo/store/decorator migration plan (#503). Durable outcomes fully reflected in `docs/sections/Governance.md` + `design-rules.md` §4–§5/§15 (incl. the #533 caching-layer drop). "Reference template" framing is historical — section docs are the live reference.*
+- `docs/superpowers/plans/2026-04-22-di-split-by-section.md` (108 lines) — *split `AddHumansInfrastructure` into per-section extension files. The resulting `Extensions/Sections/` layout IS the spec and is referenced by `design-rules.md` §5 (line 112) / §2b.*
 
-**Wheat migrated (code-verified, not deferred):**
+**Wheat migrated:** none — the cluster was pre-extracted by sweeps PR #819 and earlier; this sweep re-verified and deleted the husks.
 
-- `barrios-design.md §"Name Lock"` → `docs/sections/Camps.md` Invariants — name-lock blocks rename after `NameLockDate`; pre-lock rename auto-logs old name as `CampHistoricalName` `Source = NameChange` + `CampNameChanged` audit. Verified in `CampService.ChangeSeasonNameAsync`.
-- `barrios-design.md §"Returning Camp Season Opt-In"` → `docs/sections/Camps.md` Triggers — `OptInToSeasonAsync` auto-approves to `Active` iff `HasApprovedSeasonAsync` (prior `Active`/`Full`/`Withdrawn`), else `Pending`. (Code is narrower than the spec's "not Rejected" wording.)
-- `barrio-map.md §"Storage"` → `docs/sections/CityPlanning.md` Invariants — GeoJSON columns are `text` not `jsonb` (never queried internally; round-tripped to MapLibre). Verified in `CampPolygonConfiguration` / `CampPolygonHistoryConfiguration` / `CityPlanningSettingsConfiguration`.
+**Inbound refs:** the only live references to the deleted plans were in `docs/freshness/last-report.md` (overwritten this sweep). The `<!-- wheat: ... -->` provenance comments in `Camps.md` / `CityPlanning.md` point to the previously-deleted **design specs** (`specs/2026-03-13-barrios-design.md`, `specs/2026-03-14-barrio-map.md`), not the **plan** files deleted here — they are intentional provenance breadcrumbs and were left untouched.
 
-**Post-#815 drift fixed** (factual corrections, not flags): `docs/sections/Budget.md`, `docs/sections/Tickets.md`, `docs/architecture/design-rules.md` no longer describe the removed `ITicketingBudgetRepository` as a live type — the Tickets→Budget bridge is now correctly documented as repository-free (reads via `ITicketServiceRead`, writes via `IBudgetService`).
+### Deferred to next sweep (under hard cap)
 
-### Deferred to next sweep (sized to stay under hard cap)
+Previously-vetted chaff that didn't fit this sweep's 7% budget — apply on a future sweep:
 
-These dropped-entirely candidates also passed the misc/barrios batch reviews but didn't fit this sweep's budget. Apply on a future sweep:
-
-- `docs/superpowers/plans/2026-04-20-pr235-cache-collapse.md` (1,702) — §15 cache pattern is now Profiles' reference impl; documented in `design-rules.md` §15 and pinned by `ProfileArchitectureTests`
-- `docs/superpowers/plans/2026-04-20-user-guide.md` (1,201) — `docs/guide/` + `docs/sections/Guide.md` already capture everything. **Inbound ref:** `docs/architecture/maintenance-log.md:26` cites the plan path; will become a dead link — fix manually when this is dropped (maintenance-log is in the "never touched" freshness set)
-- `docs/superpowers/plans/2026-04-04-communication-preferences-redesign.md` (1,130) — `docs/features/profiles/communication-preferences.md` covers all 8 categories, lock rules, deprecation history, schema
-- `docs/superpowers/plans/2026-04-15-governance-migration.md` (165) — wheat in `docs/sections/Governance.md`
-- `docs/superpowers/plans/2026-04-22-di-split-by-section.md` (108) — `src/Humans.Web/Extensions/Sections/` layout is the spec
-- Barrios/CityPlanning cluster (confirmed pure chaff by analysis; the two wheat-bearing specs were extracted + deleted this sweep, the rest are mechanical deletes deferred only by the line budget): plans `2026-03-13-barrios.md` (3,030), `2026-03-14-barrio-map.md` (2,041), `2026-04-04-barrio-map-official-zones.md` (372), `2026-04-04-barrio-map-placement-dates.md` (381), `2026-04-25-city-planning-import.md` (452), `2026-04-26-city-planning-marquee-selection.md` (233); specs `2026-03-30-barrio-map-sound-zone-colors-design.md` (59), `2026-03-15-ticket-vendor-integration-design.md` (397)
+- `docs/superpowers/plans/2026-04-20-pr235-cache-collapse.md` (1,702) + spec `2026-04-20-pr235-cache-collapse-design.md` (261) — §15 cache pattern documented in `design-rules.md` §15, pinned by `ProfileArchitectureTests`
+- `docs/superpowers/plans/2026-04-04-communication-preferences-redesign.md` (1,130) — fully covered by `docs/features/profiles/communication-preferences.md`
+- `docs/superpowers/plans/2026-04-20-user-guide.md` (1,201) — `docs/guide/` + `docs/sections/Guide.md` capture everything. **Blocker:** `docs/architecture/maintenance-log.md:26` cites this plan path; deleting it creates a dead link, and maintenance-log is hand-maintained (never touched by the sweep). Peter must fix that ref first, then this can be dropped.
+- Old ticket-vendor design docs (`plans/2026-03-15-ticket-vendor-integration.md` 3,258, `specs/2026-03-15-ticket-vendor-integration-design.md` 397) — feature is live (`docs/features/tickets/ticket-vendor-integration.md`); needs a wheat-extraction pass before deletion, not a blind drop
 
 ### Kept (had open items)
 
-- `docs/architecture/tech-debt-2026-04-23.md` (227 lines) — multiple `[OPEN]` items remain (AdminController AudienceSegmentation DbContext reads, AuditLogRepository cross-domain reads, UserRepository.PurgeAsync, AccountMergeRepository .Include chains, FeedbackService IFormFile/IHostEnvironment violation, GoogleWorkspaceHealthCheck direct Google.Apis imports, UserService AnonymizeExpiredAsync lazy-IServiceProvider, UserService.PurgeAsync TransactionScope, ViewComponents IMemoryCache injection, ProcessGoogleSyncOutboxJob catch GoogleApiException, TeamService re-fetch)
+- `docs/architecture/tech-debt-2026-04-23.md` — multiple `[OPEN]` items remain; not a prune candidate
 
 ## Proposed for review
 
-None. The three medium-confidence wheat candidates surfaced by the prune analysis were each checked against the current code (the reference) and resolved in this sweep — all three were verified true and migrated into living section docs (see "Wheat migrated" above), not queued for a human decision.
+None. The prune analyst found zero medium-confidence wheat — all 11 husks were confirmed fully pre-extracted against the current living docs.
 
 ## Flagged for human review (editorial `freshness:flag-on-change`)
 
-68 editorial docs flagged by their `freshness:flag-on-change` markers because their trigger paths fired this sweep. These need a human review to decide whether content needs updating:
+36 editorial docs were flagged because their `freshness:triggers` matched source files changed this sweep (the heavy Camps/CampRole/CityPlanning/auth/read-split churn). These are not auto-updated — review whether prose needs updating.
 
 <details>
-<summary>Full list (68 docs)</summary>
+<summary>Full list (36 docs)</summary>
 
-**Sections (16):** `AuditLog`, `Auth`, `Budget`, `Campaigns`, `Camps`, `GoogleIntegration`, `Issues`, `LegalAndConsent`, `Onboarding`, `Profiles`, `Shifts`, `Store`, `Teams`, `Tickets`, `Users` + `seed-data.md`
+**Sections (9):** `Auth`, `Camps`, `CityPlanning`, `Containers`, `Notifications`, `Onboarding`, `Store`, `Tickets`, `Users`
 
-**Guide (14):** `Admin`, `Budget`, `Campaigns`, `Camps`, `Email`, `Events`, `GoogleIntegration`, `LegalAndConsent`, `Onboarding`, `Profiles`, `Shifts`, `Store`, `Teams`, `Tickets`
+**Guide (9):** `Admin`, `Budget`, `Camps`, `CityPlanning`, `Events`, `Onboarding`, `Profiles`, `Store`, `Tickets`
 
-**Features (38):**
-- `47-volunteer-tracking`
-- `expires-on-deadline`
-- `auth/authentication`, `auth/magic-link-auth`
-- `budget/budget`
-- `campaigns/campaigns`
-- `camps/camps`
-- `cantina/daily-roster`
-- `email/email-flag-violations-remediation`
-- `global/administration`, `global/gdpr-export`
-- `google-integration/{drive-activity-monitoring,google-integration,google-removal-notifications,workspace-account-provisioning}`
-- `governance/membership-tiers`
-- `issues/issues-system`
-- `legal-and-consent/legal-documents-consent`
-- `onboarding/onboarding-pipeline`, `onboarding/volunteer-status`
-- `profiles/{communication-preferences,contact-accounts,contact-fields,dietary-medical-nudge,preferred-email,profile-pictures-birthdays,profiles,public-coordinator-popover}`
-- `shifts/{coordinator-roles,shift-management,shift-preference-wizard,shift-signup-visibility}`
-- `store/store`
-- `teams/{hidden-teams,teams}`
-- `tickets/{event-participation,ticket-transfer,ticket-vendor-integration}`
+**Features (14):** `auth/authentication`, `auth/magic-link-auth`, `camps/camps`, `city-planning/city-planning`, `global/gdpr-export`, `google-integration/google-removal-notifications`, `google-integration/workspace-account-provisioning`, `mailer/audience-debug-screen`, `notifications/notification-inbox`, `profiles/contact-accounts`, `profiles/preferred-email`, `store/store`, `tickets/event-participation`, `tickets/ticket-vendor-integration`
+
+**Architecture (4, via broad fallback):** `code-review-rules`, `coding-rules`, `conventions`, `design-rules` — these have a `freshness:flag-on-change` marker but **no `freshness:triggers` header**, so they fall back to "any `src/**` change" and flag on essentially every sweep. Adding scoped trigger globs would cut the false-positive flagging.
 
 </details>
 
 ## Unmarked editorial (no `freshness:triggers` — please add markers)
 
-22 editorial docs have no `freshness:triggers` header, so they were caught only by the broad "src/** changed" fallback. Adding triggers narrows future false-positive flagging:
+18 editorial docs have no freshness markers at all, so they're invisible to the sweep's dirty-matching (neither flagged nor auto-updated). Adding `freshness:triggers` + `freshness:flag-on-change` headers brings them into coverage:
 
-- `docs/architecture/{code-review-rules,coding-rules,conventions,design-rules}.md`
 - `docs/features/26-events.md`, `27-guide-browser.md`, `43-google-group-membership-sync.md`, `test-system-reliability.md`
 - `docs/features/agent/agent-section.md`
 - `docs/features/scanner/scanner-barcode.md`
