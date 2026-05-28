@@ -23,10 +23,18 @@ internal static class CampsSectionExtensions
         services.AddSingleton<ICampRepository, CampRepository>();
 
         // Keyed-Scoped inner + Singleton decorator.
-        services.AddKeyedScoped<ICampService, CampsCampService>(CachingCampService.InnerServiceKey);
-        services.AddKeyedScoped<IUserMerge, CampsCampService>(CachingCampService.InnerServiceKey);
+        services.AddKeyedScoped<CampsCampService>(CachingCampService.InnerServiceKey);
+        services.AddKeyedScoped<ICampService>(
+            CachingCampService.InnerServiceKey,
+            (sp, key) => sp.GetRequiredKeyedService<CampsCampService>(key));
+        services.AddKeyedScoped<ICampRoleCampAccess>(
+            CachingCampService.InnerServiceKey,
+            (sp, key) => sp.GetRequiredKeyedService<CampsCampService>(key));
+        services.AddKeyedScoped<IUserMerge>(
+            CachingCampService.InnerServiceKey,
+            (sp, key) => sp.GetRequiredKeyedService<CampsCampService>(key));
         services.AddScoped<CampsCampService>(sp =>
-            (CampsCampService)sp.GetRequiredKeyedService<ICampService>(CachingCampService.InnerServiceKey));
+            sp.GetRequiredKeyedService<CampsCampService>(CachingCampService.InnerServiceKey));
         // IUserDataContributor on the inner — matches User/Teams pattern (GDPR export iterates contributors).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 

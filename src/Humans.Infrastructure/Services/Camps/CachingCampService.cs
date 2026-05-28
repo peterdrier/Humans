@@ -126,9 +126,20 @@ public sealed class CachingCampService(
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
-    public Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default) =>
-        WithInnerCampRoleAccess(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default)
+    {
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons
+                .Where(season => season.Year == year)
+                .Select(season => (
+                    CampId: camp.Id,
+                    CampName: season.Name,
+                    CampSlug: camp.Slug,
+                    CampSeasonId: season.Id)))
+            .ToList();
+    }
 
     // Writes — delegate then invalidate
 
@@ -545,7 +556,7 @@ public sealed class CachingCampService(
     private async Task<T> WithInnerCampRoleAccess<T>(Func<ICampRoleCampAccess, Task<T>> work)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = (ICampRoleCampAccess)scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampRoleCampAccess>(InnerServiceKey);
         return await work(inner);
     }
 

@@ -29,11 +29,13 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
+    private readonly ICampRoleCampAccess _innerRoleAccess;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
-        _innerSubstitute = Substitute.For<ICampService>();
+        _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess>();
+        _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
         var repo = new CampRepository(DbFactory);
         _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
@@ -43,6 +45,9 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
             (_, _) => _innerSubstitute);
+        services.AddKeyedScoped<ICampRoleCampAccess>(
+            CachingCampService.InnerServiceKey,
+            (_, _) => _innerRoleAccess);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
@@ -280,6 +285,31 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         await _innerSubstitute
             .DidNotReceive()
             .GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetCampSeasonsForComplianceAsync_WarmYear_ProjectsFromCachedCampInfo()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+        _innerRoleAccess.ClearReceivedCalls();
+
+        var result = await _service.GetCampSeasonsForComplianceAsync(2026);
+
+        result.Should().ContainSingle(item =>
+            item.CampId == camp.Id &&
+            item.CampName == season.Name &&
+            item.CampSlug == camp.Slug &&
+            item.CampSeasonId == season.Id);
+        await _innerSubstitute
+            .DidNotReceive()
+            .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _innerRoleAccess
+            .DidNotReceive()
+            .GetCampSeasonsForComplianceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
