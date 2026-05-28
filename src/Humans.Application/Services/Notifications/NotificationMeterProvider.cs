@@ -178,13 +178,25 @@ public sealed class NotificationMeterProvider(
             try
             {
                 var settings = await campService.GetSettingsAsync(cancellationToken);
-                var camps = await campService.GetCampsForYearAsync(settings.PublicYear, cancellationToken);
-                return camps
-                    .Where(camp => camp.IsLead(userId))
-                    .SelectMany(camp => camp.Seasons.Where(season =>
-                        season.Year == settings.PublicYear &&
-                        season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full))
-                    .Sum(season => season.PendingMembers.Count);
+                var years = settings.OpenSeasons
+                    .Append(settings.PublicYear)
+                    .Distinct()
+                    .OrderBy(year => year);
+
+                var pendingCount = 0;
+                foreach (var year in years)
+                {
+                    var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+                    pendingCount += camps
+                        .SelectMany(camp => camp.Seasons)
+                        .Where(season =>
+                            season.Year == year &&
+                            season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
+                            season.IsLead(userId))
+                        .Sum(season => season.PendingMembers.Count);
+                }
+
+                return pendingCount;
             }
             catch (Exception ex)
             {
