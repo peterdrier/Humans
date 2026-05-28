@@ -19,6 +19,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
@@ -445,11 +446,15 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var userManager = context.RequestServices.GetRequiredService<UserManager<User>>();
-            var user = await userManager.GetUserAsync(context.User);
-            if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
+            var userIdRaw = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (Guid.TryParse(userIdRaw, out var userId))
             {
-                return new ProviderCultureResult(culture: "en", uiCulture: user.PreferredLanguage);
+                var users = context.RequestServices.GetRequiredService<IUserServiceRead>();
+                var user = await users.GetUserInfoAsync(userId, context.RequestAborted);
+                if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
+                {
+                    return new ProviderCultureResult(culture: "en", uiCulture: user.PreferredLanguage);
+                }
             }
         }
         return null;
