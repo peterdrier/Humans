@@ -310,7 +310,8 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 .ToList();
         }
 
-        var pendingCount = await _repo.CountPendingSeasonsAsync(cancellationToken);
+        var pendingCount = camps.SelectMany(camp => camp.Seasons)
+            .Count(season => season.Year == year && season.Status == CampSeasonStatus.Pending);
 
         return new CampDirectoryResult(year, pendingCount, cards, myCamps);
     }
@@ -382,17 +383,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
         var nameLockDates = await _repo.GetNameLockDatesAsync(info.OpenSeasons, cancellationToken);
         return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
-    }
-
-    public async Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
-    {
-        var seasons = await _repo.GetPendingSeasonsAsync(cancellationToken);
-        var specialRoleUserIds = await GetSpecialRoleUserIdsBySeasonAsync(
-            seasons.Select(season => season.Year).Distinct().ToList(),
-            cancellationToken);
-        return seasons
-            .Select(s => CreateCampSeasonInfo(s, s.Camp?.Slug ?? string.Empty, specialRoleUserIds: specialRoleUserIds))
-            .ToList();
     }
 
     public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(

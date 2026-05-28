@@ -59,17 +59,6 @@ public partial interface ICampRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns count of seasons in Pending status across all years.
-    /// </summary>
-    Task<int> CountPendingSeasonsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns pending seasons with their parent <c>Camp</c> loaded (no
-    /// cross-domain <c>User</c> nav on leads). Read-only.
-    /// </summary>
-    Task<IReadOnlyList<CampSeason>> GetPendingSeasonsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns true if <paramref name="slug"/> is already taken by any camp.
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default);

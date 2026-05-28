@@ -82,25 +82,6 @@ internal sealed partial class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountPendingSeasonsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .CountAsync(s => s.Status == CampSeasonStatus.Pending, ct);
-    }
-
-    public async Task<IReadOnlyList<CampSeason>> GetPendingSeasonsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .Include(s => s.Camp)
-            .Where(s => s.Status == CampSeasonStatus.Pending)
-            .OrderBy(s => s.CreatedAt)
-            .ToListAsync(ct);
-    }
-
     public async Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

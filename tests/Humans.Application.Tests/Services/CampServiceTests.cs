@@ -141,6 +141,20 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task GetCampDirectoryAsync_PendingCount_ComesFromPublicYear()
+    {
+        await SeedSettingsAsync();
+        await CreateTestCamp();
+        await _service.CreateCampAsync(
+            Guid.NewGuid(), "Next Year Camp", "next@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2027);
+
+        var result = await _service.GetCampDirectoryAsync(userId: null);
+
+        result.PendingCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task GetCampLeadSeasonIdForYearAsync_RoleLeadResolvesSeason_NonLeadNull()
     {
         await SeedSettingsAsync();

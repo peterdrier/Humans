@@ -14,27 +14,12 @@ public sealed class CampAdminPageBuilder(
         var settings = await campService.GetSettingsAsync();
         var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync();
         var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
-        var pendingSeasons = await campService.GetPendingSeasonsAsync();
         var openSeasons = settings.OpenSeasons.ToList();
 
-        var withdrawnSeasons = allCamps
-            .SelectMany(c => c.Seasons
-                .Where(s => s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Withdrawn)
-                .Select(s => new CampCardViewModel
-                {
-                    Id = c.Id,
-                    SeasonId = s.Id,
-                    Slug = c.Slug,
-                    Name = s.Name,
-                    BlurbShort = s.BlurbShort,
-                    Status = s.Status
-                }))
-            .ToList();
+        var withdrawnSeasons = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Withdrawn);
 
-        // T-06: GetCampsForYearAsync always populates leads; filter by season
-        // status in-memory.
         var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
-        var campsWithLeads = (await campService.GetCampsForYearAsync(settings.PublicYear))
+        var campsWithLeads = allCamps
             .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
             .ToList();
         var summaries = BuildSummaries(campsWithLeads);
@@ -54,17 +39,27 @@ public sealed class CampAdminPageBuilder(
             AllCampSummaries = summaries,
             RegistrationInfo = registrationInfo,
             EeStartDate = settings.EeStartDate,
-            PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
-            {
-                Id = s.CampId,
-                SeasonId = s.Id,
-                Slug = s.CampSlug,
-                Name = s.Name,
-                BlurbShort = s.BlurbShort,
-                Status = s.Status
-            }).ToList()
+            PendingCamps = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Pending)
         };
     }
+
+    private static List<CampCardViewModel> BuildCampCards(
+        IReadOnlyList<CampInfo> camps,
+        int year,
+        CampSeasonStatus status) =>
+        camps
+            .SelectMany(camp => camp.Seasons
+                .Where(season => season.Year == year && season.Status == status)
+                .Select(season => new CampCardViewModel
+                {
+                    Id = camp.Id,
+                    SeasonId = season.Id,
+                    Slug = camp.Slug,
+                    Name = season.Name,
+                    BlurbShort = season.BlurbShort,
+                    Status = season.Status
+                }))
+            .ToList();
 
     private static List<CampSummaryRowViewModel> BuildSummaries(IReadOnlyList<CampInfo> campsWithLeads)
     {
