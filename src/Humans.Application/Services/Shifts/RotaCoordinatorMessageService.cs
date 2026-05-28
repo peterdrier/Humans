@@ -190,7 +190,13 @@ public sealed class RotaCoordinatorMessageService(
         var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
         if (eventSettings is null) return [];
 
-        var rotas = await repo.GetRotasByDepartmentAsync(teamId, eventSettings.Id, ct);
+        var rotas = (await repo.GetRotasAsync(
+                eventSettings.Id,
+                [teamId],
+                RotaReadShape.View,
+                ct))
+            .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
         if (rotas.Count == 0) return [];
 
         var now = clock.GetCurrentInstant();
@@ -199,7 +205,7 @@ public sealed class RotaCoordinatorMessageService(
         foreach (var rota in rotas)
         {
             // Per-rota EventSettings carries the timezone — the eager-load on
-            // GetRotasByDepartmentAsync attached it; keep the reference for
+            // GetRotasAsync attached it; keep the reference for
             // downstream shift-line formatting.
             var rotaEs = rota.EventSettings
                 ?? throw new InvalidOperationException(

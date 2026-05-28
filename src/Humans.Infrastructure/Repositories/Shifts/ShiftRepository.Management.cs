@@ -173,21 +173,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.EventSettings)
-            .Include(r => r.Tags)
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .Where(r => r.TeamId == teamId && r.EventSettingsId == eventSettingsId)
-            .OrderBy(r => r.Name)
-            .ToListAsync(ct);
-    }
-
     public async Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -370,18 +355,29 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> GetRotasWithShiftsAndSignupsAsync(
+    public async Task<IReadOnlyList<Rota>> GetRotasAsync(
         Guid eventSettingsId,
-        IReadOnlyList<Guid> teamIds,
+        IReadOnlyCollection<Guid> teamIds,
+        RotaReadShape shape,
         CancellationToken ct = default)
     {
         if (teamIds.Count == 0) return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
+        var query = ctx.Rotas.AsNoTracking();
+
+        if (shape.HasFlag(RotaReadShape.EventSettings))
+            query = query.Include(r => r.EventSettings);
+
+        if (shape.HasFlag(RotaReadShape.ShiftSignups))
+            query = query.Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups);
+        else if (shape.HasFlag(RotaReadShape.Shifts))
+            query = query.Include(r => r.Shifts);
+
+        if (shape.HasFlag(RotaReadShape.Tags))
+            query = query.Include(r => r.Tags);
+
+        return await query
             .Where(r => r.EventSettingsId == eventSettingsId && teamIds.Contains(r.TeamId))
             .ToListAsync(ct);
     }

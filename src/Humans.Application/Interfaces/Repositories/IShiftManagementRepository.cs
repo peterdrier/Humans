@@ -79,14 +79,6 @@ public partial interface IShiftManagementRepository : IRepository
     Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads all rotas for a team+event with shifts, shift signups, and tags.
-    /// Read-only. Cross-domain navs (<see cref="Rota.Team"/>,
-    /// <see cref="ShiftSignup.User"/>) are NOT populated.
-    /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
     /// Removes a rota plus every shift and signup under it in a single save.
     /// The service is expected to have validated "no confirmed signups" first.
     /// </summary>
@@ -150,12 +142,14 @@ public partial interface IShiftManagementRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Loads rotas for a team+event with their shifts and signups (same section).
-    /// Read-only. Used by <c>GetShiftsSummaryAsync</c>.
+    /// Loads rotas for the supplied teams and event with an explicit
+    /// same-section include shape. Read-only; cross-domain navs are not
+    /// populated.
     /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasWithShiftsAndSignupsAsync(
+    Task<IReadOnlyList<Rota>> GetRotasAsync(
         Guid eventSettingsId,
-        IReadOnlyList<Guid> teamIds,
+        IReadOnlyCollection<Guid> teamIds,
+        RotaReadShape shape,
         CancellationToken ct = default);
 
     /// <summary>

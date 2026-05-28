@@ -280,8 +280,13 @@ public sealed class ShiftManagementService(
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
         repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
 
-    public Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId) =>
-        repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
+    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId)
+    {
+        var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View);
+        return rotas
+            .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max,
@@ -909,7 +914,10 @@ public sealed class ShiftManagementService(
     {
         if (teamIds.Count == 0) return null;
 
-        var rotas = await repo.GetRotasWithShiftsAndSignupsAsync(eventSettingsId, teamIds.ToList());
+        var rotas = await repo.GetRotasAsync(
+            eventSettingsId,
+            teamIds,
+            RotaReadShape.ShiftsWithSignups);
         if (rotas.Count == 0) return null;
 
         var allShifts = rotas.SelectMany(r => r.Shifts).ToList();
@@ -951,8 +959,11 @@ public sealed class ShiftManagementService(
         // Brings rota-owning teams + parents in one lookup (avoids second hop for sub-team rotas).
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsWithRotas, ct);
 
-        var allRotas = await repo.GetRotasWithShiftsAndSignupsAsync(
-            eventSettingsId, teamIdsWithRotas.ToList(), ct);
+        var allRotas = await repo.GetRotasAsync(
+            eventSettingsId,
+            teamIdsWithRotas,
+            RotaReadShape.ShiftsWithSignups,
+            ct);
 
         // Pie-eligible teams = top-level departments + promoted sub-teams.
         var pieTeams = teamLookup.Values.Where(IsInDirectory).ToList();
