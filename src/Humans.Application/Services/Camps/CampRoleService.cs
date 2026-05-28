@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Camps;
 
 public sealed class CampRoleService(
     ICampRepository repo,
-    ICampService campService,
+    ICampRoleCampAccess campAccess,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IAuditLogService auditLog,
@@ -266,7 +266,7 @@ public sealed class CampRoleService(
         if (def is null) return AssignCampRoleOutcome.RoleNotFound;
         if (def.DeactivatedAt is not null) return AssignCampRoleOutcome.RoleDeactivated;
 
-        var memberLookup = await campService.GetCampMemberStatusAsync(campMemberId, ct);
+        var memberLookup = await campAccess.GetCampMemberStatusAsync(campMemberId, ct);
         if (memberLookup is null) return AssignCampRoleOutcome.MemberNotFound;
         if (memberLookup.CampSeasonId != campSeasonId) return AssignCampRoleOutcome.MemberSeasonMismatch;
         if (memberLookup.Status != CampMemberStatus.Active) return AssignCampRoleOutcome.MemberNotActive;
@@ -368,7 +368,7 @@ public sealed class CampRoleService(
             .Where(d => d.MinimumRequired > 0)
             .ToList();
 
-        var camps = await campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var camps = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
         var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
         var countLookup = counts.ToLookup(c => c.CampSeasonId);
 
@@ -448,7 +448,7 @@ public sealed class CampRoleService(
 
             // Ensure CampMember(Active) exists. Idempotent — promotes Pending → Active
             // or no-ops if already Active.
-            var memberId = await campService.EnsureActiveMemberForMigrationAsync(
+            var memberId = await campAccess.EnsureActiveMemberForMigrationAsync(
                 seasonId.Value, lead.UserId, actorUserId, ct);
 
             // Assign Camp Lead role (idempotent — AlreadyHoldsRole is a no-op).
@@ -551,7 +551,7 @@ public sealed class CampRoleService(
         var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
         if (def is null) return null;
 
-        var seasons = await campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
         var assignments = await repo.GetAssignmentsForDefinitionInYearAsync(def.Id, year, ct);
 
         var assignmentsBySeason = assignments
@@ -601,7 +601,7 @@ public sealed class CampRoleService(
 
         // In-scope years: the public year + every open season year. This matches
         // the years users can currently interact with via the UI.
-        var settings = await campService.GetSettingsAsync(ct);
+        var settings = await campAccess.GetSettingsAsync(ct);
         var inScopeYears = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear };
         if (inScopeYears.Count == 0)
             return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);

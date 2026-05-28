@@ -226,6 +226,18 @@ public class CampsArchitectureTests
             because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
     }
 
+    [HumansFact]
+    public void CampRoleService_DependsOnNarrowCampRoleAccess()
+    {
+        var ctor = typeof(CampRoleService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(ICampRoleCampAccess),
+            because: "role workflows need only membership/status/settings helpers, not the whole ICampService surface");
+        paramTypes.Should().NotContain(typeof(ICampService),
+            because: "the role sub-service must not depend on the full Camps service surface");
+    }
+
     // ── ICampServiceRead split (memory/architecture/section-read-write-split.md) ──
 
     [HumansFact]
@@ -245,6 +257,14 @@ public class CampsArchitectureTests
     }
 
     [HumansFact]
+    public void CachingCampService_ImplementsICampRoleCampAccess()
+    {
+        typeof(ICampRoleCampAccess).IsAssignableFrom(typeof(CachingCampService))
+            .Should().BeTrue(
+                because: "CampRoleService must use the decorator-backed port so migration writes still invalidate CampInfo");
+    }
+
+    [HumansFact]
     public void ICampService_And_ICampServiceRead_ResolveToSameSingleton()
     {
         // Mirrors the Camps-section DI shape: the same CachingCampService
@@ -258,15 +278,18 @@ public class CampsArchitectureTests
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
 
         using var provider = services.BuildServiceProvider();
 
         var fromFull = provider.GetRequiredService<ICampService>();
         var fromRead = provider.GetRequiredService<ICampServiceRead>();
+        var fromRoleAccess = provider.GetRequiredService<ICampRoleCampAccess>();
         var concrete = provider.GetRequiredService<CachingCampService>();
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        ReferenceEquals(fromRoleAccess, concrete).Should().BeTrue();
     }
 
     [HumansFact]

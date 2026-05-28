@@ -20,7 +20,7 @@ using NodaTime;
 namespace Humans.Application.Services.Camps;
 
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-public sealed class CampService : ICampService, IUserDataContributor, IUserMerge, IEarlyEntryProvider
+public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     private readonly ICampRepository _repo;
     private readonly IUserServiceRead _userService;

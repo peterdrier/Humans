@@ -180,24 +180,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
-    Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Idempotent — ensures a <c>CampMember</c>(<c>Status = Active</c>) row
-    /// exists for the given <paramref name="campSeasonId"/> + <paramref name="userId"/>.
-    /// Promotes an existing Pending row to Active; no-ops if already Active.
-    /// Returns the CampMember id. Used by the Camp Lead retirement admin
-    /// button (issue nobodies-collective/Humans#753) to land legacy leads on
-    /// the role-assignment side without going through the request/approve
-    /// flow.
-    /// </summary>
-    Task<Guid> EnsureActiveMemberForMigrationAsync(
-        Guid campSeasonId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
     // ==========================================================================

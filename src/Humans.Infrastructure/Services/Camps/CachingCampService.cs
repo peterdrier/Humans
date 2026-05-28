@@ -21,7 +21,7 @@ public sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampService, IUserMerge, ICampInfoInvalidator
+    ICampService, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampService"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
@@ -131,7 +131,7 @@ public sealed class CachingCampService(
         WithInner(inner => inner.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken));
 
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
+        WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
     public Task<CampMembershipState> GetMembershipStateForCampAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default) =>
@@ -159,7 +159,7 @@ public sealed class CachingCampService(
 
     public Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
+        WithInnerCampRoleAccess(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
 
     public Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(
         List<int> years, CancellationToken cancellationToken = default) =>
@@ -358,7 +358,7 @@ public sealed class CachingCampService(
         Guid campSeasonId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var memberId = await WithInner(inner => inner.EnsureActiveMemberForMigrationAsync(
+        var memberId = await WithInnerCampRoleAccess(inner => inner.EnsureActiveMemberForMigrationAsync(
             campSeasonId, userId, actorUserId, cancellationToken));
         await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
         return memberId;
@@ -568,6 +568,13 @@ public sealed class CachingCampService(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        return await work(inner);
+    }
+
+    private async Task<T> WithInnerCampRoleAccess<T>(Func<ICampRoleCampAccess, Task<T>> work)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var inner = (ICampRoleCampAccess)scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
         return await work(inner);
     }
 

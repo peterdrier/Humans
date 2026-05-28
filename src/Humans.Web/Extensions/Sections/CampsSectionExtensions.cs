@@ -35,6 +35,7 @@ internal static class CampsSectionExtensions
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
 
         // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampService — one cache, one signaller.
         services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());
@@ -51,7 +52,7 @@ internal static class CampsSectionExtensions
         services.AddScoped<CampsCampRoleService>();
         services.AddScoped<ICampRoleService>(sp => sp.GetRequiredService<CampsCampRoleService>());
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampsCampRoleService>());
-        // Lazy<ICampRoleService> resolves a circular dep: CampService → ICampRoleService → ICampService.
+        // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
