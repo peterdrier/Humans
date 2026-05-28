@@ -436,8 +436,8 @@ public class VolunteerTrackingControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        await _service.Received(1).ClearCampSetupAsync(
-            target, current.Id, Arg.Any<CancellationToken>());
+        await _service.Received(1).SetCampSetupAsync(
+            target, null, null, current.Id, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerCampSetupCleared,
             nameof(VolunteerBuildStatus),
@@ -458,8 +458,8 @@ public class VolunteerTrackingControllerTests
         var result = await ctrl.ClearCampSetup(Guid.Empty, null, CancellationToken.None);
 
         Assert.IsType<RedirectToActionResult>(result);
-        await _service.DidNotReceive().ClearCampSetupAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _service.DidNotReceive().SetCampSetupAsync(
+            Arg.Any<Guid>(), Arg.Any<LocalDate?>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
@@ -476,8 +476,9 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        _service.SetDayOffAsync(target, -3, "doctor", current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetDayOffResult(Ok: true, ErrorMessageKey: null));
+        _service.ApplyDayOffAsync(
+                target, -3, VolunteerDayOffAction.Set, "doctor", current.Id, Arg.Any<CancellationToken>())
+            .Returns(new DayOffActionResult(Ok: true, ErrorMessageKey: null, Removed: false));
         var ctrl = BuildSut(current);
         var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = "doctor" };
 
@@ -501,8 +502,9 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        _service.SetDayOffAsync(target, -3, Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetDayOffResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DayOffWithSignups"));
+        _service.ApplyDayOffAsync(
+                target, -3, VolunteerDayOffAction.Set, Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
+            .Returns(new DayOffActionResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DayOffWithSignups", Removed: false));
         var ctrl = BuildSut(current);
         var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = null };
 
@@ -521,8 +523,9 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new ClearDayOffResult(Removed: true));
+        _service.ApplyDayOffAsync(
+                target, -3, VolunteerDayOffAction.Clear, null, current.Id, Arg.Any<CancellationToken>())
+            .Returns(new DayOffActionResult(Ok: true, ErrorMessageKey: null, Removed: true));
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
@@ -545,8 +548,9 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new ClearDayOffResult(Removed: false));
+        _service.ApplyDayOffAsync(
+                target, -3, VolunteerDayOffAction.Clear, null, current.Id, Arg.Any<CancellationToken>())
+            .Returns(new DayOffActionResult(Ok: true, ErrorMessageKey: null, Removed: false));
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
@@ -564,7 +568,7 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        _service.SetCampSetupAsync(target, Arg.Any<LocalDate>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
+        _service.SetCampSetupAsync(target, Arg.Any<LocalDate?>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
             .Returns(new SetCampSetupResult(
                 Ok: true, ErrorMessageKey: null,
                 AutoClearedDayOffs: [-6, -4]));
@@ -616,14 +620,14 @@ public class VolunteerTrackingControllerTests
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
         _service
-            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
+            .ApplyAvailabilityDayAsync(target, esId, -2, AvailabilityDayAction.Add, Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
 
         await _service.Received(1)
-            .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>());
+            .ApplyAvailabilityDayAsync(target, esId, -2, AvailabilityDayAction.Add, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerAvailabilitySet,
             Arg.Any<string>(), target,
@@ -663,14 +667,14 @@ public class VolunteerTrackingControllerTests
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
         _service
-            .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
+            .ApplyAvailabilityDayAsync(target, esId, -3, AvailabilityDayAction.Remove, Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
 
         await _service.Received(1)
-            .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>());
+            .ApplyAvailabilityDayAsync(target, esId, -3, AvailabilityDayAction.Remove, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerAvailabilityCleared,
             Arg.Any<string>(), target,
@@ -743,7 +747,12 @@ public class VolunteerTrackingControllerTests
         var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, CancellationToken.None);
 
         await _service.DidNotReceive()
-            .SetDayAvailabilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+            .ApplyAvailabilityDayAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<int>(),
+                Arg.Any<AvailabilityDayAction>(),
+                Arg.Any<CancellationToken>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
     }
 

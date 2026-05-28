@@ -339,7 +339,7 @@ public class VolunteerTrackingServiceTests
             [], [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
-        await sut.ClearCampSetupAsync(userId, coordinatorId);
+        await sut.SetCampSetupAsync(userId, null, null, coordinatorId);
 
         trackingRepo.UpsertCalls.Should().HaveCount(1);
         var call = trackingRepo.UpsertCalls[0];
@@ -364,8 +364,10 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var sut = BuildSut(es);
 
-        var below = await sut.SetDayOffAsync(Guid.NewGuid(), -6, reason: null, Guid.NewGuid());
-        var above = await sut.SetDayOffAsync(Guid.NewGuid(), 0, reason: null, Guid.NewGuid());
+        var below = await sut.ApplyDayOffAsync(
+            Guid.NewGuid(), -6, VolunteerDayOffAction.Set, reason: null, coordinatorUserId: Guid.NewGuid());
+        var above = await sut.ApplyDayOffAsync(
+            Guid.NewGuid(), 0, VolunteerDayOffAction.Set, reason: null, coordinatorUserId: Guid.NewGuid());
 
         below.Ok.Should().BeFalse();
         below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
@@ -384,7 +386,8 @@ public class VolunteerTrackingServiceTests
         };
         var sut = BuildSut(es, signups: signups);
 
-        var result = await sut.SetDayOffAsync(userId, -3, reason: null, Guid.NewGuid());
+        var result = await sut.ApplyDayOffAsync(
+            userId, -3, VolunteerDayOffAction.Set, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -401,7 +404,8 @@ public class VolunteerTrackingServiceTests
         };
         var sut = BuildSut(es, signups: signups);
 
-        var result = await sut.SetDayOffAsync(userId, -3, reason: null, Guid.NewGuid());
+        var result = await sut.ApplyDayOffAsync(
+            userId, -3, VolunteerDayOffAction.Set, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -417,12 +421,12 @@ public class VolunteerTrackingServiceTests
             [], [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId);
+        var result = await sut.ApplyDayOffAsync(userId, -3, VolunteerDayOffAction.Set, "doctor", coordId);
 
         result.Ok.Should().BeTrue();
         result.ErrorMessageKey.Should().BeNull();
-        trackingRepo.UpsertDayOffCalls.Should().HaveCount(1);
-        var entry = trackingRepo.UpsertDayOffCalls[0].Entry;
+        trackingRepo.ApplyDayOffCalls.Should().HaveCount(1);
+        var entry = trackingRepo.ApplyDayOffCalls[0].Entry!;
         entry.DayOffset.Should().Be(-3);
         entry.Reason.Should().Be("doctor");
         entry.MarkedByUserId.Should().Be(coordId);
@@ -438,8 +442,8 @@ public class VolunteerTrackingServiceTests
             [], [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid());
-        await sut.SetDayOffAsync(userId, -3, "city visit", Guid.NewGuid());
+        await sut.ApplyDayOffAsync(userId, -3, VolunteerDayOffAction.Set, "doctor", Guid.NewGuid());
+        await sut.ApplyDayOffAsync(userId, -3, VolunteerDayOffAction.Set, "city visit", Guid.NewGuid());
 
         var stored = trackingRepo.BuildStatuses.Single();
         stored.DayOffs.Should().HaveCount(1);
@@ -454,12 +458,12 @@ public class VolunteerTrackingServiceTests
             [], [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid());
-        var blank = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
+        await sut.ApplyDayOffAsync(Guid.NewGuid(), -3, VolunteerDayOffAction.Set, "   ", Guid.NewGuid());
+        var blank = trackingRepo.ApplyDayOffCalls.Last().Entry!.Reason;
 
         var oversized = new string('x', 250);
-        await sut.SetDayOffAsync(Guid.NewGuid(), -2, oversized, Guid.NewGuid());
-        var capped = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
+        await sut.ApplyDayOffAsync(Guid.NewGuid(), -2, VolunteerDayOffAction.Set, oversized, Guid.NewGuid());
+        var capped = trackingRepo.ApplyDayOffCalls.Last().Entry!.Reason;
 
         blank.Should().BeNull();
         capped.Should().NotBeNull();
@@ -487,7 +491,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // -2 is INSIDE the camp-setup span. The service does NOT reject.
-        var result = await sut.SetDayOffAsync(userId, -2, "doctor", Guid.NewGuid());
+        var result = await sut.ApplyDayOffAsync(userId, -2, VolunteerDayOffAction.Set, "doctor", Guid.NewGuid());
 
         result.Ok.Should().BeTrue();
     }
@@ -511,7 +515,8 @@ public class VolunteerTrackingServiceTests
             [], [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
-        var result = await sut.ClearDayOffAsync(userId, -3, Guid.NewGuid());
+        var result = await sut.ApplyDayOffAsync(
+            userId, -3, VolunteerDayOffAction.Clear, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Removed.Should().BeTrue();
         bs.DayOffs.Should().BeEmpty();
@@ -525,7 +530,8 @@ public class VolunteerTrackingServiceTests
             [], [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        var result = await sut.ClearDayOffAsync(Guid.NewGuid(), -3, Guid.NewGuid());
+        var result = await sut.ApplyDayOffAsync(
+            Guid.NewGuid(), -3, VolunteerDayOffAction.Clear, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Removed.Should().BeFalse();
     }
@@ -787,8 +793,7 @@ public class VolunteerTrackingServiceTests
 
         public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
             [];
-        public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
-        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
+        public List<(Guid UserId, Guid EventSettingsId, int DayOffset, DayOffEntry? Entry)> ApplyDayOffCalls { get; } = [];
 
         public Task<VolunteerBuildStatus?> GetAsync(Guid userId, Guid eventSettingsId, CancellationToken ct = default)
             => Task.FromResult(BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId));
@@ -855,13 +860,6 @@ public class VolunteerTrackingServiceTests
             return Task.CompletedTask;
         }
 
-        public Task DeleteAvailabilityAsync(
-            Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-        {
-            Availabilities.RemoveAll(a => a.UserId == userId && a.EventSettingsId == eventSettingsId);
-            return Task.CompletedTask;
-        }
-
         public Task<int> ReassignAvailabilityToUserAsync(
             Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
             => Task.FromResult(0);
@@ -904,10 +902,22 @@ public class VolunteerTrackingServiceTests
             return Task.FromResult(trimmed);
         }
 
-        public Task UpsertDayOffAsync(
-            Guid userId, Guid eventSettingsId, DayOffEntry entry, CancellationToken ct = default)
+        public Task<bool> ApplyDayOffAsync(
+            Guid userId,
+            Guid eventSettingsId,
+            int dayOffset,
+            DayOffEntry? entry,
+            CancellationToken ct = default)
         {
-            UpsertDayOffCalls.Add((userId, eventSettingsId, entry));
+            ApplyDayOffCalls.Add((userId, eventSettingsId, dayOffset, entry));
+            if (entry is null)
+            {
+                var rowToClear = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
+                if (rowToClear is null) return Task.FromResult(false);
+                var removed = rowToClear.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
+                return Task.FromResult(removed);
+            }
+
             var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
             if (existing is null)
             {
@@ -922,17 +932,7 @@ public class VolunteerTrackingServiceTests
             existing.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
             existing.DayOffs.Add(entry);
             existing.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
-            return Task.CompletedTask;
-        }
-
-        public Task<bool> RemoveDayOffAsync(
-            Guid userId, Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
-        {
-            RemoveDayOffCalls.Add((userId, eventSettingsId, dayOffset));
-            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
-            if (existing is null) return Task.FromResult(false);
-            var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
-            return Task.FromResult(removed);
+            return Task.FromResult(true);
         }
 
         public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(

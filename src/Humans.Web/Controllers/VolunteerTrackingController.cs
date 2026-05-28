@@ -257,7 +257,7 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await service.ClearCampSetupAsync(userId, current.Id, ct);
+        await service.SetCampSetupAsync(userId, null, null, current.Id, ct);
 
         await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupCleared,
@@ -284,7 +284,13 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
+        var result = await service.ApplyDayOffAsync(
+            form.UserId,
+            form.DayOffset,
+            VolunteerDayOffAction.Set,
+            form.Reason,
+            current.Id,
+            ct);
         if (!result.Ok)
         {
             SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
@@ -316,7 +322,13 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
+        var result = await service.ApplyDayOffAsync(
+            form.UserId,
+            form.DayOffset,
+            VolunteerDayOffAction.Clear,
+            reason: null,
+            coordinatorUserId: current.Id,
+            ct);
         if (result.Removed)
         {
             await auditLogService.LogAsync(
@@ -343,7 +355,12 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await service.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
+        var changed = await service.ApplyAvailabilityDayAsync(
+            userId,
+            es.Id,
+            dayOffset,
+            AvailabilityDayAction.Add,
+            ct);
         if (changed)
         {
             await auditLogService.LogAsync(
@@ -366,7 +383,12 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await service.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
+        var changed = await service.ApplyAvailabilityDayAsync(
+            userId,
+            es.Id,
+            dayOffset,
+            AvailabilityDayAction.Remove,
+            ct);
         if (changed)
         {
             await auditLogService.LogAsync(

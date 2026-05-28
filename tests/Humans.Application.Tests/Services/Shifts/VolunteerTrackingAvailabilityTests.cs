@@ -88,36 +88,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetAvailabilityByUserAsync_ReturnsNullWhenMissing()
-    {
-        var result = await _service.GetAvailabilityByUserAsync(Guid.NewGuid(), Guid.NewGuid());
-        result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task DeleteAvailabilityAsync_RemovesExistingRecord()
-    {
-        var userId = Guid.NewGuid();
-        var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
-
-        await _service.SetAvailabilityAsync(userId, esId, [0, 1]);
-        await _service.DeleteAvailabilityAsync(userId, esId);
-
-        var after = await Db.GeneralAvailability
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
-        after.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task DeleteAvailabilityAsync_NoOpWhenMissing()
-    {
-        // Should not throw when there's no matching record.
-        await _service.DeleteAvailabilityAsync(Guid.NewGuid(), Guid.NewGuid());
-    }
-
-    [HumansFact]
     public async Task SetDayAvailability_AddsOffset_PreservingExisting()
     {
         var userId = Guid.NewGuid();
@@ -125,7 +95,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: true);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, -2, AvailabilityDayAction.Add);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -141,7 +112,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: false);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, -2, AvailabilityDayAction.Remove);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -156,7 +128,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var esId = SeedEventSettings();
         await Db.SaveChangesAsync();
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -1, available: true);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, -1, AvailabilityDayAction.Add);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -172,7 +145,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var esId = SeedEventSettings();
         await Db.SaveChangesAsync();
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, 2, available: true);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, 2, AvailabilityDayAction.Add);
 
         changed.Should().BeFalse();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -188,7 +162,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-2]);
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: true);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, -2, AvailabilityDayAction.Add);
 
         changed.Should().BeFalse();
     }
@@ -201,7 +176,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
-        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: false);
+        var changed = await _service.ApplyAvailabilityDayAsync(
+            userId, esId, -2, AvailabilityDayAction.Remove);
 
         changed.Should().BeFalse();
     }

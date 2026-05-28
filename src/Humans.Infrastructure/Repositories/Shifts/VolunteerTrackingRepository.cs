@@ -112,20 +112,6 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task DeleteAvailabilityAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var existing = await db.GeneralAvailability
-            .FirstOrDefaultAsync(
-                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
-                ct);
-
-        if (existing is null) return;
-
-        db.GeneralAvailability.Remove(existing);
-        await db.SaveChangesAsync(ct);
-    }
-
     public async Task<int> ReassignAvailabilityToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
@@ -174,7 +160,7 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
         IReadOnlyList<int> trimmed = [];
         if (setupOffsetThreshold is { } threshold)
         {
-            // DayOffs is persisted sorted (see UpsertDayOffAsync), so the
+            // DayOffs is persisted sorted (see ApplyDayOffAsync), so the
             // filter preserves canonical order — no resort needed.
             var toTrim = row.DayOffs
                 .Where(d => d.DayOffset >= threshold)
@@ -191,31 +177,31 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
         return trimmed;
     }
 
-    public async Task UpsertDayOffAsync(
-        Guid userId, Guid eventSettingsId, DayOffEntry entry,
+    public async Task<bool> ApplyDayOffAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        int dayOffset,
+        DayOffEntry? entry,
         CancellationToken ct = default)
     {
-        var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
+        if (entry is not null)
+        {
+            var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
+            row.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
+            row.DayOffs.Add(entry);
+            // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
+            row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
 
-        row.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
-        row.DayOffs.Add(entry);
-        // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
-        row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task<bool> RemoveDayOffAsync(
-        Guid userId, Guid eventSettingsId, int dayOffset,
-        CancellationToken ct = default)
-    {
-        var existing = await db.VolunteerBuildStatuses
+        var rowToClear = await db.VolunteerBuildStatuses
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
+        if (rowToClear is null) return false;
 
-        if (existing is null) return false;
-
-        var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
+        var removed = rowToClear.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
         if (removed)
         {
             await db.SaveChangesAsync(ct);

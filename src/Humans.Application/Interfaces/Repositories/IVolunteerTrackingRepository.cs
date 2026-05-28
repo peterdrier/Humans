@@ -62,13 +62,6 @@ public interface IVolunteerTrackingRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes the general availability row for the given user + event pair,
-    /// if one exists.
-    /// </summary>
-    Task DeleteAvailabilityAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
     /// Account-merge fold for general availability rows.
     /// </summary>
     Task<int> ReassignAvailabilityToUserAsync(
@@ -101,26 +94,17 @@ public interface IVolunteerTrackingRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Insert or replace a single day-off entry on the row's <c>DayOffs</c>
-    /// collection. Creates the row if absent. Replaces any existing entry for
-    /// the same <c>DayOffset</c> so there is at most one entry per day.
+    /// Sets or clears a single day-off entry on the row's <c>DayOffs</c>
+    /// collection. Passing <paramref name="entry"/> inserts/replaces that
+    /// offset and creates the row if absent; passing null removes
+    /// <paramref name="dayOffset"/> and returns false when no entry existed.
     /// Persists with the list sorted by <c>DayOffset</c> ascending.
     /// </summary>
-    Task UpsertDayOffAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        DayOffEntry entry,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Remove the entry for (userId, eventSettingsId, dayOffset) from the
-    /// row's <c>DayOffs</c> collection. Returns whether an entry was actually
-    /// removed (false when no row exists or the offset wasn't present).
-    /// </summary>
-    Task<bool> RemoveDayOffAsync(
+    Task<bool> ApplyDayOffAsync(
         Guid userId,
         Guid eventSettingsId,
         int dayOffset,
+        DayOffEntry? entry,
         CancellationToken ct = default);
 
     /// <summary>

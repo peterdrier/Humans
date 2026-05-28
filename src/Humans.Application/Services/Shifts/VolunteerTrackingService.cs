@@ -22,14 +22,6 @@ public sealed class VolunteerTrackingService(
         viewInvalidator.InvalidateUser(userId);
     }
 
-    public async Task<GeneralAvailabilitySnapshot?> GetAvailabilityByUserAsync(Guid userId, Guid eventSettingsId)
-    {
-        var availability = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, eventSettingsId);
-        return availability is null
-            ? null
-            : ToSnapshot(availability);
-    }
-
     public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
         Guid eventSettingsId, int dayOffset)
     {
@@ -41,14 +33,14 @@ public sealed class VolunteerTrackingService(
             .ToList();
     }
 
-    public async Task<bool> SetDayAvailabilityAsync(
-        Guid userId, Guid eventSettingsId, int dayOffset, bool available,
+    public async Task<bool> ApplyAvailabilityDayAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset, AvailabilityDayAction action,
         CancellationToken ct = default)
     {
         var current = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, eventSettingsId, ct).ConfigureAwait(false);
         var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
-        if (available)
+        if (action == AvailabilityDayAction.Add)
         {
             if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false;
             offsets.Add(dayOffset);
@@ -62,12 +54,6 @@ public sealed class VolunteerTrackingService(
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(userId);
         return true;
-    }
-
-    public async Task DeleteAvailabilityAsync(Guid userId, Guid eventSettingsId)
-    {
-        await trackingRepo.DeleteAvailabilityAsync(userId, eventSettingsId);
-        viewInvalidator.InvalidateUser(userId);
     }
 
     private static GeneralAvailabilitySnapshot ToSnapshot(GeneralAvailability availability) =>
@@ -269,11 +255,26 @@ public sealed class VolunteerTrackingService(
     }
 
     public async Task<SetCampSetupResult> SetCampSetupAsync(
-        Guid targetUserId, LocalDate barrioSetupStartDate, string? notes,
+        Guid targetUserId, LocalDate? barrioSetupStartDate, string? notes,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-        var setupOffset = OffsetOf(es, barrioSetupStartDate);
+        if (barrioSetupStartDate is null)
+        {
+            await trackingRepo.UpsertCampSetupAsync(
+                targetUserId,
+                es.Id,
+                barrioSetupStartDate: null,
+                notes: null,
+                setByUserId: null,
+                setAt: null,
+                setupOffsetThreshold: null,
+                ct).ConfigureAwait(false);
+            viewInvalidator.InvalidateUser(targetUserId);
+            return new SetCampSetupResult(true, null, []);
+        }
+
+        var setupOffset = OffsetOf(es, barrioSetupStartDate.Value);
 
         if (setupOffset >= 0)
         {
@@ -305,38 +306,32 @@ public sealed class VolunteerTrackingService(
         return new SetCampSetupResult(true, null, trimmed);
     }
 
-    public async Task ClearCampSetupAsync(
-        Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
-    {
-        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-        await trackingRepo.UpsertCampSetupAsync(
-            targetUserId,
-            es.Id,
-            barrioSetupStartDate: null,
-            notes: null,
-            setByUserId: null,
-            setAt: null,
-            setupOffsetThreshold: null,
-            ct).ConfigureAwait(false);
-        viewInvalidator.InvalidateUser(targetUserId);
-    }
-
-    public async Task<SetDayOffResult> SetDayOffAsync(
-        Guid targetUserId, int dayOffset, string? reason,
+    public async Task<DayOffActionResult> ApplyDayOffAsync(
+        Guid targetUserId, int dayOffset, VolunteerDayOffAction action, string? reason,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
+        if (action == VolunteerDayOffAction.Clear)
+        {
+            var removed = await trackingRepo
+                .ApplyDayOffAsync(targetUserId, es.Id, dayOffset, entry: null, ct)
+                .ConfigureAwait(false);
+            if (removed)
+                viewInvalidator.InvalidateUser(targetUserId);
+            return new DayOffActionResult(true, null, removed);
+        }
+
         if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
         {
-            return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
+            return new DayOffActionResult(false, "VolTrack_Err_DayOffOutsideBuild", false);
         }
 
         var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
-            return new SetDayOffResult(false, "VolTrack_Err_DayOffWithSignups");
+            return new DayOffActionResult(false, "VolTrack_Err_DayOffWithSignups", false);
         }
 
         var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
@@ -351,22 +346,9 @@ public sealed class VolunteerTrackingService(
             MarkedByUserId: coordinatorUserId,
             MarkedAt: clock.GetCurrentInstant());
 
-        await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        await trackingRepo.ApplyDayOffAsync(targetUserId, es.Id, dayOffset, entry, ct).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(targetUserId);
-        return new SetDayOffResult(true, null);
-    }
-
-    public async Task<ClearDayOffResult> ClearDayOffAsync(
-        Guid targetUserId, int dayOffset, Guid coordinatorUserId, CancellationToken ct = default)
-    {
-        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-
-        var removed = await trackingRepo
-            .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
-            .ConfigureAwait(false);
-        if (removed)
-            viewInvalidator.InvalidateUser(targetUserId);
-        return new ClearDayOffResult(removed);
+        return new DayOffActionResult(true, null, false);
     }
 
     public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(

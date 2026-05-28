@@ -146,8 +146,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var markedAt = SystemClock.Instance.GetCurrentInstant();
         var sut = new VolunteerTrackingRepository(db);
 
-        await sut.UpsertDayOffAsync(
+        await sut.ApplyDayOffAsync(
             userId, es.Id,
+            -5,
             new DayOffEntry(DayOffset: -5, Reason: "doctor", MarkedByUserId: actor, MarkedAt: markedAt));
 
         var fetched = await sut.GetAsync(userId, es.Id);
@@ -171,11 +172,13 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var t2 = t1 + Duration.FromMinutes(5);
         var sut = new VolunteerTrackingRepository(db);
 
-        await sut.UpsertDayOffAsync(
+        await sut.ApplyDayOffAsync(
             userId, es.Id,
+            -5,
             new DayOffEntry(-5, "doctor", actor, t1));
-        await sut.UpsertDayOffAsync(
+        await sut.ApplyDayOffAsync(
             userId, es.Id,
+            -5,
             new DayOffEntry(-5, "family emergency", actor, t2));
 
         var fetched = await sut.GetAsync(userId, es.Id);
@@ -198,9 +201,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Insert out of order; persisted layout should sort ascending.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-7, "b", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "c", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -3, new DayOffEntry(-3, "a", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -7, new DayOffEntry(-7, "b", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -5, new DayOffEntry(-5, "c", actor, t));
 
         var fetched = await sut.GetAsync(userId, es.Id);
         fetched.Should().NotBeNull();
@@ -218,10 +221,10 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var t = SystemClock.Instance.GetCurrentInstant();
         var sut = new VolunteerTrackingRepository(db);
 
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "b", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -5, new DayOffEntry(-5, "a", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -3, new DayOffEntry(-3, "b", actor, t));
 
-        var removed = await sut.RemoveDayOffAsync(userId, es.Id, -5);
+        var removed = await sut.ApplyDayOffAsync(userId, es.Id, -5, entry: null);
 
         removed.Should().BeTrue();
         var fetched = await sut.GetAsync(userId, es.Id);
@@ -242,11 +245,11 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Row does not exist at all.
-        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+        (await sut.ApplyDayOffAsync(userId, es.Id, -5, entry: null)).Should().BeFalse();
 
         // Row exists but no entry for that offset.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, null, actor, t));
-        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+        await sut.ApplyDayOffAsync(userId, es.Id, -3, new DayOffEntry(-3, null, actor, t));
+        (await sut.ApplyDayOffAsync(userId, es.Id, -5, entry: null)).Should().BeFalse();
     }
 
     [HumansFact(Timeout = 30000)]
@@ -261,9 +264,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Seed three day-offs at offsets -8, -5, -3.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "b", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "c", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -8, new DayOffEntry(-8, "a", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -5, new DayOffEntry(-5, "b", actor, t));
+        await sut.ApplyDayOffAsync(userId, es.Id, -3, new DayOffEntry(-3, "c", actor, t));
 
         // Camp setup at offset -4 → trim threshold is -4 (auto-clear day-offs >= -4).
         // Only -3 should be auto-cleared; -8 and -5 stay.
