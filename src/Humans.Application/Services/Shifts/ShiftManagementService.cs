@@ -52,10 +52,40 @@ public sealed class ShiftManagementService(
     private readonly ILogger<ShiftManagementService> _logger = logger;
 
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
-    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+    private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
+
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
+        IEnumerable<Guid> teamIds,
+        CancellationToken ct = default)
+    {
+        var teamsById = await TeamService.GetTeamsAsync(ct);
+        return IncludeParents(teamsById, teamIds);
+    }
+
+    private static IReadOnlyDictionary<Guid, TeamInfo> IncludeParents(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IEnumerable<Guid> teamIds)
+    {
+        var result = new Dictionary<Guid, TeamInfo>();
+        var pending = new Queue<Guid>(teamIds.Distinct());
+        while (pending.TryDequeue(out var teamId))
+        {
+            if (result.ContainsKey(teamId) || !teamsById.TryGetValue(teamId, out var team))
+                continue;
+
+            result[teamId] = team;
+            if (team.ParentTeamId is { } parentId)
+                pending.Enqueue(parentId);
+        }
+
+        return result;
+    }
+
+    private static bool IsInDirectory(TeamInfo team) =>
+        team.ParentTeamId is null || team.IsPromotedToDirectory;
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {
@@ -64,7 +94,7 @@ public sealed class ShiftManagementService(
             return true;
 
         // Parent department coordinators can manage child teams
-        var team = await TeamService.GetTeamByIdAsync(departmentTeamId);
+        var team = await TeamService.GetTeamAsync(departmentTeamId);
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
@@ -155,7 +185,7 @@ public sealed class ShiftManagementService(
 
     public async Task CreateRotaAsync(Rota rota)
     {
-        var team = await TeamService.GetTeamByIdAsync(rota.TeamId);
+        var team = await TeamService.GetTeamAsync(rota.TeamId);
 
         if (team is null)
             throw new InvalidOperationException("Team not found.");
@@ -184,7 +214,7 @@ public sealed class ShiftManagementService(
         if (rota is null || rota.TeamId != input.SourceTeamId)
             return RotaMoveResult.Failure("Rota not found.");
 
-        var targetTeam = await TeamService.GetTeamByIdAsync(input.TargetTeamId);
+        var targetTeam = await TeamService.GetTeamAsync(input.TargetTeamId);
         if (targetTeam is null)
             return RotaMoveResult.Failure("Target team not found.");
         if (targetTeam.ParentTeamId is not null)
@@ -194,8 +224,8 @@ public sealed class ShiftManagementService(
         if (rota.TeamId == input.TargetTeamId)
             return RotaMoveResult.Failure("Rota is already in this team.");
 
-        // Fetch the old team name via ITeamService - no cross-domain Include.
-        var oldTeam = await TeamService.GetTeamByIdAsync(rota.TeamId);
+        // Fetch the old team name via the Teams read model - no cross-domain Include.
+        var oldTeam = await TeamService.GetTeamAsync(rota.TeamId);
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
         // Targeted write: only TeamId + UpdatedAt are marked modified so concurrent edits don't clobber.
@@ -275,7 +305,7 @@ public sealed class ShiftManagementService(
             max, cancellationToken);
         if (rotas.Count == 0) return [];
 
-        // Stitch team names via ITeamService — cross-domain (§6).
+        // Stitch team names via the Teams read model — cross-domain (§6).
         var teamIds = rotas.Select(r => r.TeamId).Distinct().ToList();
         var teamsById = await TeamService.GetTeamsAsync(cancellationToken);
         var teamNames = teamIds
@@ -616,7 +646,7 @@ public sealed class ShiftManagementService(
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
 
         var now = clock.GetCurrentInstant();
         var urgentShifts = shifts
@@ -686,7 +716,7 @@ public sealed class ShiftManagementService(
 
         // Cross-domain lookups via services.
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
 
         IReadOnlyDictionary<Guid, UserInfo>? userLookup = null;
         if (includeSignups)
@@ -962,13 +992,13 @@ public sealed class ShiftManagementService(
         if (teamIdsWithRotas.Count == 0) return [];
 
         // Brings rota-owning teams + parents in one lookup (avoids second hop for sub-team rotas).
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas, ct);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsWithRotas, ct);
 
         var allRotas = await repo.GetRotasWithShiftsAndSignupsAsync(
             eventSettingsId, teamIdsWithRotas.ToList(), ct);
 
         // Pie-eligible teams = top-level departments + promoted sub-teams.
-        var pieTeams = teamLookup.Values.Where(t => t.IsInDirectory).ToList();
+        var pieTeams = teamLookup.Values.Where(IsInDirectory).ToList();
         var pieTeamIds = pieTeams.Select(t => t.Id).ToHashSet();
 
         var requested = new Dictionary<Guid, decimal>();
@@ -1029,7 +1059,7 @@ public sealed class ShiftManagementService(
 
         // Filter parents back out — only rota-owning teams belong in the department dropdown.
         var rotaOwningIds = teamIds.ToHashSet();
-        var teams = await TeamService.GetByIdsWithParentsAsync(teamIds);
+        var teams = await GetTeamLookupWithParentsAsync(teamIds);
         return teams.Values
             .Where(t => rotaOwningIds.Contains(t.Id))
             .Select(t => (t.Id, t.Name))
@@ -1131,12 +1161,12 @@ public sealed class ShiftManagementService(
         var staleThreshold = clock.GetCurrentInstant().Minus(Duration.FromDays(3));
         var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold);
 
-        // Teams resolved via ITeamService — no cross-domain navigation.
+        // Teams resolved via the Teams read model — no cross-domain navigation.
         var teamIdsOnRotas = shifts
             .Select(s => s.Rota.TeamId)
             .Distinct()
             .ToList();
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsOnRotas);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas);
 
         var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
@@ -1158,7 +1188,7 @@ public sealed class ShiftManagementService(
         IReadOnlyList<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
         EventSettings es,
-        IReadOnlyDictionary<Guid, Team> teamLookup)
+        IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
         // Helper: resolve the department ID (parent team if any, else own team) for a shift.
         Guid DeptIdOf(Shift s)
@@ -1313,28 +1343,11 @@ public sealed class ShiftManagementService(
         if (pendingCounts.Count == 0)
             return [];
 
-        // Walk up parents until fixed-point (GetByIdsWithParentsAsync gives one level per call).
-        var teamMeta = new Dictionary<Guid, Team>();
-        var pendingFetch = pendingCounts.Keys.ToHashSet();
-        while (pendingFetch.Count > 0)
-        {
-            var toFetch = pendingFetch.Where(id => !teamMeta.ContainsKey(id)).ToList();
-            if (toFetch.Count == 0) break;
+        var teamsById = await TeamService.GetTeamsAsync();
+        var teamMeta = IncludeParents(teamsById, pendingCounts.Keys);
 
-            var fetched = await TeamService.GetByIdsWithParentsAsync(toFetch);
-            foreach (var kvp in fetched)
-            {
-                teamMeta[kvp.Key] = kvp.Value;
-            }
-
-            pendingFetch = fetched.Values
-                .Where(t => t.ParentTeamId.HasValue && !teamMeta.ContainsKey(t.ParentTeamId.Value))
-                .Select(t => t.ParentTeamId!.Value)
-                .ToHashSet();
-        }
-
-        var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys);
-        foreach (var id in pendingCounts.Keys.ToList())
+        var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys.Where(teamMeta.ContainsKey));
+        foreach (var id in relevantTeamIds.ToList())
         {
             var current = teamMeta.GetValueOrDefault(id);
             while (current?.ParentTeamId is Guid parentId && teamMeta.ContainsKey(parentId))
@@ -1345,7 +1358,6 @@ public sealed class ShiftManagementService(
             }
         }
 
-        var teamsById = await TeamService.GetTeamsAsync();
         var coordsRaw = relevantTeamIds
             .Where(teamsById.ContainsKey)
             .SelectMany(id => teamsById[id].Members
@@ -1521,7 +1533,7 @@ public sealed class ShiftManagementService(
         var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         var teamIdsOnRotas = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsOnRotas);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas);
 
         (Guid Id, string Name) DeptOf(Shift s)
         {
@@ -1594,7 +1606,7 @@ public sealed class ShiftManagementService(
         var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
         var teamIds = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
 
         var days = dayOffsets
             .Select(off =>
@@ -1607,7 +1619,7 @@ public sealed class ShiftManagementService(
             .ToList();
 
         // Display team: top-level → self; promoted subteam → self; non-promoted subteam → parent.
-        Team? DisplayTeamFor(Shift s)
+        TeamInfo? DisplayTeamFor(Shift s)
         {
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
             if (team.ParentTeamId is null) return team;
@@ -1618,7 +1630,7 @@ public sealed class ShiftManagementService(
         // One row per directory team (top-level always; subteams only if IsPromotedToDirectory).
         var shiftsByDisplayTeam = allShifts
             .Select(s => (Shift: s, Team: DisplayTeamFor(s)))
-            .Where(x => x.Team?.IsInDirectory == true)
+            .Where(x => x.Team is not null && IsInDirectory(x.Team))
             .GroupBy(x => x.Team!.Id, x => x.Shift)
             .ToList();
 

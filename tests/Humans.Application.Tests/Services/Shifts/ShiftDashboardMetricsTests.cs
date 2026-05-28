@@ -32,14 +32,16 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         : base(TestNow)
     {
         // The dashboard compute methods now reach cross-domain data through
-        // ITicketService / ITeamService / IUserService. Wire thin fakes that
+        // ITicketServiceRead / ITeamServiceRead / IUserServiceRead. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
         // test seed helpers still drive the scenarios end-to-end. The repository
         // is backed by the same in-memory options via TestDbContextFactory.
         var fakeUserService = new FakeUserService(Db);
         var fakeTicketService = new FakeTicketQueryService(Db);
+        var fakeTeamService = new FakeTeamService(Db);
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamService>(new FakeTeamService(Db))
+            .With<ITeamService>(fakeTeamService)
+            .With<ITeamServiceRead>(fakeTeamService)
             .With<ITicketService>(fakeTicketService)
             .With<ITicketServiceRead>(fakeTicketService)
             .With<IUserService>(fakeUserService)

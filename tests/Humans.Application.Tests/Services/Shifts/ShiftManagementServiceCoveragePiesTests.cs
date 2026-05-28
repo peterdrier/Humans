@@ -16,7 +16,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
 {
-    private readonly ITeamService _teamService;
+    private readonly ITeamServiceRead _teamService;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -24,26 +24,23 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public ShiftManagementServiceCoveragePiesTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
 
-        // Resolve teams (with their parents) directly from the in-memory DB —
-        // the production wrapper does the same join in SQL.
-        _teamService.GetByIdsWithParentsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                var direct = Db.Teams.Where(t => ids.Contains(t.Id)).AsEnumerable().ToList();
-                var parentIds = direct.Where(t => t.ParentTeamId.HasValue).Select(t => t.ParentTeamId!.Value).ToList();
-                var parents = parentIds.Count == 0
-                    ? []
-                    : Db.Teams.Where(t => parentIds.Contains(t.Id)).AsEnumerable().ToList();
-                var all = direct.Concat(parents).GroupBy(t => t.Id).Select(g => g.First());
-                return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(all.ToDictionary(t => t.Id));
-            });
+        // Resolve teams from the same in-memory DB as the repo; production reads
+        // the cached TeamInfo projection and walks parents in memory.
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                Db.Teams.AsEnumerable().ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory, t.CreatedAt,
+                        Members: [],
+                        ParentTeamId: t.ParentTeamId))));
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService)
+            .With<ITeamServiceRead>(_teamService)
             .With<IRoleAssignmentService>()
             .With<IUserService>()
             .Build();
@@ -133,9 +130,8 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task NonPromotedSubteam_WhenParentOwnsNoRota_StillRollsUpToParent()
     {
         // Parent (Art) owns NO rota of its own; only the non-promoted subteam
-        // (Art / Lighting) has a rota. GetByIdsWithParentsAsync must include
-        // Art in the team lookup so the bucket rollup finds a target —
-        // otherwise the subteam's hours would be silently dropped.
+        // (Art / Lighting) has a rota. The TeamInfo parent walk must include
+        // Art in the team lookup so the bucket rollup finds a target.
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
         AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);

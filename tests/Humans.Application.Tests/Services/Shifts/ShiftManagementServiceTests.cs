@@ -20,7 +20,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class ShiftManagementServiceTests : ServiceTestHarness
 {
-    private readonly ITeamService _teamService;
+    private readonly ITeamServiceRead _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ShiftManagementService _service;
@@ -30,7 +30,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public ShiftManagementServiceTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamService>();
+        _teamService = Substitute.For<ITeamServiceRead>();
         _userService = Substitute.For<IUserService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
@@ -50,34 +50,21 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             });
         _userService.StubGetUserInfosFromContext(Db);
 
-        _teamService.GetByIdsWithParentsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(
-                    Db.Teams
-                        .Where(t => ids.Contains(t.Id))
-                        .AsEnumerable()
-                        .ToDictionary(t => t.Id));
-            });
-
-        _teamService.GetAllTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<Team>>(Db.Teams.AsEnumerable().ToList()));
-
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
                 Db.Teams.AsEnumerable().ToDictionary(
                     t => t.Id,
-                    t => new TeamInfo(
-                        t.Id, t.Name, t.Description, t.Slug,
-                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
-                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory, t.CreatedAt,
-                        Members: [],
-                        ParentTeamId: t.ParentTeamId))));
+                    ToTeamInfo)));
+        _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var id = ci.Arg<Guid>();
+                var team = Db.Teams.AsEnumerable().FirstOrDefault(t => t.Id == id);
+                return Task.FromResult(team is null ? null : ToTeamInfo(team));
+            });
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService)
+            .With<ITeamServiceRead>(_teamService)
             .With(_userService)
             .With<IUserServiceRead>(_userService)
             .With(_roleAssignmentService)
@@ -95,6 +82,14 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             Clock,
             NullLogger<ShiftManagementService>.Instance);
     }
+
+    private static TeamInfo ToTeamInfo(Team team) =>
+        new(
+            team.Id, team.Name, team.Description, team.Slug,
+            team.IsActive, team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval,
+            team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory, team.CreatedAt,
+            Members: [],
+            ParentTeamId: team.ParentTeamId);
 
     // ============================================================
     // CreateBuildStrikeShiftsAsync
@@ -889,17 +884,13 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .Returns(new List<Guid> { subTeamAId });
 
         // subTeamB's parent is department (not in coordinated list)
-        _teamService.GetTeamByIdAsync(subTeamBId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = subTeamBId,
-                Name = "SubTeamB",
-                Slug = "subteam-b",
-                SystemTeamType = SystemTeamType.None,
-                ParentTeamId = departmentId,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            });
+        _teamService.GetTeamAsync(subTeamBId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                subTeamBId, "SubTeamB", null, "subteam-b",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: TestNow, Members: [],
+                ParentTeamId: departmentId));
 
         var result = await _service.IsDeptCoordinatorAsync(userId, subTeamBId);
 
@@ -918,17 +909,12 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .Returns(new List<Guid> { subTeamId });
 
         // Department has no parent
-        _teamService.GetTeamByIdAsync(departmentId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = departmentId,
-                Name = "Department",
-                Slug = "department",
-                SystemTeamType = SystemTeamType.None,
-                ParentTeamId = null,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            });
+        _teamService.GetTeamAsync(departmentId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                departmentId, "Department", null, "department",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: TestNow, Members: []));
 
         var result = await _service.IsDeptCoordinatorAsync(userId, departmentId);
 
@@ -947,17 +933,13 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .Returns(new List<Guid> { departmentId });
 
         // subTeam's parent is department
-        _teamService.GetTeamByIdAsync(subTeamId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = subTeamId,
-                Name = "SubTeam",
-                Slug = "subteam",
-                SystemTeamType = SystemTeamType.None,
-                ParentTeamId = departmentId,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            });
+        _teamService.GetTeamAsync(subTeamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                subTeamId, "SubTeam", null, "subteam",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: TestNow, Members: [],
+                ParentTeamId: departmentId));
 
         var result = await _service.IsDeptCoordinatorAsync(userId, subTeamId);
 
@@ -1201,19 +1183,14 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var actorUserId = Guid.NewGuid();
 
         var sourceTeam = await Db.Teams.FirstAsync(t => t.Id == rota.TeamId);
-        _teamService.GetTeamByIdAsync(rota.TeamId, Arg.Any<CancellationToken>())
-            .Returns(sourceTeam);
-        _teamService.GetTeamByIdAsync(targetTeamId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = targetTeamId,
-                Name = "Target Department",
-                Slug = "target-dept",
-                SystemTeamType = SystemTeamType.None,
-                ParentTeamId = null,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            });
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(ToTeamInfo(sourceTeam));
+        _teamService.GetTeamAsync(targetTeamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                targetTeamId, "Target Department", null, "target-dept",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: TestNow, Members: []));
 
         // Act
         var result = await _service.MoveRotaToTeamAsync(new MoveRotaInput(
