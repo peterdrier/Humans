@@ -917,10 +917,10 @@ public class CampController(
 
         try
         {
-            var result = await _campService.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, userId, user.Id, ct);
-            if (result.Outcome == AddCampMemberAsLeadOutcome.InvalidUser)
+            var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct);
+            if (outcome == AddCampMemberOutcome.InvalidUser)
                 SetError("Please search and select a human first.");
-            else if (result.Outcome == AddCampMemberAsLeadOutcome.NoActiveSeason)
+            else if (outcome == AddCampMemberOutcome.NoActiveSeason)
                 SetError("No active season for this camp.");
             else
                 SetSuccess("Human added to camp.");

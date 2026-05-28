@@ -95,7 +95,7 @@ public interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the request/approve flow for the camp's active season. Idempotent. Caller authorizes.</summary>
-    Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
+    Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -351,11 +351,7 @@ public enum CampMemberRequestNoticeLevel
     Error
 }
 
-public record AddCampMemberAsLeadResult(
-    AddCampMemberAsLeadOutcome Outcome,
-    Guid? CampMemberId = null);
-
-public enum AddCampMemberAsLeadOutcome
+public enum AddCampMemberOutcome
 {
     Added,
     InvalidUser,

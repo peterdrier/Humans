@@ -1023,37 +1023,69 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task AddCampMemberToActiveSeasonAsLead_creates_active_member_and_audits()
+    public async Task AddMemberAndAssignRoleInActiveSeason_creates_active_member_assigns_role_and_audits()
     {
         // Seed a camp + season + a target user
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
-        var leadUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var roleDefinitionId = Guid.NewGuid();
         Db.Camps.Add(camp);
         Db.CampSeasons.Add(season);
         await Db.SaveChangesAsync();
+        _campRoleService.AssignAsync(
+                season.Id, roleDefinitionId, Arg.Any<Guid>(), actorUserId, Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
 
-        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, targetUserId, leadUserId);
+        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
+            camp.Id, roleDefinitionId, targetUserId, actorUserId);
 
-        result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.Added);
-        result.CampMemberId.Should().NotBeNull();
-        var memberId = result.CampMemberId.Value;
+        result.Should().Be(AssignCampRoleOutcome.Assigned);
+        var member = await Db.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == targetUserId);
+        var memberId = member.Id;
         memberId.Should().NotBe(Guid.Empty);
-        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == memberId);
         member.CampSeasonId.Should().Be(season.Id);
-        member.UserId.Should().Be(targetUserId);
         member.Status.Should().Be(CampMemberStatus.Active);
-        member.ConfirmedByUserId.Should().Be(leadUserId);
+        member.ConfirmedByUserId.Should().Be(actorUserId);
+
+        await _campRoleService.Received(1).AssignAsync(
+            season.Id, roleDefinitionId, memberId, actorUserId, Arg.Any<CancellationToken>());
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampMemberAddedByLead,
             nameof(CampMember), memberId,
-            Arg.Any<string>(), leadUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Any<string>(), actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
-    public async Task AddCampMemberToActiveSeasonAsLead_returns_existing_id_when_already_active()
+    public async Task AddCampMemberToActiveSeason_creates_active_member_and_audits()
+    {
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "active-add-camp" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var targetUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        Db.Camps.Add(camp);
+        Db.CampSeasons.Add(season);
+        await Db.SaveChangesAsync();
+
+        var result = await _service.AddCampMemberToActiveSeasonAsync(camp.Id, targetUserId, actorUserId);
+
+        result.Should().Be(AddCampMemberOutcome.Added);
+        var member = await Db.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == targetUserId);
+        member.CampSeasonId.Should().Be(season.Id);
+        member.UserId.Should().Be(targetUserId);
+        member.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedByUserId.Should().Be(actorUserId);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.CampMemberAddedByLead,
+            nameof(CampMember), member.Id,
+            Arg.Any<string>(), actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AddMemberAndAssignRoleInActiveSeason_uses_existing_active_member_without_audit()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp-2" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
@@ -1073,10 +1105,18 @@ public sealed class CampServiceTests : ServiceTestHarness
         Db.CampMembers.Add(existing);
         await Db.SaveChangesAsync();
 
-        var leadId = Guid.NewGuid();
-        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, userId, leadId);
+        var actorUserId = Guid.NewGuid();
+        var roleDefinitionId = Guid.NewGuid();
+        _campRoleService.AssignAsync(
+                season.Id, roleDefinitionId, existing.Id, actorUserId, Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
 
-        result.CampMemberId.Should().Be(existing.Id);
+        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
+            camp.Id, roleDefinitionId, userId, actorUserId);
+
+        result.Should().Be(AssignCampRoleOutcome.Assigned);
+        await _campRoleService.Received(1).AssignAsync(
+            season.Id, roleDefinitionId, existing.Id, actorUserId, Arg.Any<CancellationToken>());
         // No new audit log for an already-active member.
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
@@ -1084,27 +1124,33 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task AddCampMemberToActiveSeasonAsLead_uses_active_season()
+    public async Task AddMemberAndAssignRoleInActiveSeason_uses_active_season()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "active-camp" };
         var inactiveSeason = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2025, Status = CampSeasonStatus.Pending };
         var activeSeason = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var targetUserId = Guid.NewGuid();
-        var leadUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        var roleDefinitionId = Guid.NewGuid();
         Db.Camps.Add(camp);
         await Db.CampSeasons.AddRangeAsync(inactiveSeason, activeSeason);
         await Db.SaveChangesAsync();
+        _campRoleService.AssignAsync(
+                activeSeason.Id, roleDefinitionId, Arg.Any<Guid>(), actorUserId, Arg.Any<CancellationToken>())
+            .Returns(AssignCampRoleOutcome.Assigned);
 
-        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, targetUserId, leadUserId);
+        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
+            camp.Id, roleDefinitionId, targetUserId, actorUserId);
 
-        result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.Added);
-        result.CampMemberId.Should().NotBeNull();
-        var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
+        result.Should().Be(AssignCampRoleOutcome.Assigned);
+        var member = await Db.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == targetUserId);
         member.CampSeasonId.Should().Be(activeSeason.Id);
+        await _campRoleService.Received(1).AssignAsync(
+            activeSeason.Id, roleDefinitionId, member.Id, actorUserId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task AddCampMemberToActiveSeasonAsLead_without_active_season_returns_no_active_season()
+    public async Task AddMemberAndAssignRoleInActiveSeason_without_active_season_does_not_create_member()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Pending };
@@ -1112,10 +1158,10 @@ public sealed class CampServiceTests : ServiceTestHarness
         Db.CampSeasons.Add(season);
         await Db.SaveChangesAsync();
 
-        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(
-            camp.Id, Guid.NewGuid(), Guid.NewGuid());
+        var result = await _service.AddMemberAndAssignRoleInActiveSeasonAsync(
+            camp.Id, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
-        result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.NoActiveSeason);
+        result.Should().Be(AssignCampRoleOutcome.SeasonNotFound);
         (await Db.CampMembers.CountAsync()).Should().Be(0);
     }
 

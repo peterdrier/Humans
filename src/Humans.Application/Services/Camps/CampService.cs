@@ -1573,7 +1573,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             cancellationToken);
     }
 
-    private async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    private async Task<Guid> EnsureActiveCampMemberAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var result = await _repo.AddActiveMembershipAsync(campSeasonId, userId, now, actorUserId, cancellationToken);
@@ -1594,29 +1594,29 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     public Task<Guid> EnsureActiveMemberForMigrationAsync(
         Guid campSeasonId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default) =>
-        AddCampMemberAsLeadAsync(campSeasonId, userId, actorUserId, cancellationToken);
+        EnsureActiveCampMemberAsync(campSeasonId, userId, actorUserId, cancellationToken);
 
-    public async Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
+    public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         if (userId == Guid.Empty)
-            return new AddCampMemberAsLeadResult(AddCampMemberAsLeadOutcome.InvalidUser);
+            return AddCampMemberOutcome.InvalidUser;
 
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         var openSeason = camp?.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         if (openSeason is null)
-            return new AddCampMemberAsLeadResult(AddCampMemberAsLeadOutcome.NoActiveSeason);
+            return AddCampMemberOutcome.NoActiveSeason;
 
-        var memberId = await AddCampMemberAsLeadAsync(openSeason.Id, userId, actorUserId, cancellationToken);
-        return new AddCampMemberAsLeadResult(AddCampMemberAsLeadOutcome.Added, memberId);
+        await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
+        return AddCampMemberOutcome.Added;
     }
 
     private async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
         Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var memberId = await AddCampMemberAsLeadAsync(campSeasonId, userId, actorUserId, cancellationToken);
+        var memberId = await EnsureActiveCampMemberAsync(campSeasonId, userId, actorUserId, cancellationToken);
         return await _campRoleService.Value.AssignAsync(
             campSeasonId, roleDefinitionId, memberId, actorUserId, cancellationToken);
     }

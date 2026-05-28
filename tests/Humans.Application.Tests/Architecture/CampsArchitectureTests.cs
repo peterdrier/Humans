@@ -114,7 +114,7 @@ public class CampsArchitectureTests
             // SeedSystemRolesAndMigrateLeadsAsync reads from the legacy
             // camp_leads + camp_seasons + camp_members tables to migrate
             // existing leads into CampRoleAssignment. Routed through
-            // ICampService.AddCampMemberToActiveSeasonAsLeadAsync via the
+            // ICampRoleCampAccess.EnsureActiveMemberForMigrationAsync via the
             // decorator (which invalidates), so writes still pass through the
             // decorator path. Read-only consumer here.
             "Humans.Application.Services.Camps.CampRoleService",

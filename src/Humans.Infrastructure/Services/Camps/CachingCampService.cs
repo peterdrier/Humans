@@ -369,15 +369,6 @@ public sealed class CachingCampService(
         await InvalidateCampAsync(scopedCampId, cancellationToken);
     }
 
-    public async Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
-        Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsLeadAsync(campId, userId, actorUserId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
-
     public async Task<Guid> EnsureActiveMemberForMigrationAsync(
         Guid campSeasonId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
@@ -386,6 +377,16 @@ public sealed class CachingCampService(
             campSeasonId, userId, actorUserId, cancellationToken));
         await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
         return memberId;
+    }
+
+    public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
+        Guid campId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
+            campId, userId, actorUserId, cancellationToken));
+        await InvalidateCampAsync(campId, cancellationToken);
+        return result;
     }
 
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
