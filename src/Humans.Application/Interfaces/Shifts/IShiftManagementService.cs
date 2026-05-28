@@ -193,18 +193,6 @@ public interface IShiftManagementService : IApplicationService
         Guid eventSettingsId);
 
     /// <summary>
-    /// Returns the subset of <paramref name="teamIds"/> that have at least
-    /// one rota with at least one shift in the given event. Used by team-page
-    /// aggregation to surface "N sub-teams have shifts" without letting the
-    /// Team Page section read <c>rotas</c> or <c>shifts</c> directly
-    /// (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns one row per department pie shown above the /Shifts page.
     /// Pie-eligible teams = top-level departments + promoted sub-teams
     /// (<see cref="Team.IsInDirectory"/>). Non-promoted sub-team rotas roll
@@ -368,7 +356,8 @@ public record ShiftsSummaryData(
     int TotalSlots,
     int ConfirmedCount,
     int PendingCount,
-    int UniqueVolunteerCount);
+    int UniqueVolunteerCount,
+    IReadOnlySet<Guid> TeamIdsWithShifts);
 
 /// <summary>
 /// One pie shown above the /Shifts page. Hours are decimal so callers can

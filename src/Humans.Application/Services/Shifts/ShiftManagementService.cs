@@ -929,14 +929,12 @@ public sealed class ShiftManagementService(
                 .Where(s => s.Status == SignupStatus.Confirmed)
                 .Select(s => s.UserId)
                 .Distinct()
-                .Count());
+                .Count(),
+            TeamIdsWithShifts: rotas
+                .Where(r => r.Shifts.Count > 0)
+                .Select(r => r.TeamId)
+                .ToHashSet());
     }
-
-    public Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default) =>
-        repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
 
     public async Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
         Guid eventSettingsId,
