@@ -200,8 +200,7 @@ public class ShiftsControllerDietaryGateTests
     public async Task SignUpRange_DietaryEmpty_RangeHasQualifyingShift_RedirectsToDietaryMedical()
     {
         var rotaId = Guid.NewGuid();
-        _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
-                      .Returns(new[] { BuildShift(Guid.NewGuid(), qualifiesForCantina: true) });
+        SetRotaView(rotaId, BuildShift(Guid.NewGuid(), qualifiesForCantina: true));
         SetDietary(null);
 
         var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
@@ -222,8 +221,7 @@ public class ShiftsControllerDietaryGateTests
     public async Task SignUpRange_DietaryEmpty_RangeEmpty_ProceedsToSignup()
     {
         var rotaId = Guid.NewGuid();
-        _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
-                      .Returns(Array.Empty<Shift>());
+        SetRotaView(rotaId);
         SetDietary(null);
         _signupService.SignUpRangeAsync(_user.Id, rotaId, 0, 2, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
@@ -284,6 +282,10 @@ public class ShiftsControllerDietaryGateTests
         return result.Should().BeOfType<ViewResult>()
                      .Which.Model.Should().BeOfType<Humans.Web.Models.MyShiftsViewModel>().Subject;
     }
+
+    private void SetRotaView(Guid rotaId, params Shift[] shifts) =>
+        _shiftView.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ShiftRotaView(rotaId, new Rota { Id = rotaId }, shifts, [], []));
 
     // All-day shifts qualify; this is the simplest knob to flip the
     // QualifiesForCantinaMeal() check without fabricating Duration values.
