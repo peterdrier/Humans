@@ -91,23 +91,23 @@ public sealed class MailerAdminController(
     public async Task<IActionResult> Debug(
         string key,
         [FromQuery(Name = "exp.page")] int expectedPage = 1,
-        [FromQuery(Name = "exp.size")] int expectedSize = 50,
+        [FromQuery(Name = "exp.size")] int expectedSize = 20,
         [FromQuery(Name = "exp.sort")] string expectedSort = "name",
         [FromQuery(Name = "exp.desc")] bool expectedDesc = false,
         [FromQuery(Name = "ml.page")] int mlPage = 1,
-        [FromQuery(Name = "ml.size")] int mlSize = 50,
+        [FromQuery(Name = "ml.size")] int mlSize = 20,
         [FromQuery(Name = "ml.sort")] string mlSort = "name",
         [FromQuery(Name = "ml.desc")] bool mlDesc = false,
         [FromQuery(Name = "add.page")] int addPage = 1,
-        [FromQuery(Name = "add.size")] int addSize = 50,
+        [FromQuery(Name = "add.size")] int addSize = 20,
         [FromQuery(Name = "add.sort")] string addSort = "name",
         [FromQuery(Name = "add.desc")] bool addDesc = false,
         [FromQuery(Name = "rem.page")] int removePage = 1,
-        [FromQuery(Name = "rem.size")] int removeSize = 50,
+        [FromQuery(Name = "rem.size")] int removeSize = 20,
         [FromQuery(Name = "rem.sort")] string removeSort = "name",
         [FromQuery(Name = "rem.desc")] bool removeDesc = false,
         [FromQuery(Name = "np.page")] int nonPrimaryPage = 1,
-        [FromQuery(Name = "np.size")] int nonPrimarySize = 50,
+        [FromQuery(Name = "np.size")] int nonPrimarySize = 20,
         [FromQuery(Name = "np.sort")] string nonPrimarySort = "name",
         [FromQuery(Name = "np.desc")] bool nonPrimaryDesc = false,
         CancellationToken ct = default)
@@ -121,7 +121,7 @@ public sealed class MailerAdminController(
 
         var snapshot = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, _users, logger, ct);
 
-        var options = new DebugTableOptions(PageSizes: [50, 100, 200], DefaultPageSize: 50);
+        var options = new DebugTableOptions(PageSizes: [20, 50, 100, 200], DefaultPageSize: 20);
         var vm = new MailerAudienceDebugViewModel(
             SelectedKey: audience.Key,
             SelectedGroupName: audience.DisplayName,
