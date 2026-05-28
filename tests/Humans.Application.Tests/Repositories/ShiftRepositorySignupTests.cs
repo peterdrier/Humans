@@ -108,12 +108,12 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Add_AndSaveChangesAsync_Persists()
+    public async Task AddRange_AndSaveChangesAsync_Persists()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
 
-        _repo.Add(MakeSignup(userId, shiftId, SignupStatus.Pending));
+        _repo.AddRange([MakeSignup(userId, shiftId, SignupStatus.Pending)]);
         await _repo.SaveChangesAsync();
 
         (await _dbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId))

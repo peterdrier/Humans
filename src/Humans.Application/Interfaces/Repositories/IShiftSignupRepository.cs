@@ -195,14 +195,6 @@ public interface IShiftSignupRepository : IRepository
     // ============================================================
 
     /// <summary>
-    /// Adds a new <see cref="ShiftSignup"/> to the context without committing.
-    /// Call <see cref="SaveChangesAsync"/> afterwards — typically the caller
-    /// has already issued a mutation-load and wants a single transaction for
-    /// the add + state change.
-    /// </summary>
-    void Add(ShiftSignup signup);
-
-    /// <summary>
     /// Adds many <see cref="ShiftSignup"/> rows to the context without
     /// committing.
     /// </summary>
@@ -213,7 +205,7 @@ public interface IShiftSignupRepository : IRepository
     /// Entities loaded via <see cref="GetByIdForMutationAsync"/> or
     /// <see cref="GetBlockForMutationAsync"/> and mutated by the caller are
     /// persisted here, along with any <see cref="Add"/>/<see cref="AddRange"/>
-    /// calls made in the same request.
+    /// <see cref="AddRange"/> calls made in the same request.
     /// </summary>
     Task SaveChangesAsync(CancellationToken ct = default);
 

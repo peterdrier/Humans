@@ -223,8 +223,6 @@ internal sealed partial class ShiftRepository
     // Writes — ShiftSignup
     // ============================================================
 
-    public void Add(ShiftSignup signup) => _dbContext.ShiftSignups.Add(signup);
-
     public void AddRange(IEnumerable<ShiftSignup> signups) => _dbContext.ShiftSignups.AddRange(signups);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _dbContext.SaveChangesAsync(ct);

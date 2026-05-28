@@ -102,7 +102,7 @@ public sealed class ShiftSignupService(
             signup.ReviewedAt = now;
         }
 
-        repo.Add(signup);
+        repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(userId);
@@ -283,7 +283,7 @@ public sealed class ShiftSignupService(
             UpdatedAt = now
         };
 
-        repo.Add(signup);
+        repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(userId);
@@ -400,7 +400,7 @@ public sealed class ShiftSignupService(
                 UpdatedAt = now
             };
 
-            repo.Add(signup);
+            repo.AddRange([signup]);
             firstSignup ??= signup;
             voluntoldForAudit.Add((signup, shift.DayOffset));
         }
@@ -667,7 +667,7 @@ public sealed class ShiftSignupService(
                 signup.ReviewedAt = now;
             }
 
-            repo.Add(signup);
+            repo.AddRange([signup]);
             lastSignup = signup;
             rangeSignupsForAudit.Add((signup, shift.DayOffset));
         }
