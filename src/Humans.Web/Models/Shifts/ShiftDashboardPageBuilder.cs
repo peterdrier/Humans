@@ -39,12 +39,7 @@ public sealed class ShiftDashboardPageBuilder(
             request.SubPeriod);
         var staffingData = await shiftManagement.GetStaffingDataAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
         var staffingHours = await shiftManagement.GetStaffingHoursAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
-        var overview = await shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod);
-        var coordinatorActivity = await shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod);
-        var trends = await shiftManagement.GetDashboardTrendsAsync(es.Id, TrendWindow.All, request.Period, request.SubPeriod);
-        var dailyDeptStaffing = await shiftManagement.GetDailyDepartmentStaffingAsync(es.Id, request.Period, request.SubPeriod);
-        var shiftDurationBreakdown = await shiftManagement.GetShiftDurationBreakdownAsync(es.Id, request.Period, request.SubPeriod);
-        var coverageHeatmap = await shiftManagement.GetCoverageHeatmapAsync(es.Id, request.Period, request.SubPeriod);
+        var dashboardMetrics = await shiftManagement.GetDashboardMetricsAsync(es.Id, request.Period, request.SubPeriod);
         var deptTuples = await shiftManagement.GetDepartmentsWithRotasAsync(es.Id);
 
         return new ShiftDashboardViewModel
@@ -64,12 +59,12 @@ public sealed class ShiftDashboardPageBuilder(
             EventSettings = es,
             StaffingData = staffingData.ToList(),
             StaffingHours = staffingHours.ToList(),
-            Overview = overview,
-            CoordinatorActivity = coordinatorActivity,
-            Trends = trends,
-            DailyDepartmentStaffing = dailyDeptStaffing,
-            ShiftDurationBreakdown = shiftDurationBreakdown,
-            CoverageHeatmap = coverageHeatmap,
+            Overview = dashboardMetrics.Overview,
+            CoordinatorActivity = dashboardMetrics.CoordinatorActivity,
+            Trends = dashboardMetrics.Trends,
+            DailyDepartmentStaffing = dashboardMetrics.DailyDepartmentStaffing,
+            ShiftDurationBreakdown = dashboardMetrics.ShiftDurationBreakdown,
+            CoverageHeatmap = dashboardMetrics.CoverageHeatmap,
             TrendWindow = request.TrendWindow,
             IsDevelopment = environment.IsDevelopment(),
             Countdown = BuildCountdown(es)

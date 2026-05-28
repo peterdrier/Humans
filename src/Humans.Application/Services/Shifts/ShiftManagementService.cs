@@ -1084,7 +1084,19 @@ public sealed class ShiftManagementService(
         }
     }
 
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
+    public async Task<ShiftDashboardMetrics> GetDashboardMetricsAsync(
+        Guid eventSettingsId,
+        ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null) =>
+        new(
+            await GetDashboardOverviewAsync(eventSettingsId, period, subPeriod),
+            await GetCoordinatorActivityAsync(eventSettingsId, period, subPeriod),
+            await GetDashboardTrendsAsync(eventSettingsId, TrendWindow.All, period, subPeriod),
+            await GetDailyDepartmentStaffingAsync(eventSettingsId, period, subPeriod),
+            await GetShiftDurationBreakdownAsync(eventSettingsId, period, subPeriod),
+            await GetCoverageHeatmapAsync(eventSettingsId, period, subPeriod));
+
+    internal async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
         // Sub-period results aren't cached (4× key fan-out); base period overview is.
         if (subPeriod is not null)
@@ -1308,7 +1320,7 @@ public sealed class ShiftManagementService(
         return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
+    internal async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
         // Sub-period bypasses cache (4× key fan-out).
         if (subPeriod is not null)
@@ -1431,7 +1443,7 @@ public sealed class ShiftManagementService(
         }
     }
 
-    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
+    internal async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
@@ -1507,7 +1519,7 @@ public sealed class ShiftManagementService(
         return points;
     }
 
-    public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
+    internal async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         // Only meaningful for Build/Strike; Event planning has different day-over-day dynamics.
@@ -1579,7 +1591,7 @@ public sealed class ShiftManagementService(
         return results;
     }
 
-    public async Task<CoverageHeatmap> GetCoverageHeatmapAsync(
+    internal async Task<CoverageHeatmap> GetCoverageHeatmapAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         var empty = new CoverageHeatmap(
@@ -1705,7 +1717,7 @@ public sealed class ShiftManagementService(
         return (filled, total, ratio);
     }
 
-    public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
+    internal async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         if (period is null) return [];
