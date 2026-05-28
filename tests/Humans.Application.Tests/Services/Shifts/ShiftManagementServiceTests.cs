@@ -447,7 +447,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
         // Assert: only Confirmed and Pending signups returned
         results.Should().HaveCount(1);
@@ -470,7 +472,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
         // Assert: Confirmed (Zara) first, then Pending (Alice), regardless of name order
         var signups = results[0].Signups;
@@ -492,7 +496,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: false);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id));
 
         // Assert: signups list is empty even though shift has signups
         results.Should().HaveCount(1);
@@ -554,7 +558,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var results = await _service.GetBrowseShiftsAsync(es.Id, priorityOnly: true);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            Flags: ShiftBrowseQueryFlags.PriorityOnly));
 
         // Assert: only the Important rota's shift and the understaffed Normal rota's shift remain.
         results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([
@@ -632,7 +638,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedShift(promotedRota, dayOffset: 1);
         await Db.SaveChangesAsync();
 
-        var results = await _service.GetBrowseShiftsAsync(es.Id, departmentId: parentTeamId);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            DepartmentId: parentTeamId));
 
         results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([
             parentRota.Id,
@@ -681,7 +689,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedShift(promotedRota, dayOffset: 1);
         await Db.SaveChangesAsync();
 
-        var results = await _service.GetBrowseShiftsAsync(es.Id, departmentId: promotedSubTeam.Id);
+        var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            DepartmentId: promotedSubTeam.Id));
 
         results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([promotedRota.Id]);
     }

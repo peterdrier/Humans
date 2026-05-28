@@ -95,9 +95,9 @@ public class OnboardingWidgetController(
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
         // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
-        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(
-            es.Id, includeAdminOnly: false, includeSignups: true,
-            includeHidden: false, priorityOnly: false);
+        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            Flags: ShiftBrowseQueryFlags.IncludeSignups));
         var (shiftIds, statuses) = await signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);

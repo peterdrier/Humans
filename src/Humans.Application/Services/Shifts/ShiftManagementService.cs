@@ -648,23 +648,24 @@ public sealed class ShiftManagementService(
         return urgentShifts;
     }
 
-    public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
-        Guid eventSettingsId, Guid? departmentId = null,
-        LocalDate? fromDate = null, LocalDate? toDate = null,
-        bool includeAdminOnly = false, bool includeSignups = false,
-        bool includeHidden = false, bool priorityOnly = false)
+    public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query)
     {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var es = await repo.GetEventSettingsByIdAsync(query.EventSettingsId);
         if (es is null) return [];
 
-        int? fromOffset = fromDate.HasValue
-            ? Period.Between(es.GateOpeningDate, fromDate.Value, PeriodUnits.Days).Days
+        int? fromOffset = query.FromDate.HasValue
+            ? Period.Between(es.GateOpeningDate, query.FromDate.Value, PeriodUnits.Days).Days
             : null;
-        int? toOffset = toDate.HasValue
-            ? Period.Between(es.GateOpeningDate, toDate.Value, PeriodUnits.Days).Days
+        int? toOffset = query.ToDate.HasValue
+            ? Period.Between(es.GateOpeningDate, query.ToDate.Value, PeriodUnits.Days).Days
             : null;
 
-        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+        var includeAdminOnly = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeAdminOnly);
+        var includeSignups = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeSignups);
+        var includeHidden = query.Flags.HasFlag(ShiftBrowseQueryFlags.IncludeHidden);
+        var priorityOnly = query.Flags.HasFlag(ShiftBrowseQueryFlags.PriorityOnly);
+
+        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(query.DepartmentId);
 
         var flags = ShiftEventQueryFlags.IncludeSignups | ShiftEventQueryFlags.IncludeRotaTags;
         if (!includeAdminOnly)
@@ -673,7 +674,7 @@ public sealed class ShiftManagementService(
             flags |= ShiftEventQueryFlags.ExcludeHiddenRotas;
 
         IReadOnlyList<Shift> shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
-            eventSettingsId,
+            query.EventSettingsId,
             departmentTeamIds,
             fromOffset,
             toOffset,

@@ -156,8 +156,10 @@ public sealed class WidgetGalleryController(
             var sampleRotaShifts = new List<ShiftDisplayItem>();
             if (rota is not null && sampleDeptId is not null)
             {
-                var browse = await shiftMgmt.GetBrowseShiftsAsync(
-                    es.Id, departmentId: sampleDeptId.Value, includeSignups: true);
+                var browse = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+                    es.Id,
+                    sampleDeptId.Value,
+                    Flags: ShiftBrowseQueryFlags.IncludeSignups));
                 sampleRotaShifts = browse
                     .Where(u => u.Shift.RotaId == rota.Id)
                     .OrderBy(u => u.Shift.DayOffset)

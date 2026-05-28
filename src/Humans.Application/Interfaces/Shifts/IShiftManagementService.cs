@@ -179,11 +179,7 @@ public interface IShiftManagementService : IApplicationService
     /// or whose rota has any shift where confirmed-signup count is below
     /// <see cref="Shift.MinVolunteers"/> (i.e. understaffed).
     /// </summary>
-    Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
-        Guid eventSettingsId, Guid? departmentId = null,
-        LocalDate? fromDate = null, LocalDate? toDate = null,
-        bool includeAdminOnly = false, bool includeSignups = false,
-        bool includeHidden = false, bool priorityOnly = false);
+    Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
 
     /// <summary>
     /// Calculates the urgency score for a single shift.
@@ -401,6 +397,23 @@ public record UrgentShift(
     int RemainingSlots,
     string DepartmentName,
     IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status)> Signups);
+
+[Flags]
+public enum ShiftBrowseQueryFlags
+{
+    None = 0,
+    IncludeAdminOnly = 1,
+    IncludeSignups = 2,
+    IncludeHidden = 4,
+    PriorityOnly = 8
+}
+
+public sealed record ShiftBrowseQuery(
+    Guid EventSettingsId,
+    Guid? DepartmentId = null,
+    LocalDate? FromDate = null,
+    LocalDate? ToDate = null,
+    ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None);
 
 /// <summary>
 /// Per-day staffing data for set-up/event/strike visualization.

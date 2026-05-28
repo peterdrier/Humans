@@ -60,14 +60,16 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
             }
         }
 
-        var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(
+        var browseFlags = ShiftBrowseQueryFlags.IncludeSignups;
+        if (request.IsPrivileged)
+            browseFlags |= ShiftBrowseQueryFlags.IncludeAdminOnly | ShiftBrowseQueryFlags.IncludeHidden;
+
+        var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
-            departmentId: request.DepartmentId,
-            fromDate: filterFromDate,
-            toDate: filterToDate,
-            includeAdminOnly: request.IsPrivileged,
-            includeSignups: true,
-            includeHidden: request.IsPrivileged);
+            request.DepartmentId,
+            filterFromDate,
+            filterToDate,
+            browseFlags));
 
         var periodFilteredShifts = postFilterByPeriod
             ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
