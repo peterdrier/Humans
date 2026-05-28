@@ -106,14 +106,19 @@ public partial interface ICampRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Loads the camp tracked inside a short-lived save context, applies
-    /// <paramref name="mutate"/> to the tracked entity, and saves. Returns
-    /// false if not found. Mirrors <see cref="UpdateSeasonAsync"/> for
-    /// camp-level scalar edits.
+    /// Updates mutable camp-level fields by id. Returns false if the camp was
+    /// not found.
     /// </summary>
-    Task<bool> UpdateCampAsync(
+    Task<bool> UpdateCampFieldsAsync(
         Guid campId,
-        Action<Camp> mutate,
+        string contactEmail,
+        string contactPhone,
+        string? webOrSocialUrl,
+        IReadOnlyList<Domain.ValueObjects.CampLink>? links,
+        bool isSwissCamp,
+        int timesAtNowhere,
+        bool hideHistoricalNames,
+        Instant updatedAt,
         CancellationToken ct = default);
 
     /// <summary>
