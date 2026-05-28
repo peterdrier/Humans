@@ -1,9 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -16,16 +17,16 @@ namespace Humans.Application.Tests.Services;
 /// Unit tests for the Application-layer <see cref="TicketingBudgetService"/>.
 /// Covers the ISO-week bucketing, exclusion of the current (not-yet-complete)
 /// week, and delegation of Budget-owned mutations to <see cref="IBudgetService"/>.
-/// Repository reads are stubbed via NSubstitute; no DB involvement.
+/// Ticket reads are stubbed via NSubstitute; no DB involvement.
 /// </summary>
 public class TicketingBudgetServiceTests
 {
-    private readonly ITicketingBudgetRepository _repo = Substitute.For<ITicketingBudgetRepository>();
+    private readonly ITicketServiceRead _ticketService = Substitute.For<ITicketServiceRead>();
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 11, 9, 0)); // Wed 11 Mar 2026
 
     private TicketingBudgetService CreateSut() =>
-        new(_repo, _budgetService, _clock, NullLogger<TicketingBudgetService>.Instance);
+        new(_ticketService, _budgetService, _clock, NullLogger<TicketingBudgetService>.Instance);
 
     [HumansFact]
     public async Task SyncActualsAsync_BucketsByIsoWeek_AndExcludesCurrentWeek()
@@ -37,12 +38,22 @@ public class TicketingBudgetServiceTests
         var inCompletedWeekB = Instant.FromUtc(2026, 3, 7, 22, 30); // Sat
         var inCurrentWeek = Instant.FromUtc(2026, 3, 10, 7, 0);  // Tue (current week)
 
-        _repo.GetPaidOrderSummariesAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<PaidTicketOrderSummary>
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
             {
-                new(inCompletedWeekA, 100m, 2m, 1m, TicketCount: 2),
-                new(inCompletedWeekB, 50m, 1.5m, 0.5m, TicketCount: 1),
-                new(inCurrentWeek, 999m, 10m, 5m, TicketCount: 10),
+                BuildOrder(inCompletedWeekA, 100m, 2m, 1m, TicketAttendeeStatus.Valid, TicketAttendeeStatus.CheckedIn),
+                BuildOrder(inCompletedWeekB, 50m, 1.5m, 0.5m, TicketAttendeeStatus.Valid),
+                BuildOrder(inCurrentWeek, 999m, 10m, 5m,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.CheckedIn,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.Valid),
             });
 
         List<TicketingWeeklyActuals>? capturedActuals = null;
@@ -70,14 +81,50 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
+    public async Task SyncActualsAsync_IgnoresNonPaidOrders()
+    {
+        var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
+            {
+                BuildOrder(purchasedAt, 100m, 2m, 1m, TicketAttendeeStatus.Valid),
+                BuildOrder(
+                    purchasedAt,
+                    999m,
+                    10m,
+                    5m,
+                    TicketPaymentStatus.Pending,
+                    TicketAttendeeStatus.Valid,
+                    TicketAttendeeStatus.CheckedIn),
+            });
+
+        List<TicketingWeeklyActuals>? capturedActuals = null;
+        _budgetService.SyncTicketingActualsAsync(
+                Arg.Any<Guid>(),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var sut = CreateSut();
+
+        await sut.SyncActualsAsync(Guid.NewGuid());
+
+        capturedActuals.Should().NotBeNull().And.ContainSingle();
+        capturedActuals![0].TicketCount.Should().Be(1);
+        capturedActuals[0].Revenue.Should().Be(100m);
+        capturedActuals[0].StripeFees.Should().Be(2m);
+        capturedActuals[0].TicketTailorFees.Should().Be(1m);
+    }
+
+    [HumansFact]
     public async Task SyncActualsAsync_TreatsNullFeesAsZero()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
-        _repo.GetPaidOrderSummariesAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<PaidTicketOrderSummary>
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
             {
-                new(purchasedAt, 100m, StripeFee: null, ApplicationFee: null, TicketCount: 2),
-                new(purchasedAt,  50m, StripeFee: 1m,   ApplicationFee: 0.2m, TicketCount: 1),
+                BuildOrder(purchasedAt, 100m, stripeFee: null, applicationFee: null, TicketAttendeeStatus.Valid, TicketAttendeeStatus.CheckedIn),
+                BuildOrder(purchasedAt, 50m, stripeFee: 1m, applicationFee: 0.2m, TicketAttendeeStatus.Valid),
             });
 
         List<TicketingWeeklyActuals>? capturedActuals = null;
@@ -102,10 +149,10 @@ public class TicketingBudgetServiceTests
     {
         // Only orders inside the current week: nothing should be synced.
         var inCurrentWeek = Instant.FromUtc(2026, 3, 10, 12, 0);
-        _repo.GetPaidOrderSummariesAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<PaidTicketOrderSummary>
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>
             {
-                new(inCurrentWeek, 75m, 2m, 0.5m, TicketCount: 1),
+                BuildOrder(inCurrentWeek, 75m, 2m, 0.5m, TicketAttendeeStatus.Valid),
             });
 
         List<TicketingWeeklyActuals>? capturedActuals = null;
@@ -214,5 +261,55 @@ public class TicketingBudgetServiceTests
         var sut = CreateSut();
 
         sut.GetActualTicketsSold(group).Should().Be(187);
+    }
+
+    private static TicketOrderInfo BuildOrder(
+        Instant purchasedAt,
+        decimal totalAmount,
+        decimal? stripeFee,
+        decimal? applicationFee,
+        params TicketAttendeeStatus[] attendeeStatuses)
+    {
+        return BuildOrder(
+            purchasedAt,
+            totalAmount,
+            stripeFee,
+            applicationFee,
+            TicketPaymentStatus.Paid,
+            attendeeStatuses);
+    }
+
+    private static TicketOrderInfo BuildOrder(
+        Instant purchasedAt,
+        decimal totalAmount,
+        decimal? stripeFee,
+        decimal? applicationFee,
+        TicketPaymentStatus paymentStatus,
+        params TicketAttendeeStatus[] attendeeStatuses)
+    {
+        return new TicketOrderInfo(
+            Id: Guid.NewGuid(),
+            VendorOrderId: $"order-{Guid.NewGuid():N}",
+            BuyerName: null,
+            BuyerEmail: null,
+            TotalAmount: totalAmount,
+            Currency: "EUR",
+            DiscountCode: null,
+            PaymentStatus: paymentStatus,
+            VendorEventId: "event",
+            PurchasedAt: purchasedAt,
+            MatchedUserId: null,
+            IsCurrentEvent: true,
+            Attendees: attendeeStatuses.Select(status => new TicketAttendeeInfo(
+                Id: Guid.NewGuid(),
+                VendorTicketId: $"ticket-{Guid.NewGuid():N}",
+                AttendeeName: null,
+                AttendeeEmail: null,
+                TicketTypeName: null,
+                Price: 0m,
+                Status: status,
+                MatchedUserId: null)).ToList(),
+            StripeFee: stripeFee,
+            ApplicationFee: applicationFee);
     }
 }

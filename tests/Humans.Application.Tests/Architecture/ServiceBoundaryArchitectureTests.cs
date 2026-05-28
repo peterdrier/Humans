@@ -44,7 +44,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IStoreRepository)] = "Store",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",
-            [typeof(ITicketingBudgetRepository)] = "Tickets",
             [typeof(ITicketRepository)] = "Tickets",
             [typeof(ITicketTransferRepository)] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
