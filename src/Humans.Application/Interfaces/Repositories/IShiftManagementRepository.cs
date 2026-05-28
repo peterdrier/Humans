@@ -46,11 +46,8 @@ public partial interface IShiftManagementRepository : IRepository
     /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>
     Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default);
 
-    /// <summary>Inserts a new <see cref="EventSettings"/>.</summary>
-    Task AddEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
-
-    /// <summary>Updates an existing <see cref="EventSettings"/>.</summary>
-    Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
+    /// <summary>Inserts or updates an <see cref="EventSettings"/>.</summary>
+    Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes an <see cref="EventSettings"/> row and all Shifts-owned rows beneath it.
@@ -62,11 +59,8 @@ public partial interface IShiftManagementRepository : IRepository
     // Rota
     // ==========================================================================
 
-    /// <summary>Inserts a new rota.</summary>
-    Task AddRotaAsync(Rota rota, CancellationToken ct = default);
-
-    /// <summary>Updates an existing rota.</summary>
-    Task UpdateRotaAsync(Rota rota, CancellationToken ct = default);
+    /// <summary>Inserts or updates a rota.</summary>
+    Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
     /// Targeted update that only writes the rota's <c>TeamId</c> and
@@ -145,14 +139,11 @@ public partial interface IShiftManagementRepository : IRepository
     // Shift
     // ==========================================================================
 
-    /// <summary>Inserts a new shift.</summary>
-    Task AddShiftAsync(Shift shift, CancellationToken ct = default);
+    /// <summary>Inserts or updates a shift.</summary>
+    Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>Bulk-inserts shifts in a single save.</summary>
     Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default);
-
-    /// <summary>Updates an existing shift.</summary>
-    Task UpdateShiftAsync(Shift shift, CancellationToken ct = default);
 
     /// <summary>
     /// Loads a shift with all its signups (same-section nav) for a delete
@@ -383,6 +374,12 @@ public partial interface IShiftManagementRepository : IRepository
         Guid targetUserId,
         Instant updatedAt,
         CancellationToken ct = default);
+}
+
+public enum EntityMutationMode
+{
+    Add,
+    Update
 }
 
 [Flags]

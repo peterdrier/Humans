@@ -69,17 +69,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.AnyAsync(ct);
     }
 
-    public async Task AddEventSettingsAsync(EventSettings entity, CancellationToken ct = default)
+    public async Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.EventSettings.Add(entity);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.EventSettings.Update(entity);
+        if (mode == EntityMutationMode.Add)
+            ctx.EventSettings.Add(entity);
+        else
+            ctx.EventSettings.Update(entity);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -128,17 +124,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     // Rota
     // ==========================================================================
 
-    public async Task AddRotaAsync(Rota rota, CancellationToken ct = default)
+    public async Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Rotas.Add(rota);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task UpdateRotaAsync(Rota rota, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Rotas.Update(rota);
+        if (mode == EntityMutationMode.Add)
+            ctx.Rotas.Add(rota);
+        else
+            ctx.Rotas.Update(rota);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -169,7 +161,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         if (rota is null) return null;
 
         // Detach: the caller typically mutates simple fields and then calls
-        // UpdateRotaAsync on a fresh context.
+        // SaveRotaAsync on a fresh context.
         ctx.Entry(rota).State = EntityState.Detached;
         return rota;
     }
@@ -309,10 +301,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     // Shift
     // ==========================================================================
 
-    public async Task AddShiftAsync(Shift shift, CancellationToken ct = default)
+    public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Shifts.Add(shift);
+        if (mode == EntityMutationMode.Add)
+            ctx.Shifts.Add(shift);
+        else
+            ctx.Shifts.Update(shift);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -320,13 +315,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Shifts.AddRange(shifts);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task UpdateShiftAsync(Shift shift, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Shifts.Update(shift);
         await ctx.SaveChangesAsync(ct);
     }
 

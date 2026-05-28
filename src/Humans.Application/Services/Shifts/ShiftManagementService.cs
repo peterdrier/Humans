@@ -149,7 +149,7 @@ public sealed class ShiftManagementService(
         }
 
         entity.UpdatedAt = clock.GetCurrentInstant();
-        await repo.AddEventSettingsAsync(entity);
+        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Add);
         // Activation can flip the active event; every ShiftUserView is event-scoped.
         if (entity.IsActive)
             viewInvalidator.InvalidateAll();
@@ -165,7 +165,7 @@ public sealed class ShiftManagementService(
         }
 
         entity.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateEventSettingsAsync(entity);
+        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
 
         EvictDashboardCaches(entity.Id);
         viewInvalidator.InvalidateAll();
@@ -197,14 +197,14 @@ public sealed class ShiftManagementService(
             throw new InvalidOperationException("Active EventSettings not found.");
 
         rota.UpdatedAt = clock.GetCurrentInstant();
-        await repo.AddRotaAsync(rota);
+        await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
         viewInvalidator.InvalidateRota(rota.Id);
     }
 
     public async Task UpdateRotaAsync(Rota rota)
     {
         rota.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateRotaAsync(rota);
+        await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
         viewInvalidator.InvalidateRota(rota.Id);
     }
 
@@ -477,7 +477,7 @@ public sealed class ShiftManagementService(
             UpdatedAt = now
         };
 
-        await repo.AddShiftAsync(shift);
+        await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
         viewInvalidator.InvalidateRota(input.RotaId);
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
@@ -514,7 +514,7 @@ public sealed class ShiftManagementService(
         shift.AdminOnly = input.AdminOnly;
         shift.UpdatedAt = clock.GetCurrentInstant();
 
-        await repo.UpdateShiftAsync(shift);
+        await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
