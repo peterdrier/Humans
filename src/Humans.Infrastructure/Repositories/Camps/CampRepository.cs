@@ -71,6 +71,7 @@ internal sealed partial class CampRepository : ICampRepository
             .Include(c => c.Seasons.Where(s => s.Year == year))
                 .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
             .Include(c => c.Images.OrderBy(i => i.SortOrder))
+            .Include(c => c.HistoricalNames)
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
         if (statusFilter is { Count: > 0 })

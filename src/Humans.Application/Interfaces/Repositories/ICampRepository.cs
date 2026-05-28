@@ -49,7 +49,7 @@ public partial interface ICampRepository : IRepository
 
     /// <summary>
     /// Returns camps participating in the year (any season), with seasons
-    /// (year-filtered) and active leads included (FK-only). If
+    /// (year-filtered), members, images, historical names and active leads included (FK-only). If
     /// <paramref name="statusFilter"/> is provided, only camps with at least
     /// one season in one of the given statuses are returned. Read-only.
     /// </summary>

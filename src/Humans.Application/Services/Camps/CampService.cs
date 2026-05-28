@@ -177,54 +177,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, specialRoleUserIds);
     }
 
-    public async Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
-        return camp is null
-            ? null
-            : await BuildCampDetailDataAsync(camp, preferredYear, fallbackToLatestSeason, cancellationToken);
-    }
-
-    private async Task<CampDetailData?> BuildCampDetailDataAsync(
-        Camp camp,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default)
-    {
-        var targetYear = preferredYear;
-        if (!targetYear.HasValue)
-        {
-            var settings = await GetSettingsAsync(cancellationToken);
-            targetYear = settings.PublicYear;
-        }
-
-        var season = camp.Seasons
-            .Where(s => s.Year == targetYear.Value)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
-
-        if (season is null && fallbackToLatestSeason)
-        {
-            season = camp.Seasons
-                .OrderByDescending(s => s.Year)
-                .FirstOrDefault();
-        }
-
-        if (season is null)
-        {
-            return null;
-        }
-
-        return CreateCampDetailData(
-            camp,
-            season,
-            _clock.GetCurrentInstant().InUtc().Date);
-    }
-
     public async Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,
@@ -473,6 +425,10 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         {
             WebOrSocialUrl = camp.WebOrSocialUrl,
             Links = camp.Links,
+            HideHistoricalNames = camp.HideHistoricalNames,
+            HistoricalNames = camp.HistoricalNames
+                .Select(name => name.Name)
+                .ToList(),
             Images = camp.Images
                 .OrderBy(image => image.SortOrder)
                 .Select(image => new CampImageSummary(image.Id, $"/{image.StoragePath}", image.SortOrder))
@@ -513,6 +469,10 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 : null)
         {
             BlurbLong = season.BlurbLong,
+            KidsVisiting = season.KidsVisiting,
+            KidsAreaDescription = season.KidsAreaDescription,
+            HasPerformanceSpace = season.HasPerformanceSpace,
+            PerformanceTypes = season.PerformanceTypes,
             Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
                 .OrderBy(m => m.RequestedAt)
@@ -548,21 +508,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             member.RequestedAt,
             member.ConfirmedAt,
             member.HasEarlyEntry);
-
-    private static CampDetailData CreateCampDetailData(Camp camp, CampSeason season, LocalDate today)
-    {
-        return new CampDetailData(
-            camp.Id,
-            camp.Slug,
-            season.Name,
-            CreateCampLinks(camp),
-            camp.IsSwissCamp,
-            camp.TimesAtNowhere,
-            camp.HideHistoricalNames,
-            camp.HistoricalNames.Select(h => h.Name).ToList(),
-            camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
-            CreateCampSeasonDetailData(season, today));
-    }
 
     private static CampEditData CreateCampEditData(Camp camp, CampSeason season, LocalDate today)
     {
@@ -605,43 +550,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             camp.HistoricalNames
                 .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
                 .ToList());
-    }
-
-    private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)
-    {
-        if (camp.Links is { Count: > 0 })
-        {
-            return camp.Links;
-        }
-
-        return camp.WebOrSocialUrl is not null
-            ? [new CampLink { Url = camp.WebOrSocialUrl }]
-            : [];
-    }
-
-    private static CampSeasonDetailData CreateCampSeasonDetailData(CampSeason season, LocalDate today)
-    {
-        return new CampSeasonDetailData(
-            season.Id,
-            season.Year,
-            season.Name,
-            season.Status,
-            season.BlurbLong,
-            season.BlurbShort,
-            season.Languages,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.KidsVisiting,
-            season.KidsAreaDescription,
-            season.HasPerformanceSpace,
-            season.PerformanceTypes,
-            season.Vibes.ToList(),
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SpaceRequirement,
-            season.SoundZone,
-            season.ElectricalGrid,
-            season.NameLockDate.HasValue && today >= season.NameLockDate.Value);
     }
 
     // --- Season management ---

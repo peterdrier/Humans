@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
+using Humans.Web.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -317,8 +318,8 @@ public class CampsArchitectureTests
 
     /// <summary>
     /// Pins the invariant: the public camp detail page can never render Early Entry
-    /// state because the data shape returned by BuildCampDetailDataAsync — and every
-    /// record type reachable from it — contains no EE-related properties.
+    /// state because the view-model shape rendered by the public detail page contains
+    /// no EE-related properties.
     /// Guards against future accidental additions (e.g., HasEarlyEntry, EeSlotCount,
     /// EeStartDate, IsEarlyAccess) by matching on name substrings / prefixes.
     /// Issue #490: EE state is admin-only and must never appear on anonymous views.
@@ -326,11 +327,11 @@ public class CampsArchitectureTests
     [HumansFact]
     public void PublicCampDetail_DoesNotExposeEarlyEntryState()
     {
-        // All record types that compose the public detail data shape.
+        // All view-model types that compose the public detail page shape.
         var publicDetailTypes = new[]
         {
-            typeof(CampDetailData),
-            typeof(CampSeasonDetailData),
+            typeof(CampDetailViewModel),
+            typeof(CampSeasonDetailViewModel),
         };
 
         var eeProperties = publicDetailTypes
@@ -342,6 +343,6 @@ public class CampsArchitectureTests
 
         eeProperties.Should().BeEmpty(
             because: "Early Entry state (HasEarlyEntry, EeSlotCount, EeStartDate, etc.) must never be " +
-                     "projected into the public detail data shape — it is admin-only (issue #490, spec §4.4)");
+                     "projected into the public detail view shape - it is admin-only (issue #490, spec §4.4)");
     }
 }

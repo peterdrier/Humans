@@ -102,17 +102,19 @@ public class CampController(
         if (camp is null)
             return NotFound();
 
-        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: ct);
-        if (campDetail is null)
+        var settings = await _campService.GetSettingsAsync(ct);
+        var season = camp.GetSeasonForYear(settings.PublicYear, fallbackToLatestSeason: true);
+        if (season is null)
             return NotFound();
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, camp, campDetail, currentUser, isCampAdmin, ct);
+        var vm = MapCampDetailViewModel(
+            camp, season, isLead, isCampAdmin, membership, _clock.GetCurrentInstant().InUtc().Date);
+        await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(vm);
     }
 
@@ -120,25 +122,23 @@ public class CampController(
     [HttpGet("{slug}/Season/{year:int}")]
     public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken ct)
     {
-        var camp = await GetCampBySlugAsync(slug, ct);
+        var camp = (await _campService.GetCampsForYearAsync(year, ct))
+            .FirstOrDefault(c => string.Equals(c.Slug, slug, StringComparison.OrdinalIgnoreCase));
         if (camp is null)
             return NotFound();
 
-        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
-            slug,
-            preferredYear: year,
-            fallbackToLatestSeason: false,
-            cancellationToken: ct);
-        if (campDetail is null)
+        var season = camp.GetSeasonForYear(year);
+        if (season is null)
             return NotFound();
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
-        var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, camp, campDetail, currentUser, isCampAdmin, ct);
+        var vm = MapCampDetailViewModel(
+            camp, season, isLead, isCampAdmin, membership, _clock.GetCurrentInstant().InUtc().Date);
+        await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
 
@@ -1148,49 +1148,61 @@ public class CampController(
         };
 
     private static CampDetailViewModel MapCampDetailViewModel(
-        CampDetailData campDetail,
+        CampInfo camp,
+        CampSeasonInfo season,
         bool isLead,
         bool isCampAdmin,
-        CampMembershipStateViewModel membership) => new()
+        CampMembershipStateViewModel membership,
+        LocalDate today) => new()
         {
-            Id = campDetail.Id,
-            Slug = campDetail.Slug,
-            Name = campDetail.Name,
-            Links = [.. campDetail.Links],
-            IsSwissCamp = campDetail.IsSwissCamp,
-            HideHistoricalNames = campDetail.HideHistoricalNames,
-            TimesAtNowhere = campDetail.TimesAtNowhere,
-            HistoricalNames = [.. campDetail.HistoricalNames],
-            ImageUrls = [.. campDetail.ImageUrls],
-            CurrentSeason = campDetail.CurrentSeason is null
-            ? null
-            : new CampSeasonDetailViewModel
+            Id = camp.Id,
+            Slug = camp.Slug,
+            Name = season.Name,
+            Links = CreateCampLinks(camp),
+            IsSwissCamp = camp.IsSwissCamp,
+            HideHistoricalNames = camp.HideHistoricalNames,
+            TimesAtNowhere = camp.TimesAtNowhere,
+            HistoricalNames = [.. camp.HistoricalNames],
+            ImageUrls = camp.Images.Select(image => image.Url).ToList(),
+            CurrentSeason = new CampSeasonDetailViewModel
             {
-                Id = campDetail.CurrentSeason.Id,
-                Year = campDetail.CurrentSeason.Year,
-                Name = campDetail.CurrentSeason.Name,
-                Status = campDetail.CurrentSeason.Status,
-                BlurbLong = campDetail.CurrentSeason.BlurbLong,
-                BlurbShort = campDetail.CurrentSeason.BlurbShort,
-                Languages = campDetail.CurrentSeason.Languages,
-                AcceptingMembers = campDetail.CurrentSeason.AcceptingMembers,
-                KidsWelcome = campDetail.CurrentSeason.KidsWelcome,
-                KidsVisiting = campDetail.CurrentSeason.KidsVisiting,
-                KidsAreaDescription = campDetail.CurrentSeason.KidsAreaDescription,
-                HasPerformanceSpace = campDetail.CurrentSeason.HasPerformanceSpace,
-                PerformanceTypes = campDetail.CurrentSeason.PerformanceTypes,
-                Vibes = [.. campDetail.CurrentSeason.Vibes],
-                AdultPlayspace = campDetail.CurrentSeason.AdultPlayspace,
-                MemberCount = campDetail.CurrentSeason.MemberCount,
-                SpaceRequirement = campDetail.CurrentSeason.SpaceRequirement,
-                SoundZone = campDetail.CurrentSeason.SoundZone,
-                ElectricalGrid = campDetail.CurrentSeason.ElectricalGrid,
-                IsNameLocked = campDetail.CurrentSeason.IsNameLocked
+                Id = season.Id,
+                Year = season.Year,
+                Name = season.Name,
+                Status = season.Status,
+                BlurbLong = season.BlurbLong,
+                BlurbShort = season.BlurbShort,
+                Languages = season.Languages,
+                AcceptingMembers = season.AcceptingMembers,
+                KidsWelcome = season.KidsWelcome,
+                KidsVisiting = season.KidsVisiting,
+                KidsAreaDescription = season.KidsAreaDescription,
+                HasPerformanceSpace = season.HasPerformanceSpace,
+                PerformanceTypes = season.PerformanceTypes,
+                Vibes = [.. season.Vibes],
+                AdultPlayspace = season.AdultPlayspace,
+                MemberCount = season.MemberCount,
+                SpaceRequirement = season.SpaceRequirement,
+                SoundZone = season.SoundZone,
+                ElectricalGrid = season.ElectricalGrid,
+                IsNameLocked = season.IsNameLocked(today)
             },
             IsCurrentUserLead = isLead,
             IsCurrentUserCampAdmin = isCampAdmin,
             Membership = membership
         };
+
+    private static List<CampLink> CreateCampLinks(CampInfo camp)
+    {
+        if (camp.Links is { Count: > 0 })
+        {
+            return [.. camp.Links];
+        }
+
+        return camp.WebOrSocialUrl is not null
+            ? [new CampLink { Url = camp.WebOrSocialUrl }]
+            : [];
+    }
 
     /// <summary>
     /// Fills the read-only Roles panel and (for full-camp viewers) the Roster on the
@@ -1199,23 +1211,16 @@ public class CampController(
     /// viewers or seasonless camps.
     /// </summary>
     private async Task PopulateDetailCardsAsync(
-        CampDetailViewModel vm, CampInfo camp, CampDetailData campDetail, UserInfo? currentUser, bool isCampAdmin,
+        CampDetailViewModel vm, CampInfo camp, CampSeasonInfo season, UserInfo? currentUser, bool isCampAdmin,
         CancellationToken ct)
     {
-        if (currentUser is null || campDetail.CurrentSeason is null)
+        if (currentUser is null)
         {
-            return; // anonymous / no season → no cards
-        }
-
-        // Read-only roles panel (same source as /Edit/Members).
-        var season = camp.Seasons.FirstOrDefault(s => s.Id == campDetail.CurrentSeason.Id);
-        if (season is null)
-        {
-            return;
+            return; // anonymous viewers do not see cards
         }
 
         vm.RolesPanel = await BuildRolesPanelAsync(
-            campDetail.Slug, season, canManage: false, ct);
+            camp.Slug, season, canManage: false, ct);
 
         // Full-camp access is decided by membership in the *displayed* season, not the
         // open-season membership VM — that VM is NoOpenSeason for Pending/closed seasons,

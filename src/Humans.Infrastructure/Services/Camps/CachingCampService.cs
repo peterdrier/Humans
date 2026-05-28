@@ -102,11 +102,6 @@ public sealed class CachingCampService(
 
     // Pass-through reads
 
-    public Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
-        string slug, int? preferredYear = null, bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.BuildCampDetailDataBySlugAsync(slug, preferredYear, fallbackToLatestSeason, cancellationToken));
-
     public Task<CampEditData?> GetCampEditDataAsync(
         Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));

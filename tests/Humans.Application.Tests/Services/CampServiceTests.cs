@@ -620,7 +620,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampDetailAsync_UsesPublicYearAndFallsBackToLatestSeason()
+    public async Task GetCampBySlugAsync_ProjectsDetailPageFacts()
     {
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
@@ -653,24 +653,27 @@ public sealed class CampServiceTests : ServiceTestHarness
             UploadedAt = Clock.GetCurrentInstant()
         });
 
-        var settings = await Db.CampSettings.FirstAsync();
-        settings.PublicYear = 2027;
         await Db.SaveChangesAsync();
 
-        var detail = await _service.BuildCampDetailDataBySlugAsync(camp.Slug);
+        var detail = await _service.GetCampBySlugAsync(camp.Slug);
 
         detail.Should().NotBeNull();
-        detail.Name.Should().Be("Fallback Camp");
-        detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
+        detail.Slug.Should().Be(camp.Slug);
+        detail.WebOrSocialUrl.Should().Be("https://example.com/fallback");
         detail.HistoricalNames.Should().Contain("Old Fallback");
-        detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
-        detail.CurrentSeason.Should().NotBeNull();
-        detail.CurrentSeason!.Year.Should().Be(2026);
-        detail.CurrentSeason.IsNameLocked.Should().BeTrue();
+        detail.Images.Should().ContainSingle(image => image.Url == "/uploads/camps/fallback.jpg");
+        detail.HideHistoricalNames.Should().BeFalse();
+
+        var seasonInfo = detail.GetSeasonForYear(2027, fallbackToLatestSeason: true);
+        seasonInfo.Should().NotBeNull();
+        seasonInfo!.Year.Should().Be(2026);
+        seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
+        seasonInfo.KidsVisiting.Should().Be(KidsVisitingPolicy.DaytimeOnly);
+        seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
     }
 
     [HumansFact]
-    public async Task GetCampDetailAsync_ExplicitYearWithoutFallback_ReturnsNullWhenSeasonMissing()
+    public async Task CampInfo_GetSeasonForYearWithoutFallback_ReturnsNullWhenSeasonMissing()
     {
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
@@ -691,12 +694,10 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         await ApproveLatestSeasonAsync(camp.Id);
 
-        var detail = await _service.BuildCampDetailDataBySlugAsync(
-            camp.Slug,
-            preferredYear: 2027,
-            fallbackToLatestSeason: false);
+        var detail = await _service.GetCampBySlugAsync(camp.Slug);
 
-        detail.Should().BeNull();
+        detail.Should().NotBeNull();
+        detail!.GetSeasonForYear(2027).Should().BeNull();
     }
 
     [HumansFact]

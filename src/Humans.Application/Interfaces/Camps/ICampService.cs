@@ -28,11 +28,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
-    Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default);
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,
@@ -208,6 +203,10 @@ public sealed record CampInfo(
 
     public IReadOnlyList<CampLink>? Links { get; init; }
 
+    public bool HideHistoricalNames { get; init; }
+
+    public IReadOnlyList<string> HistoricalNames { get; init; } = [];
+
     public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
 
     /// <summary>
@@ -216,6 +215,16 @@ public sealed record CampInfo(
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
     public CampSeasonInfo? CurrentSeason => Active;
+
+    public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
+    {
+        var season = Seasons
+            .Where(s => s.Year == year)
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault();
+
+        return season ?? (fallbackToLatestSeason ? Active : null);
+    }
 
     public CampMembershipState GetMembershipState(Guid userId)
     {
@@ -263,6 +272,14 @@ public sealed record CampSeasonInfo(
 {
     public string BlurbLong { get; init; } = string.Empty;
 
+    public KidsVisitingPolicy KidsVisiting { get; init; }
+
+    public string? KidsAreaDescription { get; init; }
+
+    public PerformanceSpaceStatus HasPerformanceSpace { get; init; }
+
+    public string? PerformanceTypes { get; init; }
+
     public IReadOnlyList<CampSeasonMemberInfo> Members { get; init; } = [];
 
     public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];
@@ -294,6 +311,9 @@ public sealed record CampSeasonInfo(
 
     public bool IsEventManager(Guid userId) =>
         LeadUserIds.Contains(userId) || WorkshopLeadUserIds.Contains(userId);
+
+    public bool IsNameLocked(LocalDate today) =>
+        NameLockDate.HasValue && today >= NameLockDate.Value;
 }
 
 public sealed record CampSeasonMemberInfo(
@@ -430,18 +450,6 @@ public record CampDirectoryResult(
     IReadOnlyList<CampDirectoryCard> Camps,
     IReadOnlyList<CampDirectoryCard> MyCamps);
 
-public record CampDetailData(
-    Guid Id,
-    string Slug,
-    string Name,
-    IReadOnlyList<CampLink> Links,
-    bool IsSwissCamp,
-    int TimesAtNowhere,
-    bool HideHistoricalNames,
-    IReadOnlyList<string> HistoricalNames,
-    IReadOnlyList<string> ImageUrls,
-    CampSeasonDetailData? CurrentSeason);
-
 public record CampEditData(
     Guid CampId,
     string Slug,
@@ -490,28 +498,6 @@ public record CampHistoricalNameSummary(
     string Name,
     int? Year,
     string Source);
-
-public record CampSeasonDetailData(
-    Guid Id,
-    int Year,
-    string Name,
-    CampSeasonStatus Status,
-    string BlurbLong,
-    string BlurbShort,
-    string Languages,
-    YesNoMaybe AcceptingMembers,
-    YesNoMaybe KidsWelcome,
-    KidsVisitingPolicy KidsVisiting,
-    string? KidsAreaDescription,
-    PerformanceSpaceStatus HasPerformanceSpace,
-    string? PerformanceTypes,
-    IReadOnlyList<CampVibe> Vibes,
-    AdultPlayspacePolicy AdultPlayspace,
-    int MemberCount,
-    SpaceSize? SpaceRequirement,
-    SoundZone? SoundZone,
-    ElectricalGrid? ElectricalGrid,
-    bool IsNameLocked);
 
 public record CampPublicSummary(
     Guid Id,
