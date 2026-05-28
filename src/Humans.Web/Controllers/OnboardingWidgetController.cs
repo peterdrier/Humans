@@ -26,6 +26,7 @@ public class OnboardingWidgetController(
     IProfileEditorService profileEditorService,
     IShiftSignupService signupService,
     IShiftManagementService shiftMgmt,
+    IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -98,7 +99,8 @@ public class OnboardingWidgetController(
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
-        var (shiftIds, statuses) = await signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
+        var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
+        var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
         return View(vm);

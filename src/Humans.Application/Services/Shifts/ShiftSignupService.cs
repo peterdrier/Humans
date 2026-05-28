@@ -942,13 +942,6 @@ public sealed class ShiftSignupService(
         }).ToList();
     }
 
-    public async Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
-        Guid userId, Guid eventSettingsId)
-    {
-        var signups = await repo.GetByUserAsync(userId, eventSettingsId);
-        return ShiftSignupHelper.ResolveActiveStatuses(signups);
-    }
-
     private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettings es)
     {
         var targetStart = targetShift.GetAbsoluteStart(es);

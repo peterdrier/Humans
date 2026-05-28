@@ -118,14 +118,6 @@ public interface IShiftSignupService : IApplicationService
     Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
 
     /// <summary>
-    /// Gets active signup statuses (Confirmed or Pending) for a user in a specific event.
-    /// Returns a tuple of (shiftIds the user is signed up for, shiftId → status dictionary).
-    /// This is the single source of truth for "which shifts has this user actively signed up for?"
-    /// </summary>
-    Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
-        Guid userId, Guid eventSettingsId);
-
-    /// <summary>
     /// Cancels every Confirmed or Pending signup owned by
     /// <paramref name="userId"/> with the supplied <paramref name="reason"/>,
     /// in one atomic save. Returns the id + shift id of each signup that was

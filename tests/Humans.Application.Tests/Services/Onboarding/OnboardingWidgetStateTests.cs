@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Onboarding;
+using Humans.Application.DTOs.Shifts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,7 +17,7 @@ namespace Humans.Application.Tests.Services.Onboarding;
 public class OnboardingWidgetStateTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentServiceRead _consents = Substitute.For<IConsentServiceRead>();
@@ -32,10 +33,12 @@ public class OnboardingWidgetStateTests
         _consents.GetRequiredConsentRowsForUserAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
+        _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<ShiftUserView>(ShiftUserView.Empty(call.ArgAt<Guid>(0))));
     }
 
     private OnboardingWidgetState BuildSut() =>
-        new(_users, _signups, _membership, _shiftMgmt, _consents, _session);
+        new(_users, _shiftView, _membership, _shiftMgmt, _consents, _session);
 
     private static UserInfo NonStubUserInfo(Guid userId) =>
         WrapInUserInfo(userId, new Profile
@@ -130,8 +133,6 @@ public class OnboardingWidgetStateTests
         _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
-        _signups.GetActiveSignupStatusesAsync(userId, eventId)
-            .Returns((new HashSet<Guid>(), new Dictionary<Guid, SignupStatus>()));
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
@@ -148,8 +149,6 @@ public class OnboardingWidgetStateTests
         _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
-        _signups.GetActiveSignupStatusesAsync(userId, eventId)
-            .Returns((new HashSet<Guid>(), new Dictionary<Guid, SignupStatus>()));
         _session.ShiftSkipActive.Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
@@ -168,9 +167,14 @@ public class OnboardingWidgetStateTests
         _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
-        _signups.GetActiveSignupStatusesAsync(userId, eventId)
-            .Returns((new HashSet<Guid> { shiftId },
-                      new Dictionary<Guid, SignupStatus> { [shiftId] = SignupStatus.Pending }));
+        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
+                userId,
+                Profile: null,
+                Availability: null,
+                BuildStatus: null,
+                TagPreferences: [],
+                Signups: [new ShiftSignup { ShiftId = shiftId, Status = SignupStatus.Pending }])));
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
@@ -198,8 +202,6 @@ public class OnboardingWidgetStateTests
             ]);
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
-        _signups.GetActiveSignupStatusesAsync(userId, eventId)
-            .Returns((new HashSet<Guid>(), new Dictionary<Guid, SignupStatus>()));
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
