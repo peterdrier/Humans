@@ -63,6 +63,16 @@ public interface ICampRoleService : IApplicationService
     Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
 
     /// <summary>
+    /// Per-season fill summary across ALL active role definitions, keyed by
+    /// <c>CampSeasonId</c>. Powers the /Barrios "show lead positions" pills.
+    /// Season enumeration comes from the cached camp read model via
+    /// <see cref="ICampRoleCampAccess.GetCampSeasonsForComplianceAsync"/>, so no
+    /// camp entities are loaded a second time.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
+        GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
     /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
     /// value of <see cref="CampSpecialRole"/> has a matching system role definition
     /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>), then walks the

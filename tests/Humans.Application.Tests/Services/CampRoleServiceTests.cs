@@ -515,6 +515,45 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task DirectoryRoleSummaries_includes_all_active_definitions_with_filled_and_slot_counts()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
+        // minimumRequired: 0 — excluded from the compliance report, but the directory shows ALL active roles.
+        var power = await SeedDefinitionAsync("Power", slotCount: 3, minimumRequired: 0);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        Db.CampRoleAssignments.Add(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await Db.SaveChangesAsync();
+
+        _campAccess.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
+
+        var summaries = await _service.GetDirectoryRoleSummariesAsync(2026);
+
+        summaries.Should().ContainKey(season.Id);
+        var rows = summaries[season.Id];
+        rows.Should().HaveCount(2);
+        rows.Should().ContainEquivalentOf(new CampDirectoryRoleSummary("Consent Lead", 1, 2));
+        rows.Should().ContainEquivalentOf(new CampDirectoryRoleSummary("Power", 0, 3));
+    }
+
+    [HumansFact]
+    public async Task DirectoryRoleSummaries_reports_zero_filled_for_season_with_no_assignments()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
+
+        _campAccess.GetCampSeasonsForComplianceAsync(2026, CancellationToken.None)
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
+
+        var summaries = await _service.GetDirectoryRoleSummariesAsync(2026);
+
+        summaries[season.Id].Single().Should().BeEquivalentTo(new CampDirectoryRoleSummary("LNT", 0, 1));
+    }
+
+    [HumansFact]
     public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
     {
         var (camp, season) = await SeedCampWithSeasonAsync();

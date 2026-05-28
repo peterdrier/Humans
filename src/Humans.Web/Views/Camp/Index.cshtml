@@ -30,6 +30,10 @@
 
 <form method="get" asp-action="Index" class="card mb-4">
     <div class="card-body">
+        <div class="form-check mb-3">
+            <input asp-for="Filters.ShowLeadPositions" class="form-check-input" type="checkbox" />
+            <label asp-for="Filters.ShowLeadPositions" class="form-check-label">Show lead positions</label>
+        </div>
         <div class="row g-3 align-items-end">
             <div class="col-md-12">
                 <label asp-for="Filters.Search" class="form-label">Search</label>

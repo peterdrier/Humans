@@ -395,6 +395,30 @@ public sealed class CampRoleService(
         return new CampRoleComplianceReport(year, rows);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
+        GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default)
+    {
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
+        if (definitions.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
+
+        // Season set comes from the cached camp read model (no second entity load);
+        // counts is a single GROUP BY. Same shape as GetComplianceReportAsync but
+        // over all active definitions with SlotCount as the denominator.
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
+        var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
+        var countLookup = counts.ToLookup(c => c.CampSeasonId);
+
+        return seasons.ToDictionary(
+            season => season.CampSeasonId,
+            season => (IReadOnlyList<CampDirectoryRoleSummary>)definitions
+                .Select(def => new CampDirectoryRoleSummary(
+                    def.Name,
+                    countLookup[season.CampSeasonId].FirstOrDefault(r => r.DefinitionId == def.Id).Count,
+                    def.SlotCount))
+                .ToList());
+    }
+
     public async Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default)
     {
         var existing = await repo.GetExistingSpecialRolesAsync(ct);

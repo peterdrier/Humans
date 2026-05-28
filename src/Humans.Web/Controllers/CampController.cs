@@ -48,6 +48,10 @@ public class CampController(
         var year = settings.PublicYear;
         var camps = await _campService.GetCampsForYearAsync(year, ct);
 
+        var roleSummaries = filters?.ShowLeadPositions == true
+            ? await campRoleService.GetDirectoryRoleSummariesAsync(year, ct)
+            : null;
+
         var leadCampIds = user is null
             ? new HashSet<Guid>()
             : camps.Where(camp => camp.IsLead(user.Id)).Select(camp => camp.Id).ToHashSet();
@@ -56,7 +60,7 @@ public class CampController(
                 camps
                     .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
                     .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
-                    .Select(row => MapCampCard(row.Camp, row.Season!)),
+                    .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries)),
                 filters)
             .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
             .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
@@ -71,7 +75,7 @@ public class CampController(
                 .Where(row => row.Season is not null &&
                     row.Season.Status != CampSeasonStatus.Active &&
                     row.Season.Status != CampSeasonStatus.Full)
-                .Select(row => MapCampCard(row.Camp, row.Season!))
+                .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries))
                 .Where(card => cards.All(publicCard => publicCard.Id != card.Id))
                 .ToList();
         }
@@ -125,7 +129,10 @@ public class CampController(
         return camps;
     }
 
-    private static CampCardViewModel MapCampCard(CampInfo camp, CampSeasonInfo season) => new()
+    private static CampCardViewModel MapCampCard(
+        CampInfo camp,
+        CampSeasonInfo season,
+        IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>? roleSummaries = null) => new()
     {
         Id = camp.Id,
         SeasonId = season.Id,
@@ -138,7 +145,15 @@ public class CampController(
         KidsWelcome = season.KidsWelcome,
         SoundZone = season.SoundZone,
         Status = season.Status,
-        TimesAtNowhere = camp.TimesAtNowhere
+        TimesAtNowhere = camp.TimesAtNowhere,
+        LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
+            ? summaries.Select(s => new CampLeadPositionPillViewModel
+            {
+                Name = s.Name,
+                FilledCount = s.Filled,
+                SlotCount = s.SlotCount
+            }).ToList()
+            : []
     };
 
     private async Task PopulateRegisterSeasonYearAsync()

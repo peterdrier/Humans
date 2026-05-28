@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
@@ -27,6 +28,24 @@ public class CampCardViewModel
     public SoundZone? SoundZone { get; set; }
     public CampSeasonStatus Status { get; set; }
     public int TimesAtNowhere { get; set; }
+    public List<CampLeadPositionPillViewModel> LeadPositionPills { get; set; } = [];
+}
+
+public class CampLeadPositionPillViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public int FilledCount { get; set; }
+    public int SlotCount { get; set; }
+
+    public string BadgeClass => FilledCount <= 0
+        ? "bg-danger"
+        : FilledCount >= SlotCount
+            ? "bg-success"
+            : "bg-warning text-dark";
+
+    public string CountText => SlotCount > 0
+        ? $"{FilledCount}/{SlotCount}"
+        : FilledCount.ToString(CultureInfo.InvariantCulture);
 }
 
 public class CampFilterViewModel
@@ -35,6 +54,7 @@ public class CampFilterViewModel
     public SoundZone? SoundZone { get; set; }
     public bool KidsFriendly { get; set; }
     public bool AcceptingMembers { get; set; }
+    public bool ShowLeadPositions { get; set; }
     public string? Search { get; set; }
 }
 

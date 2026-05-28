@@ -61,6 +61,17 @@
                     </span>
                 }
             </div>
+            @if (Model.LeadPositionPills.Any())
+            {
+                <div class="d-flex flex-wrap gap-1 mt-2 pt-2 border-top">
+                    @foreach (var role in Model.LeadPositionPills)
+                    {
+                        <span class="badge rounded-pill @role.BadgeClass">
+                            @role.Name.ToLowerInvariant(): @role.CountText
+                        </span>
+                    }
+                </div>
+            }
         </div>
     </div>
 </div>
