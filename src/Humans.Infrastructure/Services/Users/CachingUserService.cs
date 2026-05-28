@@ -686,12 +686,6 @@ public sealed class CachingUserService(
         return result;
     }
 
-    public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.UpdateDisplayNameAsync(userId, displayName, ct));
-        await RefreshEntryAsync(userId, ct);
-    }
-
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));

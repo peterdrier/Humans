@@ -463,6 +463,9 @@ public class AccountController(
             ViewData["ReturnUrl"] = returnUrl;
             ViewData["Email"] = verifiedEmail;
             ViewData["Token"] = token;
+            ViewData["BurnerName"] = burnerName;
+            ViewData["FirstName"] = firstName;
+            ViewData["LastName"] = lastName;
             ModelState.AddModelError(string.Empty, localizer["CompleteSignup_AllFieldsRequired"]);
             return View("CompleteSignup");
         }

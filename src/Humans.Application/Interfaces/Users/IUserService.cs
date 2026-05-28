@@ -137,11 +137,6 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
-    /// </summary>
-    Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.PreferredLanguage</c>. Invalidates the UserInfo cache on
     /// success. No-op if the user does not exist.
     /// </summary>

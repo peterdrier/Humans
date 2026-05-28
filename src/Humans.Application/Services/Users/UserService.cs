@@ -286,11 +286,6 @@ public sealed class UserService(
         return await repo.SetGoogleEmailStatusAsync(userId, status, ct);
     }
 
-    public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
-    {
-        await repo.UpdateDisplayNameAsync(userId, displayName, ct);
-    }
-
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);

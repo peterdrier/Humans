@@ -133,30 +133,6 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDisplayNameAsync_RefreshesDictEntry()
-    {
-        var userId = Guid.NewGuid();
-        var stale = SampleUserInfo(userId, "Before");
-        var freshInfo = SampleUserInfo(userId, "After");
-
-        // Prime cache with the stale entry.
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(stale), new ValueTask<UserInfo?>(freshInfo));
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId); // prime
-
-        await sut.UpdateDisplayNameAsync(userId, "After");
-
-        var fresh = await sut.GetUserInfoAsync(userId);
-        fresh.Should().NotBeNull();
-        fresh.BurnerName.Should().Be("After");
-
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-        await _inner.Received(1).UpdateDisplayNameAsync(userId, "After", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task InvalidateAsync_UserDeleted_RemovesEntry()
     {
         var userId = Guid.NewGuid();
