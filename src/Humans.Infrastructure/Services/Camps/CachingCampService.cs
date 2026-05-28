@@ -5,6 +5,7 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
@@ -21,7 +22,7 @@ public sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampService, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator
+    ICampService, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampService"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
@@ -110,6 +111,27 @@ public sealed class CachingCampService(
         return camps
             .Select(camp => camp.GetLeadSeasonIdForYear(userId, year))
             .FirstOrDefault(seasonId => seasonId.HasValue);
+    }
+
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var settings = await GetSettingsAsync(ct);
+        if (settings.EeStartDate is not { } eeStartDate)
+        {
+            return [];
+        }
+
+        var year = settings.PublicYear;
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .SelectMany(season => season.ActiveMembers
+                .Where(member => member.HasEarlyEntry)
+                .Select(member => new EarlyEntryGrant(
+                    member.UserId,
+                    eeStartDate,
+                    $"Camp: {season.Name}")))
+            .ToList();
     }
 
     // Pass-through reads

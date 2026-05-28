@@ -20,7 +20,7 @@ using NodaTime;
 namespace Humans.Application.Services.Camps;
 
 /// <summary>Application-layer <see cref="ICampService"/>; cache-unaware (decorator owns §15 caching).</summary>
-public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataContributor, IUserMerge, IEarlyEntryProvider
+public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
     private readonly IUserServiceRead _userService;
@@ -1805,18 +1805,4 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return SetEarlyEntryOutcome.Success;
     }
 
-    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
-    {
-        var settings = await _repo.GetSettingsReadOnlyAsync(ct);
-        if (settings?.EeStartDate is not { } eeStartDate)
-            return [];
-
-        var year = settings.PublicYear;
-        var membersBySeason = await _repo.GetMembersForYearAsync(year, ct);
-        var seasonNames = (await GetCampsForYearAsync(year, ct))
-            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
-            .ToDictionary(season => season.Id, season => season.Name);
-
-        return CampEarlyEntryProjection.Project(eeStartDate, membersBySeason, seasonNames);
-    }
 }

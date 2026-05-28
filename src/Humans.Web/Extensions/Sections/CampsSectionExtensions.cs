@@ -29,13 +29,13 @@ internal static class CampsSectionExtensions
             (CampsCampService)sp.GetRequiredKeyedService<ICampService>(CachingCampService.InnerServiceKey));
         // IUserDataContributor on the inner — matches User/Teams pattern (GDPR export iterates contributors).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
-        services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<CampsCampService>());
 
         // Owns CampInfo + CampSettingsInfo projection; invalidates after every write through this surface.
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
 
         // §15e CRITICAL: same Singleton instance for invalidator + merge as ICampService — one cache, one signaller.
         services.AddSingleton<ICampInfoInvalidator>(sp => sp.GetRequiredService<CachingCampService>());

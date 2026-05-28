@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,6 +9,7 @@ using Humans.Infrastructure.Services.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
@@ -279,11 +281,30 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             .GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetEarlyEntriesAsync_WarmYear_ProjectsFromCachedCampInfoMembers()
+    {
+        var eeStartDate = new LocalDate(2026, 7, 7);
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026], eeStartDate);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var granted = await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
+        await SeedActiveMemberAsync(season.Id, hasEarlyEntry: false);
+        await SeedMemberAsync(season.Id, CampMemberStatus.Pending, hasEarlyEntry: true);
+
+        var grants = await _service.GetEarlyEntriesAsync(CancellationToken.None);
+
+        grants.Should().ContainSingle()
+            .Which.Should().Be(new EarlyEntryGrant(granted.UserId, eeStartDate, "Camp: Test Camp"));
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
 
-    private async Task SeedSettingsAsync(int publicYear, List<int> openSeasons)
+    private async Task SeedSettingsAsync(
+        int publicYear,
+        List<int> openSeasons,
+        LocalDate? eeStartDate = null)
     {
         if (!await Db.CampSettings.AnyAsync())
         {
@@ -291,7 +312,8 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = publicYear,
-                OpenSeasons = openSeasons
+                OpenSeasons = openSeasons,
+                EeStartDate = eeStartDate
             });
             await Db.SaveChangesAsync();
         }
@@ -336,19 +358,27 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         return (camp, season);
     }
 
-    private async Task SeedActiveMemberAsync(Guid campSeasonId, bool hasEarlyEntry)
+    private Task<CampMember> SeedActiveMemberAsync(Guid campSeasonId, bool hasEarlyEntry) =>
+        SeedMemberAsync(campSeasonId, CampMemberStatus.Active, hasEarlyEntry);
+
+    private async Task<CampMember> SeedMemberAsync(
+        Guid campSeasonId,
+        CampMemberStatus status,
+        bool hasEarlyEntry)
     {
-        Db.CampMembers.Add(new CampMember
+        var member = new CampMember
         {
             Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
             UserId = Guid.NewGuid(),
-            Status = CampMemberStatus.Active,
+            Status = status,
             RequestedAt = Clock.GetCurrentInstant(),
-            ConfirmedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = status == CampMemberStatus.Active ? Clock.GetCurrentInstant() : null,
             HasEarlyEntry = hasEarlyEntry,
-        });
+        };
+        Db.CampMembers.Add(member);
         await Db.SaveChangesAsync();
+        return member;
     }
 
     private static CampInfo ProjectCampInfo(Camp camp) => new(
@@ -361,24 +391,37 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         camp.Seasons.Select(ProjectSeasonInfo).ToList());
 
     private static CampSeasonInfo ProjectSeasonInfo(CampSeason season) => new(
-        season.Id,
-        season.CampId,
-        season.Camp?.Slug ?? string.Empty,
-        season.Year,
-        season.NameLockDate,
-        season.Name,
-        season.BlurbShort,
-        season.Languages,
-        season.Vibes.ToList(),
-        season.Status,
-        season.AcceptingMembers,
-        season.KidsWelcome,
-        season.AdultPlayspace,
-        season.MemberCount,
-        season.SoundZone,
-        season.SpaceRequirement,
-        season.ElectricalGrid,
-        season.EeSlotCount,
-        season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
-        season.Members.Count(m => m.Status == CampMemberStatus.Active));
+            season.Id,
+            season.CampId,
+            season.Camp?.Slug ?? string.Empty,
+            season.Year,
+            season.NameLockDate,
+            season.Name,
+            season.BlurbShort,
+            season.Languages,
+            season.Vibes.ToList(),
+            season.Status,
+            season.AcceptingMembers,
+            season.KidsWelcome,
+            season.AdultPlayspace,
+            season.MemberCount,
+            season.SoundZone,
+            season.SpaceRequirement,
+            season.ElectricalGrid,
+            season.EeSlotCount,
+            season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
+            season.Members.Count(m => m.Status == CampMemberStatus.Active))
+        {
+            Members = season.Members
+                .Where(m => m.Status != CampMemberStatus.Removed)
+                .OrderBy(m => m.RequestedAt)
+                .Select(m => new CampSeasonMemberInfo(
+                    m.Id,
+                    m.UserId,
+                    m.Status,
+                    m.RequestedAt,
+                    m.ConfirmedAt,
+                    m.HasEarlyEntry))
+                .ToList()
+        };
 }
