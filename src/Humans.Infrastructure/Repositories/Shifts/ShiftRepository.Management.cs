@@ -390,120 +390,42 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
     // Reads for dashboards / urgency / staffing
     // ==========================================================================
 
-    public async Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
-
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
-
-        return await query.ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetVisibleShiftsForEventAsync(
-        Guid eventSettingsId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId
-                        && !s.AdminOnly
-                        && s.Rota.IsVisibleToVolunteers)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        bool includeAdminOnly,
-        bool includeHidden,
-        int? fromDayOffset,
-        int? toDayOffset,
-        bool includeRotaTags,
+    public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
+        ShiftEventQuery request,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         IQueryable<Shift> query = ctx.Shifts
             .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups);
+            .Include(s => s.Rota);
 
-        if (includeRotaTags)
-        {
-            query = ctx.Shifts
-                .AsNoTracking()
-                .Include(s => s.Rota)
-                    .ThenInclude(r => r.EventSettings)
-                .Include(s => s.Rota)
-                    .ThenInclude(r => r.Tags)
-                .Include(s => s.ShiftSignups);
-        }
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeRotaTags))
+            query = query.Include(s => s.Rota).ThenInclude(r => r.Tags);
 
-        query = query.Where(s => s.Rota.EventSettingsId == eventSettingsId);
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeSignups))
+            query = query.Include(s => s.ShiftSignups);
 
-        if (!includeAdminOnly)
+        query = query.Where(s => s.Rota.EventSettingsId == request.EventSettingsId);
+
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.ExcludeAdminOnly))
             query = query.Where(s => !s.AdminOnly);
 
-        if (!includeHidden)
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.ExcludeHiddenRotas))
             query = query.Where(s => s.Rota.IsVisibleToVolunteers);
 
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
+        if (request.TeamIds is { Count: > 0 })
+            query = query.Where(s => request.TeamIds.Contains(s.Rota.TeamId));
 
-        if (fromDayOffset.HasValue)
+        if (request.MinDayOffset.HasValue)
         {
-            var fromVal = fromDayOffset.Value;
-            query = query.Where(s => s.DayOffset >= fromVal);
-        }
-
-        if (toDayOffset.HasValue)
-        {
-            var toVal = toDayOffset.Value;
-            query = query.Where(s => s.DayOffset <= toVal);
-        }
-
-        return await query.ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        int? minDayOffset,
-        int? maxDayOffset,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        var query = ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
-
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
-
-        if (minDayOffset.HasValue)
-        {
-            var minv = minDayOffset.Value;
+            var minv = request.MinDayOffset.Value;
             query = query.Where(s => s.DayOffset >= minv);
         }
-        if (maxDayOffset.HasValue)
+
+        if (request.MaxDayOffset.HasValue)
         {
-            var maxv = maxDayOffset.Value;
+            var maxv = request.MaxDayOffset.Value;
             query = query.Where(s => s.DayOffset <= maxv);
         }
 
@@ -920,4 +842,3 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return profileCount + tagPrefCount;
     }
 }
-

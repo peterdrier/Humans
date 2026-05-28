@@ -28,8 +28,8 @@ public sealed class WorkloadService(
         var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
-        // Distinct rotaIds off GetShiftsForEventAsync — avoids adding an interface method.
-        var shiftStubs = await repo.GetShiftsForEventAsync(es.Id, null, ct);
+        // Distinct rotaIds off the shared event-shift query avoids adding an interface method.
+        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(es.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {

@@ -616,8 +616,12 @@ public sealed class ShiftManagementService(
         }
 
         var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await repo.GetShiftsWithSignupsForUrgencyAsync(
-            eventSettingsId, urgencyTeamIds, minDayOffset, maxDayOffset);
+        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            urgencyTeamIds,
+            minDayOffset,
+            maxDayOffset,
+            ShiftEventQueryFlags.IncludeSignups));
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
@@ -662,9 +666,18 @@ public sealed class ShiftManagementService(
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
 
-        IReadOnlyList<Shift> shifts = await repo.GetShiftsWithSignupsForEventAsync(
-            eventSettingsId, departmentTeamIds, includeAdminOnly, includeHidden,
-            fromOffset, toOffset, includeRotaTags: true);
+        var flags = ShiftEventQueryFlags.IncludeSignups | ShiftEventQueryFlags.IncludeRotaTags;
+        if (!includeAdminOnly)
+            flags |= ShiftEventQueryFlags.ExcludeAdminOnly;
+        if (!includeHidden)
+            flags |= ShiftEventQueryFlags.ExcludeHiddenRotas;
+
+        IReadOnlyList<Shift> shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            departmentTeamIds,
+            fromOffset,
+            toOffset,
+            flags));
 
         // priorityOnly: rota is Important/Essential OR any sibling shift is understaffed (rota-wide test).
         if (priorityOnly)
@@ -811,7 +824,9 @@ public sealed class ShiftManagementService(
         if (dayOffsets.Count == 0) return [];
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
+        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            departmentTeamIds));
 
         // Need signup counts per shift (confirmed).
         var shiftIds = shifts.Select(s => s.Id).ToList();
@@ -858,7 +873,9 @@ public sealed class ShiftManagementService(
         if (dayOffsets.Count == 0) return [];
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await repo.GetShiftsForEventAsync(eventSettingsId, departmentTeamIds);
+        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            departmentTeamIds));
         var results = new List<DailyStaffingHours>();
 
         foreach (var dayOffset in dayOffsets)
@@ -1068,7 +1085,9 @@ public sealed class ShiftManagementService(
         if (es is null)
             return EmptyOverview();
 
-        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
 
         var shifts = period is null
             ? allShifts
@@ -1503,7 +1522,9 @@ public sealed class ShiftManagementService(
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
-        var shifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
         var shiftIds = shifts.Select(s => s.Id).ToList();
         var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
@@ -1572,7 +1593,9 @@ public sealed class ShiftManagementService(
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
 
-        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
         if (allShifts.Count == 0) return empty;
 
         var shiftIds = allShifts.Select(s => s.Id).ToList();
@@ -1665,7 +1688,9 @@ public sealed class ShiftManagementService(
         var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return (0, 0, 0d);
 
-        var allShifts = await repo.GetVisibleShiftsForEventAsync(es.Id, ct);
+        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            es.Id,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         if (allShifts.Count == 0) return (0, 0, 0d);
 
         var shiftIds = allShifts.Select(s => s.Id).ToList();
@@ -1687,7 +1712,9 @@ public sealed class ShiftManagementService(
         var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
 
-        var allShifts = await repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
         var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)

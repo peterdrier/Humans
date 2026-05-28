@@ -193,46 +193,12 @@ public interface IShiftManagementRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads shifts for an event with the Rota nav only (same section). Reads
-    /// are <c>AsNoTracking</c>. Cross-domain <see cref="Rota.Team"/> is not
-    /// populated.
+    /// Loads event-scoped shifts with the same-section rota nav. Optional flags
+    /// control volunteer-visible filtering and same-section eager loads; no
+    /// cross-domain navs are populated.
     /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetShiftsForEventAsync"/> but filters to
-    /// <c>!AdminOnly &amp;&amp; Rota.IsVisibleToVolunteers</c> (dashboard).
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetVisibleShiftsForEventAsync(
-        Guid eventSettingsId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads shifts with their signups and the same-section rota nav.
-    /// Read-only. Used by browse-page queries. No cross-domain includes.
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        bool includeAdminOnly,
-        bool includeHidden,
-        int? fromDayOffset,
-        int? toDayOffset,
-        bool includeRotaTags,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads shifts (with signups) for urgency scoring. Filters by event,
-    /// optional department team-id set, and optional day-offset bounds (inclusive).
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        int? minDayOffset,
-        int? maxDayOffset,
+    Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
+        ShiftEventQuery query,
         CancellationToken ct = default);
 
     /// <summary>
@@ -431,3 +397,20 @@ public interface IShiftManagementRepository : IRepository
         Instant updatedAt,
         CancellationToken ct = default);
 }
+
+[Flags]
+public enum ShiftEventQueryFlags
+{
+    None = 0,
+    ExcludeAdminOnly = 1,
+    ExcludeHiddenRotas = 2,
+    IncludeSignups = 4,
+    IncludeRotaTags = 8
+}
+
+public sealed record ShiftEventQuery(
+    Guid EventSettingsId,
+    IReadOnlyCollection<Guid>? TeamIds = null,
+    int? MinDayOffset = null,
+    int? MaxDayOffset = null,
+    ShiftEventQueryFlags Flags = ShiftEventQueryFlags.None);
