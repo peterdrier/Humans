@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
@@ -14,7 +16,12 @@ namespace Humans.Application.Interfaces.Caching;
 /// the target so its consented-version-id set picks up the source's rows,
 /// and the source so a stale entry from before tombstoning is discarded.
 /// </remarks>
-public interface IConsentCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing cross-section flush of consent caches; remains until consent-touching writes route through ConsentService's caching decorator.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IConsentCacheInvalidator : IInvalidator
 {
     /// <summary>
     /// Evict the cached <c>UserConsentInfo</c> entry for <paramref name="userId"/>,

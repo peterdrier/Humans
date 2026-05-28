@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Events;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Admin")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsAdminController(IEventService guide, ILogger<EventsAdminController> logger, IUserServiceRead userService)

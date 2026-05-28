@@ -3834,7 +3834,7 @@ namespace Humans.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CampSeasonId")
+                    b.Property<Guid?>("CampSeasonId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("CounterpartyAddress")
@@ -3870,14 +3870,22 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<int>("State")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("TeamId")
+                        .HasColumnType("uuid");
+
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CampSeasonId");
 
                     b.HasIndex("State");
+
+                    b.HasIndex("TeamId");
 
                     b.ToTable("store_orders", (string)null);
                 });
@@ -5582,14 +5590,12 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.Team", "ResponsibleTeam")
+                    b.HasOne("Humans.Domain.Entities.Team", null)
                         .WithMany()
                         .HasForeignKey("ResponsibleTeamId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("BudgetCategory");
-
-                    b.Navigation("ResponsibleTeam");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
@@ -6015,13 +6021,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.GoogleResource", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
+                    b.HasOne("Humans.Domain.Entities.Team", null)
                         .WithMany()
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.GoogleSyncOutboxEvent", b =>
@@ -6084,13 +6088,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
-                        .WithMany("LegalDocuments")
+                    b.HasOne("Humans.Domain.Entities.Team", null)
+                        .WithMany()
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
@@ -6716,8 +6718,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ChildTeams");
 
                     b.Navigation("JoinRequests");
-
-                    b.Navigation("LegalDocuments");
 
                     b.Navigation("Members");
 

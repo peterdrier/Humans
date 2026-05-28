@@ -13,12 +13,10 @@ namespace Humans.Application.Interfaces.Repositories;
 /// and <c>volunteer_event_profiles</c>.
 ///
 /// <para>
-/// The <c>shift_signups</c> table is owned long-term by
-/// <c>ShiftSignupService</c> (tracked as sub-task <c>#541b</c>). Until that
-/// service migrates, this repository also exposes narrow read helpers over
-/// signups that the management service needs for summaries, urgency scoring,
-/// and dashboard computations. These read helpers intentionally do not
-/// mutate signups — writes remain in <c>ShiftSignupService</c>.
+/// The <c>shift_signups</c> table is still mutated through
+/// <see cref="IShiftSignupRepository"/>. This interface exposes the read
+/// helpers over signups that management workflows need for summaries, urgency
+/// scoring, and dashboard computations.
 /// </para>
 ///
 /// <para>
@@ -29,8 +27,8 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </para>
 ///
 /// <para>
-/// Registered as <b>Singleton</b> — depends on
-/// <c>IDbContextFactory&lt;HumansDbContext&gt;</c> and creates short-lived
+/// Implemented by the same scoped <c>ShiftRepository</c> that backs
+/// <see cref="IShiftSignupRepository"/>. Management methods create short-lived
 /// contexts per call.
 /// </para>
 /// </summary>

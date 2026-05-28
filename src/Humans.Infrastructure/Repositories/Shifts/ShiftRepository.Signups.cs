@@ -1,0 +1,335 @@
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories.Auth;
+using Humans.Infrastructure.Repositories.Governance;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+
+namespace Humans.Infrastructure.Repositories.Shifts;
+
+/// <summary>
+/// Signup-focused portion of <see cref="ShiftRepository"/>.
+/// </summary>
+/// <remarks>
+/// Uses the Scoped <see cref="HumansDbContext"/> directly (not
+/// <see cref="IDbContextFactory{TContext}"/>) — same pattern as
+/// <see cref="RoleAssignmentRepository"/> and <see cref="ApplicationRepository"/>.
+/// Because <see cref="ShiftSignupService"/>'s mutation paths are
+/// multi-step (load, mutate, audit-log, save), a Scoped context lets all
+/// steps participate in a single EF change-tracker, which is simpler than
+/// juggling per-method contexts in the service.
+/// </remarks>
+internal sealed partial class ShiftRepository
+{
+    // ============================================================
+    // Reads — ShiftSignup
+    // ============================================================
+
+    public Task<bool> HasActiveSignupAsync(Guid userId, Guid shiftId, CancellationToken ct = default) =>
+        _dbContext.ShiftSignups
+            .AsNoTracking()
+            .AnyAsync(s => s.UserId == userId && s.ShiftId == shiftId &&
+                           (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
+                ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
+        Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default)
+    {
+        var query = _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Where(d => d.UserId == userId);
+
+        if (eventSettingsId.HasValue)
+            query = query.Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId.Value);
+
+        return await query.OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Where(d => d.UserId == userId &&
+                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
+            .ToListAsync(ct);
+    }
+
+    public Task<ShiftSignup?> GetByIdAsync(Guid signupId, CancellationToken ct = default) =>
+        _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift).ThenInclude(s => s.Rota)
+            .FirstOrDefaultAsync(d => d.Id == signupId, ct);
+
+    public Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default) =>
+        _dbContext.ShiftSignups
+            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Include(d => d.Shift).ThenInclude(s => s.ShiftSignups)
+            .FirstOrDefaultAsync(d => d.Id == signupId, ct);
+
+    public async Task<List<ShiftSignup>> GetBlockForMutationAsync(
+        Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default)
+    {
+        var query = _dbContext.ShiftSignups
+            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
+            .Where(s => s.SignupBlockId == signupBlockId);
+
+        query = includeConfirmed
+            ? query.Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
+            : query.Where(s => s.Status == SignupStatus.Pending);
+
+        return await query.ToListAsync(ct);
+    }
+
+    public Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId, CancellationToken ct = default) =>
+        _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(s => s.Shift).ThenInclude(s => s.Rota)
+            .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId, ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift)
+                .ThenInclude(s => s.Rota)
+            .Where(d => d.ShiftId == shiftId)
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetActiveByRotaAsync(
+        Guid rotaId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift)
+            .Where(d => d.Shift.RotaId == rotaId &&
+                        (d.Status == SignupStatus.Pending || d.Status == SignupStatus.Confirmed))
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.EventSettings)
+            .Where(s => s.UserId == userId && s.Status == SignupStatus.NoShow)
+            .OrderByDescending(s => s.ReviewedAt)
+            .ToListAsync(ct);
+
+    public async Task<HashSet<Guid>> GetActiveShiftIdsForUserAsync(
+        Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
+    {
+        if (shiftIds.Count == 0)
+            return [];
+
+        return await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && shiftIds.Contains(s.ShiftId) &&
+                        (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+            .Select(s => s.ShiftId)
+            .ToHashSetAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedCountsByShiftAsync(
+        IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
+    {
+        if (shiftIds.Count == 0)
+            return new Dictionary<Guid, int>();
+
+        return await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => shiftIds.Contains(s.ShiftId) && s.Status == SignupStatus.Confirmed)
+            .GroupBy(s => s.ShiftId)
+            .Select(g => new { ShiftId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.ShiftId, g => g.Count, ct);
+    }
+
+    public Task<int> GetDistinctEeUsersOnDayAsync(
+        Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
+        _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(d => d.Status == SignupStatus.Confirmed &&
+                        d.Shift.Rota.EventSettingsId == eventSettingsId &&
+                        d.Shift.DayOffset == dayOffset)
+            .Select(d => d.UserId)
+            .Distinct()
+            .CountAsync(ct);
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetForGdprExportAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(ss => ss.Shift)
+                .ThenInclude(s => s.Rota)
+                    .ThenInclude(r => r.EventSettings)
+            .Where(ss => ss.UserId == userId)
+            .OrderByDescending(ss => ss.CreatedAt)
+            .ToListAsync(ct);
+
+    // ============================================================
+    // Reads - signup-adjacent Shifts data
+    // ============================================================
+
+    public Task<Shift?> GetShiftWithContextAsync(Guid shiftId, CancellationToken ct = default) =>
+        _dbContext.Shifts
+            .AsNoTracking()
+            .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Include(s => s.ShiftSignups)
+            .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
+
+    public Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default) =>
+        _dbContext.Rotas
+            .AsNoTracking()
+            .Include(r => r.EventSettings)
+            .Include(r => r.Shifts)
+            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
+
+    public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await _dbContext.VolunteerEventProfiles
+            .AsNoTracking()
+            .Where(vep => vep.UserId == userId)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Include(vtp => vtp.ShiftTag)
+            .Where(vtp => vtp.UserId == userId)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        return await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Include(vtp => vtp.ShiftTag)
+            .Where(vtp => userIds.Contains(vtp.UserId))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        // No OrderBy: bulk loader splits results into per-user groups and the
+        // presentation layer (or per-user GetByUserAsync) handles display sort.
+        return await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Where(d => userIds.Contains(d.UserId) && d.Shift.Rota.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
+    }
+
+    // ============================================================
+    // Writes — ShiftSignup
+    // ============================================================
+
+    public void Add(ShiftSignup signup) => _dbContext.ShiftSignups.Add(signup);
+
+    public void AddRange(IEnumerable<ShiftSignup> signups) => _dbContext.ShiftSignups.AddRange(signups);
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _dbContext.SaveChangesAsync(ct);
+
+    public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default)
+    {
+        var activeSignups = await _dbContext.ShiftSignups
+            .Where(d => d.UserId == userId &&
+                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
+            .ToListAsync(ct);
+
+        if (activeSignups.Count == 0)
+            return [];
+
+        var cancelled = new List<(Guid SignupId, Guid ShiftId)>(activeSignups.Count);
+        foreach (var signup in activeSignups)
+        {
+            signup.Cancel(_clock, reason);
+            cancelled.Add((signup.Id, signup.ShiftId));
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+        return cancelled;
+    }
+
+    public Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return Task.FromResult(0);
+
+        return _dbContext.ShiftSignups
+            .Where(s => userIds.Contains(s.UserId))
+            .ExecuteDeleteAsync(ct);
+    }
+
+    // ============================================================
+    // Account-merge fold
+    // ============================================================
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        var sourceRows = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetShiftIds = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == targetUserId)
+            .Select(s => s.ShiftId)
+            .ToListAsync(ct);
+        var targetShiftIdSet = new HashSet<Guid>(targetShiftIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetShiftIdSet.Contains(src.ShiftId))
+            {
+                // Defensive: target already has a signup for this shift.
+                // Drop the source row — target's slot stands.
+                _dbContext.ShiftSignups.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        return sourceRows.Count;
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(s => s.Shift)
+                .ThenInclude(sh => sh.Rota)
+                    .ThenInclude(r => r.EventSettings)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        var userIds = await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
+                     && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+            .Select(s => s.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+        return userIds.ToHashSet();
+    }
+}
+

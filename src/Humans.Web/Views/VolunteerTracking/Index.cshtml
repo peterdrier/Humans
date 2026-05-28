@@ -150,6 +150,9 @@
     </div>
 </div>
 
+@* Heatmap CSS (.vt-*) lives in _VolunteerHeatmap.cshtml so the partial renders
+   correctly wherever it's hosted (here AND the profile build strip). Only the
+   page-scoped legend swatch styling stays here. *@
 @section Styles {
 <style>
     .legend-swatch {
@@ -160,71 +163,13 @@
         margin-right: 0.25rem;
         border-radius: 0.2rem;
     }
-    /* Day-off cell: striped grey, signals "we know about this, intentionally
-       not-here" without competing with the green/red/blue signals. */
-    .vt-dayoff {
-        background: #f8f9fa;
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(0, 0, 0, 0.18) 0,
-            rgba(0, 0, 0, 0.18) 2px,
-            transparent 2px,
-            transparent 6px);
-    }
-    /* Force the table to be at least as wide as its declared column widths so
-       narrow viewports get a horizontal scroll inside .table-responsive instead
-       of compressing the columns past min-width. */
-    .vt-heatmap-table {
-        table-layout: fixed;
-        width: max-content;
-        min-width: 100%;
-    }
-    .vt-heatmap-table th.vt-sticky-head,
-    .vt-heatmap-table td.vt-sticky-cell {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        background: var(--bs-body-bg);
-        min-width: 220px;
-        width: 220px;
-    }
-    .vt-heatmap-table th.vt-sticky-head { z-index: 2; background: var(--bs-tertiary-bg); }
-    .vt-heatmap-table td.vt-cell {
-        min-width: 32px;
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        text-align: center;
-        cursor: pointer;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-    .vt-heatmap-table td.vt-cell button {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        background: transparent;
-        padding: 0;
-    }
-    /* Mobile: shrink sticky volunteer column + cells so more days are visible
-       per scroll page. The sticky column drops from 220 to 140; cell width 32
-       to 28. With 22 build days that's still 22*28 + 140 = 756px, larger than
-       any phone viewport, so horizontal scroll will engage and the
-       header-arrow group will appear. */
-    @@media (max-width: 768px) {
-        .vt-heatmap-table th.vt-sticky-head,
-        .vt-heatmap-table td.vt-sticky-cell {
-            min-width: 140px;
-            width: 140px;
-        }
-        .vt-heatmap-table td.vt-cell {
-            min-width: 28px;
-            width: 28px;
-            height: 28px;
-        }
-    }
 </style>
 }
 
+@* Heatmap scroll-arrow + popover-init JS now lives in _VolunteerHeatmap.cshtml
+   so it travels with the partial wherever it renders. Only the page-scoped
+   row search-filter (which targets #vt-search, an input only this page has)
+   stays here. *@
 @section Scripts {
 <script>
 // Live row filter for the volunteer-tracking heatmaps. Matches case-insensitively
@@ -243,79 +188,6 @@
     }
 
     input.addEventListener('input', applyFilter);
-})();
-
-// Wire `<` `>` arrows in each heatmap card-header to scroll the table
-// horizontally. The button group is `hidden` server-side and unhidden here
-// only when the table actually overflows. Each click pages by one sticky-
-// cell width (~220px), roughly 6-7 day cells. Buttons get disabled at the
-// scroll edges and the group hides again if a window resize means everything
-// fits in the viewport.
-(function () {
-    var STEP = 220;
-
-    function syncGroup(scroller, group) {
-        if (!scroller || !group) return;
-        var hasOverflow = scroller.scrollWidth > scroller.clientWidth + 1;
-        group.hidden = !hasOverflow;
-        if (!hasOverflow) return;
-        var atStart = scroller.scrollLeft <= 0;
-        var atEnd = scroller.scrollLeft >= scroller.scrollWidth - scroller.clientWidth - 1;
-        var leftBtn = group.querySelector('[data-vt-scroll="left"]');
-        var rightBtn = group.querySelector('[data-vt-scroll="right"]');
-        if (leftBtn) leftBtn.disabled = atStart;
-        if (rightBtn) rightBtn.disabled = atEnd;
-    }
-
-    document.querySelectorAll('[data-vt-scroll-group]').forEach(function (group) {
-        var card = group.closest('.card');
-        var scroller = card && card.querySelector('.vt-heatmap-scroll');
-        if (!scroller) return;
-
-        group.querySelectorAll('[data-vt-scroll]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var dir = btn.getAttribute('data-vt-scroll') === 'left' ? -1 : 1;
-                scroller.scrollBy({ left: dir * STEP, behavior: 'smooth' });
-            });
-        });
-
-        scroller.addEventListener('scroll', function () { syncGroup(scroller, group); });
-        window.addEventListener('resize', function () { syncGroup(scroller, group); });
-
-        // Initial state — defer one frame so layout has settled.
-        requestAnimationFrame(function () { syncGroup(scroller, group); });
-    });
-})();
-
-// Initialize Bootstrap popovers for every cell trigger inside the volunteer
-// tracking heatmaps. The popover content is sourced from the sibling
-// .vt-popover-content element each cell renders inline. sanitize:false keeps
-// the form markup intact (Bootstrap's default sanitizer strips form/input).
-(function () {
-    if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
-    document.querySelectorAll('[data-vt-popover]').forEach(function (el) {
-        var contentEl = el.parentElement && el.parentElement.querySelector('.vt-popover-content');
-        var html = contentEl ? contentEl.innerHTML : '';
-        new bootstrap.Popover(el, {
-            trigger: 'click',
-            placement: 'auto',
-            html: true,
-            sanitize: false,
-            content: html
-        });
-    });
-    // Click outside dismisses any open popover.
-    document.addEventListener('click', function (e) {
-        document.querySelectorAll('[data-vt-popover]').forEach(function (el) {
-            if (el === e.target || el.contains(e.target)) return;
-            var pop = bootstrap.Popover.getInstance(el);
-            if (!pop) return;
-            // If the click landed inside a visible popover panel we own, leave it alone.
-            var tipId = el.getAttribute('aria-describedby');
-            if (tipId && document.getElementById(tipId) && document.getElementById(tipId).contains(e.target)) return;
-            pop.hide();
-        });
-    });
 })();
 </script>
 }

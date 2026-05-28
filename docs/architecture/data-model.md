@@ -18,7 +18,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CommunicationPreference | [Profiles](../sections/Profiles.md) | |
 | ProfileLanguage | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
-| AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. |
+| AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profiles/`. |
 | Application | [Governance](../sections/Governance.md) | |
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../sections/Governance.md) | Transient — deleted on finalization. |

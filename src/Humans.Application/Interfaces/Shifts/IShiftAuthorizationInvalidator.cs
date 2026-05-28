@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Interfaces.Shifts;
@@ -21,7 +23,12 @@ namespace Humans.Application.Interfaces.Shifts;
 /// without re-introducing the <c>IMemoryCache</c> fan-out.
 /// </para>
 /// </summary>
-public interface IShiftAuthorizationInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing shift-authorization cache flushed cross-section (deletion cascade); remains until shift-auth caching is absorbed by the owning service.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IShiftAuthorizationInvalidator : IInvalidator
 {
     /// <summary>
     /// Drops the cached coordinator-team-id list for a single user. The next

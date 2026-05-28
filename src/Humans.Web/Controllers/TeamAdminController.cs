@@ -24,7 +24,7 @@ public class TeamAdminController(
     ITeamService teamService,
     ITeamResourceService teamResourceService,
     IGoogleSyncService googleSyncService,
-    IUserService userService,
+    IUserServiceRead userService,
     IEmailProvisioningService emailProvisioningService,
     INotificationService notificationService,
     IAuthorizationService authorizationService,
@@ -34,7 +34,7 @@ public class TeamAdminController(
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamService _teamService = teamService;
-    private readonly IUserService _userService = userService;
+    private readonly IUserServiceRead _userService = userService;
     private readonly INotificationService _notificationService = notificationService;
 
     [HttpPost("Requests/{requestId}/Approve")]

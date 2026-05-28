@@ -213,7 +213,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
         // The arch-test ServiceBoundaryArchitectureTests.ServiceSection folds
         // Users + Profile + Profiles to "Humans" (one ownership section). The
         // analyzer must apply the same fold so that a Services.Users service
-        // injecting a [Section("Humans")]-tagged repo (e.g. IUserEmailRepository)
+        // injecting a [Section("Humans")]-tagged repo
         // is not flagged as cross-section.
         var source = """
             namespace Humans.Domain.Attributes
@@ -237,10 +237,6 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
 
                 [Humans.Domain.Attributes.Section("Humans")]
                 public interface IUserRepository : IRepository { }
-
-                [Humans.Domain.Attributes.Section("Humans")]
-                public interface IUserEmailRepository : IRepository { }
-
                 [Humans.Domain.Attributes.Section("Humans")]
                 public interface IProfileRepository : IRepository { }
             }
@@ -256,7 +252,6 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
                 {
                     public UserService(
                         Humans.Application.Interfaces.Repositories.IUserRepository users,
-                        Humans.Application.Interfaces.Repositories.IUserEmailRepository emails,
                         Humans.Application.Interfaces.Repositories.IProfileRepository profiles) { }
                 }
             }

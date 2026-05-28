@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Tickets;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -9,8 +11,8 @@ namespace Humans.Application.Tests.Architecture;
 ///
 /// <para>
 /// <c>TicketingBudgetService</c> is a narrow bridge: reads paid ticket orders
-/// through <see cref="ITicketingBudgetRepository"/> and delegates all
-/// Budget-owned mutations (line items and projections) to
+/// through <see cref="ITicketServiceRead"/> and delegates all Budget-owned
+/// mutations (line items and projections) to
 /// <see cref="IBudgetService"/>. No caching decorator — it is called from a
 /// nightly batch job and a few admin-finance refresh buttons, nowhere close to
 /// justifying a decorator.

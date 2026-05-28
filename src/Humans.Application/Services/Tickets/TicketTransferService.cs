@@ -23,7 +23,7 @@ namespace Humans.Application.Services.Tickets;
 public sealed class TicketTransferService(
     ITicketTransferRepository transferRepo,
     ITicketRepository ticketRepo,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
     IAuditLogService auditLog,

@@ -16,10 +16,10 @@
 
 <vc:temp-data-alerts />
 
-@* =====================  By camp  ===================== *@
+@* =====================  By counterparty  ===================== *@
 <section class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">By camp</h2>
+        <h2 class="h5 mb-0">By counterparty</h2>
         <div class="d-flex gap-2 align-items-center">
             <label for="paid-filter" class="form-label mb-0 small">Show</label>
             <select id="paid-filter" class="form-select form-select-sm" style="width: 9rem;">
@@ -31,7 +31,7 @@
         </div>
     </div>
     <div class="card-body p-0">
-        @if (s.ByCamp.Count == 0)
+        @if (s.ByCounterparty.Count == 0)
         {
             <p class="text-muted m-3 mb-3">No orders for @s.Year.</p>
         }
@@ -40,7 +40,8 @@
             <table class="table table-sm mb-0" id="by-camp-table">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Camp <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="type" data-sort-type="text" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Counterparty <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable" data-sort-key="label" data-sort-type="text" role="button">Label <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable" data-sort-key="state" data-sort-type="text" role="button">State <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable text-end" data-sort-key="due" data-sort-type="number" role="button">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
@@ -49,28 +50,31 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var row in s.ByCamp)
+                @foreach (var row in s.ByCounterparty.OrderBy(r => r.CounterpartyType).ThenBy(r => r.CounterpartyName, StringComparer.Ordinal))
                 {
                     string paidClass =
+                        row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "paid" :
                         row.BalanceEur <= 0m ? "paid" :
                         row.PaymentsTotalEur > 0m ? "partial" : "unpaid";
                     <tr data-paid-status="@paidClass"
-                        data-camp="@row.CampName"
+                        data-type="@row.CounterpartyType"
+                        data-camp="@row.CounterpartyName"
                         data-label="@row.Label"
                         data-state="@row.State"
                         data-due="@row.TotalDueEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         data-paid="@row.PaymentsTotalEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         data-balance="@row.BalanceEur.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                        <td>@row.CounterpartyType</td>
                         <td>
                             <a asp-controller="Store" asp-action="Order" asp-route-id="@row.OrderId">
-                                @row.CampName
+                                @row.CounterpartyName
                             </a>
                         </td>
                         <td>@row.Label</td>
                         <td>@row.State</td>
                         <td class="text-end">@row.TotalDueEur.ToString("F2")</td>
-                        <td class="text-end">@row.PaymentsTotalEur.ToString("F2")</td>
-                        <td class="text-end">@row.BalanceEur.ToString("F2")</td>
+                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("F2"))</td>
+                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("F2"))</td>
                     </tr>
                 }
                 </tbody>
@@ -114,9 +118,9 @@
 
 @* =====================  Cross-tab  ===================== *@
 <section class="card mb-4">
-    <div class="card-header"><h2 class="h5 mb-0">Camps × products (qty)</h2></div>
+    <div class="card-header"><h2 class="h5 mb-0">Counterparties × products (qty)</h2></div>
     <div class="card-body p-0 table-responsive">
-        @if (s.CrossTab.Camps.Count == 0 || s.CrossTab.Products.Count == 0)
+        @if (s.CrossTab.Counterparties.Count == 0 || s.CrossTab.Products.Count == 0)
         {
             <p class="text-muted m-3 mb-3">Nothing to plot for @s.Year.</p>
         }
@@ -125,7 +129,8 @@
             <table class="table table-sm table-bordered mb-0">
                 <thead>
                     <tr>
-                        <th>Camp</th>
+                        <th>Type</th>
+                        <th>Counterparty</th>
                         @foreach (var col in s.CrossTab.Products)
                         {
                             <th class="text-end">@col.ProductName</th>
@@ -134,22 +139,23 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var camp in s.CrossTab.Camps)
+                @foreach (var cp in s.CrossTab.Counterparties.OrderBy(c => c.CounterpartyType).ThenBy(c => c.CounterpartyName, StringComparer.Ordinal))
                 {
                     <tr>
-                        <td>@camp.CampName</td>
+                        <td>@cp.CounterpartyType</td>
+                        <td>@cp.CounterpartyName</td>
                         @foreach (var col in s.CrossTab.Products)
                         {
-                            var qty = camp.QtyByProduct.TryGetValue(col.ProductId, out var q) ? q : 0;
+                            var qty = cp.QtyByProduct.TryGetValue(col.ProductId, out var q) ? q : 0;
                             <td class="text-end">@(qty == 0 ? "" : qty.ToString())</td>
                         }
-                        <td class="text-end fw-semibold">@camp.TotalQty</td>
+                        <td class="text-end fw-semibold">@cp.TotalQty</td>
                     </tr>
                 }
                 </tbody>
                 <tfoot>
                     <tr class="fw-semibold">
-                        <td>Total</td>
+                        <td colspan="2">Total</td>
                         @foreach (var col in s.CrossTab.Products)
                         {
                             <td class="text-end">@col.TotalQty</td>

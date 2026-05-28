@@ -28,16 +28,17 @@ public class StoreController(
 
         var isPrivilegedReader = RoleChecks.CanAdministerStore(User);
         var pageData = await storeService.GetIndexDataAsync(user.Id, isPrivilegedReader, ct);
-        if (pageData.ShowNoCampOrdersMessage)
+        if (pageData.ShowNoOrdersMessage)
         {
-            SetInfo("You don't lead any camps this year, so there are no Store orders to manage.");
+            SetInfo("You don't lead any camps or coordinate any departments this year, so there are no Store orders to manage.");
         }
 
         var model = new StoreIndexViewModel
         {
             Year = pageData.Year,
             Catalog = pageData.Catalog,
-            CampSeasons = pageData.CampSeasons
+            Counterparties = pageData.Counterparties,
+            IsAdmin = isPrivilegedReader
         };
         return View(model);
     }
@@ -56,8 +57,9 @@ public class StoreController(
 
         var canEdit = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
         var canPay = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded;
+        var canDeleteAuth = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
-        return View(StoreOrderViewModel.FromPageData(pageData));
+        return View(StoreOrderViewModel.FromPageData(pageData, canDeleteAuth && order.BalanceEur == 0m));
     }
 
     [HttpPost("Order/{id:guid}/Pay")]
@@ -106,13 +108,65 @@ public class StoreController(
 
         var auth = await authService.AuthorizeAsync(
             User,
-            new StoreOrderCreateContext(campSeasonId),
+            new StoreOrderCreateContext(CampSeasonId: campSeasonId),
             StoreOrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
         var newId = await storeService.CreateOrderAsync(campSeasonId, label, user.Id, ct);
         SetSuccess("Order created.");
         return RedirectToAction(nameof(Order), new { id = newId });
+    }
+
+    [HttpPost("Team/{teamId:guid}/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateTeamOrder(Guid teamId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var auth = await authService.AuthorizeAsync(
+            User,
+            new StoreOrderCreateContext(CampSeasonId: null, TeamId: teamId),
+            StoreOrderOperationRequirement.Create);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            var newId = await storeService.CreateTeamOrderAsync(teamId, user.Id, ct);
+            SetSuccess("Team order created.");
+            return RedirectToAction(nameof(Order), new { id = newId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("Order/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete);
+        if (!auth.Succeeded) return Forbid();
+
+        try
+        {
+            await storeService.DeleteOrderAsync(id, user.Id, ct);
+            SetSuccess("Order deleted.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Order), new { id });
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Order/{id:guid}/AddLine")]

@@ -61,16 +61,18 @@ public sealed class ConsentServiceTests : ServiceTestHarness
                 if (teamIds.Count == 0)
                     return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
-#pragma warning disable CS0618 // Test stub uses LegalDocument.Team to populate the snapshot's TeamName; production stitches via ITeamService.
+                var teamNamesById = await Db.Teams
+                    .AsNoTracking()
+                    .Where(t => teamIds.Contains(t.Id))
+                    .ToDictionaryAsync(t => t.Id, t => t.Name);
+
                 var documents = await Db.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
-                    .Include(d => d.Team)
                     .Include(d => d.Versions)
                     .ToListAsync();
 
-                return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
-#pragma warning restore CS0618
+                return documents.Select(d => ToActiveRequiredDocumentSnapshot(d, teamNamesById)).ToList();
             });
 
         var consentRepository = new ConsentRepository(DbFactory);
@@ -229,13 +231,14 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
-#pragma warning disable CS0618 // Test stub mirrors the legacy Include(d => d.Team) read path; prod stitches via ITeamService.
-    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
+    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(
+        LegalDocument document,
+        IReadOnlyDictionary<Guid, string> teamNamesById) =>
         new(
             document.Id,
             document.Name,
             document.TeamId,
-            document.Team.Name,
+            teamNamesById.GetValueOrDefault(document.TeamId, string.Empty),
             document.LastSyncedAt,
             document.Versions.Select(v => new LegalDocumentVersionSnapshot(
                 v.Id,
@@ -248,7 +251,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
                 v.RequiresReConsent,
                 v.CreatedAt,
                 v.ChangesSummary)).ToList());
-#pragma warning restore CS0618
 
     [HumansFact]
     public async Task SubmitConsentAsync_RecordsMetric()

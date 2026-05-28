@@ -1,0 +1,22 @@
+@model Humans.Web.Models.PublicPopoverViewModel
+@*
+    Reduced popover for anonymous viewers on public team pages.
+    Surfaces avatar + BurnerName + public coordinator role labels only.
+    NEVER include city/country, full team list, languages, tier badge,
+    or suspended badge — see issue #771 acceptance criteria.
+*@
+<div class="d-flex align-items-center" style="min-width: 200px;">
+    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
+    <div>
+        <div class="fw-semibold">@Model.DisplayName</div>
+        @if (Model.RoleLabels.Count > 0)
+        {
+            <div class="mt-1">
+                @foreach (var label in Model.RoleLabels)
+                {
+                    <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">@label</span>
+                }
+            </div>
+        }
+    </div>
+</div>

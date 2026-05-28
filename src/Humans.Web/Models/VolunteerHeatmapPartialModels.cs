@@ -19,7 +19,8 @@ public sealed record HeatmapPartialModel(
     IReadOnlyList<VolunteerHeatmapRow> Rows,
     int BuildStartOffset,
     LocalDate GateOpeningDate,
-    IReadOnlyDictionary<Guid, string> DisplayNameByUserId);
+    IReadOnlyDictionary<Guid, string> DisplayNameByUserId,
+    bool ShowAvailabilityControls = false);
 
 /// <summary>
 /// Bundle passed to <c>Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml</c>.

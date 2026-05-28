@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
@@ -7,7 +9,12 @@ namespace Humans.Application.Interfaces.Caching;
 /// <c>IMemoryCache.InvalidateNavBadgeCounts()</c> extension method so the
 /// Governance decorator can surface its dependency visibly.
 /// </summary>
-public interface INavBadgeCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing aggregate nav-badge cache flushed across sections; remains until the per-badge service-owned caches absorb invalidation.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface INavBadgeCacheInvalidator : IInvalidator
 {
     void Invalidate();
 }

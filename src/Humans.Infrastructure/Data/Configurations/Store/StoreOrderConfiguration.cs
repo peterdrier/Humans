@@ -17,8 +17,10 @@ public class StoreOrderConfiguration : IEntityTypeConfiguration<StoreOrder>
         b.Property(x => x.CounterpartyCountryCode).HasMaxLength(2);
         b.Property(x => x.CounterpartyEmail).HasMaxLength(320);
         b.Property(x => x.State).HasConversion<int>();
+        b.Property(x => x.Year).IsRequired();
         b.HasIndex(x => x.State);
         b.HasIndex(x => x.CampSeasonId);
+        b.HasIndex(x => x.TeamId);
         b.HasMany(x => x.Lines).WithOne(l => l.Order!).HasForeignKey(l => l.OrderId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Payments).WithOne(p => p.Order!).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);
     }

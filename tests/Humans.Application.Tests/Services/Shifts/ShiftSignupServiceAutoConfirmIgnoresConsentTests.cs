@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
@@ -27,7 +28,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
 {
     private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
-    private readonly ShiftSignupRepository _repo;
+    private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -47,7 +48,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftManagementRepository(DbFactory);
+        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -59,10 +60,12 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftSignupRepository(Db, Clock);
+        _repo = new ShiftRepository(DbFactory, Db, Clock);
         _service = new ShiftSignupService(
             _repo,
+            Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             _membership,
             AuditLog,
             Substitute.For<INotificationService>(),

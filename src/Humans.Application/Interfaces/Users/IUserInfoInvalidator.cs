@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 using System.Runtime.CompilerServices;
 
 namespace Humans.Application.Interfaces.Users;
@@ -21,7 +23,12 @@ namespace Humans.Application.Interfaces.Users;
 /// <c>IUserInfoSliceRefresher</c> — they are not part of the cross-section
 /// contract and must not be added here.
 /// </remarks>
-public interface IUserInfoInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing user-info cache flushed cross-section; remains until UserService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IUserInfoInvalidator : IInvalidator
 {
     Task InvalidateAsync(
         Guid userId,

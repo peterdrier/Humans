@@ -117,6 +117,7 @@ public enum AuditAction
     ShiftSignupCreated,
     ShiftSignupReassigned,
     StoreOrderCreated,
+    StoreOrderDeleted,
     StoreLineAdded,
     StoreLineRemoved,
     StoreCounterpartyEdited,
@@ -175,4 +176,8 @@ public enum AuditAction
     ContainerPlacementNotesUpdated,
     CoordinatorRotaMessageSent,
     CoordinatorTeamRotasMessageSent,
+    // Coordinator edits a volunteer's declared build availability on their behalf
+    // (Profile build strip).
+    VolunteerAvailabilitySet,
+    VolunteerAvailabilityCleared,
 }

@@ -26,6 +26,7 @@ namespace Humans.Web.Controllers;
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
     IShiftManagementService shiftManagementService,
+    IGeneralAvailabilityService availabilityService,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserServiceRead userService,
@@ -188,19 +189,19 @@ public sealed class VolunteerTrackingController(
     [HttpPost("SetCampSetup")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetCampSetup(SetCampSetupForm form, CancellationToken ct)
+    public async Task<IActionResult> SetCampSetup(SetCampSetupForm form, string? returnUrl, CancellationToken ct)
     {
         if (!ModelState.IsValid)
         {
             SetError(localizer["VolTrack_Err_BadRequest"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         var parseResult = LocalDatePattern.Iso.Parse(form.Date);
         if (!parseResult.Success)
         {
             SetError(localizer["VolTrack_Err_BadDate"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
         var parsed = parseResult.Value;
 
@@ -211,13 +212,13 @@ public sealed class VolunteerTrackingController(
         if (!result.Ok)
         {
             SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         await EmitCampSetupAuditAsync(form, current.Id, result.AutoClearedDayOffs);
 
         SetSuccess(localizer["VolTrack_Msg_CampSetupSaved"]);
-        return RedirectToAction(nameof(Index));
+        return RedirectBack(returnUrl);
     }
 
     private async Task EmitCampSetupAuditAsync(
@@ -246,12 +247,12 @@ public sealed class VolunteerTrackingController(
     [HttpPost("ClearCampSetup")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearCampSetup(Guid userId, CancellationToken ct)
+    public async Task<IActionResult> ClearCampSetup(Guid userId, string? returnUrl, CancellationToken ct)
     {
         if (userId == Guid.Empty)
         {
             SetError(localizer["VolTrack_Err_BadRequest"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         var current = await GetCurrentUserInfoAsync();
@@ -267,18 +268,18 @@ public sealed class VolunteerTrackingController(
             current.Id);
 
         SetSuccess(localizer["VolTrack_Msg_CampSetupCleared"]);
-        return RedirectToAction(nameof(Index));
+        return RedirectBack(returnUrl);
     }
 
     [HttpPost("SetDayOff")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetDayOff(SetDayOffForm form, CancellationToken ct)
+    public async Task<IActionResult> SetDayOff(SetDayOffForm form, string? returnUrl, CancellationToken ct)
     {
         if (!ModelState.IsValid)
         {
             SetError(localizer["VolTrack_Err_BadRequest"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         var current = await GetCurrentUserInfoAsync();
@@ -288,7 +289,7 @@ public sealed class VolunteerTrackingController(
         if (!result.Ok)
         {
             SetError(localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         await auditLogService.LogAsync(
@@ -299,18 +300,18 @@ public sealed class VolunteerTrackingController(
             current.Id);
 
         SetSuccess(localizer["VolTrack_Msg_DayOffMarked"]);
-        return RedirectToAction(nameof(Index));
+        return RedirectBack(returnUrl);
     }
 
     [HttpPost("ClearDayOff")]
     [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearDayOff(ClearDayOffForm form, CancellationToken ct)
+    public async Task<IActionResult> ClearDayOff(ClearDayOffForm form, string? returnUrl, CancellationToken ct)
     {
         if (!ModelState.IsValid)
         {
             SetError(localizer["VolTrack_Err_BadRequest"]);
-            return RedirectToAction(nameof(Index));
+            return RedirectBack(returnUrl);
         }
 
         var current = await GetCurrentUserInfoAsync();
@@ -328,6 +329,55 @@ public sealed class VolunteerTrackingController(
             SetSuccess(localizer["VolTrack_Msg_DayOffCleared"]);
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectBack(returnUrl);
     }
+
+    [HttpPost("SetAvailabilityDay")]
+    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetAvailabilityDay(
+        Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
+    {
+        var es = await shiftManagementService.GetActiveAsync();
+        if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
+
+        var current = await GetCurrentUserInfoAsync();
+        if (current is null) return Forbid();
+
+        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
+        if (changed)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; marked available by coordinator", current.Id);
+            SetSuccess(localizer["VolTrack_Msg_AvailabilitySet"]);
+        }
+        return RedirectBack(returnUrl);
+    }
+
+    [HttpPost("ClearAvailabilityDay")]
+    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearAvailabilityDay(
+        Guid userId, int dayOffset, string? returnUrl, CancellationToken ct)
+    {
+        var es = await shiftManagementService.GetActiveAsync();
+        if (es is null) { SetError(localizer["VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
+
+        var current = await GetCurrentUserInfoAsync();
+        if (current is null) return Forbid();
+
+        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
+        if (changed)
+        {
+            await auditLogService.LogAsync(
+                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+                $"DayOffset={dayOffset}; availability cleared by coordinator", current.Id);
+            SetSuccess(localizer["VolTrack_Msg_AvailabilityCleared"]);
+        }
+        return RedirectBack(returnUrl);
+    }
+
+    private IActionResult RedirectBack(string? returnUrl) =>
+        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Index));
 }

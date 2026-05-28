@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
@@ -21,11 +20,8 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// <remarks>
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains short-lived
-/// per method — same pattern as <c>ProfileRepository</c>, <c>UserRepository</c>,
-/// and <c>TicketingBudgetRepository</c> (design-rules §15b).
+/// per method - same pattern as <c>UserRepository</c>.
 /// </remarks>
-[Grandfathered("HUM0025", justification: "Tickets-section table also read by TicketingBudgetRepository; route the Budget bridge through ITicketServiceRead.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "TicketOrders")]
-[Grandfathered("HUM0025", justification: "Cross-section read of UserEmails for attendee matching; migrate to an IUserEmailService bulk lookup.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
 internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factory) : ITicketRepository
 {
     // ── TicketSyncState ──────────────────────────────────────────────────────
@@ -62,20 +58,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── User email lookup ────────────────────────────────────────────────────
-
-    public async Task<IReadOnlyList<UserEmailLookupEntry>> GetAllUserEmailLookupEntriesAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Verified-only: an unverified email isn't trustworthy enough to drive
-        // ticket → user matching (issue nobodies-collective/Humans#645).
-        return await ctx.Set<UserEmail>()
-            .AsNoTracking()
-            .Where(ue => ue.IsVerified)
-            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId))
-            .ToListAsync(ct);
-    }
 
     // ── TicketOrder reads (detached) ─────────────────────────────────────────
 

@@ -7,7 +7,7 @@ HUM0002 | Humans.Architecture   | Error    | Write to Identity-derived User colu
 HUM0003 | Humans.Architecture   | Error    | UserManager.FindByEmailAsync / FindByNameAsync called from Application or Web
 HUM0004 | Humans.Architecture   | Error    | Profile.IsSuspended written outside allowlisted dual-writers
 HUM0005 | Humans.Architecture   | Error    | IUserEmailService.UpdateEmailAsync called from outside AccountController
-HUM0006 | Humans.Architecture   | Error    | IUserEmailRepository.UpdateEmailAsync called from outside UserEmailService
+HUM0006 | Humans.Architecture   | Error    | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services
 HUM0007 | Humans.Architecture   | Error    | Concurrency token metadata is forbidden in live source
 HUM0008 | Humans.Architecture   | Error    | Controller constructor injects HumansDbContext
 HUM0009 | Humans.Architecture   | Error    | Class uses HumansDbContext but does not implement IRepository (downgrades to Warning for classes carrying [Grandfathered("HUM0009", ...)])
@@ -25,3 +25,7 @@ HUM0020 | Humans.Architecture   | Error    | Caching decorator references a repo
 HUM0021 | Humans.Architecture   | Warning  | Read of obsolete cross-domain navigation property from Application, Web, or Infrastructure
 HUM0024 | Humans.Architecture   | Error    | EF configuration creates a navigation join across section boundaries (downgrades to Warning for classes carrying [Grandfathered("HUM0024", ...)])
 HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read or written) by more than one repository — a table must belong to exactly one repository (downgrades to Warning for repos carrying [Grandfathered("HUM0025", ..., scope: "<DbSet>")])
+HUM0026 | Humans.Architecture   | Error    | IOrchestrator implementer injects an I*Repository, HumansDbContext, or IDbContextFactory<HumansDbContext>
+HUM0027 | Humans.Architecture   | Error    | Type implements both IApplicationService and IOrchestrator — the role axis is exclusive
+HUM0028 | Humans.Architecture   | Error    | Interface extends IInvalidator (downgrades to Warning for interfaces carrying [Grandfathered("HUM0028", ...)])
+HUM0029 | Humans.Architecture   | Error    | Cross-section read interface (I*Read) exposes EF entity, Microsoft.EntityFrameworkCore type, or System.Linq.IQueryable in a method signature (downgrades to Warning for interfaces carrying [Grandfathered("HUM0029", ...)])

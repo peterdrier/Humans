@@ -156,8 +156,9 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         };
         shiftMgmt.GetActiveAsync().Returns(activeEvent);
 
+        var availabilityService = Substitute.For<IGeneralAvailabilityService>();
         var ctrl = new VolunteerTrackingController(
-            service, shiftMgmt, exportService, xlsxBuilder,
+            service, shiftMgmt, availabilityService, exportService, xlsxBuilder,
             userService, auditLog, localizer)
         {
             ControllerContext = BuildControllerContext(currentUserId),

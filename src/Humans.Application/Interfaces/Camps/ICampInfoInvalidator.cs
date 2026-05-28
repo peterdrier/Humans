@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
@@ -24,7 +26,12 @@ namespace Humans.Application.Interfaces.Camps;
 /// signaller agree on cache identity.
 /// </para>
 /// </remarks>
-public interface ICampInfoInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing camp-info cache flushed cross-section; remains until CampService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface ICampInfoInvalidator : IInvalidator
 {
     /// <summary>
     /// Refresh-or-evict the cached entry for <paramref name="campId"/>. Safe

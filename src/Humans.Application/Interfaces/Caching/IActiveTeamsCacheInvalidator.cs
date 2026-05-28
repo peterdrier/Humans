@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
@@ -9,7 +11,12 @@ namespace Humans.Application.Interfaces.Caching;
 /// directly. Added during the Google-writing Hangfire-jobs migration (issue
 /// #570) so <c>SystemTeamSyncJob</c> can drop its direct cache dependency.
 /// </summary>
-public interface IActiveTeamsCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing cross-section flush of the Teams active-team directory cache from background jobs (#570); remains until those writes go through ITeamService.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IActiveTeamsCacheInvalidator : IInvalidator
 {
     /// <summary>
     /// Evicts the active-teams master cache entry so the next read repopulates

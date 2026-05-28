@@ -13,7 +13,6 @@ namespace Humans.Application.Services.Users;
 // One-shot backfill: tags UserEmail rows with Provider/ProviderKey from AspNetUserLogins; flips IsGoogle from the legacy shadow column.
 public sealed class UserEmailProviderBackfillService(
     IUserRepository userRepository,
-    IUserEmailRepository userEmailRepository,
     UserManager<User> userManager,
     IAuditLogService auditLogService,
     IClock clock,
@@ -37,14 +36,14 @@ public sealed class UserEmailProviderBackfillService(
 
             legacyGoogleEmails.TryGetValue(user.Id, out var legacyGoogleEmail);
 
-            var snapshots = (await userEmailRepository
-                .GetLegacyBackfillSnapshotsByUserIdAsync(user.Id, cancellationToken))
+            var snapshots = (await userRepository
+                .GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(user.Id, cancellationToken))
                 .ToList();
             if (snapshots.Count == 0)
                 continue;
 
             var logins = await userManager.GetLoginsAsync(user);
-            var emails = (await userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
+            var emails = (await userRepository.GetUserEmailsByUserIdForMutationAsync(user.Id, cancellationToken))
                 .ToList();
             var updates = new List<UserEmail>();
             var taggedRowIds = new HashSet<Guid>();
@@ -121,7 +120,7 @@ public sealed class UserEmailProviderBackfillService(
             }
 
             if (updates.Count > 0)
-                await userEmailRepository.UpdateBatchAsync(updates, cancellationToken);
+                await userRepository.UpdateUserEmailsAsync(updates, cancellationToken);
         }
 
         logger.LogInformation(

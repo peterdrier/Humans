@@ -10,13 +10,13 @@ using NodaTime;
 namespace Humans.Infrastructure.Repositories.Shifts;
 
 /// <summary>
-/// EF-backed implementation of <see cref="IVolunteerTrackingRepository"/>. The
-/// only non-test file that touches <c>DbContext.VolunteerBuildStatuses</c> from
-/// the volunteer-tracking migration onward.
+/// EF-backed implementation of <see cref="IVolunteerTrackingRepository"/>. This
+/// user-oriented Shifts repository owns <c>DbContext.VolunteerBuildStatuses</c>
+/// and <c>DbContext.GeneralAvailability</c>.
 /// </summary>
 /// <remarks>
 /// Uses the Scoped <see cref="HumansDbContext"/> directly (same pattern as
-/// <see cref="ShiftSignupRepository"/>) so multi-step mutations on
+/// <see cref="ShiftRepository"/>) so multi-step mutations on
 /// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
 /// </remarks>
 [Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
@@ -45,6 +45,118 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
             .AsNoTracking()
             .Where(x => x.EventSettingsId == eventSettingsId && userIds.Contains(x.UserId))
             .ToListAsync(ct);
+    }
+
+    public Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
+        db.GeneralAvailability
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
+                ct);
+
+    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default) =>
+        await db.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await db.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.UserId == userId)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0) return [];
+        return await db.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.EventSettingsId == eventSettingsId && userIds.Contains(g.UserId))
+            .ToListAsync(ct);
+    }
+
+    public async Task UpsertAvailabilityAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        IReadOnlyList<int> dayOffsets,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        var existing = await db.GeneralAvailability
+            .FirstOrDefaultAsync(
+                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
+                ct);
+
+        if (existing is not null)
+        {
+            existing.AvailableDayOffsets = dayOffsets.ToList();
+            existing.UpdatedAt = now;
+        }
+        else
+        {
+            db.GeneralAvailability.Add(new GeneralAvailability
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = eventSettingsId,
+                AvailableDayOffsets = dayOffsets.ToList(),
+                CreatedAt = now,
+                UpdatedAt = now,
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        var existing = await db.GeneralAvailability
+            .FirstOrDefaultAsync(
+                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
+                ct);
+
+        if (existing is null) return;
+
+        db.GeneralAvailability.Remove(existing);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> ReassignAvailabilityToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        var sourceRows = await db.GeneralAvailability
+            .Where(g => g.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetEventIds = await db.GeneralAvailability
+            .Where(g => g.UserId == targetUserId)
+            .Select(g => g.EventSettingsId)
+            .ToListAsync(ct);
+        var targetEventIdSet = new HashSet<Guid>(targetEventIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetEventIdSet.Contains(src.EventSettingsId))
+            {
+                db.GeneralAvailability.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        return await db.GeneralAvailability
+            .CountAsync(g => g.UserId == targetUserId, ct);
     }
 
     public async Task<IReadOnlyList<int>> UpsertCampSetupAsync(

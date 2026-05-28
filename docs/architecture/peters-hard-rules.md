@@ -2,6 +2,10 @@
 
 These superceed all other docs and are the final word on how to write code in this codebase. They are not to ever be edited by an LLM, and any changes to them must be made by Peter himself.
 
+## Concepts 
+* "Surgical fixes" are not allowed.  Fix it right, or record an issue to track fixing it later.
+
+## Principles
 * The application is split into a number of vertical sections, each with its own domain model and database tables. Each section is responsible for its own data integrity and invariants, and **must** not reach into other sections' data or logic. Sections may only interact through well-defined interfaces and APIs. 
 * There are horizontal sections for cross-cutting concerns like Auth, and Audit.  They are strictly forbidden from referencing vertical sections beyond their current state as that will cause loops in the call graph. 
 * The application layers from my pov, are DbContext → Repository → Service → Controller. The DbContext is the lowest-level data access layer, and the Controller is the highest-level presentation layer. Each layer may only call the layer directly below it, and may not skip layers.  Calls between sections may happen at the services layer, and must be via the I<section>ServiceRead when available.

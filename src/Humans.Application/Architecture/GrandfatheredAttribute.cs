@@ -45,7 +45,7 @@ namespace Humans.Application.Architecture;
 /// scope (HUM0009, HUM0024, …) leave it <c>null</c> and ignore it.
 /// </para>
 /// </remarks>
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = false)]
 public sealed class GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef, string? scope = null)
     : Attribute
 {

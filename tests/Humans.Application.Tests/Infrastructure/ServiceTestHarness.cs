@@ -94,6 +94,7 @@ public abstract class ServiceTestHarness : IDisposable
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);
+        svc.StubGetAllUserInfosFromDb(DbOptions);
 
         return svc;
     }

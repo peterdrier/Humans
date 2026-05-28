@@ -24,13 +24,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// callers mutate them in memory and pass them back to the matching write
 /// method.
 /// </para>
-/// <para>
-/// <b>Relation to <c>ITicketingBudgetRepository</c>:</b> Intentionally
-/// distinct. That repository is a narrow read-only shape for the
-/// Tickets→Budget bridge (<c>TicketingBudgetService</c>). Merging the two
-/// would couple TicketSync's write surface to Budget's read surface — two
-/// things that evolve on very different cadences.
-/// </para>
 /// </remarks>
 [Section("Tickets")]
 public interface ITicketRepository : IRepository
@@ -56,25 +49,6 @@ public interface ITicketRepository : IRepository
     /// on the next sync cycle. No-op if the row does not exist.
     /// </summary>
     Task ResetSyncStateLastSyncAsync(CancellationToken ct = default);
-
-    // ── Email lookup (cross-section projection over user_emails) ─────────────
-
-    /// <summary>
-    /// Returns every row of <c>user_emails</c> projected to the three fields
-    /// needed to build the email → userId lookup. Read-only; ordering is
-    /// unspecified — the service performs grouping and OAuth tie-breaking in
-    /// memory.
-    /// </summary>
-    /// <remarks>
-    /// This projection is narrow (three columns) and non-mutating, so reading
-    /// it from the Tickets repository does not violate table ownership — the
-    /// Profile section's owning service (<c>IUserEmailService</c>) does not
-    /// expose a shape that fits bulk email-matching. If TicketSync ever needs
-    /// to <i>write</i> user-email data, it must go through
-    /// <c>IUserEmailService</c> instead.
-    /// </remarks>
-    Task<IReadOnlyList<UserEmailLookupEntry>> GetAllUserEmailLookupEntriesAsync(
-        CancellationToken ct = default);
 
     // ── TicketOrder reads (all detached / AsNoTracking) ──────────────────────
 

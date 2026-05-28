@@ -224,12 +224,22 @@ function showToast(message, type) {
         // for cursor entries that don't land on an Element; guard so
         // calling .closest() on a non-Element doesn't throw.
         if (!e.target || typeof e.target.closest !== 'function') return;
-        var el = e.target.closest('[data-human-popover]');
+        // Public-popover variant (#771) serves a reduced partial to anonymous
+        // viewers on public team pages. The full popover is preferred when
+        // both attributes are present (e.g. logged-in admin previewing).
+        var el = e.target.closest('[data-human-popover], [data-human-popover-public]');
         if (!el || el._popoverInit) return;
         el._popoverInit = true;
 
         var userId = el.getAttribute('data-user-id');
         if (!userId) return;
+
+        var isPublic = !el.hasAttribute('data-human-popover')
+            && el.hasAttribute('data-human-popover-public');
+        var endpoint = isPublic
+            ? '/Profile/' + userId + '/PublicPopover'
+            : '/Profile/' + userId + '/Popover';
+        var cacheKey = (isPublic ? 'public:' : 'full:') + userId;
 
         var popover = new bootstrap.Popover(el, {
             trigger: 'hover focus',
@@ -240,14 +250,22 @@ function showToast(message, type) {
         });
         popover.show();
 
-        if (cache[userId]) {
-            popover.setContent({ '.popover-body': cache[userId] });
+        if (cache[cacheKey]) {
+            popover.setContent({ '.popover-body': cache[cacheKey] });
         } else {
-            fetch('/Profile/' + userId + '/Popover')
-                .then(function (r) { return r.ok ? r.text() : ''; })
+            fetch(endpoint)
+                .then(function (r) {
+                    // 404 from PublicPopover means "no public role" — suppress
+                    // the spinner tooltip instead of showing an error.
+                    if (r.status === 404) {
+                        popover.dispose();
+                        return null;
+                    }
+                    return r.ok ? r.text() : '';
+                })
                 .then(function (html) {
                     if (html) {
-                        cache[userId] = html;
+                        cache[cacheKey] = html;
                         popover.setContent({ '.popover-body': html });
                     }
                 });

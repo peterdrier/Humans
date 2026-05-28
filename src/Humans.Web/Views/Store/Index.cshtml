@@ -1,3 +1,4 @@
+@using Humans.Domain.Enums
 @model Humans.Web.Models.StoreIndexViewModel
 @{
     ViewData["Title"] = "Store";
@@ -10,53 +11,94 @@
 
 <vc:temp-data-alerts />
 
-@if (!Model.CampSeasons.Any())
+@if (!Model.Counterparties.Any())
 {
     <div class="alert alert-info">
-        You don't lead any camps with an active season this year. The catalog
-        below is read-only.
+        You don't lead any camps or coordinate any departments with an active
+        season this year. The catalog below is read-only.
     </div>
 }
 else
 {
-    @foreach (var campSection in Model.CampSeasons)
+    @foreach (var cp in Model.Counterparties.OrderBy(c => c.CounterpartyType).ThenBy(c => c.DisplayName, StringComparer.Ordinal))
     {
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h2 class="h5 mb-0">@campSection.CampName</h2>
-                <form asp-action="Create" asp-route-campSeasonId="@campSection.CampSeasonId"
-                      method="post" class="d-flex gap-2 align-items-center mb-0">
-                    @Html.AntiForgeryToken()
-                    <input type="text" name="label" class="form-control form-control-sm"
-                           placeholder="Label (optional)" maxlength="100" />
-                    <button type="submit" class="btn btn-sm btn-primary">Start order</button>
-                </form>
+                <h2 class="h5 mb-0">
+                    @cp.DisplayName
+                    <span class="badge bg-light text-dark ms-2">@cp.CounterpartyType</span>
+                </h2>
+                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp && cp.Orders.Count == 0)
+                {
+                    <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
+                          method="post" class="d-flex gap-2 align-items-center mb-0">
+                        @Html.AntiForgeryToken()
+                        <input type="text" name="label" class="form-control form-control-sm"
+                               placeholder="Label (optional)" maxlength="100" />
+                        <button type="submit" class="btn btn-sm btn-primary">Start order</button>
+                    </form>
+                }
+                else if (cp.CounterpartyType == StoreOrderCounterpartyType.Team && cp.Orders.Count == 0)
+                {
+                    <form asp-action="CreateTeamOrder" asp-route-teamId="@cp.CounterpartyId"
+                          method="post" class="mb-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-primary">Create order</button>
+                    </form>
+                }
             </div>
             <div class="card-body p-0">
-                @if (campSection.Orders.Any())
+                @if (cp.Orders.Any())
                 {
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
                                 <th>Label</th>
                                 <th>State</th>
-                                <th class="text-end">Lines + VAT</th>
-                                <th class="text-end">Deposits</th>
-                                <th class="text-end">Balance</th>
+                                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
+                                {
+                                    <th class="text-end">Lines + VAT</th>
+                                    <th class="text-end">Deposits</th>
+                                    <th class="text-end">Balance</th>
+                                }
+                                else
+                                {
+                                    <th class="text-end">Lines</th>
+                                }
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var order in campSection.Orders)
+                            @foreach (var order in cp.Orders)
                             {
                                 <tr>
                                     <td>@(string.IsNullOrWhiteSpace(order.Label) ? "(no label)" : order.Label)</td>
                                     <td><span class="badge bg-secondary">@order.State</span></td>
-                                    <td class="text-end">&euro;@((order.LinesSubtotalEur + order.VatTotalEur).ToString("N2"))</td>
-                                    <td class="text-end">&euro;@order.DepositTotalEur.ToString("N2")</td>
-                                    <td class="text-end fw-bold">&euro;@order.BalanceEur.ToString("N2")</td>
+                                    @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
+                                    {
+                                        <td class="text-end">&euro;@((order.LinesSubtotalEur + order.VatTotalEur).ToString("N2"))</td>
+                                        <td class="text-end">&euro;@order.DepositTotalEur.ToString("N2")</td>
+                                        <td class="text-end fw-bold">&euro;@order.BalanceEur.ToString("N2")</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="text-end">@order.Lines.Count</td>
+                                    }
                                     <td class="text-end">
-                                        <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                        <div class="d-inline-flex gap-1">
+                                            @if (Model.IsAdmin && order.BalanceEur == 0m)
+                                            {
+                                                <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            title="Delete (zero balance)"
+                                                            data-confirm="Delete this zero-balance order? This cannot be undone.">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                        </div>
                                     </td>
                                 </tr>
                             }

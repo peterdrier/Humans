@@ -65,8 +65,15 @@
           through the owning section's service. (Subsumes the retired per-section
           HUM0022 Notifications + HUM0023 Events write analyzers.) Remove this
           entry once the last [Grandfathered("HUM0025", ...)] is gone.
+        - HUM0028: cache-invalidator interface ratchet. Error by default;
+          every existing *Invalidator interface carries
+          [Grandfathered("HUM0028", ...)] to downgrade to warning while the
+          family is migrated into owning-section services + caching decorators.
+          A new *Invalidator (no [Grandfathered]) fires Error. Exit condition:
+          remove this entry once the last [Grandfathered("HUM0028", ...)] is
+          gone (i.e., every cross-section invalidator has been absorbed).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM0028;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

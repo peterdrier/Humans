@@ -26,6 +26,27 @@ public interface IStoreService : IApplicationService
         bool canPayAuthorized,
         CancellationToken ct = default);
     Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Hard-deletes the order. Permitted only when the order's balance is zero
+    /// (no outstanding charges, no payments needing reversal). Authorization is
+    /// enforced at the controller via <c>StoreOrderOperationRequirement.Delete</c>;
+    /// the service rejects non-zero balances as a defense-in-depth invariant.
+    /// </summary>
+    Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default);
+
+    // Orders (team coordinator — non-billable)
+    /// <summary>
+    /// Creates a non-billable team order for <paramref name="teamId"/> in the
+    /// active event year. The team must be a department (no <c>ParentTeamId</c>);
+    /// only one open team order per team per year is permitted.
+    /// </summary>
+    Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the team's order for the active event year, or null if none exists.
+    /// </summary>
+    Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default);
     Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
     Task<StoreMutationResult> AddLineWithResultAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
     Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);

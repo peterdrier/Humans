@@ -16,9 +16,23 @@
     }
 }
 @{
-    var popoverAttrs = Model.ShowPopover
-        ? $" data-human-popover=\"true\" data-user-id=\"{Model.UserId}\""
-        : "";
+    string popoverAttrs;
+    if (Model.ShowPopover)
+    {
+        popoverAttrs = $" data-human-popover=\"true\" data-user-id=\"{Model.UserId}\"";
+    }
+    else if (Model.ShowPopoverPublic)
+    {
+        // Anonymous viewers on public team pages — popoverPublic bypasses the
+        // link != HumanLink.None constraint so the popover fires on the public
+        // coordinator card (which renders with link="None" because the click
+        // target is the auth-gated ViewProfile). See issue #771.
+        popoverAttrs = $" data-human-popover-public=\"true\" data-user-id=\"{Model.UserId}\"";
+    }
+    else
+    {
+        popoverAttrs = "";
+    }
 }
 @switch (Model.Layout)
 {
@@ -65,7 +79,7 @@
         }
         else
         {
-            @Html.Raw($"<div class=\"text-center d-block\">{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
+            @Html.Raw($"<div class=\"text-center d-block\"{popoverAttrs}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
         }
         break;
 }

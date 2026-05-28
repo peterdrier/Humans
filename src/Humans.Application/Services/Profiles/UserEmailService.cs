@@ -15,7 +15,7 @@ using Humans.Application.Interfaces.Profiles;
 namespace Humans.Application.Services.Profiles;
 
 public sealed class UserEmailService(
-    IUserEmailRepository repository,
+    IUserRepository repository,
     IUserService userService,
     UserManager<User> userManager,
     IClock clock,
@@ -59,7 +59,7 @@ public sealed class UserEmailService(
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
     {
-        var pendingRecord = await repository.GetByIdReadOnlyAsync(pendingEmailId, ct);
+        var pendingRecord = await repository.GetUserEmailByIdReadOnlyAsync(pendingEmailId, ct);
 
         if (pendingRecord?.VerificationSentAt.HasValue == true)
         {
@@ -109,7 +109,7 @@ public sealed class UserEmailService(
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
-        if (await repository.ExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
+        if (await repository.UserEmailExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
             throw new ValidationException("This email address is already in your account.");
 
         if (await MergeService.HasPendingForUserAndEmailAsync(
@@ -149,7 +149,7 @@ public sealed class UserEmailService(
             ?? throw new InvalidOperationException("User not found.");
 
         // see nobodies-collective/Humans#611 — token is bound to this row's Id via the purpose suffix.
-        var pendingEmail = await repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
             throw new ValidationException("No email pending verification.");
@@ -166,7 +166,7 @@ public sealed class UserEmailService(
 
         var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
-        var conflictingEmail = await repository.GetConflictingVerifiedEmailAsync(
+        var conflictingEmail = await repository.GetConflictingVerifiedUserEmailAsync(
             pendingEmail.Id, normalizedPendingEmail, alternatePendingEmail, cancellationToken);
 
         if (conflictingEmail is not null)
@@ -206,7 +206,7 @@ public sealed class UserEmailService(
         Guid userId, Guid emailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var pendingEmail = await repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
             throw new ValidationException("No email pending verification.");
@@ -215,7 +215,7 @@ public sealed class UserEmailService(
         // Mirror VerifyEmailAsync duplicate-handling: create merge request when address verified on another account.
         var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
         var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
-        var conflictingEmail = await repository.GetConflictingVerifiedEmailAsync(
+        var conflictingEmail = await repository.GetConflictingVerifiedUserEmailAsync(
             pendingEmail.Id, normalizedPendingEmail, alternatePendingEmail, cancellationToken);
 
         if (conflictingEmail is not null)
@@ -281,7 +281,7 @@ public sealed class UserEmailService(
     public async Task<bool> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        var email = await repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken)
+        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Email not found.");
 
         if (!string.IsNullOrEmpty(email.Provider))
@@ -303,7 +303,7 @@ public sealed class UserEmailService(
         // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
         if (email.IsVerified)
         {
-            var allEmails = await repository.GetByUserIdForMutationAsync(userId, cancellationToken);
+            var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
             var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
 
             if (verifiedRemaining == 0)
@@ -333,14 +333,14 @@ public sealed class UserEmailService(
 
     public Task RemoveAllEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
-        repository.RemoveAllForUserAsync(userId, cancellationToken);
+        repository.RemoveAllUserEmailsForUserAsync(userId, cancellationToken);
 
     /// <inheritdoc />
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
         // Caller invalidates cache AFTER the ambient TransactionScope commits — see AccountMergeService.AcceptAsync.
-        await repository.ReassignToUserAsync(
+        await repository.ReassignUserEmailsToUserAsync(
             mergedFromUserId, mergedToUserId, now, ct);
     }
 
@@ -389,7 +389,7 @@ public sealed class UserEmailService(
 
     public Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default) =>
-        repository.GetVerifiedEmailAddressAsync(userId, emailId, cancellationToken);
+        repository.GetVerifiedUserEmailAddressAsync(userId, emailId, cancellationToken);
 
     public async Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
         CancellationToken cancellationToken = default)
@@ -438,7 +438,7 @@ public sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var allNotificationTargets = await repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+        var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
@@ -467,7 +467,7 @@ public sealed class UserEmailService(
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
-        return await repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
+        return await repository.FindVerifiedUserEmailWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
@@ -475,23 +475,23 @@ public sealed class UserEmailService(
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
-        return await repository.GetDistinctVerifiedUserIdsAsync(normalizedEmail, alternateEmail, cancellationToken);
+        return await repository.GetDistinctVerifiedUserEmailUserIdsAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
 
     public Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email, CancellationToken cancellationToken = default) =>
-        repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
+        repository.GetUserIdByVerifiedUserEmailAsync(email, cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
         CancellationToken cancellationToken = default) =>
-        repository.GetUserIdsByEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
+        repository.GetUserIdsByUserEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
 
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
         // Returns null on zero matches OR ambiguous matches; only non-null when exactly one user verified-holds the address.
-        var userIds = await repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
+        var userIds = await repository.GetDistinctUserIdsByVerifiedUserEmailAsync(email, ct);
         return userIds.Count == 1 ? userIds[0] : null;
     }
 
@@ -563,7 +563,7 @@ public sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var all = await repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+        var all = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
         return all
             .Where(kv => userIds.Contains(kv.Key))
             .ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -571,20 +571,20 @@ public sealed class UserEmailService(
 
     public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
         string searchTerm, CancellationToken cancellationToken = default)
-        => repository.SearchUserIdsByVerifiedEmailAsync(searchTerm, cancellationToken);
+        => repository.SearchUserIdsByVerifiedUserEmailAsync(searchTerm, cancellationToken);
 
     public Task<Guid?> GetOtherUserIdHavingEmailAsync(
         string email, Guid excludeUserId, CancellationToken cancellationToken = default)
-        => repository.GetOtherUserIdHavingEmailAsync(email, excludeUserId, cancellationToken);
+        => repository.GetOtherUserIdHavingUserEmailAsync(email, excludeUserId, cancellationToken);
 
     public Task<bool> IsEmailLinkedToAnyUserAsync(
         string email, CancellationToken cancellationToken = default) =>
-        repository.AnyWithEmailAsync(email, cancellationToken);
+        repository.AnyUserEmailWithEmailAsync(email, cancellationToken);
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default)
     {
-        var rows = await repository.GetByEmailsAsync(emails, cancellationToken);
+        var rows = await repository.GetUserEmailsByEmailsAsync(emails, cancellationToken);
         return rows
             .Select(r => new UserEmailMatch(
                 r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
@@ -668,7 +668,7 @@ public sealed class UserEmailService(
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
-        var match = await repository.FindByNormalizedEmailAsync(
+        var match = await repository.FindUserEmailByNormalizedEmailAsync(
             normalizedEmail, alternateEmail, cancellationToken);
         return match?.UserId;
     }
@@ -679,7 +679,7 @@ public sealed class UserEmailService(
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
-        var match = await repository.FindByNormalizedEmailAsync(
+        var match = await repository.FindUserEmailByNormalizedEmailAsync(
             normalizedEmail, alternateEmail, cancellationToken);
         if (match is null) return null;
         return (match.UserId, match.Id);
@@ -690,11 +690,11 @@ public sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var row = await repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsVerified) return false;
 
         // Capture previous Google email for audit description.
-        var allEmails = await repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
         var previousGoogle = allEmails.FirstOrDefault(e => e.IsGoogle && e.Id != row.Id);
 
         var updated = await userService.UpdateUserEmailAsync(
@@ -723,11 +723,11 @@ public sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var row = await repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsGoogle) return false;
 
         // Only allow clearing IsGoogle on a duplicate — clearing the sole IsGoogle row → ZeroIsGoogle violation.
-        var allEmails = await repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
 
         var updated = await userService.UpdateUserEmailAsync(
@@ -752,11 +752,11 @@ public sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var row = await repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
         // Only allow clearing IsPrimary on a duplicate verified row — must mirror the scanner's verified filter to avoid ZeroIsPrimary.
-        var allEmails = await repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
         var updated = await userService.UpdateUserEmailAsync(
@@ -816,7 +816,7 @@ public sealed class UserEmailService(
     {
         // Orphans are UserEmail rows whose UserId is missing or merged. Iterating UserInfo can't find rows for
         // non-existent users, so the repo's full-table scan is still required here.
-        var allEmails = await repository.GetAllAsync(ct);
+        var allEmails = await repository.GetAllUserEmailsAsync(ct);
         var liveUserIds = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.MergedToUserId is null)
             .Select(u => u.Id)
@@ -831,7 +831,7 @@ public sealed class UserEmailService(
     /// <inheritdoc />
     public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default)
     {
-        var row = await repository.GetByIdReadOnlyAsync(emailId, ct);
+        var row = await repository.GetUserEmailByIdReadOnlyAsync(emailId, ct);
         if (row is null) return false;
 
         return await userService.RemoveUserEmailAsync(
@@ -848,7 +848,7 @@ public sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var row = await repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null) return false;
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
             return false;
@@ -856,7 +856,7 @@ public sealed class UserEmailService(
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null) return false;
 
-        // Capture before RemoveAsync may detach the entity.
+        // Capture before RemoveUserEmailAsync may detach the entity.
         var provider = row.Provider;
         var providerKey = row.ProviderKey;
         var email = row.Email;
@@ -908,7 +908,7 @@ public sealed class UserEmailService(
         CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
-        var rows = (await repository.GetByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+        var rows = (await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken)).ToList();
 
         var tagged = rows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
@@ -929,14 +929,14 @@ public sealed class UserEmailService(
         // Cross-user check before any mutation. Normalize via gmail/googlemail alternate so dot-aliases can't bypass the displacement gate.
         var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
         var alternateClaim = GetAlternateComparableEmail(normalizedClaim);
-        var blocker = await repository.FindOtherUsersVerifiedRowAsync(
+        var blocker = await repository.FindOtherUsersVerifiedUserEmailRowAsync(
             normalizedClaim, alternateClaim, userId, cancellationToken);
 
         // 2. CrossUserBlocked: another user verified-holds the claim and provider's claim is unverified — no mutation, audit the attempt.
         if (blocker is not null && !claimEmailVerified)
         {
             // Load displaced user rows for diagnostic only (rare path).
-            var blockerRows = await repository.GetByUserIdForMutationAsync(
+            var blockerRows = await repository.GetUserEmailsByUserIdForMutationAsync(
                 blocker.UserId, cancellationToken);
 
             var blockedDescription = await BuildCrossUserDiagnosticAsync(
@@ -980,7 +980,7 @@ public sealed class UserEmailService(
 
         if (blocker is not null && claimEmailVerified)
         {
-            var displacedUsersRows = await repository.GetByUserIdForMutationAsync(
+            var displacedUsersRows = await repository.GetUserEmailsByUserIdForMutationAsync(
                 blocker.UserId, cancellationToken);
             displacedUserLeftWithoutVerifiedEmail = displacedUsersRows
                 .Count(r => r.IsVerified && r.Id != blocker.Id) == 0;

@@ -44,8 +44,8 @@ public class IssuesArchitectureTests
         var ctor = typeof(IssuesService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "Issues resolves reporter / assignee / resolver / comment-sender display names via IUserService instead of cross-domain .Include() chains");
+        paramTypes.Should().Contain(typeof(IUserServiceRead),
+            because: "Issues resolves reporter / assignee / resolver / comment-sender display names via IUserServiceRead instead of taking the write-capable user service or using cross-domain .Include() chains");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Issues resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(IRoleAssignmentService),

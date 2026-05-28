@@ -60,13 +60,8 @@
         <div class="card-header">Page Content</div>
         <div class="card-body">
             <div class="mb-3">
-                <textarea asp-for="PageContent" class="form-control font-monospace" rows="15"
-                          placeholder="Write your team's page content here..."></textarea>
-                <div class="form-text">
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
-                    </a>
-                </div>
+                <markdown-editor asp-for="PageContent" rows="15" class="font-monospace"
+                                 placeholder="Write your team's page content here..." />
             </div>
         </div>
     </div>
@@ -110,5 +105,3 @@
         <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
-
-<partial name="_MarkdownHelp" />

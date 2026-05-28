@@ -19,6 +19,7 @@ public static class HtmlHelperExtensions
 
     private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
+        .UseSoftlineBreakAsHardlineBreak()
         .Build();
 
     public static IHtmlContent SanitizedMarkdown(this IHtmlHelper html, string? markdown)

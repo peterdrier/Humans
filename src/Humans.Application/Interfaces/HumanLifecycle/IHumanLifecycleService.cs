@@ -13,7 +13,7 @@ namespace Humans.Application.Interfaces.HumanLifecycle;
 /// workflow stage, not by dependency shape (see umbrella issue
 /// nobodies-collective#563).
 /// </summary>
-public interface IHumanLifecycleService : IApplicationService
+public interface IHumanLifecycleService : IOrchestrator
 {
     /// <summary>
     /// Suspends a human (admin-initiated). Sets <c>IsSuspended = true</c> on

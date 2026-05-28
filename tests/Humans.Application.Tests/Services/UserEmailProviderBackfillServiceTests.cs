@@ -19,7 +19,6 @@ namespace Humans.Application.Tests.Services;
 public class UserEmailProviderBackfillServiceTests
 {
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
-    private readonly IUserEmailRepository _userEmailRepository = Substitute.For<IUserEmailRepository>();
     private readonly UserManager<User> _userManager;
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 30, 12, 0));
@@ -33,7 +32,6 @@ public class UserEmailProviderBackfillServiceTests
 
         _service = new UserEmailProviderBackfillService(
             _userRepository,
-            _userEmailRepository,
             _userManager,
             _auditLogService,
             _clock,
@@ -58,13 +56,13 @@ public class UserEmailProviderBackfillServiceTests
         _userRepository.GetLegacyGoogleEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
-        _userEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync(
+        _userRepository.GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
                 userId, Arg.Any<CancellationToken>())
             .Returns([
                 new DTOs.UserEmailLegacyBackfillSnapshot(
                     emailId, userId, "user@example.com", true, null, null, false, false)
             ]);
-        _userEmailRepository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns([email]);
         _userManager.GetLoginsAsync(user)
             .Returns(new List<UserLoginInfo> { new("Google", "sub-A", "Google") });
@@ -75,7 +73,7 @@ public class UserEmailProviderBackfillServiceTests
         result.ProviderRowsUpdated.Should().Be(1);
         email.Provider.Should().Be("Google");
         email.ProviderKey.Should().Be("sub-A");
-        await _userEmailRepository.Received().UpdateBatchAsync(
+        await _userRepository.Received().UpdateUserEmailsAsync(
             Arg.Is<IReadOnlyList<UserEmail>>(rows => rows.Count >= 1 && rows.Any(r => r.Id == emailId)),
             Arg.Any<CancellationToken>());
     }
@@ -110,7 +108,7 @@ public class UserEmailProviderBackfillServiceTests
         _userRepository.GetLegacyGoogleEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = "user@nobodies.team" });
-        _userEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync(
+        _userRepository.GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
                 userId, Arg.Any<CancellationToken>())
             .Returns([
                 new DTOs.UserEmailLegacyBackfillSnapshot(
@@ -118,7 +116,7 @@ public class UserEmailProviderBackfillServiceTests
                 new DTOs.UserEmailLegacyBackfillSnapshot(
                     otherRowId, userId, "personal@example.com", true, null, null, false, false)
             ]);
-        _userEmailRepository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns([googleRow, otherRow]);
         _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo>());
 
@@ -155,7 +153,7 @@ public class UserEmailProviderBackfillServiceTests
         _userRepository.GetLegacyGoogleEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
-        _userEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync(
+        _userRepository.GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
                 userId, Arg.Any<CancellationToken>())
             .Returns([
                 new DTOs.UserEmailLegacyBackfillSnapshot(
@@ -163,7 +161,7 @@ public class UserEmailProviderBackfillServiceTests
                 new DTOs.UserEmailLegacyBackfillSnapshot(
                     otherRowId, userId, "secondary@example.com", true, null, null, false, false)
             ]);
-        _userEmailRepository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns([oauthRow, otherRow]);
         _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo>());
 
@@ -195,13 +193,13 @@ public class UserEmailProviderBackfillServiceTests
         _userRepository.GetLegacyGoogleEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
-        _userEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync(
+        _userRepository.GetUserEmailLegacyBackfillSnapshotsByUserIdAsync(
                 userId, Arg.Any<CancellationToken>())
             .Returns([
                 new DTOs.UserEmailLegacyBackfillSnapshot(
                     emailId, userId, "user@example.com", true, "Google", "sub-A", false, false)
             ]);
-        _userEmailRepository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns([email]);
         _userManager.GetLoginsAsync(user)
             .Returns(new List<UserLoginInfo> { new("Google", "sub-A", "Google") });
@@ -209,7 +207,7 @@ public class UserEmailProviderBackfillServiceTests
         var result = await _service.RunAsync();
 
         result.ProviderRowsUpdated.Should().Be(0);
-        await _userEmailRepository.DidNotReceive().UpdateBatchAsync(
+        await _userRepository.DidNotReceive().UpdateUserEmailsAsync(
             Arg.Any<IReadOnlyList<UserEmail>>(), Arg.Any<CancellationToken>());
     }
 }

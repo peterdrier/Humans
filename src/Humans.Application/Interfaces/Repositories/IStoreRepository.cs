@@ -13,7 +13,7 @@ namespace Humans.Application.Interfaces.Repositories;
 public record StoreLineContext(
     Guid LineId,
     Guid OrderId,
-    Guid CampSeasonId,
+    Guid? CampSeasonId,
     StoreOrderState OrderState,
     LocalDate ProductOrderableUntil);
 
@@ -61,8 +61,33 @@ public interface IStoreRepository : IRepository
     Task<IReadOnlyList<StoreOrder>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the single open team order for <paramref name="teamId"/> in
+    /// <paramref name="year"/>, or null. The "one order per team per year"
+    /// invariant is service-enforced; this method returns the first match if
+    /// more exist. <c>Lines</c> are eager-loaded.
+    /// </summary>
+    Task<StoreOrder?> GetOrderForTeamAsync(Guid teamId, int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <see cref="StoreOrder"/> whose <c>TeamId</c> is in
+    /// <paramref name="teamIds"/> for the given <paramref name="year"/>, with
+    /// <c>Lines</c> eager-loaded. Empty input returns an empty list without a
+    /// round-trip. Used by the admin summary cross-tab.
+    /// </summary>
+    Task<IReadOnlyList<StoreOrder>> GetOrdersForTeamsWithLinesAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        int year,
+        CancellationToken ct = default);
+
     Task AddOrderAsync(StoreOrder order, CancellationToken ct = default);
     Task UpdateOrderAsync(StoreOrder order, CancellationToken ct = default);
+    /// <summary>
+    /// Hard-deletes the order. Cascade FKs remove its lines and payments. The
+    /// service is responsible for enforcing balance/state preconditions.
+    /// </summary>
+    Task DeleteOrderAsync(Guid orderId, CancellationToken ct = default);
 
     // Lines
     Task AddLineAsync(StoreOrderLine line, CancellationToken ct = default);

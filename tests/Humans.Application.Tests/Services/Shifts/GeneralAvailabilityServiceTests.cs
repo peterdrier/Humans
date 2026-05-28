@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 
 public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
 {
-    private readonly GeneralAvailabilityRepository _repo;
+    private readonly VolunteerTrackingRepository _repo;
     private readonly GeneralAvailabilityService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -20,7 +20,7 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
     public GeneralAvailabilityServiceTests()
         : base(TestNow)
     {
-        _repo = new GeneralAvailabilityRepository(DbFactory);
+        _repo = new VolunteerTrackingRepository(Db);
         _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), Clock);
     }
 
@@ -108,6 +108,95 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
     {
         // Should not throw when there's no matching record.
         await _service.DeleteAsync(Guid.NewGuid(), Guid.NewGuid());
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_AddsOffset_PreservingExisting()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-3]);
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: true);
+
+        changed.Should().BeTrue();
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_RemovesOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: false);
+
+        changed.Should().BeTrue();
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_CreatesRowWhenNoneExists()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -1, available: true);
+
+        changed.Should().BeTrue();
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.Should().NotBeNull();
+        rec!.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_RejectsPositiveOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, 2, available: true);
+
+        changed.Should().BeFalse();
+        var rec = await Db.GeneralAvailability.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        rec.Should().BeNull(); // no-op, no row created
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_NoOp_WhenAddingAlreadyPresentOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-2]);
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: true);
+
+        changed.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SetDayAvailability_NoOp_WhenRemovingAbsentOffset()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await Db.SaveChangesAsync();
+        await _service.SetAvailabilityAsync(userId, esId, [-3]);
+
+        var changed = await _service.SetDayAvailabilityAsync(userId, esId, -2, available: false);
+
+        changed.Should().BeFalse();
     }
 
     private Guid SeedEventSettings()

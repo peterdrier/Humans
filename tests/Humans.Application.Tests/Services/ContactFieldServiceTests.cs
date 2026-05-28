@@ -11,7 +11,7 @@ using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldSer
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Services;
@@ -20,7 +20,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
     private readonly ITeamServiceRead _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService;
     private readonly ContactFieldService _service;
 
@@ -31,11 +30,10 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _userService = Substitute.For<IUserService>();
 
-        var repository = new ContactFieldRepository(DbFactory);
-        _profileRepository = new ProfileRepository(DbFactory, Clock);
+        var repository = new UserRepository(DbFactory, Clock);
 
         _service = new ContactFieldService(
-            repository, _profileRepository, _userService, _teamService, _roleAssignmentService,
+            repository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoInvalidator>(),
             Clock, NullLogger<ContactFieldService>.Instance);
     }
@@ -387,8 +385,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         Db.Profiles.Add(profile);
         await Db.SaveChangesAsync();
 
-        // No store to populate — GetVisibleContactFieldsAsync now resolves profileId → userId
-        // via IProfileRepository.GetOwnerUserIdAsync (scalar DB query).
+        // No store to populate; contact reads now resolve through UserInfo or IUserRepository.
 
         return profile;
     }

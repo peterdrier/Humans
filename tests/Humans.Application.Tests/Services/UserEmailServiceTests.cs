@@ -20,7 +20,7 @@ namespace Humans.Application.Tests.Services;
 
 public class UserEmailServiceTests
 {
-    private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
+    private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITicketServiceRead _ticketServiceRead = Substitute.For<ITicketServiceRead>();
@@ -96,7 +96,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        _repository.GetByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = emailId,
@@ -118,7 +118,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        _repository.GetByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = emailId,
@@ -140,7 +140,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        _repository.GetByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdReadOnlyAsync(emailId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = emailId,
@@ -166,7 +166,7 @@ public class UserEmailServiceTests
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateComparableEmail(normalized);
 
-        if (await _repository.ExistsForUserAsync(userId, normalized, alternate, ct))
+        if (await _repository.UserEmailExistsForUserAsync(userId, normalized, alternate, ct))
             return new UserEmailAddResult(Guid.Empty, Added: false, IsConflict: false);
 
         var now = _clock.GetCurrentInstant();
@@ -186,7 +186,7 @@ public class UserEmailServiceTests
             UpdatedAt = now,
         };
 
-        await _repository.AddAsync(row, ct);
+        await _repository.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantForTestAsync(userId, ct);
         await EnsureGoogleInvariantForTestAsync(userId, ct);
         await _userInfoInvalidator.InvalidateAsync(userId, ct);
@@ -203,14 +203,14 @@ public class UserEmailServiceTests
 
         if (command.MarkVerified)
         {
-            var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct)
+            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
                 ?? throw new InvalidOperationException("Email not found.");
             if (row.IsVerified || row.Provider is not null)
                 throw new System.ComponentModel.DataAnnotations.ValidationException("No email pending verification.");
 
             row.IsVerified = true;
             row.UpdatedAt = _clock.GetCurrentInstant();
-            await _repository.UpdateAsync(row, ct);
+            await _repository.UpdateUserEmailAsync(row, ct);
             await EnsurePrimaryInvariantForTestAsync(userId, ct);
             await EnsureGoogleInvariantForTestAsync(userId, ct);
             changed = true;
@@ -218,7 +218,7 @@ public class UserEmailServiceTests
 
         if (command.Primary == UserEmailPrimaryChange.MakePrimary)
         {
-            var rows = (await _repository.GetByUserIdForMutationAsync(userId, ct)).ToList();
+            var rows = (await _repository.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
             var target = rows.FirstOrDefault(e => e.Id == emailId)
                 ?? throw new InvalidOperationException("Email not found.");
             if (!target.IsVerified)
@@ -232,47 +232,47 @@ public class UserEmailServiceTests
                 row.UpdatedAt = now;
             }
             if (changedRows.Count > 0)
-                await _repository.UpdateBatchAsync(changedRows, ct);
+                await _repository.UpdateUserEmailsAsync(changedRows, ct);
             changed |= changedRows.Count > 0;
         }
         else if (command.Primary == UserEmailPrimaryChange.ClearDuplicatePrimary)
         {
-            var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct);
+            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
             if (row is null || !row.IsPrimary) return false;
-            var rows = await _repository.GetByUserIdReadOnlyAsync(userId, ct);
+            var rows = await _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
             if (rows.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
             row.IsPrimary = false;
             row.UpdatedAt = _clock.GetCurrentInstant();
-            await _repository.UpdateAsync(row, ct);
+            await _repository.UpdateUserEmailAsync(row, ct);
             changed = true;
         }
 
         if (command.Google == UserEmailGoogleChange.MakeGoogle)
         {
-            var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct);
+            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
             if (row is null || !row.IsVerified) return false;
-            await _repository.SetGoogleExclusiveAsync(userId, emailId, _clock.GetCurrentInstant(), ct);
+            await _repository.SetUserEmailGoogleExclusiveAsync(userId, emailId, _clock.GetCurrentInstant(), ct);
             changed = true;
         }
         else if (command.Google == UserEmailGoogleChange.ClearDuplicateGoogle)
         {
-            var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct);
+            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
             if (row is null || !row.IsGoogle) return false;
-            var rows = await _repository.GetByUserIdReadOnlyAsync(userId, ct);
+            var rows = await _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
             if (rows.Count(e => e.IsGoogle) <= 1) return false;
             row.IsGoogle = false;
             row.UpdatedAt = _clock.GetCurrentInstant();
-            await _repository.UpdateAsync(row, ct);
+            await _repository.UpdateUserEmailAsync(row, ct);
             changed = true;
         }
 
         if (command.ChangeVisibility)
         {
-            var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct)
+            var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
                 ?? throw new InvalidOperationException("Email not found.");
             row.Visibility = command.Visibility;
             row.UpdatedAt = _clock.GetCurrentInstant();
-            await _repository.UpdateAsync(row, ct);
+            await _repository.UpdateUserEmailAsync(row, ct);
             changed = true;
         }
 
@@ -287,7 +287,7 @@ public class UserEmailServiceTests
         UserEmailRemoveCommand command,
         CancellationToken ct)
     {
-        var row = await _repository.GetByIdAndUserIdAsync(emailId, userId, ct)
+        var row = await _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
             ?? throw new InvalidOperationException("Email not found.");
         var hasProvider = !string.IsNullOrEmpty(row.Provider);
         if (command.Mode == UserEmailRemovalMode.PlainEmail && hasProvider) return false;
@@ -295,13 +295,13 @@ public class UserEmailServiceTests
 
         if (command.PreserveLastVerifiedEmail && row.IsVerified)
         {
-            var rows = await _repository.GetByUserIdForMutationAsync(userId, ct);
+            var rows = await _repository.GetUserEmailsByUserIdForMutationAsync(userId, ct);
             if (rows.Count(e => e.IsVerified && e.Id != emailId) == 0)
                 throw new System.ComponentModel.DataAnnotations.ValidationException(
                     "Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.");
         }
 
-        await _repository.RemoveAsync(row, ct);
+        await _repository.RemoveUserEmailAsync(row, ct);
         if (command.RepairInvariants)
         {
             await EnsurePrimaryInvariantForTestAsync(userId, ct);
@@ -313,7 +313,7 @@ public class UserEmailServiceTests
 
     private async Task EnsurePrimaryInvariantForTestAsync(Guid userId, CancellationToken ct)
     {
-        var rows = (await _repository.GetByUserIdForMutationAsync(userId, ct)).ToList();
+        var rows = (await _repository.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
         var verified = rows.Where(e => e.IsVerified).ToList();
         if (verified.Count == 0) return;
         var current = verified.Where(e => e.IsPrimary).ToList();
@@ -329,12 +329,12 @@ public class UserEmailServiceTests
             row.UpdatedAt = now;
         }
         if (changed.Count > 0)
-            await _repository.UpdateBatchAsync(changed, ct);
+            await _repository.UpdateUserEmailsAsync(changed, ct);
     }
 
     private async Task EnsureGoogleInvariantForTestAsync(Guid userId, CancellationToken ct)
     {
-        var rows = (await _repository.GetByUserIdForMutationAsync(userId, ct)).ToList();
+        var rows = (await _repository.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
         var verified = rows.Where(e => e.IsVerified).ToList();
         if (verified.Count == 0) return;
         var current = verified.Where(e => e.IsGoogle).ToList();
@@ -350,7 +350,7 @@ public class UserEmailServiceTests
             row.UpdatedAt = now;
         }
         if (changed.Count > 0)
-            await _repository.UpdateBatchAsync(changed, ct);
+            await _repository.UpdateUserEmailsAsync(changed, ct);
     }
 
     private static string? GetAlternateComparableEmail(string normalizedEmail)
@@ -410,7 +410,7 @@ public class UserEmailServiceTests
                 IsVerified = true, IsPrimary = true
             }
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
         await _service.SetPrimaryAsync(userId, targetId);
@@ -433,7 +433,7 @@ public class UserEmailServiceTests
                 IsVerified = false, IsPrimary = false
             }
         };
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
         var act = async () => await _service.SetPrimaryAsync(userId, targetId);
@@ -473,16 +473,16 @@ public class UserEmailServiceTests
             // is a no-op and only DeleteEmailAsync's own invalidation runs.
             IsGoogle = true,
         };
-        _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { deleting, keeping });
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo> { new("Google", "sub-123", "Google") });
 
         await _service.DeleteEmailAsync(userId, deletingId);
 
-        await _repository.Received(1).RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -505,13 +505,13 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = false,
         };
-        _repository.GetByIdAndUserIdAsync(providerRowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(providerRowId, userId, Arg.Any<CancellationToken>())
             .Returns(providerRow);
 
         var result = await _service.DeleteEmailAsync(userId, providerRowId);
 
         result.Should().BeFalse();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -530,9 +530,9 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo>());
@@ -540,7 +540,7 @@ public class UserEmailServiceTests
         var act = async () => await _service.DeleteEmailAsync(userId, emailId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -564,15 +564,15 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
 
         var act = async () => await _service.DeleteEmailAsync(userId, emailId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -584,7 +584,7 @@ public class UserEmailServiceTests
         // entirely.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = emailId,
@@ -596,7 +596,7 @@ public class UserEmailServiceTests
 
         await _service.DeleteEmailAsync(userId, emailId);
 
-        await _repository.Received(1).RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         // GetLoginsAsync should not even be called since the verified branch is skipped.
         await _userManager.DidNotReceive().GetLoginsAsync(Arg.Any<User>());
     }
@@ -624,15 +624,15 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = false,
         };
-        _repository.GetByIdAndUserIdAsync(primaryId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(primaryId, userId, Arg.Any<CancellationToken>())
             .Returns(primary);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { primary, secondary });
 
         var act = async () => await _service.DeleteEmailAsync(userId, primaryId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -658,9 +658,9 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(ticketEmailId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(ticketEmailId, userId, Arg.Any<CancellationToken>())
             .Returns(ticketEmail);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { ticketEmail, primary });
         _ticketServiceRead.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
@@ -694,7 +694,7 @@ public class UserEmailServiceTests
         var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -719,11 +719,11 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = false,
         };
-        _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { rowA, rowB });
-        _repository.SetGoogleExclusiveAsync(
+        _repository.SetUserEmailGoogleExclusiveAsync(
             userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
             .AndDoes(_ =>
@@ -737,7 +737,7 @@ public class UserEmailServiceTests
         result.Should().BeTrue();
         rowA.IsGoogle.Should().BeFalse();
         rowB.IsGoogle.Should().BeTrue();
-        await _repository.Received(1).SetGoogleExclusiveAsync(
+        await _repository.Received(1).SetUserEmailGoogleExclusiveAsync(
             userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -747,15 +747,15 @@ public class UserEmailServiceTests
         var ownerId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        // Owner-gate: GetByIdAndUserIdAsync(rowId, otherId) returns null because
+        // Owner-gate: GetUserEmailByIdAndUserIdAsync(rowId, otherId) returns null because
         // the row is owned by ownerId, not otherId.
-        _repository.GetByIdAndUserIdAsync(rowId, otherId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, otherId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
         var result = await _service.SetGoogleAsync(otherId, rowId, otherId);
 
         result.Should().BeFalse();
-        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -774,14 +774,14 @@ public class UserEmailServiceTests
             IsVerified = false,
             IsGoogle = false,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
         var result = await _service.SetGoogleAsync(userId, rowId, userId);
 
         result.Should().BeFalse();
         row.IsGoogle.Should().BeFalse();
-        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -812,16 +812,16 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
         var result = await _service.ClearGoogleAsync(userId, rowId, actorId);
 
         result.Should().BeTrue();
         row.IsGoogle.Should().BeFalse();
-        await _repository.Received(1).UpdateAsync(row, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
@@ -845,13 +845,13 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = false,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
         var result = await _service.ClearGoogleAsync(userId, rowId, userId);
 
         result.Should().BeFalse();
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -871,16 +871,16 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
         var result = await _service.ClearGoogleAsync(userId, rowId, userId);
 
         result.Should().BeFalse();
         row.IsGoogle.Should().BeTrue();
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
@@ -909,19 +909,19 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
             .Returns(rowA);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { rowA, rowB });
 
         var result = await _service.ClearGoogleAsync(userId, rowAId, userId);
 
         result.Should().BeTrue();
         // Only the targeted row should have flowed through UpdateAsync —
-        // SetGoogleExclusiveAsync (which would touch siblings) must not fire.
-        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+        // SetUserEmailGoogleExclusiveAsync (which would touch siblings) must not fire.
+        await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _repository.Received(1).UpdateAsync(rowA, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateUserEmailAsync(rowA, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -948,16 +948,16 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, actorId);
 
         result.Should().BeTrue();
         row.IsPrimary.Should().BeFalse();
-        await _repository.Received(1).UpdateAsync(row, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.UserEmailPrimaryCleared,
             nameof(User), userId,
@@ -983,16 +983,16 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
 
         result.Should().BeFalse();
         row.IsPrimary.Should().BeTrue();
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
@@ -1024,16 +1024,16 @@ public class UserEmailServiceTests
             IsVerified = false,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, unverifiedSibling });
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
 
         result.Should().BeFalse();
         row.IsPrimary.Should().BeTrue();
-        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1063,14 +1063,14 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
         await _service.ClearPrimaryAsync(userId, rowId, userId);
 
-        await _repository.DidNotReceive().GetByUserIdForMutationAsync(
+        await _repository.DidNotReceive().GetUserEmailsByUserIdForMutationAsync(
             userId, Arg.Any<CancellationToken>());
     }
 
@@ -1147,7 +1147,7 @@ public class UserEmailServiceTests
     public async Task UnlinkAsync_RemovesAspNetUserLoginsAndEmailRow()
     {
         // Provider-attached row is removed from both the AspNetUserLogins table
-        // (via UserManager.RemoveLoginAsync) and user_emails (via _repo.RemoveAsync).
+        // (via UserManager.RemoveLoginAsync) and user_emails (via _repo.RemoveUserEmailAsync).
         // FullProfile cache is invalidated and an audit log entry is written.
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -1162,7 +1162,7 @@ public class UserEmailServiceTests
             IsVerified = true,
         };
         var user = new User { Id = userId };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
@@ -1172,7 +1172,7 @@ public class UserEmailServiceTests
 
         result.Should().BeTrue();
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
-        await _repository.Received(1).RemoveAsync(row, Arg.Any<CancellationToken>());
+        await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -1198,7 +1198,7 @@ public class UserEmailServiceTests
             ProviderKey = null,
             IsVerified = true,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
         var result = await _service.UnlinkAsync(userId, rowId, actorId);
@@ -1206,7 +1206,7 @@ public class UserEmailServiceTests
         result.Should().BeFalse();
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
@@ -1228,9 +1228,9 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = false,
         };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
-        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
         await _service.SetGoogleAsync(userId, rowId, userId);
@@ -1254,16 +1254,16 @@ public class UserEmailServiceTests
         // leaving the user with NO primary row. The helper promotes the first
         // verified row regardless of domain.
         var userId = Guid.NewGuid();
-        _repository.ExistsForUserAsync(
+        _repository.UserEmailExistsForUserAsync(
             userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         UserEmail? added = null;
-        await _repository.AddAsync(
+        await _repository.AddUserEmailAsync(
             Arg.Do<UserEmail>(e => added = e),
             Arg.Any<CancellationToken>());
 
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
 
         await _service.AddVerifiedEmailAsync(userId, "alice@gmail.com");
@@ -1286,16 +1286,16 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.ExistsForUserAsync(
+        _repository.UserEmailExistsForUserAsync(
             userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         UserEmail? added = null;
-        await _repository.AddAsync(
+        await _repository.AddUserEmailAsync(
             Arg.Do<UserEmail>(e => added = e),
             Arg.Any<CancellationToken>());
 
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => added is null
                 ? new List<UserEmail> { existingPrimary }
                 : new List<UserEmail> { existingPrimary, added });
@@ -1321,7 +1321,7 @@ public class UserEmailServiceTests
         _userManager.GenerateUserTokenAsync(
                 Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns("tok-123");
-        _repository.ExistsForUserAsync(
+        _repository.UserEmailExistsForUserAsync(
                 userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
         // UserInfo has NO UserEmail rows (the primary was deleted) but the legacy column lingers.
@@ -1331,14 +1331,14 @@ public class UserEmailServiceTests
         var result = await _service.AddEmailAsync(userId, "katja@gmail.com");
 
         result.EmailId.Should().NotBe(Guid.Empty);
-        await _repository.Received(1).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task AddEmailAsync_AddressAlreadyHeldAsUserEmailRow_ThrowsValidationException()
     {
         var userId = Guid.NewGuid();
-        _repository.ExistsForUserAsync(
+        _repository.UserEmailExistsForUserAsync(
                 userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -1379,7 +1379,7 @@ public class UserEmailServiceTests
             IsPrimary = false,
         };
         var user = new User { Id = userId };
-        _repository.GetByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
             .Returns(googleRow);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
@@ -1387,7 +1387,7 @@ public class UserEmailServiceTests
 
         // After RemoveAsync, the helper sees only the secondary (mock simulates
         // the post-removal state).
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { secondary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
@@ -1424,13 +1424,13 @@ public class UserEmailServiceTests
             IsPrimary = true,
         };
         var user = new User { Id = userId };
-        _repository.GetByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
             .Returns(googleRow);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Success);
 
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { primary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
@@ -1458,7 +1458,7 @@ public class UserEmailServiceTests
             IsVerified = true,
         };
         var user = new User { Id = userId };
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
@@ -1468,7 +1468,7 @@ public class UserEmailServiceTests
         var result = await _service.UnlinkAsync(userId, rowId, actorId);
 
         result.Should().BeFalse();
-        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
@@ -1510,11 +1510,11 @@ public class UserEmailServiceTests
 
         var user = new User { Id = userId, DisplayName = "U" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
-        _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
-        _repository.GetConflictingVerifiedEmailAsync(
+        _repository.GetConflictingVerifiedUserEmailAsync(
                 rowBId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
         _userManager.VerifyUserTokenAsync(
@@ -1529,7 +1529,7 @@ public class UserEmailServiceTests
         rowB.IsVerified.Should().BeTrue();
         // Row A was never loaded — VerifyEmailAsync must look up by the
         // emailId argument, not enumerate the user's other pending rows.
-        await _repository.DidNotReceive().GetByIdAndUserIdAsync(
+        await _repository.DidNotReceive().GetUserEmailByIdAndUserIdAsync(
             rowAId, userId, Arg.Any<CancellationToken>());
     }
 
@@ -1554,7 +1554,7 @@ public class UserEmailServiceTests
 
         var user = new User { Id = userId, DisplayName = "U" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
         // Token from row A's link is NOT valid against row B's purpose suffix.
         _userManager.VerifyUserTokenAsync(
@@ -1585,7 +1585,7 @@ public class UserEmailServiceTests
 
         var user = new User { Id = userId, DisplayName = "U" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(verified);
 
         var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token");
@@ -1612,7 +1612,7 @@ public class UserEmailServiceTests
 
         var user = new User { Id = userId, DisplayName = "U" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauth);
 
         var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token");
@@ -1640,9 +1640,9 @@ public class UserEmailServiceTests
             VerificationSentAt = _clock.GetCurrentInstant(),
         };
 
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(pending);
-        _repository.GetConflictingVerifiedEmailAsync(
+        _repository.GetConflictingVerifiedUserEmailAsync(
                 rowId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
@@ -1651,7 +1651,7 @@ public class UserEmailServiceTests
         result.MergeRequestCreated.Should().BeFalse();
         result.Email.Should().Be("pending@example.com");
         pending.IsVerified.Should().BeTrue();
-        await _repository.Received(1).UpdateAsync(pending, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateUserEmailAsync(pending, Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
@@ -1689,9 +1689,9 @@ public class UserEmailServiceTests
             IsVerified = true,
         };
 
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(pending);
-        _repository.GetConflictingVerifiedEmailAsync(
+        _repository.GetConflictingVerifiedUserEmailAsync(
                 rowId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(conflicting);
         _mergeService.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
@@ -1708,7 +1708,7 @@ public class UserEmailServiceTests
                 && m.PendingEmailId == rowId
                 && m.Status == AccountMergeRequestStatus.Pending),
             Arg.Any<CancellationToken>());
-        await _repository.DidNotReceive().UpdateAsync(
+        await _repository.DidNotReceive().UpdateUserEmailAsync(
             Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
@@ -1717,7 +1717,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
         var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
@@ -1730,7 +1730,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = rowId,
@@ -1752,7 +1752,7 @@ public class UserEmailServiceTests
         // not via this admin path — even an admin shouldn't bypass that.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
                 Id = rowId,
@@ -1795,11 +1795,11 @@ public class UserEmailServiceTests
             UpdatedAt = Instant.FromUtc(2026, 4, 10, 0, 0),
         };
 
-        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _repository.UserEmailExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         UserEmail? added = null;
-        _repository.AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
+        _repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 added = call.Arg<UserEmail>();
@@ -1807,7 +1807,7 @@ public class UserEmailServiceTests
             });
 
         // After AddAsync, repository returns both rows.
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => new List<UserEmail> { personalRow, added! });
 
         await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team");
@@ -1826,15 +1826,15 @@ public class UserEmailServiceTests
         var userId = Guid.NewGuid();
         UserEmail? added = null;
 
-        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _repository.UserEmailExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        _repository.AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
+        _repository.AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 added = call.Arg<UserEmail>();
                 return Task.CompletedTask;
             });
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
 
         await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
@@ -1848,12 +1848,12 @@ public class UserEmailServiceTests
     public async Task AddProvisionedEmailAsync_RowAlreadyExistsForUser_IsIdempotent()
     {
         var userId = Guid.NewGuid();
-        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _repository.UserEmailExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
 
         await _repository.DidNotReceive()
-            .AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+            .AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 }

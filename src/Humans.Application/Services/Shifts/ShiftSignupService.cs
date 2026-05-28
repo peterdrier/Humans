@@ -23,7 +23,9 @@ namespace Humans.Application.Services.Shifts;
 /// </summary>
 public sealed class ShiftSignupService(
     IShiftSignupRepository repo,
+    IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     IMembershipCalculator membership,
     IAuditLogService auditLogService,
     INotificationService notificationService,
@@ -1099,8 +1101,19 @@ public sealed class ShiftSignupService(
             .ToDictionary(id => id, id => teamsByIdLookup[id].Name);
 
         var volunteerEventProfiles = await repo.GetVolunteerEventProfilesForUserAsync(userId, ct);
-        var generalAvailability = await repo.GetGeneralAvailabilityForUserAsync(userId, ct);
+        var generalAvailability = await trackingRepo.GetAvailabilityByUserAsync(userId, ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUserAsync(userId, ct);
+
+        // Resolve EventName for each distinct EventSettingsId via IBurnSettingsService
+        // (EventSettings.EventSettings nav is not included by GetAvailabilityByUserAsync).
+        var distinctEventSettingsIds = generalAvailability.Select(ga => ga.EventSettingsId).Distinct();
+        var eventNamesById = new Dictionary<Guid, string>();
+        foreach (var id in distinctEventSettingsIds)
+        {
+            var info = await burnSettings.GetByIdAsync(id, ct);
+            if (info is not null)
+                eventNamesById[id] = info.EventName;
+        }
 
         var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
         {
@@ -1129,7 +1142,7 @@ public sealed class ShiftSignupService(
 
         var availabilitySlice = new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
         {
-            EventName = ga.EventSettings.EventName,
+            EventName = eventNamesById.TryGetValue(ga.EventSettingsId, out var eventName) ? eventName : string.Empty,
             ga.AvailableDayOffsets,
             UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
         }).ToList());

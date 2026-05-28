@@ -1,9 +1,11 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Store;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,6 +21,7 @@ public class StoreSummaryAggregateTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -26,7 +29,9 @@ public class StoreSummaryAggregateTests
 
     public StoreSummaryAggregateTests()
     {
-        _service = new StoreService(_repo, _audit, _camps, _clock, _shifts, _stripe, NullLogger<StoreService>.Instance);
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        _service = new StoreService(_repo, _audit, _camps, _teams, _clock, _shifts, _stripe, NullLogger<StoreService>.Instance);
     }
 
     [HumansFact]
@@ -40,10 +45,10 @@ public class StoreSummaryAggregateTests
         var result = await _service.GetStoreSummaryAsync(2026);
 
         result.Year.Should().Be(2026);
-        result.ByCamp.Should().BeEmpty();
+        result.ByCounterparty.Should().BeEmpty();
         result.ByItem.Should().BeEmpty();
         result.CrossTab.Products.Should().BeEmpty();
-        result.CrossTab.Camps.Should().BeEmpty();
+        result.CrossTab.Counterparties.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -111,11 +116,12 @@ public class StoreSummaryAggregateTests
 
         var result = await _service.GetStoreSummaryAsync(2026);
 
-        // By-camp
-        result.ByCamp.Should().HaveCount(1);
-        var camp = result.ByCamp[0];
+        // By-counterparty
+        result.ByCounterparty.Should().HaveCount(1);
+        var camp = result.ByCounterparty[0];
         camp.OrderId.Should().Be(orderId);
-        camp.CampName.Should().Be("Camp Alpha");
+        camp.CounterpartyName.Should().Be("Camp Alpha");
+        camp.CounterpartyType.Should().Be(StoreOrderCounterpartyType.Camp);
         camp.TotalDueEur.Should().Be(36.30m); // 3 * 10 + VAT 6.30
         camp.PaymentsTotalEur.Should().Be(20m);
         camp.BalanceEur.Should().Be(16.30m);
@@ -129,10 +135,10 @@ public class StoreSummaryAggregateTests
         // Cross-tab
         result.CrossTab.Products.Should().HaveCount(1);
         result.CrossTab.Products[0].TotalQty.Should().Be(3);
-        result.CrossTab.Camps.Should().HaveCount(1);
-        result.CrossTab.Camps[0].CampName.Should().Be("Camp Alpha");
-        result.CrossTab.Camps[0].TotalQty.Should().Be(3);
-        result.CrossTab.Camps[0].QtyByProduct[productId].Should().Be(3);
+        result.CrossTab.Counterparties.Should().HaveCount(1);
+        result.CrossTab.Counterparties[0].CounterpartyName.Should().Be("Camp Alpha");
+        result.CrossTab.Counterparties[0].TotalQty.Should().Be(3);
+        result.CrossTab.Counterparties[0].QtyByProduct[productId].Should().Be(3);
     }
 
     [HumansFact]
@@ -193,13 +199,13 @@ public class StoreSummaryAggregateTests
         colY.TotalQty.Should().Be(1);
 
         // Cross-tab row totals
-        result.CrossTab.Camps.Single(r => string.Equals(r.CampName, "Camp Alpha", StringComparison.Ordinal)).TotalQty.Should().Be(3);
-        result.CrossTab.Camps.Single(r => string.Equals(r.CampName, "Camp Bravo", StringComparison.Ordinal)).TotalQty.Should().Be(4);
+        result.CrossTab.Counterparties.Single(r => string.Equals(r.CounterpartyName, "Camp Alpha", StringComparison.Ordinal)).TotalQty.Should().Be(3);
+        result.CrossTab.Counterparties.Single(r => string.Equals(r.CounterpartyName, "Camp Bravo", StringComparison.Ordinal)).TotalQty.Should().Be(4);
 
         // Sum of all cells == sum of column totals == sum of row totals
-        var cellSum = result.CrossTab.Camps.Sum(r => r.QtyByProduct.Values.Sum());
+        var cellSum = result.CrossTab.Counterparties.Sum(r => r.QtyByProduct.Values.Sum());
         cellSum.Should().Be(result.CrossTab.Products.Sum(c => c.TotalQty));
-        cellSum.Should().Be(result.CrossTab.Camps.Sum(r => r.TotalQty));
+        cellSum.Should().Be(result.CrossTab.Counterparties.Sum(r => r.TotalQty));
     }
 
     [HumansFact]
@@ -294,17 +300,17 @@ public class StoreSummaryAggregateTests
 
         var result = await _service.GetStoreSummaryAsync(2026);
 
-        var paidRow = result.ByCamp.Single(r => r.OrderId == orderPaid);
+        var paidRow = result.ByCounterparty.Single(r => r.OrderId == orderPaid);
         paidRow.TotalDueEur.Should().Be(20m);
         paidRow.PaymentsTotalEur.Should().Be(20m);
         paidRow.BalanceEur.Should().Be(0m);
 
-        var partialRow = result.ByCamp.Single(r => r.OrderId == orderPartial);
+        var partialRow = result.ByCounterparty.Single(r => r.OrderId == orderPartial);
         partialRow.TotalDueEur.Should().Be(30m);
         partialRow.PaymentsTotalEur.Should().Be(10m);
         partialRow.BalanceEur.Should().Be(20m);
 
-        var unpaidRow = result.ByCamp.Single(r => r.OrderId == orderUnpaid);
+        var unpaidRow = result.ByCounterparty.Single(r => r.OrderId == orderUnpaid);
         unpaidRow.TotalDueEur.Should().Be(10m);
         unpaidRow.PaymentsTotalEur.Should().Be(0m);
         unpaidRow.BalanceEur.Should().Be(10m);
@@ -332,7 +338,7 @@ public class StoreSummaryAggregateTests
 
         var result = await _service.GetStoreSummaryAsync(2026);
 
-        result.ByCamp.Should().BeEmpty();
-        result.CrossTab.Camps.Should().BeEmpty();
+        result.ByCounterparty.Should().BeEmpty();
+        result.CrossTab.Counterparties.Should().BeEmpty();
     }
 }

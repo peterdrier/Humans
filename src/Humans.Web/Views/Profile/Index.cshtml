@@ -82,6 +82,7 @@
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {
             <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+            <vc:volunteer-build-strip user-id="@Model.UserId" />
         }
 
         @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -44,6 +45,7 @@ public class Event
     /// <summary>
     /// Event description (≤ 450 chars).
     /// </summary>
+    [MarkdownContent]
     public string Description { get; set; } = string.Empty;
 
     /// <summary>

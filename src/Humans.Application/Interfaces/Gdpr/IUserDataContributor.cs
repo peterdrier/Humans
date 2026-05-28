@@ -20,7 +20,7 @@ namespace Humans.Application.Interfaces.Gdpr;
 /// top-level keys the user sees in the export file.
 /// </para>
 /// </summary>
-public interface IUserDataContributor
+public interface IUserDataContributor : IFanout
 {
     /// <summary>
     /// Returns every personal-data slice this contributor owns for

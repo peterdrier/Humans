@@ -10,7 +10,7 @@ namespace Humans.Analyzers;
 /// Pins the single legitimate call chain for the OAuth reconcile primitive:
 /// <c>AccountController</c> → <c>IUserEmailService.ReconcileOAuthIdentityAsync</c> →
 /// <c>IUserService.ApplyUserEmailReconcilePlanAsync</c> ->
-/// <c>IUserEmailRepository.ApplyReconcilePlanAsync</c>. Any other call site is forbidden.
+/// <c>IUserRepository.ApplyUserEmailReconcilePlanAsync</c>. Any other call site is forbidden.
 /// </summary>
 /// <remarks>
 /// See <c>memory/architecture/email-mutation-paths.md</c>. The atom names this
@@ -39,9 +39,9 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 
     public static readonly DiagnosticDescriptor RepositoryCallerRule = new(
         id: RepositoryCallerDiagnosticId,
-        title: "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from approved user-email storage services",
+        title: "IUserRepository.ApplyUserEmailReconcilePlanAsync may only be called from approved user-email storage services",
         messageFormat:
-            "IUserEmailRepository.ApplyReconcilePlanAsync may only be called from UserService " +
+            "IUserRepository.ApplyUserEmailReconcilePlanAsync may only be called from UserService " +
             "or UserEmailService. " +
             "See memory/architecture/email-mutation-paths.md.",
         category: AnalyzerCategories.Architecture,
@@ -55,9 +55,9 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     ];
 
     private const string ServiceInterface = "Humans.Application.Interfaces.Profiles.IUserEmailService";
-    private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserEmailRepository";
+    private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
-    private const string RepositoryMethodName = "ApplyReconcilePlanAsync";
+    private const string RepositoryMethodName = "ApplyUserEmailReconcilePlanAsync";
     private const string AllowedServiceCaller = "Humans.Web.Controllers.AccountController";
     private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
         ImmutableHashSet.Create(

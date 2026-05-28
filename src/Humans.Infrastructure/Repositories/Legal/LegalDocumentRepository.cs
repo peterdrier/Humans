@@ -84,8 +84,8 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<HumansDbContext>
         if (teamIds.Count == 0) return [];
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // LegalDocument.Team is a cross-section nav — callers stitch team
-        // names via ITeamService (memory/architecture/no-cross-section-ef-joins.md).
+        // Team is cross-section data; callers stitch team names via
+        // ITeamService (memory/architecture/no-cross-section-ef-joins.md).
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))

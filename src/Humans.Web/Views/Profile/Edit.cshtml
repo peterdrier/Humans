@@ -233,7 +233,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Bio" class="form-label"></label>
-                        <textarea asp-for="Bio" class="form-control" rows="4"></textarea>
+                        <markdown-editor asp-for="Bio" rows="4" />
                         <span asp-validation-for="Bio" class="text-danger"></span>
                         <div class="form-text">@Localizer["ProfileEdit_BioHelp"]</div>
                     </div>

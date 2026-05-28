@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
@@ -49,7 +50,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftManagementRepository(DbFactory);
+        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
@@ -60,7 +61,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        var signupRepo = new ShiftSignupRepository(Db, Clock);
+        var signupRepo = new ShiftRepository(DbFactory, Db, Clock);
         var membership = Substitute.For<IMembershipCalculator>();
         membership.HasAllRequiredConsentsForTeamAsync(
                 Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -68,7 +69,9 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
 
         _service = new ShiftSignupService(
             signupRepo,
+            Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             membership,
             AuditLog,
             _notificationService,

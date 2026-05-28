@@ -7,6 +7,7 @@
 
 @{
     var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
 
     if (Model.Rows.Count == 0)
     {
@@ -43,10 +44,78 @@
     };
 }
 
+@* Heatmap CSS lives in the partial so the table renders correctly anywhere the
+   partial is hosted (Volunteer Tracking dashboard AND profile build strip via
+   VolunteerBuildStripViewComponent). Duplicating <style> tags across multiple
+   partial renders on one page is harmless. *@
+<style>
+    /* Day-off cell: striped grey, signals "we know about this, intentionally
+       not-here" without competing with the green/red/blue signals. */
+    .vt-dayoff {
+        background: #f8f9fa;
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.18) 0,
+            rgba(0, 0, 0, 0.18) 2px,
+            transparent 2px,
+            transparent 6px);
+    }
+    .vt-heatmap-table {
+        table-layout: fixed;
+        width: max-content;
+        min-width: 100%;
+    }
+    .vt-heatmap-table th.vt-sticky-head,
+    .vt-heatmap-table td.vt-sticky-cell {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: var(--bs-body-bg);
+        min-width: 220px;
+        width: 220px;
+    }
+    .vt-heatmap-table th.vt-sticky-head { z-index: 2; background: var(--bs-tertiary-bg); }
+    .vt-heatmap-table td.vt-cell {
+        min-width: 32px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        text-align: center;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .vt-heatmap-table td.vt-cell button {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: transparent;
+        padding: 0;
+    }
+    @@media (max-width: 768px) {
+        .vt-heatmap-table th.vt-sticky-head,
+        .vt-heatmap-table td.vt-sticky-cell {
+            min-width: 140px;
+            width: 140px;
+        }
+        .vt-heatmap-table td.vt-cell {
+            min-width: 28px;
+            width: 28px;
+            height: 28px;
+        }
+    }
+</style>
+
 <div class="card mb-3">
     <div class="card-header d-flex align-items-center">
-        <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Main_Title"]</strong>
-        <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
+        @if (Model.ShowAvailabilityControls)
+        {
+            <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Profile_BuildStrip_Title"]</strong>
+        }
+        else
+        {
+            <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Main_Title"]</strong>
+            <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
+        }
         @* Scroll arrows: hidden until JS detects horizontal overflow. *@
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
@@ -153,10 +222,11 @@
                                         @* State-driven: Mark / Move / Clear camp set-up. *@
                                         @if (cell.State != VolunteerCellState.CampSetup)
                                         {
-                                            <form method="post" asp-action="SetCampSetup" class="mb-2">
+                                            <form method="post" asp-controller="VolunteerTracking" asp-action="SetCampSetup" class="mb-2">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="UserId" value="@row.UserId" />
                                                 <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-primary w-100">
                                                     <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
                                                 </button>
@@ -169,18 +239,20 @@
                                                 : (int?)null;
                                             if (setupOffset.HasValue && cell.DayOffset != setupOffset.Value)
                                             {
-                                                <form method="post" asp-action="SetCampSetup" class="mb-2">
+                                                <form method="post" asp-controller="VolunteerTracking" asp-action="SetCampSetup" class="mb-2">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="UserId" value="@row.UserId" />
                                                     <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
+                                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                     <button type="submit" class="btn btn-sm btn-outline-primary w-100">
                                                         <i class="fa-solid fa-arrows-left-right me-1"></i>@Localizer["VolTrack_Popover_MoveCampSetup"]
                                                     </button>
                                                 </form>
                                             }
-                                            <form method="post" asp-action="ClearCampSetup" class="mb-2">
+                                            <form method="post" asp-controller="VolunteerTracking" asp-action="ClearCampSetup" class="mb-2">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="userId" value="@row.UserId" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-outline-warning w-100">
                                                     <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_ClearCampSetup"]
                                                 </button>
@@ -201,10 +273,11 @@
                                                     <em class="opacity-75">— @Localizer["VolTrack_State_DayOff"]</em>
                                                 }
                                             </div>
-                                            <form method="post" asp-action="ClearDayOff">
+                                            <form method="post" asp-controller="VolunteerTracking" asp-action="ClearDayOff">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="UserId" value="@row.UserId" />
                                                 <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <button type="submit" class="btn btn-sm btn-outline-warning w-100">
                                                     <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_CancelDayOff"]
                                                 </button>
@@ -218,10 +291,11 @@
                                         }
                                         else if (cell.State == VolunteerCellState.Gap)
                                         {
-                                            <form method="post" asp-action="SetDayOff">
+                                            <form method="post" asp-controller="VolunteerTracking" asp-action="SetDayOff">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="UserId" value="@row.UserId" />
                                                 <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
                                                 <input type="text" name="Reason" maxlength="200"
                                                        class="form-control form-control-sm mb-2"
                                                        placeholder="@Localizer["VolTrack_Popover_ReasonLabel"]" />
@@ -229,6 +303,38 @@
                                                     <i class="fa-solid fa-calendar-xmark me-1"></i>@Localizer["VolTrack_Popover_MarkDayOff"]
                                                 </button>
                                             </form>
+                                        }
+                                        @if (Model.ShowAvailabilityControls
+                                             && cell.State != VolunteerCellState.CampSetup
+                                             && cell.State != VolunteerCellState.Confirmed
+                                             && cell.State != VolunteerCellState.Pending)
+                                        {
+                                            <hr class="my-2" />
+                                            <div class="small text-muted mb-1">@Localizer["Profile_BuildStrip_Title"]</div>
+                                            @if (cell.DeclaredAvailable)
+                                            {
+                                                <form method="post" asp-controller="VolunteerTracking" asp-action="ClearAvailabilityDay">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="userId" value="@row.UserId" />
+                                                    <input type="hidden" name="dayOffset" value="@cell.DayOffset" />
+                                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                                        <i class="fa-solid fa-minus me-1"></i>@Localizer["VolTrack_Popover_UnmarkAvailable"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form method="post" asp-controller="VolunteerTracking" asp-action="SetAvailabilityDay">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="userId" value="@row.UserId" />
+                                                    <input type="hidden" name="dayOffset" value="@cell.DayOffset" />
+                                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                        <i class="fa-solid fa-plus me-1"></i>@Localizer["VolTrack_Popover_MarkAvailable"]
+                                                    </button>
+                                                </form>
+                                            }
                                         }
                                     }
                                 </div>
@@ -240,3 +346,80 @@
         </table>
     </div>
 </div>
+
+@* Scroll-arrow + Bootstrap-popover wiring. Lives in the partial so it travels
+   with the view wherever it renders (Volunteer Tracking dashboard AND profile
+   build strip). DOMContentLoaded gate ensures wiring runs after sibling
+   partials (e.g. _VolunteerUnbookedHeatmap on the dashboard) are in the DOM.
+   Per-element guards (data-vt-wired / Popover.getInstance) make it safe if the
+   partial ever renders multiple times. *@
+<script>
+(function () {
+    function initScrollArrows() {
+        var STEP = 220;
+        function syncGroup(scroller, group) {
+            if (!scroller || !group) return;
+            var hasOverflow = scroller.scrollWidth > scroller.clientWidth + 1;
+            group.hidden = !hasOverflow;
+            if (!hasOverflow) return;
+            var atStart = scroller.scrollLeft <= 0;
+            var atEnd = scroller.scrollLeft >= scroller.scrollWidth - scroller.clientWidth - 1;
+            var leftBtn = group.querySelector('[data-vt-scroll="left"]');
+            var rightBtn = group.querySelector('[data-vt-scroll="right"]');
+            if (leftBtn) leftBtn.disabled = atStart;
+            if (rightBtn) rightBtn.disabled = atEnd;
+        }
+        document.querySelectorAll('[data-vt-scroll-group]').forEach(function (group) {
+            if (group.dataset.vtWired === '1') return;
+            group.dataset.vtWired = '1';
+            var card = group.closest('.card');
+            var scroller = card && card.querySelector('.vt-heatmap-scroll');
+            if (!scroller) return;
+            group.querySelectorAll('[data-vt-scroll]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var dir = btn.getAttribute('data-vt-scroll') === 'left' ? -1 : 1;
+                    scroller.scrollBy({ left: dir * STEP, behavior: 'smooth' });
+                });
+            });
+            scroller.addEventListener('scroll', function () { syncGroup(scroller, group); });
+            window.addEventListener('resize', function () { syncGroup(scroller, group); });
+            requestAnimationFrame(function () { syncGroup(scroller, group); });
+        });
+    }
+
+    function initPopovers() {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+        document.querySelectorAll('[data-vt-popover]').forEach(function (el) {
+            if (bootstrap.Popover.getInstance(el)) return;
+            var contentEl = el.parentElement && el.parentElement.querySelector('.vt-popover-content');
+            var html = contentEl ? contentEl.innerHTML : '';
+            new bootstrap.Popover(el, {
+                trigger: 'click',
+                placement: 'auto',
+                html: true,
+                sanitize: false,
+                content: html
+            });
+        });
+        if (window.__vtPopoverDismissWired) return;
+        window.__vtPopoverDismissWired = true;
+        document.addEventListener('click', function (e) {
+            document.querySelectorAll('[data-vt-popover]').forEach(function (el) {
+                if (el === e.target || el.contains(e.target)) return;
+                var pop = bootstrap.Popover.getInstance(el);
+                if (!pop) return;
+                var tipId = el.getAttribute('aria-describedby');
+                if (tipId && document.getElementById(tipId) && document.getElementById(tipId).contains(e.target)) return;
+                pop.hide();
+            });
+        });
+    }
+
+    function init() { initScrollArrows(); initPopovers(); }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

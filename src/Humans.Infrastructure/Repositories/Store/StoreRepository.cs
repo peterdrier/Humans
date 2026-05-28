@@ -117,9 +117,33 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
-            .Where(o => campSeasonIds.Contains(o.CampSeasonId))
+            .Where(o => o.CampSeasonId.HasValue && campSeasonIds.Contains(o.CampSeasonId.Value))
             .Include(o => o.Lines)
             .Include(o => o.Payments)
+            .ToListAsync(ct);
+    }
+
+    public async Task<StoreOrder?> GetOrderForTeamAsync(Guid teamId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.StoreOrders.AsNoTracking()
+            .Include(o => o.Lines)
+            .Where(o => o.TeamId == teamId && o.Year == year)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<StoreOrder>> GetOrdersForTeamsWithLinesAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        int year,
+        CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+            return Array.Empty<StoreOrder>();
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.StoreOrders.AsNoTracking()
+            .Where(o => o.TeamId.HasValue && teamIds.Contains(o.TeamId.Value) && o.Year == year)
+            .Include(o => o.Lines)
             .ToListAsync(ct);
     }
 
@@ -134,6 +158,15 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.StoreOrders.Update(order);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var order = await ctx.StoreOrders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        if (order is null) return;
+        ctx.StoreOrders.Remove(order);
         await ctx.SaveChangesAsync(ct);
     }
 

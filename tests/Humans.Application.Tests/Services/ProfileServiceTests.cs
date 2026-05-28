@@ -23,10 +23,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 {
     private readonly ProfileService _service;
     private readonly ProfileEditorService _editor;
-    private readonly IProfileRepository _profileRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
@@ -38,21 +36,16 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     public ProfileServiceTests()
     {
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
-        _profileRepository = new ProfileRepository(DbFactory, Clock);
-        _userEmailRepository = new UserEmailRepository(DbFactory);
-        _contactFieldRepository = new ContactFieldRepository(DbFactory);
+        _userRepository = new UserRepository(DbFactory, Clock);
         var storageUserService = new UserService(
-            new UserRepository(DbFactory),
-            _userEmailRepository,
-            _profileRepository,
-            _contactFieldRepository,
+            _userRepository,
             _communicationPreferenceRepository,
             AdminAuthorization,
             Clock,
             NullLogger<UserService>.Instance);
 
         _service = new ProfileService(
-            _profileRepository, _userService,
+            _userRepository, _userService,
             _fileStorage,
             NullLogger<ProfileService>.Instance);
         _editor = new ProfileEditorService(
@@ -358,7 +351,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
 
-        var mockRepo = Substitute.For<IProfileRepository>();
+        var mockRepo = Substitute.For<IUserRepository>();
         var profile = new Profile
         {
             Id = profileId,
@@ -390,7 +383,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // Arrange: mock repository that returns null (no profile)
         var userId = Guid.NewGuid();
 
-        var mockRepo = Substitute.For<IProfileRepository>();
+        var mockRepo = Substitute.For<IUserRepository>();
         mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
@@ -406,14 +399,11 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     /// <summary>
-    /// Builds a <see cref="UserService"/> with a custom <see cref="IProfileRepository"/>
+    /// Builds a <see cref="UserService"/> with a custom <see cref="IUserRepository"/>
     /// while keeping all other dependencies wired to the same test-class fields.
     /// </summary>
-    private UserService BuildUserServiceWith(IProfileRepository profileRepository) => new(
-        new UserRepository(DbFactory),
-        _userEmailRepository,
-        profileRepository,
-        _contactFieldRepository,
+    private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
+        userRepository,
         _communicationPreferenceRepository,
         AdminAuthorization,
         Clock,

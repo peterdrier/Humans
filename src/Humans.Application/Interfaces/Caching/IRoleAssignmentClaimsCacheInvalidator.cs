@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
@@ -8,7 +10,12 @@ namespace Humans.Application.Interfaces.Caching;
 /// request for that user re-derives claims from the DB instead of serving the
 /// 60-second cached snapshot.
 /// </summary>
-public interface IRoleAssignmentClaimsCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing claims-transformation cache flushed by deletion + role writes; remains until claims transformation cache is owned by an Auth-section service.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IRoleAssignmentClaimsCacheInvalidator : IInvalidator
 {
     void Invalidate(Guid userId);
 }

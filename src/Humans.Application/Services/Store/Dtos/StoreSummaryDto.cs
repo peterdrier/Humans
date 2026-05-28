@@ -1,8 +1,10 @@
+using Humans.Domain.Enums;
+
 namespace Humans.Application.Services.Store.Dtos;
 
 public sealed record StoreSummaryDto(
     int Year,
-    IReadOnlyList<OrderSummaryDto> ByCamp,
+    IReadOnlyList<OrderSummaryDto> ByCounterparty,
     IReadOnlyList<ProductAggregateDto> ByItem,
     StoreCrossTabDto CrossTab);
 
@@ -14,7 +16,7 @@ public sealed record ProductAggregateDto(
 
 public sealed record StoreCrossTabDto(
     IReadOnlyList<StoreCrossTabColumn> Products,
-    IReadOnlyList<StoreCrossTabRow> Camps);
+    IReadOnlyList<StoreCrossTabRow> Counterparties);
 
 public sealed record StoreCrossTabColumn(
     Guid ProductId,
@@ -22,7 +24,8 @@ public sealed record StoreCrossTabColumn(
     int TotalQty);
 
 public sealed record StoreCrossTabRow(
-    Guid CampSeasonId,
-    string CampName,
+    StoreOrderCounterpartyType CounterpartyType,
+    Guid CounterpartyId,
+    string CounterpartyName,
     int TotalQty,
     IReadOnlyDictionary<Guid, int> QtyByProduct);

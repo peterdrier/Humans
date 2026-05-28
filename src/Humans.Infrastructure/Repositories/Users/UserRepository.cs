@@ -11,19 +11,29 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Repositories.Users;
 
 /// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
-[Grandfathered("HUM0025", justification: "Cross-section read of UserEmails (Profiles-owned); route through IUserEmailService.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserEmails")]
-[Grandfathered("HUM0025", justification: "Identity UserLogins also accessed by DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "UserLogins")]
-[Grandfathered("HUM0025", justification: "Users is also accessed by UserEmailRepository and DriveActivityMonitorRepository; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "Users")]
-internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory) : IUserRepository
+internal sealed partial class UserRepository : IUserRepository
 {
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IClock _clock;
+
+    public UserRepository(IDbContextFactory<HumansDbContext> factory, IClock clock)
+    {
+        _factory = factory;
+        _clock = clock;
+    }
+
+    public UserRepository(IDbContextFactory<HumansDbContext> factory)
+        : this(factory, SystemClock.Instance)
+    {
+    }
+
     // Reads — User
 
     public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
 
@@ -33,10 +43,9 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (userIds.Count == 0)
             return new Dictionary<Guid, User>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var list = await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .Where(u => userIds.Contains(u.Id))
             .ToListAsync(ct);
 
@@ -45,11 +54,9 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
     {
-        // Include UserEmails so computed User.Email isn't null.
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .ToListAsync(ct);
     }
 
@@ -57,38 +64,17 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
         // ILIKE: escape '_' / '%' in input or alex_smith@... matches alexXsmith@...
-        // Lookup verifies user_emails first; falls back to legacy GoogleEmail shadow column.
+        // Canonical UserEmail lookup is owned by the UserEmail methods on this
+        // repository; this is the legacy GoogleEmail shadow-column fallback only.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        var userIdByEmail = escapedAlternate is null
-            ? await ctx.UserEmails
-                .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, escapedEmail, "\\"))
-                .Select(e => (Guid?)e.UserId)
-                .FirstOrDefaultAsync(ct)
-            : await ctx.UserEmails
-                .Where(e => e.IsVerified && (
-                    EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
-                    EF.Functions.ILike(e.Email, escapedAlternate, "\\")))
-                .Select(e => (Guid?)e.UserId)
-                .FirstOrDefaultAsync(ct);
-
-        if (userIdByEmail is not null)
-        {
-            return await ctx.Users
-                .AsNoTracking()
-                .Include(u => u.UserEmails)
-                .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
-        }
-
-        // Fallback: legacy GoogleEmail shadow column.
         if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
-                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u =>
                     EF.Property<string?>(u, "GoogleEmail") != null
                     && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\"),
@@ -97,7 +83,6 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
 
         return await ctx.Users
             .AsNoTracking()
-            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
                 EF.Property<string?>(u, "GoogleEmail") != null && (
                     EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\") ||
@@ -114,7 +99,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
             .Where(u => EF.Property<string?>(u, "GoogleEmail") != null
@@ -130,7 +115,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var rows = await ctx.Users
             .AsNoTracking()
             .Where(u => userIds.Contains(u.Id))
@@ -146,7 +131,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> UpdateDisplayNameAsync(
         Guid userId, string displayName, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -161,7 +146,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> SetPreferredLanguageAsync(
         Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -174,7 +159,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> SetICalTokenAsync(
         Guid userId, Guid token, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -187,7 +172,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> TrySetGoogleEmailAsync(
         Guid userId, string email, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -204,7 +189,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> SetGoogleEmailAsync(
         Guid userId, string email, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -218,7 +203,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> SetGoogleEmailStatusAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -235,7 +220,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -249,7 +234,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -265,7 +250,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([sourceUserId], ct);
         if (user is null)
             return false;
@@ -295,33 +280,20 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         return true;
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        var loginUserIds = await ctx.Set<IdentityUserLogin<Guid>>()
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Select(l => l.UserId)
             .Distinct()
             .ToListAsync(ct);
-
-        if (loginUserIds.Count == 0) return [];
-
-        var withEmail = await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => loginUserIds.Contains(e.UserId))
-            .Select(e => e.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var withEmailSet = withEmail.ToHashSet();
-        return loginUserIds.Where(id => !withEmailSet.Contains(id)).ToList();
     }
 
     public async Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null || user.ContactSource is not null)
             return false;
@@ -338,12 +310,8 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (userIds.Count == 0)
             return 0;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-
-        await ctx.UserEmails
-            .Where(e => userIds.Contains(e.UserId))
-            .ExecuteDeleteAsync(ct);
 
         await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => userIds.Contains(l.UserId))
@@ -359,7 +327,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
 
     public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
             .ExecuteDeleteAsync(ct);
@@ -372,7 +340,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<(string, string)>>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var rows = await ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Where(l => userIds.Contains(l.UserId))
@@ -391,7 +359,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<int> ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         var sourceLogins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == sourceUserId)
@@ -432,7 +400,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<int> ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         // Collision rule (Year, UserId): keep the highest-precedence status.
         var rows = await ctx.EventParticipations
@@ -480,17 +448,13 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
 
     public async Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return null;
 
 #pragma warning disable HUM_USER_DISPLAYNAME // Purge returns and rewrites the legacy label for audit/debug flows.
         var displayName = user.DisplayName;
-
-        // Free the unique index and null out User.Email.
-        var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
-        ctx.UserEmails.RemoveRange(userEmails);
 
         // Drop external logins so a returning Google user can land on a fresh
         // account, not this tombstone. See nobodies-collective/Humans#661.
@@ -512,7 +476,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return;
@@ -524,7 +488,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
             .Where(u => u.DeletionScheduledFor != null
@@ -537,10 +501,8 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users
-            .Include(u => u.UserEmails)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)
             return null;
@@ -555,9 +517,6 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
-
-        // Free the unique index and prevent email-lookup discovery.
-        ctx.UserEmails.RemoveRange(user.UserEmails);
 
         // Drop external logins for the same reason — see nobodies-collective/Humans#661.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
@@ -585,7 +544,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<EventParticipation?> GetParticipationAsync(
         Guid userId, int year, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EventParticipations
             .AsNoTracking()
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
@@ -594,7 +553,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EventParticipations
             .AsNoTracking()
             .Where(ep => ep.UserId == userId)
@@ -608,7 +567,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<EventParticipation>>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var idList = userIds is IList<Guid> list ? list : userIds.ToList();
         var rows = await ctx.EventParticipations
             .AsNoTracking()
@@ -631,7 +590,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         Instant? checkedInAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
 
@@ -679,7 +638,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         ParticipationSource requiredSource,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
 
@@ -703,7 +662,7 @@ internal sealed class UserRepository(IDbContextFactory<HumansDbContext> factory)
         if (entries.Count == 0)
             return 0;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .Where(ep => ep.Year == year)
             .ToDictionaryAsync(ep => ep.UserId, ct);

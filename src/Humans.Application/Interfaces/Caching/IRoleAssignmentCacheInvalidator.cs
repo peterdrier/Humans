@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
@@ -18,7 +20,12 @@ namespace Humans.Application.Interfaces.Caching;
 /// cache that backs cross-section reads such as
 /// <c>IRoleAssignmentService.GetActiveCountsByRoleAsync</c>.
 /// </remarks>
-public interface IRoleAssignmentCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing role-assignment cache flushed by cross-section role writes; remains until RoleAssignmentService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface IRoleAssignmentCacheInvalidator : IInvalidator
 {
     /// <summary>
     /// Evict the entire role-assignment cache. Next read repopulates lazily.

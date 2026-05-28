@@ -1,3 +1,5 @@
+using Humans.Application.Architecture;
+
 namespace Humans.Application.Interfaces.Tickets;
 
 /// <summary>
@@ -12,7 +14,12 @@ namespace Humans.Application.Interfaces.Tickets;
 /// surface does not grow each time a new invalidation seam is needed, and so
 /// callers that only invalidate do not depend on the full query service.
 /// </remarks>
-public interface ITicketCacheInvalidator
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing ticket-view cache flushed cross-section; remains until TicketQueryService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+public interface ITicketCacheInvalidator : IInvalidator
 {
     /// <summary>
     /// Cache eviction seam invoked after an approved transfer has mutated local

@@ -16,6 +16,8 @@ public sealed class StoreOrderOperationRequirement : IAuthorizationRequirement
     public static readonly StoreOrderOperationRequirement EditCounterparty = new(nameof(EditCounterparty));
     /// <summary>Initiate Stripe Checkout to pay against the order. Allowed regardless of order state — payments continue after invoice issuance.</summary>
     public static readonly StoreOrderOperationRequirement Pay = new(nameof(Pay));
+    /// <summary>Delete a zero-balance order. Admin-only — camp leads and team coordinators cannot delete their own orders.</summary>
+    public static readonly StoreOrderOperationRequirement Delete = new(nameof(Delete));
 
     public string OperationName { get; }
 
@@ -28,6 +30,7 @@ public sealed class StoreOrderOperationRequirement : IAuthorizationRequirement
 /// <summary>
 /// Resource passed to <see cref="StoreOrderAuthorizationHandler"/> when
 /// authorizing a Create-order operation. There is no <c>StoreOrder</c> yet, so
-/// the camp-lead check is rooted at the target <c>CampSeason</c>.
+/// the camp-lead or team-coordinator check is rooted at the target
+/// <c>CampSeason</c> or <c>Team</c>. Exactly one of the two ids is non-null.
 /// </summary>
-public sealed record StoreOrderCreateContext(Guid CampSeasonId);
+public sealed record StoreOrderCreateContext(Guid? CampSeasonId, Guid? TeamId = null);

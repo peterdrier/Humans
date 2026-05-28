@@ -1,0 +1,869 @@
+{
+  "sections": {
+    "Admin": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Admin/**",
+        "src/Humans.Application/Services/Admin/**",
+        "src/Humans.Infrastructure/Repositories/Admin/**",
+        "src/Humans.Web/Controllers/Admin*/**"
+      ],
+      "symbols": [
+        "Admin*",
+        "IAdmin*"
+      ]
+    },
+    "Agent": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Agent/**",
+        "src/Humans.Application/Models/Agent*",
+        "src/Humans.Application/Services/Agent/**",
+        "src/Humans.Domain/Entities/Agent*",
+        "src/Humans.Infrastructure/Repositories/Agent*",
+        "src/Humans.Infrastructure/Services/Agent/**",
+        "src/Humans.Web/Controllers/Agent*"
+      ],
+      "symbols": [
+        "Agent*",
+        "IAgent*"
+      ],
+      "repositoryInterfaces": [
+        "IAgentRepository"
+      ],
+      "serviceInterfaces": [
+        "IAgentService"
+      ]
+    },
+    "AuditLog": {
+      "paths": [
+        "src/Humans.Application/Interfaces/AuditLog/**",
+        "src/Humans.Application/Services/AuditLog/**",
+        "src/Humans.Domain/Entities/AuditLog*",
+        "src/Humans.Infrastructure/Repositories/AuditLog/**",
+        "src/Humans.Web/Controllers/AuditLogController.cs"
+      ],
+      "symbols": [
+        "AuditLog*",
+        "IAuditLog*"
+      ],
+      "repositoryInterfaces": [
+        "IAuditLogRepository"
+      ],
+      "serviceInterfaces": [
+        "IAuditLogService"
+      ]
+    },
+    "Auth": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Auth/**",
+        "src/Humans.Application/Services/Auth/**",
+        "src/Humans.Domain/Entities/RoleAssignment*",
+        "src/Humans.Infrastructure/Repositories/Auth/**",
+        "src/Humans.Infrastructure/Services/Auth/**",
+        "src/Humans.Web/Authorization/**"
+      ],
+      "symbols": [
+        "RoleAssignment*",
+        "IRoleAssignment*",
+        "*Authorization*",
+        "*Claims*"
+      ],
+      "repositoryInterfaces": [
+        "IRoleAssignmentRepository"
+      ],
+      "serviceInterfaces": [
+        "IRoleAssignmentService"
+      ]
+    },
+    "Budget": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Budget/**",
+        "src/Humans.Application/Services/Budget/**",
+        "src/Humans.Application/DTOs/Budget*",
+        "src/Humans.Application/DTOs/TicketingBudget*",
+        "src/Humans.Domain/Entities/Budget*",
+        "src/Humans.Infrastructure/Repositories/Budget/**",
+        "src/Humans.Web/Controllers/BudgetController.cs"
+      ],
+      "symbols": [
+        "Budget*",
+        "IBudget*",
+        "TicketingBudget*"
+      ],
+      "repositoryInterfaces": [
+        "IBudgetRepository"
+      ],
+      "serviceInterfaces": [
+        "IBudgetService"
+      ]
+    },
+    "Calendar": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Calendar/**",
+        "src/Humans.Application/Services/Calendar/**",
+        "src/Humans.Domain/Entities/Calendar*",
+        "src/Humans.Infrastructure/Repositories/Calendar/**",
+        "src/Humans.Infrastructure/Services/Calendar/**",
+        "src/Humans.Web/Controllers/CalendarController.cs"
+      ],
+      "symbols": [
+        "Calendar*",
+        "ICalendar*"
+      ],
+      "repositoryInterfaces": [
+        "ICalendarRepository"
+      ],
+      "serviceInterfaces": [
+        "ICalendarService"
+      ],
+      "readServiceInterfaces": [
+        "ICalendarServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "CalendarEventInfo"
+      ]
+    },
+    "Campaigns": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Campaigns/**",
+        "src/Humans.Application/Services/Campaigns/**",
+        "src/Humans.Domain/Entities/Campaign*",
+        "src/Humans.Infrastructure/Repositories/Campaigns/**",
+        "src/Humans.Web/Controllers/CampaignController.cs"
+      ],
+      "symbols": [
+        "Campaign*",
+        "ICampaign*"
+      ],
+      "repositoryInterfaces": [
+        "ICampaignRepository"
+      ],
+      "serviceInterfaces": [
+        "ICampaignService"
+      ]
+    },
+    "Camps": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Camps/**",
+        "src/Humans.Application/Services/Camps/**",
+        "src/Humans.Application/DTOs/Camp*",
+        "src/Humans.Domain/Entities/Camp.cs",
+        "src/Humans.Domain/Entities/CampHistoricalName.cs",
+        "src/Humans.Domain/Entities/CampImage.cs",
+        "src/Humans.Domain/Entities/CampLead.cs",
+        "src/Humans.Domain/Entities/CampMember.cs",
+        "src/Humans.Domain/Entities/CampRoleAssignment.cs",
+        "src/Humans.Domain/Entities/CampRoleDefinition.cs",
+        "src/Humans.Domain/Entities/CampSeason.cs",
+        "src/Humans.Domain/Entities/CampSettings.cs",
+        "src/Humans.Infrastructure/Repositories/Camps/**",
+        "src/Humans.Infrastructure/Services/Camps/**",
+        "src/Humans.Web/Controllers/Camp*",
+        "src/Humans.Web/Models/CampAdmin/**"
+      ],
+      "symbols": [
+        "ICamp*"
+      ],
+      "repositoryInterfaces": [
+        "ICampRepository"
+      ],
+      "serviceInterfaces": [
+        "ICampService",
+        "ICampRoleService"
+      ],
+      "readServiceInterfaces": [
+        "ICampServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "CampInfo",
+        "CampSeasonInfo",
+        "CampSettingsInfo",
+        "CampSearchHit"
+      ]
+    },
+    "CityPlanning": {
+      "paths": [
+        "src/Humans.Application/Interfaces/CityPlanning/**",
+        "src/Humans.Application/Services/CityPlanning/**",
+        "src/Humans.Domain/Entities/CampPolygon*",
+        "src/Humans.Infrastructure/Repositories/CityPlanning/**",
+        "src/Humans.Web/Controllers/CityPlanningController.cs",
+        "src/Humans.Web/Hubs/CityPlanningHub.cs"
+      ],
+      "symbols": [
+        "CityPlanning*",
+        "CampPolygon*",
+        "ICityPlanning*"
+      ],
+      "repositoryInterfaces": [
+        "ICityPlanningRepository"
+      ],
+      "serviceInterfaces": [
+        "ICityPlanningService"
+      ]
+    },
+    "Consent": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Consent/**",
+        "src/Humans.Application/Services/Consent/**",
+        "src/Humans.Application/Services/Legal/**",
+        "src/Humans.Domain/Entities/Consent*",
+        "src/Humans.Domain/Entities/LegalDocument*",
+        "src/Humans.Infrastructure/Repositories/Consent/**",
+        "src/Humans.Infrastructure/Services/GitHubLegalDocumentConnector.cs",
+        "src/Humans.Infrastructure/Services/Legal/**",
+        "src/Humans.Infrastructure/Services/Consent/**",
+        "src/Humans.Web/Controllers/ConsentController.cs",
+        "src/Humans.Web/Controllers/LegalController.cs",
+        "src/Humans.Web/Controllers/AdminLegalDocumentsController.cs"
+      ],
+      "symbols": [
+        "Consent*",
+        "LegalDocument*",
+        "IConsent*",
+        "ILegalDocument*"
+      ],
+      "repositoryInterfaces": [
+        "IConsentRepository",
+        "ILegalDocumentRepository"
+      ],
+      "serviceInterfaces": [
+        "IConsentService",
+        "ILegalDocumentService"
+      ],
+      "readServiceInterfaces": [
+        "IConsentServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "ConsentInfo",
+        "LegalDocumentInfo"
+      ]
+    },
+    "Containers": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Containers/**",
+        "src/Humans.Application/Services/Containers/**",
+        "src/Humans.Domain/Entities/Container*",
+        "src/Humans.Infrastructure/Repositories/Containers/**",
+        "src/Humans.Web/Controllers/ContainerController.cs"
+      ],
+      "symbols": [
+        "Container*",
+        "IContainer*"
+      ],
+      "repositoryInterfaces": [
+        "IContainerRepository"
+      ],
+      "serviceInterfaces": [
+        "IContainerService"
+      ]
+    },
+    "Dashboard": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Dashboard/**",
+        "src/Humans.Application/Services/Dashboard/**",
+        "src/Humans.Application/DTOs/AdminDashboardData.cs",
+        "src/Humans.Application/DTOs/DashboardOverview.cs",
+        "src/Humans.Web/Models/AdminDashboardViewModel.cs",
+        "src/Humans.Web/Models/DashboardViewModel.cs"
+      ],
+      "symbols": [
+        "Dashboard*",
+        "AdminDashboard*",
+        "IDashboard*",
+        "IAdminDashboard*"
+      ],
+      "serviceInterfaces": [
+        "IDashboardService",
+        "IAdminDashboardService"
+      ],
+      "canonicalReadDtos": [
+        "DashboardOverview",
+        "AdminDashboardData"
+      ]
+    },
+    "Email": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Email/**",
+        "src/Humans.Application/Interfaces/Mailer/**",
+        "src/Humans.Application/Services/Email/**",
+        "src/Humans.Application/Services/Mailer/**",
+        "src/Humans.Domain/Entities/Email*",
+        "src/Humans.Infrastructure/Repositories/Email/**",
+        "src/Humans.Infrastructure/Services/BrandedEmailBodyComposer.cs",
+        "src/Humans.Infrastructure/Services/EmailRenderer.cs",
+        "src/Humans.Infrastructure/Services/SmtpEmailService.cs",
+        "src/Humans.Infrastructure/Services/SmtpEmailTransport.cs",
+        "src/Humans.Infrastructure/Services/StubEmailService.cs",
+        "src/Humans.Infrastructure/Services/StubEmailTransport.cs",
+        "src/Humans.Web/Controllers/EmailController.cs",
+        "src/Humans.Web/Controllers/Mailer/**",
+        "src/Humans.Web/Controllers/UnsubscribeController.cs",
+        "src/Humans.Web/Models/Mailer/**"
+      ],
+      "symbols": [
+        "Email*",
+        "Mailer*",
+        "IEmail*",
+        "IMailer*"
+      ],
+      "repositoryInterfaces": [
+        "IEmailOutboxRepository"
+      ],
+      "serviceInterfaces": [
+        "IEmailService",
+        "IMailerAudienceSyncService",
+        "IMailerImportService",
+        "IMailerLiteService"
+      ]
+    },
+    "Events": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Events/**",
+        "src/Humans.Application/Services/Events/**",
+        "src/Humans.Domain/Entities/Event*",
+        "src/Humans.Infrastructure/Repositories/Events/**",
+        "src/Humans.Infrastructure/Services/Events/**",
+        "src/Humans.Web/Controllers/Events*"
+      ],
+      "symbols": [
+        "Event*",
+        "IEvent*"
+      ],
+      "repositoryInterfaces": [
+        "IEventRepository"
+      ],
+      "serviceInterfaces": [
+        "IEventService"
+      ]
+    },
+    "Expenses": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Expenses/**",
+        "src/Humans.Application/Services/Expenses/**",
+        "src/Humans.Domain/Entities/Expense*",
+        "src/Humans.Infrastructure/Repositories/Expenses/**",
+        "src/Humans.Web/Controllers/ExpensesController.cs"
+      ],
+      "symbols": [
+        "Expense*",
+        "IExpense*"
+      ],
+      "repositoryInterfaces": [
+        "IExpenseRepository"
+      ],
+      "serviceInterfaces": [
+        "IExpenseService"
+      ]
+    },
+    "Feedback": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Feedback/**",
+        "src/Humans.Application/Services/Feedback/**",
+        "src/Humans.Domain/Entities/Feedback*",
+        "src/Humans.Infrastructure/Repositories/Feedback/**",
+        "src/Humans.Web/Controllers/FeedbackController.cs"
+      ],
+      "symbols": [
+        "Feedback*",
+        "IFeedback*"
+      ],
+      "repositoryInterfaces": [
+        "IFeedbackRepository"
+      ],
+      "serviceInterfaces": [
+        "IFeedbackService"
+      ]
+    },
+    "Finance": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Finance/**",
+        "src/Humans.Application/Services/Finance/**",
+        "src/Humans.Infrastructure/Repositories/Finance/**",
+        "src/Humans.Web/Controllers/FinanceController.cs"
+      ],
+      "symbols": [
+        "Finance*",
+        "Holded*",
+        "IHolded*"
+      ],
+      "repositoryInterfaces": [
+        "IHoldedRepository"
+      ],
+      "serviceInterfaces": [
+        "IHoldedFinanceService"
+      ]
+    },
+    "Gdpr": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Gdpr/**",
+        "src/Humans.Application/Services/Gdpr/**"
+      ],
+      "symbols": [
+        "Gdpr*",
+        "IGdpr*"
+      ],
+      "serviceInterfaces": [
+        "IGdprExportService"
+      ]
+    },
+    "GoogleIntegration": {
+      "paths": [
+        "src/Humans.Application/Interfaces/GoogleIntegration/**",
+        "src/Humans.Application/Services/GoogleIntegration/**",
+        "src/Humans.Domain/Entities/Google*",
+        "src/Humans.Domain/Entities/SyncServiceSettings.cs",
+        "src/Humans.Infrastructure/GoogleIntegration/**",
+        "src/Humans.Infrastructure/Repositories/GoogleIntegration/**",
+        "src/Humans.Infrastructure/Services/StubGoogleSyncService.cs",
+        "src/Humans.Web/Controllers/GoogleController.cs"
+      ],
+      "symbols": [
+        "Google*",
+        "Drive*",
+        "IGoogle*",
+        "IDrive*"
+      ],
+      "repositoryInterfaces": [
+        "IDriveActivityMonitorRepository",
+        "IGoogleResourceRepository",
+        "IGoogleSyncOutboxRepository",
+        "ISyncSettingsRepository"
+      ],
+      "serviceInterfaces": [
+        "IGoogleSyncService",
+        "IGoogleResourceService",
+        "IDriveActivityMonitorService"
+      ]
+    },
+    "Governance": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Governance/**",
+        "src/Humans.Application/Services/Governance/**",
+        "src/Humans.Domain/Entities/Application*",
+        "src/Humans.Domain/Entities/Board*",
+        "src/Humans.Infrastructure/Repositories/Governance/**",
+        "src/Humans.Web/Controllers/Governance*"
+      ],
+      "symbols": [
+        "Application*",
+        "Board*",
+        "Governance*",
+        "IApplication*"
+      ],
+      "repositoryInterfaces": [
+        "IApplicationRepository"
+      ],
+      "serviceInterfaces": [
+        "IApplicationService"
+      ]
+    },
+    "Users": {
+      "paths": [
+        "src/Humans.Application/UserInfo.cs",
+        "src/Humans.Application/Interfaces/HumanLifecycle/**",
+        "src/Humans.Application/Interfaces/Onboarding/**",
+        "src/Humans.Application/Interfaces/Profiles/**",
+        "src/Humans.Application/Interfaces/Users/**",
+        "src/Humans.Application/Services/HumanLifecycle/**",
+        "src/Humans.Application/Services/Onboarding/**",
+        "src/Humans.Application/Services/Profile/**",
+        "src/Humans.Application/Services/Profiles/**",
+        "src/Humans.Application/Services/Users/**",
+        "src/Humans.Domain/Entities/Profile*",
+        "src/Humans.Domain/Entities/AccountMerge*",
+        "src/Humans.Domain/Entities/CommunicationPreference*",
+        "src/Humans.Domain/Entities/ContactField*",
+        "src/Humans.Domain/Entities/User*",
+        "src/Humans.Infrastructure/Repositories/Users/**",
+        "src/Humans.Infrastructure/Repositories/Profiles/**",
+        "src/Humans.Infrastructure/Services/Users/**",
+        "src/Humans.Web/Controllers/Profile*",
+        "src/Humans.Web/Controllers/User*",
+        "src/Humans.Web/Controllers/AboutController.cs",
+        "src/Humans.Web/Controllers/AccountController.cs",
+        "src/Humans.Web/Controllers/GuestController.cs",
+        "src/Humans.Web/Controllers/HomeController.cs",
+        "src/Humans.Web/Controllers/LanguageController.cs",
+        "src/Humans.Web/Controllers/Onboarding*",
+        "src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs",
+        "src/Humans.Web/Controllers/AdminMergeController.cs"
+      ],
+      "symbols": [
+        "Profile*",
+        "AccountMerge*",
+        "CommunicationPreference*",
+        "ContactField*",
+        "User*",
+        "Human*",
+        "HumanLifecycle*",
+        "Onboarding*",
+        "IProfile*",
+        "IUser*"
+      ],
+      "repositoryInterfaces": [
+        "IAccountMergeRepository",
+        "ICommunicationPreferenceRepository",
+        "IProfileRepository",
+        "IUserRepository"
+      ],
+      "serviceInterfaces": [
+        "IHumanLifecycleService",
+        "IOnboardingService",
+        "IProfileEditorService",
+        "IProfileService",
+        "IUserService"
+      ],
+      "readServiceInterfaces": [
+        "IUserServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "UserInfo",
+        "UserEmailInfo",
+        "ContactFieldInfo",
+        "ProfileLanguageInfo",
+        "VolunteerHistoryInfo",
+        "CommunicationPreferenceInfo",
+        "EventParticipationInfo",
+        "UserExternalLoginInfo",
+        "ProfileInfo",
+        "HumanSearchResult",
+        "OnsiteUserRow"
+      ]
+    },
+    "Issues": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Issues/**",
+        "src/Humans.Application/Services/Issues/**",
+        "src/Humans.Domain/Entities/Issue*",
+        "src/Humans.Infrastructure/Repositories/Issues/**",
+        "src/Humans.Web/Controllers/Issues*"
+      ],
+      "symbols": [
+        "Issue*",
+        "IIssues*"
+      ],
+      "repositoryInterfaces": [
+        "IIssuesRepository"
+      ],
+      "serviceInterfaces": [
+        "IIssuesService"
+      ]
+    },
+    "Notifications": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Notifications/**",
+        "src/Humans.Application/Services/Notifications/**",
+        "src/Humans.Domain/Entities/Notification*",
+        "src/Humans.Infrastructure/Repositories/Notifications/**",
+        "src/Humans.Web/Controllers/NotificationsController.cs"
+      ],
+      "symbols": [
+        "Notification*",
+        "INotification*"
+      ],
+      "repositoryInterfaces": [
+        "INotificationRepository"
+      ],
+      "serviceInterfaces": [
+        "INotificationService"
+      ]
+    },
+    "Search": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Search/**",
+        "src/Humans.Application/Services/Search/**",
+        "src/Humans.Application/DTOs/GlobalSearchResults.cs",
+        "src/Humans.Web/Controllers/SearchController.cs",
+        "src/Humans.Web/Models/SearchViewModels.cs"
+      ],
+      "symbols": [
+        "Search*",
+        "GlobalSearch*",
+        "ISearch*"
+      ],
+      "serviceInterfaces": [
+        "ISearchService"
+      ],
+      "canonicalReadDtos": [
+        "GlobalSearchResult",
+        "GlobalSearchResults"
+      ]
+    },
+    "Shifts": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Shifts/**",
+        "src/Humans.Application/Interfaces/EarlyEntry/**",
+        "src/Humans.Application/Services/Shifts/**",
+        "src/Humans.Application/Services/EarlyEntry/**",
+        "src/Humans.Domain/Entities/EventSettings.cs",
+        "src/Humans.Domain/Entities/GeneralAvailability.cs",
+        "src/Humans.Domain/Entities/Rota*",
+        "src/Humans.Domain/Entities/Shift*",
+        "src/Humans.Domain/Entities/Volunteer*",
+        "src/Humans.Infrastructure/Repositories/Shifts/**",
+        "src/Humans.Infrastructure/Services/Shifts/**",
+        "src/Humans.Infrastructure/Services/EarlyEntry/**",
+        "src/Humans.Infrastructure/Stores/EarlyEntry/**",
+        "src/Humans.Web/Controllers/Shift*",
+        "src/Humans.Web/Controllers/VolunteerTrackingController.cs",
+        "src/Humans.Web/Controllers/EarlyEntryRosterController.cs",
+        "src/Humans.Web/Models/Shifts/**"
+      ],
+      "symbols": [
+        "EventSettings*",
+        "GeneralAvailability*",
+        "Shift*",
+        "Volunteer*",
+        "IShift*",
+        "IVolunteer*",
+        "IGeneralAvailability*"
+      ],
+      "repositoryInterfaces": [
+        "IShiftManagementRepository",
+        "IShiftSignupRepository",
+        "IVolunteerTrackingRepository"
+      ],
+      "serviceInterfaces": [
+        "IGeneralAvailabilityService",
+        "IShiftManagementService",
+        "IShiftSignupService",
+        "IVolunteerTrackingService"
+      ],
+      "readServiceInterfaces": [
+        "IVolunteerTrackingServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "ShiftInfo",
+        "ShiftSignupInfo",
+        "VolunteerBuildStrip",
+        "VolunteerTrackingData",
+        "VolunteerCell"
+      ]
+    },
+    "Store": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Store/**",
+        "src/Humans.Application/Services/Store/**",
+        "src/Humans.Domain/Entities/Store*",
+        "src/Humans.Infrastructure/Repositories/Store/**",
+        "src/Humans.Web/Controllers/Store*"
+      ],
+      "symbols": [
+        "Store*",
+        "IStore*"
+      ],
+      "repositoryInterfaces": [
+        "IStoreRepository"
+      ],
+      "serviceInterfaces": [
+        "IStoreService"
+      ]
+    },
+    "Teams": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Teams/**",
+        "src/Humans.Application/Services/Teams/**",
+        "src/Humans.Domain/Entities/Team*",
+        "src/Humans.Infrastructure/Repositories/Teams/**",
+        "src/Humans.Infrastructure/Services/Teams/**",
+        "src/Humans.Web/Controllers/Team*"
+      ],
+      "symbols": [
+        "Team*",
+        "ITeam*"
+      ],
+      "repositoryInterfaces": [
+        "ITeamRepository"
+      ],
+      "serviceInterfaces": [
+        "ITeamService",
+        "ITeamResourceService"
+      ],
+      "readServiceInterfaces": [
+        "ITeamServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "TeamInfo",
+        "TeamMemberInfo",
+        "TeamJoinRequestInfo",
+        "TeamSearchHit"
+      ]
+    },
+    "Tickets": {
+      "paths": [
+        "src/Humans.Application/TicketOrderInfo.cs",
+        "src/Humans.Application/Interfaces/Tickets/**",
+        "src/Humans.Application/Services/Tickets/**",
+        "src/Humans.Domain/Entities/Ticket*",
+        "src/Humans.Infrastructure/Repositories/Tickets/**",
+        "src/Humans.Infrastructure/Services/Tickets/**",
+        "src/Humans.Web/Controllers/Ticket*",
+        "src/Humans.Web/Controllers/Tickets*"
+      ],
+      "symbols": [
+        "Ticket*",
+        "ITicket*"
+      ],
+      "repositoryInterfaces": [
+        "ITicketRepository",
+        "ITicketTransferRepository"
+      ],
+      "serviceInterfaces": [
+        "ITicketService",
+        "ITicketingBudgetService",
+        "ITicketTransferService"
+      ],
+      "readServiceInterfaces": [
+        "ITicketServiceRead"
+      ],
+      "canonicalReadDtos": [
+        "TicketOrderInfo",
+        "TicketAttendeeInfo",
+        "TicketDashboardTotals",
+        "TicketTransferRowDto",
+        "TicketTransferDetailDto",
+        "MyAttendeeRowDto"
+      ]
+    },
+    "Cantina": {
+      "paths": [
+        "src/Humans.Application/Interfaces/Cantina/**",
+        "src/Humans.Application/Services/Cantina/**",
+        "src/Humans.Web/Cantina/**",
+        "src/Humans.Web/Controllers/CantinaController.cs"
+      ],
+      "symbols": [
+        "Cantina*",
+        "ICantina*"
+      ],
+      "serviceInterfaces": [
+        "ICantinaRosterService"
+      ]
+    },
+    "Platform": {
+      "paths": [
+        "src/Humans.Application/Configuration/**",
+        "src/Humans.Application/Extensions/**",
+        "src/Humans.Application/Helpers/**",
+        "src/Humans.Application/Interfaces/Caching/**",
+        "src/Humans.Application/Interfaces/IApplicationService.cs",
+        "src/Humans.Application/Interfaces/ICacheStatsProvider.cs",
+        "src/Humans.Application/Interfaces/IClientStatsTracker.cs",
+        "src/Humans.Application/Interfaces/IFileStorage.cs",
+        "src/Humans.Application/Interfaces/IGuideContentService.cs",
+        "src/Humans.Application/Interfaces/IGuideContentSource.cs",
+        "src/Humans.Application/Interfaces/IGuideRenderer.cs",
+        "src/Humans.Application/Interfaces/IGuideRoleResolver.cs",
+        "src/Humans.Application/Interfaces/IHttpStatusTracker.cs",
+        "src/Humans.Application/Interfaces/IHumansMetrics.cs",
+        "src/Humans.Application/Interfaces/IOrchestrator.cs",
+        "src/Humans.Application/Interfaces/IRecurringJob.cs",
+        "src/Humans.Application/Interfaces/Repositories/IRepository.cs",
+        "src/Humans.Application/Models/Anthropic*",
+        "src/Humans.Application/Models/Api*",
+        "src/Humans.Application/Models/Claude*",
+        "src/Humans.Application/Models/Mistral*",
+        "src/Humans.Application/Models/OpenRouter*",
+        "src/Humans.Application/Models/Platform*",
+        "src/Humans.Domain/Attributes/**",
+        "src/Humans.Domain/Constants/**",
+        "src/Humans.Domain/Helpers/**",
+        "src/Humans.Infrastructure/Caching/**",
+        "src/Humans.Infrastructure/Data/**",
+        "src/Humans.Infrastructure/Services/AdminDatabaseDiagnosticsService.cs",
+        "src/Humans.Infrastructure/Services/ClientStatsTracker.cs",
+        "src/Humans.Infrastructure/Services/FileSystemFileStorage.cs",
+        "src/Humans.Infrastructure/Services/GitHubGuideContentSource.cs",
+        "src/Humans.Infrastructure/Services/GuideContentService.cs",
+        "src/Humans.Infrastructure/Services/GuideHtmlPostprocessor.cs",
+        "src/Humans.Infrastructure/Services/GuideMarkdownPreprocessor.cs",
+        "src/Humans.Infrastructure/Services/GuideRenderer.cs",
+        "src/Humans.Infrastructure/Services/GuideRoleResolver.cs",
+        "src/Humans.Infrastructure/Helpers/**",
+        "src/Humans.Infrastructure/Hosting/**",
+        "src/Humans.Infrastructure/Jobs/**",
+        "src/Humans.Infrastructure/Services/HttpStatusTracker.cs",
+        "src/Humans.Infrastructure/Services/StripeStartupSmokeService.cs",
+        "src/Humans.Infrastructure/Stores/**",
+        "src/Humans.Web/Controllers/ColorPaletteController.cs",
+        "src/Humans.Web/Controllers/DebugController.cs",
+        "src/Humans.Web/Controllers/DevLoginController.cs",
+        "src/Humans.Web/Controllers/DevSeedController.cs",
+        "src/Humans.Web/Controllers/GuideController.cs",
+        "src/Humans.Web/Controllers/LogApiController.cs",
+        "src/Humans.Web/Controllers/ScannerController.cs",
+        "src/Humans.Web/Controllers/TimezoneApiController.cs",
+        "src/Humans.Web/Controllers/WidgetGalleryController.cs",
+        "src/Humans.Web/Extensions/**",
+        "src/Humans.Web/Filters/**",
+        "src/Humans.Web/Helpers/**",
+        "src/Humans.Web/Infrastructure/**",
+        "src/Humans.Web/Middleware/**"
+      ],
+      "symbols": [
+        "*Cache*",
+        "*Invalidator",
+        "*Job",
+        "*HostedService",
+        "*Interceptor",
+        "*Middleware",
+        "*Filter",
+        "*Helper",
+        "*Options",
+        "*Configuration",
+        "*Settings",
+        "TrackedCache",
+        "IApplicationService",
+        "IOrchestrator",
+        "IRepository"
+      ]
+    }
+  },
+  "classifications": {
+    "entity": {
+      "paths": [
+        "src/Humans.Domain/Entities/**"
+      ],
+      "namespaces": [
+        "Humans.Domain.Entities"
+      ]
+    },
+    "dto": {
+      "namePatterns": [
+        "*Dto",
+        "*Info",
+        "*Row",
+        "*Rows",
+        "*Result",
+        "*Results",
+        "*Snapshot",
+        "*View",
+        "*ViewModel"
+      ],
+      "paths": [
+        "src/Humans.Application/DTOs/**",
+        "src/Humans.Application/Models/**",
+        "src/Humans.Web/Models/**"
+      ]
+    },
+    "readServiceInterface": {
+      "namePatterns": [
+        "I*ServiceRead",
+        "I*ReadService"
+      ]
+    },
+    "fullServiceInterface": {
+      "namePatterns": [
+        "I*Service"
+      ]
+    },
+    "repositoryInterface": {
+      "namePatterns": [
+        "I*Repository"
+      ],
+      "inherits": [
+        "IRepository"
+      ]
+    }
+  }
+}

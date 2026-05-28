@@ -23,35 +23,29 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICalendarRepository)] = "Calendar",
             [typeof(ICampaignRepository)] = "Campaigns",
             [typeof(ICampRepository)] = "Camps",
-            [typeof(ICampRoleRepository)] = "Camps",
             [typeof(ICityPlanningRepository)] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
-            [typeof(IContactFieldRepository)] = "Humans",
             [typeof(IContainerRepository)] = "Containers",
             [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
             [typeof(IEmailOutboxRepository)] = "Email",
             [typeof(IEventRepository)] = "Events",
             [typeof(IExpenseRepository)] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
-            [typeof(IGeneralAvailabilityRepository)] = "Shifts",
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",
             [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
             [typeof(IHoldedRepository)] = "Finance",
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",
-            [typeof(IProfileRepository)] = "Humans",
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [typeof(IShiftSignupRepository)] = "Shifts",
             [typeof(IStoreRepository)] = "Store",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",
-            [typeof(ITicketingBudgetRepository)] = "Tickets",
             [typeof(ITicketRepository)] = "Tickets",
             [typeof(ITicketTransferRepository)] = "Tickets",
-            [typeof(IUserEmailRepository)] = "Humans",
             [typeof(IUserRepository)] = "Humans",
             [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };
@@ -61,14 +55,15 @@ public class ServiceBoundaryArchitectureTests
     {
         var unmarked = ApplicationInterfaceTypes()
             .Where(IsApplicationServiceBoundaryName)
-            .Where(t => t != typeof(IApplicationService))
+            .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
             .Where(t => !typeof(IApplicationService).IsAssignableFrom(t))
+            .Where(t => !typeof(IOrchestrator).IsAssignableFrom(t))
             .Select(t => t.FullName)
             .Order(StringComparer.Ordinal)
             .ToList();
 
         unmarked.Should().BeEmpty(
-            because: "I*Service, I*Query, and I*Calculator interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService");
+            because: "I*Service, I*Query, and I*Calculator interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService or IOrchestrator");
     }
 
     [HumansFact]
@@ -104,8 +99,6 @@ public class ServiceBoundaryArchitectureTests
     public void Users_and_profiles_share_one_repository_ownership_section()
     {
         RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
-        RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
-        RepositoryOwners[typeof(IProfileRepository)].Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
     }

@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.EarlyEntry;
 /// <see cref="IEarlyEntryProvider"/> and assembles per-user results. Owns no
 /// tables (orchestrator per the hard rules).
 /// </summary>
-public interface IEarlyEntryService : IApplicationService
+public interface IEarlyEntryService : IOrchestrator
 {
     /// <summary>All EE holders for the active event, one row per user, with the
     /// per-source breakdown and a wasted-slot flag. Live (uncached).</summary>

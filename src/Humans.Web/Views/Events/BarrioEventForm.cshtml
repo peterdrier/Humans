@@ -49,6 +49,11 @@
                 <label asp-for="Description" class="form-label"></label>
                 <textarea asp-for="Description" class="form-control" rows="3" maxlength="450"></textarea>
                 <div class="form-text">@(450 - (Model.Description?.Length ?? 0)) characters remaining</div>
+                <div class="form-text">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                    </a>
+                </div>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
@@ -149,6 +154,8 @@
         </form>
     </div>
 </div>
+
+<partial name="_MarkdownHelp" />
 
 @section Scripts {
     <script>

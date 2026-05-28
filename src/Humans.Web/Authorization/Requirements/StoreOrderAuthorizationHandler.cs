@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -13,14 +14,18 @@ namespace Humans.Web.Authorization.Requirements;
 /// View/AddLine/RemoveLine/EditCounterparty and <see cref="StoreOrderCreateContext"/>
 /// resources for Create):
 /// - Admin or FinanceAdmin: allow any operation regardless of order state.
-/// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow.
+/// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
+/// - Coordinator (department-level management role holder) of the resource's Team:
+///   allow team orders for View/AddLine/RemoveLine; EditCounterparty and Pay are
+///   permanently denied on team orders regardless of role (team orders are non-billable).
 ///   Mutating operations (AddLine, RemoveLine, EditCounterparty) are gated on
 ///   order being Open (per Store invariant: "A Camp Lead cannot edit lines or
-///   counterparty on an order in InvoiceIssued state"). View and Pay carry no
-///   state gate — payments continue after invoice issuance.
+///   counterparty on an order in InvoiceIssued state").
 /// - Everyone else: deny.
 /// </summary>
-public class StoreOrderAuthorizationHandler(ICampService campService) : IAuthorizationHandler
+public class StoreOrderAuthorizationHandler(
+    ICampService campService,
+    ITeamServiceRead teamService) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
@@ -29,16 +34,19 @@ public class StoreOrderAuthorizationHandler(ICampService campService) : IAuthori
             .ToList();
         if (pending.Count == 0) return;
 
-        Guid campSeasonId;
+        Guid? campSeasonId;
+        Guid? teamId;
         StoreOrderState? orderState;
         switch (context.Resource)
         {
             case OrderDto order:
                 campSeasonId = order.CampSeasonId;
+                teamId = order.TeamId;
                 orderState = order.State;
                 break;
             case StoreOrderCreateContext create:
                 campSeasonId = create.CampSeasonId;
+                teamId = create.TeamId;
                 orderState = null;
                 break;
             default:
@@ -47,7 +55,15 @@ public class StoreOrderAuthorizationHandler(ICampService campService) : IAuthori
 
         if (RoleChecks.CanAdministerStore(context.User))
         {
-            foreach (var req in pending) context.Succeed(req);
+            foreach (var req in pending)
+            {
+                // Even admins can't Pay/EditCounterparty a team order — it has no billing.
+                if (teamId is not null &&
+                    (req == StoreOrderOperationRequirement.EditCounterparty ||
+                     req == StoreOrderOperationRequirement.Pay))
+                    continue;
+                context.Succeed(req);
+            }
             return;
         }
 
@@ -55,14 +71,35 @@ public class StoreOrderAuthorizationHandler(ICampService campService) : IAuthori
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var season = await campService.GetCampSeasonByIdAsync(campSeasonId);
-        if (season is null) return;
-
-        if (!await campService.IsUserCampLeadAsync(userId, season.CampId))
-            return;
+        bool authorized = false;
+        if (campSeasonId is { } sid)
+        {
+            var season = await campService.GetCampSeasonByIdAsync(sid);
+            if (season is not null && await campService.IsUserCampLeadAsync(userId, season.CampId))
+                authorized = true;
+        }
+        else if (teamId is { } tid)
+        {
+            var team = await teamService.GetTeamAsync(tid);
+            if (team is not null
+                && team.ParentTeamId is null
+                && team.ManagementRoleHolderUserIds is not null
+                && team.ManagementRoleHolderUserIds.Contains(userId))
+                authorized = true;
+        }
+        if (!authorized) return;
 
         foreach (var req in pending)
         {
+            // Team orders never allow EditCounterparty or Pay regardless of role.
+            if (teamId is not null &&
+                (req == StoreOrderOperationRequirement.EditCounterparty ||
+                 req == StoreOrderOperationRequirement.Pay))
+                continue;
+
+            // Delete is admin-only; camp leads and team coordinators never delete their own orders.
+            if (req == StoreOrderOperationRequirement.Delete) continue;
+
             var isMutating = req == StoreOrderOperationRequirement.AddLine
                 || req == StoreOrderOperationRequirement.RemoveLine
                 || req == StoreOrderOperationRequirement.EditCounterparty;

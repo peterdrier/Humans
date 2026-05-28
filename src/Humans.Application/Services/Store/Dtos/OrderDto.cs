@@ -4,7 +4,11 @@ namespace Humans.Application.Services.Store.Dtos;
 
 public record OrderDto(
     Guid Id,
-    Guid CampSeasonId,
+    Guid? CampSeasonId,
+    Guid? TeamId,
+    StoreOrderCounterpartyType CounterpartyType,
+    string CounterpartyDisplayName,
+    int Year,
     string? Label,
     StoreOrderState State,
     string? CounterpartyName,

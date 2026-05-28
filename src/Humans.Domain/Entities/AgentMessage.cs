@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
@@ -11,6 +12,8 @@ public class AgentMessage
     public AgentConversation Conversation { get; set; } = null!;
 
     public AgentRole Role { get; set; }
+
+    [MarkdownContent]
     public string Content { get; set; } = string.Empty;
 
     public Instant CreatedAt { get; init; }

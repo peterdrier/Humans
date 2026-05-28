@@ -29,6 +29,7 @@ public sealed class TicketSyncService(
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncService> logger,
     ITicketCacheInvalidator ticketCache,
+    IUserServiceRead userServiceRead,
     IUserService userService,
     ICampaignService campaignService,
     IShiftManagementService shiftManagementService) : ITicketSyncService, IUserMerge
@@ -195,13 +196,16 @@ public sealed class TicketSyncService(
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
         // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
-        var entries = await ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
+        var users = await userServiceRead.GetAllUserInfosAsync(ct);
+        var entries = users.SelectMany(user => user.UserEmails
+            .Where(email => email.IsVerified)
+            .Select(email => (email.Email, user.Id)));
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
         var grouped = entries.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
         foreach (var group in grouped)
         {
-            var distinctUserIds = group.Select(e => e.UserId).Distinct().ToList();
+            var distinctUserIds = group.Select(e => e.Id).Distinct().ToList();
 
             if (distinctUserIds.Count == 1)
             {

@@ -7,9 +7,10 @@ using NodaTime;
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Shifts-owned I/O for the new volunteer_build_statuses table plus the
+/// Shifts-owned I/O for user-oriented volunteer state:
+/// <c>volunteer_build_statuses</c>, <c>general_availability</c>, and the
 /// scoped Build-period signup read used by the gap detector. All methods
-/// return materialized lists / nullable rows — no IQueryable leaks.
+/// return materialized lists / nullable rows - no IQueryable leaks.
 /// </summary>
 [Section("Shifts")]
 public interface IVolunteerTrackingRepository : IRepository
@@ -29,6 +30,52 @@ public interface IVolunteerTrackingRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
         IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>Fetch the general availability row for (userId, eventSettingsId), or null.</summary>
+    Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>All general availability rows for the event. Empty list if none.</summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>All general availability rows for a user across events. Empty list if none.</summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns general availability rows for the supplied user ids in the
+    /// given event, in one query. Read-only. Backs the bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
+        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Upserts the general availability row for the given user + event pair.
+    /// </summary>
+    Task UpsertAvailabilityAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        IReadOnlyList<int> dayOffsets,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes the general availability row for the given user + event pair,
+    /// if one exists.
+    /// </summary>
+    Task DeleteAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold for general availability rows.
+    /// </summary>
+    Task<int> ReassignAvailabilityToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up

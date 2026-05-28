@@ -4,15 +4,18 @@ namespace Humans.Application.DTOs;
 
 public enum VolunteerCellState
 {
-    Outside,        // outside active window (main only)
+    // States are shared across the main cohort heatmap, the unbooked cohort
+    // heatmap, and the single-volunteer profile build strip (which can render
+    // any of them in one row). Notes below indicate the typical origin.
+    Outside,        // outside active window
     Confirmed,      // green
     Pending,        // light green
-    Gap,            // red — main heatmap only
+    Gap,            // red — main heatmap / strip (only when the user has signups)
     Expected,       // grey, future inside active window
     CampSetup,      // blue
-    DayOff,         // striped grey — coord-acked day off, main heatmap only
-    AvailableUnbooked,    // orange — unbooked cohort only
-    AvailableExpected,    // light orange — unbooked cohort only
+    DayOff,         // striped grey — coord-acked day off
+    AvailableUnbooked,    // orange — declared available, past, unbooked
+    AvailableExpected,    // light orange — declared available, today/future
     NotAvailable,         // grey — unbooked cohort only
 }
 
@@ -24,7 +27,8 @@ public enum VolunteerCellState
 public sealed record VolunteerCell(
     int DayOffset,
     VolunteerCellState State,
-    IReadOnlyList<string> RotaNames);
+    IReadOnlyList<string> RotaNames,
+    bool DeclaredAvailable = false);
 
 public sealed record VolunteerHeatmapRow(
     Guid UserId,
@@ -52,3 +56,10 @@ public sealed record VolunteerTrackingViewModel(
     LocalDate Today,
     IReadOnlyList<VolunteerHeatmapRow> MainCohort,
     IReadOnlyList<VolunteerCohortRow> UnbookedCohort);
+
+/// <summary>One volunteer's build-window strip for the profile build-strip
+/// view component. Reuses <see cref="VolunteerHeatmapRow"/>.</summary>
+public sealed record VolunteerBuildStripDto(
+    int BuildStartOffset,
+    LocalDate GateOpeningDate,
+    VolunteerHeatmapRow Row);

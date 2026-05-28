@@ -43,7 +43,7 @@
             <div class="card-body">
                 @if (!string.IsNullOrEmpty(Model.Description))
                 {
-                    <p class="card-text">@Model.Description</p>
+                    <div class="card-text">@Html.SanitizedMarkdown(Model.Description)</div>
                 }
                 else
                 {
@@ -173,6 +173,7 @@
                                         <vc:human user-id="@member.UserId"
                                                   layout="Card" size="128"
                                                   link="None"
+                                                  popover-public="true"
                                                   css-class="border border-primary border-3"
                                                   bg-color="bg-primary" />
                                     }
@@ -304,6 +305,13 @@
                     <a asp-controller="Calendar" asp-action="Team" asp-route-teamId="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
                         Team calendar
                     </a>
+
+                    @if (Model.IsCurrentUserCoordinator && Model.ParentTeam is null && Model.IsActive)
+                    {
+                        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-primary w-100 mt-2">
+                            <i class="fa-solid fa-cart-shopping me-1"></i> Open store
+                        </a>
+                    }
                 </div>
             </div>
         }

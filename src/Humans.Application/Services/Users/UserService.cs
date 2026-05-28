@@ -17,9 +17,6 @@ namespace Humans.Application.Services.Users;
 
 public sealed class UserService(
     IUserRepository repo,
-    IUserEmailRepository userEmailRepo,
-    IProfileRepository profileRepo,
-    IContactFieldRepository contactFieldRepo,
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
     IClock clock,
@@ -43,20 +40,20 @@ public sealed class UserService(
         var user = await repo.GetByIdAsync(userId, ct);
         if (user is null) return null;
 
-        var userEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var externalLoginsMap = await repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
             : [];
 
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
         IReadOnlyList<ContactField> contactFields = [];
         IReadOnlyList<ProfileLanguage> languages = [];
         IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
-            contactFields = await contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            contactFields = await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
             languages = profile.Languages.ToList();
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
@@ -77,17 +74,17 @@ public sealed class UserService(
 
         var userIds = users.Select(u => u.Id).ToList();
 
-        var allEmails = await userEmailRepo.GetAllAsync(ct);
+        var allEmails = await repo.GetAllUserEmailsAsync(ct);
         var emailsByUser = allEmails
             .GroupBy(e => e.UserId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
         var loginsByUser = await repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 
-        var profiles = await profileRepo.GetAllAsync(ct);
+        var profiles = await repo.GetAllProfilesAsync(ct);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
-        var allContactFields = await contactFieldRepo.GetAllAsync(ct);
+        var allContactFields = await repo.GetAllContactFieldsAsync(ct);
         var contactFieldsByProfile = allContactFields
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
@@ -151,18 +148,40 @@ public sealed class UserService(
             "it indicates a DI registration mistake — IUserService should resolve " +
             "to CachingUserService.");
 
-    public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
-        repo.GetByIdAsync(userId, ct);
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await repo.GetByIdAsync(userId, ct);
+        if (user is null)
+            return null;
 
-    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        repo.GetByIdsAsync(userIds, ct);
+        await HydrateUserEmailsAsync(user, ct);
+        return user;
+    }
 
-    public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
-        repo.GetAllAsync(ct);
+    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        var users = await repo.GetByIdsAsync(userIds, ct);
+        if (users.Count == 0)
+            return users;
+
+        await HydrateUserEmailsAsync(users.Values, ct);
+        return users;
+    }
+
+    public async Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default)
+    {
+        var users = await repo.GetAllAsync(ct);
+        await HydrateUserEmailsAsync(users, ct);
+        return users;
+    }
 
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
+        if (await repo.GetByIdAsync(userId, ct) is null)
+            return null;
+
+        await repo.RemoveAllUserEmailsForUserAndSaveAsync(userId, ct);
         var displayName = await repo.PurgeAsync(userId, ct);
         if (displayName is null)
             return null;
@@ -176,20 +195,70 @@ public sealed class UserService(
         Guid userId, CancellationToken ct = default)
     {
         // Own-data only — cross-section cascade lives in IAccountDeletionService.
+        if (await repo.GetByIdAsync(userId, ct) is null)
+            return null;
+
+        await repo.RemoveAllUserEmailsForUserAndSaveAsync(userId, ct);
         return await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 
-    public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
+    public async Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
-        return repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
+
+        var matchingUserIds = await repo.GetDistinctVerifiedUserEmailUserIdsAsync(normalized, alternate, ct);
+        if (matchingUserIds.Count > 0)
+            return await GetByIdAsync(matchingUserIds[0], ct);
+
+        var legacyUser = await repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
+        if (legacyUser is null)
+            return null;
+
+        await HydrateUserEmailsAsync(legacyUser, ct);
+        return legacyUser;
     }
 
     [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]
     public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
+
+    private async Task HydrateUserEmailsAsync(User user, CancellationToken ct)
+    {
+        var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(user.Id, ct);
+        AttachUserEmails(user, emails);
+    }
+
+    private async Task HydrateUserEmailsAsync(IEnumerable<User> users, CancellationToken ct)
+    {
+        var userList = users.ToList();
+        if (userList.Count == 0)
+            return;
+
+        var userIds = userList.Select(u => u.Id).ToHashSet();
+        var emailsByUser = (await repo.GetAllUserEmailsAsync(ct))
+            .Where(e => userIds.Contains(e.UserId))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+
+        foreach (var user in userList)
+        {
+            var emails = emailsByUser.TryGetValue(user.Id, out var found)
+                ? found
+                : [];
+            AttachUserEmails(user, emails);
+        }
+    }
+
+    private static void AttachUserEmails(User user, IEnumerable<UserEmail> emails)
+    {
+        if (user.UserEmails.Count > 0)
+            return;
+
+        foreach (var email in emails)
+            user.UserEmails.Add(email);
+    }
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
@@ -252,7 +321,7 @@ public sealed class UserService(
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = await profileRepo.GetByUserIdAsync(userId, ct);
+            var existing = await repo.GetByUserIdAsync(userId, ct);
             if (existing is not null) return false;
 
             var info = await GetUserInfoAsync(userId, ct);
@@ -277,7 +346,7 @@ public sealed class UserService(
                 State = ProfileState.Stub,
             };
 
-            await profileRepo.AddAsync(profile, ct);
+            await repo.AddAsync(profile, ct);
             return true;
         }
         finally
@@ -291,7 +360,7 @@ public sealed class UserService(
         MembershipTier tier,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
         {
             logger.LogWarning(
@@ -301,7 +370,7 @@ public sealed class UserService(
 
         profile.MembershipTier = tier;
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return true;
     }
 
@@ -312,7 +381,7 @@ public sealed class UserService(
     {
         ValidateProfileOnboardingCommand(command);
 
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
@@ -353,7 +422,7 @@ public sealed class UserService(
                 throw new ArgumentOutOfRangeException(nameof(command), command.Mutation, "Unknown profile onboarding mutation.");
         }
 
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return new OnboardingResult(true);
     }
 
@@ -367,7 +436,7 @@ public sealed class UserService(
         try
         {
             var now = clock.GetCurrentInstant();
-            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+            var profile = await repo.GetByUserIdAsync(userId, ct);
 
             if (profile is null)
             {
@@ -379,7 +448,7 @@ public sealed class UserService(
                     UpdatedAt = now,
                     State = ProfileState.Stub,
                 };
-                await profileRepo.AddAsync(profile, ct);
+                await repo.AddAsync(profile, ct);
             }
 
             var previousPictureContentType = profile.ProfilePictureContentType;
@@ -443,7 +512,7 @@ public sealed class UserService(
                 profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
             }
 
-            await profileRepo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
 
             return new UserProfileSaveResult(
@@ -467,7 +536,7 @@ public sealed class UserService(
         try
         {
             var now = clock.GetCurrentInstant();
-            var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+            var profile = await repo.GetByUserIdAsync(userId, ct);
             if (profile is null)
             {
                 profile = new Profile
@@ -478,7 +547,7 @@ public sealed class UserService(
                     UpdatedAt = now,
                     State = ProfileState.Stub,
                 };
-                await profileRepo.AddAsync(profile, ct);
+                await repo.AddAsync(profile, ct);
             }
 
             profile.DietaryPreference = command.DietaryPreference;
@@ -489,7 +558,7 @@ public sealed class UserService(
             profile.MedicalConditions = command.MedicalConditions;
             profile.UpdatedAt = now;
 
-            await profileRepo.UpdateAsync(profile, ct);
+            await repo.UpdateAsync(profile, ct);
         }
         finally
         {
@@ -502,14 +571,14 @@ public sealed class UserService(
         string contentType,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new UserProfilePictureContentTypeResult(false, null, null, null);
 
         var previousContentType = profile.ProfilePictureContentType;
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
 
         return new UserProfilePictureContentTypeResult(
             true,
@@ -522,8 +591,8 @@ public sealed class UserService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        var anonymized = await profileRepo.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+        var anonymized = await repo.AnonymizeForDeletionByUserIdAsync(userId, ct);
         return new UserProfileAnonymizeResult(
             anonymized,
             profile?.Id,
@@ -535,11 +604,11 @@ public sealed class UserService(
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
-        await profileRepo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+        await repo.ReconcileCVEntriesAsync(profile.Id, entries, ct);
         return true;
     }
 
@@ -548,8 +617,8 @@ public sealed class UserService(
         IReadOnlyList<ProfileLanguage> languages,
         CancellationToken ct = default)
     {
-        await profileRepo.ReplaceLanguagesAsync(profileId, languages, ct);
-        var ownerUserId = await profileRepo.GetOwnerUserIdAsync(profileId, ct);
+        await repo.ReplaceLanguagesAsync(profileId, languages, ct);
+        var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
         return new UserProfileLanguagesSaveResult(
             ownerUserId is not null,
             ownerUserId);
@@ -557,13 +626,13 @@ public sealed class UserService(
 
     public async Task<bool> SetProfileIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
-        var profile = await profileRepo.GetByUserIdAsync(userId, ct);
+        var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return false;
 
         profile.Iban = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
         profile.UpdatedAt = clock.GetCurrentInstant();
-        await profileRepo.UpdateAsync(profile, ct);
+        await repo.UpdateAsync(profile, ct);
         return true;
     }
 
@@ -571,7 +640,7 @@ public sealed class UserService(
         IReadOnlyCollection<Guid> userIds,
         Instant now,
         CancellationToken ct = default) =>
-        profileRepo.SuspendManyAsync(userIds, now, ct);
+        repo.SuspendManyAsync(userIds, now, ct);
 
     public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
         DowngradeMembershipTierForExpiredAsync(
@@ -580,7 +649,7 @@ public sealed class UserService(
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default) =>
-        profileRepo.DowngradeTierForExpiredAsync(
+        repo.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
     public async Task<UserEmailAddResult> AddUserEmailAsync(
@@ -595,7 +664,7 @@ public sealed class UserService(
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
-        var existing = await userEmailRepo.FindByNormalizedEmailAsync(normalizedEmail, alternateEmail, ct);
+        var existing = await repo.FindUserEmailByNormalizedEmailAsync(normalizedEmail, alternateEmail, ct);
         if (existing is not null && existing.UserId == userId)
         {
             if (command.IgnoreExisting)
@@ -640,7 +709,7 @@ public sealed class UserService(
 
         if (command.MarkVerified)
         {
-            var email = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct)
+            var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
                 ?? throw new InvalidOperationException("Email not found.");
 
             if (email.IsVerified || email.Provider is not null)
@@ -648,7 +717,7 @@ public sealed class UserService(
 
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
-            await userEmailRepo.UpdateAsync(email, ct);
+            await repo.UpdateUserEmailAsync(email, ct);
             await EnsurePrimaryInvariantAsync(userId, ct);
             await EnsureGoogleInvariantAsync(userId, ct);
             changed = true;
@@ -666,9 +735,9 @@ public sealed class UserService(
 
         if (command.Google == UserEmailGoogleChange.MakeGoogle)
         {
-            var row = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct);
+            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
             if (row is null || !row.IsVerified) return false;
-            await userEmailRepo.SetGoogleExclusiveAsync(userId, emailId, clock.GetCurrentInstant(), ct);
+            await repo.SetUserEmailGoogleExclusiveAsync(userId, emailId, clock.GetCurrentInstant(), ct);
             changed = true;
         }
         else if (command.Google == UserEmailGoogleChange.ClearDuplicateGoogle)
@@ -678,11 +747,11 @@ public sealed class UserService(
 
         if (command.ChangeVisibility)
         {
-            var row = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct)
+            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
                 ?? throw new InvalidOperationException("Email not found.");
             row.Visibility = command.Visibility;
             row.UpdatedAt = clock.GetCurrentInstant();
-            await userEmailRepo.UpdateAsync(row, ct);
+            await repo.UpdateUserEmailAsync(row, ct);
             changed = true;
         }
 
@@ -695,7 +764,7 @@ public sealed class UserService(
         UserEmailRemoveCommand command,
         CancellationToken ct = default)
     {
-        var email = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct)
+        var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
             ?? throw new InvalidOperationException("Email not found.");
 
         var hasProvider = !string.IsNullOrEmpty(email.Provider);
@@ -706,7 +775,7 @@ public sealed class UserService(
 
         if (command.PreserveLastVerifiedEmail && email.IsVerified)
         {
-            var allEmails = await userEmailRepo.GetByUserIdForMutationAsync(userId, ct);
+            var allEmails = await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct);
             var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
 
             if (verifiedRemaining == 0)
@@ -717,7 +786,7 @@ public sealed class UserService(
             }
         }
 
-        await userEmailRepo.RemoveAsync(email, ct);
+        await repo.RemoveUserEmailAsync(email, ct);
 
         if (command.RepairInvariants)
         {
@@ -733,7 +802,7 @@ public sealed class UserService(
         UserEmailReconcilePlanCommand command,
         CancellationToken ct = default)
     {
-        await userEmailRepo.ApplyReconcilePlanAsync(
+        await repo.ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: command.DisplacedRowToDelete,
             rowToDelete: command.RowToDelete,
             rowToUpdate: command.RowToUpdate,
@@ -861,7 +930,7 @@ public sealed class UserService(
         }
 
         // see nobodies-collective/Humans#687 — User.GoogleEmail deprecated, not exported.
-        var userEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
@@ -897,10 +966,10 @@ public sealed class UserService(
             })
             .ToList();
 
-        var profile = await profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
         var contactFields = profile is not null
-            ? await contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
+            ? await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
             : [];
 
         var volunteerHistory = profile?.VolunteerHistory
@@ -909,7 +978,7 @@ public sealed class UserService(
             .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
         var profileLanguages = profile is not null
-            ? await profileRepo.GetLanguagesAsync(profile.Id, ct)
+            ? await repo.GetLanguagesAsync(profile.Id, ct)
             : [];
 
         var communicationPreferences = await communicationPreferenceRepo
@@ -1023,7 +1092,7 @@ public sealed class UserService(
 
     private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
-        var emails = (await userEmailRepo.GetByUserIdForMutationAsync(userId, ct)).ToList();
+        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
 
         var target = emails.FirstOrDefault(e => e.Id == emailId)
             ?? throw new InvalidOperationException("Email not found.");
@@ -1045,40 +1114,40 @@ public sealed class UserService(
         }
 
         if (changed.Count > 0)
-            await userEmailRepo.UpdateBatchAsync(changed, ct);
+            await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
     private async Task<bool> ClearDuplicatePrimaryAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
-        var row = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct);
+        var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
         if (row is null || !row.IsPrimary) return false;
 
-        var allEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var allEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
         row.IsPrimary = false;
         row.UpdatedAt = clock.GetCurrentInstant();
-        await userEmailRepo.UpdateAsync(row, ct);
+        await repo.UpdateUserEmailAsync(row, ct);
         return true;
     }
 
     private async Task<bool> ClearDuplicateGoogleAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
-        var row = await userEmailRepo.GetByIdAndUserIdAsync(emailId, userId, ct);
+        var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
         if (row is null || !row.IsGoogle) return false;
 
-        var allEmails = await userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var allEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
 
         row.IsGoogle = false;
         row.UpdatedAt = clock.GetCurrentInstant();
-        await userEmailRepo.UpdateAsync(row, ct);
+        await repo.UpdateUserEmailAsync(row, ct);
         return true;
     }
 
     private async Task EnsurePrimaryInvariantAsync(Guid userId, CancellationToken ct)
     {
-        var emails = (await userEmailRepo.GetByUserIdForMutationAsync(userId, ct)).ToList();
+        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
         var verified = emails.Where(e => e.IsVerified).ToList();
         if (verified.Count == 0)
             return;
@@ -1107,12 +1176,12 @@ public sealed class UserService(
         }
 
         if (changed.Count > 0)
-            await userEmailRepo.UpdateBatchAsync(changed, ct);
+            await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
     private async Task EnsureGoogleInvariantAsync(Guid userId, CancellationToken ct)
     {
-        var emails = (await userEmailRepo.GetByUserIdForMutationAsync(userId, ct)).ToList();
+        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
         var verified = emails.Where(e => e.IsVerified).ToList();
         if (verified.Count == 0)
             return;
@@ -1141,12 +1210,12 @@ public sealed class UserService(
         }
 
         if (changed.Count > 0)
-            await userEmailRepo.UpdateBatchAsync(changed, ct);
+            await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
     private async Task AddRowWithInvariantsAsync(UserEmail row, CancellationToken ct)
     {
-        await userEmailRepo.AddAsync(row, ct);
+        await repo.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantAsync(row.UserId, ct);
         await EnsureGoogleInvariantAsync(row.UserId, ct);
     }
@@ -1235,7 +1304,7 @@ public sealed class UserService(
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
         await repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        await profileRepo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
 
     public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
@@ -1245,14 +1314,23 @@ public sealed class UserService(
             "scans the cached UserInfo snapshot for MergedToUserId tombstones. If this is " +
             "being called on the inner UserService it indicates a DI registration mistake.");
 
-    public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
-        repo.GetUsersWithLoginsButNoEmailsAsync(ct);
+    public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
+    {
+        var loginUserIds = await repo.GetUserIdsWithExternalLoginsAsync(ct);
+        if (loginUserIds.Count == 0)
+            return [];
+
+        var withEmail = await repo.GetUserIdsHavingAnyUserEmailAsync(loginUserIds, ct);
+        var withEmailSet = withEmail.ToHashSet();
+        return loginUserIds.Where(id => !withEmailSet.Contains(id)).ToList();
+    }
 
     public async Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        await repo.RemoveAllUserEmailsForUsersAndSaveAsync(userIds, ct);
         return await repo.DeleteUsersAsync(userIds, ct);
     }
 

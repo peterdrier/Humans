@@ -15,6 +15,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
         HumanLayout layout = HumanLayout.Text,
         HumanLink link = HumanLink.Public,
         bool popover = true,
+        bool popoverPublic = false,
         int size = 40,
         string? cssClass = null,
         string bgColor = "bg-secondary")
@@ -65,6 +66,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
             Link = link,
             Href = href,
             ShowPopover = popover && link != HumanLink.None && userId != Guid.Empty,
+            ShowPopoverPublic = popoverPublic && userId != Guid.Empty,
             Size = size,
             CssClass = cssClass,
             BgColor = bgColor,
@@ -84,6 +86,7 @@ public class HumanViewModel
     public HumanLink Link { get; init; }
     public string? Href { get; init; }
     public bool ShowPopover { get; init; }
+    public bool ShowPopoverPublic { get; init; }
     public int Size { get; init; }
     public string? CssClass { get; init; }
     public string BgColor { get; init; } = "bg-secondary";

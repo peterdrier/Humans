@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,6 +18,7 @@ public class StoreService(
     IStoreRepository repo,
     IAuditLogService audit,
     ICampService campService,
+    ITeamServiceRead teamService,
     IClock clock,
     IShiftManagementService shifts,
     IStripeService stripeService,
@@ -33,23 +35,64 @@ public class StoreService(
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
-        var sections = new List<StoreCampSeasonOrders>();
+        var counterparties = new List<StoreCounterpartyOrders>();
+
+        // Camp-lead counterparty
         var leadSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
         if (leadSeasonId is { } seasonId)
         {
             var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
             if (season is not null)
             {
-                var orders = await GetOrdersForCampSeasonAsync(season.Id, ct);
-                sections.Add(new StoreCampSeasonOrders(season.Id, season.Name, year, orders));
+                // One order per camp-season; if legacy data has multiple, surface
+                // only the highest-balance one and let the admin delete the rest.
+                var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+                var primary = allOrders
+                    .OrderByDescending(o => o.BalanceEur)
+                    .FirstOrDefault();
+                IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
+                counterparties.Add(new StoreCounterpartyOrders(
+                    StoreOrderCounterpartyType.Camp,
+                    season.Id,
+                    season.Name,
+                    year,
+                    orders));
             }
+        }
+
+        // Team-coordinator counterparties — departments only.
+        // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
+        var teams = await teamService.GetTeamsAsync(ct);
+        foreach (var team in teams.Values
+            .Where(t => t.ParentTeamId is null
+                        && t.ManagementRoleHolderUserIds is not null
+                        && t.ManagementRoleHolderUserIds.Contains(userId)))
+        {
+            var existing = await repo.GetOrderForTeamAsync(team.Id, year, ct);
+            IReadOnlyList<OrderDto> orders;
+            if (existing is null)
+            {
+                orders = [];
+            }
+            else
+            {
+                var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
+                var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+                orders = [await MapOrderAsync(existing, productNames, ct)];
+            }
+            counterparties.Add(new StoreCounterpartyOrders(
+                StoreOrderCounterpartyType.Team,
+                team.Id,
+                team.Name,
+                year,
+                orders));
         }
 
         return new StoreIndexData(
             year,
             catalog,
-            sections,
-            sections.Count == 0 && !isPrivilegedReader);
+            counterparties,
+            counterparties.Count == 0 && !isPrivilegedReader);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
@@ -76,14 +119,12 @@ public class StoreService(
                 .ToList();
         }
 
-        var season = await campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
-
         return new StoreOrderPageData(
             order,
             catalog,
-            season?.Name ?? "(unknown camp)",
+            order.CounterpartyDisplayName,
             canEdit,
-            canPayAuthorized && order.BalanceEur > 0,
+            canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured);
     }
 
@@ -227,7 +268,10 @@ public class StoreService(
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return orders.Select(o => MapOrder(o, productNames)).ToList();
+        var result = new List<OrderDto>(orders.Count);
+        foreach (var o in orders)
+            result.Add(await MapOrderAsync(o, productNames, ct));
+        return result;
     }
 
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
@@ -236,16 +280,25 @@ public class StoreService(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return MapOrder(o, productNames);
+        return await MapOrderAsync(o, productNames, ct);
     }
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
     {
+        var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct)
+            ?? throw new InvalidOperationException($"Camp season {campSeasonId} not found.");
+
+        var existing = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
+        if (existing.Any(o => o.Year == season.Year))
+            throw new InvalidOperationException($"Camp season {campSeasonId} already has a Store order for {season.Year}.");
+
         var now = clock.GetCurrentInstant();
         var order = new StoreOrder
         {
             Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
+            TeamId = null,
+            Year = season.Year,
             Label = label,
             State = StoreOrderState.Open,
             CreatedAt = now,
@@ -258,6 +311,67 @@ public class StoreService(
             (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
             actorUserId);
         return order.Id;
+    }
+
+    public async Task DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+
+        var balance = BalanceCalculator.Compute(order).BalanceEur;
+        if (balance != 0m)
+            throw new InvalidOperationException(
+                $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
+
+        await repo.DeleteOrderAsync(orderId, ct);
+        await audit.LogAsync(
+            AuditAction.StoreOrderDeleted, nameof(StoreOrder), orderId,
+            $"Deleted store order {orderId}",
+            actorUserId);
+    }
+
+    public async Task<Guid> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var team = await teamService.GetTeamAsync(teamId, ct)
+            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        if (team.ParentTeamId is not null)
+            throw new InvalidOperationException("Team orders are restricted to departments (top-level teams).");
+
+        var activeEvent = await shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+
+        var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
+        if (existing is not null)
+            throw new InvalidOperationException($"Team {teamId} already has a Store order for {year}.");
+
+        var now = clock.GetCurrentInstant();
+        var order = new StoreOrder
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = null,
+            TeamId = teamId,
+            Year = year,
+            State = StoreOrderState.Open,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await repo.AddOrderAsync(order, ct);
+        await audit.LogAsync(
+            AuditAction.StoreOrderCreated, nameof(StoreOrder), order.Id,
+            $"Created store order for team '{team.Name}' ({year})",
+            actorUserId);
+        return order.Id;
+    }
+
+    public async Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default)
+    {
+        var activeEvent = await shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+        var order = await repo.GetOrderForTeamAsync(teamId, year, ct);
+        if (order is null) return null;
+        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        return await MapOrderAsync(order, productNames, ct);
     }
 
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
@@ -296,6 +410,19 @@ public class StoreService(
             AddedByUserId = actorUserId
         };
         await repo.AddLineAsync(line, ct);
+
+        // Lazy backfill of Year on legacy camp orders that pre-date the Year column.
+        if (order.Year == 0 && order.CampSeasonId is { } seasonIdForBackfill)
+        {
+            var season = await campService.GetCampSeasonByIdAsync(seasonIdForBackfill, ct);
+            if (season is not null)
+            {
+                order.Year = season.Year;
+                order.UpdatedAt = clock.GetCurrentInstant();
+                await repo.UpdateOrderAsync(order, ct);
+            }
+        }
+
         await audit.LogAsync(
             AuditAction.StoreLineAdded, nameof(StoreOrderLine), line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}",
@@ -372,6 +499,8 @@ public class StoreService(
         var order = await repo.GetOrderByIdAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found");
 
+        EnsureBillable(order);
+
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;
         order.CounterpartyAddress = input.Address;
@@ -422,6 +551,9 @@ public class StoreService(
         string returnUrl,
         CancellationToken ct = default)
     {
+        if (order.CounterpartyType == StoreOrderCounterpartyType.Team)
+            throw new InvalidOperationException("Team orders are non-billable.");
+
         if (!stripeService.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
 
@@ -453,6 +585,11 @@ public class StoreService(
 
         if (await repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
             return; // idempotent: duplicate Stripe webhook delivery
+
+        // Defense-in-depth: never record a payment on a team-owned order.
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is not null && order.TeamId is not null)
+            throw new InvalidOperationException("Team orders are non-billable.");
 
         var payment = new StorePayment
         {
@@ -549,37 +686,68 @@ public class StoreService(
         var seasonsForYear = await campService.GetCampSeasonDisplayDataForYearAsync(year, ct);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
-        var orders = seasonsForYear.Count == 0
+        var campOrders = seasonsForYear.Count == 0
             ? (IReadOnlyList<StoreOrder>)Array.Empty<StoreOrder>()
             : await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
                 seasonsForYear.Keys.ToList(), ct);
 
-        var ordersInYear = orders
-            .Where(o => seasonsForYear.ContainsKey(o.CampSeasonId))
+        var campOrdersInYear = campOrders
+            .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
+
+        // Team orders — load departments the user *exists on the platform* (no user filter here:
+        // admin summary reflects all departments). Filter to ParentTeamId is null.
+        var allTeams = await teamService.GetTeamsAsync(ct);
+        var departmentIds = allTeams.Values
+            .Where(t => t.ParentTeamId is null)
+            .Select(t => t.Id)
+            .ToList();
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAsync(departmentIds, year, ct);
+        var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
 
         var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
-        var byCamp = ordersInYear
-            .Select(o =>
-            {
-                var totals = BalanceCalculator.Compute(o);
-                var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
-                var campName = seasonsForYear[o.CampSeasonId].Name;
-                return new OrderSummaryDto(
-                    o.Id,
-                    o.CampSeasonId,
-                    campName,
-                    o.Label,
-                    o.State,
-                    totalDue,
-                    totals.PaymentsTotalEur,
-                    totals.BalanceEur);
-            })
-            .OrderBy(s => s.CampName, StringComparer.Ordinal)
-            .ToList();
+        var byCounterparty = new List<OrderSummaryDto>();
 
-        var byItem = ordersInYear
+        foreach (var o in campOrdersInYear)
+        {
+            var totals = BalanceCalculator.Compute(o);
+            var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
+            var sid = o.CampSeasonId!.Value;
+            var campName = seasonsForYear[sid].Name;
+            byCounterparty.Add(new OrderSummaryDto(
+                o.Id,
+                StoreOrderCounterpartyType.Camp,
+                sid,
+                campName,
+                o.Label,
+                o.State,
+                totalDue,
+                totals.PaymentsTotalEur,
+                totals.BalanceEur));
+        }
+        foreach (var o in teamOrders)
+        {
+            var totals = BalanceCalculator.Compute(o);
+            var tid = o.TeamId!.Value;
+            var teamName = teamNames.TryGetValue(tid, out var n) ? n : "(unknown team)";
+            byCounterparty.Add(new OrderSummaryDto(
+                o.Id,
+                StoreOrderCounterpartyType.Team,
+                tid,
+                teamName,
+                o.Label,
+                o.State,
+                totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
+                0m, // team orders never have payments
+                0m));
+        }
+
+        // Counterparty row ordering is the view's concern
+        // (memory/architecture/display-sort-in-controllers.md).
+        // by-item aggregates lines from BOTH camp and team orders so suppliers see the full demand.
+        var allLineProjections = campOrdersInYear
+            .Concat(teamOrders)
             .SelectMany(o => o.Lines.Select(l => new
             {
                 l.ProductId,
@@ -588,6 +756,9 @@ public class StoreService(
                 Vat = Math.Round(l.Qty * l.UnitPriceSnapshot * l.VatRateSnapshot / 100m, 2, MidpointRounding.AwayFromZero),
                 Deposit = l.DepositAmountSnapshot is { } d ? l.Qty * d : 0m
             }))
+            .ToList();
+
+        var byItem = allLineProjections
             .GroupBy(x => x.ProductId)
             .Select(g => new ProductAggregateDto(
                 g.Key,
@@ -603,36 +774,50 @@ public class StoreService(
             .OrderBy(c => c.ProductName, StringComparer.Ordinal)
             .ToList();
 
-        var campRows = ordersInYear
-            .GroupBy(o => o.CampSeasonId)
-            .Select(g =>
-            {
-                var perProduct = g
-                    .SelectMany(o => o.Lines)
-                    .GroupBy(l => l.ProductId)
-                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
-                var total = perProduct.Values.Sum();
-                return new StoreCrossTabRow(
-                    g.Key,
-                    seasonsForYear[g.Key].Name,
-                    total,
-                    perProduct);
-            })
-            .OrderBy(r => r.CampName, StringComparer.Ordinal)
-            .ToList();
-
+        var counterpartyRows = new List<StoreCrossTabRow>();
+        foreach (var g in campOrdersInYear.GroupBy(o => o.CampSeasonId!.Value))
+        {
+            var perProduct = g
+                .SelectMany(o => o.Lines)
+                .GroupBy(l => l.ProductId)
+                .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+            var total = perProduct.Values.Sum();
+            counterpartyRows.Add(new StoreCrossTabRow(
+                StoreOrderCounterpartyType.Camp,
+                g.Key,
+                seasonsForYear[g.Key].Name,
+                total,
+                perProduct));
+        }
+        foreach (var g in teamOrders.GroupBy(o => o.TeamId!.Value))
+        {
+            var perProduct = g
+                .SelectMany(o => o.Lines)
+                .GroupBy(l => l.ProductId)
+                .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+            var total = perProduct.Values.Sum();
+            counterpartyRows.Add(new StoreCrossTabRow(
+                StoreOrderCounterpartyType.Team,
+                g.Key,
+                teamNames.TryGetValue(g.Key, out var n) ? n : "(unknown team)",
+                total,
+                perProduct));
+        }
         return new StoreSummaryDto(
             year,
-            byCamp,
+            byCounterparty,
             byItem,
-            new StoreCrossTabDto(productColumns, campRows));
+            new StoreCrossTabDto(productColumns, counterpartyRows));
     }
 
     private static ProductDto MapProduct(StoreProduct p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive);
 
-    private static OrderDto MapOrder(StoreOrder o, IReadOnlyDictionary<Guid, string> productNames)
+    private async Task<OrderDto> MapOrderAsync(
+        StoreOrder o,
+        IReadOnlyDictionary<Guid, string> productNames,
+        CancellationToken ct)
     {
         var balance = BalanceCalculator.Compute(o);
         var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
@@ -646,12 +831,46 @@ public class StoreService(
                 t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
         }).ToList();
 
+        var counterpartyType = o.TeamId is not null
+            ? StoreOrderCounterpartyType.Team
+            : StoreOrderCounterpartyType.Camp;
+
+        var displayName = await ResolveCounterpartyDisplayNameAsync(o, ct);
+
         return new OrderDto(
-            o.Id, o.CampSeasonId, o.Label, o.State,
+            o.Id,
+            o.CampSeasonId,
+            o.TeamId,
+            counterpartyType,
+            displayName,
+            o.Year,
+            o.Label,
+            o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,
             lines,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
             balance.PaymentsTotalEur, balance.BalanceEur);
+    }
+
+    private async Task<string> ResolveCounterpartyDisplayNameAsync(StoreOrder o, CancellationToken ct)
+    {
+        if (o.TeamId is { } tid)
+        {
+            var team = await teamService.GetTeamAsync(tid, ct);
+            return team?.Name ?? "(unknown team)";
+        }
+        if (o.CampSeasonId is { } sid)
+        {
+            var season = await campService.GetCampSeasonByIdAsync(sid, ct);
+            return season?.Name ?? "(unknown camp)";
+        }
+        return "(unknown)";
+    }
+
+    private static void EnsureBillable(StoreOrder order)
+    {
+        if (order.TeamId is not null)
+            throw new InvalidOperationException("Team orders are non-billable.");
     }
 }

@@ -39,6 +39,12 @@ When drafting an issue/spec/API/refactor proposal: audit from code (not memory),
 
 Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first. Prefer reuse, caller-side composition, and small local LINQ/mapping over new durable surface. If new surface is still necessary, state which existing options were rejected and why; public/interface surface requires Peter approval.
 
+## Read-Model Enrichment Before New Surfaces
+
+If a caller needs stable facts about an aggregate already exposed through a bounded or cached canonical read model, prefer adding scalar fields to that DTO over adding a new interface, repository, service method, implementation, or DI registration. A few numbers/strings on `UserInfo`, `TeamInfo`, `TicketOrderInfo`, etc. are usually cheaper and clearer than a one-off read surface.
+
+Only add a new durable surface when the data is unbounded, permission-specific, expensive to materialize through the read model, transactional, sensitive, not a stable aggregate fact, or would pollute the canonical DTO with screen-only concerns. Before proposing a new interface/repository for a read projection, explicitly check whether enriching the existing read DTO eliminates it.
+
 ## Concepts — Volunteer vs Tier Applications
 
 These are SEPARATE concepts; do not conflate them.

@@ -1,8 +1,8 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -12,7 +12,7 @@ namespace Humans.Application.Services.Tickets;
 /// Tickets→Budget bridge: reads paid ticket sales, delegates BudgetLineItem/Projection writes to IBudgetService.
 /// </summary>
 public sealed class TicketingBudgetService(
-    ITicketingBudgetRepository ticketRepo,
+    ITicketServiceRead ticketService,
     IBudgetService budgetService,
     IClock clock,
     ILogger<TicketingBudgetService> logger) : ITicketingBudgetService
@@ -21,12 +21,13 @@ public sealed class TicketingBudgetService(
     {
         try
         {
-            var orders = await ticketRepo.GetPaidOrderSummariesAsync(ct);
+            var orders = await ticketService.GetTicketOrdersAsync(ct);
 
             var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
             var weeklyActuals = orders
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
                 .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                 .Where(g => g.Key < currentWeekMonday)
                 .OrderBy(g => g.Key)
@@ -38,7 +39,9 @@ public sealed class TicketingBudgetService(
                         Monday: monday,
                         Sunday: sunday,
                         WeekLabel: FormatWeekLabel(monday, sunday),
-                        TicketCount: g.Sum(o => o.TicketCount),
+                        TicketCount: g.Sum(o => o.Attendees.Count(a =>
+                            a.Status == TicketAttendeeStatus.Valid ||
+                            a.Status == TicketAttendeeStatus.CheckedIn)),
                         Revenue: g.Sum(o => o.TotalAmount),
                         StripeFees: g.Sum(o => o.StripeFee ?? 0m),
                         TicketTailorFees: g.Sum(o => o.ApplicationFee ?? 0m));

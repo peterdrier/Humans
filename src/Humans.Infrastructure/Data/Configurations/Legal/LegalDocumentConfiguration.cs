@@ -41,12 +41,10 @@ public class LegalDocumentConfiguration : IEntityTypeConfiguration<LegalDocument
         builder.Property(ld => ld.LastSyncedAt)
             .IsRequired();
 
-#pragma warning disable CS0618 // LegalDocument.Team is an obsolete cross-domain nav (peterdrier#719); EF config still references it so the snapshot stays in sync until a follow-up PR strips both.
-        builder.HasOne(ld => ld.Team)
-            .WithMany(t => t.LegalDocuments)
+        builder.HasOne<Team>()
+            .WithMany()
             .HasForeignKey(ld => ld.TeamId)
             .OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618
 
         builder.HasMany(ld => ld.Versions)
             .WithOne(v => v.LegalDocument)

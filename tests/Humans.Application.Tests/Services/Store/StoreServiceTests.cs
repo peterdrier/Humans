@@ -1,10 +1,12 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Store;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
@@ -22,6 +24,7 @@ public class StoreServiceTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
+    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -34,7 +37,9 @@ public class StoreServiceTests
             Year = 2026,
             TimeZoneId = "Europe/Madrid"
         });
-        _service = new StoreService(_repo, _audit, _campService, _clock, _shifts, _stripeService, NullLogger<StoreService>.Instance);
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        _service = new StoreService(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, NullLogger<StoreService>.Instance);
     }
 
     // ==========================================================================
@@ -54,16 +59,21 @@ public class StoreServiceTests
 
         result.Year.Should().Be(2026);
         result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
-        result.CampSeasons.Should().BeEmpty();
-        result.ShowNoCampOrdersMessage.Should().BeTrue();
+        result.Counterparties.Should().BeEmpty();
+        result.ShowNoOrdersMessage.Should().BeTrue();
     }
 
     [HumansFact]
     public async Task GetOrderPageDataAsync_loads_edit_catalog_and_computes_payment_state()
     {
+        var campSeasonId = Guid.NewGuid();
         var order = new OrderDto(
             Id: Guid.NewGuid(),
-            CampSeasonId: Guid.NewGuid(),
+            CampSeasonId: campSeasonId,
+            TeamId: null,
+            CounterpartyType: StoreOrderCounterpartyType.Camp,
+            CounterpartyDisplayName: "Camp Test",
+            Year: 2026,
             Label: "Kitchen",
             State: StoreOrderState.Open,
             CounterpartyName: null,
@@ -83,15 +93,11 @@ public class StoreServiceTests
                 MakeProduct(name: "Tent"),
                 MakeProduct(name: "Blanket")
             ]);
-        _campService.GetCampSeasonByIdAsync(order.CampSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(order.CampSeasonId, Guid.NewGuid(), string.Empty, 2026, null,
-                "Camp Test", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
-                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true);
 
-        result.CampName.Should().Be("Camp Test");
+        result.CounterpartyDisplayName.Should().Be("Camp Test");
         result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
@@ -238,6 +244,10 @@ public class StoreServiceTests
         var actor = Guid.NewGuid();
         StoreOrder? captured = null;
         await _repo.AddOrderAsync(Arg.Do<StoreOrder>(o => captured = o), Arg.Any<CancellationToken>());
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), "alpha", 2026, null,
+                "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
         var orderId = await _service.CreateOrderAsync(campSeasonId, "First order", actor);
 
@@ -970,15 +980,19 @@ public class StoreServiceTests
         string? email = null)
     {
         return new OrderDto(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            label,
-            StoreOrderState.Open,
-            counterpartyName,
+            Id: Guid.NewGuid(),
+            CampSeasonId: Guid.NewGuid(),
+            TeamId: null,
+            CounterpartyType: StoreOrderCounterpartyType.Camp,
+            CounterpartyDisplayName: counterpartyName ?? "Camp",
+            Year: 2026,
+            Label: label,
+            State: StoreOrderState.Open,
+            CounterpartyName: counterpartyName,
             CounterpartyVatId: null,
             CounterpartyAddress: null,
             CounterpartyCountryCode: null,
-            email,
+            CounterpartyEmail: email,
             IssuedInvoiceId: null,
             Lines: [],
             LinesSubtotalEur: balanceEur,

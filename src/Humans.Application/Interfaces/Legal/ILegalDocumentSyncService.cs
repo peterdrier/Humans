@@ -62,11 +62,11 @@ public interface ILegalDocumentSyncService : IApplicationService
 
     /// <summary>
     /// Gets every active+required legal document whose <c>TeamId</c> is in
-    /// <paramref name="teamIds"/>, with the <see cref="LegalDocument.Team"/>
-    /// and <see cref="LegalDocument.Versions"/> navigation properties
-    /// populated. Used by the consent dashboard to build the "documents per
-    /// team" grouping without crossing the section boundary into
-    /// <c>DbContext.LegalDocuments</c> from the Application layer.
+    /// <paramref name="teamIds"/>, with team names stitched by TeamId and
+    /// <see cref="LegalDocument.Versions"/> populated. Used by the consent
+    /// dashboard to build the "documents per team" grouping without crossing
+    /// the section boundary into <c>DbContext.LegalDocuments</c> from the
+    /// Application layer.
     /// </summary>
     Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
