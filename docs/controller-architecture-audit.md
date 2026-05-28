@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-05-27 (freshness-sweep regeneration).
+Living document. Last updated: 2026-05-28 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -12,7 +12,7 @@ Living document. Last updated: 2026-05-27 (freshness-sweep regeneration).
 
 Newly added since the previous audit (purposes are name-derived defaults — review for accuracy): `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), and a previously-undocumented `DebugController` (`/Debug/ClientStats`).
 
-New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POST), `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx`, `TicketTransferController.Confirm` replacing the prior `Lookup` action, and `ShiftAdminController.EmailTeamRotas` (GET+POST) — team-level coordinator rota message.
+New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover` (mini popover for `<vc:human>` on publicly-visible roles), `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay` (per-day availability writes from the coordinator heatmap), `TicketTransferController.Confirm` replacing the prior `Lookup` action, `ShiftAdminController.EmailTeamRotas` (GET+POST) — team-level coordinator rota message, and `StoreController.CreateTeamOrder` / `Delete` for team orders as a non-billable counterparty.
 
 ---
 
@@ -779,6 +779,7 @@ New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POS
 | ImportGooglePhoto | /Profile/Me/ImportGooglePhoto | POST | Import Google photo | OK |
 | ViewProfile | /Profile/{id} | GET | Public profile page for a human | OK |
 | Popover | /Profile/{id}/Popover | GET | Mini profile popover (partial) | OK |
+| PublicPopover | /Profile/{id}/PublicPopover | GET | Public mini popover for `<vc:human>` on publicly-visible roles | OK |
 | SendMessage | /Profile/{id}/SendMessage | GET | Facilitated message form | OK |
 | SendMessage | /Profile/{id}/SendMessage | POST | Send facilitated message | OK |
 | Search | /Profile/Search | GET | Human search page | OK |
@@ -896,7 +897,9 @@ New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POS
 | Index | /Store | GET | Store landing | OK |
 | Order | /Store/Order/{id:guid} | GET | Order detail | OK |
 | Pay | /Store/Order/{id:guid}/Pay | POST | Pay for an order | OK |
-| Create | /Store/Order/Create/{campSeasonId:guid} | POST | Create an order | OK |
+| Create | /Store/Order/Create/{campSeasonId:guid} | POST | Create an order for a camp season | OK |
+| CreateTeamOrder | /Store/Team/{teamId:guid}/Create | POST | Create a team order (non-billable counterparty) | OK |
+| Delete | /Store/Order/{id:guid}/Delete | POST | Delete an order | OK |
 | AddLine | /Store/Order/{id:guid}/AddLine | POST | Add an order line | OK |
 | RemoveLine | /Store/Order/{id:guid}/RemoveLine | POST | Remove an order line | OK |
 | UpdateCounterparty | /Store/Order/{id:guid}/UpdateCounterparty | POST | Update order counterparty | OK |
@@ -1037,6 +1040,8 @@ New actions on existing controllers: `ProfileController.DietaryMedical` (GET+POS
 | ClearCampSetup | /Shifts/Dashboard/VolunteerTracking/ClearCampSetup | POST | Clear camp setup | OK |
 | SetDayOff | /Shifts/Dashboard/VolunteerTracking/SetDayOff | POST | Set day off | OK |
 | ClearDayOff | /Shifts/Dashboard/VolunteerTracking/ClearDayOff | POST | Clear day off | OK |
+| SetAvailabilityDay | /Shifts/Dashboard/VolunteerTracking/SetAvailabilityDay | POST | Set general-availability for a single day (coordinator override) | OK |
+| ClearAvailabilityDay | /Shifts/Dashboard/VolunteerTracking/ClearAvailabilityDay | POST | Clear a single-day availability override | OK |
 
 ## WelcomeController
 

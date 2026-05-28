@@ -127,6 +127,7 @@ graph LR
     Unsub[UnsubscribeService]:::users
     AcctDel[AccountDeletionService]:::users
     UserParticipationBackfill[UserParticipationBackfillService]:::users
+    UEmailProvBackfill[UserEmailProviderBackfillService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
     MagicLink[MagicLinkService]:::auth
@@ -220,6 +221,7 @@ graph LR
     ShiftMgmt --> Audit
     ShiftMgmt --> AdminAuth
     ShiftSign --> ShiftMgmt
+    ShiftSign --> BurnSettings
     ShiftSign --> MembershipCalc
     ShiftSign --> Notif
     ShiftSign --> Audit
@@ -227,11 +229,13 @@ graph LR
     VolTrack --> User
     VolTrackExport --> ShiftMgmt
     VolTrackExport --> User
+    RotaMsg --> Team
     RotaMsg --> User
     RotaMsg --> Email
     RotaMsg --> Audit
     Workload --> Team
     Workload --> User
+    Workload --> ShiftView
     %% BurnSettings + ShiftView + GeneralAvailability are repo-only adapters (no service→service edges)
 
     %% Governance section
@@ -329,6 +333,7 @@ graph LR
     GRemoval --> User
     GRemoval --> Email
     DriveMon --> TRes
+    DriveMon --> User
     DriveMon --> Audit
 
     %% AuditLog read+render side
@@ -383,6 +388,7 @@ graph LR
     Unsub --> CommPref
     UserParticipationBackfill --> User
     UserParticipationBackfill --> ShiftMgmt
+    UEmailProvBackfill --> Audit
     AcctDel --> User
     AcctDel --> UEmail
     AcctDel --> Team
@@ -451,6 +457,7 @@ graph LR
     Issues --> Notif
     Issues --> Audit
     Store --> Camp
+    Store --> Team
     Store --> ShiftMgmt
     Store --> Audit
     ExpenseReport --> Budget
@@ -500,9 +507,9 @@ graph LR
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
     %% Eager count (including the DriveMon → Audit "pending" dashed arrow that
-    %% Mermaid counts as a link): 256 eager-or-pending links, indices 0..255.
-    %% The 16 lazy edges are indices 256..271.
-    linkStyle 256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271 stroke:#f97316,stroke-width:2.5px
+    %% Mermaid counts as a link): 262 eager-or-pending links, indices 0..261.
+    %% The 16 lazy edges are indices 262..277.
+    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -531,9 +538,9 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 
 | Service | Eager dependents | Lazy dependents | Notes |
 |---------|-----------------:|----------------:|-------|
-| `UserService` | 53 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). |
-| `AuditLogService` | 34 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer). Plus the `DriveActivityMonitorService` "pending" direct-write item (dashed). |
-| `TeamService` | 26 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
+| `UserService` | 54 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). |
+| `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. Plus the `DriveActivityMonitorService` "pending" direct-write item (dashed). |
+| `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
 | `UserEmailService` | 20 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
 | `ShiftManagementService` | 15 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User itself to break cycles. New eager consumers since the last sweep: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`. |
 | `IEmailService` | 12 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
