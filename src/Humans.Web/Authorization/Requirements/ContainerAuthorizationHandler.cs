@@ -50,7 +50,10 @@ public class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPl
             }
         }
 
-        if (await campService.IsUserCampLeadAsync(userId, resource.CampId))
+        var campSettings = await campService.GetSettingsAsync();
+        var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear))
+            .FirstOrDefault(c => c.Id == resource.CampId);
+        if (camp?.IsLead(userId) == true)
         {
             context.Succeed(requirement);
         }

@@ -79,15 +79,6 @@ public sealed class CachingCampService(
         return await LoadSettingsAsync(cancellationToken);
     }
 
-    public async Task<bool> IsUserCampLeadAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default)
-    {
-        await EnsureWarmedAsync(cancellationToken);
-        return TryGet(campId, out var camp)
-            ? camp.IsLead(userId)
-            : await WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
-    }
-
     public async Task<bool> IsUserCampEventManagerAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {

@@ -169,7 +169,7 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task IsUserCampLeadAsync_WarmCamp_UsesCampInfoRoleFactsWithoutInnerPredicate()
+    public async Task GetCampsForYearAsync_WarmCamp_ExposesCampInfoLeadRoleFacts()
     {
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var leadUserId = Guid.NewGuid();
@@ -218,11 +218,12 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         _ = await _service.GetCampsForYearAsync(2026);
         _innerSubstitute.ClearReceivedCalls();
 
-        (await _service.IsUserCampLeadAsync(leadUserId, campId)).Should().BeTrue();
+        var camp = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == campId);
+        camp.IsLead(leadUserId).Should().BeTrue();
 
         await _innerSubstitute
             .DidNotReceive()
-            .IsUserCampLeadAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

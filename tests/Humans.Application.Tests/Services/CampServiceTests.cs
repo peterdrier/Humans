@@ -277,26 +277,31 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // IsUserCampLeadAsync
+    // GetCampsForYearAsync lead role facts
     // ==========================================================================
 
     [HumansFact]
-    public async Task IsUserCampLeadAsync_ActiveLead_ReturnsTrue()
+    public async Task GetCampsForYearAsync_LeadRole_CanBeFilteredFromCampInfo()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
         var leadUserId = camp.CreatedByUserId;
 
-        var result = await _service.IsUserCampLeadAsync(leadUserId, camp.Id);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Single(c => c.Id == camp.Id)
+            .IsLead(leadUserId);
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task IsUserCampLeadAsync_NonLead_ReturnsFalse()
+    public async Task GetCampsForYearAsync_NonLead_FilterReturnsFalse()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var result = await _service.IsUserCampLeadAsync(Guid.NewGuid(), camp.Id);
+        var userId = Guid.NewGuid();
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Single(c => c.Id == camp.Id)
+            .IsLead(userId);
         result.Should().BeFalse();
     }
 
@@ -326,7 +331,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task IsUserCampLeadAsync_LegacyCampLeadRowOnly_ReturnsFalse()
+    public async Task GetCampsForYearAsync_LegacyCampLeadRowOnly_DoesNotProjectLead()
     {
         // Locks the removal of the legacy CampLead fallback: a camp_leads row with
         // no matching CampRoleAssignment no longer confers lead status.
@@ -343,7 +348,10 @@ public sealed class CampServiceTests : ServiceTestHarness
         });
         await Db.SaveChangesAsync();
 
-        (await _service.IsUserCampLeadAsync(legacyUserId, camp.Id)).Should().BeFalse();
+        (await _service.GetCampsForYearAsync(2026))
+            .Single(c => c.Id == camp.Id)
+            .IsLead(legacyUserId)
+            .Should().BeFalse();
     }
 
     // ==========================================================================

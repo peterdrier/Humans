@@ -32,7 +32,10 @@ public abstract class HumansCampControllerBase(
             return (false, false);
         }
 
-        var isLead = await campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear, cancellationToken))
+            .FirstOrDefault(c => c.Id == campId);
+        var isLead = camp?.IsLead(user.Id) == true;
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);

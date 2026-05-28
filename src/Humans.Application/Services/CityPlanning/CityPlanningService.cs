@@ -219,7 +219,9 @@ public sealed class CityPlanningService(
         if (season is null) return false;
         if (season.Year != settings.Year) return false;
 
-        return await campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
+        var camp = (await campService.GetCampsForYearAsync(settings.Year, cancellationToken))
+            .FirstOrDefault(c => c.Id == season.CampId);
+        return camp?.IsLead(userId) == true;
     }
 
     // --- Settings ---

@@ -75,8 +75,15 @@ public class StoreOrderAuthorizationHandler(
         if (campSeasonId is { } sid)
         {
             var season = await campService.GetCampSeasonByIdAsync(sid);
-            if (season is not null && await campService.IsUserCampLeadAsync(userId, season.CampId))
-                authorized = true;
+            if (season is not null)
+            {
+                var camp = (await campService.GetCampsForYearAsync(season.Year))
+                    .FirstOrDefault(c => c.Id == season.CampId);
+                if (camp?.IsLead(userId) == true)
+                {
+                    authorized = true;
+                }
+            }
         }
         else if (teamId is { } tid)
         {

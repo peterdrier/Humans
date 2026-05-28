@@ -19,6 +19,7 @@ public class CampAuthorizationHandler(ICampServiceRead campService) : Authorizat
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
     {
+        var resourceCamp = context.Resource as CampInfo;
         var campId = context.Resource switch
         {
             CampInfo camp => camp.Id,
@@ -43,7 +44,7 @@ public class CampAuthorizationHandler(ICampServiceRead campService) : Authorizat
         var allowed = requirement.OperationName switch
         {
             nameof(CampOperationRequirement.Manage) =>
-                await campService.IsUserCampLeadAsync(userId, campId.Value),
+                resourceCamp?.IsLead(userId) ?? await IsCampLeadAsync(userId, campId.Value),
             nameof(CampOperationRequirement.SubmitEvent) =>
                 await campService.IsUserCampEventManagerAsync(userId, campId.Value),
             _ => false
@@ -53,5 +54,13 @@ public class CampAuthorizationHandler(ICampServiceRead campService) : Authorizat
         {
             context.Succeed(requirement);
         }
+    }
+
+    private async Task<bool> IsCampLeadAsync(Guid userId, Guid campId)
+    {
+        var settings = await campService.GetSettingsAsync();
+        var camp = (await campService.GetCampsForYearAsync(settings.PublicYear))
+            .FirstOrDefault(c => c.Id == campId);
+        return camp?.IsLead(userId) == true;
     }
 }
