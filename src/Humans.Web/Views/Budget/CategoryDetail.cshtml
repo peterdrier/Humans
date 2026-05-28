@@ -60,11 +60,20 @@
 
 <vc:temp-data-alerts />
 
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="fa-solid fa-triangle-exclamation fa-lg me-2"></i>
+    <div>
+        <strong>All amounts on this page include VAT / IVA.</strong>
+        Enter the gross figure you will actually pay or receive — the full amount including IVA. <strong>Do not subtract VAT.</strong>
+        The "VAT %" field only records the rate so the IVA portion can be broken out for projections; it does <em>not</em> add VAT on top of the amount you enter.
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Allocated</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Allocated <span class="text-muted">(incl. VAT/IVA)</span></h6>
                 <h3 class="card-title mb-0">&euro;@category.AllocatedAmount.ToString("N2")</h3>
             </div>
         </div>
@@ -116,7 +125,7 @@
                 <thead>
                     <tr>
                         <th>Description</th>
-                        <th class="text-end">Amount</th>
+                        <th class="text-end">Amount <small class="text-muted fw-normal">(incl. VAT/IVA)</small></th>
                         <th>VAT</th>
                         <th>Responsible Team</th>
                         <th>Notes</th>
@@ -186,7 +195,7 @@
                                             <input type="text" name="description" class="form-control form-control-sm" value="@item.Description" required />
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="form-label form-label-sm">Amount (&euro;)</label>
+                                            <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
                                             <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
                                         </div>
                                         <div class="col-md-1">
@@ -267,7 +276,7 @@
                     <input type="text" name="description" class="form-control form-control-sm" required />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label form-label-sm">Amount (&euro;)</label>
+                    <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
                     <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
                 </div>
                 <div class="col-md-1">
