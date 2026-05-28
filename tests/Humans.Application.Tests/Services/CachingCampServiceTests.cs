@@ -412,8 +412,8 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             season.EeSlotCount,
             season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
             season.Members.Count(m => m.Status == CampMemberStatus.Active))
-        {
-            Members = season.Members
+    {
+        Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
                 .OrderBy(m => m.RequestedAt)
                 .Select(m => new CampSeasonMemberInfo(
@@ -424,5 +424,5 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
                     m.ConfirmedAt,
                     m.HasEarlyEntry))
                 .ToList()
-        };
+    };
 }
