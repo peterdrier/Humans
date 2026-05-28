@@ -224,7 +224,11 @@ public sealed record CampInfo(
 
     public CampMembershipState GetMembershipState(Guid userId)
     {
-        if (CurrentSeason is not { Status: CampSeasonStatus.Active or CampSeasonStatus.Full } season)
+        var season = Seasons
+            .Where(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault();
+        if (season is null)
         {
             return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
         }

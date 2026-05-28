@@ -1317,6 +1317,44 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public void CampInfo_GetMembershipState_UsesLatestOpenSeason_WhenFuturePendingSeasonExists()
+    {
+        var campId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var memberUserId = Guid.NewGuid();
+        var requestedAt = Instant.FromUtc(2026, 3, 13, 12, 0);
+        var activeSeason = MakeCampSeasonInfo(campId, 2026, CampSeasonStatus.Active) with
+        {
+            Members =
+            [
+                new CampSeasonMemberInfo(
+                    memberId,
+                    memberUserId,
+                    CampMemberStatus.Active,
+                    requestedAt,
+                    requestedAt,
+                    HasEarlyEntry: false)
+            ]
+        };
+        var pendingFutureSeason = MakeCampSeasonInfo(campId, 2027, CampSeasonStatus.Pending);
+        var campInfo = new CampInfo(
+            campId,
+            "future-pending",
+            "camp@example.com",
+            "+34600000010",
+            IsSwissCamp: false,
+            TimesAtNowhere: 1,
+            [activeSeason, pendingFutureSeason]);
+
+        var state = campInfo.GetMembershipState(memberUserId);
+
+        state.Status.Should().Be(CampMemberStatusSummary.Active);
+        state.OpenSeasonYear.Should().Be(2026);
+        state.OpenSeasonId.Should().Be(activeSeason.Id);
+        state.CampMemberId.Should().Be(memberId);
+    }
+
+    [HumansFact]
     public async Task GetCampsForYearAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
     {
         // Issue nobodies-collective/Humans#753: the IsLead union into the
@@ -1369,6 +1407,29 @@ public sealed class CampServiceTests : ServiceTestHarness
         SpaceRequirement: SpaceSize.Sqm600,
         SoundZone: SoundZone.Yellow,
         ElectricalGrid: ElectricalGrid.Yellow);
+
+    private static CampSeasonInfo MakeCampSeasonInfo(Guid campId, int year, CampSeasonStatus status) =>
+        new(
+            Guid.NewGuid(),
+            campId,
+            "future-pending",
+            year,
+            NameLockDate: null,
+            $"Future Pending {year}",
+            "Short blurb",
+            "English",
+            [CampVibe.ChillOut],
+            status,
+            YesNoMaybe.Yes,
+            YesNoMaybe.Yes,
+            AdultPlayspacePolicy.No,
+            MemberCount: 10,
+            SoundZone.Blue,
+            SpaceSize.Sqm600,
+            ElectricalGrid.Yellow,
+            EeSlotCount: 0,
+            EeGrantedCount: 0,
+            JoinedMemberCount: 0);
 
     private async Task<Camp> CreateTestCamp()
     {
