@@ -372,7 +372,7 @@ public sealed class ShiftSignupService(
 
     internal async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
-        var rota = await repo.GetRotaWithShiftsAsync(rotaId);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
@@ -579,7 +579,7 @@ public sealed class ShiftSignupService(
     {
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
-        var rota = await repo.GetRotaWithShiftsAsync(rotaId);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
         var es = rota.EventSettings;

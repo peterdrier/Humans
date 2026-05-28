@@ -157,13 +157,6 @@ internal sealed partial class ShiftRepository
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
 
-    public Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default) =>
-        _dbContext.Rotas
-            .AsNoTracking()
-            .Include(r => r.EventSettings)
-            .Include(r => r.Shifts)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-
     public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {

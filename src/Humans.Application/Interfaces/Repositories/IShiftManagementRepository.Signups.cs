@@ -118,16 +118,6 @@ public partial interface IShiftManagementRepository
     Task<Shift?> GetShiftWithContextAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a rota with <c>EventSettings</c> and all <c>Shifts</c> for range
-    /// operations. Read-only.
-    /// </summary>
-    /// <remarks>
-    /// Signup-adjacent read implemented on the same concrete
-    /// <c>ShiftRepository</c> as <c>IShiftManagementRepository</c>.
-    /// </remarks>
-    Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
      /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
      /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
      /// bulk path on

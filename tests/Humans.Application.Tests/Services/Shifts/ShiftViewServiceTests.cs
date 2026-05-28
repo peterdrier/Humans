@@ -127,7 +127,7 @@ public class ShiftViewServiceTests
     public async Task GetRotaAsync_UnknownRotaId_ReturnsEmptyView()
     {
         var rotaId = Guid.NewGuid();
-        _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>())
+        _management.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
         var sut = CreateSut();
@@ -156,7 +156,7 @@ public class ShiftViewServiceTests
         rota.Shifts.Add(shift2);
         rota.Tags.Add(new ShiftTag { Id = Guid.NewGuid(), Name = "indoor" });
 
-        _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>()).Returns(rota);
+        _management.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var sut = CreateSut();
         var view = await sut.GetRotaAsync(rotaId);

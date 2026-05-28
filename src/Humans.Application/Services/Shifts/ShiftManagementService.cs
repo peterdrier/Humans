@@ -210,7 +210,7 @@ public sealed class ShiftManagementService(
 
     public async Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input)
     {
-        var rota = await repo.GetRotaForUpdateAsync(input.RotaId);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.None);
         if (rota is null || rota.TeamId != input.SourceTeamId)
             return RotaMoveResult.Failure("Rota not found.");
 
@@ -243,7 +243,7 @@ public sealed class ShiftManagementService(
     }
     public async Task DeleteRotaAsync(Guid rotaId)
     {
-        var rota = await repo.GetRotaWithShiftsAndSignupsForDeleteAsync(rotaId);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.ShiftsWithSignups);
         if (rota is null) throw new InvalidOperationException("Rota not found.");
 
         var confirmedCount = rota.Shifts
@@ -278,7 +278,7 @@ public sealed class ShiftManagementService(
     }
 
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
-        repo.GetRotaByIdWithShiftsAsync(rotaId);
+        repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
 
     public Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId) =>
         repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
@@ -289,7 +289,7 @@ public sealed class ShiftManagementService(
     {
         if (Guid.TryParse(query, out var id))
         {
-            var rota = await repo.GetRotaByIdWithShiftsAsync(id);
+            var rota = await repo.GetRotaAsync(id, RotaReadShape.Shifts);
             if (rota is null) return [];
             var teams = await TeamService.GetTeamsAsync(cancellationToken);
             var teamName = teams.TryGetValue(rota.TeamId, out var t) ? t.Name : string.Empty;
@@ -328,7 +328,7 @@ public sealed class ShiftManagementService(
 
     public async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
     {
-        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
@@ -393,7 +393,7 @@ public sealed class ShiftManagementService(
 
     public async Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input)
     {
-        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftGenerationResult.Failure("Rota not found.");
 
@@ -447,7 +447,7 @@ public sealed class ShiftManagementService(
 
     public async Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input)
     {
-        var rota = await repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        var rota = await repo.GetRotaAsync(input.RotaId, RotaReadShape.EventSettings);
         if (rota is null || rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Rota not found.");
 

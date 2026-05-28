@@ -34,7 +34,7 @@ public sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return RotaMessageDispatchResult.Failure("Message body is required.");
 
-        var rota = await repo.GetRotaForViewAsync(rotaId, ct);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.View, ct);
         if (rota is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
 

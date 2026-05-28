@@ -119,7 +119,7 @@ public sealed class ShiftViewService : IShiftView
 
     public async ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
-        var rota = await _management.GetRotaForViewAsync(rotaId, ct).ConfigureAwait(false);
+        var rota = await _management.GetRotaAsync(rotaId, RotaReadShape.View, ct).ConfigureAwait(false);
         if (rota is null)
             return ShiftRotaView.Empty(rotaId);
 

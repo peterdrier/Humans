@@ -153,47 +153,24 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return true;
     }
 
-    public async Task<Rota?> GetRotaForUpdateAsync(Guid rotaId, CancellationToken ct = default)
+    public async Task<Rota?> GetRotaAsync(
+        Guid rotaId, RotaReadShape shape, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rota = await ctx.Rotas
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-        if (rota is null) return null;
+        IQueryable<Rota> query = ctx.Rotas.AsNoTracking();
 
-        // Detach: the caller typically mutates simple fields and then calls
-        // SaveRotaAsync on a fresh context.
-        ctx.Entry(rota).State = EntityState.Detached;
-        return rota;
-    }
+        if (shape.HasFlag(RotaReadShape.EventSettings))
+            query = query.Include(r => r.EventSettings);
 
-    public async Task<Rota?> GetRotaWithShiftsAndSignupsForDeleteAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-    }
+        if (shape.HasFlag(RotaReadShape.ShiftSignups))
+            query = query.Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups);
+        else if (shape.HasFlag(RotaReadShape.Shifts))
+            query = query.Include(r => r.Shifts);
 
-    public async Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-    }
+        if (shape.HasFlag(RotaReadShape.Tags))
+            query = query.Include(r => r.Tags);
 
-    public async Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .Include(r => r.Tags)
-            .Include(r => r.EventSettings)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
+        return await query.FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
     public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
@@ -209,15 +186,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .Where(r => r.TeamId == teamId && r.EventSettingsId == eventSettingsId)
             .OrderBy(r => r.Name)
             .ToListAsync(ct);
-    }
-
-    public async Task<Rota?> GetRotaWithEventSettingsAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.EventSettings)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
     public async Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default)

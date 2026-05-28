@@ -72,29 +72,11 @@ public partial interface IShiftManagementRepository : IRepository
         Guid rotaId, Guid newTeamId, Instant updatedAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a tracked rota for a team-move operation. Does not include
-    /// cross-domain <see cref="Rota.Team"/>. Returns null if not found.
+    /// Loads one rota with an explicit same-section include shape. Read-only.
+    /// Cross-domain <see cref="Rota.Team"/> is NOT populated; callers stitch
+    /// via <c>ITeamService</c>.
     /// </summary>
-    Task<Rota?> GetRotaForUpdateAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts, all shift signups, and same-section
-    /// <see cref="Rota.EventSettings"/> nav, for delete pre-checks. Tracked.
-    /// </summary>
-    Task<Rota?> GetRotaWithShiftsAndSignupsForDeleteAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts (same-section nav). Read-only.
-    /// <see cref="Rota.Team"/> is NOT populated — callers stitch via <c>ITeamService</c>.
-    /// </summary>
-    Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts, shift signups, and tags (same-section navs)
-    /// for the <see cref="DTOs.Shifts.ShiftRotaView"/> cache decorator. Read-only.
-    /// Returns null if the rota does not exist. Issue #720.
-    /// </summary>
-    Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default);
+    Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);
 
     /// <summary>
     /// Loads all rotas for a team+event with shifts, shift signups, and tags.
@@ -103,12 +85,6 @@ public partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
         Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its <see cref="Rota.EventSettings"/> nav (same section).
-    /// Tracked so the service can attach new shifts via the context.
-    /// </summary>
-    Task<Rota?> GetRotaWithEventSettingsAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a rota plus every shift and signup under it in a single save.
@@ -377,6 +353,18 @@ public enum EntityMutationMode
 {
     Add,
     Update
+}
+
+[Flags]
+public enum RotaReadShape
+{
+    None = 0,
+    EventSettings = 1,
+    Shifts = 2,
+    ShiftSignups = 4,
+    Tags = 8,
+    ShiftsWithSignups = Shifts | ShiftSignups,
+    View = EventSettings | Shifts | ShiftSignups | Tags
 }
 
 [Flags]

@@ -52,7 +52,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenRotaMissing()
     {
         var rotaId = Guid.NewGuid();
-        _repo.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>())
+        _repo.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
         var result = await CreateSut().SendRotaMessageAsync(rotaId, Guid.NewGuid(), "hello");
@@ -66,7 +66,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenNoActiveSignups()
     {
         var rota = MakeRota(out var eventSettings);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello");
 
@@ -78,7 +78,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser()
     {
         var rota = MakeRota(out var es);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -110,7 +110,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_PersonalisesShiftListPerRecipient()
     {
         var rota = MakeRota(out var es);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -154,7 +154,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor()
     {
         var rota = MakeRota(out _);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var sender = Guid.NewGuid();
@@ -184,7 +184,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_SkipsRecipientWithNoEmail_DoesNotFail()
     {
         var rota = MakeRota(out _);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var withEmail = Guid.NewGuid();
         var noEmail = Guid.NewGuid();
@@ -229,7 +229,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits()
     {
         var rota = MakeRota(out _);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -274,7 +274,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow()
     {
         var rota = MakeRota(out _);
-        _repo.GetRotaForViewAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
