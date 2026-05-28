@@ -41,19 +41,18 @@ public class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPl
             return;
         }
 
+        var settings = await cityPlanningService.GetSettingsAsync();
         if (requirement.Operation == ContainerOperation.Place)
         {
-            var settings = await cityPlanningService.GetSettingsAsync();
             if (!settings.IsContainerPlacementOpen)
             {
                 return;
             }
         }
 
-        var campSettings = await campService.GetSettingsAsync();
-        var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear))
+        var camp = (await campService.GetCampsForYearAsync(settings.Year))
             .FirstOrDefault(c => c.Id == resource.CampId);
-        if (camp?.IsLead(userId) == true)
+        if (camp?.Seasons.Any(s => s.Year == settings.Year && s.IsLead(userId)) == true)
         {
             context.Succeed(requirement);
         }
