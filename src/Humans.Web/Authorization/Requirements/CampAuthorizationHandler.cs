@@ -12,17 +12,18 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Admin / CampAdmin: allow any camp (both operations).
 /// - <see cref="CampOperationRequirement.Manage"/>: Camp lead for the resource camp.
 /// - <see cref="CampOperationRequirement.SubmitEvent"/>: Lead OR Workshop role holder
-///   for the resource camp (resolved via <see cref="ICampService.IsUserCampEventManagerAsync"/>).
+///   for the resource camp.
 /// - Everyone else: deny.
 /// </summary>
-public class CampAuthorizationHandler(ICampService campService) : AuthorizationHandler<CampOperationRequirement>
+public class CampAuthorizationHandler(ICampServiceRead campService) : AuthorizationHandler<CampOperationRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
     {
+        var resourceCamp = context.Resource as CampInfo;
         var campId = context.Resource switch
         {
-            CampInfo camp => camp.Id,
-            Camp camp => camp.Id,
+            CampInfo campInfo => campInfo.Id,
+            Camp campEntity => campEntity.Id,
             Guid id => id,
             _ => (Guid?)null
         };
@@ -40,12 +41,19 @@ public class CampAuthorizationHandler(ICampService campService) : AuthorizationH
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
+        if (requirement.OperationName is not nameof(CampOperationRequirement.Manage)
+            and not nameof(CampOperationRequirement.SubmitEvent))
+        {
+            return;
+        }
+
+        var camp = resourceCamp ?? await GetPublicYearCampAsync(campId.Value);
         var allowed = requirement.OperationName switch
         {
             nameof(CampOperationRequirement.Manage) =>
-                await campService.IsUserCampLeadAsync(userId, campId.Value),
+                camp?.IsLead(userId) == true,
             nameof(CampOperationRequirement.SubmitEvent) =>
-                await campService.IsUserCampEventManagerAsync(userId, campId.Value),
+                camp?.IsEventManager(userId) == true,
             _ => false
         };
 
@@ -53,5 +61,12 @@ public class CampAuthorizationHandler(ICampService campService) : AuthorizationH
         {
             context.Succeed(requirement);
         }
+    }
+
+    private async Task<CampInfo?> GetPublicYearCampAsync(Guid campId)
+    {
+        var settings = await campService.GetSettingsAsync();
+        return (await campService.GetCampsForYearAsync(settings.PublicYear))
+            .FirstOrDefault(c => c.Id == campId);
     }
 }

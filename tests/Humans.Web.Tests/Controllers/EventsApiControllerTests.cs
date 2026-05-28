@@ -24,7 +24,7 @@ namespace Humans.Web.Tests.Controllers;
 public class EventsApiControllerTests
 {
     private readonly IEventService _guide = Substitute.For<IEventService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     public EventsApiControllerTests()

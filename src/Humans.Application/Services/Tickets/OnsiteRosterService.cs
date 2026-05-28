@@ -19,14 +19,14 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
 {
     private readonly IUserServiceRead _users;
     private readonly IShiftManagementService _shifts;
-    private readonly ICampService _camps;
+    private readonly ICampServiceRead _camps;
     private readonly ITeamServiceRead _teams;
     private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
         IUserServiceRead users,
         IShiftManagementService shifts,
-        ICampService camps,
+        ICampServiceRead camps,
         ITeamServiceRead teams,
         IRoleAssignmentService roles)
     {
@@ -94,13 +94,11 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
     {
         var result = new Dictionary<Guid, SortedSet<string>>();
         var camps = await _camps.GetCampsForYearAsync(year, ct);
-        var membersByCampSeason = await _camps.GetCampMembersByYearAsync(year, ct);
         foreach (var camp in camps)
         {
             foreach (var season in camp.Seasons)
             {
-                if (!membersByCampSeason.TryGetValue(season.Id, out var members)) continue;
-                foreach (var m in members)
+                foreach (var m in season.Members)
                 {
                     if (!onsiteIds.Contains(m.UserId)) continue;
                     if (m.Status != CampMemberStatus.Active) continue;

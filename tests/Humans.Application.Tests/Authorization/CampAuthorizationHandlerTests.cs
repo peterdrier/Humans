@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;
@@ -12,26 +13,28 @@ namespace Humans.Application.Tests.Authorization;
 
 public sealed class CampAuthorizationHandlerTests
 {
-    private readonly ICampService _campService = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly CampAuthorizationHandler _handler;
 
     private static readonly Guid LeadCampId = Guid.NewGuid();
     private static readonly Guid OtherCampId = Guid.NewGuid();
+    private static readonly Guid LeadCampSeasonId = Guid.NewGuid();
+    private static readonly Guid OtherCampSeasonId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid WorkshopUserId = Guid.NewGuid();
 
     public CampAuthorizationHandlerTests()
     {
         _handler = new CampAuthorizationHandler(_campService);
-        _campService.IsUserCampLeadAsync(UserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
-        _campService.IsUserCampLeadAsync(UserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [], null));
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
+            {
+                CreateCampInfo("lead"),
+                CreateCampInfo("other")
+            });
 
-        // SubmitEvent flows through IsUserCampEventManagerAsync (Lead OR Workshop).
-        // Lead users also satisfy the event-manager check for the camp they lead.
-        _campService.IsUserCampEventManagerAsync(UserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
-        _campService.IsUserCampEventManagerAsync(UserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
-        _campService.IsUserCampEventManagerAsync(WorkshopUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
-        _campService.IsUserCampEventManagerAsync(WorkshopUserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
     }
 
     public static TheoryData<string, string, bool> CampAuthorizationCases => new()
@@ -53,8 +56,6 @@ public sealed class CampAuthorizationHandlerTests
         bool expected)
     {
         var regularUserId = Guid.NewGuid();
-        _campService.IsUserCampLeadAsync(regularUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(false);
-
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
         var campInfo = CreateCampInfo(campKind);
@@ -90,8 +91,6 @@ public sealed class CampAuthorizationHandlerTests
         bool expected)
     {
         var regularUserId = Guid.NewGuid();
-        _campService.IsUserCampEventManagerAsync(regularUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(false);
-
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
         var campInfo = CreateCampInfo(campKind);
@@ -125,20 +124,52 @@ public sealed class CampAuthorizationHandlerTests
             }
         };
 
-    private static CampInfo CreateCampInfo(string kind) =>
-        new(
-            kind switch
-            {
-                "lead" => LeadCampId,
-                "other" => OtherCampId,
-                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-            },
+    private static CampInfo CreateCampInfo(string kind)
+    {
+        var isLeadCamp = string.Equals(kind, "lead", StringComparison.Ordinal);
+        var campId = kind switch
+        {
+            "lead" => LeadCampId,
+            "other" => OtherCampId,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
+
+        return new CampInfo(
+            campId,
             Slug: "camp",
             ContactEmail: "camp@example.com",
             ContactPhone: string.Empty,
             IsSwissCamp: false,
             TimesAtNowhere: 0,
-            Seasons: []);
+            Seasons:
+            [
+                new CampSeasonInfo(
+                    isLeadCamp ? LeadCampSeasonId : OtherCampSeasonId,
+                    campId,
+                    "camp",
+                    2026,
+                    null,
+                    "Camp",
+                    string.Empty,
+                    string.Empty,
+                    [],
+                    CampSeasonStatus.Active,
+                    YesNoMaybe.Yes,
+                    YesNoMaybe.No,
+                    AdultPlayspacePolicy.No,
+                    MemberCount: 0,
+                    SoundZone: null,
+                    SpaceRequirement: null,
+                    ElectricalGrid: null,
+                    EeSlotCount: 0,
+                    EeGrantedCount: null,
+                    JoinedMemberCount: null)
+                {
+                    LeadUserIds = isLeadCamp ? [UserId] : [],
+                    WorkshopLeadUserIds = isLeadCamp ? [WorkshopUserId] : []
+                }
+            ]);
+    }
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
         kind switch

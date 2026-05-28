@@ -4,8 +4,7 @@ namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
 /// Cross-section read surface for the Camps section. External sections inject
-/// this interface; it returns only CampInfo-family projections (CampInfo,
-/// CampSeasonInfo), CampSettingsInfo, and CampSearchHit — never EF entities.
+/// this interface for camp read models and settings - never EF entities.
 /// See memory/architecture/section-read-write-split.md.
 /// </summary>
 public interface ICampServiceRead

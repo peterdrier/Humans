@@ -5,10 +5,10 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
 namespace Humans.Infrastructure.Services.Camps;
@@ -22,7 +22,7 @@ public sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampService, IUserMerge, ICampInfoInvalidator
+    ICampService, ICampRoleCampAccess, IUserMerge, ICampInfoInvalidator, IEarlyEntryProvider
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampService"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
@@ -34,8 +34,14 @@ public sealed class CachingCampService(
 
     // Cached reads
 
-    public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
+    public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        await EnsureWarmedAsync(cancellationToken);
+        var normalizedSlug = slug.ToLowerInvariant();
+        var cached = Values.FirstOrDefault(camp =>
+            string.Equals(camp.Slug, normalizedSlug, StringComparison.Ordinal));
+        return cached ?? await WithInner(inner => inner.GetCampBySlugAsync(slug, cancellationToken));
+    }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
@@ -73,98 +79,67 @@ public sealed class CachingCampService(
         return await LoadSettingsAsync(cancellationToken);
     }
 
-    // Lead authz delegates straight to the inner service — the source of truth
-    // is CampRoleAssignment (SpecialRole = Lead), not the CampInfo projection.
-    public Task<bool> IsUserCampLeadAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsUserCampLeadAsync(userId, campId, cancellationToken));
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var settings = await GetSettingsAsync(ct);
+        if (settings.EeStartDate is not { } eeStartDate)
+        {
+            return [];
+        }
 
-    public Task<bool> IsUserCampEventManagerAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
-        // Delegate so the Lead OR Workshop check sees the role-assignment table directly.
-        WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
-
-    public Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetEventManagedCampsAsync(userId, year, cancellationToken));
-
-    // Same rationale as IsUserCampLeadAsync above.
-    public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken));
+        var year = settings.PublicYear;
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .SelectMany(season => season.ActiveMembers
+                .Where(member => member.HasEarlyEntry)
+                .Select(member => new EarlyEntryGrant(
+                    member.UserId,
+                    eeStartDate,
+                    $"Camp: {season.Name}")))
+            .ToList();
+    }
 
     // Pass-through reads
-
-    public Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
-        string slug, int? preferredYear = null, bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.BuildCampDetailDataBySlugAsync(slug, preferredYear, fallbackToLatestSeason, cancellationToken));
 
     public Task<CampEditData?> GetCampEditDataAsync(
         Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
 
-    public Task<CampDirectoryResult> GetCampDirectoryAsync(
-        Guid? userId, CampDirectoryFilter? filter = null, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampDirectoryAsync(userId, filter, cancellationToken));
-
-    public Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampPublicSummariesForYearAsync(year, cancellationToken));
-
-    public Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampPlacementSummariesForYearAsync(year, cancellationToken));
-
-    public Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingSeasonsAsync(cancellationToken));
-
     public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
 
-    public Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
+    public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        await EnsureWarmedAsync(cancellationToken);
+        foreach (var camp in Values)
+        {
+            var season = camp.Seasons.FirstOrDefault(s => s.Id == campSeasonId);
+            if (season is not null) return season;
+        }
 
-    public Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken));
+        return await WithInner(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
+    }
 
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
+        WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
-    public Task<CampMembershipState> GetMembershipStateForCampAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetMembershipStateForCampAsync(campId, userId, cancellationToken));
-
-    public Task<CampMemberListData> GetCampMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMembersAsync(campSeasonId, cancellationToken));
-
-    public Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetSeasonMembersAsync(campSeasonId, cancellationToken));
-
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMembersByYearAsync(year, cancellationToken));
-
-    public Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMembershipsForUserAsync(userId, cancellationToken));
-
-    public Task<int> GetPendingMembershipCountForLeadAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingMembershipCountForLeadAsync(userId, cancellationToken));
-
-    public Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
-
-    public Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(
-        List<int> years, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetNameLockDatesAsync(years, cancellationToken));
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default)
+    {
+        var camps = await GetCampsForYearAsync(year, ct);
+        return camps
+            .SelectMany(camp => camp.Seasons
+                .Where(season => season.Year == year)
+                .Select(season => (
+                    CampId: camp.Id,
+                    CampName: season.Name,
+                    CampSlug: camp.Slug,
+                    CampSeasonId: season.Id)))
+            .ToList();
+    }
 
     // Writes — delegate then invalidate
 
@@ -303,6 +278,7 @@ public sealed class CachingCampService(
         await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
         // Touches every season in the year — RefreshAll.
         RefreshAll();
+        await InvalidateSettingsAsync(cancellationToken);
     }
 
     public async Task ChangeSeasonNameAsync(
@@ -346,23 +322,24 @@ public sealed class CachingCampService(
         await InvalidateCampAsync(scopedCampId, cancellationToken);
     }
 
-    public async Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
-        Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsLeadAsync(campId, userId, actorUserId, cancellationToken));
-        await InvalidateCampAsync(campId, cancellationToken);
-        return result;
-    }
-
     public async Task<Guid> EnsureActiveMemberForMigrationAsync(
         Guid campSeasonId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var memberId = await WithInner(inner => inner.EnsureActiveMemberForMigrationAsync(
+        var memberId = await WithInnerCampRoleAccess(inner => inner.EnsureActiveMemberForMigrationAsync(
             campSeasonId, userId, actorUserId, cancellationToken));
         await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
         return memberId;
+    }
+
+    public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
+        Guid campId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await WithInner(inner => inner.AddCampMemberToActiveSeasonAsync(
+            campId, userId, actorUserId, cancellationToken));
+        await InvalidateCampAsync(campId, cancellationToken);
+        return result;
     }
 
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
@@ -435,6 +412,10 @@ public sealed class CachingCampService(
     /// <inheritdoc cref="ICampInfoInvalidator.InvalidateCampAsync" />
     public Task InvalidateCampAsync(Guid campId, CancellationToken ct = default) =>
         InvalidateCampAsync(campId, ct, memberName: string.Empty, filePath: string.Empty);
+
+    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSeasonAsync" />
+    public Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default) =>
+        InvalidateBySeasonAsync(campSeasonId, ct);
 
     private Task InvalidateCampAsync(
         Guid campId,
@@ -555,42 +536,7 @@ public sealed class CachingCampService(
             await InvalidateCampAsync(season.CampId, ct);
     }
 
-    // Projection + filter helpers
-
-    private static CampInfo ProjectCampInfo(Camp camp) => new(
-        camp.Id,
-        camp.Slug,
-        camp.ContactEmail,
-        camp.ContactPhone,
-        camp.IsSwissCamp,
-        camp.TimesAtNowhere,
-        camp.Seasons.Select(s => ProjectSeasonInfo(s, camp.Slug)).ToList());
-
-    private static CampSeasonInfo ProjectSeasonInfo(CampSeason season, string campSlug) => new(
-        season.Id,
-        season.CampId,
-        campSlug,
-        season.Year,
-        season.NameLockDate,
-        season.Name,
-        season.BlurbShort,
-        season.Languages,
-        season.Vibes.ToList(),
-        season.Status,
-        season.AcceptingMembers,
-        season.KidsWelcome,
-        season.AdultPlayspace,
-        season.MemberCount,
-        season.SoundZone,
-        season.SpaceRequirement,
-        season.ElectricalGrid,
-        season.EeSlotCount,
-        season.Members is { Count: > 0 }
-            ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
-            : 0,
-        season.Members is { Count: > 0 }
-            ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
-            : 0);
+    // Filter helpers
 
     private static CampInfo FilterToYear(CampInfo camp, int year) =>
         camp with
@@ -604,6 +550,13 @@ public sealed class CachingCampService(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
+        return await work(inner);
+    }
+
+    private async Task<T> WithInnerCampRoleAccess<T>(Func<ICampRoleCampAccess, Task<T>> work)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampRoleCampAccess>(InnerServiceKey);
         return await work(inner);
     }
 

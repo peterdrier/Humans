@@ -25,7 +25,7 @@ namespace Humans.Web.Controllers;
 public class EventsController(
     IEventService guide,
     IUserServiceRead users,
-    ICampService camps,
+    ICampServiceRead camps,
     IAuthorizationService authorizationService,
     IClock clock,
     IEmailService emailService,
@@ -50,7 +50,9 @@ public class EventsController(
 
         // Barrio blocks — camps the user leads/workshops
         var campSettings = await CampService.GetSettingsAsync();
-        var managedCamps = await CampService.GetEventManagedCampsAsync(user.Id, campSettings.PublicYear);
+        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear))
+            .Where(camp => camp.IsEventManager(user.Id))
+            .ToList();
 
         var barrioBlocks = new List<BarrioSubmissionsBlock>();
         foreach (var camp in managedCamps)

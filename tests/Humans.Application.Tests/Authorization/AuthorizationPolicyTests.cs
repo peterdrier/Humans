@@ -34,6 +34,7 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddLogging();
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
+        services.AddScoped(_ => Substitute.For<ICampServiceRead>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<ITeamServiceRead>());

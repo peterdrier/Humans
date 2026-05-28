@@ -20,7 +20,7 @@ public class StoreSummaryAggregateTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
@@ -37,8 +37,8 @@ public class StoreSummaryAggregateTests
     [HumansFact]
     public async Task Empty_year_returns_empty_projections()
     {
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>());
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -58,11 +58,8 @@ public class StoreSummaryAggregateTests
         var productId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
 
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
-            {
-                [seasonId] = new("Camp Alpha", "alpha", null, null, Guid.NewGuid())
-            });
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(seasonId, "Camp Alpha", "alpha")]);
 
         var product = new StoreProduct
         {
@@ -147,12 +144,11 @@ public class StoreSummaryAggregateTests
         var (seasonA, seasonB) = (Guid.NewGuid(), Guid.NewGuid());
         var (productX, productY) = (Guid.NewGuid(), Guid.NewGuid());
 
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
-            {
-                [seasonA] = new("Camp Alpha", "alpha", null, null, Guid.NewGuid()),
-                [seasonB] = new("Camp Bravo", "bravo", null, null, Guid.NewGuid())
-            });
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([
+                MakeCampInfo(seasonA, "Camp Alpha", "alpha"),
+                MakeCampInfo(seasonB, "Camp Bravo", "bravo")
+            ]);
 
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
             new StoreProduct { Id = productX, Year = 2026, Name = "X", Description = "x",
@@ -215,11 +211,8 @@ public class StoreSummaryAggregateTests
         var deadProductId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
 
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
-            {
-                [seasonId] = new("Camp Z", "z", null, null, Guid.NewGuid())
-            });
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(seasonId, "Camp Z", "z")]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
             new StoreProduct { Id = deadProductId, Year = 2026, Name = "Retired", Description = "x",
                 UnitPriceEur = 1m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = false }
@@ -256,13 +249,12 @@ public class StoreSummaryAggregateTests
         var (orderPaid, orderPartial, orderUnpaid) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var productId = Guid.NewGuid();
 
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
-            {
-                [seasonPaid] = new("Paid", "p", null, null, Guid.NewGuid()),
-                [seasonPartial] = new("Partial", "pa", null, null, Guid.NewGuid()),
-                [seasonUnpaid] = new("Unpaid", "u", null, null, Guid.NewGuid())
-            });
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([
+                MakeCampInfo(seasonPaid, "Paid", "p"),
+                MakeCampInfo(seasonPartial, "Partial", "pa"),
+                MakeCampInfo(seasonUnpaid, "Unpaid", "u")
+            ]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
             new StoreProduct { Id = productId, Year = 2026, Name = "P", Description = "x",
                 UnitPriceEur = 10m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
@@ -324,11 +316,8 @@ public class StoreSummaryAggregateTests
         // exclude it (defence-in-depth — the repo filter is the primary gate).
         var inYear = Guid.NewGuid();
         var outOfYear = Guid.NewGuid();
-        _camps.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>
-            {
-                [inYear] = new("InYear", "iy", null, null, Guid.NewGuid())
-            });
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(inYear, "InYear", "iy")]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
         _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -340,5 +329,24 @@ public class StoreSummaryAggregateTests
 
         result.ByCounterparty.Should().BeEmpty();
         result.CrossTab.Counterparties.Should().BeEmpty();
+    }
+
+    private static CampInfo MakeCampInfo(Guid seasonId, string name, string slug)
+    {
+        var campId = Guid.NewGuid();
+        return new CampInfo(
+            campId,
+            slug,
+            "camp@example.com",
+            "+34600000000",
+            IsSwissCamp: false,
+            TimesAtNowhere: 0,
+            Seasons:
+            [
+                new CampSeasonInfo(
+                    seasonId, campId, slug, 2026, null, name, string.Empty, string.Empty, [],
+                    CampSeasonStatus.Active, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+                    0, null, null, null, 0, null, null)
+            ]);
     }
 }

@@ -49,7 +49,7 @@ public partial interface ICampRepository : IRepository
 
     /// <summary>
     /// Returns camps participating in the year (any season), with seasons
-    /// (year-filtered) and active leads included (FK-only). If
+    /// (year-filtered), members, images, historical names and active leads included (FK-only). If
     /// <paramref name="statusFilter"/> is provided, only camps with at least
     /// one season in one of the given statuses are returned. Read-only.
     /// </summary>
@@ -57,17 +57,6 @@ public partial interface ICampRepository : IRepository
         int year,
         IReadOnlyList<CampSeasonStatus>? statusFilter,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns count of seasons in Pending status across all years.
-    /// </summary>
-    Task<int> CountPendingSeasonsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns pending seasons with their parent <c>Camp</c> loaded (no
-    /// cross-domain <c>User</c> nav on leads). Read-only.
-    /// </summary>
-    Task<IReadOnlyList<CampSeason>> GetPendingSeasonsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns true if <paramref name="slug"/> is already taken by any camp.
@@ -207,20 +196,6 @@ public partial interface ICampRepository : IRepository
 
     /// <summary>Read-only fetch by id; null if not found.</summary>
     Task<CampSeason?> GetSeasonByIdAsync(Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns a tuple-shaped dictionary keyed by season id for seasons in the
-    /// year, with (Name, CampSlug, SoundZone, SpaceRequirement). Read-only.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
-        GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns brief (Id, Name, CampSlug, SpaceRequirement) rows for seasons
-    /// in the year, ordered by name. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>
-        GetSeasonBriefsForYearAsync(int year, CancellationToken ct = default);
 
     // ==========================================================================
     // Reads — Lead (legacy camp_leads; only the role-backed team-sync read and the
@@ -394,37 +369,6 @@ public partial interface ICampRepository : IRepository
     /// Persists a previously-loaded membership with its scalar mutations applied.
     /// </summary>
     Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the caller's active-or-pending membership in the given season,
-    /// read-only. Null if none.
-    /// </summary>
-    Task<CampMember?> GetUserMembershipInSeasonAsync(
-        Guid campSeasonId, Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns active + pending members for a season with FK-only user ids.
-    /// Read-only. Ordered by <c>RequestedAt</c>.
-    /// </summary>
-    Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
-    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
-    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
-    /// members are absent from the dictionary. One SQL round-trip. Read-only.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
-        int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all active-or-pending memberships for the user, with their
-    /// <c>CampSeason</c> and the season's parent <c>Camp</c> loaded so the
-    /// caller can build display summaries. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns user ids of humans with a pending request for the given season.

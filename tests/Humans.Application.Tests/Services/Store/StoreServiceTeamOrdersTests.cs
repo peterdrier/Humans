@@ -27,7 +27,7 @@ public class StoreServiceTeamOrdersTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampService _campService = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
@@ -43,6 +43,8 @@ public class StoreServiceTeamOrdersTests
         });
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>());
         _service = new StoreService(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, NullLogger<StoreService>.Instance);
     }
 
@@ -201,8 +203,6 @@ public class StoreServiceTeamOrdersTests
         var userId = Guid.NewGuid();
         var deptId = Guid.NewGuid();
         var subteamId = Guid.NewGuid();
-        _campService.GetCampLeadSeasonIdForYearAsync(userId, 2026, Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {
@@ -228,8 +228,6 @@ public class StoreServiceTeamOrdersTests
     {
         var userId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
-        _campService.GetCampLeadSeasonIdForYearAsync(userId, 2026, Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {
@@ -255,8 +253,8 @@ public class StoreServiceTeamOrdersTests
         var productId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>());
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {

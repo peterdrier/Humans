@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [ApiController]
 public class CityPlanningApiController(
     ICityPlanningService cityPlanningService,
-    ICampService campService,
+    ICampServiceRead campService,
     IContainerService containerService,
     IAuthorizationService authorizationService,
     IHubContext<CityPlanningHub> hubContext,
@@ -43,10 +43,8 @@ public class CityPlanningApiController(
     {
         // Lead status comes from the role system (Camp Lead special role on a season
         // of this year), not the legacy camp_leads table.
-        var leadSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
-        if (leadSeasonId is null) return null;
         var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.FirstOrDefault(c => c.Seasons.Any(s => s.Id == leadSeasonId.Value))?.Id;
+        return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)?.Id;
     }
 
     /// <summary>Returns current map state: settings, all camp polygons, unmapped seasons.</summary>

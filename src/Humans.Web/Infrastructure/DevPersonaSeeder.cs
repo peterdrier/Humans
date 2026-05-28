@@ -398,7 +398,7 @@ public sealed class DevPersonaSeeder(
     private async Task<bool> EnsureCampLeadAsync(CampInfo camp, Guid leadUserId)
     {
         // Idempotent: skip if the user already holds the Camp Lead role.
-        if (await campService.IsUserCampLeadAsync(leadUserId, camp.Id))
+        if (camp.IsLead(leadUserId))
             return false;
 
         var leadDef = await campRoleService.GetDefinitionBySlugAsync(CampSystemRoles.CampLeadSlug);

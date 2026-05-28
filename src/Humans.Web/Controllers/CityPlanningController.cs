@@ -17,7 +17,7 @@ namespace Humans.Web.Controllers;
 [Route("CityPlanning")]
 public class CityPlanningController(
     ICityPlanningService cityPlanningService,
-    ICampService campService,
+    ICampServiceRead campService,
     IContainerService containerService,
     IUserServiceRead userService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)
@@ -45,7 +45,7 @@ public class CityPlanningController(
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
-        var userSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(user.Id, settings.Year, cancellationToken);
+        var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
 
         return View(new CityPlanningIndexViewModel
         {
@@ -65,7 +65,7 @@ public class CityPlanningController(
 
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
-        var userSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(user.Id, settings.Year, cancellationToken);
+        var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
         var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
         return View(new CityPlanningBarrioMapViewModel
@@ -293,10 +293,16 @@ public class CityPlanningController(
     {
         // Lead status comes from the role system (Camp Lead special role on a season
         // of this year), not the legacy camp_leads table.
-        var leadSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
-        if (leadSeasonId is null) return null;
         var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.FirstOrDefault(c => c.Seasons.Any(s => s.Id == leadSeasonId.Value));
+        return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue);
+    }
+
+    private async Task<Guid?> FindUserLeadSeasonIdAsync(Guid userId, int year, CancellationToken ct)
+    {
+        var camps = await campService.GetCampsForYearAsync(year, ct);
+        return camps
+            .Select(camp => camp.GetLeadSeasonIdForYear(userId, year))
+            .FirstOrDefault(seasonId => seasonId.HasValue);
     }
 
     private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)

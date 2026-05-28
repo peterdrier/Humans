@@ -53,68 +53,6 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<bool> IsUserSpecialRoleHolderForCampAsync(
-        Guid userId, Guid campId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default)
-    {
-        if (specialRoles.Count == 0) return false;
-        var roleList = specialRoles.ToList();
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .AnyAsync(a => a.CampMember.UserId == userId
-                && a.CampSeason.CampId == campId
-                && roleList.Contains(a.Definition.SpecialRole)
-                && a.Definition.DeactivatedAt == null, ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetCampIdsBySpecialRolesForUserAsync(
-        Guid userId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default)
-    {
-        if (specialRoles.Count == 0) return [];
-        var roleList = specialRoles.ToList();
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.CampMember.UserId == userId
-                && roleList.Contains(a.Definition.SpecialRole)
-                && a.Definition.DeactivatedAt == null)
-            .Select(a => a.CampSeason.CampId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<Guid?> GetCampSpecialRoleSeasonIdForYearAsync(
-        Guid userId, int year, CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.CampMember.UserId == userId
-                && a.CampSeason.Year == year
-                && a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null)
-            .OrderBy(a => a.CampSeasonId) // arch:db-sort-ok — top-1 deterministic pick
-            .Select(a => (Guid?)a.CampSeasonId)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    public async Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Camps where the user holds the given special role on any active season.
-        var leadCampIds = ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.CampMember.UserId == userId
-                && a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null)
-            .Select(a => a.CampSeason.CampId)
-            .Distinct();
-
-        return await ctx.CampMembers.AsNoTracking()
-            .Where(m => m.Status == CampMemberStatus.Pending
-                && leadCampIds.Contains(m.CampSeason.CampId)
-                && (m.CampSeason.Status == CampSeasonStatus.Active
-                    || m.CampSeason.Status == CampSeasonStatus.Full))
-            .CountAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
         CampSpecialRole specialRole, CancellationToken ct = default)
     {
@@ -424,4 +362,3 @@ internal sealed partial class CampRepository
             .CountAsync(a => a.CampMember.UserId == targetUserId, ct);
     }
 }
-

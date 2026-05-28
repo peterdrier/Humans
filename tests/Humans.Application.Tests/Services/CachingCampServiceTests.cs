@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,6 +9,7 @@ using Humans.Infrastructure.Services.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services;
@@ -27,11 +29,13 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly ICampService _innerSubstitute;
+    private readonly ICampRoleCampAccess _innerRoleAccess;
     private readonly CachingCampService _service;
 
     public CachingCampServiceTests()
     {
-        _innerSubstitute = Substitute.For<ICampService>();
+        _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess>();
+        _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
         var repo = new CampRepository(DbFactory);
         _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
@@ -41,6 +45,9 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         services.AddKeyedScoped<ICampService>(
             CachingCampService.InnerServiceKey,
             (_, _) => _innerSubstitute);
+        services.AddKeyedScoped<ICampRoleCampAccess>(
+            CachingCampService.InnerServiceKey,
+            (_, _) => _innerRoleAccess);
         _serviceProvider = services.BuildServiceProvider();
 
         _service = new CachingCampService(
@@ -166,11 +173,169 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetCampsForYearAsync_WarmCamp_ExposesCampInfoLeadRoleFacts()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var leadUserId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var cachedCamps = new List<CampInfo>
+        {
+            new(
+                Id: campId,
+                Slug: "role-camp",
+                ContactEmail: "role@example.com",
+                ContactPhone: "+34000000000",
+                IsSwissCamp: false,
+                TimesAtNowhere: 1,
+                Seasons:
+                [
+                    new CampSeasonInfo(
+                        seasonId,
+                        campId,
+                        "role-camp",
+                        2026,
+                        null,
+                        "Role Camp",
+                        "Role camp",
+                        "en",
+                        [],
+                        CampSeasonStatus.Active,
+                        YesNoMaybe.Yes,
+                        YesNoMaybe.No,
+                        AdultPlayspacePolicy.No,
+                        MemberCount: 1,
+                        SoundZone: null,
+                        SpaceRequirement: null,
+                        ElectricalGrid: null,
+                        EeSlotCount: 0,
+                        EeGrantedCount: 0,
+                        JoinedMemberCount: 1)
+                    {
+                        LeadUserIds = [leadUserId]
+                    }
+                ])
+        };
+        _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(cachedCamps);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+
+        var camp = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == campId);
+        camp.IsLead(leadUserId).Should().BeTrue();
+
+        await _innerSubstitute
+            .DidNotReceive()
+            .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetCampSeasonByIdAsync_WarmSeason_UsesCachedCampInfo()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var leadUserId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var cachedSeason = new CampSeasonInfo(
+            seasonId,
+            campId,
+            "season-camp",
+            2026,
+            null,
+            "Season Camp",
+            "Season camp",
+            "en",
+            [],
+            CampSeasonStatus.Active,
+            YesNoMaybe.Yes,
+            YesNoMaybe.No,
+            AdultPlayspacePolicy.No,
+            MemberCount: 1,
+            SoundZone: null,
+            SpaceRequirement: null,
+            ElectricalGrid: null,
+            EeSlotCount: 0,
+            EeGrantedCount: 0,
+            JoinedMemberCount: 1)
+        {
+            LeadUserIds = [leadUserId]
+        };
+        var cachedCamps = new List<CampInfo>
+        {
+            new(
+                Id: campId,
+                Slug: "season-camp",
+                ContactEmail: "season@example.com",
+                ContactPhone: "+34000000000",
+                IsSwissCamp: false,
+                TimesAtNowhere: 1,
+                Seasons: [cachedSeason])
+        };
+        _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(cachedCamps);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+
+        var actual = await _service.GetCampSeasonByIdAsync(seasonId);
+
+        actual.Should().BeSameAs(cachedSeason);
+        await _innerSubstitute
+            .DidNotReceive()
+            .GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetCampSeasonsForComplianceAsync_WarmYear_ProjectsFromCachedCampInfo()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+        _innerRoleAccess.ClearReceivedCalls();
+
+        var result = await _service.GetCampSeasonsForComplianceAsync(2026);
+
+        result.Should().ContainSingle(item =>
+            item.CampId == camp.Id &&
+            item.CampName == season.Name &&
+            item.CampSlug == camp.Slug &&
+            item.CampSeasonId == season.Id);
+        await _innerSubstitute
+            .DidNotReceive()
+            .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _innerRoleAccess
+            .DidNotReceive()
+            .GetCampSeasonsForComplianceAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetEarlyEntriesAsync_WarmYear_ProjectsFromCachedCampInfoMembers()
+    {
+        var eeStartDate = new LocalDate(2026, 7, 7);
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026], eeStartDate);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var granted = await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
+        await SeedActiveMemberAsync(season.Id, hasEarlyEntry: false);
+        await SeedMemberAsync(season.Id, CampMemberStatus.Pending, hasEarlyEntry: true);
+
+        var grants = await _service.GetEarlyEntriesAsync(CancellationToken.None);
+
+        grants.Should().ContainSingle()
+            .Which.Should().Be(new EarlyEntryGrant(granted.UserId, eeStartDate, "Camp: Test Camp"));
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================
 
-    private async Task SeedSettingsAsync(int publicYear, List<int> openSeasons)
+    private async Task SeedSettingsAsync(
+        int publicYear,
+        List<int> openSeasons,
+        LocalDate? eeStartDate = null)
     {
         if (!await Db.CampSettings.AnyAsync())
         {
@@ -178,7 +343,8 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = publicYear,
-                OpenSeasons = openSeasons
+                OpenSeasons = openSeasons,
+                EeStartDate = eeStartDate
             });
             await Db.SaveChangesAsync();
         }
@@ -223,19 +389,27 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         return (camp, season);
     }
 
-    private async Task SeedActiveMemberAsync(Guid campSeasonId, bool hasEarlyEntry)
+    private Task<CampMember> SeedActiveMemberAsync(Guid campSeasonId, bool hasEarlyEntry) =>
+        SeedMemberAsync(campSeasonId, CampMemberStatus.Active, hasEarlyEntry);
+
+    private async Task<CampMember> SeedMemberAsync(
+        Guid campSeasonId,
+        CampMemberStatus status,
+        bool hasEarlyEntry)
     {
-        Db.CampMembers.Add(new CampMember
+        var member = new CampMember
         {
             Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
             UserId = Guid.NewGuid(),
-            Status = CampMemberStatus.Active,
+            Status = status,
             RequestedAt = Clock.GetCurrentInstant(),
-            ConfirmedAt = Clock.GetCurrentInstant(),
+            ConfirmedAt = status == CampMemberStatus.Active ? Clock.GetCurrentInstant() : null,
             HasEarlyEntry = hasEarlyEntry,
-        });
+        };
+        Db.CampMembers.Add(member);
         await Db.SaveChangesAsync();
+        return member;
     }
 
     private static CampInfo ProjectCampInfo(Camp camp) => new(
@@ -248,24 +422,37 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         camp.Seasons.Select(ProjectSeasonInfo).ToList());
 
     private static CampSeasonInfo ProjectSeasonInfo(CampSeason season) => new(
-        season.Id,
-        season.CampId,
-        season.Camp?.Slug ?? string.Empty,
-        season.Year,
-        season.NameLockDate,
-        season.Name,
-        season.BlurbShort,
-        season.Languages,
-        season.Vibes.ToList(),
-        season.Status,
-        season.AcceptingMembers,
-        season.KidsWelcome,
-        season.AdultPlayspace,
-        season.MemberCount,
-        season.SoundZone,
-        season.SpaceRequirement,
-        season.ElectricalGrid,
-        season.EeSlotCount,
-        season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
-        season.Members.Count(m => m.Status == CampMemberStatus.Active));
+            season.Id,
+            season.CampId,
+            season.Camp?.Slug ?? string.Empty,
+            season.Year,
+            season.NameLockDate,
+            season.Name,
+            season.BlurbShort,
+            season.Languages,
+            season.Vibes.ToList(),
+            season.Status,
+            season.AcceptingMembers,
+            season.KidsWelcome,
+            season.AdultPlayspace,
+            season.MemberCount,
+            season.SoundZone,
+            season.SpaceRequirement,
+            season.ElectricalGrid,
+            season.EeSlotCount,
+            season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry),
+            season.Members.Count(m => m.Status == CampMemberStatus.Active))
+    {
+        Members = season.Members
+                .Where(m => m.Status != CampMemberStatus.Removed)
+                .OrderBy(m => m.RequestedAt)
+                .Select(m => new CampSeasonMemberInfo(
+                    m.Id,
+                    m.UserId,
+                    m.Status,
+                    m.RequestedAt,
+                    m.ConfirmedAt,
+                    m.HasEarlyEntry))
+                .ToList()
+    };
 }

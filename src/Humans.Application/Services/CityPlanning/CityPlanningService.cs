@@ -14,12 +14,12 @@ using System.Text.Json;
 
 namespace Humans.Application.Services.CityPlanning;
 
-/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamServiceRead/IUserServiceRead.</summary>
+/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampServiceRead/ITeamServiceRead/IUserServiceRead.</summary>
 public sealed class CityPlanningService(
     ICityPlanningRepository repo,
     IClock clock,
     IOptions<CityPlanningOptions> options,
-    ICampService campService,
+    ICampServiceRead campService,
     ITeamServiceRead teamService,
     IUserServiceRead userService) : ICityPlanningService
 {
@@ -79,16 +79,15 @@ public sealed class CityPlanningService(
 
     /// <summary>
     /// Builds the season-id → display-data map via LINQ over the cached
-    /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection, avoiding
-    /// the ICampService-only <c>GetCampSeasonDisplayDataForYearAsync</c>.
+    /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection.
     /// </summary>
-    private async Task<Dictionary<Guid, CampSeasonDisplayData>> BuildSeasonDisplayDataAsync(
+    private async Task<Dictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>> BuildSeasonDisplayDataAsync(
         int year, CancellationToken cancellationToken)
     {
         var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
         return camps
-            .SelectMany(c => c.Seasons, (c, s) =>
-                (SeasonId: s.Id, Data: new CampSeasonDisplayData(s.Name, c.Slug, s.SoundZone, s.SpaceRequirement, c.Id)))
+            .SelectMany(c => c.Seasons.Where(s => s.Year == year), (c, s) =>
+                (SeasonId: s.Id, Data: (s.Name, c.Slug, s.SoundZone, s.SpaceRequirement, c.Id)))
             .ToDictionary(x => x.SeasonId, x => x.Data);
     }
 
@@ -220,7 +219,9 @@ public sealed class CityPlanningService(
         if (season is null) return false;
         if (season.Year != settings.Year) return false;
 
-        return await campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
+        var camp = (await campService.GetCampsForYearAsync(settings.Year, cancellationToken))
+            .FirstOrDefault(c => c.Id == season.CampId);
+        return camp?.IsLead(userId) == true;
     }
 
     // --- Settings ---

@@ -5,7 +5,7 @@ using Humans.Domain.Enums;
 namespace Humans.Web.Models.CampAdmin;
 
 public sealed class CampAdminPageBuilder(
-    ICampService campService,
+    ICampServiceRead campService,
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService)
 {
@@ -14,33 +14,15 @@ public sealed class CampAdminPageBuilder(
         var settings = await campService.GetSettingsAsync();
         var registrationInfo = await cityPlanningService.GetRegistrationInfoAsync();
         var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
-        var pendingSeasons = await campService.GetPendingSeasonsAsync();
         var openSeasons = settings.OpenSeasons.ToList();
-        var nameLockDates = openSeasons.Count > 0
-            ? await campService.GetNameLockDatesAsync(openSeasons)
-            : new Dictionary<int, NodaTime.LocalDate?>();
 
-        var withdrawnSeasons = allCamps
-            .SelectMany(c => c.Seasons
-                .Where(s => s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Withdrawn)
-                .Select(s => new CampCardViewModel
-                {
-                    Id = c.Id,
-                    SeasonId = s.Id,
-                    Slug = c.Slug,
-                    Name = s.Name,
-                    BlurbShort = s.BlurbShort,
-                    Status = s.Status
-                }))
-            .ToList();
+        var withdrawnSeasons = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Withdrawn);
 
-        // T-06: GetCampsForYearAsync always populates leads; filter by season
-        // status in-memory.
         var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
-        var campsWithLeads = (await campService.GetCampsForYearAsync(settings.PublicYear))
+        var campsWithLeads = allCamps
             .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
             .ToList();
-        var summaries = await BuildSummariesAsync(campsWithLeads);
+        var summaries = BuildSummaries(campsWithLeads);
 
         var missingSpecialRoles = await campRoleService.GetMissingSpecialRolesAsync();
 
@@ -53,32 +35,39 @@ public sealed class CampAdminPageBuilder(
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
             WithdrawnCamps = withdrawnSeasons,
-            NameLockDates = nameLockDates,
+            NameLockDates = settings.NameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
             AllCampSummaries = summaries,
             RegistrationInfo = registrationInfo,
             EeStartDate = settings.EeStartDate,
-            PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
-            {
-                Id = s.CampId,
-                SeasonId = s.Id,
-                Slug = s.CampSlug,
-                Name = s.Name,
-                BlurbShort = s.BlurbShort,
-                Status = s.Status
-            }).ToList()
+            PendingCamps = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Pending)
         };
     }
 
-    private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
+    private static List<CampCardViewModel> BuildCampCards(
+        IReadOnlyList<CampInfo> camps,
+        int year,
+        CampSeasonStatus status) =>
+        camps
+            .SelectMany(camp => camp.Seasons
+                .Where(season => season.Year == year && season.Status == status)
+                .Select(season => new CampCardViewModel
+                {
+                    Id = camp.Id,
+                    SeasonId = season.Id,
+                    Slug = camp.Slug,
+                    Name = season.Name,
+                    BlurbShort = season.BlurbShort,
+                    Status = season.Status
+                }))
+            .ToList();
+
+    private static List<CampSummaryRowViewModel> BuildSummaries(IReadOnlyList<CampInfo> campsWithLeads)
     {
         var rows = new List<CampSummaryRowViewModel>(campsWithLeads.Count);
         foreach (var c in campsWithLeads)
         {
             var season = c.Seasons.FirstOrDefault();
-            // Leads come from the role system (Camp Lead special role on the season).
-            IReadOnlyList<Guid> leadUserIds = season is null
-                ? []
-                : await campRoleService.GetSeasonLeadUserIdsAsync(season.Id);
+            var leadUserIds = season?.LeadUserIds ?? [];
             rows.Add(new CampSummaryRowViewModel
             {
                 Name = season?.Name ?? c.Slug,

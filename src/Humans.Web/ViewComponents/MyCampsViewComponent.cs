@@ -9,7 +9,7 @@ namespace Humans.Web.ViewComponents;
 /// Lists camps the current human belongs to (or has requested), grouped by year.
 /// Rendered on the human's own profile page. Private — never shown publicly.
 /// </summary>
-public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
+public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -18,7 +18,28 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var memberships = await campService.GetCampMembershipsForUserAsync(userId);
+            var settings = await campService.GetSettingsAsync();
+            var years = settings.OpenSeasons
+                .Append(settings.PublicYear)
+                .Distinct()
+                .OrderByDescending(year => year)
+                .ToList();
+
+            var memberships = new List<(int Year, string CampSlug, string CampName, CampMemberStatus Status)>();
+            foreach (var year in years)
+            {
+                var camps = await campService.GetCampsForYearAsync(year);
+                memberships.AddRange(camps
+                    .SelectMany(camp => camp.Seasons.Where(season => season.Year == year)
+                        .SelectMany(season => season.Members
+                            .Where(member => member.UserId == userId)
+                            .Select(member => (
+                                year,
+                                camp.Slug,
+                                season.Name,
+                                member.Status)))));
+            }
+
             if (memberships.Count == 0)
                 return Content(string.Empty);
 

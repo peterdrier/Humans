@@ -23,7 +23,7 @@ public class StoreServiceTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampService _campService = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
@@ -39,6 +39,8 @@ public class StoreServiceTests
         });
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>());
         _service = new StoreService(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, NullLogger<StoreService>.Instance);
     }
 
@@ -61,6 +63,30 @@ public class StoreServiceTests
         result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
         result.Counterparties.Should().BeEmpty();
         result.ShowNoOrdersMessage.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_lists_led_camp_from_camp_info()
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
+            {
+                MakeCampInfo(campId, seasonId, "Camp Alpha", userId)
+            });
+        _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreOrder>());
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct>());
+
+        var result = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false);
+
+        result.Counterparties.Should().ContainSingle().Which.Should().Match<StoreCounterpartyOrders>(counterparty =>
+            counterparty.CounterpartyType == StoreOrderCounterpartyType.Camp &&
+            counterparty.CounterpartyId == seasonId &&
+            counterparty.DisplayName == "Camp Alpha");
     }
 
     [HumansFact]
@@ -972,6 +998,42 @@ public class StoreServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
     }
+
+    private static CampInfo MakeCampInfo(Guid campId, Guid seasonId, string seasonName, Guid leadUserId) =>
+        new(
+            campId,
+            Slug: "camp-alpha",
+            ContactEmail: string.Empty,
+            ContactPhone: string.Empty,
+            IsSwissCamp: false,
+            TimesAtNowhere: 0,
+            Seasons:
+            [
+                new CampSeasonInfo(
+                    seasonId,
+                    campId,
+                    "camp-alpha",
+                    2026,
+                    null,
+                    seasonName,
+                    string.Empty,
+                    string.Empty,
+                    [],
+                    CampSeasonStatus.Active,
+                    YesNoMaybe.Yes,
+                    YesNoMaybe.No,
+                    AdultPlayspacePolicy.No,
+                    MemberCount: 0,
+                    SoundZone: null,
+                    SpaceRequirement: null,
+                    ElectricalGrid: null,
+                    EeSlotCount: 0,
+                    EeGrantedCount: null,
+                    JoinedMemberCount: null)
+                {
+                    LeadUserIds = [leadUserId]
+                }
+            ]);
 
     private static OrderDto MakeOrderDto(
         decimal balanceEur,

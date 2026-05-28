@@ -40,41 +40,6 @@ public partial interface ICampRepository
     Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true if the user holds a non-deactivated <see cref="CampRoleAssignment"/>
-    /// for any season of the given camp against any role definition whose
-    /// <see cref="CampRoleDefinition.SpecialRole"/> is in <paramref name="specialRoles"/>.
-    /// Used by <c>CampService.IsUserCampLeadAsync</c> (Lead) and
-    /// <c>CampService.IsUserCampEventManagerAsync</c> (Lead | Workshop).
-    /// </summary>
-    Task<bool> IsUserSpecialRoleHolderForCampAsync(
-        Guid userId, Guid campId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct camp IDs on which the user holds a non-deactivated
-    /// assignment to any of the given special roles (any season).
-    /// Used by <c>CampService.GetEventManagedCampsAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetCampIdsBySpecialRolesForUserAsync(
-        Guid userId, IReadOnlyCollection<CampSpecialRole> specialRoles, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the season id where the user holds an active assignment to a
-    /// special role with <see cref="CampRoleDefinition.SpecialRole"/> equal to
-    /// <paramref name="specialRole"/> on a camp participating in
-    /// <paramref name="year"/>. Null if none.
-    /// </summary>
-    Task<Guid?> GetCampSpecialRoleSeasonIdForYearAsync(
-        Guid userId, int year, CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
-    /// Counts pending camp-membership requests on camps where the user holds
-    /// the given special role on any open (Active/Full) season. Used by the
-    /// camp-lead-join-requests badge.
-    /// </summary>
-    Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct set of user ids that currently hold the given
     /// special role on any season. Used by <c>SystemTeamSyncJob</c> to compute
     /// Barrio Leads team membership.

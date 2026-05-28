@@ -15,7 +15,7 @@ namespace Humans.Web.Authorization.Requirements;
 ///   <see cref="ContainerOperation.Place"/> the placement phase must also be open
 /// - Everyone else: deny
 /// </summary>
-public class ContainerAuthorizationHandler(ICampService campService, ICityPlanningService cityPlanningService)
+public class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningService cityPlanningService)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     protected override async Task HandleRequirementAsync(
@@ -41,16 +41,18 @@ public class ContainerAuthorizationHandler(ICampService campService, ICityPlanni
             return;
         }
 
+        var settings = await cityPlanningService.GetSettingsAsync();
         if (requirement.Operation == ContainerOperation.Place)
         {
-            var settings = await cityPlanningService.GetSettingsAsync();
             if (!settings.IsContainerPlacementOpen)
             {
                 return;
             }
         }
 
-        if (await campService.IsUserCampLeadAsync(userId, resource.CampId))
+        var camp = (await campService.GetCampsForYearAsync(settings.Year))
+            .FirstOrDefault(c => c.Id == resource.CampId);
+        if (camp?.Seasons.Any(s => s.Year == settings.Year && s.IsLead(userId)) == true)
         {
             context.Succeed(requirement);
         }

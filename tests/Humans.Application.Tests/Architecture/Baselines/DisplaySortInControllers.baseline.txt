@@ -15,7 +15,6 @@ src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDe
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#5
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#6
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#10
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#3
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#4

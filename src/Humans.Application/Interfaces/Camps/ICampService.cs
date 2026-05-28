@@ -28,22 +28,10 @@ public interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // Queries
-    Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default);
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,
         CancellationToken cancellationToken = default);
-    Task<CampDirectoryResult> GetCampDirectoryAsync(
-        Guid? userId,
-        CampDirectoryFilter? filter = null,
-        CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
@@ -60,34 +48,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
 
-    // Cross-service queries
-    Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
-
-    Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
-
-    // Authorization checks
-    Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns true when the user holds a <c>CampRoleAssignment</c> on the given
-    /// camp (current season) whose <c>CampRoleDefinition.SpecialRole</c> is
-    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Lead"/> OR
-    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Workshop"/>. Authorizes
-    /// camp-event submission via <c>EventsController</c>
-    /// (<c>/Events/Barrio/{slug}/*</c>). Camp leads automatically satisfy this
-    /// check because the role set is the OR — no separate "lead-implies-workshop"
-    /// logic.
-    /// </summary>
-    Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns camps for <paramref name="year"/> on which the user holds the
-    /// Lead or Workshop special role (the same OR-check as
-    /// <see cref="IsUserCampEventManagerAsync"/>). Used by
-    /// <c>EventsController.MySubmissions</c> to build the barrio blocks.
-    /// </summary>
-    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
-
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
     Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default);
@@ -98,7 +58,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
-    Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(List<int> years, CancellationToken cancellationToken = default);
 
     // Name change (handles historical name logging)
     Task ChangeSeasonNameAsync(Guid seasonId, string newName, CancellationToken cancellationToken = default);
@@ -127,7 +86,7 @@ public interface ICampService : ICampServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the request/approve flow for the camp's active season. Idempotent. Caller authorizes.</summary>
-    Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
+    Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -148,55 +107,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     /// <summary>Returns failure if <paramref name="userId"/> is not the row's owner or the row cannot be left.</summary>
     Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>Returns <c>NoOpenSeason</c> if no Active/Full season exists for the public year.</summary>
-    Task<CampMembershipState> GetMembershipStateForCampAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>Privileged — caller must authorize.</summary>
-    Task<CampMemberListData> GetCampMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default);
-
-    /// <summary>Raw rows (no display-name stitching, no lead union). Privileged — caller must authorize.</summary>
-    Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
-    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
-    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
-    /// members are absent from the dictionary. Read-only; no display-name
-    /// stitching or lead union. Used by cross-section composers (e.g.
-    /// <c>OnsiteRosterService</c>) that need camp membership for many seasons
-    /// in one query instead of N per-season calls. Privileged — caller must
-    /// authorize.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
-    Task<int> GetPendingMembershipCountForLeadAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
-    Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Idempotent — ensures a <c>CampMember</c>(<c>Status = Active</c>) row
-    /// exists for the given <paramref name="campSeasonId"/> + <paramref name="userId"/>.
-    /// Promotes an existing Pending row to Active; no-ops if already Active.
-    /// Returns the CampMember id. Used by the Camp Lead retirement admin
-    /// button (issue nobodies-collective/Humans#753) to land legacy leads on
-    /// the role-assignment side without going through the request/approve
-    /// flow.
-    /// </summary>
-    Task<Guid> EnsureActiveMemberForMigrationAsync(
-        Guid campSeasonId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
@@ -238,7 +148,11 @@ public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMember
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons,
-    LocalDate? EeStartDate);
+    LocalDate? EeStartDate)
+{
+    public IReadOnlyDictionary<int, LocalDate?> NameLockDates { get; init; } =
+        new Dictionary<int, LocalDate?>();
+}
 
 /// <summary>
 /// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per
@@ -281,10 +195,57 @@ public sealed record CampInfo(
     int TimesAtNowhere,
     IReadOnlyList<CampSeasonInfo> Seasons)
 {
+    public string? WebOrSocialUrl { get; init; }
+
+    public IReadOnlyList<CampLink>? Links { get; init; }
+
+    public bool HideHistoricalNames { get; init; }
+
+    public IReadOnlyList<string> HistoricalNames { get; init; } = [];
+
+    public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
+
     /// <summary>
     /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
     /// </summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+
+    public CampSeasonInfo? CurrentSeason => Active;
+
+    public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
+    {
+        var season = Seasons
+            .Where(s => s.Year == year)
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault();
+
+        return season ?? (fallbackToLatestSeason ? Active : null);
+    }
+
+    public CampMembershipState GetMembershipState(Guid userId)
+    {
+        var season = Seasons
+            .Where(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault();
+        if (season is null)
+        {
+            return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
+        }
+
+        return season.GetMembershipState(userId);
+    }
+
+    public bool IsLead(Guid userId) => Seasons.Any(season => season.IsLead(userId));
+
+    public bool IsEventManager(Guid userId) => Seasons.Any(season => season.IsEventManager(userId));
+
+    public Guid? GetLeadSeasonIdForYear(Guid userId, int year) =>
+        Seasons
+            .Where(season => season.Year == year && season.IsLead(userId))
+            .OrderBy(season => season.Id)
+            .Select(season => (Guid?)season.Id)
+            .FirstOrDefault();
 }
 
 public sealed record CampSeasonInfo(
@@ -307,7 +268,53 @@ public sealed record CampSeasonInfo(
     ElectricalGrid? ElectricalGrid,
     int EeSlotCount,
     int? EeGrantedCount,
-    int? JoinedMemberCount);
+    int? JoinedMemberCount)
+{
+    public string BlurbLong { get; init; } = string.Empty;
+
+    public KidsVisitingPolicy KidsVisiting { get; init; }
+
+    public string? KidsAreaDescription { get; init; }
+
+    public PerformanceSpaceStatus HasPerformanceSpace { get; init; }
+
+    public string? PerformanceTypes { get; init; }
+
+    public IReadOnlyList<CampSeasonMemberInfo> Members { get; init; } = [];
+
+    public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];
+
+    public IReadOnlyList<Guid> WorkshopLeadUserIds { get; init; } = [];
+
+    public IReadOnlyList<CampSeasonMemberInfo> ActiveMembers =>
+        Members.Where(member => member.Status == CampMemberStatus.Active).ToList();
+
+    public IReadOnlyList<CampSeasonMemberInfo> PendingMembers =>
+        Members.Where(member => member.Status == CampMemberStatus.Pending).ToList();
+
+    public CampMembershipState GetMembershipState(Guid userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member is null)
+        {
+            return new CampMembershipState(Year, Id, null, CampMemberStatusSummary.None);
+        }
+
+        var status = member.Status == CampMemberStatus.Active
+            ? CampMemberStatusSummary.Active
+            : CampMemberStatusSummary.Pending;
+
+        return new CampMembershipState(Year, Id, member.Id, status);
+    }
+
+    public bool IsLead(Guid userId) => LeadUserIds.Contains(userId);
+
+    public bool IsEventManager(Guid userId) =>
+        LeadUserIds.Contains(userId) || WorkshopLeadUserIds.Contains(userId);
+
+    public bool IsNameLocked(LocalDate today) =>
+        NameLockDate.HasValue && today >= NameLockDate.Value;
+}
 
 public sealed record CampSeasonMemberInfo(
     Guid Id,
@@ -372,11 +379,7 @@ public enum CampMemberRequestNoticeLevel
     Error
 }
 
-public record AddCampMemberAsLeadResult(
-    AddCampMemberAsLeadOutcome Outcome,
-    Guid? CampMemberId = null);
-
-public enum AddCampMemberAsLeadOutcome
+public enum AddCampMemberOutcome
 {
     Added,
     InvalidUser,
@@ -404,33 +407,6 @@ public enum CampMemberStatusSummary
     Active
 }
 
-public record CampMemberListData(
-    Guid CampSeasonId,
-    int Year,
-    int EeSlotCount,
-    IReadOnlyList<CampMemberRow> Pending,
-    IReadOnlyList<CampMemberRow> Active);
-
-public record CampMemberRow(
-    Guid CampMemberId,
-    Guid UserId,
-    string DisplayName,
-    Instant RequestedAt,
-    Instant? ConfirmedAt,
-    bool HasEarlyEntry,
-    CampMemberStatus Status);
-
-public record CampMembershipSummary(
-    Guid CampMemberId,
-    Guid CampId,
-    string CampSlug,
-    string CampName,
-    Guid CampSeasonId,
-    int Year,
-    CampMemberStatus Status,
-    Instant RequestedAt,
-    Instant? ConfirmedAt);
-
 public record CampSeasonData(
     string BlurbLong,
     string BlurbShort,
@@ -447,44 +423,6 @@ public record CampSeasonData(
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
     ElectricalGrid? ElectricalGrid);
-
-public record CampDirectoryFilter(
-    CampVibe? Vibe = null,
-    SoundZone? SoundZone = null,
-    bool KidsFriendly = false,
-    bool AcceptingMembers = false,
-    string? Search = null);
-
-public record CampDirectoryCard(
-    Guid Id,
-    string Slug,
-    string Name,
-    string BlurbShort,
-    string? ImageUrl,
-    IReadOnlyList<CampVibe> Vibes,
-    YesNoMaybe AcceptingMembers,
-    YesNoMaybe KidsWelcome,
-    SoundZone? SoundZone,
-    CampSeasonStatus Status,
-    int TimesAtNowhere);
-
-public record CampDirectoryResult(
-    int Year,
-    int PendingCount,
-    IReadOnlyList<CampDirectoryCard> Camps,
-    IReadOnlyList<CampDirectoryCard> MyCamps);
-
-public record CampDetailData(
-    Guid Id,
-    string Slug,
-    string Name,
-    IReadOnlyList<CampLink> Links,
-    bool IsSwissCamp,
-    int TimesAtNowhere,
-    bool HideHistoricalNames,
-    IReadOnlyList<string> HistoricalNames,
-    IReadOnlyList<string> ImageUrls,
-    CampSeasonDetailData? CurrentSeason);
 
 public record CampEditData(
     Guid CampId,
@@ -535,28 +473,6 @@ public record CampHistoricalNameSummary(
     int? Year,
     string Source);
 
-public record CampSeasonDetailData(
-    Guid Id,
-    int Year,
-    string Name,
-    CampSeasonStatus Status,
-    string BlurbLong,
-    string BlurbShort,
-    string Languages,
-    YesNoMaybe AcceptingMembers,
-    YesNoMaybe KidsWelcome,
-    KidsVisitingPolicy KidsVisiting,
-    string? KidsAreaDescription,
-    PerformanceSpaceStatus HasPerformanceSpace,
-    string? PerformanceTypes,
-    IReadOnlyList<CampVibe> Vibes,
-    AdultPlayspacePolicy AdultPlayspace,
-    int MemberCount,
-    SpaceSize? SpaceRequirement,
-    SoundZone? SoundZone,
-    ElectricalGrid? ElectricalGrid,
-    bool IsNameLocked);
-
 public record CampPublicSummary(
     Guid Id,
     string Slug,
@@ -583,7 +499,5 @@ public record CampPlacementSummary(
     string? SoundZone,
     string Status,
     string? ElectricalGrid);
-
-public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId);
 
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

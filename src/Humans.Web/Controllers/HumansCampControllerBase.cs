@@ -9,10 +9,10 @@ namespace Humans.Web.Controllers;
 
 public abstract class HumansCampControllerBase(
     IUserServiceRead userService,
-    ICampService campService,
+    ICampServiceRead campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    protected ICampService CampService => campService;
+    protected ICampServiceRead CampService => campService;
 
     protected Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
@@ -32,7 +32,10 @@ public abstract class HumansCampControllerBase(
             return (false, false);
         }
 
-        var isLead = await campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
+        var campSettings = await campService.GetSettingsAsync(cancellationToken);
+        var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear, cancellationToken))
+            .FirstOrDefault(c => c.Id == campId);
+        var isLead = camp?.IsLead(user.Id) == true;
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);

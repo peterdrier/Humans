@@ -14,8 +14,7 @@ public sealed class CampOperationRequirement : IAuthorizationRequirement
 
     /// <summary>
     /// Authorizes camp-event submission (<c>EventsController</c>): Lead OR
-    /// Workshop role holder, plus CampAdmin / Admin. Resolved through
-    /// <see cref="Humans.Application.Interfaces.Camps.ICampService.IsUserCampEventManagerAsync"/>.
+    /// Workshop role holder, plus CampAdmin / Admin.
     /// </summary>
     public static readonly CampOperationRequirement SubmitEvent = new(nameof(SubmitEvent));
 

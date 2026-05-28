@@ -27,6 +27,7 @@ internal sealed partial class CampRepository : ICampRepository
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
+                .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Slug == normalizedSlug, ct);
@@ -34,13 +35,13 @@ internal sealed partial class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
-        // Active Seasons.Members included so RefreshEntryAsync sees the same shape
+        // Seasons.Members included so RefreshEntryAsync sees the same shape
         // as the warmup path — otherwise EeGrantedCount projects as 0 on each invalidation.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
-                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
+                .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
@@ -68,7 +69,9 @@ internal sealed partial class CampRepository : ICampRepository
         var query = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
-                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
+                .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
+            .Include(c => c.Images.OrderBy(i => i.SortOrder))
+            .Include(c => c.HistoricalNames)
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
         if (statusFilter is { Count: > 0 })
@@ -78,25 +81,6 @@ internal sealed partial class CampRepository : ICampRepository
 
         return await query
             .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
-            .ToListAsync(ct);
-    }
-
-    public async Task<int> CountPendingSeasonsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .CountAsync(s => s.Status == CampSeasonStatus.Pending, ct);
-    }
-
-    public async Task<IReadOnlyList<CampSeason>> GetPendingSeasonsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .Include(s => s.Camp)
-            .Where(s => s.Status == CampSeasonStatus.Pending)
-            .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -370,36 +354,6 @@ internal sealed partial class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(s => s.Camp)
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
-        GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.CampSeasons
-            .AsNoTracking()
-            .Include(s => s.Camp)
-            .Where(s => s.Year == year)
-            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement, s.CampId })
-            .ToListAsync(ct);
-
-        return rows.ToDictionary(
-            r => r.Id,
-            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement, r.CampId));
-    }
-
-    public async Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>
-        GetSeasonBriefsForYearAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.CampSeasons
-            .AsNoTracking()
-            .Include(s => s.Camp)
-            .Where(s => s.Year == year)
-            .Select(s => new { s.Id, s.Name, CampSlug = s.Camp.Slug, s.SpaceRequirement })
-            .ToListAsync(ct);
-
-        return rows.Select(r => (r.Id, r.Name, r.CampSlug, r.SpaceRequirement)).ToList();
     }
 
     // Leads (legacy camp_leads — only the seed-migration snapshot + role-backed
@@ -772,60 +726,6 @@ internal sealed partial class CampRepository : ICampRepository
         ctx.Entry(member).Property(m => m.UserId).IsModified = false;
         ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<CampMember?> GetUserMembershipInSeasonAsync(
-        Guid campSeasonId, Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                m => m.CampSeasonId == campSeasonId
-                    && m.UserId == userId
-                    && m.Status != CampMemberStatus.Removed,
-                ct);
-    }
-
-    public async Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .Where(m => m.CampSeasonId == campSeasonId && m.Status != CampMemberStatus.Removed)
-            .OrderBy(m => m.RequestedAt)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.CampMembers
-            .AsNoTracking()
-            .Where(m => m.CampSeason.Year == year && m.Status != CampMemberStatus.Removed)
-            .ToListAsync(ct);
-        return rows
-            .GroupBy(m => m.CampSeasonId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<CampMember>)g.ToList());
-    }
-
-    public async Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .Include(m => m.CampSeason)
-                .ThenInclude(s => s.Camp)
-            // Display ordering (year desc, then camp name) is applied by the
-            // consumer (MyCampsViewComponent) per
-            // memory/architecture/display-sort-in-controllers.md.
-            .Where(m => m.UserId == userId && m.Status != CampMemberStatus.Removed)
-            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(

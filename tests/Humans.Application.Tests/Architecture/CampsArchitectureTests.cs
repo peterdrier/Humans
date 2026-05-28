@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
+using Humans.Web.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -114,7 +115,7 @@ public class CampsArchitectureTests
             // SeedSystemRolesAndMigrateLeadsAsync reads from the legacy
             // camp_leads + camp_seasons + camp_members tables to migrate
             // existing leads into CampRoleAssignment. Routed through
-            // ICampService.AddCampMemberToActiveSeasonAsLeadAsync via the
+            // ICampRoleCampAccess.EnsureActiveMemberForMigrationAsync via the
             // decorator (which invalidates), so writes still pass through the
             // decorator path. Read-only consumer here.
             "Humans.Application.Services.Camps.CampRoleService",
@@ -226,6 +227,18 @@ public class CampsArchitectureTests
             because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
     }
 
+    [HumansFact]
+    public void CampRoleService_DependsOnNarrowCampRoleAccess()
+    {
+        var ctor = typeof(CampRoleService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(ICampRoleCampAccess),
+            because: "role workflows need only membership/status/settings helpers, not the whole ICampService surface");
+        paramTypes.Should().NotContain(typeof(ICampService),
+            because: "the role sub-service must not depend on the full Camps service surface");
+    }
+
     // ── ICampServiceRead split (memory/architecture/section-read-write-split.md) ──
 
     [HumansFact]
@@ -245,6 +258,14 @@ public class CampsArchitectureTests
     }
 
     [HumansFact]
+    public void CachingCampService_ImplementsICampRoleCampAccess()
+    {
+        typeof(ICampRoleCampAccess).IsAssignableFrom(typeof(CachingCampService))
+            .Should().BeTrue(
+                because: "CampRoleService must use the decorator-backed port so migration writes still invalidate CampInfo");
+    }
+
+    [HumansFact]
     public void ICampService_And_ICampServiceRead_ResolveToSameSingleton()
     {
         // Mirrors the Camps-section DI shape: the same CachingCampService
@@ -258,15 +279,18 @@ public class CampsArchitectureTests
         services.AddSingleton<CachingCampService>();
         services.AddSingleton<ICampService>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampServiceRead>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
 
         using var provider = services.BuildServiceProvider();
 
         var fromFull = provider.GetRequiredService<ICampService>();
         var fromRead = provider.GetRequiredService<ICampServiceRead>();
+        var fromRoleAccess = provider.GetRequiredService<ICampRoleCampAccess>();
         var concrete = provider.GetRequiredService<CachingCampService>();
 
         ReferenceEquals(fromFull, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();
+        ReferenceEquals(fromRoleAccess, concrete).Should().BeTrue();
     }
 
     [HumansFact]
@@ -294,8 +318,8 @@ public class CampsArchitectureTests
 
     /// <summary>
     /// Pins the invariant: the public camp detail page can never render Early Entry
-    /// state because the data shape returned by BuildCampDetailDataAsync — and every
-    /// record type reachable from it — contains no EE-related properties.
+    /// state because the view-model shape rendered by the public detail page contains
+    /// no EE-related properties.
     /// Guards against future accidental additions (e.g., HasEarlyEntry, EeSlotCount,
     /// EeStartDate, IsEarlyAccess) by matching on name substrings / prefixes.
     /// Issue #490: EE state is admin-only and must never appear on anonymous views.
@@ -303,11 +327,11 @@ public class CampsArchitectureTests
     [HumansFact]
     public void PublicCampDetail_DoesNotExposeEarlyEntryState()
     {
-        // All record types that compose the public detail data shape.
+        // All view-model types that compose the public detail page shape.
         var publicDetailTypes = new[]
         {
-            typeof(CampDetailData),
-            typeof(CampSeasonDetailData),
+            typeof(CampDetailViewModel),
+            typeof(CampSeasonDetailViewModel),
         };
 
         var eeProperties = publicDetailTypes
@@ -319,6 +343,6 @@ public class CampsArchitectureTests
 
         eeProperties.Should().BeEmpty(
             because: "Early Entry state (HasEarlyEntry, EeSlotCount, EeStartDate, etc.) must never be " +
-                     "projected into the public detail data shape — it is admin-only (issue #490, spec §4.4)");
+                     "projected into the public detail view shape - it is admin-only (issue #490, spec §4.4)");
     }
 }

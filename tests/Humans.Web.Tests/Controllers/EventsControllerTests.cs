@@ -31,7 +31,7 @@ public class EventsControllerTests
 {
     private readonly IEventService _guide = Substitute.For<IEventService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly IClock _clock = Substitute.For<IClock>();

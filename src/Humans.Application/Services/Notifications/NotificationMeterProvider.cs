@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -38,7 +39,7 @@ public sealed class NotificationMeterProvider(
     ITeamServiceRead teamService,
     ITicketSyncService ticketSyncService,
     IApplicationDecisionService applicationDecisionService,
-    ICampService campService,
+    ICampServiceRead campService,
     IMemoryCache cache,
     ILogger<NotificationMeterProvider> logger) : INotificationMeterProvider
 {
@@ -176,7 +177,26 @@ public sealed class NotificationMeterProvider(
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
             try
             {
-                return await campService.GetPendingMembershipCountForLeadAsync(userId, cancellationToken);
+                var settings = await campService.GetSettingsAsync(cancellationToken);
+                var years = settings.OpenSeasons
+                    .Append(settings.PublicYear)
+                    .Distinct()
+                    .OrderBy(year => year);
+
+                var pendingCount = 0;
+                foreach (var year in years)
+                {
+                    var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+                    pendingCount += camps
+                        .SelectMany(camp => camp.Seasons)
+                        .Where(season =>
+                            season.Year == year &&
+                            season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
+                            season.IsLead(userId))
+                        .Sum(season => season.PendingMembers.Count);
+                }
+
+                return pendingCount;
             }
             catch (Exception ex)
             {

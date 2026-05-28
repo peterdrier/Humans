@@ -15,7 +15,7 @@ public class OnsiteRosterServiceTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
 
@@ -137,10 +137,8 @@ public class OnsiteRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetRosterAsync_JoinsCampNames_FromBulkMembersByYear()
+    public async Task GetRosterAsync_JoinsCampNames_FromProjectedCampMembers()
     {
-        // Verifies the N+1 fix: the service pulls all camp members for the year
-        // in one call (GetCampMembersByYearAsync) rather than per-season.
         var aliceId = Guid.NewGuid();
         var ts = Instant.FromUtc(2026, 7, 8, 12, 0);
         var campId = Guid.NewGuid();
@@ -160,18 +158,16 @@ public class OnsiteRosterServiceTests
                             Humans.Domain.Enums.CampSeasonStatus.Active,
                             Humans.Domain.Enums.YesNoMaybe.Yes, Humans.Domain.Enums.YesNoMaybe.No,
                             Humans.Domain.Enums.AdultPlayspacePolicy.No,
-                            1, null, null, null, 0, null, null),
+                            1, null, null, null, 0, null, null)
+                        {
+                            Members =
+                            [
+                                new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, ts, false),
+                            ],
+                        },
                     }),
             });
 
-        _camps.GetCampMembersByYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>
-            {
-                [seasonId] = new List<CampSeasonMemberInfo>
-                {
-                    new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, ts, false),
-                },
-            });
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _roles.GetActiveForUserAsync(aliceId, Arg.Any<CancellationToken>())
@@ -183,7 +179,5 @@ public class OnsiteRosterServiceTests
         result.Rows.Should().ContainSingle();
         result.Rows[0].CampNames.Should().Equal("Thunderdome 2026");
         result.AvailableCamps.Should().Equal("Thunderdome 2026");
-        await _camps.Received(1).GetCampMembersByYearAsync(2026, Arg.Any<CancellationToken>());
-        await _camps.DidNotReceive().GetSeasonMembersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

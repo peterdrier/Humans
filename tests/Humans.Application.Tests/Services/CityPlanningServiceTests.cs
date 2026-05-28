@@ -18,7 +18,7 @@ namespace Humans.Application.Tests.Services;
 
 public sealed class CityPlanningServiceTests : ServiceTestHarness
 {
-    private readonly ICampService _campService;
+    private readonly ICampServiceRead _campService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly CityPlanningService _sut;
@@ -27,7 +27,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
     public CityPlanningServiceTests()
         : base(Instant.FromUtc(2026, 3, 15, 12, 0, 0))
     {
-        _campService = Substitute.For<ICampService>();
+        _campService = Substitute.For<ICampServiceRead>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         var repo = new CityPlanningRepository(DbFactory);
@@ -283,8 +283,14 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
-        _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
+            {
+                MakeCampInfo(campId, "camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp") with
+                {
+                    LeadUserIds = [userId]
+                }])
+            });
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeTrue();
@@ -303,8 +309,6 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
-        _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeFalse();
@@ -323,8 +327,14 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
-        _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
-            .Returns(false);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>
+            {
+                MakeCampInfo(Guid.NewGuid(), "other-camp", [MakeCampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), 2026, "Other Camp") with
+                {
+                    LeadUserIds = [userId]
+                }])
+            });
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeFalse();
