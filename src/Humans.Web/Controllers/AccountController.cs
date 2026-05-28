@@ -441,7 +441,9 @@ public class AccountController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CompleteSignup(string token, string displayName, string? email = null, string? returnUrl = null)
+    public async Task<IActionResult> CompleteSignup(
+        string token, string burnerName, string firstName, string lastName,
+        string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
             return View("MagicLinkError");
@@ -454,9 +456,22 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
+        if (string.IsNullOrWhiteSpace(burnerName) ||
+            string.IsNullOrWhiteSpace(firstName) ||
+            string.IsNullOrWhiteSpace(lastName))
+        {
+            ViewData["ReturnUrl"] = returnUrl;
+            ViewData["Email"] = verifiedEmail;
+            ViewData["Token"] = token;
+            ModelState.AddModelError(string.Empty, localizer["CompleteSignup_AllFieldsRequired"]);
+            return View("CompleteSignup");
+        }
+
         var result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
             verifiedEmail,
-            displayName,
+            burnerName,
+            firstName,
+            lastName,
             HttpContext.RequestAborted);
 
 #pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.

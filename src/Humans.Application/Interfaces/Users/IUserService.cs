@@ -175,9 +175,16 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
 
     /// <summary>
     /// Idempotently materializes a stub profile for a live user. Returns true
-    /// only when a profile row was created.
+    /// only when a profile row was created. When provided, seeds the stub with
+    /// the member's burner and legal names (the magic-link signup path); import
+    /// callers omit them and create an empty stub.
     /// </summary>
-    Task<bool> EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> EnsureStubProfileAsync(
+        Guid userId,
+        string? burnerName = null,
+        string? firstName = null,
+        string? lastName = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Updates <see cref="Profile.MembershipTier"/> on the user's profile.

@@ -13,18 +13,44 @@
                     <input type="hidden" name="token" value="@token" />
                     <input type="hidden" name="email" value="@email" />
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
                     <div class="mb-3">
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" value="@email" disabled />
                     </div>
+
                     <div class="mb-3">
-                        <label for="displayName" class="form-label">@Localizer["CompleteSignup_DisplayNameLabel"]</label>
-                        <input type="text" name="displayName" class="form-control"
-                               placeholder="@email" required autofocus />
+                        <label for="burnerName" class="form-label">@Localizer["CompleteSignup_BurnerNameLabel"]</label>
+                        <input type="text" id="burnerName" name="burnerName" class="form-control" required autofocus />
+                        <div class="form-text">@Localizer["CompleteSignup_BurnerNameHelp"]</div>
                     </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="firstName" class="form-label">@Localizer["CompleteSignup_FirstNameLabel"]</label>
+                            <input type="text" id="firstName" name="firstName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="lastName" class="form-label">@Localizer["CompleteSignup_LastNameLabel"]</label>
+                            <input type="text" id="lastName" name="lastName" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border small mb-3">
+                        @Localizer["CompleteSignup_LegalNameNote"]
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100">
                         @Localizer["CompleteSignup_Submit"]
                     </button>
+
+                    <p class="text-center mt-3 mb-0 small">
+                        <a asp-controller="Home" asp-action="Privacy" target="_blank" rel="noopener">
+                            @Localizer["CompleteSignup_PrivacyLink"]
+                        </a>
+                    </p>
                 </form>
             </div>
         </div>

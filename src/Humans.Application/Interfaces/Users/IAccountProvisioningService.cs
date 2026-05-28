@@ -26,12 +26,15 @@ public interface IAccountProvisioningService : IApplicationService
     /// <summary>
     /// Completes a magic-link signup after the Auth section has verified the
     /// signup token. Idempotently signs in the existing verified-email owner
-    /// on double submit, otherwise creates User + verified UserEmail + stub
-    /// Profile and rolls back the User if the email row cannot be created.
+    /// on double submit, otherwise creates User + verified UserEmail + a stub
+    /// Profile seeded with the member's burner and legal names, rolling back
+    /// the User if the email row cannot be created.
     /// </summary>
     Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
         string email,
-        string? displayName,
+        string burnerName,
+        string firstName,
+        string lastName,
         CancellationToken ct = default);
 }
 

@@ -1391,7 +1391,13 @@
   <data name="MagicLinkError_Message" xml:space="preserve"><value>This login link has expired or has already been used.</value></data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Request a new link</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Complete your signup</value></data>
-  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Display name</value></data>
+  <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
+  <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve"><value>This is the name everyone in Humans sees. Use whatever you go by in the community.</value></data>
+  <data name="CompleteSignup_FirstNameLabel" xml:space="preserve"><value>Legal first name</value></data>
+  <data name="CompleteSignup_LastNameLabel" xml:space="preserve"><value>Legal last name</value></data>
+  <data name="CompleteSignup_LegalNameNote" xml:space="preserve"><value>We ask for your legal name so we can tell who's who behind everyone's burner names, and so you can sign the volunteer agreement later. It is visible only to admins inside Humans, is never shared outside the app, and everywhere else you'll only ever be shown by your burner name.</value></data>
+  <data name="CompleteSignup_PrivacyLink" xml:space="preserve"><value>Read our privacy policy</value></data>
+  <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve"><value>Please fill in your burner name and your legal first and last name.</value></data>
   <data name="CompleteSignup_Submit" xml:space="preserve"><value>Create account</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Back to login</value></data>
   <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Your link expires at {0}.</value></data>

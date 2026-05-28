@@ -315,7 +315,12 @@ public sealed class UserService(
         return await repo.ClearDeletionAsync(userId, ct);
     }
 
-    public async Task<bool> EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
+    public async Task<bool> EnsureStubProfileAsync(
+        Guid userId,
+        string? burnerName = null,
+        string? firstName = null,
+        string? lastName = null,
+        CancellationToken ct = default)
     {
         var gate = ProfileStubLockFor(userId);
         await gate.WaitAsync(ct).ConfigureAwait(false);
@@ -344,6 +349,9 @@ public sealed class UserService(
                 CreatedAt = now,
                 UpdatedAt = now,
                 State = ProfileState.Stub,
+                BurnerName = (burnerName ?? string.Empty).Trim(),
+                FirstName = (firstName ?? string.Empty).Trim(),
+                LastName = (lastName ?? string.Empty).Trim(),
             };
 
             await repo.AddAsync(profile, ct);

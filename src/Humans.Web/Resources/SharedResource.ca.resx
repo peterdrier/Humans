@@ -3250,8 +3250,26 @@
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa el teu registre</value>
   </data>
-  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve">
-    <value>Nom per mostra</value>
+  <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve">
+    <value>Nom burner</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve">
+    <value>És el nom que tothom veurà a Humans. Fes servir el que utilitzis a la comunitat.</value>
+  </data>
+  <data name="CompleteSignup_FirstNameLabel" xml:space="preserve">
+    <value>Nom legal</value>
+  </data>
+  <data name="CompleteSignup_LastNameLabel" xml:space="preserve">
+    <value>Cognoms legals</value>
+  </data>
+  <data name="CompleteSignup_LegalNameNote" xml:space="preserve">
+    <value>Et demanem el teu nom legal per saber qui és qui darrere dels noms burner, i perquè puguis signar l'acord de voluntariat més endavant. Només és visible per als administradors dins de Humans, mai es comparteix fora de l'aplicació, i a la resta de llocs sempre se't mostrarà amb el teu nom burner.</value>
+  </data>
+  <data name="CompleteSignup_PrivacyLink" xml:space="preserve">
+    <value>Llegeix la nostra política de privacitat</value>
+  </data>
+  <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve">
+    <value>Si us plau, omple el teu nom burner i el teu nom i cognoms legals.</value>
   </data>
   <data name="CompleteSignup_Submit" xml:space="preserve">
     <value>Crea un compte</value>

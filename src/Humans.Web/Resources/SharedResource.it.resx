@@ -3250,8 +3250,26 @@
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa la registrazione</value>
   </data>
-  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve">
-    <value>Nome visualizzato</value>
+  <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve">
+    <value>Nome burner</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve">
+    <value>È il nome che tutti vedranno in Humans. Usa quello con cui ti conoscono nella comunità.</value>
+  </data>
+  <data name="CompleteSignup_FirstNameLabel" xml:space="preserve">
+    <value>Nome legale</value>
+  </data>
+  <data name="CompleteSignup_LastNameLabel" xml:space="preserve">
+    <value>Cognome legale</value>
+  </data>
+  <data name="CompleteSignup_LegalNameNote" xml:space="preserve">
+    <value>Ti chiediamo il tuo nome legale per sapere chi è chi dietro i nomi burner e per permetterti di firmare l'accordo di volontariato in seguito. È visibile solo agli amministratori all'interno di Humans, non viene mai condiviso al di fuori dell'app e ovunque altro verrai mostrato solo con il tuo nome burner.</value>
+  </data>
+  <data name="CompleteSignup_PrivacyLink" xml:space="preserve">
+    <value>Leggi la nostra informativa sulla privacy</value>
+  </data>
+  <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve">
+    <value>Inserisci il tuo nome burner e il tuo nome e cognome legali.</value>
   </data>
   <data name="CompleteSignup_Submit" xml:space="preserve">
     <value>Crea account</value>

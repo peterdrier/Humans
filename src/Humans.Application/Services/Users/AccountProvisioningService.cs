@@ -84,7 +84,8 @@ public sealed class AccountProvisioningService(
         await userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
         // see #635 (§15i) — Stub Profile invariant; UserService owns UserInfo storage/cache.
-        await userService.EnsureStubProfileAsync(newUser.Id, ct);
+        // Import path seeds no names; the empty stub is filled in during onboarding.
+        await userService.EnsureStubProfileAsync(newUser.Id, ct: ct);
 
         await auditLogService.LogAsync(
             AuditAction.ContactCreated,
@@ -101,10 +102,15 @@ public sealed class AccountProvisioningService(
 
     public async Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
         string email,
-        string? displayName,
+        string burnerName,
+        string firstName,
+        string lastName,
         CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(burnerName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(lastName);
 
         var existingEmail = await userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (existingEmail is not null)
@@ -128,11 +134,11 @@ public sealed class AccountProvisioningService(
         }
 
         var now = clock.GetCurrentInstant();
-#pragma warning disable HUM_USER_DISPLAYNAME // Magic-link signup seeds the legacy Identity fallback column.
+#pragma warning disable HUM_USER_DISPLAYNAME // Sanctioned creation-time BurnerName fallback (memory/architecture/burnername-is-the-display-name.md).
         var user = new User
         {
             Id = Guid.NewGuid(),
-            DisplayName = string.IsNullOrWhiteSpace(displayName) ? email : displayName.Trim(),
+            DisplayName = burnerName.Trim(),
             CreatedAt = now,
             LastLoginAt = now
         };
@@ -165,7 +171,8 @@ public sealed class AccountProvisioningService(
                 User: null);
         }
 
-        await userService.EnsureStubProfileAsync(user.Id, ct);
+        await userService.EnsureStubProfileAsync(
+            user.Id, burnerName.Trim(), firstName.Trim(), lastName.Trim(), ct);
 
         logger.LogInformation(
             "Magic link signup: user {UserId} created account for {Email}",

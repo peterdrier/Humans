@@ -836,7 +836,7 @@ public class AccountProvisioningServiceTests
     public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
     {
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "magic@example.com", " Magic Human ");
+            "magic@example.com", " Magic Human ", " Legal ", " Surname ");
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
         result.User.Should().NotBeNull();
@@ -848,7 +848,7 @@ public class AccountProvisioningServiceTests
             && ue.IsVerified
             && ue.IsPrimary);
         await _userService.Received(1)
-            .EnsureStubProfileAsync(result.User.Id, Arg.Any<CancellationToken>());
+            .EnsureStubProfileAsync(result.User.Id, "Magic Human", "Legal", "Surname", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -873,7 +873,7 @@ public class AccountProvisioningServiceTests
         });
 
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "existing@example.com", "Ignored");
+            "existing@example.com", "Ignored", "Ignored", "Ignored");
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
         result.User.Should().BeSameAs(user);
@@ -888,7 +888,7 @@ public class AccountProvisioningServiceTests
         _userEmailFake.ThrowOnAddVerified = true;
 
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "rollback@example.com", "Rollback");
+            "rollback@example.com", "Rollback", "First", "Last");
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
         result.User.Should().BeNull();

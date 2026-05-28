@@ -35,7 +35,7 @@ public sealed class ProfileBackfillAdminController(
         foreach (var row in missing)
         {
             // Idempotent — UserService takes a per-userId lock around the get/add pair.
-            await userService.EnsureStubProfileAsync(row.UserId, ct);
+            await userService.EnsureStubProfileAsync(row.UserId, ct: ct);
         }
 
         logger.LogInformation(
