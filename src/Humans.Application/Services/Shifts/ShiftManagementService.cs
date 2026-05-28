@@ -774,7 +774,7 @@ public sealed class ShiftManagementService(
         return ids;
     }
 
-    public double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
+    internal double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
@@ -1791,14 +1791,6 @@ public sealed class ShiftManagementService(
     {
         await repo.SetRotaTagsAsync(rotaId, tagIds);
         viewInvalidator.InvalidateRota(rotaId);
-    }
-
-    public async Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId)
-    {
-        var preferences = await repo.GetVolunteerTagPreferencesAsync(userId);
-        return preferences
-            .Select(tag => new ShiftTagPreferenceSummary(tag.Id, tag.Name))
-            .ToList();
     }
 
     public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)

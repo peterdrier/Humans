@@ -171,12 +171,6 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
 
-    /// <summary>
-    /// Calculates the urgency score for a single shift.
-    /// Factors in remaining slots, priority, duration, understaffing, and time proximity.
-    /// </summary>
-    double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings);
-
     // === Staffing & Summary ===
 
     /// <summary>
@@ -267,11 +261,6 @@ public interface IShiftManagementService : IApplicationService
     /// Sets the tags for a rota, replacing any existing tags.
     /// </summary>
     Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds);
-
-    /// <summary>
-    /// Gets a volunteer's tag preferences.
-    /// </summary>
-    Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId);
 
     /// <summary>
     /// Sets a volunteer's tag preferences, replacing any existing ones.

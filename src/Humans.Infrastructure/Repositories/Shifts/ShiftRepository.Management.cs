@@ -654,18 +654,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     // Volunteer tag preferences
     // ==========================================================================
 
-    public async Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.VolunteerTagPreferences
-            .AsNoTracking()
-            .Where(v => v.UserId == userId)
-            .Select(v => v.ShiftTag)
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
-    }
-
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
     {

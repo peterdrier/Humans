@@ -318,9 +318,6 @@ public partial interface IShiftManagementRepository : IRepository
     // Volunteer tag preferences
     // ==========================================================================
 
-    Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(
-        Guid userId, CancellationToken ct = default);
-
     /// <summary>
     /// Replaces a volunteer's tag preferences with the given tag ids in a
     /// single save (delete-then-insert).
