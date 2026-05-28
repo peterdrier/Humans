@@ -1,11 +1,12 @@
 using Humans.Application.DTOs;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
 /// Cross-section read surface for the Camps section. External sections inject
-/// this interface; it returns CampInfo-family projections (CampInfo,
-/// CampSeasonInfo), display DTOs, CampSettingsInfo, and CampSearchHit — never EF entities.
+/// this interface returns camp read models, display DTOs, membership summaries,
+/// and small scalar maps — never EF entities.
 /// See memory/architecture/section-read-write-split.md.
 /// </summary>
 public interface ICampServiceRead
@@ -16,8 +17,18 @@ public interface ICampServiceRead
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSearchHit>> SearchAsync(string query, int max, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(List<int> years, CancellationToken cancellationToken = default);
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
     Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
+        int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+    Task<int> GetPendingMembershipCountForLeadAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 }

@@ -1248,7 +1248,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
     }
 
-    public async Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(
+    public async Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(
         List<int> years, CancellationToken cancellationToken = default)
     {
         var result = await _repo.GetNameLockDatesAsync(years, cancellationToken);

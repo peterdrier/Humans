@@ -204,7 +204,7 @@ public sealed class CachingCampService(
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
 
-    public Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(
+    public Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(
         List<int> years, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetNameLockDatesAsync(years, cancellationToken));
 

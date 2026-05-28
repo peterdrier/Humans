@@ -15,7 +15,7 @@ public class OnsiteRosterServiceTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
 
@@ -184,6 +184,5 @@ public class OnsiteRosterServiceTests
         result.Rows[0].CampNames.Should().Equal("Thunderdome 2026");
         result.AvailableCamps.Should().Equal("Thunderdome 2026");
         await _camps.Received(1).GetCampMembersByYearAsync(2026, Arg.Any<CancellationToken>());
-        await _camps.DidNotReceive().GetSeasonMembersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

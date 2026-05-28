@@ -5,7 +5,7 @@ using Humans.Domain.Enums;
 namespace Humans.Web.Models.CampAdmin;
 
 public sealed class CampAdminPageBuilder(
-    ICampService campService,
+    ICampServiceRead campService,
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService)
 {
@@ -53,7 +53,7 @@ public sealed class CampAdminPageBuilder(
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
             WithdrawnCamps = withdrawnSeasons,
-            NameLockDates = nameLockDates,
+            NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
             AllCampSummaries = summaries,
             RegistrationInfo = registrationInfo,
             EeStartDate = settings.EeStartDate,

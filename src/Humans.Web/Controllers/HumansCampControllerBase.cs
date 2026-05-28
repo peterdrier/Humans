@@ -9,10 +9,10 @@ namespace Humans.Web.Controllers;
 
 public abstract class HumansCampControllerBase(
     IUserServiceRead userService,
-    ICampService campService,
+    ICampServiceRead campService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
-    protected ICampService CampService => campService;
+    protected ICampServiceRead CampService => campService;
 
     protected Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {

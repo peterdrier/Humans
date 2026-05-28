@@ -25,7 +25,7 @@ namespace Humans.Web.Controllers;
 public class EventsController(
     IEventService guide,
     IUserServiceRead users,
-    ICampService camps,
+    ICampServiceRead camps,
     IAuthorizationService authorizationService,
     IClock clock,
     IEmailService emailService,

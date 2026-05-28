@@ -38,7 +38,7 @@ public sealed class NotificationMeterProvider(
     ITeamServiceRead teamService,
     ITicketSyncService ticketSyncService,
     IApplicationDecisionService applicationDecisionService,
-    ICampService campService,
+    ICampServiceRead campService,
     IMemoryCache cache,
     ILogger<NotificationMeterProvider> logger) : INotificationMeterProvider
 {

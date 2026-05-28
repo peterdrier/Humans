@@ -41,9 +41,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
@@ -70,7 +67,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, CancellationToken cancellationToken = default);
-    Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(List<int> years, CancellationToken cancellationToken = default);
 
     // Name change (handles historical name logging)
     Task ChangeSeasonNameAsync(Guid seasonId, string newName, CancellationToken cancellationToken = default);
@@ -132,25 +128,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     /// <summary>Raw rows (no display-name stitching, no lead union). Privileged — caller must authorize.</summary>
     Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
-    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
-    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
-    /// members are absent from the dictionary. Read-only; no display-name
-    /// stitching or lead union. Used by cross-section composers (e.g.
-    /// <c>OnsiteRosterService</c>) that need camp membership for many seasons
-    /// in one query instead of N per-season calls. Privileged — caller must
-    /// authorize.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
-    Task<int> GetPendingMembershipCountForLeadAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
