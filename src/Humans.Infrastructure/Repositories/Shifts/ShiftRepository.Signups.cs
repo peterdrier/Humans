@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -59,11 +60,20 @@ internal sealed partial class ShiftRepository
             .ToListAsync(ct);
     }
 
-    public Task<ShiftSignup?> GetByIdAsync(Guid signupId, CancellationToken ct = default) =>
-        _dbContext.ShiftSignups
+    public Task<ShiftSignup?> GetTeamProbeAsync(
+        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
+    {
+        var query = _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota)
-            .FirstOrDefaultAsync(d => d.Id == signupId, ct);
+            .Include(d => d.Shift).ThenInclude(s => s.Rota);
+
+        return scope switch
+        {
+            ShiftSignupTeamProbeScope.Signup => query.FirstOrDefaultAsync(d => d.Id == id, ct),
+            ShiftSignupTeamProbeScope.SignupBlock => query.FirstOrDefaultAsync(d => d.SignupBlockId == id, ct),
+            _ => Task.FromResult<ShiftSignup?>(null)
+        };
+    }
 
     public Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
@@ -87,12 +97,6 @@ internal sealed partial class ShiftRepository
 
         return await query.ToListAsync(ct);
     }
-
-    public Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId, CancellationToken ct = default) =>
-        _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift).ThenInclude(s => s.Rota)
-            .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId, ct);
 
     public async Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(
         Guid userId, CancellationToken ct = default) =>

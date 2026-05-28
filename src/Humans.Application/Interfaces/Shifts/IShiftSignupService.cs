@@ -65,14 +65,9 @@ public interface IShiftSignupService : IApplicationService
     Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets a signup by primary key with Shift.Rota included.
+    /// Gets signup team ownership data for admin authorization checks.
     /// </summary>
-    Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId);
-
-    /// <summary>
-    /// Gets the first signup in a block with Shift.Rota included (for team ownership checks).
-    /// </summary>
-    Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId);
+    Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope);
 
     /// <summary>
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
@@ -118,6 +113,12 @@ public sealed record ShiftSignupTeamProbe(
     Guid Id,
     Guid ShiftId,
     Guid TeamId);
+
+public enum ShiftSignupTeamProbeScope
+{
+    Signup,
+    SignupBlock
+}
 
 [Flags]
 public enum ShiftSignupRequestFlags

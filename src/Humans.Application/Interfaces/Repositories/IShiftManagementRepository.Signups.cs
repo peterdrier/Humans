@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Shifts;
 using NodaTime;
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -48,9 +49,10 @@ public partial interface IShiftManagementRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a single signup by id with <c>Shift.Rota</c>. Read-only.
+    /// Loads signup team ownership data by signup id or signup block id. Read-only.
     /// </summary>
-    Task<ShiftSignup?> GetByIdAsync(Guid signupId, CancellationToken ct = default);
+    Task<ShiftSignup?> GetTeamProbeAsync(
+        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default);
 
     /// <summary>
     /// Loads a signup by id with full shift / rota / event-settings context
@@ -68,12 +70,6 @@ public partial interface IShiftManagementRepository
         Guid signupBlockId,
         ShiftSignupBlockMutationScope scope,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads the first signup in a block with <c>Shift.Rota</c>. Read-only,
-    /// used for block-ownership lookups.
-    /// </summary>
-    Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId, CancellationToken ct = default);
 
     /// <summary>
      /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.

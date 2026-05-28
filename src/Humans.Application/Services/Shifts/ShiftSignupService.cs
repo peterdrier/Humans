@@ -960,17 +960,9 @@ public sealed class ShiftSignupService(
     public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
         repo.GetActiveSignupsForUserAsync(userId, ct);
 
-    public async Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId)
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {
-        var signup = await repo.GetByIdAsync(signupId);
-        return signup is null
-            ? null
-            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
-    }
-
-    public async Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId)
-    {
-        var signup = await repo.GetByBlockIdFirstAsync(signupBlockId);
+        var signup = await repo.GetTeamProbeAsync(id, scope);
         return signup is null
             ? null
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);

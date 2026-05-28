@@ -794,13 +794,13 @@ public class ShiftAdminController(
 
     private async Task<ShiftSignupTeamProbe?> GetSignupForTeamAsync(Guid signupId, Guid teamId)
     {
-        var signup = await signupService.GetByIdAsync(signupId);
+        var signup = await signupService.GetTeamProbeAsync(signupId, ShiftSignupTeamProbeScope.Signup);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
     private async Task<ShiftSignupTeamProbe?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId)
     {
-        var signup = await signupService.GetByBlockIdFirstAsync(signupBlockId);
+        var signup = await signupService.GetTeamProbeAsync(signupBlockId, ShiftSignupTeamProbeScope.SignupBlock);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
