@@ -39,8 +39,13 @@ public sealed class ShiftSignupService(
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
-    public async Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false)
+    public async Task<SignupResult> SignUpAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
         var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
         if (existingSignup)
             return SignupResult.Fail("Already signed up for this shift.");
@@ -497,8 +502,16 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false)
+    public async Task<SignupResult> SignUpRangeAsync(
+        Guid userId,
+        Guid rotaId,
+        int startDayOffset,
+        int endDayOffset,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
+        var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
+        var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
         var rota = await repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
@@ -689,7 +702,9 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingOnly);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -791,7 +806,9 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingOnly);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -822,7 +839,9 @@ public sealed class ShiftSignupService(
 
     public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: true);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingAndConfirmed);
 
         if (signups.Count == 0) return;
 

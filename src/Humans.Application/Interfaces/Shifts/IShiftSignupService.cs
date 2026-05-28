@@ -11,9 +11,14 @@ public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
     /// Creates a signup for a user on a shift. Auto-confirms for Public policy.
-    /// Pass isPrivileged=true when the controller has already verified the user is Admin/coordinator.
+    /// Use <see cref="ShiftSignupRequestFlags.Privileged"/> when the caller has
+    /// already verified the user is an admin or coordinator.
     /// </summary>
-    Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false);
+    Task<SignupResult> SignUpAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
     /// Approves a pending signup. Re-validates invariants.
@@ -56,7 +61,13 @@ public interface IShiftSignupService : IApplicationService
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
-    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false);
+    Task<SignupResult> SignUpRangeAsync(
+        Guid userId,
+        Guid rotaId,
+        int startDayOffset,
+        int endDayOffset,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
@@ -154,6 +165,14 @@ public sealed record ShiftSignupTeamProbe(
     Guid Id,
     Guid ShiftId,
     Guid TeamId);
+
+[Flags]
+public enum ShiftSignupRequestFlags
+{
+    None = 0,
+    Privileged = 1,
+    SkipConflicts = 2
+}
 
 public sealed record OrphanSignupSnapshot(
     Guid Id,

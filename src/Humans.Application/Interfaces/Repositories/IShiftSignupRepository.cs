@@ -67,13 +67,15 @@ public interface IShiftSignupRepository : IRepository
     Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads every Pending signup in a block (or both Pending and Confirmed
-    /// when <paramref name="includeConfirmed"/> is true). Includes
+    /// Loads every Pending signup in a block, or both Pending and Confirmed
+    /// when requested by <paramref name="scope"/>. Includes
     /// <c>Shift.Rota.EventSettings</c> and the shift's sibling signups (for
     /// capacity checks in range-approve). Tracking-enabled.
     /// </summary>
     Task<List<ShiftSignup>> GetBlockForMutationAsync(
-        Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default);
+        Guid signupBlockId,
+        ShiftSignupBlockMutationScope scope,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Loads the first signup in a block with <c>Shift.Rota</c>. Read-only,
@@ -270,4 +272,10 @@ public interface IShiftSignupRepository : IRepository
     /// </summary>
     Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+}
+
+public enum ShiftSignupBlockMutationScope
+{
+    PendingOnly,
+    PendingAndConfirmed
 }

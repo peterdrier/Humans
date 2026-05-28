@@ -144,7 +144,7 @@ public class ShiftsControllerNameGateTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpRangeAsync(
-            Guid.Empty, Guid.Empty, 0, 0, null, false);
+            Guid.Empty, Guid.Empty, 0, 0, null, default);
     }
 
     [HumansFact]

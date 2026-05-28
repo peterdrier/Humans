@@ -72,14 +72,16 @@ internal sealed partial class ShiftRepository
             .FirstOrDefaultAsync(d => d.Id == signupId, ct);
 
     public async Task<List<ShiftSignup>> GetBlockForMutationAsync(
-        Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default)
+        Guid signupBlockId,
+        ShiftSignupBlockMutationScope scope,
+        CancellationToken ct = default)
     {
         var query = _dbContext.ShiftSignups
             .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
             .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
             .Where(s => s.SignupBlockId == signupBlockId);
 
-        query = includeConfirmed
+        query = scope == ShiftSignupBlockMutationScope.PendingAndConfirmed
             ? query.Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
             : query.Where(s => s.Status == SignupStatus.Pending);
 
@@ -332,4 +334,3 @@ internal sealed partial class ShiftRepository
         return userIds.ToHashSet();
     }
 }
-

@@ -433,7 +433,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
+        var result = await _service.SignUpRangeAsync(
+            userId,
+            rota.Id,
+            -3,
+            -1,
+            flags: ShiftSignupRequestFlags.SkipConflicts);
 
         // Assert
         result.Success.Should().BeTrue();
@@ -477,7 +482,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, rota.Id, -4, -1, skipConflicts: true);
+        var result = await _service.SignUpRangeAsync(
+            userId,
+            rota.Id,
+            -4,
+            -1,
+            flags: ShiftSignupRequestFlags.SkipConflicts);
 
         // Assert: both warnings preserved, exactly 2 new signups (offsets -4 and -1).
         result.Success.Should().BeTrue();
@@ -538,7 +548,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1, skipConflicts: true);
+        var result = await _service.SignUpRangeAsync(
+            userId,
+            buildRota.Id,
+            -3,
+            -1,
+            flags: ShiftSignupRequestFlags.SkipConflicts);
 
         // Assert
         result.Success.Should().BeTrue();
@@ -570,7 +585,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
+        var result = await _service.SignUpRangeAsync(
+            userId,
+            rota.Id,
+            -3,
+            -1,
+            flags: ShiftSignupRequestFlags.SkipConflicts);
 
         // Assert
         result.Success.Should().BeFalse();
@@ -634,7 +654,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         // Act
-        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -4, -1, skipConflicts: true);
+        var result = await _service.SignUpRangeAsync(
+            userId,
+            buildRota.Id,
+            -4,
+            -1,
+            flags: ShiftSignupRequestFlags.SkipConflicts);
 
         // Assert: -4 and -1 added; both warning kinds present
         result.Success.Should().BeTrue();

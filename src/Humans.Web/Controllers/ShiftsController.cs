@@ -113,7 +113,10 @@ public class ShiftsController(
             return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
+        var result = await signupService.SignUpAsync(
+            user.Id,
+            shiftId,
+            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
 
         return RedirectToBrowseWithSignupResult(
             result,
@@ -196,7 +199,14 @@ public class ShiftsController(
             return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
+        var flags = ShiftSignupRequestFlags.SkipConflicts;
+        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
+        var result = await signupService.SignUpRangeAsync(
+            user.Id,
+            rotaId,
+            startDayOffset,
+            endDayOffset,
+            flags: flags);
 
         return RedirectToBrowseWithSignupResult(
             result,
