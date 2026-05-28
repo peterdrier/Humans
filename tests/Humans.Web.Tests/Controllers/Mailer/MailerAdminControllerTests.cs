@@ -382,7 +382,7 @@ public class MailerAdminControllerTests
         vm.CurrentlyInMl.Total.Should().Be(0);
         vm.NonPrimary.Total.Should().Be(0);
         vm.GroupExists.Should().BeTrue();
-        vm.Options.PageSizes.Should().Equal(50, 100, 200);
+        vm.Options.PageSizes.Should().Equal(20, 50, 100, 200);
     }
 
     [HumansFact]
