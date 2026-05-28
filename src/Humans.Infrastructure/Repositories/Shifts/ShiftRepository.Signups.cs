@@ -94,15 +94,6 @@ internal sealed partial class ShiftRepository
             .Include(s => s.Shift).ThenInclude(s => s.Rota)
             .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId, ct);
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default) =>
-        await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(d => d.Shift)
-                .ThenInclude(s => s.Rota)
-            .Where(d => d.ShiftId == shiftId)
-            .OrderBy(d => d.CreatedAt)
-            .ToListAsync(ct);
-
     public async Task<IReadOnlyList<ShiftSignup>> GetActiveByRotaAsync(
         Guid rotaId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups

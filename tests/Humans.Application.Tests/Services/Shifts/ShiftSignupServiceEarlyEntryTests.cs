@@ -52,16 +52,11 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftRepository(DbFactory, Db, Clock);
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.HasAllRequiredConsentsForTeamAsync(
-            Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(true);
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
             Substitute.For<IBurnSettingsService>(),
-            membership,
             AuditLog,
             Substitute.For<INotificationService>(),
             AdminAuthorization,

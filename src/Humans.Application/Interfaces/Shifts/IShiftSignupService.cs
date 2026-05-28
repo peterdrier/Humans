@@ -107,11 +107,6 @@ public interface IShiftSignupService : IApplicationService
     Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId);
 
     /// <summary>
-    /// Gets all signups for a shift.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId);
-
-    /// <summary>
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
     /// </summary>
     Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
@@ -141,16 +136,6 @@ public interface IShiftSignupService : IApplicationService
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
     /// </summary>
     Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Filters a coordinator-side list of signups to only those whose users are
-    /// missing required Volunteer consents (i.e., they completed sign-up via the
-    /// onboarding widget but have not finished consents yet, so the signup is
-    /// force-Pending awaiting promotion). Used by the coordinator Pending-list
-    /// "Incomplete onboarding" filter chip.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
 
     /// <summary>
     /// Returns user-ids with at least one ShiftSignup for the given event whose

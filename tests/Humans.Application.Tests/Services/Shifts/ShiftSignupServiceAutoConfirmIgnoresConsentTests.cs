@@ -1,13 +1,11 @@
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -26,7 +24,6 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// </summary>
 public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTestHarness
 {
-    private readonly IMembershipCalculator _membership;
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
@@ -38,8 +35,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     public ShiftSignupServiceAutoConfirmIgnoresConsentTests()
         : base(TestNow)
     {
-        _membership = Substitute.For<IMembershipCalculator>();
-
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = new ServiceLocatorBuilder()
@@ -66,7 +61,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             Substitute.For<IVolunteerTrackingRepository>(),
             _shiftMgmt,
             Substitute.For<IBurnSettingsService>(),
-            _membership,
             AuditLog,
             Substitute.For<INotificationService>(),
             AdminAuthorization,
@@ -80,7 +74,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     [HumansFact]
     public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
     {
-        SetUserConsents(false);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         await Db.SaveChangesAsync();
 
@@ -93,7 +86,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     [HumansFact]
     public async Task SignUp_PublicRota_UserWithConsents_ReturnsConfirmed()
     {
-        SetUserConsents(true);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         await Db.SaveChangesAsync();
 
@@ -106,7 +98,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     [HumansFact]
     public async Task SignUp_RequireApprovalRota_UserMissingConsents_StaysPending()
     {
-        SetUserConsents(false);
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         await Db.SaveChangesAsync();
 
@@ -119,7 +110,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     [HumansFact]
     public async Task SignUpRange_PublicBuildRota_UserMissingConsents_AllBlockShiftsConfirmed()
     {
-        SetUserConsents(false);
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
@@ -138,13 +128,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         Assert.All(blockSignups, s => Assert.Equal(SignupStatus.Confirmed, s.Status));
         Assert.NotNull(blockSignups[0].SignupBlockId);
         Assert.True(blockSignups.All(s => s.SignupBlockId == blockSignups[0].SignupBlockId));
-    }
-
-    private void SetUserConsents(bool hasConsents)
-    {
-        _membership.HasAllRequiredConsentsForTeamAsync(
-            Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(hasConsents);
     }
 
     private (EventSettings es, Rota rota, Shift shift) SeedShiftScenario(SignupPolicy policy)

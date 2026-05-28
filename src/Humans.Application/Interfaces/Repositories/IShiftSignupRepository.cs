@@ -84,13 +84,6 @@ public interface IShiftSignupRepository : IRepository
     Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all signups for a shift ordered by <c>CreatedAt</c>, including
-    /// <c>Shift.Rota</c>. Read-only. Caller resolves user display fields via
-    /// <c>IUserService.GetByIdsAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns Pending and Confirmed signups for every shift on the given rota,
     /// with <c>Shift</c> included for date/time resolution. Refused, Bailed,
     /// Cancelled, and NoShow signups are excluded. Used by the coordinator

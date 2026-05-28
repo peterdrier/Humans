@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -26,7 +25,6 @@ public sealed class ShiftSignupService(
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
-    IMembershipCalculator membership,
     IAuditLogService auditLogService,
     INotificationService notificationService,
     IAdminAuthorizationService adminAuthorization,
@@ -909,9 +907,6 @@ public sealed class ShiftSignupService(
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
     }
 
-    public Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId) =>
-        repo.GetByShiftAsync(shiftId);
-
     public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId)
     {
         var signups = await repo.GetNoShowHistoryAsync(userId);
@@ -1184,18 +1179,6 @@ public sealed class ShiftSignupService(
             s.ReviewedByUserId,
             s.EnrolledByUserId,
             s.SignupBlockId)).ToList();
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default)
-    {
-        if (signups.Count == 0) return signups;
-
-        var userIds = signups.Select(s => s.UserId).Distinct().ToList();
-        var withConsents = await membership.GetUsersWithAllRequiredConsentsForTeamAsync(
-            userIds, SystemTeamIds.Volunteers, ct);
-
-        return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
     }
 
     public Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(

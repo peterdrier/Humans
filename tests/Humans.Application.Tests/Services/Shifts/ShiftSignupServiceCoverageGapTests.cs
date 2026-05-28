@@ -62,17 +62,11 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             NullLogger<ShiftManagementService>.Instance);
 
         var signupRepo = new ShiftRepository(DbFactory, Db, Clock);
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.HasAllRequiredConsentsForTeamAsync(
-                Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(true);
-
         _service = new ShiftSignupService(
             signupRepo,
             Substitute.For<IVolunteerTrackingRepository>(),
             shiftMgmt,
             Substitute.For<IBurnSettingsService>(),
-            membership,
             AuditLog,
             _notificationService,
             AdminAuthorization,
