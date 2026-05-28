@@ -1736,13 +1736,8 @@ public sealed class TeamService(
     {
         var (items, totalCount) = await repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
 
-        var activeEvent = await shiftManagementService.GetActiveAsync();
-        var activeEventId = activeEvent?.Id ?? Guid.Empty;
-
-        var pendingShiftCounts = activeEventId == Guid.Empty
-            ? new Dictionary<Guid, int>()
-            : await shiftManagementService.GetPendingShiftSignupCountsByTeamAsync(
-                activeEventId, cancellationToken);
+        var pendingShiftCounts = await shiftManagementService
+            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
 
         var teamIds = items.Select(t => t.Id).ToList();
         var resourceSummaries = await TeamResourceService

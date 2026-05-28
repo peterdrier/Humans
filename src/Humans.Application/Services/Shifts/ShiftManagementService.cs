@@ -1760,12 +1760,11 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(userId);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
-        Guid eventSettingsId,
+    public async Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
         CancellationToken cancellationToken = default)
     {
-        var eventSettings = await repo.GetEventSettingsByIdAsync(eventSettingsId, cancellationToken);
-        if (eventSettings is not { IsActive: true })
+        var eventSettings = await repo.GetActiveEventSettingsAsync(cancellationToken);
+        if (eventSettings is null)
             return new Dictionary<Guid, int>();
 
         return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);

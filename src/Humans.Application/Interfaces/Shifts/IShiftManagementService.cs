@@ -243,10 +243,9 @@ public interface IShiftManagementService : IApplicationService
     Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
 
     /// <summary>
-    /// Gets the number of distinct pending shift signups per team for an event.
+    /// Gets the number of distinct pending shift signups per team for the active event.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
-        Guid eventSettingsId,
+    Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
         CancellationToken cancellationToken = default);
 
     // ---- Methods moved from IProfileService (Profile-section migration §15 Step 0) ----
