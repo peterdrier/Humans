@@ -115,10 +115,6 @@ public sealed class CachingCampService(
         Guid? userId, CampDirectoryFilter? filter = null, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampDirectoryAsync(userId, filter, cancellationToken));
 
-    public Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampPublicSummariesForYearAsync(year, cancellationToken));
-
     public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));

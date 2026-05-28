@@ -204,6 +204,12 @@ public sealed record CampInfo(
     int TimesAtNowhere,
     IReadOnlyList<CampSeasonInfo> Seasons)
 {
+    public string? WebOrSocialUrl { get; init; }
+
+    public IReadOnlyList<CampLink>? Links { get; init; }
+
+    public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
+
     /// <summary>
     /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
     /// </summary>
@@ -255,6 +261,8 @@ public sealed record CampSeasonInfo(
     int? EeGrantedCount,
     int? JoinedMemberCount)
 {
+    public string BlurbLong { get; init; } = string.Empty;
+
     public IReadOnlyList<CampSeasonMemberInfo> Members { get; init; } = [];
 
     public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];

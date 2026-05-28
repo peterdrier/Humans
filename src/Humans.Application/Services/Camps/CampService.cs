@@ -341,19 +341,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             (c.Id, s.Name, c.Slug, s.Id))).ToList();
     }
 
-    public async Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
-        int year,
-        CancellationToken cancellationToken = default)
-    {
-        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-
-        return camps
-            .Where(c => c.HasPublicSeasonForYear(year))
-            .Select(camp => CreateCampPublicSummary(camp, year))
-            .OrderBy(camp => camp.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
@@ -482,7 +469,15 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             camp.TimesAtNowhere,
             camp.Seasons
                 .Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount, specialRoleUserIds))
-                .ToList());
+                .ToList())
+        {
+            WebOrSocialUrl = camp.WebOrSocialUrl,
+            Links = camp.Links,
+            Images = camp.Images
+                .OrderBy(image => image.SortOrder)
+                .Select(image => new CampImageSummary(image.Id, $"/{image.StoragePath}", image.SortOrder))
+                .ToList()
+        };
     }
 
     private static CampSeasonInfo CreateCampSeasonInfo(
@@ -517,6 +512,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
                 : null)
         {
+            BlurbLong = season.BlurbLong,
             Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
                 .OrderBy(m => m.RequestedAt)
@@ -609,29 +605,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             camp.HistoricalNames
                 .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
                 .ToList());
-    }
-
-    private static CampPublicSummary CreateCampPublicSummary(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-
-        return new CampPublicSummary(
-            camp.Id,
-            camp.Slug,
-            season?.Name ?? camp.Slug,
-            season?.BlurbShort ?? string.Empty,
-            season?.BlurbLong ?? string.Empty,
-            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
-            (season?.Vibes ?? []).Select(vibe => vibe.ToString()).ToList(),
-            (season?.AcceptingMembers ?? YesNoMaybe.No).ToString(),
-            (season?.KidsWelcome ?? YesNoMaybe.No).ToString(),
-            season?.SoundZone?.ToString(),
-            (season?.Status ?? CampSeasonStatus.Pending).ToString(),
-            camp.TimesAtNowhere,
-            camp.IsSwissCamp,
-            camp.Links,
-            camp.WebOrSocialUrl);
     }
 
     private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)

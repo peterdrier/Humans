@@ -14,9 +14,37 @@ namespace Humans.Web.Controllers;
 public class CampApiController(ICampServiceRead campService) : ControllerBase
 {
     [HttpGet("{year:int}")]
-    public async Task<IActionResult> GetCamps(int year)
+    public async Task<IActionResult> GetCamps(int year, CancellationToken cancellationToken)
     {
-        return Ok(await campService.GetCampPublicSummariesForYearAsync(year));
+        var summaries = (await campService.GetCampsForYearAsync(year, cancellationToken))
+            .Select(camp => new
+            {
+                Camp = camp,
+                Season = camp.Seasons.FirstOrDefault(season =>
+                    season.Year == year &&
+                    season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+            })
+            .Where(row => row.Season is not null)
+            .Select(row => new CampPublicSummary(
+                row.Camp.Id,
+                row.Camp.Slug,
+                row.Season!.Name,
+                row.Season.BlurbShort,
+                row.Season.BlurbLong,
+                row.Camp.Images.FirstOrDefault()?.Url,
+                row.Season.Vibes.Select(vibe => vibe.ToString()).ToList(),
+                row.Season.AcceptingMembers.ToString(),
+                row.Season.KidsWelcome.ToString(),
+                row.Season.SoundZone?.ToString(),
+                row.Season.Status.ToString(),
+                row.Camp.TimesAtNowhere,
+                row.Camp.IsSwissCamp,
+                row.Camp.Links,
+                row.Camp.WebOrSocialUrl))
+            .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Ok(summaries);
     }
 
     [HttpGet("{year:int}/placement")]

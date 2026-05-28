@@ -70,6 +70,7 @@ internal sealed partial class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
                 .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
+            .Include(c => c.Images.OrderBy(i => i.SortOrder))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
         if (statusFilter is { Count: > 0 })

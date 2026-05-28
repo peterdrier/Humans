@@ -474,7 +474,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetCampPublicSummariesForYearAsync_ReturnsSortedProjectedSummaries()
+    public async Task GetCampsForYearAsync_ProjectsPublicApiFacts()
     {
         await SeedSettingsAsync();
 
@@ -533,19 +533,27 @@ public sealed class CampServiceTests : ServiceTestHarness
         });
         await Db.SaveChangesAsync();
 
-        var summaries = await _service.GetCampPublicSummariesForYearAsync(2026);
+        var summaries = (await _service.GetCampsForYearAsync(2026))
+            .Select(camp => new
+            {
+                Camp = camp,
+                Season = camp.Seasons.Single(season => season.Year == 2026)
+            })
+            .OrderBy(row => row.Season.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        summaries.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Zebra Camp");
-        summaries[0].BlurbShort.Should().Be("Alpha short");
-        summaries[0].Status.Should().Be(nameof(CampSeasonStatus.Active));
-        summaries[0].WebOrSocialUrl.Should().Be("https://example.com/alpha");
-        summaries[1].ImageUrl.Should().Be("/uploads/camps/zebra.jpg");
-        summaries[1].Links.Should().ContainSingle();
-        summaries[1].AcceptingMembers.Should().Be(nameof(YesNoMaybe.Maybe));
-        summaries[1].KidsWelcome.Should().Be(nameof(YesNoMaybe.Yes));
-        summaries[1].SoundZone.Should().Be(nameof(SoundZone.Red));
-        summaries[1].Vibes.Should().Equal(nameof(CampVibe.LiveMusic));
-        summaries[1].IsSwissCamp.Should().BeTrue();
+        summaries.Select(row => row.Season.Name).Should().Equal("Alpha Camp", "Zebra Camp");
+        summaries[0].Season.BlurbShort.Should().Be("Alpha short");
+        summaries[0].Season.BlurbLong.Should().Be("Alpha long");
+        summaries[0].Season.Status.Should().Be(CampSeasonStatus.Active);
+        summaries[0].Camp.WebOrSocialUrl.Should().Be("https://example.com/alpha");
+        summaries[1].Camp.Images.Should().ContainSingle(image => image.Url == "/uploads/camps/zebra.jpg");
+        summaries[1].Camp.Links.Should().ContainSingle();
+        summaries[1].Season.AcceptingMembers.Should().Be(YesNoMaybe.Maybe);
+        summaries[1].Season.KidsWelcome.Should().Be(YesNoMaybe.Yes);
+        summaries[1].Season.SoundZone.Should().Be(SoundZone.Red);
+        summaries[1].Season.Vibes.Should().Equal(CampVibe.LiveMusic);
+        summaries[1].Camp.IsSwissCamp.Should().BeTrue();
     }
 
     [HumansFact]
@@ -723,7 +731,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
+    public async Task GetCampsForYearAsync_AfterUploadImageAsync_RefreshesImageFacts()
     {
         await SeedSettingsAsync();
 
@@ -742,18 +750,18 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         await ApproveLatestSeasonAsync(camp.Id);
 
-        var beforeUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+        var beforeUpload = await _service.GetCampsForYearAsync(2026);
 
-        beforeUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().BeNull();
+        beforeUpload.Single(info => info.Id == camp.Id).Images.Should().BeEmpty();
 
         await using var imageStream = new MemoryStream([1, 2, 3, 4]);
         var uploadResult = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length);
 
         uploadResult.Succeeded.Should().BeTrue();
 
-        var afterUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+        var afterUpload = await _service.GetCampsForYearAsync(2026);
 
-        afterUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().NotBeNull();
+        afterUpload.Single(info => info.Id == camp.Id).Images.Should().NotBeEmpty();
     }
 
     // ==========================================================================
