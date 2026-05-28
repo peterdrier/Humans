@@ -524,21 +524,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift)
-            .Where(s => s.UserId == userId
-                && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
-                && s.Shift!.Rota!.EventSettingsId == eventSettingsId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
         int dayOffset, CancellationToken ct = default)
     {
