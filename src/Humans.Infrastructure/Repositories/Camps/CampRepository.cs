@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -174,16 +173,9 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> UpdateCampFieldsAsync(
+    public async Task<bool> UpdateCampAsync(
         Guid campId,
-        string contactEmail,
-        string contactPhone,
-        string? webOrSocialUrl,
-        IReadOnlyList<CampLink>? links,
-        bool isSwissCamp,
-        int timesAtNowhere,
-        bool hideHistoricalNames,
-        Instant updatedAt,
+        Action<Camp> mutate,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -193,19 +185,7 @@ internal sealed partial class CampRepository : ICampRepository
             return false;
         }
 
-        camp.ContactEmail = contactEmail;
-        camp.ContactPhone = contactPhone;
-        camp.WebOrSocialUrl = webOrSocialUrl;
-        camp.Links = links?.ToList();
-        if (camp.Links is { Count: > 0 })
-        {
-            camp.WebOrSocialUrl = null;
-        }
-
-        camp.IsSwissCamp = isSwissCamp;
-        camp.HideHistoricalNames = hideHistoricalNames;
-        camp.TimesAtNowhere = timesAtNowhere;
-        camp.UpdatedAt = updatedAt;
+        mutate(camp);
 
         await ctx.SaveChangesAsync(ct);
         return true;

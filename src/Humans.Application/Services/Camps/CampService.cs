@@ -941,16 +941,20 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         try
         {
-            var updated = await _repo.UpdateCampFieldsAsync(
+            var updatedAt = _clock.GetCurrentInstant();
+            var updated = await _repo.UpdateCampAsync(
                 input.CampId,
-                input.ContactEmail,
-                input.ContactPhone,
-                input.WebOrSocialUrl,
-                input.Links,
-                input.IsSwissCamp,
-                input.TimesAtNowhere,
-                input.HideHistoricalNames,
-                _clock.GetCurrentInstant(),
+                camp =>
+                {
+                    camp.ContactEmail = input.ContactEmail;
+                    camp.ContactPhone = input.ContactPhone;
+                    camp.Links = input.Links?.ToList();
+                    camp.WebOrSocialUrl = camp.Links is { Count: > 0 } ? null : input.WebOrSocialUrl;
+                    camp.IsSwissCamp = input.IsSwissCamp;
+                    camp.HideHistoricalNames = input.HideHistoricalNames;
+                    camp.TimesAtNowhere = input.TimesAtNowhere;
+                    camp.UpdatedAt = updatedAt;
+                },
                 cancellationToken);
 
             if (!updated)
