@@ -534,6 +534,11 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
                 : null)
         {
+            Members = season.Members
+                .Where(m => m.Status != CampMemberStatus.Removed)
+                .OrderBy(m => m.RequestedAt)
+                .Select(CreateCampSeasonMemberInfo)
+                .ToList(),
             LeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Lead, specialRoleUserIds),
             WorkshopLeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Workshop, specialRoleUserIds)
         };
@@ -1669,83 +1674,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             cancellationToken);
 
         return CampMembershipMutationResult.Success();
-    }
-
-    public async Task<CampMembershipState> GetMembershipStateForCampAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var season = await ResolveOpenMembershipSeasonAsync(campId, cancellationToken);
-        if (season is null)
-        {
-            return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
-        }
-
-        var member = await _repo.GetUserMembershipInSeasonAsync(season.Id, userId, cancellationToken);
-        if (member is null)
-        {
-            return new CampMembershipState(season.Year, season.Id, null, CampMemberStatusSummary.None);
-        }
-
-        var summary = member.Status == CampMemberStatus.Active
-            ? CampMemberStatusSummary.Active
-            : CampMemberStatusSummary.Pending;
-        return new CampMembershipState(season.Year, season.Id, member.Id, summary);
-    }
-
-    public async Task<CampMemberListData> GetCampMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default)
-    {
-        var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-
-        var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
-
-        var userIds = members.Select(m => m.UserId).Distinct().ToList();
-        var users = userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(userIds, cancellationToken);
-        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
-
-        static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
-            names.GetValueOrDefault(userId) ?? "Unknown";
-
-        var pending = members
-            .Where(m => m.Status == CampMemberStatus.Pending)
-            .Select(m => new CampMemberRow(
-                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
-                HasEarlyEntry: false,
-                Status: m.Status))
-            .ToList();
-
-        var active = members
-            .Where(m => m.Status == CampMemberStatus.Active)
-            .Select(m => new CampMemberRow(
-                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
-                HasEarlyEntry: m.HasEarlyEntry,
-                Status: m.Status))
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        return new CampMemberListData(campSeasonId, season.Year, season.EeSlotCount, pending, active);
-    }
-
-    public async Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default)
-    {
-        var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
-        return members.Select(CreateCampSeasonMemberInfo).ToList();
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var grouped = await _repo.GetMembersForYearAsync(year, cancellationToken);
-        var result = new Dictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>(grouped.Count);
-        foreach (var (seasonId, members) in grouped)
-        {
-            result[seasonId] = members.Select(CreateCampSeasonMemberInfo).ToList();
-        }
-        return result;
     }
 
     public Task<int> GetPendingMembershipCountForLeadAsync(

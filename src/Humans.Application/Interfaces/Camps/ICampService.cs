@@ -117,18 +117,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>Returns <c>NoOpenSeason</c> if no Active/Full season exists for the public year.</summary>
-    Task<CampMembershipState> GetMembershipStateForCampAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>Privileged — caller must authorize.</summary>
-    Task<CampMemberListData> GetCampMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default);
-
-    /// <summary>Raw rows (no display-name stitching, no lead union). Privileged — caller must authorize.</summary>
-    Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default);
-
     // ==========================================================================
     // Early Entry (issue nobodies-collective#490)
     // ==========================================================================
@@ -217,6 +205,18 @@ public sealed record CampInfo(
     /// </summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
+    public CampSeasonInfo? CurrentSeason => Active;
+
+    public CampMembershipState GetMembershipState(Guid userId)
+    {
+        if (CurrentSeason is not { Status: CampSeasonStatus.Active or CampSeasonStatus.Full } season)
+        {
+            return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
+        }
+
+        return season.GetMembershipState(userId);
+    }
+
     public bool IsLead(Guid userId) => Seasons.Any(season => season.IsLead(userId));
 
     public bool IsEventManager(Guid userId) => Seasons.Any(season => season.IsEventManager(userId));
@@ -251,9 +251,32 @@ public sealed record CampSeasonInfo(
     int? EeGrantedCount,
     int? JoinedMemberCount)
 {
+    public IReadOnlyList<CampSeasonMemberInfo> Members { get; init; } = [];
+
     public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];
 
     public IReadOnlyList<Guid> WorkshopLeadUserIds { get; init; } = [];
+
+    public IReadOnlyList<CampSeasonMemberInfo> ActiveMembers =>
+        Members.Where(member => member.Status == CampMemberStatus.Active).ToList();
+
+    public IReadOnlyList<CampSeasonMemberInfo> PendingMembers =>
+        Members.Where(member => member.Status == CampMemberStatus.Pending).ToList();
+
+    public CampMembershipState GetMembershipState(Guid userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member is null)
+        {
+            return new CampMembershipState(Year, Id, null, CampMemberStatusSummary.None);
+        }
+
+        var status = member.Status == CampMemberStatus.Active
+            ? CampMemberStatusSummary.Active
+            : CampMemberStatusSummary.Pending;
+
+        return new CampMembershipState(Year, Id, member.Id, status);
+    }
 
     public bool IsLead(Guid userId) => LeadUserIds.Contains(userId);
 
@@ -355,22 +378,6 @@ public enum CampMemberStatusSummary
     /// <summary>Human is an active member.</summary>
     Active
 }
-
-public record CampMemberListData(
-    Guid CampSeasonId,
-    int Year,
-    int EeSlotCount,
-    IReadOnlyList<CampMemberRow> Pending,
-    IReadOnlyList<CampMemberRow> Active);
-
-public record CampMemberRow(
-    Guid CampMemberId,
-    Guid UserId,
-    string DisplayName,
-    Instant RequestedAt,
-    Instant? ConfirmedAt,
-    bool HasEarlyEntry,
-    CampMemberStatus Status);
 
 public record CampMembershipSummary(
     Guid CampMemberId,

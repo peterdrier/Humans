@@ -1229,31 +1229,50 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetMembershipStateForCampAsync_ActiveMember_ReturnsActive()
+    public async Task GetCampsForYearAsync_ProjectsSeasonMembersAndMembershipState()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
+        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Lead Larry");
+        var camp = await _service.CreateCampAsync(
+            leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
         await ApproveLatestSeasonAsync(camp.Id);
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Alice");
-        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        var memberUserId = Guid.NewGuid();
+        await SeedUserAsync(memberUserId, "Member Mary");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, memberUserId);
+
+        var pendingCamp = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == camp.Id);
+        pendingCamp.CurrentSeason.Should().NotBeNull();
+        var pendingSeason = pendingCamp.CurrentSeason!;
+
+        pendingSeason.PendingMembers.Should()
+            .ContainSingle(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
+        pendingCamp.GetMembershipState(memberUserId).Status.Should().Be(CampMemberStatusSummary.Pending);
+
         await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
 
-        var state = await _service.GetMembershipStateForCampAsync(camp.Id, userId);
+        var activeCamp = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == camp.Id);
+        activeCamp.CurrentSeason.Should().NotBeNull();
+        var activeSeason = activeCamp.CurrentSeason!;
 
-        state.Status.Should().Be(CampMemberStatusSummary.Active);
-        state.OpenSeasonYear.Should().Be(2026);
+        activeSeason.ActiveMembers.Should().Contain(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
+        activeSeason.ActiveMembers.Should().ContainSingle(m => m.UserId == leadUserId);
+        activeCamp.GetMembershipState(memberUserId).Status.Should().Be(CampMemberStatusSummary.Active);
+        activeCamp.GetMembershipState(memberUserId).OpenSeasonYear.Should().Be(2026);
     }
 
     [HumansFact]
-    public async Task GetMembershipStateForCampAsync_NoSeason_ReturnsNoOpenSeason()
+    public async Task GetCampsForYearAsync_NoOpenSeasonMembershipState_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
 
-        var state = await _service.GetMembershipStateForCampAsync(camp.Id, Guid.NewGuid());
+        var campInfo = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == camp.Id);
 
-        state.Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
+        campInfo.GetMembershipState(Guid.NewGuid()).Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
     }
 
     [HumansFact]
@@ -1294,7 +1313,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampMembersAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
+    public async Task GetCampsForYearAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
     {
         // Issue nobodies-collective/Humans#753: the IsLead union into the
         // active-members list was removed. Active members come only from real
@@ -1309,20 +1328,21 @@ public sealed class CampServiceTests : ServiceTestHarness
             leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
             null, null, false, 1, MakeSeasonData(), null, 2026);
         await ApproveLatestSeasonAsync(camp.Id);
-        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
 
         var memberUserId = Guid.NewGuid();
         await SeedUserAsync(memberUserId, "Member Mary");
         var req = await _service.RequestCampMembershipAsync(camp.Id, memberUserId);
         await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid());
 
-        var members = await _service.GetCampMembersAsync(season.Id);
+        var projectedCamp = (await _service.GetCampsForYearAsync(2026)).Single(c => c.Id == camp.Id);
+        projectedCamp.CurrentSeason.Should().NotBeNull();
+        var members = projectedCamp.CurrentSeason!.ActiveMembers;
 
         // Two real Active members: the creator-lead (real row) + the approved member.
-        members.Active.Should().HaveCount(2);
-        members.Active.Should().Contain(r => r.UserId == memberUserId && r.CampMemberId == req.CampMemberId);
-        var creatorRow = members.Active.Should().ContainSingle(r => r.UserId == leadUserId).Subject;
-        creatorRow.CampMemberId.Should().NotBe(Guid.Empty);
+        members.Should().HaveCount(2);
+        members.Should().Contain(r => r.UserId == memberUserId && r.Id == req.CampMemberId);
+        var creatorRow = members.Should().ContainSingle(r => r.UserId == leadUserId).Subject;
+        creatorRow.Id.Should().NotBe(Guid.Empty);
     }
 
     [HumansFact]

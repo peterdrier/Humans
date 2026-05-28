@@ -176,22 +176,6 @@ public sealed class CachingCampService(
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
-    public Task<CampMembershipState> GetMembershipStateForCampAsync(
-        Guid campId, Guid userId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetMembershipStateForCampAsync(campId, userId, cancellationToken));
-
-    public Task<CampMemberListData> GetCampMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMembersAsync(campSeasonId, cancellationToken));
-
-    public Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetSeasonMembersAsync(campSeasonId, cancellationToken));
-
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampMembersByYearAsync(year, cancellationToken));
-
     public Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampMembershipsForUserAsync(userId, cancellationToken));

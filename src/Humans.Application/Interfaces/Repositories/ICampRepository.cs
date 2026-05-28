@@ -389,24 +389,10 @@ public partial interface ICampRepository : IRepository
     Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the caller's active-or-pending membership in the given season,
-    /// read-only. Null if none.
-    /// </summary>
-    Task<CampMember?> GetUserMembershipInSeasonAsync(
-        Guid campSeasonId, Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns active + pending members for a season with FK-only user ids.
-    /// Read-only. Ordered by <c>RequestedAt</c>.
-    /// </summary>
-    Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Year-scoped bulk variant of <see cref="GetSeasonMembersAsync"/>. Returns
-    /// every non-Removed <c>CampMember</c> across every <c>CampSeason</c> of
-    /// <paramref name="year"/>, grouped by <c>CampSeasonId</c>. Seasons with no
-    /// members are absent from the dictionary. One SQL round-trip. Read-only.
+    /// Returns every non-Removed <c>CampMember</c> across every
+    /// <c>CampSeason</c> of <paramref name="year"/>, grouped by
+    /// <c>CampSeasonId</c>. Seasons with no members are absent from the
+    /// dictionary. One SQL round-trip. Read-only.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampMember>>> GetMembersForYearAsync(
         int year, CancellationToken ct = default);

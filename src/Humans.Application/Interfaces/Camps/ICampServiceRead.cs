@@ -25,8 +25,6 @@ public interface ICampServiceRead
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
     Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
-        int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
     Task<int> GetPendingMembershipCountForLeadAsync(

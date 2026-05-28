@@ -98,17 +98,21 @@ public class CampController(
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
+        var camp = await GetCampBySlugAsync(slug, ct);
+        if (camp is null)
+            return NotFound();
+
         var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: ct);
         if (campDetail is null)
             return NotFound();
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
-        var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
+        var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, camp, campDetail, currentUser, isCampAdmin, ct);
         return View(vm);
     }
 
@@ -116,6 +120,10 @@ public class CampController(
     [HttpGet("{slug}/Season/{year:int}")]
     public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken ct)
     {
+        var camp = await GetCampBySlugAsync(slug, ct);
+        if (camp is null)
+            return NotFound();
+
         var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
             slug,
             preferredYear: year,
@@ -126,22 +134,22 @@ public class CampController(
 
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, ct);
-        var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
+        var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
-        await PopulateDetailCardsAsync(vm, campDetail, currentUser, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, camp, campDetail, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
 
-    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, UserInfo? currentUser)
+    private static CampMembershipStateViewModel ResolveCurrentUserMembershipState(CampInfo camp, UserInfo? currentUser)
     {
         if (currentUser is null)
         {
             return new CampMembershipStateViewModel { Status = CampMemberStatusSummaryView.NoOpenSeason };
         }
 
-        var state = await _campService.GetMembershipStateForCampAsync(campId, currentUser.Id);
+        var state = camp.GetMembershipState(currentUser.Id);
         var status = state.Status switch
         {
             CampMemberStatusSummary.Active => CampMemberStatusSummaryView.Active,
@@ -364,31 +372,30 @@ public class CampController(
         }
 
         var viewModel = MapToEditViewModel(editData);
-        await PopulateEditMembersAsync(viewModel);
+        var editSeason = camp.Seasons.FirstOrDefault(s => s.Id == viewModel.SeasonId);
+        PopulateEditMembers(viewModel, editSeason);
 
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         viewModel.RolesPanel = openSeason is null
             ? null
-            : await BuildRolesPanelAsync(camp.Slug, openSeason.Id, canManage: true, ct);
+            : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
 
         return View(viewModel);
     }
 
     private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(
-        string campSlug, Guid campSeasonId, bool canManage, CancellationToken ct)
+        string campSlug, CampSeasonInfo season, bool canManage, CancellationToken ct)
     {
-        var panelData = await campRoleService.BuildPanelAsync(campSeasonId, ct);
-        var members = await _campService.GetSeasonMembersAsync(campSeasonId, ct);
-        var activeMemberUserIds = members
-            .Where(m => m.Status == CampMemberStatus.Active)
+        var panelData = await campRoleService.BuildPanelAsync(season.Id, ct);
+        var activeMemberRows = season.ActiveMembers;
+        var activeMemberUserIds = activeMemberRows
             .Select(m => m.UserId)
             .ToList();
         IReadOnlyDictionary<Guid, UserInfo> users = activeMemberUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await _userService.GetUserInfosAsync(activeMemberUserIds, ct);
 
-        var activeMembers = members
-            .Where(m => m.Status == CampMemberStatus.Active)
+        var activeMembers = activeMemberRows
             .Select(m => new CampMemberPickerOption(
                 m.Id,
                 m.UserId,
@@ -414,7 +421,7 @@ public class CampController(
 
         return new CampRolesPanelViewModel
         {
-            CampSeasonId = campSeasonId,
+            CampSeasonId = season.Id,
             CampSlug = campSlug,
             CanManage = canManage,
             ActiveMembers = activeMembers,
@@ -422,39 +429,33 @@ public class CampController(
         };
     }
 
-    private async Task PopulateEditMembersAsync(CampEditViewModel viewModel)
+    private static void PopulateEditMembers(CampEditViewModel viewModel, CampSeasonInfo? season)
     {
-        if (viewModel.SeasonId == Guid.Empty)
+        if (viewModel.SeasonId == Guid.Empty || season is null)
         {
             return;
         }
 
-        var members = await _campService.GetCampMembersAsync(viewModel.SeasonId);
-        viewModel.PendingMembers = members.Pending
-            .Select(m => new CampMemberRowViewModel
-            {
-                CampMemberId = m.CampMemberId,
-                UserId = m.UserId,
-                RequestedAt = m.RequestedAt,
-                ConfirmedAt = m.ConfirmedAt,
-                HasEarlyEntry = m.HasEarlyEntry,
-                Status = m.Status
-            })
+        viewModel.PendingMembers = season.PendingMembers
+            .Select(MapCampMemberRow)
             .ToList();
-        viewModel.ActiveMembers = members.Active
-            .Select(m => new CampMemberRowViewModel
-            {
-                CampMemberId = m.CampMemberId,
-                UserId = m.UserId,
-                RequestedAt = m.RequestedAt,
-                ConfirmedAt = m.ConfirmedAt,
-                HasEarlyEntry = m.HasEarlyEntry,
-                Status = m.Status
-            })
+        viewModel.ActiveMembers = season.ActiveMembers
+            .Select(MapCampMemberRow)
             .ToList();
-        viewModel.EeSlotCount = members.EeSlotCount;
+        viewModel.EeSlotCount = season.EeSlotCount;
         viewModel.EeGrantedCount = viewModel.ActiveMembers.Count(m => m.HasEarlyEntry);
     }
+
+    private static CampMemberRowViewModel MapCampMemberRow(CampSeasonMemberInfo member) =>
+        new()
+        {
+            CampMemberId = member.Id,
+            UserId = member.UserId,
+            RequestedAt = member.RequestedAt,
+            ConfirmedAt = member.ConfirmedAt,
+            HasEarlyEntry = member.HasEarlyEntry,
+            Status = member.Status
+        };
 
     [Authorize]
     [HttpPost("{slug}/Edit")]
@@ -471,7 +472,7 @@ public class CampController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateEditReadOnlyFieldsAsync(model);
+            await PopulateEditReadOnlyFieldsAsync(model, camp);
             return View(model);
         }
 
@@ -491,7 +492,7 @@ public class CampController(
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "Camp update failed.");
-            await PopulateEditReadOnlyFieldsAsync(model);
+            await PopulateEditReadOnlyFieldsAsync(model, camp);
             return View(model);
         }
 
@@ -1078,7 +1079,7 @@ public class CampController(
             ElectricalGrid: model.ElectricalGrid);
     }
 
-    private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model)
+    private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp)
     {
         var editData = await _campService.GetCampEditDataAsync(model.CampId, model.Year);
         if (editData is null)
@@ -1095,7 +1096,8 @@ public class CampController(
                 SortOrder = image.SortOrder
             })
             .ToList();
-        await PopulateEditMembersAsync(model);
+        var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
+        PopulateEditMembers(model, season);
     }
 
     private static CampEditViewModel MapToEditViewModel(CampEditData editData) =>
@@ -1197,7 +1199,7 @@ public class CampController(
     /// viewers or seasonless camps.
     /// </summary>
     private async Task PopulateDetailCardsAsync(
-        CampDetailViewModel vm, CampDetailData campDetail, UserInfo? currentUser, bool isCampAdmin,
+        CampDetailViewModel vm, CampInfo camp, CampDetailData campDetail, UserInfo? currentUser, bool isCampAdmin,
         CancellationToken ct)
     {
         if (currentUser is null || campDetail.CurrentSeason is null)
@@ -1206,27 +1208,25 @@ public class CampController(
         }
 
         // Read-only roles panel (same source as /Edit/Members).
+        var season = camp.Seasons.FirstOrDefault(s => s.Id == campDetail.CurrentSeason.Id);
+        if (season is null)
+        {
+            return;
+        }
+
         vm.RolesPanel = await BuildRolesPanelAsync(
-            campDetail.Slug, campDetail.CurrentSeason.Id, canManage: false, ct);
+            campDetail.Slug, season, canManage: false, ct);
 
         // Full-camp access is decided by membership in the *displayed* season, not the
         // open-season membership VM — that VM is NoOpenSeason for Pending/closed seasons,
         // which would wrongly hide the roster from real members (e.g. the camp creator).
-        var members = await _campService.GetCampMembersAsync(campDetail.CurrentSeason.Id);
-        vm.CanSeeFullCamp = isCampAdmin || members.Active.Any(m => m.UserId == currentUser.Id);
+        var activeMembers = season.ActiveMembers;
+        vm.CanSeeFullCamp = isCampAdmin || activeMembers.Any(m => m.UserId == currentUser.Id);
 
         if (vm.CanSeeFullCamp)
         {
-            vm.Roster = members.Active
-                .Select(m => new CampMemberRowViewModel
-                {
-                    CampMemberId = m.CampMemberId,
-                    UserId = m.UserId,
-                    RequestedAt = m.RequestedAt,
-                    ConfirmedAt = m.ConfirmedAt,
-                    HasEarlyEntry = m.HasEarlyEntry,
-                    Status = m.Status,
-                })
+            vm.Roster = activeMembers
+                .Select(MapCampMemberRow)
                 .ToList();
         }
     }
