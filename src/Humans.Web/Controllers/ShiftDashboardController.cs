@@ -117,7 +117,8 @@ public class ShiftDashboardController(
             return currentUserNotFound;
         }
 
-        var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+        var result = await signupService.CreateSignupAsync(
+            userId, shiftId, ShiftSignupCreationMode.Voluntell, currentUser.Id);
         if (result.Success)
         {
             SetSuccess("Volunteer assigned to shift.");

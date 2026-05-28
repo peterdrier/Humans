@@ -37,7 +37,22 @@ public sealed class ShiftSignupService(
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
-    public async Task<SignupResult> SignUpAsync(
+    public Task<SignupResult> CreateSignupAsync(
+        Guid userId,
+        Guid shiftId,
+        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None) =>
+        mode switch
+        {
+            ShiftSignupCreationMode.Self => SignUpAsync(userId, shiftId, actorUserId, flags),
+            ShiftSignupCreationMode.Voluntell when actorUserId is { } enrollerUserId =>
+                VoluntellAsync(userId, shiftId, enrollerUserId),
+            ShiftSignupCreationMode.Voluntell => Task.FromResult(SignupResult.Fail("Voluntell requires an actor user.")),
+            _ => Task.FromResult(SignupResult.Fail($"Unsupported signup creation mode '{mode}'."))
+        };
+
+    internal async Task<SignupResult> SignUpAsync(
         Guid userId,
         Guid shiftId,
         Guid? actorUserId = null,
@@ -285,7 +300,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
+    internal async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
         var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
         if (existingSignup)
@@ -355,7 +370,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
+    internal async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
         var rota = await repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
@@ -536,7 +551,25 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public async Task<SignupResult> SignUpRangeAsync(
+    public Task<SignupResult> CreateSignupRangeAsync(
+        Guid userId,
+        Guid rotaId,
+        int startDayOffset,
+        int endDayOffset,
+        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None) =>
+        mode switch
+        {
+            ShiftSignupCreationMode.Self => SignUpRangeAsync(
+                userId, rotaId, startDayOffset, endDayOffset, actorUserId, flags),
+            ShiftSignupCreationMode.Voluntell when actorUserId is { } enrollerUserId =>
+                VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, enrollerUserId),
+            ShiftSignupCreationMode.Voluntell => Task.FromResult(SignupResult.Fail("Voluntell requires an actor user.")),
+            _ => Task.FromResult(SignupResult.Fail($"Unsupported signup creation mode '{mode}'."))
+        };
+
+    internal async Task<SignupResult> SignUpRangeAsync(
         Guid userId,
         Guid rotaId,
         int startDayOffset,

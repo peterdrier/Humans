@@ -14,9 +14,10 @@ public interface IShiftSignupService : IApplicationService
     /// Use <see cref="ShiftSignupRequestFlags.Privileged"/> when the caller has
     /// already verified the user is an admin or coordinator.
     /// </summary>
-    Task<SignupResult> SignUpAsync(
+    Task<SignupResult> CreateSignupAsync(
         Guid userId,
         Guid shiftId,
+        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
@@ -30,26 +31,15 @@ public interface IShiftSignupService : IApplicationService
         string? reason = null);
 
     /// <summary>
-    /// Creates a confirmed signup on behalf of a volunteer (voluntell).
-    /// </summary>
-    Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId);
-
-    /// <summary>
-    /// Creates confirmed signups across a date range on behalf of a volunteer (batch voluntell).
-    /// Skips shifts where the user already has an active signup.
-    /// All signups share a SignupBlockId for grouped bail.
-    /// </summary>
-    Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
-
-    /// <summary>
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
-    Task<SignupResult> SignUpRangeAsync(
+    Task<SignupResult> CreateSignupRangeAsync(
         Guid userId,
         Guid rotaId,
         int startDayOffset,
         int endDayOffset,
+        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
@@ -135,6 +125,12 @@ public enum ShiftSignupRequestFlags
     None = 0,
     Privileged = 1,
     SkipConflicts = 2
+}
+
+public enum ShiftSignupCreationMode
+{
+    Self,
+    Voluntell
 }
 
 public enum ShiftSignupAction

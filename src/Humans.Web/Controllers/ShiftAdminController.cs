@@ -699,7 +699,8 @@ public class ShiftAdminController(
         var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
 
-        var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+        var result = await signupService.CreateSignupAsync(
+            userId, shiftId, ShiftSignupCreationMode.Voluntell, currentUser.Id);
         if (result.Success)
         {
             SetSuccess("Volunteer assigned to shift.");
@@ -722,7 +723,8 @@ public class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        var result = await signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
+        var result = await signupService.CreateSignupRangeAsync(
+            userId, rotaId, startDayOffset, endDayOffset, ShiftSignupCreationMode.Voluntell, currentUser.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning is not null

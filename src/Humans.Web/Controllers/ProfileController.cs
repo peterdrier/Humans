@@ -1659,9 +1659,10 @@ public class ProfileController(
                 case "signup" when model.ShiftId is { } sid:
                     {
                         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                        var result = await shiftSignupService.SignUpAsync(
+                        var result = await shiftSignupService.CreateSignupAsync(
                             user.Id,
                             sid,
+                            ShiftSignupCreationMode.Self,
                             actorUserId: null,
                             flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
                         if (!result.Success)
@@ -1679,11 +1680,12 @@ public class ProfileController(
                         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
                         var flags = ShiftSignupRequestFlags.SkipConflicts;
                         if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-                        var result = await shiftSignupService.SignUpRangeAsync(
+                        var result = await shiftSignupService.CreateSignupRangeAsync(
                             user.Id,
                             rid,
                             sd,
                             ed,
+                            ShiftSignupCreationMode.Self,
                             actorUserId: null,
                             flags: flags);
                         if (!result.Success)

@@ -111,7 +111,7 @@ public class OnboardingWidgetController(
     public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
     {
         var userId = CurrentUserId();
-        var result = await signupService.SignUpAsync(userId, shiftId, userId);
+        var result = await signupService.CreateSignupAsync(userId, shiftId, actorUserId: userId);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up.");
@@ -125,7 +125,7 @@ public class OnboardingWidgetController(
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
     {
         // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
-        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
+        var result = await signupService.CreateSignupRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up for date range.");
