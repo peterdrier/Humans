@@ -40,14 +40,6 @@ public partial interface ICampRepository
     Task<IReadOnlyList<CampSpecialRole>> GetExistingSpecialRolesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Counts pending camp-membership requests on camps where the user holds
-    /// the given special role on any open (Active/Full) season. Used by the
-    /// camp-lead-join-requests badge.
-    /// </summary>
-    Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the distinct set of user ids that currently hold the given
     /// special role on any season. Used by <c>SystemTeamSyncJob</c> to compute
     /// Barrio Leads team membership.

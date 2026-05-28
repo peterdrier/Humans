@@ -371,14 +371,6 @@ public partial interface ICampRepository : IRepository
     Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all active-or-pending memberships for the user, with their
-    /// <c>CampSeason</c> and the season's parent <c>Camp</c> loaded so the
-    /// caller can build display summaries. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns user ids of humans with a pending request for the given season.
     /// Used to notify requesters when a season is rejected or withdrawn. Does
     /// not mutate the membership rows — pending rows stay as-is so humans can

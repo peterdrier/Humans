@@ -53,26 +53,6 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountPendingMembershipsForSpecialRoleHolderAsync(
-        Guid userId, CampSpecialRole specialRole, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Camps where the user holds the given special role on any active season.
-        var leadCampIds = ctx.CampRoleAssignments.AsNoTracking()
-            .Where(a => a.CampMember.UserId == userId
-                && a.Definition.SpecialRole == specialRole
-                && a.Definition.DeactivatedAt == null)
-            .Select(a => a.CampSeason.CampId)
-            .Distinct();
-
-        return await ctx.CampMembers.AsNoTracking()
-            .Where(m => m.Status == CampMemberStatus.Pending
-                && leadCampIds.Contains(m.CampSeason.CampId)
-                && (m.CampSeason.Status == CampSeasonStatus.Active
-                    || m.CampSeason.Status == CampSeasonStatus.Full))
-            .CountAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetSpecialRoleHolderUserIdsAsync(
         CampSpecialRole specialRole, CancellationToken ct = default)
     {

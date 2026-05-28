@@ -1653,31 +1653,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return CampMembershipMutationResult.Success();
     }
 
-    public Task<int> GetPendingMembershipCountForLeadAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        // Source of truth: pending-membership count over camps where the user
-        // holds the Camp Lead special role.
-        _repo.CountPendingMembershipsForSpecialRoleHolderAsync(
-            userId, CampSpecialRole.Lead, cancellationToken);
-
-    public async Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var members = await _repo.GetUserMembershipsAsync(userId, cancellationToken);
-        return members
-            .Select(m => new CampMembershipSummary(
-                m.Id,
-                m.CampSeason.CampId,
-                m.CampSeason.Camp.Slug,
-                m.CampSeason.Name,
-                m.CampSeasonId,
-                m.CampSeason.Year,
-                m.Status,
-                m.RequestedAt,
-                m.ConfirmedAt))
-            .ToList();
-    }
-
     // --- Account-merge fold ---
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

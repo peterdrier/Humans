@@ -379,17 +379,6 @@ public enum CampMemberStatusSummary
     Active
 }
 
-public record CampMembershipSummary(
-    Guid CampMemberId,
-    Guid CampId,
-    string CampSlug,
-    string CampName,
-    Guid CampSeasonId,
-    int Year,
-    CampMemberStatus Status,
-    Instant RequestedAt,
-    Instant? ConfirmedAt);
-
 public record CampSeasonData(
     string BlurbLong,
     string BlurbShort,

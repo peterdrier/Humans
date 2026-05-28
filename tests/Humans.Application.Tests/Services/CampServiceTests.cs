@@ -1351,43 +1351,6 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetPendingMembershipCountForLeadAsync_CountsPendingOnActiveSeasonsForLeadsCamps()
-    {
-        await SeedSettingsAsync();
-        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
-        var leadUserId = Guid.NewGuid();
-        await SeedUserAsync(leadUserId, "Lead Larry");
-        var camp = await _service.CreateCampAsync(
-            leadUserId, "Lead Camp", "lc@camp.com", "+34600000020",
-            null, null, false, 1, MakeSeasonData(), null, 2026);
-        await ApproveLatestSeasonAsync(camp.Id);
-
-        // Two humans request; count should be 2.
-        var alice = Guid.NewGuid();
-        var bob = Guid.NewGuid();
-        await SeedUserAsync(alice, "Alice");
-        await SeedUserAsync(bob, "Bob");
-        await _service.RequestCampMembershipAsync(camp.Id, alice);
-        await _service.RequestCampMembershipAsync(camp.Id, bob);
-
-        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(2);
-
-        // A non-lead sees 0.
-        (await _service.GetPendingMembershipCountForLeadAsync(Guid.NewGuid())).Should().Be(0);
-
-        // Approve one; count drops to 1.
-        var aliceReq = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.UserId == alice);
-        await _service.ApproveCampMemberAsync(camp.Id, aliceReq.Id, leadUserId);
-        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(1);
-
-        // Withdraw the season; count drops to 0 (pending rows remain, but meter
-        // filters to Active/Full seasons only).
-        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
-        await _service.WithdrawSeasonAsync(season.Id);
-        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task GetCampsForYearAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
     {
         // Issue nobodies-collective/Humans#753: the IsLead union into the
@@ -1418,24 +1381,6 @@ public sealed class CampServiceTests : ServiceTestHarness
         members.Should().Contain(r => r.UserId == memberUserId && r.Id == req.CampMemberId);
         var creatorRow = members.Should().ContainSingle(r => r.UserId == leadUserId).Subject;
         creatorRow.Id.Should().NotBe(Guid.Empty);
-    }
-
-    [HumansFact]
-    public async Task GetCampMembershipsForUserAsync_ActiveMembership_IsReturned()
-    {
-        await SeedSettingsAsync();
-        var camp = await CreateTestCamp();
-        await ApproveLatestSeasonAsync(camp.Id);
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Alice");
-        var req = await _service.RequestCampMembershipAsync(camp.Id, userId);
-        await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid());
-
-        var memberships = await _service.GetCampMembershipsForUserAsync(userId);
-
-        memberships.Should().HaveCount(1);
-        memberships[0].Status.Should().Be(CampMemberStatus.Active);
-        memberships[0].Year.Should().Be(2026);
     }
 
     // ==========================================================================

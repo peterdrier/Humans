@@ -726,21 +726,6 @@ internal sealed partial class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampMembers
-            .AsNoTracking()
-            .Include(m => m.CampSeason)
-                .ThenInclude(s => s.Camp)
-            // Display ordering (year desc, then camp name) is applied by the
-            // consumer (MyCampsViewComponent) per
-            // memory/architecture/display-sort-in-controllers.md.
-            .Where(m => m.UserId == userId && m.Status != CampMemberStatus.Removed)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {

@@ -18,7 +18,28 @@ public class MyCampsViewComponent(ICampServiceRead campService, ILogger<MyCampsV
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var memberships = await campService.GetCampMembershipsForUserAsync(userId);
+            var settings = await campService.GetSettingsAsync();
+            var years = settings.OpenSeasons
+                .Append(settings.PublicYear)
+                .Distinct()
+                .OrderByDescending(year => year)
+                .ToList();
+
+            var memberships = new List<(int Year, string CampSlug, string CampName, CampMemberStatus Status)>();
+            foreach (var year in years)
+            {
+                var camps = await campService.GetCampsForYearAsync(year);
+                memberships.AddRange(camps
+                    .SelectMany(camp => camp.Seasons.Where(season => season.Year == year)
+                        .SelectMany(season => season.Members
+                            .Where(member => member.UserId == userId)
+                            .Select(member => (
+                                year,
+                                camp.Slug,
+                                season.Name,
+                                member.Status)))));
+            }
+
             if (memberships.Count == 0)
                 return Content(string.Empty);
 
