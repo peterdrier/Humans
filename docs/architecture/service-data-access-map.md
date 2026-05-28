@@ -1423,8 +1423,10 @@ cache.
 ### Audience definitions (`IMailerAudience`)
 
 Audience-membership computation classes under `Mailer/Audiences/`:
-`HasShiftAudience`, `HasTicketAudience`, `MarketingAudience`,
-`MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerAudienceBase`.
+`HasShiftAudience`, `HasShiftSetupAudience`, `HasShiftEventAudience`,
+`HasShiftStrikeAudience`, `HasTicketAudience`, `MarketingAudience`,
+`MarketingNoTicketAudience`, `TicketNoShiftsAudience`, `MailerAudienceBase`,
+`HasShiftInPeriodAudienceBase`.
 No repository; compute over read-split / section service interfaces
 (`ITicketServiceRead`, `IShiftSignupService`, `IShiftManagementService`,
 etc.). No direct DB access, no cache.

@@ -66,7 +66,7 @@ All routes are `AdminOnly`.
 - **Profiles**: reads `IUserEmailService.FindVerifiedEmailWithUserAsync`, `FindAnyUserIdByEmailAsync`, `DeleteEmailAsync`, `GetPrimaryEmailsByUserIdsAsync`; reads/writes `ICommunicationPreferenceService.GetAsync` / `UpdatePreferenceAsync` / `GetCountByCategoryAndStateAsync`.
 - **Users**: writes via `IAccountProvisioningService.FindOrCreateUserByEmailAsync`; reads `IUserService.GetByIdAsync` (tombstone follow), `IUserService.GetCountByContactSourceAsync`.
 - **Tickets**: `ITicketServiceRead.GetTicketOrdersAsync` — audience-side ticket-holder enumeration for `TicketNoShiftsAudience`, `HasTicketAudience`, and `MarketingNoTicketAudience` is derived from the current-event `TicketOrderInfo` projection.
-- **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`).
+- **Shifts**: `IShiftView.GetUsersAsync` + `IUserService.GetAllUserInfosAsync` — cached per-user shift signups, used by `TicketNoShiftsAudience` and `HasShiftAudience` (encode Pending/Confirmed-on-active-event via `ShiftUserView.HasShift`). The per-period `HasShiftSetupAudience` / `HasShiftEventAudience` / `HasShiftStrikeAudience` add the shift's `DayOffset`-derived period via `ShiftUserView.HasShiftInPeriod` (Setup = Build).
 - **Users**: `IUserService.GetAllUserInfosAsync` — read by `MailerAudienceBase` to drop explicit Marketing opt-outs from *every* audience, and by `MarketingAudience` / `MarketingNoTicketAudience` to enumerate explicit opt-ins (`UserInfo.MarketingOptedOut == false`).
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
 

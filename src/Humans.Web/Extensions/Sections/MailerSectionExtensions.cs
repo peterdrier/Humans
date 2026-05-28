@@ -50,6 +50,9 @@ internal static class MailerSectionExtensions
         services.AddScoped<IMailerAudienceSyncService, MailerAudienceSyncService>();
         services.AddScoped<IMailerAudience, TicketNoShiftsAudience>();
         services.AddScoped<IMailerAudience, HasShiftAudience>();
+        services.AddScoped<IMailerAudience, HasShiftSetupAudience>();
+        services.AddScoped<IMailerAudience, HasShiftEventAudience>();
+        services.AddScoped<IMailerAudience, HasShiftStrikeAudience>();
         services.AddScoped<IMailerAudience, HasTicketAudience>();
         services.AddScoped<IMailerAudience, MarketingAudience>();
         services.AddScoped<IMailerAudience, MarketingNoTicketAudience>();
