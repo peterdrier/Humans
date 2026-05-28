@@ -17,7 +17,7 @@ namespace Humans.Web.Controllers;
 [Route("CityPlanning")]
 public class CityPlanningController(
     ICityPlanningService cityPlanningService,
-    ICampService campService,
+    ICampServiceRead campService,
     IContainerService containerService,
     IUserServiceRead userService,
     ILogger<CityPlanningController> logger) : HumansControllerBase(userService)

@@ -18,7 +18,7 @@ namespace Humans.Application.Tests.Services;
 
 public sealed class CityPlanningServiceTests : ServiceTestHarness
 {
-    private readonly ICampService _campService;
+    private readonly ICampServiceRead _campService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly CityPlanningService _sut;
@@ -27,7 +27,7 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
     public CityPlanningServiceTests()
         : base(Instant.FromUtc(2026, 3, 15, 12, 0, 0))
     {
-        _campService = Substitute.For<ICampService>();
+        _campService = Substitute.For<ICampServiceRead>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         var repo = new CityPlanningRepository(DbFactory);

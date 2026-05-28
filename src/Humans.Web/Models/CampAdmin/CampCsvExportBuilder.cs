@@ -8,7 +8,7 @@ namespace Humans.Web.Models.CampAdmin;
 public sealed record CampCsvExport(byte[] Content, string ContentType, string FileName);
 
 public sealed class CampCsvExportBuilder(
-    ICampServiceRead campService, ICampRoleService campRoleService, IUserServiceRead userService)
+    ICampServiceRead campService, IUserServiceRead userService)
 {
     public async Task<CampCsvExport> BuildAsync()
     {
@@ -16,17 +16,8 @@ public sealed class CampCsvExportBuilder(
         var year = settings.PublicYear;
         var camps = await campService.GetCampsForYearAsync(year);
 
-        // Leads come from the role system (Camp Lead special role on the season).
-        var leadsBySeason = new Dictionary<Guid, IReadOnlyList<Guid>>();
-        foreach (var camp in camps)
-        {
-            var season = camp.Seasons.FirstOrDefault();
-            if (season is null) continue;
-            leadsBySeason[season.Id] = await campRoleService.GetSeasonLeadUserIdsAsync(season.Id);
-        }
-
-        var leadUserIds = leadsBySeason.Values
-            .SelectMany(ids => ids)
+        var leadUserIds = camps
+            .SelectMany(camp => camp.Seasons.FirstOrDefault()?.LeadUserIds ?? Array.Empty<Guid>())
             .Distinct()
             .ToList();
         var leadUsers = await userService.GetUserInfosAsync(leadUserIds);
@@ -44,8 +35,7 @@ public sealed class CampCsvExportBuilder(
             var season = camp.Seasons.FirstOrDefault();
             if (season is null) continue;
 
-            var seasonLeadIds = leadsBySeason.TryGetValue(season.Id, out var ids) ? ids : [];
-            var leads = string.Join("; ", seasonLeadIds
+            var leads = string.Join("; ", season.LeadUserIds
                 .Select(id =>
                 {
                     var user = leadUsers.TryGetValue(id, out var u) ? u : null;

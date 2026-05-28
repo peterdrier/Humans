@@ -40,6 +40,13 @@ public interface ICampInfoInvalidator : IInvalidator
     Task InvalidateCampAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
+    /// Refresh-or-evict the cached camp entry that owns <paramref name="campSeasonId"/>.
+    /// Use when the mutating path is season-scoped and does not already have the
+    /// parent camp id.
+    /// </summary>
+    Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
+
+    /// <summary>
     /// Drop the cached singleton <c>CampSettingsInfo</c> slot; the next read
     /// rebuilds from <c>ICampRepository</c>.
     /// </summary>

@@ -12,10 +12,10 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Admin / CampAdmin: allow any camp (both operations).
 /// - <see cref="CampOperationRequirement.Manage"/>: Camp lead for the resource camp.
 /// - <see cref="CampOperationRequirement.SubmitEvent"/>: Lead OR Workshop role holder
-///   for the resource camp (resolved via <see cref="ICampService.IsUserCampEventManagerAsync"/>).
+///   for the resource camp (resolved via <see cref="ICampServiceRead.IsUserCampEventManagerAsync"/>).
 /// - Everyone else: deny.
 /// </summary>
-public class CampAuthorizationHandler(ICampService campService) : AuthorizationHandler<CampOperationRequirement>
+public class CampAuthorizationHandler(ICampServiceRead campService) : AuthorizationHandler<CampOperationRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
     {

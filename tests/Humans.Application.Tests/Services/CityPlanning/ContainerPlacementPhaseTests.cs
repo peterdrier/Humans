@@ -14,13 +14,13 @@ namespace Humans.Application.Tests.Services.CityPlanning;
 
 public sealed class ContainerPlacementPhaseTests : ServiceTestHarness
 {
-    private readonly ICampService _campService;
+    private readonly ICampServiceRead _campService;
     private readonly CityPlanningService _sut;
 
     public ContainerPlacementPhaseTests()
         : base(Instant.FromUtc(2026, 4, 26, 10, 0))
     {
-        _campService = Substitute.For<ICampService>();
+        _campService = Substitute.For<ICampServiceRead>();
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(PublicYear: 2026, OpenSeasons: [], EeStartDate: null));
         var repo = new CityPlanningRepository(DbFactory);

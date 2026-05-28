@@ -153,6 +153,19 @@ public sealed class CampServiceTests : ServiceTestHarness
             .Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task GetCampsForYearAsync_ProjectsSpecialRoleFacts()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+
+        var info = (await _service.GetCampsForYearAsync(2026))
+            .Single(c => c.Id == camp.Id);
+
+        info.IsLead(camp.CreatedByUserId).Should().BeTrue();
+        info.Active!.LeadUserIds.Should().Contain(camp.CreatedByUserId);
+    }
+
     // ==========================================================================
     // ApproveSeasonAsync
     // ==========================================================================
@@ -378,8 +391,8 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // GetEventManagedCampsAsync — unions role-based (Lead/Workshop) holders with
-    // the legacy CampLead table, then filters to camps with a season in the year.
+    // GetEventManagedCampsAsync — derives Lead/Workshop holders from CampInfo
+    // role facts, then filters to camps with a season in the year.
     // ==========================================================================
 
     [HumansFact]
@@ -411,10 +424,10 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_LegacyLeadOnly_ReturnsCamp()
+    public async Task GetEventManagedCampsAsync_CreatorLead_ReturnsCamp()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp(); // creator is seeded as a legacy CampLead only.
+        var camp = await CreateTestCamp(); // creator is seeded as a role-backed Camp Lead.
 
         var result = await _service.GetEventManagedCampsAsync(camp.CreatedByUserId, 2026);
 
@@ -425,7 +438,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     public async Task GetEventManagedCampsAsync_RoleAndLegacyLead_ReturnsCampOnce()
     {
         await SeedSettingsAsync();
-        var camp = await CreateTestCamp(); // creator is a legacy CampLead.
+        var camp = await CreateTestCamp(); // creator is a role-backed Camp Lead.
         var seasonId = (await Db.CampSeasons
             .Where(s => s.CampId == camp.Id)
             .OrderByDescending(s => s.Year)

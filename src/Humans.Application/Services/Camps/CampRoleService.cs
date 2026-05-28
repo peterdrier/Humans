@@ -17,6 +17,7 @@ namespace Humans.Application.Services.Camps;
 public sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
+    ICampInfoInvalidator campInfoInvalidator,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IAuditLogService auditLog,
@@ -45,9 +46,6 @@ public sealed class CampRoleService(
         var definition = await repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
-
-    public Task<IReadOnlyList<Guid>> GetSeasonLeadUserIdsAsync(Guid campSeasonId, CancellationToken ct = default) =>
-        repo.GetSpecialRoleHolderUserIdsForSeasonAsync(campSeasonId, CampSpecialRole.Lead, ct);
 
     public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
@@ -304,6 +302,8 @@ public sealed class CampRoleService(
             actorUserId,
             relatedEntityId: campMemberId, relatedEntityType: nameof(CampMember));
 
+        await campInfoInvalidator.InvalidateSeasonAsync(campSeasonId, ct);
+
         try
         {
             await notificationEmitter.SendAsync(
@@ -345,11 +345,14 @@ public sealed class CampRoleService(
             relatedEntityId: assignment.CampMemberId,
             relatedEntityType: nameof(CampMember));
 
+        await campInfoInvalidator.InvalidateSeasonAsync(assignment.CampSeasonId, ct);
+
         return true;
     }
 
     public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
     {
+        var memberLookup = await campAccess.GetCampMemberStatusAsync(campMemberId, ct);
         var deleted = await repo.DeleteAllForMemberAsync(campMemberId, ct);
         if (deleted > 0)
         {
@@ -358,6 +361,11 @@ public sealed class CampRoleService(
                 nameof(CampMember), campMemberId,
                 $"Cascade-removed {deleted} role assignment(s) for camp member.",
                 actorUserId);
+
+            if (memberLookup is not null)
+            {
+                await campInfoInvalidator.InvalidateSeasonAsync(memberLookup.CampSeasonId, ct);
+            }
         }
         return deleted;
     }

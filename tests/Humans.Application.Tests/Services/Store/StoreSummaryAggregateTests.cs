@@ -20,7 +20,7 @@ public class StoreSummaryAggregateTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
     private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();

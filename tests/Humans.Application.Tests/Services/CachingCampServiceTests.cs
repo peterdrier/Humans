@@ -166,6 +166,119 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             .GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task IsUserCampLeadAsync_WarmCamp_UsesCampInfoRoleFactsWithoutInnerPredicate()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var leadUserId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var cachedCamps = new List<CampInfo>
+        {
+            new(
+                Id: campId,
+                Slug: "role-camp",
+                ContactEmail: "role@example.com",
+                ContactPhone: "+34000000000",
+                IsSwissCamp: false,
+                TimesAtNowhere: 1,
+                Seasons:
+                [
+                    new CampSeasonInfo(
+                        seasonId,
+                        campId,
+                        "role-camp",
+                        2026,
+                        null,
+                        "Role Camp",
+                        "Role camp",
+                        "en",
+                        [],
+                        CampSeasonStatus.Active,
+                        YesNoMaybe.Yes,
+                        YesNoMaybe.No,
+                        AdultPlayspacePolicy.No,
+                        MemberCount: 1,
+                        SoundZone: null,
+                        SpaceRequirement: null,
+                        ElectricalGrid: null,
+                        EeSlotCount: 0,
+                        EeGrantedCount: 0,
+                        JoinedMemberCount: 1)
+                    {
+                        LeadUserIds = [leadUserId]
+                    }
+                ])
+        };
+        _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(cachedCamps);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+
+        (await _service.IsUserCampLeadAsync(leadUserId, campId)).Should().BeTrue();
+
+        await _innerSubstitute
+            .DidNotReceive()
+            .IsUserCampLeadAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetCampSeasonByIdAsync_WarmSeason_UsesCachedCampInfo()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var leadUserId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var cachedSeason = new CampSeasonInfo(
+            seasonId,
+            campId,
+            "season-camp",
+            2026,
+            null,
+            "Season Camp",
+            "Season camp",
+            "en",
+            [],
+            CampSeasonStatus.Active,
+            YesNoMaybe.Yes,
+            YesNoMaybe.No,
+            AdultPlayspacePolicy.No,
+            MemberCount: 1,
+            SoundZone: null,
+            SpaceRequirement: null,
+            ElectricalGrid: null,
+            EeSlotCount: 0,
+            EeGrantedCount: 0,
+            JoinedMemberCount: 1)
+        {
+            LeadUserIds = [leadUserId]
+        };
+        var cachedCamps = new List<CampInfo>
+        {
+            new(
+                Id: campId,
+                Slug: "season-camp",
+                ContactEmail: "season@example.com",
+                ContactPhone: "+34000000000",
+                IsSwissCamp: false,
+                TimesAtNowhere: 1,
+                Seasons: [cachedSeason])
+        };
+        _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(cachedCamps);
+
+        _ = await _service.GetCampsForYearAsync(2026);
+        _innerSubstitute.ClearReceivedCalls();
+
+        var actual = await _service.GetCampSeasonByIdAsync(seasonId);
+
+        actual.Should().BeSameAs(cachedSeason);
+        await _innerSubstitute
+            .DidNotReceive()
+            .GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

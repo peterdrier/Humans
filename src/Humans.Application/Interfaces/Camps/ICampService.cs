@@ -60,34 +60,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
 
-    // Cross-service queries
-    Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
-
-    Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
-
-    // Authorization checks
-    Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns true when the user holds a <c>CampRoleAssignment</c> on the given
-    /// camp (current season) whose <c>CampRoleDefinition.SpecialRole</c> is
-    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Lead"/> OR
-    /// <see cref="Humans.Domain.Enums.CampSpecialRole.Workshop"/>. Authorizes
-    /// camp-event submission via <c>EventsController</c>
-    /// (<c>/Events/Barrio/{slug}/*</c>). Camp leads automatically satisfy this
-    /// check because the role set is the OR — no separate "lead-implies-workshop"
-    /// logic.
-    /// </summary>
-    Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns camps for <paramref name="year"/> on which the user holds the
-    /// Lead or Workshop special role (the same OR-check as
-    /// <see cref="IsUserCampEventManagerAsync"/>). Used by
-    /// <c>EventsController.MySubmissions</c> to build the barrio blocks.
-    /// </summary>
-    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
-
     // Images
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
     Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default);
@@ -267,6 +239,17 @@ public sealed record CampInfo(
     /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
     /// </summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+
+    public bool IsLead(Guid userId) => Seasons.Any(season => season.IsLead(userId));
+
+    public bool IsEventManager(Guid userId) => Seasons.Any(season => season.IsEventManager(userId));
+
+    public Guid? GetLeadSeasonIdForYear(Guid userId, int year) =>
+        Seasons
+            .Where(season => season.Year == year && season.IsLead(userId))
+            .OrderBy(season => season.Id)
+            .Select(season => (Guid?)season.Id)
+            .FirstOrDefault();
 }
 
 public sealed record CampSeasonInfo(
@@ -289,7 +272,17 @@ public sealed record CampSeasonInfo(
     ElectricalGrid? ElectricalGrid,
     int EeSlotCount,
     int? EeGrantedCount,
-    int? JoinedMemberCount);
+    int? JoinedMemberCount)
+{
+    public IReadOnlyList<Guid> LeadUserIds { get; init; } = [];
+
+    public IReadOnlyList<Guid> WorkshopLeadUserIds { get; init; } = [];
+
+    public bool IsLead(Guid userId) => LeadUserIds.Contains(userId);
+
+    public bool IsEventManager(Guid userId) =>
+        LeadUserIds.Contains(userId) || WorkshopLeadUserIds.Contains(userId);
+}
 
 public sealed record CampSeasonMemberInfo(
     Guid Id,

@@ -4,8 +4,8 @@ namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
 /// Cross-section read surface for the Camps section. External sections inject
-/// this interface; it returns only CampInfo-family projections (CampInfo,
-/// CampSeasonInfo), CampSettingsInfo, and CampSearchHit — never EF entities.
+/// this interface; it returns CampInfo-family projections (CampInfo,
+/// CampSeasonInfo), display DTOs, CampSettingsInfo, and CampSearchHit — never EF entities.
 /// See memory/architecture/section-read-write-split.md.
 /// </summary>
 public interface ICampServiceRead
@@ -13,6 +13,11 @@ public interface ICampServiceRead
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<CampSeasonInfo?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSearchHit>> SearchAsync(string query, int max, CancellationToken cancellationToken = default);
+    Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
+    Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
+    Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 }

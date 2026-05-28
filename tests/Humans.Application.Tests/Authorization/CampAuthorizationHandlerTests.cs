@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.Authorization;
 
 public sealed class CampAuthorizationHandlerTests
 {
-    private readonly ICampService _campService = Substitute.For<ICampService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly CampAuthorizationHandler _handler;
 
     private static readonly Guid LeadCampId = Guid.NewGuid();

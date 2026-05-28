@@ -40,7 +40,7 @@ public sealed class CampAdminPageBuilder(
         var campsWithLeads = (await campService.GetCampsForYearAsync(settings.PublicYear))
             .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
             .ToList();
-        var summaries = await BuildSummariesAsync(campsWithLeads);
+        var summaries = BuildSummaries(campsWithLeads);
 
         var missingSpecialRoles = await campRoleService.GetMissingSpecialRolesAsync();
 
@@ -69,16 +69,13 @@ public sealed class CampAdminPageBuilder(
         };
     }
 
-    private async Task<List<CampSummaryRowViewModel>> BuildSummariesAsync(IReadOnlyList<CampInfo> campsWithLeads)
+    private static List<CampSummaryRowViewModel> BuildSummaries(IReadOnlyList<CampInfo> campsWithLeads)
     {
         var rows = new List<CampSummaryRowViewModel>(campsWithLeads.Count);
         foreach (var c in campsWithLeads)
         {
             var season = c.Seasons.FirstOrDefault();
-            // Leads come from the role system (Camp Lead special role on the season).
-            IReadOnlyList<Guid> leadUserIds = season is null
-                ? []
-                : await campRoleService.GetSeasonLeadUserIdsAsync(season.Id);
+            var leadUserIds = season?.LeadUserIds ?? [];
             rows.Add(new CampSummaryRowViewModel
             {
                 Name = season?.Name ?? c.Slug,

@@ -200,11 +200,7 @@ public class CampController(
         var campDisplayName = latestSeason?.Name ?? slug;
         var senderEmail = currentUser.Email!;
 
-        // Recipients are sourced from the role system (Camp Lead special role on the
-        // latest season), not the legacy camp_leads table.
-        var leadUserIds = latestSeason is null
-            ? []
-            : await campRoleService.GetSeasonLeadUserIdsAsync(latestSeason.Id);
+        var leadUserIds = latestSeason?.LeadUserIds ?? [];
 
         try
         {
@@ -1267,4 +1263,3 @@ public class CampController(
                 || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }
-

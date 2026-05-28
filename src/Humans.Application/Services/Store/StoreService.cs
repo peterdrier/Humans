@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Store;
 public class StoreService(
     IStoreRepository repo,
     IAuditLogService audit,
-    ICampService campService,
+    ICampServiceRead campService,
     ITeamServiceRead teamService,
     IClock clock,
     IShiftManagementService shifts,

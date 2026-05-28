@@ -19,7 +19,7 @@ namespace Humans.Web.Controllers;
 [ApiController]
 public class CityPlanningApiController(
     ICityPlanningService cityPlanningService,
-    ICampService campService,
+    ICampServiceRead campService,
     IContainerService containerService,
     IAuthorizationService authorizationService,
     IHubContext<CityPlanningHub> hubContext,

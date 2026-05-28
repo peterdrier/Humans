@@ -14,12 +14,12 @@ using System.Text.Json;
 
 namespace Humans.Application.Services.CityPlanning;
 
-/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampService/ITeamServiceRead/IUserServiceRead.</summary>
+/// <summary>Application-layer <see cref="ICityPlanningService"/>; cross-section reads via ICampServiceRead/ITeamServiceRead/IUserServiceRead.</summary>
 public sealed class CityPlanningService(
     ICityPlanningRepository repo,
     IClock clock,
     IOptions<CityPlanningOptions> options,
-    ICampService campService,
+    ICampServiceRead campService,
     ITeamServiceRead teamService,
     IUserServiceRead userService) : ICityPlanningService
 {
@@ -79,8 +79,7 @@ public sealed class CityPlanningService(
 
     /// <summary>
     /// Builds the season-id → display-data map via LINQ over the cached
-    /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection, avoiding
-    /// the ICampService-only <c>GetCampSeasonDisplayDataForYearAsync</c>.
+    /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection.
     /// </summary>
     private async Task<Dictionary<Guid, CampSeasonDisplayData>> BuildSeasonDisplayDataAsync(
         int year, CancellationToken cancellationToken)

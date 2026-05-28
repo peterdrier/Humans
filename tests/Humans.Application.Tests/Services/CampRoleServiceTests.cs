@@ -22,6 +22,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ICampRoleCampAccess _campAccess;
+    private readonly ICampInfoInvalidator _campInfoInvalidator;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public CampRoleServiceTests()
@@ -30,12 +31,14 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
+        _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
 
         var repo = new CampRepository(DbFactory);
 
         _service = new CampRoleService(
             repo,
             _campAccess,
+            _campInfoInvalidator,
             _userService,
             _userEmailService,
             AuditLog,
@@ -745,56 +748,6 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         return member;
     }
-
-    // ==========================================================================
-    // GetSeasonLeadUserIdsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetSeasonLeadUserIdsAsync_ReturnsLeadHolders_ExcludesOtherRolesAndSeasons()
-    {
-        var (_, season) = await SeedCampWithSeasonAsync();
-        var (_, otherSeason) = await SeedCampWithSeasonAsync();
-
-        var leadDef = new CampRoleDefinition
-        {
-            Id = Guid.NewGuid(),
-            Name = CampSystemRoles.CampLeadName,
-            Slug = CampSystemRoles.CampLeadSlug,
-            SlotCount = 2,
-            MinimumRequired = 1,
-            SpecialRole = CampSpecialRole.Lead,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant(),
-        };
-        Db.CampRoleDefinitions.Add(leadDef);
-        var regularDef = await SeedDefinitionAsync("Greeter");
-        await Db.SaveChangesAsync();
-
-        var leadUser = Guid.NewGuid();
-        var leadMember = await SeedActiveMemberAsync(season.Id, leadUser);
-        var regularMember = await SeedActiveMemberAsync(season.Id);
-        var otherSeasonLead = await SeedActiveMemberAsync(otherSeason.Id);
-
-        Db.CampRoleAssignments.Add(NewAssignment(season.Id, leadDef.Id, leadMember.Id));
-        Db.CampRoleAssignments.Add(NewAssignment(season.Id, regularDef.Id, regularMember.Id));
-        Db.CampRoleAssignments.Add(NewAssignment(otherSeason.Id, leadDef.Id, otherSeasonLead.Id));
-        await Db.SaveChangesAsync();
-
-        var result = await _service.GetSeasonLeadUserIdsAsync(season.Id);
-
-        result.Should().ContainSingle().Which.Should().Be(leadUser);
-    }
-
-    private CampRoleAssignment NewAssignment(Guid seasonId, Guid definitionId, Guid memberId) => new()
-    {
-        Id = Guid.NewGuid(),
-        CampSeasonId = seasonId,
-        CampRoleDefinitionId = definitionId,
-        CampMemberId = memberId,
-        AssignedAt = Clock.GetCurrentInstant(),
-        AssignedByUserId = _actorUserId,
-    };
 
     // ==========================================================================
     // System role immutability + seeding (issue nobodies-collective/Humans#753)

@@ -24,7 +24,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Everyone else: deny.
 /// </summary>
 public class StoreOrderAuthorizationHandler(
-    ICampService campService,
+    ICampServiceRead campService,
     ITeamServiceRead teamService) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
