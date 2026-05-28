@@ -64,10 +64,11 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
 
         var camp = await _service.CreateCampAsync(
-            userId, "Camp Funhouse", "camp@fun.com", "+34612345678",
-            "https://instagram.com/funhouse", null,
-            isSwissCamp: false, timesAtNowhere: 0,
-            MakeSeasonData(), historicalNames: null, year: 2026);
+            new CampRegistrationInput(
+                userId, "Camp Funhouse", "camp@fun.com", "+34612345678",
+                "https://instagram.com/funhouse", null,
+                false, 0,
+                MakeSeasonData(), null, 2026));
 
         camp.Slug.Should().Be("camp-funhouse");
         camp.CreatedByUserId.Should().Be(userId);
@@ -97,8 +98,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
 
         var camp = await _service.CreateCampAsync(
-            userId, "Camp Seedless", "c@s.com", "+34600000001", null, null,
-            false, 0, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                userId, "Camp Seedless", "c@s.com", "+34600000001", null, null,
+                false, 0, MakeSeasonData(), null, 2026));
 
         var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
         (await Db.CampMembers.AsNoTracking().AnyAsync(m => m.CampSeasonId == season.Id && m.UserId == userId))
@@ -114,8 +116,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
 
         var act = () => _service.CreateCampAsync(
-            userId, "Register", "camp@test.com", "+34600000000",
-            null, null, false, 0, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                userId, "Register", "camp@test.com", "+34600000000",
+                null, null, false, 0, MakeSeasonData(), null, 2026));
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*reserved*");
@@ -473,46 +476,48 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedSettingsAsync();
 
         var zebraCamp = await _service.CreateCampAsync(
-            Guid.NewGuid(),
-            "Zebra Camp",
-            "zebra@camp.com",
-            "+34600000000",
-            null,
-            [new CampLink { Url = "https://example.com/zebra", Platform = "Website" }],
-            isSwissCamp: true,
-            timesAtNowhere: 3,
-            MakeSeasonData() with
-            {
-                BlurbShort = "Zebra short",
-                BlurbLong = "Zebra long",
-                AcceptingMembers = YesNoMaybe.Maybe,
-                KidsWelcome = YesNoMaybe.Yes,
-                SoundZone = SoundZone.Red,
-                Vibes = [CampVibe.LiveMusic]
-            },
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(),
+                "Zebra Camp",
+                "zebra@camp.com",
+                "+34600000000",
+                null,
+                [new CampLink { Url = "https://example.com/zebra", Platform = "Website" }],
+                true,
+                3,
+                MakeSeasonData() with
+                {
+                    BlurbShort = "Zebra short",
+                    BlurbLong = "Zebra long",
+                    AcceptingMembers = YesNoMaybe.Maybe,
+                    KidsWelcome = YesNoMaybe.Yes,
+                    SoundZone = SoundZone.Red,
+                    Vibes = [CampVibe.LiveMusic]
+                },
+                null,
+                2026));
 
         var alphaCamp = await _service.CreateCampAsync(
-            Guid.NewGuid(),
-            "Alpha Camp",
-            "alpha@camp.com",
-            "+34600000001",
-            "https://example.com/alpha",
-            null,
-            isSwissCamp: false,
-            timesAtNowhere: 1,
-            MakeSeasonData() with
-            {
-                BlurbShort = "Alpha short",
-                BlurbLong = "Alpha long",
-                AcceptingMembers = YesNoMaybe.Yes,
-                KidsWelcome = YesNoMaybe.No,
-                SoundZone = SoundZone.Green,
-                Vibes = [CampVibe.ChillOut]
-            },
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(),
+                "Alpha Camp",
+                "alpha@camp.com",
+                "+34600000001",
+                "https://example.com/alpha",
+                null,
+                false,
+                1,
+                MakeSeasonData() with
+                {
+                    BlurbShort = "Alpha short",
+                    BlurbLong = "Alpha long",
+                    AcceptingMembers = YesNoMaybe.Yes,
+                    KidsWelcome = YesNoMaybe.No,
+                    SoundZone = SoundZone.Green,
+                    Vibes = [CampVibe.ChillOut]
+                },
+                null,
+                2026));
 
         await ApproveLatestSeasonAsync(zebraCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
@@ -548,42 +553,44 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedSettingsAsync();
 
         var bravoCamp = await _service.CreateCampAsync(
-            Guid.NewGuid(),
-            "Bravo Camp",
-            "bravo@camp.com",
-            "+34600000002",
-            null,
-            null,
-            isSwissCamp: false,
-            timesAtNowhere: 0,
-            MakeSeasonData() with
-            {
-                MemberCount = 42,
-                SpaceRequirement = SpaceSize.Sqm800,
-                SoundZone = SoundZone.Blue,
-                ElectricalGrid = ElectricalGrid.Red
-            },
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(),
+                "Bravo Camp",
+                "bravo@camp.com",
+                "+34600000002",
+                null,
+                null,
+                false,
+                0,
+                MakeSeasonData() with
+                {
+                    MemberCount = 42,
+                    SpaceRequirement = SpaceSize.Sqm800,
+                    SoundZone = SoundZone.Blue,
+                    ElectricalGrid = ElectricalGrid.Red
+                },
+                null,
+                2026));
 
         var alphaCamp = await _service.CreateCampAsync(
-            Guid.NewGuid(),
-            "Alpha Camp",
-            "alpha2@camp.com",
-            "+34600000003",
-            null,
-            null,
-            isSwissCamp: false,
-            timesAtNowhere: 0,
-            MakeSeasonData() with
-            {
-                MemberCount = 10,
-                SpaceRequirement = SpaceSize.Sqm300,
-                SoundZone = SoundZone.Green,
-                ElectricalGrid = ElectricalGrid.Yellow
-            },
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(),
+                "Alpha Camp",
+                "alpha2@camp.com",
+                "+34600000003",
+                null,
+                null,
+                false,
+                0,
+                MakeSeasonData() with
+                {
+                    MemberCount = 10,
+                    SpaceRequirement = SpaceSize.Sqm300,
+                    SoundZone = SoundZone.Green,
+                    ElectricalGrid = ElectricalGrid.Yellow
+                },
+                null,
+                2026));
 
         await ApproveLatestSeasonAsync(bravoCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
@@ -606,17 +613,18 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedUserAsync(leadUserId, "Camp Lead");
 
         var camp = await _service.CreateCampAsync(
-            leadUserId,
-            "Fallback Camp",
-            "fallback@camp.com",
-            "+34600000004",
-            "https://example.com/fallback",
-            null,
-            isSwissCamp: true,
-            timesAtNowhere: 4,
-            MakeSeasonData(),
-            historicalNames: ["Old Fallback"],
-            year: 2026);
+            new CampRegistrationInput(
+                leadUserId,
+                "Fallback Camp",
+                "fallback@camp.com",
+                "+34600000004",
+                "https://example.com/fallback",
+                null,
+                true,
+                4,
+                MakeSeasonData(),
+                ["Old Fallback"],
+                2026));
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -656,17 +664,18 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedUserAsync(leadUserId, "No Fallback Lead");
 
         var camp = await _service.CreateCampAsync(
-            leadUserId,
-            "No Fallback Camp",
-            "nofollow@camp.com",
-            "+34600000005",
-            null,
-            null,
-            isSwissCamp: false,
-            timesAtNowhere: 0,
-            MakeSeasonData(),
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                leadUserId,
+                "No Fallback Camp",
+                "nofollow@camp.com",
+                "+34600000005",
+                null,
+                null,
+                false,
+                0,
+                MakeSeasonData(),
+                null,
+                2026));
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -700,17 +709,18 @@ public sealed class CampServiceTests : ServiceTestHarness
         await SeedSettingsAsync();
 
         var camp = await _service.CreateCampAsync(
-            Guid.NewGuid(),
-            "Cache Image Camp",
-            "cache-image@camp.com",
-            "+34600000006",
-            null,
-            null,
-            isSwissCamp: false,
-            timesAtNowhere: 0,
-            MakeSeasonData(),
-            historicalNames: null,
-            year: 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(),
+                "Cache Image Camp",
+                "cache-image@camp.com",
+                "+34600000006",
+                null,
+                null,
+                false,
+                0,
+                MakeSeasonData(),
+                null,
+                2026));
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -865,8 +875,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var campA = await CreateTestCamp();
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = await _service.CreateCampAsync(
-            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+                null, null, false, 1, MakeSeasonData(), null, 2026));
         await ApproveLatestSeasonAsync(campB.Id);
 
         var userId = Guid.NewGuid();
@@ -1247,8 +1258,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var leadUserId = Guid.NewGuid();
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = await _service.CreateCampAsync(
-            leadUserId, "Lead Camp", "lc@camp.com", "+34600000020",
-            null, null, false, 1, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                leadUserId, "Lead Camp", "lc@camp.com", "+34600000020",
+                null, null, false, 1, MakeSeasonData(), null, 2026));
         await ApproveLatestSeasonAsync(camp.Id);
 
         // Two humans request; count should be 2.
@@ -1289,8 +1301,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var leadUserId = Guid.NewGuid();
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = await _service.CreateCampAsync(
-            leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
-            null, null, false, 1, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
+                null, null, false, 1, MakeSeasonData(), null, 2026));
         await ApproveLatestSeasonAsync(camp.Id);
         var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
 
@@ -1358,8 +1371,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         }
 
         return await _service.CreateCampAsync(
-            Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
-            null, null, false, 1, MakeSeasonData(), null, 2026);
+            new CampRegistrationInput(
+                Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
+                null, null, false, 1, MakeSeasonData(), null, 2026));
     }
 
     private async Task ApproveLatestSeasonAsync(Guid campId)

@@ -316,17 +316,18 @@ public sealed class DevPersonaSeeder(
                 ElectricalGrid: null);
 
             await campService.CreateCampAsync(
-                leadUserId,
-                campName,
-                $"dev-{campSlug}@localhost",
-                "+34 600 000 000",
-                webOrSocialUrl: null,
-                links: [],
-                isSwissCamp: false,
-                timesAtNowhere: 0,
-                seasonData,
-                historicalNames: [],
-                year);
+                new CampRegistrationInput(
+                    leadUserId,
+                    campName,
+                    $"dev-{campSlug}@localhost",
+                    "+34 600 000 000",
+                    null,
+                    [],
+                    false,
+                    0,
+                    seasonData,
+                    [],
+                    year));
 
             logger.LogInformation("DEV: seeded camp {Slug}", campSlug);
             created = true;

@@ -292,17 +292,18 @@ public class CampController(
             var campLinks = ParseCampLinks(model.Links);
 
             var camp = await _campService.CreateCampAsync(
-                user.Id,
-                model.Name,
-                model.ContactEmail,
-                model.ContactPhone,
+                new CampRegistrationInput(
+                    user.Id,
+                    model.Name,
+                    model.ContactEmail,
+                    model.ContactPhone,
                 null, // WebOrSocialUrl legacy � new registrations/edits use Links
-                campLinks,
-                model.IsSwissCamp,
-                model.TimesAtNowhere,
-                MapToSeasonData(model),
-                historicalNames,
-                year);
+                    campLinks,
+                    model.IsSwissCamp,
+                    model.TimesAtNowhere,
+                    MapToSeasonData(model),
+                    historicalNames,
+                    year));
 
             SetSuccess("Your camp has been registered and is pending review.");
             return RedirectToAction(nameof(Details), new { slug = camp.Slug });
@@ -1267,4 +1268,3 @@ public class CampController(
                 || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }
-

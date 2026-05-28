@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 
 namespace Humans.Infrastructure.Services.Camps;
 
@@ -169,15 +168,10 @@ public sealed class CachingCampService(
     // Writes — delegate then invalidate
 
     public async Task<Camp> CreateCampAsync(
-        Guid createdByUserId, string name, string contactEmail, string contactPhone,
-        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
-        CampSeasonData seasonData, List<string>? historicalNames, int year,
+        CampRegistrationInput input,
         CancellationToken cancellationToken = default)
     {
-        var camp = await WithInner(inner => inner.CreateCampAsync(
-            createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl,
-            links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, year,
-            cancellationToken));
+        var camp = await WithInner(inner => inner.CreateCampAsync(input, cancellationToken));
         await InvalidateCampAsync(camp.Id, cancellationToken);
         return camp;
     }
