@@ -170,7 +170,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
         // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
         // unknown here — emit null rather than a misleading 0.
-        return camp is null ? null : CreateCampInfo(camp, includeEarlyEntryGrantCount: false);
+        return camp is null ? null : CampReadModelProjection.CreateCampInfo(camp, includeEarlyEntryGrantCount: false);
     }
 
     public async Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
@@ -215,17 +215,10 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return null;
         }
 
-        return new CampDetailData(
-            camp.Id,
-            camp.Slug,
-            season.Name,
-            CreateCampLinks(camp),
-            camp.IsSwissCamp,
-            camp.TimesAtNowhere,
-            camp.HideHistoricalNames,
-            camp.HistoricalNames.Select(h => h.Name).ToList(),
-            camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
-            CreateCampSeasonDetailData(season));
+        return CampReadModelProjection.CreateCampDetailData(
+            camp,
+            season,
+            _clock.GetCurrentInstant().InUtc().Date);
     }
 
     public async Task<CampEditData?> GetCampEditDataAsync(
@@ -259,7 +252,10 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             return null;
         }
 
-        return CreateCampEditData(camp, season);
+        return CampReadModelProjection.CreateCampEditData(
+            camp,
+            season,
+            _clock.GetCurrentInstant().InUtc().Date);
     }
 
     public async Task<CampDirectoryResult> GetCampDirectoryAsync(
@@ -286,8 +282,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             leadCamps = camps.Where(c => leadCampIds.Contains(c.Id)).ToList();
         }
 
-        var cards = ApplyCampDirectoryFilter(
-            camps.Where(c => c.HasPublicSeasonForYear(year)).Select(camp => CreateCampDirectoryCard(camp, year)),
+        var cards = CampReadModelProjection.ApplyDirectoryFilter(
+            camps.Where(c => c.HasPublicSeasonForYear(year))
+                .Select(camp => CampReadModelProjection.CreateCampDirectoryCard(camp, year)),
             filter)
             .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
             .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
@@ -302,7 +299,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                     season.Status != CampSeasonStatus.Active &&
                     season.Status != CampSeasonStatus.Full))
                 .Where(camp => cards.All(card => card.Id != camp.Id))
-                .Select(camp => CreateCampDirectoryCard(camp, year))
+                .Select(camp => CampReadModelProjection.CreateCampDirectoryCard(camp, year))
                 .ToList();
         }
 
@@ -316,7 +313,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter: null, cancellationToken);
-        return camps.Select(c => CreateCampInfo(c)).ToList();
+        return camps.Select(c => CampReadModelProjection.CreateCampInfo(c)).ToList();
     }
 
     private async Task<List<Camp>> GetCampEntitiesForYearAsync(
@@ -343,7 +340,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return camps
             .Where(c => c.HasPublicSeasonForYear(year))
-            .Select(camp => CreateCampPublicSummary(camp, year))
+            .Select(camp => CampReadModelProjection.CreateCampPublicSummary(camp, year))
             .OrderBy(camp => camp.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -356,7 +353,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return camps
             .Where(c => c.HasPublicSeasonForYear(year))
-            .Select(camp => CreateCampPlacementSummary(camp, year))
+            .Select(camp => CampReadModelProjection.CreateCampPlacementSummary(camp, year))
             .Where(summary => summary is not null)
             .Select(summary => summary!)
             .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
@@ -368,14 +365,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
         if (settings is null)
             throw new InvalidOperationException("Camp settings not found.");
-        return CreateCampSettingsInfo(settings);
+        return CampReadModelProjection.CreateCampSettingsInfo(settings);
     }
 
     public async Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
     {
         var seasons = await _repo.GetPendingSeasonsAsync(cancellationToken);
         return seasons
-            .Select(s => CreateCampSeasonInfo(s, s.Camp?.Slug ?? string.Empty))
+            .Select(s => CampReadModelProjection.CreateCampSeasonInfo(s, s.Camp?.Slug ?? string.Empty))
             .ToList();
     }
 
@@ -407,244 +404,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return hits;
     }
 
-    private static IEnumerable<CampDirectoryCard> ApplyCampDirectoryFilter(
-        IEnumerable<CampDirectoryCard> camps,
-        CampDirectoryFilter? filter)
-    {
-        if (filter?.Vibe.HasValue == true)
-        {
-            camps = camps.Where(card => card.Vibes.Contains(filter.Vibe.Value));
-        }
-
-        if (filter?.SoundZone.HasValue == true)
-        {
-            camps = camps.Where(card => card.SoundZone == filter.SoundZone.Value);
-        }
-
-        if (filter?.KidsFriendly == true)
-        {
-            camps = camps.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
-        }
-
-        if (filter?.AcceptingMembers == true)
-        {
-            camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter?.Search))
-        {
-            var q = filter.Search.Trim();
-            camps = camps.Where(card =>
-                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return camps;
-    }
-
-    private static CampDirectoryCard CreateCampDirectoryCard(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-
-        return new CampDirectoryCard(
-            camp.Id,
-            camp.Slug,
-            season?.Name ?? camp.Slug,
-            season?.BlurbShort ?? string.Empty,
-            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
-            season?.Vibes ?? [],
-            season?.AcceptingMembers ?? YesNoMaybe.No,
-            season?.KidsWelcome ?? YesNoMaybe.No,
-            season?.SoundZone,
-            season?.Status ?? CampSeasonStatus.Pending,
-            camp.TimesAtNowhere);
-    }
-
-    private static CampInfo CreateCampInfo(Camp camp, bool includeEarlyEntryGrantCount = true)
-    {
-        return new CampInfo(
-            camp.Id,
-            camp.Slug,
-            camp.ContactEmail,
-            camp.ContactPhone,
-            camp.IsSwissCamp,
-            camp.TimesAtNowhere,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount)).ToList());
-    }
-
-    private static CampSeasonInfo CreateCampSeasonInfo(
-        CampSeason season,
-        string campSlug,
-        bool includeEarlyEntryGrantCount = false)
-    {
-        return new CampSeasonInfo(
-            season.Id,
-            season.CampId,
-            campSlug,
-            season.Year,
-            season.NameLockDate,
-            season.Name,
-            season.BlurbShort,
-            season.Languages,
-            season.Vibes.ToList(),
-            season.Status,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SoundZone,
-            season.SpaceRequirement,
-            season.ElectricalGrid,
-            season.EeSlotCount,
-            includeEarlyEntryGrantCount
-                ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
-                : null,
-            includeEarlyEntryGrantCount
-                ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
-                : null);
-    }
-
-    private static CampSettingsInfo CreateCampSettingsInfo(CampSettings settings) =>
-        new(
-            settings.PublicYear,
-            settings.OpenSeasons.ToList(),
-            settings.EeStartDate);
-
-    private static CampSeasonMemberInfo CreateCampSeasonMemberInfo(CampMember member) =>
-        new(
-            member.Id,
-            member.UserId,
-            member.Status,
-            member.RequestedAt,
-            member.ConfirmedAt,
-            member.HasEarlyEntry);
-
-    private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)
-    {
-        if (camp.Links is { Count: > 0 })
-        {
-            return camp.Links;
-        }
-
-        return camp.WebOrSocialUrl is not null
-            ? [new CampLink { Url = camp.WebOrSocialUrl }]
-            : [];
-    }
-
-    private CampSeasonDetailData CreateCampSeasonDetailData(CampSeason season)
-    {
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-
-        return new CampSeasonDetailData(
-            season.Id,
-            season.Year,
-            season.Name,
-            season.Status,
-            season.BlurbLong,
-            season.BlurbShort,
-            season.Languages,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.KidsVisiting,
-            season.KidsAreaDescription,
-            season.HasPerformanceSpace,
-            season.PerformanceTypes,
-            season.Vibes.ToList(),
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SpaceRequirement,
-            season.SoundZone,
-            season.ElectricalGrid,
-            season.NameLockDate.HasValue && today >= season.NameLockDate.Value);
-    }
-
-    private CampEditData CreateCampEditData(Camp camp, CampSeason season)
-    {
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-
-        return new CampEditData(
-            camp.Id,
-            camp.Slug,
-            season.Id,
-            season.Year,
-            season.NameLockDate.HasValue && today >= season.NameLockDate.Value,
-            season.Name,
-            camp.ContactEmail,
-            camp.ContactPhone,
-            camp.Links is { Count: > 0 }
-                ? camp.Links.Select(l => l.Url).ToList()
-                : camp.WebOrSocialUrl is not null
-                    ? [camp.WebOrSocialUrl]
-                    : [],
-            camp.IsSwissCamp,
-            camp.HideHistoricalNames,
-            camp.TimesAtNowhere,
-            season.BlurbLong,
-            season.BlurbShort,
-            season.Languages,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.KidsVisiting,
-            season.KidsAreaDescription,
-            season.HasPerformanceSpace,
-            season.PerformanceTypes,
-            season.Vibes.ToList(),
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SpaceRequirement,
-            season.SoundZone,
-            season.ElectricalGrid,
-            camp.Images
-                .OrderBy(i => i.SortOrder)
-                .Select(i => new CampImageSummary(i.Id, $"/{i.StoragePath}", i.SortOrder))
-                .ToList(),
-            camp.HistoricalNames
-                .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
-                .ToList());
-    }
-
-    private static CampPublicSummary CreateCampPublicSummary(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-
-        return new CampPublicSummary(
-            camp.Id,
-            camp.Slug,
-            season?.Name ?? camp.Slug,
-            season?.BlurbShort ?? string.Empty,
-            season?.BlurbLong ?? string.Empty,
-            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
-            (season?.Vibes ?? []).Select(vibe => vibe.ToString()).ToList(),
-            (season?.AcceptingMembers ?? YesNoMaybe.No).ToString(),
-            (season?.KidsWelcome ?? YesNoMaybe.No).ToString(),
-            season?.SoundZone?.ToString(),
-            (season?.Status ?? CampSeasonStatus.Pending).ToString(),
-            camp.TimesAtNowhere,
-            camp.IsSwissCamp,
-            camp.Links,
-            camp.WebOrSocialUrl);
-    }
-
-    private static CampPlacementSummary? CreateCampPlacementSummary(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null)
-        {
-            return null;
-        }
-
-        return new CampPlacementSummary(
-            camp.Id,
-            camp.Slug,
-            season.Name,
-            season.MemberCount,
-            season.SpaceRequirement?.ToString(),
-            season.SoundZone?.ToString(),
-            season.Status.ToString(),
-            season.ElectricalGrid?.ToString());
-    }
-
     // --- Season management ---
 
     public async Task<CampSeason> OptInToSeasonAsync(
@@ -667,31 +426,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var hasApprovedSeason = await _repo.HasApprovedSeasonAsync(campId, cancellationToken);
 
         var now = _clock.GetCurrentInstant();
-        var newSeason = new CampSeason
-        {
-            Id = Guid.NewGuid(),
-            CampId = campId,
-            Year = year,
-            Name = previousSeason.Name,
-            Status = hasApprovedSeason ? CampSeasonStatus.Active : CampSeasonStatus.Pending,
-            BlurbLong = previousSeason.BlurbLong,
-            BlurbShort = previousSeason.BlurbShort,
-            Languages = previousSeason.Languages,
-            AcceptingMembers = previousSeason.AcceptingMembers,
-            KidsWelcome = previousSeason.KidsWelcome,
-            KidsVisiting = previousSeason.KidsVisiting,
-            KidsAreaDescription = previousSeason.KidsAreaDescription,
-            HasPerformanceSpace = previousSeason.HasPerformanceSpace,
-            PerformanceTypes = previousSeason.PerformanceTypes,
-            Vibes = [.. previousSeason.Vibes],
-            AdultPlayspace = previousSeason.AdultPlayspace,
-            MemberCount = previousSeason.MemberCount,
-            SpaceRequirement = previousSeason.SpaceRequirement,
-            SoundZone = previousSeason.SoundZone,
-            ElectricalGrid = previousSeason.ElectricalGrid,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+        var newSeason = hasApprovedSeason
+            ? previousSeason.CreateApprovedRenewal(Guid.NewGuid(), year, now)
+            : previousSeason.CreatePendingRenewal(Guid.NewGuid(), year, now);
 
         await _repo.AddSeasonAsync(newSeason, cancellationToken);
 
@@ -756,17 +493,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
-            if (season.Status != CampSeasonStatus.Pending)
-            {
-                throw new InvalidOperationException($"Cannot approve a season with status {season.Status}.");
-            }
-
-            season.Status = CampSeasonStatus.Active;
-            season.ReviewedByUserId = reviewedByUserId;
-            season.ReviewNotes = notes;
-            season.ResolvedAt = now;
-            season.UpdatedAt = now;
-
+            season.Approve(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
@@ -793,17 +520,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
-            if (season.Status != CampSeasonStatus.Pending)
-            {
-                throw new InvalidOperationException($"Cannot reject a season with status {season.Status}.");
-            }
-
-            season.Status = CampSeasonStatus.Rejected;
-            season.ReviewedByUserId = reviewedByUserId;
-            season.ReviewNotes = notes;
-            season.ResolvedAt = now;
-            season.UpdatedAt = now;
-
+            season.Reject(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
@@ -831,14 +548,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
-            if (season.Status != CampSeasonStatus.Pending && season.Status != CampSeasonStatus.Active)
-            {
-                throw new InvalidOperationException($"Cannot withdraw a season with status {season.Status}.");
-            }
-
-            season.Status = CampSeasonStatus.Withdrawn;
-            season.UpdatedAt = now;
-
+            season.Withdraw(now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
@@ -903,19 +613,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
-            if (season.Status != CampSeasonStatus.Full && season.Status != CampSeasonStatus.Withdrawn)
-            {
-                throw new InvalidOperationException($"Cannot reactivate a season with status {season.Status}.");
-            }
-
-            // Withdrawn camps go back to Pending for re-approval; Full camps go back to Active
             previousStatus = season.Status;
-            newStatus = season.Status == CampSeasonStatus.Withdrawn
-                ? CampSeasonStatus.Pending
-                : CampSeasonStatus.Active;
-            season.Status = newStatus;
-            season.UpdatedAt = now;
-
+            newStatus = season.Reactivate(now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
@@ -1060,7 +759,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
         if (season is null) return null;
-        return CreateCampSeasonInfo(season, season.Camp?.Slug ?? string.Empty);
+        return CampReadModelProjection.CreateCampSeasonInfo(season, season.Camp?.Slug ?? string.Empty);
     }
 
     public async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
@@ -1109,7 +808,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         return campsForYear
             .Where(c => allCampIds.Contains(c.Id))
-            .Select(c => CreateCampInfo(c))
+            .Select(c => CampReadModelProjection.CreateCampInfo(c))
             .ToList();
     }
 
@@ -1717,7 +1416,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
         var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
-        return members.Select(CreateCampSeasonMemberInfo).ToList();
+        return members.Select(CampReadModelProjection.CreateCampSeasonMemberInfo).ToList();
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>> GetCampMembersByYearAsync(
@@ -1727,7 +1426,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var result = new Dictionary<Guid, IReadOnlyList<CampSeasonMemberInfo>>(grouped.Count);
         foreach (var (seasonId, members) in grouped)
         {
-            result[seasonId] = members.Select(CreateCampSeasonMemberInfo).ToList();
+            result[seasonId] = members.Select(CampReadModelProjection.CreateCampSeasonMemberInfo).ToList();
         }
         return result;
     }

@@ -62,4 +62,95 @@ public class CampSeason
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
+
+    public CampSeason CreatePendingRenewal(Guid id, int year, Instant now) =>
+        CreateRenewal(id, year, CampSeasonStatus.Pending, now);
+
+    public CampSeason CreateApprovedRenewal(Guid id, int year, Instant now) =>
+        CreateRenewal(id, year, CampSeasonStatus.Active, now);
+
+    private CampSeason CreateRenewal(Guid id, int year, CampSeasonStatus status, Instant now) =>
+        new()
+        {
+            Id = id,
+            CampId = CampId,
+            Year = year,
+            Name = Name,
+            Status = status,
+            BlurbLong = BlurbLong,
+            BlurbShort = BlurbShort,
+            Languages = Languages,
+            AcceptingMembers = AcceptingMembers,
+            KidsWelcome = KidsWelcome,
+            KidsVisiting = KidsVisiting,
+            KidsAreaDescription = KidsAreaDescription,
+            HasPerformanceSpace = HasPerformanceSpace,
+            PerformanceTypes = PerformanceTypes,
+            Vibes = [.. Vibes],
+            AdultPlayspace = AdultPlayspace,
+            MemberCount = MemberCount,
+            SpaceRequirement = SpaceRequirement,
+            SoundZone = SoundZone,
+            ElectricalGrid = ElectricalGrid,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+    public void Approve(Guid reviewedByUserId, string? notes, Instant now)
+    {
+        EnsureStatus(CampSeasonStatus.Pending, "approve");
+
+        Status = CampSeasonStatus.Active;
+        ReviewedByUserId = reviewedByUserId;
+        ReviewNotes = notes;
+        ResolvedAt = now;
+        UpdatedAt = now;
+    }
+
+    public void Reject(Guid reviewedByUserId, string notes, Instant now)
+    {
+        EnsureStatus(CampSeasonStatus.Pending, "reject");
+
+        Status = CampSeasonStatus.Rejected;
+        ReviewedByUserId = reviewedByUserId;
+        ReviewNotes = notes;
+        ResolvedAt = now;
+        UpdatedAt = now;
+    }
+
+    public void Withdraw(Instant now)
+    {
+        if (Status != CampSeasonStatus.Pending && Status != CampSeasonStatus.Active)
+        {
+            throw InvalidTransition("withdraw");
+        }
+
+        Status = CampSeasonStatus.Withdrawn;
+        UpdatedAt = now;
+    }
+
+    public CampSeasonStatus Reactivate(Instant now)
+    {
+        if (Status != CampSeasonStatus.Full && Status != CampSeasonStatus.Withdrawn)
+        {
+            throw InvalidTransition("reactivate");
+        }
+
+        Status = Status == CampSeasonStatus.Withdrawn
+            ? CampSeasonStatus.Pending
+            : CampSeasonStatus.Active;
+        UpdatedAt = now;
+        return Status;
+    }
+
+    private void EnsureStatus(CampSeasonStatus status, string verb)
+    {
+        if (Status != status)
+        {
+            throw InvalidTransition(verb);
+        }
+    }
+
+    private InvalidOperationException InvalidTransition(string verb) =>
+        new($"Cannot {verb} a season with status {Status}.");
 }
