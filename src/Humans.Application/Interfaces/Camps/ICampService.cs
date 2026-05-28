@@ -79,7 +79,7 @@ public interface ICampService : ICampServiceRead, IApplicationService
     Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Images
-    Task<CampImageUploadResult> UploadImageAsync(CampImageUploadInput input, CancellationToken cancellationToken = default);
+    Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
     Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
@@ -552,29 +552,6 @@ public record CampImageSummary(
     Guid Id,
     string Url,
     int SortOrder);
-
-public sealed class CampImageUploadInput
-{
-    public CampImageUploadInput(
-        Guid campId,
-        Stream fileStream,
-        string fileName,
-        string contentType,
-        long length)
-    {
-        CampId = campId;
-        FileStream = fileStream;
-        FileName = fileName;
-        ContentType = contentType;
-        Length = length;
-    }
-
-    internal Guid CampId { get; }
-    internal Stream FileStream { get; }
-    internal string FileName { get; }
-    internal string ContentType { get; }
-    internal long Length { get; }
-}
 
 public sealed record CampImageUploadResult(bool Succeeded, CampImage? Image, string? ErrorMessage)
 {

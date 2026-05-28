@@ -729,8 +729,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         beforeUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().BeNull();
 
         await using var imageStream = new MemoryStream([1, 2, 3, 4]);
-        var uploadResult = await _service.UploadImageAsync(
-            new CampImageUploadInput(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length));
+        var uploadResult = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length);
 
         uploadResult.Succeeded.Should().BeTrue();
 
