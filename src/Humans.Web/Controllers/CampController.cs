@@ -133,20 +133,20 @@ public class CampController(
         CampInfo camp,
         CampSeasonInfo season,
         IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>? roleSummaries = null) => new()
-    {
-        Id = camp.Id,
-        SeasonId = season.Id,
-        Slug = camp.Slug,
-        Name = season.Name,
-        BlurbShort = season.BlurbShort,
-        ImageUrl = camp.Images.FirstOrDefault()?.Url,
-        Vibes = [.. season.Vibes],
-        AcceptingMembers = season.AcceptingMembers,
-        KidsWelcome = season.KidsWelcome,
-        SoundZone = season.SoundZone,
-        Status = season.Status,
-        TimesAtNowhere = camp.TimesAtNowhere,
-        LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
+        {
+            Id = camp.Id,
+            SeasonId = season.Id,
+            Slug = camp.Slug,
+            Name = season.Name,
+            BlurbShort = season.BlurbShort,
+            ImageUrl = camp.Images.FirstOrDefault()?.Url,
+            Vibes = [.. season.Vibes],
+            AcceptingMembers = season.AcceptingMembers,
+            KidsWelcome = season.KidsWelcome,
+            SoundZone = season.SoundZone,
+            Status = season.Status,
+            TimesAtNowhere = camp.TimesAtNowhere,
+            LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
             ? summaries.Select(s => new CampLeadPositionPillViewModel
             {
                 Name = s.Name,
@@ -154,7 +154,7 @@ public class CampController(
                 SlotCount = s.SlotCount
             }).ToList()
             : []
-    };
+        };
 
     private async Task PopulateRegisterSeasonYearAsync()
     {
