@@ -11,8 +11,7 @@ namespace Humans.Web.Models.Shifts;
 /// Pure mapping over <see cref="UrgentShift"/> + <see cref="EventSettings"/> —
 /// no service dependencies. Time/period resolution delegates to the
 /// <see cref="Shift"/> entity helpers (<see cref="Shift.GetAbsoluteStart"/>,
-/// <see cref="Shift.GetAbsoluteEnd"/>, <see cref="Shift.GetShiftPeriod"/>),
-/// which is what <c>IShiftManagementService.ResolveShiftTimes</c> wraps.
+/// <see cref="Shift.GetAbsoluteEnd"/>, <see cref="Shift.GetShiftPeriod"/>).
 /// </summary>
 internal static class ShiftBrowseMapper
 {

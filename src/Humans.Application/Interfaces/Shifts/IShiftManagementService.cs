@@ -155,11 +155,6 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId);
 
-    /// <summary>
-    /// Resolves absolute times and period for a shift.
-    /// </summary>
-    (Instant Start, Instant End, ShiftPeriod Period) ResolveShiftTimes(Shift shift, EventSettings eventSettings);
-
     // === Urgency ===
 
     /// <summary>

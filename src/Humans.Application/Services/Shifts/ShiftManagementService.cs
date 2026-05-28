@@ -521,15 +521,6 @@ public sealed class ShiftManagementService(
     public Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId) =>
         repo.GetShiftsByRotaAsync(rotaId);
 
-    public (Instant Start, Instant End, ShiftPeriod Period) ResolveShiftTimes(Shift shift, EventSettings eventSettings)
-    {
-        var start = shift.GetAbsoluteStart(eventSettings);
-        var end = shift.GetAbsoluteEnd(eventSettings);
-        var period = shift.GetShiftPeriod(eventSettings);
-        return (start, end, period);
-    }
-
-
     /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
         ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)

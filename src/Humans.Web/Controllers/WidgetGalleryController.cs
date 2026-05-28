@@ -185,13 +185,12 @@ public sealed class WidgetGalleryController(
 
     private ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings es)
     {
-        var (start, end, period) = shiftMgmt.ResolveShiftTimes(u.Shift, es);
         return new ShiftDisplayItem
         {
             Shift = u.Shift,
-            AbsoluteStart = start,
-            AbsoluteEnd = end,
-            Period = period,
+            AbsoluteStart = u.Shift.GetAbsoluteStart(es),
+            AbsoluteEnd = u.Shift.GetAbsoluteEnd(es),
+            Period = u.Shift.GetShiftPeriod(es),
             ConfirmedCount = u.ConfirmedCount,
             RemainingSlots = u.RemainingSlots,
             UrgencyScore = u.UrgencyScore,
