@@ -15,12 +15,15 @@ else
 {
     <table class="table table-sm">
         <thead>
-            <tr><th>Human</th><th>Enters</th><th>Source(s)</th><th></th></tr>
+            <tr><th class="text-end">#</th><th>Human</th><th>Enters</th><th>Source(s)</th><th></th></tr>
         </thead>
         <tbody>
+        @{ var count = 0; }
         @foreach (var row in Model.Rows)
         {
+            count++;
             <tr class="@(row.HasMultiple ? "table-warning" : "")">
+                <td class="text-end text-muted">@count</td>
                 <td><vc:human user-id="@row.UserId" layout="AvatarName" size="32" /></td>
                 <td>@row.EarliestEntryDate.ToString("ddd d MMM", null)</td>
                 <td>@string.Join(", ", row.Sources)</td>
