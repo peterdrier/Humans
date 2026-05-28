@@ -1551,7 +1551,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             cancellationToken);
     }
 
-    public async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    private async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var result = await _repo.AddActiveMembershipAsync(campSeasonId, userId, now, actorUserId, cancellationToken);
@@ -1590,7 +1590,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return new AddCampMemberAsLeadResult(AddCampMemberAsLeadOutcome.Added, memberId);
     }
 
-    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
+    private async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
         Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {

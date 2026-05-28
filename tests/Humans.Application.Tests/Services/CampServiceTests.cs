@@ -995,7 +995,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task AddCampMemberAsLead_creates_active_member_and_audits()
+    public async Task AddCampMemberToActiveSeasonAsLead_creates_active_member_and_audits()
     {
         // Seed a camp + season + a target user
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp" };
@@ -1006,10 +1006,14 @@ public sealed class CampServiceTests : ServiceTestHarness
         Db.CampSeasons.Add(season);
         await Db.SaveChangesAsync();
 
-        var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, targetUserId, leadUserId);
+        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, targetUserId, leadUserId);
 
+        result.Outcome.Should().Be(AddCampMemberAsLeadOutcome.Added);
+        result.CampMemberId.Should().NotBeNull();
+        var memberId = result.CampMemberId.Value;
         memberId.Should().NotBe(Guid.Empty);
         var member = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == memberId);
+        member.CampSeasonId.Should().Be(season.Id);
         member.UserId.Should().Be(targetUserId);
         member.Status.Should().Be(CampMemberStatus.Active);
         member.ConfirmedByUserId.Should().Be(leadUserId);
@@ -1021,7 +1025,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task AddCampMemberAsLead_returns_existing_id_when_already_active()
+    public async Task AddCampMemberToActiveSeasonAsLead_returns_existing_id_when_already_active()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp-2" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
@@ -1042,9 +1046,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         var leadId = Guid.NewGuid();
-        var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, userId, leadId);
+        var result = await _service.AddCampMemberToActiveSeasonAsLeadAsync(camp.Id, userId, leadId);
 
-        memberId.Should().Be(existing.Id);
+        result.CampMemberId.Should().Be(existing.Id);
         // No new audit log for an already-active member.
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
