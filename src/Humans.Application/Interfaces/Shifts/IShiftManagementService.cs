@@ -290,6 +290,7 @@ public interface IShiftManagementService : IApplicationService
     /// roster (feature #36) so it never reaches into the Shifts repository.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+        Guid eventSettingsId,
         int dayOffset,
         CancellationToken ct = default);
 

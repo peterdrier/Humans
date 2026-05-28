@@ -67,7 +67,9 @@ public sealed class CantinaRosterService : ICantinaRosterService
         for (var i = 0; i < DaysPerWeek; i++)
         {
             var dayOffset = weekStartOffset + i;
-            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+            var userIds = eventSettings is null
+                ? Array.Empty<Guid>()
+                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct).ConfigureAwait(false);
             perDay.Add((dayOffset, userIds));
         }
 
@@ -293,7 +295,9 @@ public sealed class CantinaRosterService : ICantinaRosterService
             weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
         }
 
-        var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, ct).ConfigureAwait(false);
+        var userIds = eventSettings is null
+            ? Array.Empty<Guid>()
+            : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct).ConfigureAwait(false);
 
         if (userIds.Count == 0)
         {

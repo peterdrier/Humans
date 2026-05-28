@@ -67,12 +67,14 @@ public partial interface IShiftManagementRepository
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of distinct users with a Confirmed early-entry
-    /// signup in the given event on the given day offset. Used for the EE
-    /// cap check. Read-only.
+    /// Returns distinct users with shift signups in the given event on the
+    /// given day offset, filtered by signup status. Read-only.
     /// </summary>
-    Task<int> GetDistinctEeUsersOnDayAsync(
-        Guid eventSettingsId, int dayOffset, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetUserIdsForDayAsync(
+        Guid eventSettingsId,
+        int dayOffset,
+        ShiftDayUserStatusScope statusScope,
+        CancellationToken ct = default);
 
     // ============================================================
     // Reads - signup-adjacent Shifts data
@@ -160,4 +162,10 @@ public enum ShiftSignupBlockMutationScope
 {
     PendingOnly,
     PendingAndConfirmed
+}
+
+public enum ShiftDayUserStatusScope
+{
+    ConfirmedOnly,
+    PendingOrConfirmed
 }

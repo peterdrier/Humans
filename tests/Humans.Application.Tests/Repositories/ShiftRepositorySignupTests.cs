@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -96,7 +97,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetDistinctEeUsersOnDayAsync_CountsDistinctConfirmedUsers()
+    public async Task GetUserIdsForDayAsync_FiltersEventDayAndStatusScope()
     {
         var esId = Guid.NewGuid();
         var otherEs = Guid.NewGuid();
@@ -109,6 +110,7 @@ public class ShiftRepositorySignupTests : IDisposable
 
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
+        var pendingUser = Guid.NewGuid();
 
         // Same user, two EE shifts on day -3 → counts once.
         _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3A, SignupStatus.Confirmed));
@@ -118,11 +120,16 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus4, SignupStatus.Confirmed));
         _dbContext.ShiftSignups.Add(MakeSignup(user2, shiftOtherEs, SignupStatus.Confirmed));
         // Non-confirmed → excluded.
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftDayMinus3A, SignupStatus.Pending));
+        _dbContext.ShiftSignups.Add(MakeSignup(pendingUser, shiftDayMinus3A, SignupStatus.Pending));
         await _dbContext.SaveChangesAsync();
 
-        var count = await _repo.GetDistinctEeUsersOnDayAsync(esId, -3);
-        count.Should().Be(2);
+        var confirmed = await _repo.GetUserIdsForDayAsync(
+            esId, -3, ShiftDayUserStatusScope.ConfirmedOnly);
+        confirmed.Should().BeEquivalentTo([user1, user2]);
+
+        var pendingOrConfirmed = await _repo.GetUserIdsForDayAsync(
+            esId, -3, ShiftDayUserStatusScope.PendingOrConfirmed);
+        pendingOrConfirmed.Should().BeEquivalentTo([user1, user2, pendingUser]);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

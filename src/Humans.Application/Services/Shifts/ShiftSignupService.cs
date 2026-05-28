@@ -1049,7 +1049,9 @@ public sealed class ShiftSignupService(
         if (availableSlots <= 0)
             return "Early entry capacity reached for this day.";
 
-        var currentEeCount = await repo.GetDistinctEeUsersOnDayAsync(es.Id, dayOffset);
+        var currentEeCount = (await repo
+            .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
+            .Count;
 
         if (currentEeCount >= availableSlots)
             return "Early entry capacity reached.";

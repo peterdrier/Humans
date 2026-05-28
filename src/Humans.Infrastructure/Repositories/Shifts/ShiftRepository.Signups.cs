@@ -102,16 +102,30 @@ internal sealed partial class ShiftRepository
             .ToHashSetAsync(ct);
     }
 
-    public Task<int> GetDistinctEeUsersOnDayAsync(
-        Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
-        _dbContext.ShiftSignups
+    public async Task<IReadOnlyList<Guid>> GetUserIdsForDayAsync(
+        Guid eventSettingsId,
+        int dayOffset,
+        ShiftDayUserStatusScope statusScope,
+        CancellationToken ct = default)
+    {
+        var query = _dbContext.ShiftSignups
             .AsNoTracking()
-            .Where(d => d.Status == SignupStatus.Confirmed &&
-                        d.Shift.Rota.EventSettingsId == eventSettingsId &&
-                        d.Shift.DayOffset == dayOffset)
-            .Select(d => d.UserId)
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
+                && s.Shift.DayOffset == dayOffset);
+
+        query = statusScope switch
+        {
+            ShiftDayUserStatusScope.ConfirmedOnly => query.Where(s => s.Status == SignupStatus.Confirmed),
+            ShiftDayUserStatusScope.PendingOrConfirmed => query.Where(s =>
+                s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
+            _ => query.Where(_ => false)
+        };
+
+        return await query
+            .Select(s => s.UserId)
             .Distinct()
-            .CountAsync(ct);
+            .ToListAsync(ct);
+    }
 
     // ============================================================
     // Reads - signup-adjacent Shifts data

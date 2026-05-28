@@ -1813,8 +1813,12 @@ public sealed class ShiftManagementService(
     }
 
     public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
-        int dayOffset, CancellationToken ct = default) =>
-        repo.GetOnSiteUserIdsForDayAsync(dayOffset, ct);
+        Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
+        repo.GetUserIdsForDayAsync(
+            eventSettingsId,
+            dayOffset,
+            ShiftDayUserStatusScope.PendingOrConfirmed,
+            ct);
 
     public async Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default)

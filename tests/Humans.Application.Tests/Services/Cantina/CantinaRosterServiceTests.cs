@@ -46,7 +46,8 @@ public class CantinaRosterServiceTests
                 new Dictionary<Guid, UserInfo>()));
 
         // Default: every day returns an empty on-site cohort.
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
         _service = new CantinaRosterService(_shiftMgmt, _userRead, _clock);
@@ -410,7 +411,8 @@ public class CantinaRosterServiceTests
 
     /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
     /// <summary>
