@@ -406,7 +406,7 @@ public sealed class ShiftSignupService(
             return SignupResult.Fail("All shifts in range have time conflicts with existing signups.");
 
         var assignableIds = assignable.Select(s => s.Id).ToHashSet();
-        var signupCounts = await repo.GetConfirmedCountsByShiftAsync(assignableIds);
+        var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(assignableIds);
 
         var skippedCapacity = new List<int>();
         var capacityFiltered = new List<Shift>();
@@ -664,7 +664,7 @@ public sealed class ShiftSignupService(
         shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
 
         string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
-        var signupCounts = await repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
+        var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)
             .Select(s => s.DayOffset)

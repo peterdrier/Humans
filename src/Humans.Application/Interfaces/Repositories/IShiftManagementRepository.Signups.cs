@@ -73,14 +73,6 @@ public partial interface IShiftManagementRepository
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of Confirmed signups per shift for the given shift
-    /// ids. Shifts with zero confirmed are absent from the dictionary.
-    /// Read-only.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedCountsByShiftAsync(
-        IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the count of distinct users with a Confirmed early-entry
     /// signup in the given event on the given day offset. Used for the EE
     /// cap check. Read-only.

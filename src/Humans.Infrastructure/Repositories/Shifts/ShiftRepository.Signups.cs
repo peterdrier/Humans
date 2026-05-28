@@ -109,20 +109,6 @@ internal sealed partial class ShiftRepository
             .ToHashSetAsync(ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedCountsByShiftAsync(
-        IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
-    {
-        if (shiftIds.Count == 0)
-            return new Dictionary<Guid, int>();
-
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Where(s => shiftIds.Contains(s.ShiftId) && s.Status == SignupStatus.Confirmed)
-            .GroupBy(s => s.ShiftId)
-            .Select(g => new { ShiftId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(g => g.ShiftId, g => g.Count, ct);
-    }
-
     public Task<int> GetDistinctEeUsersOnDayAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
