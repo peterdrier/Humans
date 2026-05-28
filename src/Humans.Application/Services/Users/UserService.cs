@@ -343,11 +343,14 @@ public sealed class UserService(
                 UserId = userId,
                 CreatedAt = now,
                 UpdatedAt = now,
-                State = ProfileState.Stub,
                 BurnerName = (burnerName ?? string.Empty).Trim(),
                 FirstName = (firstName ?? string.Empty).Trim(),
                 LastName = (lastName ?? string.Empty).Trim(),
             };
+
+            // Seeded names (magic-link signup) promote straight to Active, mirroring
+            // SaveProfileAsync; import/OAuth paths pass no names and stay Stub. see #635 / #812.
+            profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
             await repo.AddAsync(profile, ct);
             return true;

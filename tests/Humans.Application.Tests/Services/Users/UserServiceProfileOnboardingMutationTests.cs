@@ -403,6 +403,36 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task EnsureStubProfileAsync_WithSeededNames_CreatesActiveProfileWithTrimmedNames()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId, " Sparkle ", " Ada ", " Lovelace ");
+
+        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId);
+        profile.BurnerName.Should().Be("Sparkle");
+        profile.FirstName.Should().Be("Ada");
+        profile.LastName.Should().Be("Lovelace");
+        profile.State.Should().Be(ProfileState.Active);
+    }
+
+    [HumansFact]
+    public async Task EnsureStubProfileAsync_WithoutNames_CreatesStubProfile()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync();
+
+        await _service.EnsureStubProfileAsync(userId);
+
+        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId);
+        profile.BurnerName.Should().BeEmpty();
+        profile.State.Should().Be(ProfileState.Stub);
+    }
+
+    [HumansFact]
     public async Task EnsureStubProfileAsync_MergedTombstone_NoOps()
     {
         var userId = Guid.NewGuid();
