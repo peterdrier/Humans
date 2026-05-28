@@ -405,12 +405,11 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // GetEventManagedCampsAsync — derives Lead/Workshop holders from CampInfo
-    // role facts, then filters to camps with a season in the year.
+    // GetCampsForYearAsync event manager role facts
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_RoleAssignmentOnly_ReturnsCamp()
+    public async Task GetCampsForYearAsync_EventManagerRoleAssignment_CanBeFilteredFromCampInfo()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -418,13 +417,15 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedRoleAssignmentAsync(seasonId, leadDef.Id, userId);
 
-        var result = await _service.GetEventManagedCampsAsync(userId, 2026);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Where(camp => camp.IsEventManager(userId))
+            .ToList();
 
         result.Should().ContainSingle(c => c.Id == campId);
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_WorkshopAssignment_ReturnsCamp()
+    public async Task GetCampsForYearAsync_WorkshopAssignment_CanBeFilteredFromCampInfo()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -432,24 +433,28 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedRoleAssignmentAsync(seasonId, workshopDef.Id, userId);
 
-        var result = await _service.GetEventManagedCampsAsync(userId, 2026);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Where(camp => camp.IsEventManager(userId))
+            .ToList();
 
         result.Should().ContainSingle(c => c.Id == campId);
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_CreatorLead_ReturnsCamp()
+    public async Task GetCampsForYearAsync_CreatorLead_CanBeFilteredFromCampInfo()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp(); // creator is seeded as a role-backed Camp Lead.
 
-        var result = await _service.GetEventManagedCampsAsync(camp.CreatedByUserId, 2026);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Where(info => info.IsEventManager(camp.CreatedByUserId))
+            .ToList();
 
         result.Should().ContainSingle(c => c.Id == camp.Id);
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_RoleAndLegacyLead_ReturnsCampOnce()
+    public async Task GetCampsForYearAsync_RoleAndLegacyLead_CanBeFilteredOnceFromCampInfo()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp(); // creator is a role-backed Camp Lead.
@@ -460,13 +465,15 @@ public sealed class CampServiceTests : ServiceTestHarness
         var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         await SeedRoleAssignmentAsync(seasonId, leadDef.Id, camp.CreatedByUserId);
 
-        var result = await _service.GetEventManagedCampsAsync(camp.CreatedByUserId, 2026);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Where(info => info.IsEventManager(camp.CreatedByUserId))
+            .ToList();
 
         result.Should().ContainSingle(c => c.Id == camp.Id);
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_RoleForCampWithoutSeasonInYear_Excluded()
+    public async Task GetCampsForYearAsync_EventManagerRoleWithoutSeasonInYear_IsExcluded()
     {
         await SeedSettingsAsync();
         var (_, seasonId) = await SeedCampWithSeasonAsync(); // season is 2026.
@@ -474,18 +481,23 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedRoleAssignmentAsync(seasonId, leadDef.Id, userId);
 
-        var result = await _service.GetEventManagedCampsAsync(userId, 2027);
+        var result = (await _service.GetCampsForYearAsync(2027))
+            .Where(camp => camp.IsEventManager(userId))
+            .ToList();
 
         result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task GetEventManagedCampsAsync_NonManager_ReturnsEmpty()
+    public async Task GetCampsForYearAsync_NonEventManager_FilterReturnsEmpty()
     {
         await SeedSettingsAsync();
         await SeedCampWithSeasonAsync();
 
-        var result = await _service.GetEventManagedCampsAsync(Guid.NewGuid(), 2026);
+        var userId = Guid.NewGuid();
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Where(camp => camp.IsEventManager(userId))
+            .ToList();
 
         result.Should().BeEmpty();
     }

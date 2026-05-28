@@ -20,5 +20,4 @@ public interface ICampServiceRead
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
     Task<bool> IsUserCampEventManagerAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 }

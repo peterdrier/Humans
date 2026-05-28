@@ -97,13 +97,6 @@ public sealed class CachingCampService(
             : await WithInner(inner => inner.IsUserCampEventManagerAsync(userId, campId, cancellationToken));
     }
 
-    public async Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
-        return camps.Where(camp => camp.IsEventManager(userId)).ToList();
-    }
-
     public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {

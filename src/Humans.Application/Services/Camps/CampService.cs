@@ -1103,14 +1103,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return false;
     }
 
-    public async Task<IReadOnlyList<CampInfo>> GetEventManagedCampsAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        return (await GetCampsForYearAsync(year, cancellationToken))
-            .Where(camp => camp.IsEventManager(userId))
-            .ToList();
-    }
-
     public async Task<bool> IsUserCampEventManagerAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {
