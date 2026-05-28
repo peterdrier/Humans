@@ -40,7 +40,7 @@ public sealed class ShiftViewService : IShiftView
             buildStatus = buildStatusRows.Count > 0 ? buildStatusRows[0] : null;
 
             signups = await _management
-                .GetByUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
         }
 
         return new ShiftUserView(
@@ -92,18 +92,12 @@ public sealed class ShiftViewService : IShiftView
             buildStatusByUser = builds.ToDictionary(b => b.UserId);
 
             var batchSignups = await _management
-                .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetForUsersAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
             signupsByUser = batchSignups
                 .GroupBy(s => s.UserId)
-                // Match GetByUserAsync's per-user ordering for shape parity across the
-                // single-user and batch paths. Sort in-memory after the bulk read so the
-                // repo stays display-sort-free (memory/architecture/display-sort-in-controllers.md).
                 .ToDictionary(
                     g => g.Key,
-                    g => (IReadOnlyList<ShiftSignup>)g
-                        .OrderBy(s => s.Shift.DayOffset)
-                        .ThenBy(s => s.Shift.StartTime)
-                        .ToList());
+                    g => (IReadOnlyList<ShiftSignup>)g.ToList());
         }
 
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);

@@ -955,7 +955,7 @@ public sealed class ShiftSignupService(
     }
 
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
-        repo.GetByUserAsync(userId, eventSettingsId);
+        repo.GetForUsersAsync([userId], eventSettingsId);
 
     public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {
@@ -967,19 +967,22 @@ public sealed class ShiftSignupService(
 
     public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId)
     {
-        var signups = await repo.GetNoShowHistoryAsync(userId);
-        return signups.Select(s =>
-        {
-            var rota = s.Shift.Rota;
-            var eventSettings = rota.EventSettings;
-            return new NoShowHistoryEntry(
-                ShiftLabel: rota.Name,
-                TeamId: rota.TeamId,
-                ShiftStart: s.Shift.GetAbsoluteStart(eventSettings),
-                TimeZoneId: eventSettings.TimeZoneId,
-                ReviewedByUserId: s.ReviewedByUserId,
-                ReviewedAt: s.ReviewedAt);
-        }).ToList();
+        var signups = await repo.GetForUsersAsync([userId]);
+        return signups
+            .Where(s => s.Status == SignupStatus.NoShow)
+            .OrderByDescending(s => s.ReviewedAt)
+            .Select(s =>
+            {
+                var rota = s.Shift.Rota;
+                var eventSettings = rota.EventSettings;
+                return new NoShowHistoryEntry(
+                    ShiftLabel: rota.Name,
+                    TeamId: rota.TeamId,
+                    ShiftStart: s.Shift.GetAbsoluteStart(eventSettings),
+                    TimeZoneId: eventSettings.TimeZoneId,
+                    ReviewedByUserId: s.ReviewedByUserId,
+                    ReviewedAt: s.ReviewedAt);
+            }).ToList();
     }
 
     private static List<Shift> SelectAllDayRangeShifts(Rota rota, int startDayOffset, int endDayOffset) =>
@@ -990,7 +993,7 @@ public sealed class ShiftSignupService(
 
     private async Task<IReadOnlyList<ShiftSignup>> GetActiveUserSignupsAsync(Guid userId)
     {
-        var signups = await repo.GetByUserAsync(userId);
+        var signups = await repo.GetForUsersAsync([userId]);
         return signups
             .Where(IsActiveSignup)
             .ToList();
@@ -1138,7 +1141,9 @@ public sealed class ShiftSignupService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         // No `.Include(r => r.Team)` — Teams is a different section; resolve via ITeamService.
-        var signups = await repo.GetForGdprExportAsync(userId, ct);
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .OrderByDescending(ss => ss.CreatedAt)
+            .ToList();
 
         // GetTeamsAsync includes deactivated teams so historical signups still resolve a name (GDPR).
         var referencedTeamIds = signups

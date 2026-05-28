@@ -31,7 +31,10 @@ public class ShiftViewServiceTests
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _management.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();
@@ -62,7 +65,10 @@ public class ShiftViewServiceTests
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _management.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
         _tracking.GetAvailabilityForUserAsync(userId, eventId, Arg.Any<CancellationToken>())
             .Returns([availability]);
@@ -96,8 +102,8 @@ public class ShiftViewServiceTests
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeEmpty();
-        await _management.DidNotReceive().GetByUserAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _management.DidNotReceive().GetForUsersAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -115,15 +121,24 @@ public class ShiftViewServiceTests
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _management.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                eventId,
+                Arg.Any<CancellationToken>())
+            .Returns(scoped);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeSameAs(scoped);
-        await _management.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
-        await _management.DidNotReceive().GetByUserAsync(
-            userId, null, Arg.Any<CancellationToken>());
+        await _management.Received(1).GetForUsersAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            eventId,
+            Arg.Any<CancellationToken>());
+        await _management.DidNotReceive().GetForUsersAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            null,
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -183,7 +198,10 @@ public class ShiftViewServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _management.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();

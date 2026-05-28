@@ -35,18 +35,26 @@ internal sealed partial class ShiftRepository
                            (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
                 ct);
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
-        Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Guid? eventSettingsId = null,
+        CancellationToken ct = default)
     {
+        if (userIds.Count == 0) return [];
+
         var query = _dbContext.ShiftSignups
             .AsNoTracking()
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(d => d.UserId == userId);
+            .Where(d => userIds.Contains(d.UserId));
 
         if (eventSettingsId.HasValue)
             query = query.Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId.Value);
 
-        return await query.OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime).ToListAsync(ct);
+        return await query
+            .OrderBy(d => d.UserId)
+            .ThenBy(d => d.Shift.DayOffset)
+            .ThenBy(d => d.Shift.StartTime)
+            .ToListAsync(ct);
     }
 
     public Task<ShiftSignup?> GetTeamProbeAsync(
@@ -87,15 +95,6 @@ internal sealed partial class ShiftRepository
         return await query.ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.EventSettings)
-            .Where(s => s.UserId == userId && s.Status == SignupStatus.NoShow)
-            .OrderByDescending(s => s.ReviewedAt)
-            .ToListAsync(ct);
-
     public async Task<HashSet<Guid>> GetActiveShiftIdsForUserAsync(
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
     {
@@ -135,17 +134,6 @@ internal sealed partial class ShiftRepository
             .Distinct()
             .CountAsync(ct);
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetForGdprExportAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(ss => ss.Shift)
-                .ThenInclude(s => s.Rota)
-                    .ThenInclude(r => r.EventSettings)
-            .Where(ss => ss.UserId == userId)
-            .OrderByDescending(ss => ss.CreatedAt)
-            .ToListAsync(ct);
-
     // ============================================================
     // Reads - signup-adjacent Shifts data
     // ============================================================
@@ -158,19 +146,6 @@ internal sealed partial class ShiftRepository
             .AsNoTracking()
             .Include(vtp => vtp.ShiftTag)
             .Where(vtp => userIds.Contains(vtp.UserId))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0) return [];
-        // No OrderBy: bulk loader splits results into per-user groups and the
-        // presentation layer (or per-user GetByUserAsync) handles display sort.
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(d => userIds.Contains(d.UserId) && d.Shift.Rota.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
     }
 

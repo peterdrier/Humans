@@ -32,14 +32,15 @@ public partial interface IShiftManagementRepository
     Task<bool> HasActiveSignupAsync(Guid userId, Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <see cref="ShiftSignup"/> the user owns, optionally
-    /// filtered to a single event. Includes <c>Shift.Rota.EventSettings</c> for
-    /// display. Ordered by <c>Shift.DayOffset</c>, then <c>Shift.StartTime</c>.
-    /// Team display name is resolved via <c>ITeamService.GetTeamsAsync</c>.
-    /// Read-only.
+    /// Returns <see cref="ShiftSignup"/> rows for the supplied users,
+    /// optionally filtered to a single event. Includes
+    /// <c>Shift.Rota.EventSettings</c>; team display names are resolved via
+    /// <c>ITeamService.GetTeamsAsync</c>. Read-only.
     /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
-        Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
+    Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Guid? eventSettingsId = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Loads signup team ownership data by signup id or signup block id. Read-only.
@@ -65,14 +66,6 @@ public partial interface IShiftManagementRepository
         CancellationToken ct = default);
 
     /// <summary>
-     /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.
-    /// Ordered by <c>ReviewedAt</c> descending. Read-only. Caller resolves
-    /// reviewer display fields via <c>IUserService.GetByIdsAsync</c> and the
-    /// team name via <c>ITeamService.GetTeamsAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the subset of <paramref name="shiftIds"/> for which the user
     /// already has a Pending or Confirmed signup. Read-only.
     /// </summary>
@@ -95,14 +88,6 @@ public partial interface IShiftManagementRepository
     Task<int> GetDistinctEeUsersOnDayAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every signup row owned by the user for the GDPR export, with
-    /// <c>Shift.Rota.EventSettings</c> included (for event name and date
-    /// resolution). No cross-domain User includes. Ordered by <c>CreatedAt</c>
-    /// descending. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetForGdprExportAsync(Guid userId, CancellationToken ct = default);
-
     // ============================================================
     // Reads - signup-adjacent Shifts data
     // ============================================================
@@ -115,15 +100,6 @@ public partial interface IShiftManagementRepository
      /// </summary>
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads <see cref="ShiftSignup"/> rows for the supplied user ids in the
-    /// given event in one query, with <c>Shift.Rota.EventSettings</c> included
-    /// (read-only). Backs the bulk path on
-    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
 
     // ============================================================
     // Writes — ShiftSignup
