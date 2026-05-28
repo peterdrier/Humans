@@ -1127,41 +1127,41 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     // --- Images ---
 
     public async Task<CampImageUploadResult> UploadImageAsync(
-        Guid campId, Stream fileStream, string fileName, string contentType, long length,
+        CampImageUploadInput input,
         CancellationToken cancellationToken = default)
     {
-        var imageCount = await _repo.CountImagesAsync(campId, cancellationToken);
+        var imageCount = await _repo.CountImagesAsync(input.CampId, cancellationToken);
         if (imageCount >= 5)
         {
             return CampImageUploadResult.Failure("Maximum 5 images per camp.");
         }
 
-        if (!AllowedImageContentTypes.Contains(contentType))
+        if (!AllowedImageContentTypes.Contains(input.ContentType))
         {
             return CampImageUploadResult.Failure("Only JPEG, PNG, and WebP images are allowed.");
         }
 
-        if (length > 10 * 1024 * 1024)
+        if (input.Length > 10 * 1024 * 1024)
         {
             return CampImageUploadResult.Failure("Image must be under 10MB.");
         }
 
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
-        var ext = Path.GetExtension(fileName);
+        var ext = Path.GetExtension(input.FileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
             return CampImageUploadResult.Failure("Image filename must end in .jpg, .jpeg, .png, or .webp.");
         }
-        var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
-        await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
+        var storageKey = $"uploads/camps/{input.CampId}/{Guid.NewGuid()}{ext}";
+        await _fileStorage.SaveAsync(storageKey, input.FileStream, cancellationToken);
 
         var image = new CampImage
         {
             Id = Guid.NewGuid(),
-            CampId = campId,
-            FileName = fileName,
+            CampId = input.CampId,
+            FileName = input.FileName,
             StoragePath = storageKey,
-            ContentType = contentType,
+            ContentType = input.ContentType,
             SortOrder = imageCount,
             UploadedAt = _clock.GetCurrentInstant()
         };
@@ -1170,9 +1170,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         await _auditLog.LogAsync(
             AuditAction.CampImageUploaded, nameof(CampImage), image.Id,
-            $"Uploaded image '{fileName}'",
+            $"Uploaded image '{input.FileName}'",
             "CampService",
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            relatedEntityId: input.CampId, relatedEntityType: nameof(Camp));
 
         return CampImageUploadResult.Success(image);
     }

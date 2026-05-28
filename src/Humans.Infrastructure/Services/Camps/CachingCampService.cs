@@ -249,13 +249,12 @@ public sealed class CachingCampService(
     }
 
     public async Task<CampImageUploadResult> UploadImageAsync(
-        Guid campId, Stream fileStream, string fileName, string contentType, long length,
+        CampImageUploadInput input,
         CancellationToken cancellationToken = default)
     {
-        var result = await WithInner(inner => inner.UploadImageAsync(
-            campId, fileStream, fileName, contentType, length, cancellationToken));
-        if (result.Succeeded)
-            await InvalidateCampAsync(campId, cancellationToken);
+        var result = await WithInner(inner => inner.UploadImageAsync(input, cancellationToken));
+        if (result.Image is { } image)
+            await InvalidateCampAsync(image.CampId, cancellationToken);
         return result;
     }
 

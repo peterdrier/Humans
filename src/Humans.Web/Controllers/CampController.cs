@@ -663,11 +663,12 @@ public class CampController(
         }
 
         var result = await _campService.UploadImageAsync(
-            camp.Id,
-            file.OpenReadStream(),
-            file.FileName,
-            file.ContentType,
-            file.Length);
+            new CampImageUploadInput(
+                camp.Id,
+                file.OpenReadStream(),
+                file.FileName,
+                file.ContentType,
+                file.Length));
 
         if (result.Succeeded)
         {
