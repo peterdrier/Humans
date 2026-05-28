@@ -683,7 +683,9 @@ public class StoreService(
 
     public async Task<StoreSummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
     {
-        var seasonsForYear = await campService.GetCampSeasonDisplayDataForYearAsync(year, ct);
+        var seasonsForYear = (await campService.GetCampsForYearAsync(year, ct))
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .ToDictionary(season => season.Id);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
         var campOrders = seasonsForYear.Count == 0

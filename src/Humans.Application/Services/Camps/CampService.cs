@@ -1078,20 +1078,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             specialRoleUserIds: specialRoleUserIds);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        return (await GetCampsForYearAsync(year, cancellationToken))
-            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year), (camp, season) =>
-                (season.Id, Data: new CampSeasonDisplayData(
-                    season.Name,
-                    camp.Slug,
-                    season.SoundZone,
-                    season.SpaceRequirement,
-                    camp.Id)))
-            .ToDictionary(row => row.Id, row => row.Data);
-    }
-
     public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
@@ -1827,8 +1813,9 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
         var year = settings.PublicYear;
         var membersBySeason = await _repo.GetMembersForYearAsync(year, ct);
-        var seasonDisplay = await _repo.GetSeasonDisplayDataForYearAsync(year, ct);
-        var seasonNames = seasonDisplay.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name);
+        var seasonNames = (await GetCampsForYearAsync(year, ct))
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .ToDictionary(season => season.Id, season => season.Name);
 
         return CampEarlyEntryProjection.Project(eeStartDate, membersBySeason, seasonNames);
     }

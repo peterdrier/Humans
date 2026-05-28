@@ -354,22 +354,6 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
-        GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.CampSeasons
-            .AsNoTracking()
-            .Include(s => s.Camp)
-            .Where(s => s.Year == year)
-            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement, s.CampId })
-            .ToListAsync(ct);
-
-        return rows.ToDictionary(
-            r => r.Id,
-            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement, r.CampId));
-    }
-
     // Leads (legacy camp_leads — only the seed-migration snapshot + role-backed
     // team-sync reads remain; mutation/query methods retired with the Camp Lead
     // role move. Entity/table kept until nobodies-collective/Humans#774.)

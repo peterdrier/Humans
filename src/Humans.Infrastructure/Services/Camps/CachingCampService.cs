@@ -152,24 +152,6 @@ public sealed class CachingCampService(
         return await WithInner(inner => inner.GetCampSeasonByIdAsync(campSeasonId, cancellationToken));
     }
 
-    public Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        GetCampSeasonDisplayDataForYearCoreAsync(year, cancellationToken);
-
-    private async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearCoreAsync(
-        int year, CancellationToken cancellationToken)
-    {
-        return (await GetCampsForYearAsync(year, cancellationToken))
-            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year), (camp, season) =>
-                (season.Id, Data: new CampSeasonDisplayData(
-                    season.Name,
-                    camp.Slug,
-                    season.SoundZone,
-                    season.SpaceRequirement,
-                    camp.Id)))
-            .ToDictionary(row => row.Id, row => row.Data);
-    }
-
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 

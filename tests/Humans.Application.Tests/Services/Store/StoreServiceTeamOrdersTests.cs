@@ -255,8 +255,8 @@ public class StoreServiceTeamOrdersTests
         var productId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
 
-        _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, CampSeasonDisplayData>());
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {

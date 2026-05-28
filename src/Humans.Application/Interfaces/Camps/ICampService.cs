@@ -543,6 +543,4 @@ public record CampPlacementSummary(
     string Status,
     string? ElectricalGrid);
 
-public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId);
-
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

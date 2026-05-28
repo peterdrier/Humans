@@ -81,13 +81,13 @@ public sealed class CityPlanningService(
     /// Builds the season-id → display-data map via LINQ over the cached
     /// <see cref="ICampServiceRead.GetCampsForYearAsync"/> projection.
     /// </summary>
-    private async Task<Dictionary<Guid, CampSeasonDisplayData>> BuildSeasonDisplayDataAsync(
+    private async Task<Dictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>> BuildSeasonDisplayDataAsync(
         int year, CancellationToken cancellationToken)
     {
         var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
         return camps
-            .SelectMany(c => c.Seasons, (c, s) =>
-                (SeasonId: s.Id, Data: new CampSeasonDisplayData(s.Name, c.Slug, s.SoundZone, s.SpaceRequirement, c.Id)))
+            .SelectMany(c => c.Seasons.Where(s => s.Year == year), (c, s) =>
+                (SeasonId: s.Id, Data: (s.Name, c.Slug, s.SoundZone, s.SpaceRequirement, c.Id)))
             .ToDictionary(x => x.SeasonId, x => x.Data);
     }
 
