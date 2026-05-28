@@ -373,7 +373,15 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
         if (settings is null)
             throw new InvalidOperationException("Camp settings not found.");
-        return CreateCampSettingsInfo(settings);
+
+        var info = CreateCampSettingsInfo(settings);
+        if (info.OpenSeasons.Count == 0)
+        {
+            return info;
+        }
+
+        var nameLockDates = await _repo.GetNameLockDatesAsync(info.OpenSeasons, cancellationToken);
+        return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
     }
 
     public async Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
@@ -1251,13 +1259,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         int year, LocalDate lockDate, CancellationToken cancellationToken = default)
     {
         await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
-    }
-
-    public async Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(
-        List<int> years, CancellationToken cancellationToken = default)
-    {
-        var result = await _repo.GetNameLockDatesAsync(years, cancellationToken);
-        return result.ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
     // --- Name change ---

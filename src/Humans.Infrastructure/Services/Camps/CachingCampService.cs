@@ -188,10 +188,6 @@ public sealed class CachingCampService(
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampSeasonsForComplianceAsync(year, ct));
 
-    public Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(
-        List<int> years, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetNameLockDatesAsync(years, cancellationToken));
-
     // Writes — delegate then invalidate
 
     public async Task<Camp> CreateCampAsync(
@@ -329,6 +325,7 @@ public sealed class CachingCampService(
         await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
         // Touches every season in the year — RefreshAll.
         RefreshAll();
+        await InvalidateSettingsAsync(cancellationToken);
     }
 
     public async Task ChangeSeasonNameAsync(

@@ -16,9 +16,6 @@ public sealed class CampAdminPageBuilder(
         var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear);
         var pendingSeasons = await campService.GetPendingSeasonsAsync();
         var openSeasons = settings.OpenSeasons.ToList();
-        var nameLockDates = openSeasons.Count > 0
-            ? await campService.GetNameLockDatesAsync(openSeasons)
-            : new Dictionary<int, NodaTime.LocalDate?>();
 
         var withdrawnSeasons = allCamps
             .SelectMany(c => c.Seasons
@@ -53,7 +50,7 @@ public sealed class CampAdminPageBuilder(
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
             WithdrawnCamps = withdrawnSeasons,
-            NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
+            NameLockDates = settings.NameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
             AllCampSummaries = summaries,
             RegistrationInfo = registrationInfo,
             EeStartDate = settings.EeStartDate,

@@ -157,7 +157,11 @@ public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMember
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons,
-    LocalDate? EeStartDate);
+    LocalDate? EeStartDate)
+{
+    public IReadOnlyDictionary<int, LocalDate?> NameLockDates { get; init; } =
+        new Dictionary<int, LocalDate?>();
+}
 
 /// <summary>
 /// Canonical Camps read-model entry (T-06). One <see cref="CampInfo"/> per

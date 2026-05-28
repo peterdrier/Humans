@@ -708,6 +708,21 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task GetSettingsAsync_IncludesOpenSeasonNameLockDates()
+    {
+        await SeedSettingsAsync();
+        await CreateTestCamp();
+        var lockDate = new LocalDate(2026, 3, 1);
+
+        await _service.SetNameLockDateAsync(2026, lockDate);
+
+        var settings = await _service.GetSettingsAsync();
+
+        settings.NameLockDates.Should().ContainKey(2026);
+        settings.NameLockDates[2026].Should().Be(lockDate);
+    }
+
+    [HumansFact]
     public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
     {
         await SeedSettingsAsync();
