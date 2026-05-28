@@ -1153,11 +1153,11 @@ public sealed class ShiftSignupService(
         var volunteerEventProfile = await repo.GetVolunteerEventProfileAsync(userId, ct);
         IReadOnlyList<VolunteerEventProfile> volunteerEventProfiles =
             volunteerEventProfile is null ? [] : [volunteerEventProfile];
-        var generalAvailability = await trackingRepo.GetAvailabilityByUserAsync(userId, ct);
+        var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
 
         // Resolve EventName for each distinct EventSettingsId via IBurnSettingsService
-        // (EventSettings.EventSettings nav is not included by GetAvailabilityByUserAsync).
+        // (EventSettings.EventSettings nav is not included by GetAvailabilityForUserAsync).
         var distinctEventSettingsIds = generalAvailability.Select(ga => ga.EventSettingsId).Distinct();
         var eventNamesById = new Dictionary<Guid, string>();
         foreach (var id in distinctEventSettingsIds)

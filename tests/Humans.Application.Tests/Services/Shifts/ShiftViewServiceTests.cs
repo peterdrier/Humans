@@ -64,10 +64,13 @@ public class ShiftViewServiceTests
             .Returns([]);
         _management.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _tracking.GetAvailabilityByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _tracking.GetAsync(userId, eventId, Arg.Any<CancellationToken>())
-            .Returns(buildStatus);
+        _tracking.GetAvailabilityForUserAsync(userId, eventId, Arg.Any<CancellationToken>())
+            .Returns([availability]);
+        _tracking.GetBuildStatusesForEventAsync(
+                eventId,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([buildStatus]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);

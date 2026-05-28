@@ -26,7 +26,7 @@ public sealed class VolunteerTrackingService(
         Guid eventSettingsId, int dayOffset)
     {
         // EF can't translate List<int>.Contains over jsonb; load all and filter in memory (~500 users).
-        var all = await trackingRepo.GetAvailabilityByEventAsync(eventSettingsId);
+        var all = await trackingRepo.GetAvailabilityForEventAsync(eventSettingsId);
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
             .Select(ToSnapshot)
@@ -37,7 +37,8 @@ public sealed class VolunteerTrackingService(
         Guid userId, Guid eventSettingsId, int dayOffset, AvailabilityDayAction action,
         CancellationToken ct = default)
     {
-        var current = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, eventSettingsId, ct).ConfigureAwait(false);
+        var current = (await trackingRepo.GetAvailabilityForUserAsync(userId, eventSettingsId, ct).ConfigureAwait(false))
+            .FirstOrDefault();
         var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
         if (action == AvailabilityDayAction.Add)
@@ -106,7 +107,7 @@ public sealed class VolunteerTrackingService(
                             .Distinct(StringComparer.Ordinal)
                             .ToList())));
 
-        var bsRows = await trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var bsRows = await trackingRepo.GetBuildStatusesForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
         var bsByUser = bsRows.ToDictionary(r => r.UserId);
 
         var mainRows = new List<VolunteerHeatmapRow>();
@@ -175,7 +176,7 @@ public sealed class VolunteerTrackingService(
                 dayOffSummaries));
         }
 
-        var availabilityRows = await trackingRepo.GetAvailabilityByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var availabilityRows = await trackingRepo.GetAvailabilityForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
         var availabilityByUser = availabilityRows
             .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
 
@@ -372,12 +373,13 @@ public sealed class VolunteerTrackingService(
                     RotaNames: (IReadOnlyList<string>)g.Select(x => x.RotaName)
                         .Distinct(StringComparer.Ordinal).ToList()));
 
-        var bs = (await trackingRepo.GetByEventAsync(es.Id, ct).ConfigureAwait(false))
+        var bs = (await trackingRepo.GetBuildStatusesForEventAsync(es.Id, [userId], ct).ConfigureAwait(false))
             .FirstOrDefault(r => r.UserId == userId);
         int? setupOffset = bs?.BarrioSetupStartDate is { } d ? OffsetOf(es, d) : null;
         var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
 
-        var availRow = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, es.Id, ct).ConfigureAwait(false);
+        var availRow = (await trackingRepo.GetAvailabilityForUserAsync(userId, es.Id, ct).ConfigureAwait(false))
+            .FirstOrDefault();
         var availSet = availRow?.AvailableDayOffsets.ToHashSet() ?? [];
 
         var hasSignups = daySignups.Count > 0;

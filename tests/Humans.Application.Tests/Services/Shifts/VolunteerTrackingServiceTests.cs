@@ -795,40 +795,34 @@ public class VolunteerTrackingServiceTests
             [];
         public List<(Guid UserId, Guid EventSettingsId, int DayOffset, DayOffEntry? Entry)> ApplyDayOffCalls { get; } = [];
 
-        public Task<VolunteerBuildStatus?> GetAsync(Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId));
-
-        public Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
-                BuildStatuses.Where(b => b.EventSettingsId == eventSettingsId).ToList());
-
-        public Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
-            IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+        public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
                 BuildStatuses
-                    .Where(b => b.EventSettingsId == eventSettingsId && userIds.Contains(b.UserId))
+                    .Where(b => b.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(b.UserId)))
                     .ToList());
 
-        public Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
-            Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(Availabilities.FirstOrDefault(a =>
-                a.UserId == userId && a.EventSettingsId == eventSettingsId));
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
-            Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
-                Availabilities.Where(a => a.EventSettingsId == eventSettingsId).ToList());
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
-            Guid userId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
-                Availabilities.Where(a => a.UserId == userId).ToList());
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
-            IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
                 Availabilities
-                    .Where(a => a.EventSettingsId == eventSettingsId && userIds.Contains(a.UserId))
+                    .Where(a => a.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(a.UserId)))
+                    .ToList());
+
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
+            Guid userId,
+            Guid? eventSettingsId = null,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
+                Availabilities
+                    .Where(a => a.UserId == userId
+                        && (!eventSettingsId.HasValue || a.EventSettingsId == eventSettingsId.Value))
                     .ToList());
 
         public Task UpsertAvailabilityAsync(

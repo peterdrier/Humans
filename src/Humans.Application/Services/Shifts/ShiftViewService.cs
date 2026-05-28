@@ -31,10 +31,14 @@ public sealed class ShiftViewService : IShiftView
         IReadOnlyList<ShiftSignup> signups = [];
         if (activeEvent is not null)
         {
-            availability = await _tracking
-                .GetAvailabilityByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
-            buildStatus = await _tracking
-                .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            var availabilityRows = await _tracking
+                .GetAvailabilityForUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            availability = availabilityRows.Count > 0 ? availabilityRows[0] : null;
+
+            var buildStatusRows = await _tracking
+                .GetBuildStatusesForEventAsync(activeEvent.Id, [userId], ct).ConfigureAwait(false);
+            buildStatus = buildStatusRows.Count > 0 ? buildStatusRows[0] : null;
+
             signups = await _management
                 .GetByUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
         }
@@ -80,11 +84,11 @@ public sealed class ShiftViewService : IShiftView
         if (activeEvent is not null)
         {
             var avail = await _tracking
-                .GetAvailabilityByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetAvailabilityForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
             availabilityByUser = avail.ToDictionary(a => a.UserId);
 
             var builds = await _tracking
-                .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetBuildStatusesForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
             buildStatusByUser = builds.ToDictionary(b => b.UserId);
 
             var batchSignups = await _management
