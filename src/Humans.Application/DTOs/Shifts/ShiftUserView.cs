@@ -35,6 +35,17 @@ public sealed record ShiftUserView(
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 
     /// <summary>
+    /// True when the user has at least one active signup (Pending/Confirmed) on
+    /// a shift classified into the given <paramref name="period"/>. Each shift's
+    /// period is derived from its <see cref="Shift.DayOffset"/> against the
+    /// loaded <c>Rota.EventSettings</c> (Build = before gates open, Event =
+    /// during, Strike = after) via <see cref="Shift.GetShiftPeriod"/>.
+    /// </summary>
+    public bool HasShiftInPeriod(ShiftPeriod period) => Signups.Any(s =>
+        s.Status is SignupStatus.Pending or SignupStatus.Confirmed
+        && s.Shift.GetShiftPeriod(s.Shift.Rota.EventSettings) == period);
+
+    /// <summary>
     /// Empty view returned for unknown ids / no active event.
     /// </summary>
     public static ShiftUserView Empty(Guid userId) => new(
