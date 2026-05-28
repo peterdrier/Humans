@@ -403,11 +403,12 @@ public sealed class CachingCampService(
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
-        CampEarlyEntryInput input,
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var result = await WithInner(inner => inner.SetEarlyEntryAsync(input, cancellationToken));
-        await InvalidateCampAsync(input.ScopedCampId, cancellationToken);
+        var result = await WithInner(inner => inner.SetEarlyEntryAsync(
+            scopedCampId, campMemberId, granted, actorUserId, cancellationToken));
+        await InvalidateCampAsync(scopedCampId, cancellationToken);
         return result;
     }
 

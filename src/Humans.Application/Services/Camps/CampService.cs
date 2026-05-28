@@ -1847,16 +1847,16 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
-        CampEarlyEntryInput input,
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberForCampMutationAsync(input.CampMemberId, input.ScopedCampId, cancellationToken);
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
         if (member is null) return SetEarlyEntryOutcome.MemberNotFound;
 
-        if (member.HasEarlyEntry == input.Granted)
+        if (member.HasEarlyEntry == granted)
             return SetEarlyEntryOutcome.NoChange;
 
-        if (input.Granted)
+        if (granted)
         {
             if (member.Status != CampMemberStatus.Active)
                 return SetEarlyEntryOutcome.MemberNotActive;
@@ -1866,17 +1866,17 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 return SetEarlyEntryOutcome.SlotCapExceeded;
         }
 
-        member.HasEarlyEntry = input.Granted;
+        member.HasEarlyEntry = granted;
         await _repo.SaveMemberAsync(member, cancellationToken);
         _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
         await _auditLog.LogAsync(
-            input.Granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,
+            granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,
             nameof(CampMember), member.Id,
-            input.Granted
+            granted
                 ? $"Granted Early Entry to member in season {member.CampSeason.Year}."
                 : $"Revoked Early Entry from member in season {member.CampSeason.Year}.",
-            input.ActorUserId,
+            actorUserId,
             relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
 
         return SetEarlyEntryOutcome.Success;

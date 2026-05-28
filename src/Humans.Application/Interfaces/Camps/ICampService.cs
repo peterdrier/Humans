@@ -219,7 +219,7 @@ public interface ICampService : ICampServiceRead, IApplicationService
     /// Idempotent: writes no audit row when the value is already at the requested state.
     /// </summary>
     Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
-        CampEarlyEntryInput input,
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default);
 }
 
@@ -581,26 +581,6 @@ public sealed record CampImageUploadResult(bool Succeeded, CampImage? Image, str
     public static CampImageUploadResult Success(CampImage image) => new(true, image, null);
 
     public static CampImageUploadResult Failure(string errorMessage) => new(false, null, errorMessage);
-}
-
-public sealed class CampEarlyEntryInput
-{
-    public CampEarlyEntryInput(
-        Guid scopedCampId,
-        Guid campMemberId,
-        bool granted,
-        Guid actorUserId)
-    {
-        ScopedCampId = scopedCampId;
-        CampMemberId = campMemberId;
-        Granted = granted;
-        ActorUserId = actorUserId;
-    }
-
-    public Guid ScopedCampId { get; }
-    internal Guid CampMemberId { get; }
-    internal bool Granted { get; }
-    internal Guid ActorUserId { get; }
 }
 
 public record CampHistoricalNameSummary(
