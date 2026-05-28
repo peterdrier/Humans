@@ -39,31 +39,6 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasActiveSignupAsync_ReturnsTrueForPendingOrConfirmed()
-    {
-        var userId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
-
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Pending));
-        await _dbContext.SaveChangesAsync();
-
-        (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task HasActiveSignupAsync_ReturnsFalseForBailedOrRefused()
-    {
-        var userId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
-
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Bailed));
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Refused));
-        await _dbContext.SaveChangesAsync();
-
-        (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task GetActiveShiftIdsForUserAsync_FiltersToPendingAndConfirmed()
     {
         var userId = Guid.NewGuid();

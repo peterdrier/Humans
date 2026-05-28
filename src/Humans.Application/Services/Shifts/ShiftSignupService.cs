@@ -59,8 +59,8 @@ public sealed class ShiftSignupService(
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
         var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
-        var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
-        if (existingSignup)
+        var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
+        if (activeShiftIds.Contains(shiftId))
             return SignupResult.Fail("Already signed up for this shift.");
 
         var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
@@ -302,8 +302,8 @@ public sealed class ShiftSignupService(
 
     internal async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
-        var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
-        if (existingSignup)
+        var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
+        if (activeShiftIds.Contains(shiftId))
             return SignupResult.Fail("Already signed up for this shift.");
 
         var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);

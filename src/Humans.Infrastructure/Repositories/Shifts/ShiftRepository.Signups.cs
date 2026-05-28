@@ -28,13 +28,6 @@ internal sealed partial class ShiftRepository
     // Reads — ShiftSignup
     // ============================================================
 
-    public Task<bool> HasActiveSignupAsync(Guid userId, Guid shiftId, CancellationToken ct = default) =>
-        _dbContext.ShiftSignups
-            .AsNoTracking()
-            .AnyAsync(s => s.UserId == userId && s.ShiftId == shiftId &&
-                           (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
-                ct);
-
     public async Task<IReadOnlyList<ShiftSignup>> GetForUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         Guid? eventSettingsId = null,

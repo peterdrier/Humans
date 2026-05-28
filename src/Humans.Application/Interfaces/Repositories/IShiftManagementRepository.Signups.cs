@@ -26,12 +26,6 @@ public partial interface IShiftManagementRepository
     // ============================================================
 
     /// <summary>
-    /// Returns <c>true</c> if the user has a Pending or Confirmed signup for
-    /// the given shift. Read-only.
-    /// </summary>
-    Task<bool> HasActiveSignupAsync(Guid userId, Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns <see cref="ShiftSignup"/> rows for the supplied users,
     /// optionally filtered to a single event. Includes
     /// <c>Shift.Rota.EventSettings</c>; team display names are resolved via
