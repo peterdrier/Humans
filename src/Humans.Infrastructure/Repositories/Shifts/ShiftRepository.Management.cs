@@ -283,12 +283,20 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<Shift?> GetShiftWithSignupsForDeleteAsync(Guid shiftId, CancellationToken ct = default)
+    public async Task<Shift?> GetShiftAsync(Guid shiftId, ShiftReadShape shape, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
+        IQueryable<Shift> query = ctx.Shifts.AsNoTracking();
+
+        if (shape.HasFlag(ShiftReadShape.EventSettings))
+            query = query.Include(s => s.Rota).ThenInclude(r => r.EventSettings);
+        else if (shape.HasFlag(ShiftReadShape.Rota))
+            query = query.Include(s => s.Rota);
+
+        if (shape.HasFlag(ShiftReadShape.ShiftSignups))
+            query = query.Include(s => s.ShiftSignups);
+
+        return await query.FirstOrDefaultAsync(s => s.Id == shiftId, ct);
     }
 
     public async Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default)
@@ -303,17 +311,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         ctx.ShiftSignups.RemoveRange(shift.ShiftSignups);
         ctx.Shifts.Remove(shift);
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
     }
 
     public async Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default)

@@ -108,16 +108,6 @@ public partial interface IShiftManagementRepository
     // ============================================================
 
     /// <summary>
-    /// Loads a single shift with full rota / event-settings / team context
-    /// and its sibling signups for capacity checks. Read-only.
-    /// </summary>
-    /// <remarks>
-    /// Signup-adjacent read implemented on the same concrete
-    /// <c>ShiftRepository</c> as <c>IShiftManagementRepository</c>.
-    /// </remarks>
-    Task<Shift?> GetShiftWithContextAsync(Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
      /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
      /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
      /// bulk path on

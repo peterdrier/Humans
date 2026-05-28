@@ -492,7 +492,7 @@ public sealed class ShiftManagementService(
 
     public async Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input)
     {
-        var shift = await repo.GetShiftByIdAsync(input.ShiftId);
+        var shift = await repo.GetShiftAsync(input.ShiftId, ShiftReadShape.Rota | ShiftReadShape.EventSettings);
         if (shift is null || shift.Rota.TeamId != input.TeamId)
             return ShiftMutationResult.Failure("Shift not found.");
 
@@ -520,7 +520,7 @@ public sealed class ShiftManagementService(
 
     public async Task DeleteShiftAsync(Guid shiftId)
     {
-        var shift = await repo.GetShiftWithSignupsForDeleteAsync(shiftId);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.ShiftSignups);
         if (shift is null) throw new InvalidOperationException("Shift not found.");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -545,7 +545,7 @@ public sealed class ShiftManagementService(
     }
 
     public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>
-        repo.GetShiftByIdAsync(shiftId);
+        repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
 
     /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(

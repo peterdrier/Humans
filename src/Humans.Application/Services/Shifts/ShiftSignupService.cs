@@ -63,7 +63,7 @@ public sealed class ShiftSignupService(
         if (existingSignup)
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await repo.GetShiftWithContextAsync(shiftId);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;
@@ -306,7 +306,7 @@ public sealed class ShiftSignupService(
         if (existingSignup)
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await repo.GetShiftWithContextAsync(shiftId);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;

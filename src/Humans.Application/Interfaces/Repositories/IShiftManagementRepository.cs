@@ -119,24 +119,16 @@ public partial interface IShiftManagementRepository : IRepository
     Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a shift with all its signups (same-section nav) for a delete
-    /// pre-check. Tracked. Caller is expected to cancel pending signups
-    /// via the loaded entities before calling <see cref="DeleteShiftCascadeAsync"/>.
+    /// Loads one shift with an explicit same-section include shape. Read-only.
+    /// Cross-domain navs are NOT populated; callers stitch those via section services.
     /// </summary>
-    Task<Shift?> GetShiftWithSignupsForDeleteAsync(Guid shiftId, CancellationToken ct = default);
+    Task<Shift?> GetShiftAsync(Guid shiftId, ShiftReadShape shape, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a shift plus every signup under it in a single save. Service
     /// validates "no confirmed signups" first.
     /// </summary>
     Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a shift with its rota, rota's event settings, and all signups.
-    /// Read-only. Cross-domain <see cref="Rota.Team"/> nav is NOT populated;
-    /// callers stitch team data via <c>ITeamService</c>.
-    /// </summary>
-    Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
      /// Returns the distinct day offsets already populated for a rota. Used
@@ -365,6 +357,16 @@ public enum RotaReadShape
     Tags = 8,
     ShiftsWithSignups = Shifts | ShiftSignups,
     View = EventSettings | Shifts | ShiftSignups | Tags
+}
+
+[Flags]
+public enum ShiftReadShape
+{
+    None = 0,
+    Rota = 1,
+    EventSettings = 2,
+    ShiftSignups = 4,
+    Context = Rota | EventSettings | ShiftSignups
 }
 
 [Flags]
