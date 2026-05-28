@@ -55,8 +55,6 @@ public class VolunteerTrackingControllerTests
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
-    private readonly IGeneralAvailabilityService _availabilityService =
-        Substitute.For<IGeneralAvailabilityService>();
 
     public VolunteerTrackingControllerTests()
     {
@@ -86,7 +84,7 @@ public class VolunteerTrackingControllerTests
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _shiftMgmt, _availabilityService, _exportService, _xlsxBuilder,
+            _service, _shiftMgmt, _exportService, _xlsxBuilder,
             _userService, _auditLog, _localizer);
 
         var http = new DefaultHttpContext();
@@ -617,14 +615,14 @@ public class VolunteerTrackingControllerTests
         var esId = Guid.NewGuid();
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
-        _availabilityService
+        _service
             .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
 
-        await _availabilityService.Received(1)
+        await _service.Received(1)
             .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerAvailabilitySet,
@@ -664,14 +662,14 @@ public class VolunteerTrackingControllerTests
         var esId = Guid.NewGuid();
         var es = new Humans.Domain.Entities.EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
-        _availabilityService
+        _service
             .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
             .Returns(true);
         var ctrl = BuildSut(current);
 
         var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
 
-        await _availabilityService.Received(1)
+        await _service.Received(1)
             .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerAvailabilityCleared,
@@ -744,7 +742,7 @@ public class VolunteerTrackingControllerTests
 
         var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, CancellationToken.None);
 
-        await _availabilityService.DidNotReceive()
+        await _service.DidNotReceive()
             .SetDayAvailabilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
     }

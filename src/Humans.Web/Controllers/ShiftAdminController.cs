@@ -23,7 +23,7 @@ public class ShiftAdminController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
     IShiftView shiftView,
-    IGeneralAvailabilityService availabilityService,
+    IVolunteerTrackingService volunteerTrackingService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -670,7 +670,7 @@ public class ShiftAdminController(
                 UserService,
                 shiftView,
                 signupService,
-                availabilityService);
+                volunteerTrackingService);
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)

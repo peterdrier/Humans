@@ -24,7 +24,7 @@ namespace Humans.Web.Controllers;
 public class ShiftsController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
-    IGeneralAvailabilityService availabilityService,
+    IVolunteerTrackingService volunteerTrackingService,
     IShiftView shiftView,
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,
@@ -391,7 +391,7 @@ public class ShiftsController(
         var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return BadRequest("No active event.");
 
-        await availabilityService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
+        await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
         SetSuccess("Availability updated.");
         return RedirectToAction(nameof(Mine));
     }

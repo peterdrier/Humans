@@ -1,27 +1,34 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
-using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
-public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
+public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
 {
     private readonly VolunteerTrackingRepository _repo;
-    private readonly GeneralAvailabilityService _service;
+    private readonly VolunteerTrackingService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    public GeneralAvailabilityServiceTests()
+    public VolunteerTrackingAvailabilityTests()
         : base(TestNow)
     {
         _repo = new VolunteerTrackingRepository(Db);
-        _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), Clock);
+        _service = new VolunteerTrackingService(
+            _repo,
+            Substitute.For<IShiftManagementRepository>(),
+            Substitute.For<IUserService>(),
+            Substitute.For<IShiftViewInvalidator>(),
+            Clock);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -81,21 +88,21 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetByUserAsync_ReturnsNullWhenMissing()
+    public async Task GetAvailabilityByUserAsync_ReturnsNullWhenMissing()
     {
-        var result = await _service.GetByUserAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await _service.GetAvailabilityByUserAsync(Guid.NewGuid(), Guid.NewGuid());
         result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task DeleteAsync_RemovesExistingRecord()
+    public async Task DeleteAvailabilityAsync_RemovesExistingRecord()
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await Db.SaveChangesAsync();
 
         await _service.SetAvailabilityAsync(userId, esId, [0, 1]);
-        await _service.DeleteAsync(userId, esId);
+        await _service.DeleteAvailabilityAsync(userId, esId);
 
         var after = await Db.GeneralAvailability
             .AsNoTracking()
@@ -104,10 +111,10 @@ public sealed class GeneralAvailabilityServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteAsync_NoOpWhenMissing()
+    public async Task DeleteAvailabilityAsync_NoOpWhenMissing()
     {
         // Should not throw when there's no matching record.
-        await _service.DeleteAsync(Guid.NewGuid(), Guid.NewGuid());
+        await _service.DeleteAvailabilityAsync(Guid.NewGuid(), Guid.NewGuid());
     }
 
     [HumansFact]

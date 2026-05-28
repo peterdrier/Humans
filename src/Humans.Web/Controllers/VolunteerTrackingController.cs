@@ -26,7 +26,6 @@ namespace Humans.Web.Controllers;
 public sealed class VolunteerTrackingController(
     IVolunteerTrackingService service,
     IShiftManagementService shiftManagementService,
-    IGeneralAvailabilityService availabilityService,
     IVolunteerTrackingExportService exportService,
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserServiceRead userService,
@@ -344,7 +343,7 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
+        var changed = await service.SetDayAvailabilityAsync(userId, es.Id, dayOffset, true, ct);
         if (changed)
         {
             await auditLogService.LogAsync(
@@ -367,7 +366,7 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await availabilityService.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
+        var changed = await service.SetDayAvailabilityAsync(userId, es.Id, dayOffset, false, ct);
         if (changed)
         {
             await auditLogService.LogAsync(

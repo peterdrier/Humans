@@ -21,7 +21,7 @@ public class ShiftDashboardController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
     IShiftView shiftView,
-    IGeneralAvailabilityService availabilityService,
+    IVolunteerTrackingService volunteerTrackingService,
     IUserServiceRead userService,
     ShiftDashboardPageBuilder pageBuilder,
     ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)
@@ -86,7 +86,7 @@ public class ShiftDashboardController(
                 UserService,
                 shiftView,
                 signupService,
-                availabilityService);
+                volunteerTrackingService);
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)

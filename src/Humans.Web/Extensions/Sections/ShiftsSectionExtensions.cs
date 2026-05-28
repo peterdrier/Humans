@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Repositories;
 using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
 using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
@@ -49,16 +48,12 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
-        // GeneralAvailability - no caching decorator (Option A, small surface); persistence is user-oriented with VolunteerTracking.
-        services.AddScoped<ShiftsGeneralAvailabilityService>();
-        services.AddScoped<IGeneralAvailabilityService>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
-
         // VolunteerTracking - scoped user-oriented repository for build status and availability mutations.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<ShiftsVolunteerTrackingService>();
         services.AddScoped<IVolunteerTrackingService>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
         services.AddScoped<IVolunteerTrackingServiceRead>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsVolunteerTrackingService>());
         services.AddScoped<Humans.Application.Services.Shifts.VolunteerTrackingExportService>();
         services.AddScoped<IVolunteerTrackingExportService>(sp =>
             sp.GetRequiredService<Humans.Application.Services.Shifts.VolunteerTrackingExportService>());

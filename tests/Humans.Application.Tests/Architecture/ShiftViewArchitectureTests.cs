@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Services.Shifts;
 using Xunit;
-using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
@@ -23,7 +22,6 @@ public class ShiftViewArchitectureTests
     [
         typeof(ShiftSignupService),
         typeof(ShiftManagementService),
-        typeof(GeneralAvailabilityService),
         typeof(VolunteerTrackingService)
     ];
 

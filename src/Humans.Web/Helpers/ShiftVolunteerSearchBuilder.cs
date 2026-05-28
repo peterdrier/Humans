@@ -46,7 +46,7 @@ public static class ShiftVolunteerSearchBuilder
         IUserServiceRead userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
-        IGeneralAvailabilityService availabilityService)
+        IVolunteerTrackingService volunteerTrackingService)
     {
         if (!query.HasSearchTerm())
             return VolunteerSearchBuildResult.EmptyQuery;
@@ -66,7 +66,7 @@ public static class ShiftVolunteerSearchBuilder
             userService,
             shiftView,
             signupService,
-            availabilityService);
+            volunteerTrackingService);
 
         return VolunteerSearchBuildResult.Success(results);
     }
@@ -80,7 +80,7 @@ public static class ShiftVolunteerSearchBuilder
         IUserServiceRead userService,
         IShiftView shiftView,
         IShiftSignupService signupService,
-        IGeneralAvailabilityService availabilityService)
+        IVolunteerTrackingService volunteerTrackingService)
     {
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
@@ -96,7 +96,7 @@ public static class ShiftVolunteerSearchBuilder
             .Take(10)
             .ToList();
 
-        var poolVolunteers = await availabilityService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
+        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
         // Bulk-fetch the cached view for every candidate user — replaces the

@@ -13,8 +13,69 @@ public sealed class VolunteerTrackingService(
     IShiftManagementRepository shiftManagement,
     IUserService userService,
     IShiftViewInvalidator viewInvalidator,
-    IClock clock) : IVolunteerTrackingService
+    IClock clock) : IVolunteerTrackingService, IUserMerge
 {
+    public async Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets)
+    {
+        var now = clock.GetCurrentInstant();
+        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
+        viewInvalidator.InvalidateUser(userId);
+    }
+
+    public async Task<GeneralAvailabilitySnapshot?> GetAvailabilityByUserAsync(Guid userId, Guid eventSettingsId)
+    {
+        var availability = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, eventSettingsId);
+        return availability is null
+            ? null
+            : ToSnapshot(availability);
+    }
+
+    public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
+        Guid eventSettingsId, int dayOffset)
+    {
+        // EF can't translate List<int>.Contains over jsonb; load all and filter in memory (~500 users).
+        var all = await trackingRepo.GetAvailabilityByEventAsync(eventSettingsId);
+        return all
+            .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
+            .Select(ToSnapshot)
+            .ToList();
+    }
+
+    public async Task<bool> SetDayAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset, bool available,
+        CancellationToken ct = default)
+    {
+        var current = await trackingRepo.GetAvailabilityByUserAndEventAsync(userId, eventSettingsId, ct).ConfigureAwait(false);
+        var offsets = current?.AvailableDayOffsets.ToList() ?? [];
+
+        if (available)
+        {
+            if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false;
+            offsets.Add(dayOffset);
+        }
+        else if (!offsets.Remove(dayOffset))
+        {
+            return false;
+        }
+
+        offsets.Sort();
+        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
+        viewInvalidator.InvalidateUser(userId);
+        return true;
+    }
+
+    public async Task DeleteAvailabilityAsync(Guid userId, Guid eventSettingsId)
+    {
+        await trackingRepo.DeleteAvailabilityAsync(userId, eventSettingsId);
+        viewInvalidator.InvalidateUser(userId);
+    }
+
+    private static GeneralAvailabilitySnapshot ToSnapshot(GeneralAvailability availability) =>
+        new(
+            availability.UserId,
+            availability.EventSettingsId,
+            availability.AvailableDayOffsets);
+
     public async Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default)
     {
         var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
@@ -385,6 +446,14 @@ public sealed class VolunteerTrackingService(
             dayOffSummaries);
 
         return new VolunteerBuildStripDto(es.BuildStartOffset, es.GateOpeningDate, row);
+    }
+
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+    {
+        await trackingRepo.ReassignAvailabilityToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        viewInvalidator.InvalidateUser(sourceUserId);
+        viewInvalidator.InvalidateUser(targetUserId);
     }
 
     private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>
