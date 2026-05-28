@@ -19,7 +19,6 @@ Humans.Application.Interfaces.Shifts.IShiftManagementService.GetRotasByDepartmen
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftByIdAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetUrgentShiftsAsync:Humans.Domain.Entities.Shift
-Humans.Application.Interfaces.Shifts.IShiftSignupService.GetActiveSignupsForUserAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByUserAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.Teams.ITeamService.GetAllTeamsAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetByIdsWithParentsAsync:Humans.Domain.Entities.Team

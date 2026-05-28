@@ -599,7 +599,7 @@ public sealed class ShiftSignupService(
 
         // Fetched upfront — used for both duplicate-check and time-overlap check.
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var existingSignups = await repo.GetActiveSignupsForUserAsync(userId);
+        var existingSignups = await GetActiveUserSignupsAsync(userId);
         var activeShiftIds = existingSignups
             .Where(s => shiftIdsInRange.Contains(s.ShiftId))
             .Select(s => s.ShiftId)
@@ -957,9 +957,6 @@ public sealed class ShiftSignupService(
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
         repo.GetByUserAsync(userId, eventSettingsId);
 
-    public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        repo.GetActiveSignupsForUserAsync(userId, ct);
-
     public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {
         var signup = await repo.GetTeamProbeAsync(id, scope);
@@ -991,12 +988,23 @@ public sealed class ShiftSignupService(
             .OrderBy(s => s.DayOffset)
             .ToList();
 
+    private async Task<IReadOnlyList<ShiftSignup>> GetActiveUserSignupsAsync(Guid userId)
+    {
+        var signups = await repo.GetByUserAsync(userId);
+        return signups
+            .Where(IsActiveSignup)
+            .ToList();
+    }
+
+    private static bool IsActiveSignup(ShiftSignup signup) =>
+        signup.Status is SignupStatus.Pending or SignupStatus.Confirmed;
+
     private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettings es)
     {
         var targetStart = targetShift.GetAbsoluteStart(es);
         var targetEnd = targetShift.GetAbsoluteEnd(es);
 
-        var userSignups = await repo.GetActiveSignupsForUserAsync(userId);
+        var userSignups = await GetActiveUserSignupsAsync(userId);
 
         IReadOnlyDictionary<Guid, string>? teamNames = null;
 

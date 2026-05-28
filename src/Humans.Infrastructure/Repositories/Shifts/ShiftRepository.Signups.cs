@@ -49,17 +49,6 @@ internal sealed partial class ShiftRepository
         return await query.OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(d => d.UserId == userId &&
-                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
-            .ToListAsync(ct);
-    }
-
     public Task<ShiftSignup?> GetTeamProbeAsync(
         Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
     {

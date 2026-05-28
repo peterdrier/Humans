@@ -42,13 +42,6 @@ public partial interface IShiftManagementRepository
         Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns active (Pending or Confirmed) signups for the user, including
-    /// <c>Shift.Rota.EventSettings</c> for overlap checks. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Loads signup team ownership data by signup id or signup block id. Read-only.
     /// </summary>
     Task<ShiftSignup?> GetTeamProbeAsync(

@@ -505,8 +505,9 @@ public class ShiftsController(
 
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
-        var allActiveSignups = await signupService.GetActiveSignupsForUserAsync(userId);
-        return allActiveSignups
+        var allSignups = await signupService.GetByUserAsync(userId);
+        return allSignups
+            .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Where(s => s.Shift?.Rota?.EventSettings is not null)
             .Select(s =>
             {
