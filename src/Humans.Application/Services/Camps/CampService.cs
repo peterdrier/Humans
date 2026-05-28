@@ -354,21 +354,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             .ToList();
     }
 
-    public async Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(
-        int year,
-        CancellationToken cancellationToken = default)
-    {
-        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-
-        return camps
-            .Where(c => c.HasPublicSeasonForYear(year))
-            .Select(camp => CreateCampPlacementSummary(camp, year))
-            .Where(summary => summary is not null)
-            .Select(summary => summary!)
-            .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
@@ -647,25 +632,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             camp.IsSwissCamp,
             camp.Links,
             camp.WebOrSocialUrl);
-    }
-
-    private static CampPlacementSummary? CreateCampPlacementSummary(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null)
-        {
-            return null;
-        }
-
-        return new CampPlacementSummary(
-            camp.Id,
-            camp.Slug,
-            season.Name,
-            season.MemberCount,
-            season.SpaceRequirement?.ToString(),
-            season.SoundZone?.ToString(),
-            season.Status.ToString(),
-            season.ElectricalGrid?.ToString());
     }
 
     private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)

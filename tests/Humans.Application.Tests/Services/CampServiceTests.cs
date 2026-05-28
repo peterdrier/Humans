@@ -549,7 +549,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampPlacementSummariesForYearAsync_ReturnsSortedPlacementData()
+    public async Task GetCampsForYearAsync_ProjectsPlacementFacts()
     {
         await SeedSettingsAsync();
 
@@ -594,14 +594,21 @@ public sealed class CampServiceTests : ServiceTestHarness
         await ApproveLatestSeasonAsync(bravoCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
 
-        var placements = await _service.GetCampPlacementSummariesForYearAsync(2026);
+        var placements = (await _service.GetCampsForYearAsync(2026))
+            .Select(camp => new
+            {
+                Camp = camp,
+                Season = camp.Seasons.Single(season => season.Year == 2026)
+            })
+            .OrderBy(row => row.Season.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        placements.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Bravo Camp");
-        placements[1].MemberCount.Should().Be(42);
-        placements[1].SpaceRequirement.Should().Be(nameof(SpaceSize.Sqm800));
-        placements[1].SoundZone.Should().Be(nameof(SoundZone.Blue));
-        placements[1].ElectricalGrid.Should().Be(nameof(ElectricalGrid.Red));
-        placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
+        placements.Select(row => row.Season.Name).Should().Equal("Alpha Camp", "Bravo Camp");
+        placements[1].Season.MemberCount.Should().Be(42);
+        placements[1].Season.SpaceRequirement.Should().Be(SpaceSize.Sqm800);
+        placements[1].Season.SoundZone.Should().Be(SoundZone.Blue);
+        placements[1].Season.ElectricalGrid.Should().Be(ElectricalGrid.Red);
+        placements[1].Season.Status.Should().Be(CampSeasonStatus.Active);
     }
 
     [HumansFact]

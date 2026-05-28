@@ -119,10 +119,6 @@ public sealed class CachingCampService(
         int year, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampPublicSummariesForYearAsync(year, cancellationToken));
 
-    public Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(
-        int year, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCampPlacementSummariesForYearAsync(year, cancellationToken));
-
     public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
