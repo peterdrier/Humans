@@ -272,7 +272,7 @@ public class ShiftsController(
 
         try
         {
-            await signupService.BailRangeAsync(signupBlockId, user.Id);
+            await signupService.ApplySignupBlockActionAsync(signupBlockId, ShiftSignupBlockAction.Bail, user.Id);
             SetSuccess("Successfully bailed from shift range.");
         }
         catch (InvalidOperationException ex)
@@ -294,7 +294,7 @@ public class ShiftsController(
             return currentUserNotFound;
         }
 
-        var result = await signupService.BailAsync(signupId, user.Id, reason);
+        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.Bail, user.Id, reason);
 
         if (!result.Success)
         {

@@ -420,8 +420,10 @@ public sealed class DevelopmentDashboardSeeder(
                 continue;
 
             var final = i % 2 == 0
-                ? await shiftSignupService.BailAsync(signup.Signup.Id, user.Id, "Seeded for demo")
-                : await shiftSignupService.RefuseAsync(signup.Signup.Id, users[0].Id, "Seeded for demo");
+                ? await shiftSignupService.ApplySignupActionAsync(
+                    signup.Signup.Id, ShiftSignupAction.Bail, user.Id, "Seeded for demo")
+                : await shiftSignupService.ApplySignupActionAsync(
+                    signup.Signup.Id, ShiftSignupAction.Refuse, users[0].Id, "Seeded for demo");
             if (final.Success)
                 signupsCreated++;
         }

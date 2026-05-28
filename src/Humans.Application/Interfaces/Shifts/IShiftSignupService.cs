@@ -21,19 +21,13 @@ public interface IShiftSignupService : IApplicationService
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
-    /// Approves a pending signup. Re-validates invariants.
+    /// Applies a state transition to a single signup.
     /// </summary>
-    Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
-
-    /// <summary>
-    /// Refuses a pending signup.
-    /// </summary>
-    Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason);
-
-    /// <summary>
-    /// Bails from a confirmed or pending signup.
-    /// </summary>
-    Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason);
+    Task<SignupResult> ApplySignupActionAsync(
+        Guid signupId,
+        ShiftSignupAction action,
+        Guid actorUserId,
+        string? reason = null);
 
     /// <summary>
     /// Creates a confirmed signup on behalf of a volunteer (voluntell).
@@ -48,16 +42,6 @@ public interface IShiftSignupService : IApplicationService
     Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
 
     /// <summary>
-    /// Marks a confirmed signup as no-show (post-shift only).
-    /// </summary>
-    Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);
-
-    /// <summary>
-    /// Removes a confirmed signup (coordinator/admin unassignment).
-    /// </summary>
-    Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);
-
-    /// <summary>
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
@@ -70,19 +54,13 @@ public interface IShiftSignupService : IApplicationService
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
-    /// Approves all pending signups sharing a SignupBlockId.
+    /// Applies a state transition to every signup in a signup block.
     /// </summary>
-    Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId);
-
-    /// <summary>
-    /// Refuses all pending signups sharing a SignupBlockId.
-    /// </summary>
-    Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason);
-
-    /// <summary>
-    /// Bails all signups sharing a SignupBlockId.
-    /// </summary>
-    Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null);
+    Task<SignupResult> ApplySignupBlockActionAsync(
+        Guid signupBlockId,
+        ShiftSignupBlockAction action,
+        Guid actorUserId,
+        string? reason = null);
 
     /// <summary>
     /// Gets all signups for a user, optionally filtered by event.
@@ -159,6 +137,22 @@ public enum ShiftSignupRequestFlags
     SkipConflicts = 2
 }
 
+public enum ShiftSignupAction
+{
+    Approve,
+    Refuse,
+    Bail,
+    MarkNoShow,
+    Remove
+}
+
+public enum ShiftSignupBlockAction
+{
+    Approve,
+    Refuse,
+    Bail
+}
+
 public sealed record OrphanSignupSnapshot(
     Guid Id,
     Guid UserId,
@@ -215,6 +209,9 @@ public record SignupResult
 
     public static SignupResult Ok(ShiftSignup signup, string? warning = null) =>
         new() { Success = true, Signup = signup, Warning = warning };
+
+    public static SignupResult Ok(string? warning = null) =>
+        new() { Success = true, Warning = warning };
 
     public static SignupResult Fail(string error) =>
         new() { Success = false, Error = error };
