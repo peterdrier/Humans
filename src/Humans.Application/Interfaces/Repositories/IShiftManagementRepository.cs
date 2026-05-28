@@ -214,12 +214,6 @@ public partial interface IShiftManagementRepository : IRepository
         int? maxDayOffset,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the id of the active event with the given id, or <see cref="Guid.Empty"/>
-    /// if no such row exists or it is inactive.
-    /// </summary>
-    Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default);
-
     // ==========================================================================
     // Shift tags
     // ==========================================================================

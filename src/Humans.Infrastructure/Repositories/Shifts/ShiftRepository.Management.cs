@@ -513,17 +513,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.Select(x => x.CreatedAt).ToListAsync(ct);
     }
 
-    public async Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .Where(e => e.IsActive && e.Id == eventSettingsId)
-            .OrderBy(e => e.Id)
-            .Select(e => e.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
     // ==========================================================================
     // Shift tags
     // ==========================================================================

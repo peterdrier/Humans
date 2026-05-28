@@ -1755,11 +1755,11 @@ public sealed class ShiftManagementService(
         Guid eventSettingsId,
         CancellationToken cancellationToken = default)
     {
-        var activeEventId = await repo.GetActiveEventIdAsync(eventSettingsId, cancellationToken);
-        if (activeEventId == Guid.Empty)
+        var eventSettings = await repo.GetEventSettingsByIdAsync(eventSettingsId, cancellationToken);
+        if (eventSettings is not { IsActive: true })
             return new Dictionary<Guid, int>();
 
-        return await repo.GetPendingSignupCountsByTeamAsync(activeEventId, null, null, cancellationToken);
+        return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);
     }
 
 
