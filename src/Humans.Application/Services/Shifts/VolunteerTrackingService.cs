@@ -11,7 +11,7 @@ namespace Humans.Application.Services.Shifts;
 public sealed class VolunteerTrackingService(
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementRepository shiftManagement,
-    IUserService userService,
+    IUserServiceRead userService,
     IShiftViewInvalidator viewInvalidator,
     IClock clock) : IVolunteerTrackingService, IUserMerge
 {
@@ -95,8 +95,11 @@ public sealed class VolunteerTrackingService(
         var todayOffset = OffsetOf(es, today);
 
         var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
-        var participations = await userService.GetAllParticipationsForYearAsync(es.Year, ct).ConfigureAwait(false);
-        var statusMap = participations
+        var users = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var statusMap = users
+            .SelectMany(
+                user => user.EventParticipations.Where(p => p.Year == es.Year),
+                (user, participation) => (UserId: user.Id, participation.Status))
             .Where(p => p.Status == ParticipationStatus.NotAttending
                      || p.Status == ParticipationStatus.Ticketed
                      || p.Status == ParticipationStatus.Attended)
@@ -191,15 +194,15 @@ public sealed class VolunteerTrackingService(
             .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
 
         var unbookedRows = new List<VolunteerCohortRow>();
-        foreach (var participation in participations)
+        foreach (var participation in statusMap)
         {
-            if (participation.Status != ParticipationStatus.Ticketed
-                && participation.Status != ParticipationStatus.Attended)
+            if (participation.Value != ParticipationStatus.Ticketed
+                && participation.Value != ParticipationStatus.Attended)
             {
                 continue;
             }
 
-            var userId = participation.UserId;
+            var userId = participation.Key;
             if (perUserSignups.ContainsKey(userId))
             {
                 continue; // already in main cohort

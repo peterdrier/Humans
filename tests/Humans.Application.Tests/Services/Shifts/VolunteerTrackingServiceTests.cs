@@ -722,16 +722,30 @@ public class VolunteerTrackingServiceTests
         shiftMgmt.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(activeEvent);
 
-        var userService = Substitute.For<IUserService>();
-        userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        var userService = Substitute.For<IUserServiceRead>();
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var year = call.Arg<int>();
-                return Task.FromResult<IReadOnlyList<UserParticipationRow>>(
-                    (participations ?? [])
-                    .Where(p => p.Year == year)
-                    .Select(p => new UserParticipationRow(p.UserId, p.Status, p.Source, p.CheckedInAt))
-                    .ToList());
+                var users = (participations ?? [])
+                    .GroupBy(p => p.UserId)
+                    .Select(g => UserInfo.Create(
+                        new User
+                        {
+                            Id = g.Key,
+                            DisplayName = string.Empty,
+                            PreferredLanguage = "en",
+                            CreatedAt = TestNow
+                        },
+                        userEmails: [],
+                        eventParticipations: g.ToList(),
+                        externalLogins: [],
+                        profile: null,
+                        contactFields: [],
+                        profileLanguages: [],
+                        volunteerHistory: [],
+                        communicationPreferences: []))
+                    .ToList();
+                return Task.FromResult<IReadOnlyCollection<UserInfo>>(users);
             });
 
         trackingRepo ??= new FakeVolunteerTrackingRepository(
