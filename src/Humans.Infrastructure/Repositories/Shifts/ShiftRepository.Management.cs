@@ -363,18 +363,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
     }
 
-    public async Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.ShiftSignups)
-            .Where(s => s.RotaId == rotaId)
-            .OrderBy(s => s.DayOffset)
-            .ThenBy(s => s.StartTime)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

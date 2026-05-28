@@ -150,11 +150,6 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<Shift?> GetShiftByIdAsync(Guid shiftId);
 
-    /// <summary>
-    /// Gets all shifts for a rota.
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId);
-
     // === Urgency ===
 
     /// <summary>
