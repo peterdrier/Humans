@@ -117,17 +117,14 @@ public partial interface IShiftManagementRepository : IRepository
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rotas in the active event whose <c>Name</c> contains
-    /// <paramref name="query"/> (case-insensitive, Postgres ILike). When
-    /// <paramref name="onlyVolunteerVisible"/> is true, filters to
-    /// <c>IsVisibleToVolunteers</c> at the DB layer. Capped at
+    /// Volunteer-visible rotas in the active event whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive, Postgres ILike). Capped at
     /// <paramref name="max"/>; ordering is unspecified (caller ranks).
     /// Read-only, no cross-domain navs — caller stitches team display data
     /// via <c>ITeamService</c>.
     /// </summary>
-    Task<IReadOnlyList<Rota>> SearchRotasAsync(
-        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
-        int max, CancellationToken ct = default);
+    Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
+        string query, Guid eventSettingsId, int max, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the tag membership for a rota, replacing any existing tags. Unknown

@@ -240,9 +240,8 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> SearchRotasAsync(
-        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
-        int max, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
+        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return [];
@@ -253,10 +252,8 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         var q = ctx.Rotas
             .AsNoTracking()
             .Where(r => r.EventSettingsId == eventSettingsId
+                && r.IsVisibleToVolunteers
                 && EF.Functions.ILike(r.Name, pattern, "\\"));
-
-        if (onlyVolunteerVisible)
-            q = q.Where(r => r.IsVisibleToVolunteers);
 
         return await q
             // Deterministic Take(max) for global search; controller re-ranks by score before display.

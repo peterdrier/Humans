@@ -299,9 +299,8 @@ public sealed class ShiftManagementService(
         var settings = await repo.GetActiveEventSettingsAsync(cancellationToken);
         if (settings is null) return [];
 
-        var rotas = await repo.SearchRotasAsync(
+        var rotas = await repo.SearchVolunteerVisibleRotasAsync(
             query, settings.Id,
-            onlyVolunteerVisible: true,
             max, cancellationToken);
         if (rotas.Count == 0) return [];
 
