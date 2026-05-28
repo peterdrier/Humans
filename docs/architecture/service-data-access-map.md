@@ -1301,14 +1301,21 @@ directly.
 
 ### TicketingBudgetService (Scoped)
 
-Repository: `ITicketingBudgetRepository`.
+No repository. Tickets→Budget bridge — reads paid ticket sales through
+`ITicketServiceRead.GetTicketOrdersAsync` (the cached read surface) and
+delegates every `BudgetLineItem` / `TicketingProjection` write to
+`IBudgetService`. Holds no DB access of its own.
 
-| Table | R/W |
-|-------|-----|
-| TicketOrders | R |
+> **Change since prior sweep:** the dedicated `ITicketingBudgetRepository`
+> / `TicketingBudgetRepository` were **removed** (PR #815) — the
+> Budget/Tickets read surface folded into `ITicketRepository` and this
+> service now reads orders via the cached `ITicketServiceRead` instead of
+> a direct repository. There is no longer any `TicketOrders` read here.
 
-Cross-section calls via `IBudgetService`. Aggregates ticket revenue
-into a budget-side projection. Implements `ITicketingBudgetService`. No cache.
+Cross-section calls via `ITicketServiceRead`, `IBudgetService`, plus
+`IClock` and `ILogger`. Aggregates paid orders into weekly ticketing
+actuals which it hands to `IBudgetService.SyncTicketingActualsAsync`.
+Implements `ITicketingBudgetService`. No cache.
 
 ### AttendeeContactImportService (Scoped)
 

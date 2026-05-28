@@ -276,6 +276,7 @@ graph LR
     TicketSync --> User
     TicketSync --> Campaign
     TicketSync --> ShiftMgmt
+    TicketBudget --> TicketQ
     TicketBudget --> Budget
     TicketTransfer --> User
     TicketTransfer --> UEmail
@@ -507,9 +508,9 @@ graph LR
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
     %% Eager count (including the DriveMon → Audit "pending" dashed arrow that
-    %% Mermaid counts as a link): 262 eager-or-pending links, indices 0..261.
-    %% The 16 lazy edges are indices 262..277.
-    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277 stroke:#f97316,stroke-width:2.5px
+    %% Mermaid counts as a link): 263 eager-or-pending links, indices 0..262.
+    %% The 16 lazy edges are indices 263..278.
+    linkStyle 263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -556,10 +557,10 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `BudgetService` | 4 | 0 | Read by TicketQ, TicketBudget, ExpenseReport, and now `HoldedFinanceService` (Finance section). |
 | `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
 | `LegalDocumentSyncService` | 3 | 0 | Required-docs snapshot for Membership + Consent + AdminLegal. |
+| `TicketQueryService` | 3 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, and now `TicketingBudgetService` (which reads paid orders via the read interface after the #815 budget-repo removal). Lazy-in from ShiftMgmt + UEmail cycles. |
 
 Below the >= 3 threshold but tracked for narrative continuity:
 
-- `TicketQueryService` (`ITicketServiceRead`) — 2 eager (Dash, AcctDel) + 2 lazy (ShiftMgmt, UEmail). Exposed only through the read interface for cross-section consumers; the Profile dependency was dropped in #685.
 - `CampaignService` — 2 eager (TicketQ, TicketSync). Profile dropped its dependency in #685.
 - `GoogleWorkspaceSyncService` — 2 eager (GAdmin, NotifMeter).
 - `ProfileService` (`IProfilePictureService`) — 1 eager (UserService graph anchor only). After #685 wound down, the picture-only ProfileService injects just `IUserService`. Removed entirely from `Onboard`, `AppDec`, `AcctProv`, `AcctDel`, `ExpenseReport`, `NotifMeter`.
@@ -575,6 +576,7 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#581** — `NotificationMeterProvider` push-model inversion: same pattern as #580 for the navbar-badge meter counts. Post-inversion, `NotifMeter` has zero outgoing edges.
 - **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
 - **#791** — Holded Finance section landed: `HoldedFinanceService` (Application/Services/Finance) now owns the creditor-balance / purchase-doc sync. `ExpenseReportService` eagerly injects it; otherwise it's a leaf.
+- **#815** — Ticketing budget repository removed: `TicketingBudgetService` no longer owns tables. The old `ITicketingBudgetRepository` was dropped; the service now reads paid orders through `ITicketServiceRead.GetTicketOrdersAsync` (eager `TicketBudget → TicketQ` edge) and delegates all writes to `IBudgetService`. It is now marked `IOrchestrator` (Tickets read + Budget writes), so HUM0026 catches any future repo-injection regression.
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **GeneralAvailability/RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services). None take dependencies beyond existing service interfaces.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
 - **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.

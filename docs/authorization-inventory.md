@@ -177,6 +177,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ProfileController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileController.VerifyEmail` | Action | `AllowAnonymous` | Override |
 | `ProfileController.Picture` | Action | `AllowAnonymous` | Override |
+| `ProfileController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |
 | `ProfileController.AdminAddVerifiedEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminVerifyEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminList` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
