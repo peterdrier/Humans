@@ -209,7 +209,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season.
 - Only camp leads or CampAdmin can edit a camp.
 - Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
-- Historical names are recorded when a camp is renamed.
+- **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry. <!-- wheat: docs/superpowers/specs/2026-03-13-barrios-design.md §"Name Lock" -->
 - Camp settings control which year is shown publicly and which seasons accept registrations.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
@@ -243,6 +243,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 ## Triggers
 
 - When a camp is registered, its initial season is created with Pending status.
+- When an existing camp opts into a newly-opened season (`OptInToSeasonAsync`, `/Camps/{slug}/OptIn/{year}`), the new season copies the previous season's details and is **auto-approved to `Active`** when the camp has any prior `Active`/`Full`/`Withdrawn` season (`HasApprovedSeasonAsync`). A camp with only `Pending`/`Rejected` history instead gets `Pending` and requires CampAdmin review. <!-- wheat: docs/superpowers/specs/2026-03-13-barrios-design.md §"Returning Camp Season Opt-In" -->
 - Season approval or rejection is performed by CampAdmin.
 - Approving a membership request sends a `CampMembershipApproved` notification to the requester.
 - Rejecting a membership request sends a `CampMembershipRejected` notification to the requester.

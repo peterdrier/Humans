@@ -150,6 +150,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - CityPlanningSettings row is auto-created per year from `CampSettings.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
+- GeoJSON is stored in **`text`** columns (`CampPolygon.GeoJson`, `CampPolygonHistory.GeoJson`, `CityPlanningSettings.LimitZoneGeoJson` / `OfficialZonesGeoJson`), deliberately **not `jsonb`** — the app never queries inside the JSON structure; it round-trips whole FeatureCollections to the MapLibre client, so `jsonb`'s parse/index overhead buys nothing. (Contrast sibling Camp columns `Links` / `Vibes` / `OpenSeasons`, which use `jsonb`.) <!-- wheat: docs/superpowers/specs/2026-03-14-barrio-map.md §"Storage" -->
 - Enforced by `CityPlanningArchitectureTests` (no-decorator shape, append-only repository surface).
 
 ## Negative Access Rules

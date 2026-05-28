@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-05-27
+**Generated:** 2026-05-28
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -80,15 +80,16 @@ Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
 `ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
 `UserEmails`, `CommunicationPreferences`, `AccountMergeRequests`.
 
-> **Change since prior sweep:** `IProfileService` has been **retired** as the
-> profile-data surface and absorbed into `IUserService` (the unified
-> User+Profile read-model now lives behind `IUserService.GetUserInfoAsync`).
-> The remaining Application-layer service in this folder is the slim
-> `ProfileService` implementing only `IProfilePictureService` (the
-> picture-bytes IO gate). `ProfileEditorService` is a new orchestrator that
-> serializes profile saves per-user and delegates the row writes to
-> `IUserService`. Profile-section writes invalidate the unified
-> User+Profile read-model via `IUserInfoInvalidator`. The Profiles
+> **Change since prior sweep:** The Profiles section's three repositories
+> (`IUserEmailRepository`, `IContactFieldRepository`, `IProfileRepository`)
+> have been **consolidated into `IUserRepository`** (PRs #810 / #811). The
+> single repository now owns all per-user persistence — `Users`, `Profiles`,
+> `UserEmails`, `ContactFields`, `ProfileLanguages`,
+> `VolunteerHistoryEntries`, `EventParticipations`, and the
+> ASP.NET-Identity `IdentityUserLogins` bridge. Services that used to inject
+> `IUserEmailRepository` now inject `IUserRepository`. `IProfileService` is
+> retired (now `IProfilePictureService` only) and the unified User+Profile
+> read-model lives behind `IUserService.GetUserInfoAsync`. The Profiles
 > repositories remain **Singletons** (`IDbContextFactory` pattern).
 
 ### ProfileService (Scoped — `IProfilePictureService`)
@@ -139,28 +140,29 @@ cache.
 
 ### UserEmailService (Scoped)
 
-Repository: `IUserEmailRepository`.
+Repository: `IUserRepository`.
 
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (via `IUserEmailRepository` — the only direct EF write to `Users.GoogleEmail` / `Users.GoogleEmailStatus` / `Users.Email`; also a read for `UserEmailWithUser` lookups) |
+| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.GoogleEmailStatus` / `Users.Email`; also a read for `UserEmailWithUser` lookups) |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
 `IServiceProvider` for lazy resolution. Implements `IUserMerge`. No
 `IMemoryCache` directly.
-**Cross-section design-rule note:** the repository's `Users` reads/writes
-overlap the User section — this is the audited bridge for Google email
-status updates and is intentional per Profiles §15 design.
+**Cross-section design-rule note:** `Users` reads/writes overlap the User
+section — `IUserRepository` is the consolidated owner post-#810/#811 and
+this is the audited bridge for Google email status updates, tracked under
+HUM0025 grandfathering as the read-model boundary.
 
 ### AccountMergeService (Scoped)
 
-Repositories: `IAccountMergeRepository`, `IUserEmailRepository`.
+Repositories: `IAccountMergeRepository`, `IUserRepository`.
 
 | Table | R/W |
 |-------|-----|
 | AccountMergeRequests | R/W |
-| UserEmails | R/W |
+| UserEmails | R/W (via `IUserRepository`) |
 
 The merge fan-out happens through the `IEnumerable<IUserMerge>` aggregator —
 each section's service implements `IUserMerge` and handles its own
@@ -173,18 +175,18 @@ caches; the unified read-model is evicted via `IUserInfoInvalidator`.
 
 ### DuplicateAccountService (Scoped)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`.
+Repository: `IUserRepository` (consolidated post-#810/#811).
 
 | Table | R/W |
 |-------|-----|
 | Profiles | R/W |
-| ContactFields | R/W (via `IUserRepository`) |
-| ProfileLanguages | R/W (via `IUserRepository`) |
-| VolunteerHistoryEntries | R/W (via `IUserRepository`) |
+| ContactFields | R/W |
+| ProfileLanguages | R/W |
+| VolunteerHistoryEntries | R/W |
 | UserEmails | R/W |
 | Users | R/W |
-| EventParticipations | R/W (via `IUserRepository`) |
-| IdentityUserLogins | R/W (via `IUserRepository`) |
+| EventParticipations | R/W |
+| IdentityUserLogins | R/W |
 
 **Cross-section table writes (design-rule violations):** `Users`,
 `EventParticipations`, `IdentityUserLogins` are owned by the User section
@@ -218,13 +220,12 @@ interface's `[SurfaceBudget]` is intentionally suspended for now.
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`,
-`ICommunicationPreferenceRepository`.
+Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 
 | Table | R/W | Repo |
 |-------|-----|------|
 | Users | R/W | IUserRepository |
-| UserEmails | R | IUserEmailRepository |
+| UserEmails | R | IUserRepository |
 | EventParticipations | R/W | IUserRepository |
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
@@ -233,10 +234,11 @@ Repositories: `IUserRepository`, `IUserEmailRepository`,
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 
-The three-repo injection composes the `UserInfo` projection inside
-`CachingUserService` — a single cached read-model fanning out from the
-inner `UserService` over the User + Profile section repositories.
-Implements `IUserDataContributor`, `IUserMerge`.
+The consolidated `IUserRepository` (post-#810) plus the comms-prefs repo
+together compose the `UserInfo` projection inside `CachingUserService` —
+a single cached read-model fanning out over the User + Profile section's
+unified persistence layer. Implements `IUserDataContributor`,
+`IUserMerge`.
 
 Cross-section calls via `IAdminAuthorizationService`. No direct
 `IMemoryCache` — caching is in the Singleton decorator.
@@ -279,13 +281,18 @@ writes go through owning services.
 
 ### UnsubscribeService (Scoped)
 
-No repository. Calls `ICommunicationPreferenceService` to flip per-category
-opt-outs; uses `IDataProtectionProvider` for token validation. No cache, no
-direct DB access.
+Repository: `IUserRepository` (read-only — token validation).
+
+| Table | R/W |
+|-------|-----|
+| Users | R |
+
+Calls `ICommunicationPreferenceService` to flip per-category opt-outs;
+uses `IDataProtectionProvider` for token validation. No cache.
 
 ### UserEmailProviderBackfillService (Scoped)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`.
+Repository: `IUserRepository` (consolidated post-#810/#811).
 
 | Table | R/W |
 |-------|-----|
@@ -625,11 +632,12 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 `CampSettings`, `CampMembers`, `CampRoleDefinitions`,
 `CampRoleAssignments`.
 
-> **Change since prior sweep:** `ICampRepository.GetCampLeadsAsync` no
-> longer reads the `Users` table directly — that cross-section read has been
-> retired and lead identities are now resolved via the service layer.
-> `CampService` also implements `IEarlyEntryProvider` (Early Entry section
-> aggregator), contributing camp-lead early-entry rows.
+> **Change since prior sweep:** `ICampRoleRepository` has been
+> **consolidated into `ICampRepository`** (PR #809) via a `.Roles.cs` partial.
+> `CampRoleService` now injects `ICampRepository` directly. The Camps
+> section is back to a single repository owning all of its tables. The
+> earlier `GetCampLeadsAsync` cross-section read of `Users` remains retired,
+> and `CampService` continues to implement `IEarlyEntryProvider`.
 
 ### CampService (Scoped — wrapped by CachingCampService Singleton decorator)
 
@@ -777,6 +785,17 @@ Folder: `src/Humans.Application/Services/Shifts/`. Owns `Rotas`,
 `Shifts`, `ShiftSignups`, `EventSettings`, `GeneralAvailability`,
 `VolunteerEventProfiles`, `VolunteerBuildStatuses`, `ShiftTags`,
 `VolunteerTagPreferences`.
+
+> **Change since prior sweep:** `IShiftManagementRepository` and
+> `IShiftSignupRepository` are now backed by **one concrete partial class
+> `ShiftRepository`** (PR #806; `.Management.cs` + `.Signups.cs` partials).
+> The two interfaces are preserved so service-layer injection patterns and
+> the management/signup split remain visible at the call site, but
+> persistence-side ownership has converged. `IGeneralAvailabilityRepository`
+> was previously folded into `IVolunteerTrackingRepository`. Some shared
+> Shifts-internal reads (`EventSettings`, `ShiftSignups` from
+> `VolunteerTrackingRepository`) carry `[Grandfathered("HUM0025", …)]` while
+> the read surfaces converge.
 
 The Application-layer `ShiftViewService` provides the inner
 implementation of `IShiftView`; it is wrapped by
@@ -1282,14 +1301,21 @@ directly.
 
 ### TicketingBudgetService (Scoped)
 
-Repository: `ITicketingBudgetRepository`.
+No repository. Tickets→Budget bridge — reads paid ticket sales through
+`ITicketServiceRead.GetTicketOrdersAsync` (the cached read surface) and
+delegates every `BudgetLineItem` / `TicketingProjection` write to
+`IBudgetService`. Holds no DB access of its own.
 
-| Table | R/W |
-|-------|-----|
-| TicketOrders | R |
+> **Change since prior sweep:** the dedicated `ITicketingBudgetRepository`
+> / `TicketingBudgetRepository` were **removed** (PR #815) — the
+> Budget/Tickets read surface folded into `ITicketRepository` and this
+> service now reads orders via the cached `ITicketServiceRead` instead of
+> a direct repository. There is no longer any `TicketOrders` read here.
 
-Cross-section calls via `IBudgetService`. Aggregates ticket revenue
-into a budget-side projection. Implements `ITicketingBudgetService`. No cache.
+Cross-section calls via `ITicketServiceRead`, `IBudgetService`, plus
+`IClock` and `ILogger`. Aggregates paid orders into weekly ticketing
+actuals which it hands to `IBudgetService.SyncTicketingActualsAsync`.
+Implements `ITicketingBudgetService`. No cache.
 
 ### AttendeeContactImportService (Scoped)
 
@@ -1620,6 +1646,7 @@ Repository: `IStoreRepository`.
 | StoreTreasurySyncStates | R/W |
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
+`ITeamServiceRead` (team-order counterparty surface, #816),
 `IShiftManagementService`, `IStripeService` (Infrastructure). No
 `IMemoryCache`.
 
@@ -1774,29 +1801,38 @@ formatters with no DI dependencies.
 
 ### Tables Accessed by Multiple Sections (via repository)
 
-After the §15 / `IUserMerge` consolidation and the more recent
+After the §15 / `IUserMerge` consolidation, the
 `GoogleAdminService` / `CampRepository.GetCampLeadsAsync` /
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
-`ShiftSignupRepository` / `TicketRepository` cleanups, only a handful
-of repositories still reach across boundaries directly. These are the
-remaining design-rule violations.
+`ShiftSignupRepository` / `TicketRepository` cleanups, and the
+recent Profiles repository consolidation (PRs #810/#811: three
+Profiles repositories folded into `IUserRepository`), only a handful
+of cross-section table reads remain. Because the consolidated
+`IUserRepository` is now the single owner of every per-user table
+across the Users+Profiles section merge, the previously-tracked
+`IUserEmailRepository` violations are recategorised — they are now
+internal reads/writes of the unified User+Profile owner, not
+cross-section violations.
 
 | Table | Owning Section | Cross-Section Repo Readers (violations) |
 |-------|----------------|-----------------------------------------|
-| **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email` and the `UserEmailWithUser` read; `DuplicateAccountService` via `IUserRepository`) |
-| **UserEmails** | Profiles | Users (`UserRepository.Include(u => u.UserEmails)` — `UserInfo` projection bridge; tracked under HUM0025 grandfathering as the read-model boundary) |
-| **EventParticipations** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
-| **IdentityUserLogins** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
 | **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
+| **EventSettings** | Shifts | Shifts internal (`VolunteerTrackingRepository` reads it alongside `ShiftRepository`; HUM0025 grandfathered, scoped to Shifts internals) |
+| **ShiftSignups** | Shifts | Shifts internal (same — `VolunteerTrackingRepository` reads alongside `ShiftRepository`; HUM0025 grandfathered) |
+| **SystemSettings** | per-key (see Pattern #7) | shared by `EmailOutboxRepository` (Email-owned keys) and `DriveActivityMonitorRepository` (Google-owned keys); disjoint keys — HUM0025 grandfathered |
 
 ### Notable Cross-Section Patterns
 
 1. **`IUserMerge` retired most cross-section profile/identity writes.**
-   `AccountMergeService` no longer injects `IUserRepository` /
-   profile-owned repositories directly — it fans out over
-   `IEnumerable<IUserMerge>`, with each section's service implementing
-   `IUserMerge` to reassign its own owned rows. `DuplicateAccountService`
-   still uses direct repositories pending convergence on the same pattern.
+   `AccountMergeService` no longer injects profile-owned repositories
+   directly — it fans out over `IEnumerable<IUserMerge>`, with each
+   section's service implementing `IUserMerge` to reassign its own owned
+   rows. `DuplicateAccountService` still uses the consolidated
+   `IUserRepository` directly pending convergence on the same pattern.
+   With PRs #810/#811 the three Profiles repositories collapsed into
+   `IUserRepository`, so what looked like cross-section reads/writes
+   between the Profiles and Users sections is now internal to the
+   unified Users+Profiles section owner.
 
 2. **Read/write surface split (read-split interfaces).** Several sections
    now expose a budgeted cross-section read interface that external sections
@@ -1821,8 +1857,9 @@ remaining design-rule violations.
    `TicketSyncService.BuildEmailLookupAsync` fans out over
    `IUserServiceRead.GetAllUserInfosAsync` and synthesises the
    verified-email → user-id map from the cached `UserInfo` slices.
-   `UserEmails` is now only read cross-section by `UserRepository`
-   itself for `UserInfo` projection (the unified read-model bridge).
+   `UserEmails` is now read only by the consolidated `IUserRepository`
+   itself (post-#810/#811) for `UserInfo` projection — internal to the
+   unified Users+Profiles owner, no longer a cross-section reach.
 
 5. **Teams ↔ Google outbox.** `TeamRepository` writes
    `GoogleSyncOutboxEvents` so each team mutation is atomic with its

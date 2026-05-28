@@ -1,8 +1,8 @@
 # Authorization Inventory
 
-Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]` (with a narrow exception in the Events Guide section, which still uses `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` — see §7), the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
+Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers (including the Events Guide section, which now uses `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]`) use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-05-27 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-05-28 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -138,7 +138,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `StoreController` | Class | `[Authorize]` (authenticated) | — |
-| `StoreController` runtime guards | In-method | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay})` and `StoreOrderCreateContext` for Create | Resource-based (see §6) |
+| `StoreController` runtime guards | In-method | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay, Delete})` and `StoreOrderCreateContext` for Create | Resource-based (see §6) |
 | `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Admin` | `PolicyNames.StoreCatalogAdmin` |
 | `StoreStripeWebhookController` | Class | `AllowAnonymous` (Stripe signature-verified) | — |
 
@@ -177,6 +177,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ProfileController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileController.VerifyEmail` | Action | `AllowAnonymous` | Override |
 | `ProfileController.Picture` | Action | `AllowAnonymous` | Override |
+| `ProfileController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |
 | `ProfileController.AdminAddVerifiedEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminVerifyEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminList` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
@@ -191,7 +192,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ProfileController.AddRole` (GET/POST) | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.EndRole` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.AddRole/EndRole` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` | Resource-based (see §6) |
-| `ProfileController` email-action runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (gating ~19 email-edit endpoints) | Resource-based (see §6) |
+| `ProfileController` email-action runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (gating 18 email-edit endpoints) | Resource-based (see §6) |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 
 ### Teams Section
@@ -246,10 +247,10 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `EventsController` | Class | `[Authorize]` (authenticated) + `[ServiceFilter(typeof(EventsFeatureFilter))]` | — |
 | `EventsController` barrio-event runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` via `HumansCampControllerBase.ResolveCampEventManagementAsync` | Resource-based (see §6) |
-| `EventsAdminController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` (role-list — `PolicyNames.EventsAdminOrAdmin` is registered but not yet referenced on attributes) |
-| `EventsDashboardController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
-| `EventsExportController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
-| `EventsModerationController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
+| `EventsAdminController` | Class | `EventsAdmin, Admin` | `PolicyNames.EventsAdminOrAdmin` |
+| `EventsDashboardController` | Class | `EventsAdmin, Admin` | `PolicyNames.EventsAdminOrAdmin` |
+| `EventsExportController` | Class | `EventsAdmin, Admin` | `PolicyNames.EventsAdminOrAdmin` |
+| `EventsModerationController` | Class | `EventsAdmin, Admin` | `PolicyNames.EventsAdminOrAdmin` |
 | `EventsApiController` | Class | `[ApiController]`, `[EnableCors("EventsApi")]`, `[ServiceFilter(typeof(EventsFeatureFilter))]` — no class-level `[Authorize]` | — |
 | `EventsApiController.GetEvents/GetEvent/GetBarrios/GetBarrio/GetCategories` | Action | (anonymous reads) | — |
 | `EventsApiController.GetPreferences/UpdatePreferences/GetFavourites/AddFavourite/RemoveFavourite` | Action | `[Authorize]` (authenticated) | — |
@@ -381,24 +382,24 @@ Views express authorization four ways today:
 
 1. **`authorize-policy="PolicyName"` TagHelper attribute** — the dominant pattern. Resolves through `IAuthorizationService.AuthorizeAsync(User, policyName)` via `AuthorizeViewTagHelper`. Hides the element when the policy fails.
 2. **`(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded`** — used when a view needs the boolean for branching, multi-use within the page, or to drive a `var` flag rather than gate one element. Requires `@inject IAuthorizationService AuthService`.
-3. **`User.IsInRole(RoleNames.X)` direct calls** — used in the build-hash tooltip in the nav (multi-role OR-chain), the Events dropdown sub-items in the main layout, the Refresh button in the Guide layout, and two locations in `Profile/AdminDetail.cshtml`. Not part of the canonical pattern; kept where the surrounding logic needs a plain `bool` outside the TagHelper rendering pipeline or where role-specific behaviour mixes with non-auth UI logic.
+3. **`User.IsInRole(RoleNames.X)` direct calls** — no longer present in any view file (all build-hash, Events-dropdown, Guide-layout, and Profile/AdminDetail call sites have been migrated to `AuthService.AuthorizeAsync` flag variables or `authorize-policy` attributes — verified 2026-05-28).
 4. **`Model.CanX` / `Model.IsX` view-model properties** — for resource-relative checks (coordinator-of-this-team, lead-of-this-camp, can-edit-this-budget) and for status-driven UI (suspended badge, approved badge, etc.). The view does not know about roles; the controller / view-model author resolved authorization upstream.
 
-`RoleChecks.*` and `ShiftRoleChecks.*` are no longer invoked from any view file (Phase 1 retirement complete — verified 2026-05-26).
+`RoleChecks.*` and `ShiftRoleChecks.*` are no longer invoked from any view file (Phase 1 retirement complete — verified 2026-05-28).
 
 ### Nav Layout (`_Layout.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
-| 34–42 | `User.IsInRole(RoleNames.Admin) \|\| HumanAdmin \|\| TeamsAdmin \|\| CampAdmin \|\| TicketAdmin \|\| EventsAdmin \|\| FeedbackAdmin \|\| FinanceAdmin \|\| NoInfoAdmin` | Build-hash tooltip on brand link (any admin role sees commit SHA on hover) |
-| 100 | `authorize-policy="IsActiveMember"` | City Planning nav link |
-| 105 | `authorize-policy="IsActiveMember"` | Events dropdown (feature-flagged) |
-| 111–112 | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` | Guide Dashboard / Moderate / Export dropdown items |
-| 119–120 | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` | Guide Settings / Categories / Venues dropdown items |
-| 136 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
-| 139 | `authorize-policy="IsActiveMember"` | Budget nav link |
-| 142 | `authorize-policy="CantinaAdminOrAdmin"` | Cantina nav link |
-| 145 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
+| 36 | `var isAnyAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded` | Drives `isAnyAdmin` flag for build-hash tooltip on brand link (commit SHA on hover) |
+| 37 | `var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded` | Drives `isEventsAdminOrAdmin` flag for the Events admin sub-dropdowns below |
+| 97 | `authorize-policy="IsActiveMember"` | City Planning nav link |
+| 102 | `authorize-policy="IsActiveMember"` | Events dropdown (feature-flagged) |
+| 108 | `if (isEventsAdminOrAdmin)` | Guide Dashboard / Moderate / Export dropdown items |
+| 115 | `if (isEventsAdminOrAdmin)` | Guide Settings / Categories / Venues dropdown items |
+| 131 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
+| 134 | `authorize-policy="IsActiveMember"` | Budget nav link |
+| 137 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
 
 ### Login Partial (`_LoginPartial.cshtml`)
 
@@ -410,7 +411,7 @@ Views express authorization four ways today:
 
 | Line | Check | Controls |
 |---|---|---|
-| 40 | `User.IsInRole(RoleNames.Admin)` | "Refresh from GitHub" button |
+| 40 | `authorize-policy="AdminOnly"` | "Refresh from GitHub" button |
 
 ### Shift Views
 
@@ -433,8 +434,7 @@ Views express authorization four ways today:
 | `Profile/Index.cshtml` | 15 | `authorize-policy="HumanAdminBoardOrAdmin"` | "Admin" link to AdminDetail |
 | `Profile/Index.cshtml` | 71 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | `ProfileCardViewMode.Admin` vs `Public` for non-own profiles |
 | `Profile/Emails.cshtml` | 17 | `(await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Admin-only email management controls |
-| `Profile/AdminDetail.cshtml` | 297 | `User.IsInRole(RoleNames.Admin)` | Admin-only data block within Admin Detail page |
-| `Profile/AdminDetail.cshtml` | 344 | `User.IsInRole(RoleNames.Admin)` | Admin-only data block within Admin Detail page |
+| `Profile/AdminDetail.cshtml` | 10 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isAdmin` flag for the two Admin-only data blocks at lines 301 and 348 |
 
 ### Board / Onboarding Review Views
 
@@ -498,9 +498,7 @@ Views express authorization four ways today:
 
 ## 3. Same-Rule-Different-Spelling Table
 
-Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are no longer invoked from any view.
-
-The one outstanding deviation is the Events Guide section, where controllers still use `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` even though `PolicyNames.EventsAdminOrAdmin` is registered.
+Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are no longer invoked from any view, and the Events Guide section's controllers and `_Layout.cshtml` dropdown both resolve through `PolicyNames.EventsAdminOrAdmin`.
 
 | Rule | Controller Spelling | View Spelling |
 |---|---|---|
@@ -516,7 +514,7 @@ The one outstanding deviation is the Events Guide section, where controllers sti
 | FinanceAdmin or Admin | `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` | `authorize-policy="FinanceAdminOrAdmin"` |
 | CantinaAdmin or Admin | `[Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]` | `authorize-policy="CantinaAdminOrAdmin"` |
 | Store catalog admin | `[Authorize(Policy = PolicyNames.StoreCatalogAdmin)]` | (no view spelling — controller-only today) |
-| EventsAdmin or Admin | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` (legacy role-list) | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` (legacy) |
+| EventsAdmin or Admin | `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]` | `(await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded` |
 | Review queue access | `[Authorize(Policy = PolicyNames.ReviewQueueAccess)]` | (no current view spelling) |
 | Consent coordinator + B/A | `[Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]` | (no current view spelling) |
 | Board only | `[Authorize(Policy = PolicyNames.BoardOnly)]` | `authorize-policy="BoardOnly"` |
@@ -601,7 +599,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `FeedbackAdminOrAdmin` | FeedbackAdmin, Admin | `PolicyNames.FeedbackAdminOrAdmin`, `RoleChecks.IsFeedbackAdmin` |
 | `FinanceAdminOrAdmin` | FinanceAdmin, Admin | `PolicyNames.FinanceAdminOrAdmin`, `RoleChecks.IsFinanceAdmin`, `RoleChecks.CanAccessFinance` |
-| `EventsAdminOrAdmin` | EventsAdmin, Admin | `PolicyNames.EventsAdminOrAdmin` (registered but not yet referenced in `[Authorize(Policy = ...)]`) |
+| `EventsAdminOrAdmin` | EventsAdmin, Admin | `PolicyNames.EventsAdminOrAdmin` |
 | `CantinaAdminOrAdmin` | CantinaAdmin, Admin | `PolicyNames.CantinaAdminOrAdmin` (Cantina coordinator surface) |
 | `StoreCatalogAdmin` | StoreAdmin, FinanceAdmin, Admin | `PolicyNames.StoreCatalogAdmin`, `RoleChecks.CanAdministerStore` |
 | `ReviewQueueAccess` | ConsentCoordinator, VolunteerCoordinator, Board, Admin | `PolicyNames.ReviewQueueAccess`, `RoleChecks.CanAccessReviewQueue` |
@@ -670,13 +668,13 @@ Composite (non-resource) handlers registered alongside the above:
 | `src/Humans.Web/Controllers/BudgetController.cs` | 226 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Humans.Web/Controllers/ContainerController.cs` | 24 | `AuthorizeAsync(User, target, requirement)` (private helper) |
 | `src/Humans.Web/Controllers/ExpensesController.cs` | 134, 457, 503, 526, 574, 598, 685 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
-| `src/Humans.Web/Controllers/StoreController.cs` | 54, 57, 58, 73, 107, 128, 150, 175 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create) |
+| `src/Humans.Web/Controllers/StoreController.cs` | 55, 58, 59, 60, 75, 109, 127, 156, 182, 204, 229 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create) |
 | `src/Humans.Web/Controllers/IssuesController.cs` | 195, 265, 311, 338, 365, 390 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
 | `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 276, 301, 339 | `AuthorizeAsync(User, ...)` (resource-based) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 677, 710, 755, 797, 834, 871, 908, 928, 972, 1047, 1063, 1089, 1122, 1148, 1174, 1350, 1376, 1420 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 1826 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2301 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2354 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2341 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2394 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
 | `src/Humans.Web/Controllers/AgentController.cs` | 48 | `AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` |
 | `src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
 | `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 31 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
@@ -685,9 +683,8 @@ Composite (non-resource) handlers registered alongside the above:
 
 ## 7. Notes / Known Deviations
 
-- **Events Guide controllers (`EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`) still use `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]`.** `PolicyNames.EventsAdminOrAdmin` is registered in `AuthorizationPolicyExtensions` but not yet referenced from these attributes. Tracked as a Phase-1 cleanup follow-up.
 - **`DevSeedController.ResetDashboard` uses `[Authorize(Roles = RoleNames.Admin)]`** rather than `[Authorize(Policy = PolicyNames.AdminOnly)]`. Single-purpose dev/test endpoint; behaviourally identical to AdminOnly.
-- **`User.IsInRole(EventsAdmin) || User.IsInRole(Admin)` appears twice in `_Layout.cshtml`** to gate the Events admin sub-dropdowns. Will be migrated to `authorize-policy="EventsAdminOrAdmin"` when the controller migration above lands.
+- The Events Guide controllers and `_Layout.cshtml` Events sub-dropdowns have all been migrated to `PolicyNames.EventsAdminOrAdmin` (Phase-1 cleanup complete — verified 2026-05-28).
 
 ---
 

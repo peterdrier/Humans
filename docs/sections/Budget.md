@@ -227,7 +227,7 @@ Stored as string via `HasConversion<string>()`.
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
-- **Tickets:** `ITicketingBudgetRepository` (Tickets-owned, added for PR #545b) — paid-order lookups for ticketing budget projections. Budget no longer has a code path that reads Tickets tables directly.
+- **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`, a Tickets-section service) reads paid orders via `ITicketServiceRead` and pushes results *into* Budget by calling `IBudgetService` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync` / `GetTicketingProjectionEntriesAsync` / `GetActualTicketsSold`). Budget exposes those write/read methods on `IBudgetService` and has no code path that reads Tickets tables directly. (The dedicated `ITicketingBudgetRepository` added for PR #545b was removed in #815.)
 - **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
@@ -241,8 +241,8 @@ Stored as string via `HasConversion<string>()`.
 - `BudgetRepository` (impl `Humans.Infrastructure/Repositories/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
 - **Cross-domain navs `[Obsolete]`-marked:** `BudgetAuditLog.ActorUser`, `BudgetCategory.Team`. `BudgetLineItem.ResponsibleTeam` is NOT yet `[Obsolete]`-marked — still read by the Finance CategoryDetail view under `#pragma warning disable CS0618`; tracked as a follow-up with the User/Team nav strip.
-- **Cross-section calls** route through `ITeamService` (two narrow methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`), `ITicketingBudgetRepository` (Tickets-owned), and `IUserService.GetByIdsAsync` for actor display names.
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for `TicketingBudgetService` / `ITicketingBudgetRepository`. General architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
+- **Cross-section calls** route through `ITeamService` (two narrow methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`) and `IUserService.GetByIdsAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetService.SyncTicketingActualsAsync`, called by the Tickets-section `TicketingBudgetService` bridge.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for the Tickets-section `TicketingBudgetService` bridge (it asserts the constructor takes no Store type). General architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
 - **Repository shape** — `budget_audit_logs` is append-only; repository exposes `AddAuditLogAsync` / `GetXxxAuditLogAsync` only (§12).
 
 ### Touch-and-clean guidance
