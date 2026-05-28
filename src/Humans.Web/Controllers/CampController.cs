@@ -41,46 +41,104 @@ public class CampController(
 
     [AllowAnonymous]
     [HttpGet("")]
-    public async Task<IActionResult> Index(CampFilterViewModel? filters)
+    public async Task<IActionResult> Index(CampFilterViewModel? filters, CancellationToken ct = default)
     {
-        var user = await GetCurrentUserInfoAsync();
-        var directory = await _campService.GetCampDirectoryAsync(
-            user?.Id,
-            filters is null
-                ? null
-                : new CampDirectoryFilter(
-                    filters.Vibe,
-                    filters.SoundZone,
-                    filters.KidsFriendly,
-                    filters.AcceptingMembers,
-                    filters.Search));
+        var user = await GetCurrentUserInfoAsync(ct);
+        var settings = await _campService.GetSettingsAsync(ct);
+        var year = settings.PublicYear;
+        var camps = await _campService.GetCampsForYearAsync(year, ct);
 
-        ViewBag.PendingCount = directory.PendingCount;
+        var leadCampIds = user is null
+            ? new HashSet<Guid>()
+            : camps.Where(camp => camp.IsLead(user.Id)).Select(camp => camp.Id).ToHashSet();
+
+        var cards = ApplyCampDirectoryFilters(
+                camps
+                    .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+                    .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
+                    .Select(row => MapCampCard(row.Camp, row.Season!)),
+                filters)
+            .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
+            .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var myCamps = new List<CampCardViewModel>();
+        if (user is not null)
+        {
+            myCamps = camps
+                .Where(camp => leadCampIds.Contains(camp.Id))
+                .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+                .Where(row => row.Season is not null &&
+                    row.Season.Status != CampSeasonStatus.Active &&
+                    row.Season.Status != CampSeasonStatus.Full)
+                .Select(row => MapCampCard(row.Camp, row.Season!))
+                .Where(card => cards.All(publicCard => publicCard.Id != card.Id))
+                .ToList();
+        }
+
+        ViewBag.PendingCount = camps
+            .SelectMany(camp => camp.Seasons)
+            .Count(season => season.Year == year && season.Status == CampSeasonStatus.Pending);
 
         var viewModel = new CampIndexViewModel
         {
-            Year = directory.Year,
-            Camps = directory.Camps.Select(MapCampCard).ToList(),
-            MyCamps = directory.MyCamps.Select(MapCampCard).ToList(),
+            Year = year,
+            Camps = cards,
+            MyCamps = myCamps,
             Filters = filters ?? new CampFilterViewModel()
         };
 
         return View(viewModel);
     }
 
-    private static CampCardViewModel MapCampCard(CampDirectoryCard card) => new()
+    private static IEnumerable<CampCardViewModel> ApplyCampDirectoryFilters(
+        IEnumerable<CampCardViewModel> camps,
+        CampFilterViewModel? filter)
     {
-        Id = card.Id,
-        Slug = card.Slug,
-        Name = card.Name,
-        BlurbShort = card.BlurbShort,
-        ImageUrl = card.ImageUrl,
-        Vibes = [.. card.Vibes],
-        AcceptingMembers = card.AcceptingMembers,
-        KidsWelcome = card.KidsWelcome,
-        SoundZone = card.SoundZone,
-        Status = card.Status,
-        TimesAtNowhere = card.TimesAtNowhere
+        if (filter?.Vibe.HasValue == true)
+        {
+            camps = camps.Where(card => card.Vibes.Contains(filter.Vibe.Value));
+        }
+
+        if (filter?.SoundZone.HasValue == true)
+        {
+            camps = camps.Where(card => card.SoundZone == filter.SoundZone.Value);
+        }
+
+        if (filter?.KidsFriendly == true)
+        {
+            camps = camps.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
+        }
+
+        if (filter?.AcceptingMembers == true)
+        {
+            camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter?.Search))
+        {
+            var q = filter.Search.Trim();
+            camps = camps.Where(card =>
+                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return camps;
+    }
+
+    private static CampCardViewModel MapCampCard(CampInfo camp, CampSeasonInfo season) => new()
+    {
+        Id = camp.Id,
+        SeasonId = season.Id,
+        Slug = camp.Slug,
+        Name = season.Name,
+        BlurbShort = season.BlurbShort,
+        ImageUrl = camp.Images.FirstOrDefault()?.Url,
+        Vibes = [.. season.Vibes],
+        AcceptingMembers = season.AcceptingMembers,
+        KidsWelcome = season.KidsWelcome,
+        SoundZone = season.SoundZone,
+        Status = season.Status,
+        TimesAtNowhere = camp.TimesAtNowhere
     };
 
     private async Task PopulateRegisterSeasonYearAsync()

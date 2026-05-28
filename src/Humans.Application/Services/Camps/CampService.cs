@@ -214,60 +214,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             _clock.GetCurrentInstant().InUtc().Date);
     }
 
-    public async Task<CampDirectoryResult> GetCampDirectoryAsync(
-        Guid? userId,
-        CampDirectoryFilter? filter = null,
-        CancellationToken cancellationToken = default)
-    {
-        var settings = await GetSettingsAsync(cancellationToken);
-        var year = settings.PublicYear;
-        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-        var specialRoleUserIds = await GetSpecialRoleUserIdsBySeasonAsync([year], cancellationToken);
-
-        // Lead camps: pin to top of listing + build "my pending camps" panel.
-        // Lead status comes from the role system (Camp Lead special role on any
-        // season), not the legacy camp_leads table.
-        var leadCampIds = new HashSet<Guid>();
-        IReadOnlyList<Camp> leadCamps = [];
-        if (userId.HasValue)
-        {
-            leadCampIds = camps
-                .Where(camp => camp.Seasons.Any(season =>
-                    GetSpecialRoleUserIds(season.Id, CampSpecialRole.Lead, specialRoleUserIds).Contains(userId.Value)))
-                .Select(camp => camp.Id)
-                .ToHashSet();
-            // Re-derive from the already-loaded year camps (avoids a second camp load);
-            // MyCamps only needs camps that have a season for this year anyway.
-            leadCamps = camps.Where(c => leadCampIds.Contains(c.Id)).ToList();
-        }
-
-        var cards = ApplyCampDirectoryFilter(
-            camps.Where(c => c.HasPublicSeasonForYear(year))
-                .Select(camp => CreateCampDirectoryCard(camp, year)),
-            filter)
-            .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
-            .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var myCamps = new List<CampDirectoryCard>();
-        if (userId.HasValue)
-        {
-            myCamps = leadCamps
-                .Where(camp => camp.Seasons.Any(season =>
-                    season.Year == year &&
-                    season.Status != CampSeasonStatus.Active &&
-                    season.Status != CampSeasonStatus.Full))
-                .Where(camp => cards.All(card => card.Id != camp.Id))
-                .Select(camp => CreateCampDirectoryCard(camp, year))
-                .ToList();
-        }
-
-        var pendingCount = camps.SelectMany(camp => camp.Seasons)
-            .Count(season => season.Year == year && season.Status == CampSeasonStatus.Pending);
-
-        return new CampDirectoryResult(year, pendingCount, cards, myCamps);
-    }
-
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
@@ -352,59 +298,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                     .Select(a => a.CampMember.UserId)
                     .Distinct()
                     .ToList());
-    }
-
-    private static IEnumerable<CampDirectoryCard> ApplyCampDirectoryFilter(
-        IEnumerable<CampDirectoryCard> camps,
-        CampDirectoryFilter? filter)
-    {
-        if (filter?.Vibe.HasValue == true)
-        {
-            camps = camps.Where(card => card.Vibes.Contains(filter.Vibe.Value));
-        }
-
-        if (filter?.SoundZone.HasValue == true)
-        {
-            camps = camps.Where(card => card.SoundZone == filter.SoundZone.Value);
-        }
-
-        if (filter?.KidsFriendly == true)
-        {
-            camps = camps.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
-        }
-
-        if (filter?.AcceptingMembers == true)
-        {
-            camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter?.Search))
-        {
-            var q = filter.Search.Trim();
-            camps = camps.Where(card =>
-                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return camps;
-    }
-
-    private static CampDirectoryCard CreateCampDirectoryCard(Camp camp, int year)
-    {
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-
-        return new CampDirectoryCard(
-            camp.Id,
-            camp.Slug,
-            season?.Name ?? camp.Slug,
-            season?.BlurbShort ?? string.Empty,
-            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
-            season?.Vibes ?? [],
-            season?.AcceptingMembers ?? YesNoMaybe.No,
-            season?.KidsWelcome ?? YesNoMaybe.No,
-            season?.SoundZone,
-            season?.Status ?? CampSeasonStatus.Pending,
-            camp.TimesAtNowhere);
     }
 
     private static CampInfo CreateCampInfo(

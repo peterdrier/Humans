@@ -32,10 +32,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
         Guid campId,
         int? preferredYear = null,
         CancellationToken cancellationToken = default);
-    Task<CampDirectoryResult> GetCampDirectoryAsync(
-        Guid? userId,
-        CampDirectoryFilter? filter = null,
-        CancellationToken cancellationToken = default);
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
@@ -423,32 +419,6 @@ public record CampSeasonData(
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
     ElectricalGrid? ElectricalGrid);
-
-public record CampDirectoryFilter(
-    CampVibe? Vibe = null,
-    SoundZone? SoundZone = null,
-    bool KidsFriendly = false,
-    bool AcceptingMembers = false,
-    string? Search = null);
-
-public record CampDirectoryCard(
-    Guid Id,
-    string Slug,
-    string Name,
-    string BlurbShort,
-    string? ImageUrl,
-    IReadOnlyList<CampVibe> Vibes,
-    YesNoMaybe AcceptingMembers,
-    YesNoMaybe KidsWelcome,
-    SoundZone? SoundZone,
-    CampSeasonStatus Status,
-    int TimesAtNowhere);
-
-public record CampDirectoryResult(
-    int Year,
-    int PendingCount,
-    IReadOnlyList<CampDirectoryCard> Camps,
-    IReadOnlyList<CampDirectoryCard> MyCamps);
 
 public record CampEditData(
     Guid CampId,
