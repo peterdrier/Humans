@@ -68,13 +68,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     // --- Registration ---
 
     public async Task<Camp> CreateCampAsync(
-        CampRegistrationInput input,
+        Guid createdByUserId, string name, string contactEmail, string contactPhone,
+        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
+        CampSeasonData seasonData, List<string>? historicalNames, int year,
         CancellationToken cancellationToken = default)
     {
-        var slug = SlugHelper.GenerateSlug(input.Name);
+        var slug = SlugHelper.GenerateSlug(name);
         if (SlugHelper.IsReservedCampSlug(slug))
         {
-            throw new InvalidOperationException($"The name '{input.Name}' generates a reserved slug.");
+            throw new InvalidOperationException($"The name '{name}' generates a reserved slug.");
         }
 
         var baseSlug = slug;
@@ -90,28 +92,28 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         {
             Id = Guid.NewGuid(),
             Slug = slug,
-            ContactEmail = input.ContactEmail,
-            ContactPhone = input.ContactPhone,
-            WebOrSocialUrl = input.Links is { Count: > 0 } ? null : input.WebOrSocialUrl,
-            Links = input.Links,
-            IsSwissCamp = input.IsSwissCamp,
-            TimesAtNowhere = input.TimesAtNowhere,
-            CreatedByUserId = input.CreatedByUserId,
+            ContactEmail = contactEmail,
+            ContactPhone = contactPhone,
+            WebOrSocialUrl = links is { Count: > 0 } ? null : webOrSocialUrl,
+            Links = links,
+            IsSwissCamp = isSwissCamp,
+            TimesAtNowhere = timesAtNowhere,
+            CreatedByUserId = createdByUserId,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-        var season = CreateSeasonFromData(camp.Id, input.Year, input.Name, input.SeasonData, now);
+        var season = CreateSeasonFromData(camp.Id, year, name, seasonData, now);
 
         var member = new CampMember
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
-            UserId = input.CreatedByUserId,
+            UserId = createdByUserId,
             Status = CampMemberStatus.Active,
             RequestedAt = now,
             ConfirmedAt = now,
-            ConfirmedByUserId = input.CreatedByUserId,
+            ConfirmedByUserId = createdByUserId,
         };
 
         var leadDef = await _repo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
@@ -125,7 +127,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 CampRoleDefinitionId = leadDef.Id,
                 CampMemberId = member.Id,
                 AssignedAt = now,
-                AssignedByUserId = input.CreatedByUserId,
+                AssignedByUserId = createdByUserId,
             };
         }
         else
@@ -136,9 +138,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
 
         List<CampHistoricalName>? historicalNameEntities = null;
-        if (input.HistoricalNames is { Count: > 0 })
+        if (historicalNames is { Count: > 0 })
         {
-            historicalNameEntities = input.HistoricalNames.Select(oldName => new CampHistoricalName
+            historicalNameEntities = historicalNames.Select(oldName => new CampHistoricalName
             {
                 Id = Guid.NewGuid(),
                 CampId = camp.Id,
@@ -152,11 +154,11 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         await _auditLog.LogAsync(
             AuditAction.CampCreated, nameof(Camp), camp.Id,
-            $"Registered camp '{input.Name}' for {input.Year}",
-            input.CreatedByUserId);
+            $"Registered camp '{name}' for {year}",
+            createdByUserId);
 
         await _systemTeamSync.SyncMembershipForUserAsync(
-            input.CreatedByUserId, SystemTeamType.BarrioLeads, cancellationToken);
+            createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
 
         return camp;
     }

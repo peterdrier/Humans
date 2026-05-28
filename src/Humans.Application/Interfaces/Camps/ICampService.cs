@@ -14,7 +14,17 @@ public interface ICampService : ICampServiceRead, IApplicationService
 {
     // Registration
     Task<Camp> CreateCampAsync(
-        CampRegistrationInput input,
+        Guid createdByUserId,
+        string name,
+        string contactEmail,
+        string contactPhone,
+        string? webOrSocialUrl,
+        List<CampLink>? links,
+        bool isSwissCamp,
+        int timesAtNowhere,
+        CampSeasonData seasonData,
+        List<string>? historicalNames,
+        int year,
         CancellationToken cancellationToken = default);
 
     // Queries
@@ -224,47 +234,6 @@ public interface ICampService : ICampServiceRead, IApplicationService
 }
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
-
-public sealed class CampRegistrationInput
-{
-    public CampRegistrationInput(
-        Guid createdByUserId,
-        string name,
-        string contactEmail,
-        string contactPhone,
-        string? webOrSocialUrl,
-        List<CampLink>? links,
-        bool isSwissCamp,
-        int timesAtNowhere,
-        CampSeasonData seasonData,
-        List<string>? historicalNames,
-        int year)
-    {
-        CreatedByUserId = createdByUserId;
-        Name = name;
-        ContactEmail = contactEmail;
-        ContactPhone = contactPhone;
-        WebOrSocialUrl = webOrSocialUrl;
-        Links = links;
-        IsSwissCamp = isSwissCamp;
-        TimesAtNowhere = timesAtNowhere;
-        SeasonData = seasonData;
-        HistoricalNames = historicalNames;
-        Year = year;
-    }
-
-    internal Guid CreatedByUserId { get; }
-    internal string Name { get; }
-    internal string ContactEmail { get; }
-    internal string ContactPhone { get; }
-    internal string? WebOrSocialUrl { get; }
-    internal List<CampLink>? Links { get; }
-    internal bool IsSwissCamp { get; }
-    internal int TimesAtNowhere { get; }
-    internal CampSeasonData SeasonData { get; }
-    internal List<string>? HistoricalNames { get; }
-    internal int Year { get; }
-}
 
 public sealed record CampSettingsInfo(
     int PublicYear,
