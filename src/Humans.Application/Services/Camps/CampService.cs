@@ -1087,22 +1087,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             .FirstOrDefault(seasonId => seasonId.HasValue);
     }
 
-    // --- Authorization checks ---
-
-    public async Task<bool> IsUserCampEventManagerAsync(
-        Guid userId, Guid campId, CancellationToken cancellationToken = default)
-    {
-        var settings = await GetSettingsAsync(cancellationToken);
-        foreach (var year in GetCampInfoYears(settings))
-        {
-            var camp = (await GetCampsForYearAsync(year, cancellationToken))
-                .FirstOrDefault(c => c.Id == campId);
-            if (camp?.IsEventManager(userId) == true) return true;
-        }
-
-        return false;
-    }
-
     public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
     {
         var row = await _repo.GetMemberLookupAsync(campMemberId, cancellationToken);

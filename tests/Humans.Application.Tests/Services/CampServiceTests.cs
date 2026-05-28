@@ -354,40 +354,8 @@ public sealed class CampServiceTests : ServiceTestHarness
             .Should().BeFalse();
     }
 
-    // ==========================================================================
-    // IsUserCampEventManagerAsync (issue nobodies-collective/Humans#753)
-    // ==========================================================================
-
     [HumansFact]
-    public async Task IsUserCampEventManagerAsync_LeadAssignment_ReturnsTrue()
-    {
-        await SeedSettingsAsync();
-        var (campId, seasonId) = await SeedCampWithSeasonAsync();
-        var leadDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
-        var userId = Guid.NewGuid();
-        await SeedRoleAssignmentAsync(seasonId, leadDef.Id, userId);
-
-        var result = await _service.IsUserCampEventManagerAsync(userId, campId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsUserCampEventManagerAsync_WorkshopAssignment_ReturnsTrue()
-    {
-        await SeedSettingsAsync();
-        var (campId, seasonId) = await SeedCampWithSeasonAsync();
-        var workshopDef = await SeedSpecialDefinitionAsync(CampSpecialRole.Workshop);
-        var userId = Guid.NewGuid();
-        await SeedRoleAssignmentAsync(seasonId, workshopDef.Id, userId);
-
-        var result = await _service.IsUserCampEventManagerAsync(userId, campId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsUserCampEventManagerAsync_RegularRoleHolder_ReturnsFalse()
+    public async Task GetCampsForYearAsync_RegularRoleHolder_IsNotEventManager()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -395,19 +363,9 @@ public sealed class CampServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedRoleAssignmentAsync(seasonId, regularDef.Id, userId);
 
-        var result = await _service.IsUserCampEventManagerAsync(userId, campId);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task IsUserCampEventManagerAsync_NonMember_ReturnsFalse()
-    {
-        await SeedSettingsAsync();
-        var (campId, _) = await SeedCampWithSeasonAsync();
-        await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
-
-        var result = await _service.IsUserCampEventManagerAsync(Guid.NewGuid(), campId);
+        var result = (await _service.GetCampsForYearAsync(2026))
+            .Single(camp => camp.Id == campId)
+            .IsEventManager(userId);
 
         result.Should().BeFalse();
     }

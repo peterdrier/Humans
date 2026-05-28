@@ -35,12 +35,6 @@ public sealed class CampAuthorizationHandlerTests
                 CreateCampInfo("other")
             });
 
-        // SubmitEvent flows through IsUserCampEventManagerAsync (Lead OR Workshop).
-        // Lead users also satisfy the event-manager check for the camp they lead.
-        _campService.IsUserCampEventManagerAsync(UserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
-        _campService.IsUserCampEventManagerAsync(UserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
-        _campService.IsUserCampEventManagerAsync(WorkshopUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(true);
-        _campService.IsUserCampEventManagerAsync(WorkshopUserId, OtherCampId, Arg.Any<CancellationToken>()).Returns(false);
     }
 
     public static TheoryData<string, string, bool> CampAuthorizationCases => new()
@@ -97,8 +91,6 @@ public sealed class CampAuthorizationHandlerTests
         bool expected)
     {
         var regularUserId = Guid.NewGuid();
-        _campService.IsUserCampEventManagerAsync(regularUserId, LeadCampId, Arg.Any<CancellationToken>()).Returns(false);
-
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
         var campInfo = CreateCampInfo(campKind);
