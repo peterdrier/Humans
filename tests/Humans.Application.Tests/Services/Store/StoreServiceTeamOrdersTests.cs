@@ -43,6 +43,8 @@ public class StoreServiceTeamOrdersTests
         });
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CampInfo>());
         _service = new StoreService(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, NullLogger<StoreService>.Instance);
     }
 
@@ -201,8 +203,6 @@ public class StoreServiceTeamOrdersTests
         var userId = Guid.NewGuid();
         var deptId = Guid.NewGuid();
         var subteamId = Guid.NewGuid();
-        _campService.GetCampLeadSeasonIdForYearAsync(userId, 2026, Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {
@@ -228,8 +228,6 @@ public class StoreServiceTeamOrdersTests
     {
         var userId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
-        _campService.GetCampLeadSeasonIdForYearAsync(userId, 2026, Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
             {

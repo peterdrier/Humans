@@ -14,10 +14,6 @@ public interface ICityPlanningService : IApplicationService
     Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    // Cross-section helpers removed in PR #543 (§15 migration). Call the owning section directly:
-    //   - GetCampSeasonSoundZoneAsync / GetCampSeasonNameAsync → ICampService
-    //   - GetUserCampSeasonIdForYearAsync → ICampService.GetCampLeadSeasonIdForYearAsync
-
     // Writes
     Task<(CampPolygon polygon, CampPolygonHistory history)> SaveCampPolygonAsync(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,

@@ -79,15 +79,6 @@ public sealed class CachingCampService(
         return await LoadSettingsAsync(cancellationToken);
     }
 
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
-        return camps
-            .Select(camp => camp.GetLeadSeasonIdForYear(userId, year))
-            .FirstOrDefault(seasonId => seasonId.HasValue);
-    }
-
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
         var settings = await GetSettingsAsync(ct);

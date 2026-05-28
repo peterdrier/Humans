@@ -553,17 +553,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             : [];
     }
 
-    private IReadOnlyCollection<int> GetCampInfoYears(CampSettingsInfo settings)
-    {
-        var years = new HashSet<int> { settings.PublicYear, _clock.GetCurrentInstant().InUtc().Year };
-        foreach (var year in settings.OpenSeasons)
-        {
-            years.Add(year);
-        }
-
-        return years;
-    }
-
     private static CampSettingsInfo CreateCampSettingsInfo(CampSettings settings) =>
         new(
             settings.PublicYear,
@@ -1076,15 +1065,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             season,
             season.Camp?.Slug ?? string.Empty,
             specialRoleUserIds: specialRoleUserIds);
-    }
-
-    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
-        Guid userId, int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
-        return camps
-            .Select(camp => camp.GetLeadSeasonIdForYear(userId, year))
-            .FirstOrDefault(seasonId => seasonId.HasValue);
     }
 
     public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)

@@ -38,26 +38,30 @@ public class StoreService(
         var counterparties = new List<StoreCounterpartyOrders>();
 
         // Camp-lead counterparty
-        var leadSeasonId = await campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
-        if (leadSeasonId is { } seasonId)
+        CampSeasonInfo? leadSeason = null;
+        foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
         {
-            var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
-            if (season is not null)
-            {
-                // One order per camp-season; if legacy data has multiple, surface
-                // only the highest-balance one and let the admin delete the rest.
-                var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
-                var primary = allOrders
-                    .OrderByDescending(o => o.BalanceEur)
-                    .FirstOrDefault();
-                IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
-                counterparties.Add(new StoreCounterpartyOrders(
-                    StoreOrderCounterpartyType.Camp,
-                    season.Id,
-                    season.Name,
-                    year,
-                    orders));
-            }
+            var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
+            if (leadSeasonId is null) continue;
+            leadSeason = camp.Seasons.First(season => season.Id == leadSeasonId.Value);
+            break;
+        }
+
+        if (leadSeason is not null)
+        {
+            // One order per camp-season; if legacy data has multiple, surface
+            // only the highest-balance one and let the admin delete the rest.
+            var allOrders = await GetOrdersForCampSeasonAsync(leadSeason.Id, ct);
+            var primary = allOrders
+                .OrderByDescending(o => o.BalanceEur)
+                .FirstOrDefault();
+            IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
+            counterparties.Add(new StoreCounterpartyOrders(
+                StoreOrderCounterpartyType.Camp,
+                leadSeason.Id,
+                leadSeason.Name,
+                year,
+                orders));
         }
 
         // Team-coordinator counterparties — departments only.
