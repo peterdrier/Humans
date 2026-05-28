@@ -308,11 +308,9 @@ public partial interface IShiftManagementRepository : IRepository
     Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Looks up a tag by case-insensitive name. Returns null if not found.
+    /// Gets an existing tag by case-insensitive name or creates it.
     /// </summary>
-    Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default);
-
-    Task AddTagAsync(ShiftTag tag, CancellationToken ct = default);
+    Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default);
 
     // ==========================================================================
     // Volunteer tag preferences

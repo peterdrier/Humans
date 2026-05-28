@@ -635,19 +635,22 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await tags.ToListAsync(ct);
     }
 
-    public async Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default)
+    public async Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
+        var existing = await ctx.ShiftTags
             .AsNoTracking()
             .FirstOrDefaultAsync(t => EF.Functions.ILike(t.Name, name), ct);
-    }
+        if (existing is not null) return existing;
 
-    public async Task AddTagAsync(ShiftTag tag, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var tag = new ShiftTag
+        {
+            Id = Guid.NewGuid(),
+            Name = name
+        };
         ctx.ShiftTags.Add(tag);
         await ctx.SaveChangesAsync(ct);
+        return tag;
     }
 
     // ==========================================================================

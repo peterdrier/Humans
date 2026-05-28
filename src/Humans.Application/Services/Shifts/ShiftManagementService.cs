@@ -1775,15 +1775,7 @@ public sealed class ShiftManagementService(
     public async Task<ShiftTagSummary> GetOrCreateTagAsync(string name)
     {
         var trimmed = name.Trim();
-        var existing = await repo.FindTagByNameAsync(trimmed);
-        if (existing is not null) return new ShiftTagSummary(existing.Id, existing.Name);
-
-        var tag = new ShiftTag
-        {
-            Id = Guid.NewGuid(),
-            Name = trimmed
-        };
-        await repo.AddTagAsync(tag);
+        var tag = await repo.GetOrCreateTagAsync(trimmed);
         return new ShiftTagSummary(tag.Id, tag.Name);
     }
 
