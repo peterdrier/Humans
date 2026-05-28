@@ -215,13 +215,6 @@ public partial interface ICampRepository : IRepository
     Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
         GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns brief (Id, Name, CampSlug, SpaceRequirement) rows for seasons
-    /// in the year, ordered by name. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>
-        GetSeasonBriefsForYearAsync(int year, CancellationToken ct = default);
-
     // ==========================================================================
     // Reads — Lead (legacy camp_leads; only the role-backed team-sync read and the
     // one-shot seed-migration snapshot remain. Entity/table kept until #774.)
