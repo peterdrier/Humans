@@ -53,6 +53,8 @@ jobs:
             CONFIG_ARGS=(--config "$HEAD_DIR/reforge.surface-score.json")
           elif [ -f "$BASE_DIR/reforge.surface-score.json" ]; then
             CONFIG_ARGS=(--config "$BASE_DIR/reforge.surface-score.json")
+          elif [ -f "$GITHUB_WORKSPACE/reforge.surface-score.json" ]; then
+            CONFIG_ARGS=(--config "$GITHUB_WORKSPACE/reforge.surface-score.json")
           fi
 
           "$REFORGE" stop || true
