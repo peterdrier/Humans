@@ -97,13 +97,7 @@ public class ShiftAdminController(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        await shiftMgmt.CreateRotaAsync(rota);
-
-        if (!string.IsNullOrWhiteSpace(model.TagIds))
-        {
-            var tagIdList = ParseTagIds(model.TagIds);
-            await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
-        }
+        await shiftMgmt.CreateRotaAsync(rota, ParseTagIds(model.TagIds));
 
         SetSuccess($"Rota '{model.Name}' created.");
         return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
@@ -126,10 +120,7 @@ public class ShiftAdminController(
         rota.Period = model.Period;
         rota.PracticalInfo = model.PracticalInfo;
 
-        await shiftMgmt.UpdateRotaAsync(rota);
-
-        var tagIdList = ParseTagIds(model.TagIds);
-        await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+        await shiftMgmt.UpdateRotaAsync(rota, ParseTagIds(model.TagIds));
 
         SetSuccess($"Rota '{model.Name}' updated.");
         return RedirectToAction(nameof(Index), new { slug });

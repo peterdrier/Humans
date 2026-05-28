@@ -183,7 +183,7 @@ public sealed class ShiftManagementService(
     }
 
 
-    public async Task CreateRotaAsync(Rota rota)
+    public async Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
     {
         var team = await TeamService.GetTeamAsync(rota.TeamId);
 
@@ -198,13 +198,17 @@ public sealed class ShiftManagementService(
 
         rota.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
+        if (tagIds is { Count: > 0 })
+            await repo.SetRotaTagsAsync(rota.Id, tagIds);
         viewInvalidator.InvalidateRota(rota.Id);
     }
 
-    public async Task UpdateRotaAsync(Rota rota)
+    public async Task UpdateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
     {
         rota.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
+        if (tagIds is not null)
+            await repo.SetRotaTagsAsync(rota.Id, tagIds);
         viewInvalidator.InvalidateRota(rota.Id);
     }
 
@@ -1748,12 +1752,6 @@ public sealed class ShiftManagementService(
         var trimmed = name.Trim();
         var tag = await repo.GetOrCreateTagAsync(trimmed);
         return new ShiftTagSummary(tag.Id, tag.Name);
-    }
-
-    public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
-    {
-        await repo.SetRotaTagsAsync(rotaId, tagIds);
-        viewInvalidator.InvalidateRota(rotaId);
     }
 
     public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)

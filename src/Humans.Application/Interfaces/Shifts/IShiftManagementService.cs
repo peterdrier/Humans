@@ -69,12 +69,12 @@ public interface IShiftManagementService : IApplicationService
     /// <summary>
     /// Creates a new rota. Validates team is a department and event is active.
     /// </summary>
-    Task CreateRotaAsync(Rota rota);
+    Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 
     /// <summary>
     /// Updates an existing rota.
     /// </summary>
-    Task UpdateRotaAsync(Rota rota);
+    Task UpdateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 
     /// <summary>
     /// Moves a rota to a different department (parent team).
@@ -236,11 +236,6 @@ public interface IShiftManagementService : IApplicationService
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
     /// </summary>
     Task<ShiftTagSummary> GetOrCreateTagAsync(string name);
-
-    /// <summary>
-    /// Sets the tags for a rota, replacing any existing tags.
-    /// </summary>
-    Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds);
 
     /// <summary>
     /// Sets a volunteer's tag preferences, replacing any existing ones.
