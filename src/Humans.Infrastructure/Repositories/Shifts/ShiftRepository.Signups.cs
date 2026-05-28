@@ -180,22 +180,7 @@ internal sealed partial class ShiftRepository
             .Include(r => r.Shifts)
             .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
 
-    public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await _dbContext.VolunteerEventProfiles
-            .AsNoTracking()
-            .Where(vep => vep.UserId == userId)
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await _dbContext.VolunteerTagPreferences
-            .AsNoTracking()
-            .Include(vtp => vtp.ShiftTag)
-            .Where(vtp => vtp.UserId == userId)
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+    public async Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];

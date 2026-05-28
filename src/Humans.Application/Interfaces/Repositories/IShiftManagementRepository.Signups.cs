@@ -149,28 +149,12 @@ public partial interface IShiftManagementRepository
     Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR contributor read: all <c>VolunteerEventProfile</c> rows for a
-    /// user. Within-section cross-service read; move to its own repository
-    /// in a follow-up.
-    /// </summary>
-    Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// GDPR contributor read: all <c>VolunteerTagPreference</c> rows for a
-    /// user with <c>ShiftTag</c> included. Within-section cross-service read;
-    /// move to its own repository in a follow-up.
-    /// </summary>
-    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
-    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
-    /// bulk path on
-    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
-    /// </summary>
-    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesByUserIdsAsync(
+     /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
+     /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
+     /// bulk path on
+     /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+     /// </summary>
+    Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
