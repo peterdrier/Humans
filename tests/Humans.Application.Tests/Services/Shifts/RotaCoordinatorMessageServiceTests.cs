@@ -25,8 +25,7 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// </summary>
 public sealed class RotaCoordinatorMessageServiceTests
 {
-    private readonly IShiftSignupRepository _signupRepo = Substitute.For<IShiftSignupRepository>();
-    private readonly IShiftManagementRepository _mgmtRepo = Substitute.For<IShiftManagementRepository>();
+    private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -34,7 +33,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
     private RotaCoordinatorMessageService CreateSut() =>
-        new(_signupRepo, _mgmtRepo, _teamService, _userService, _emailService, _auditLog, _clock,
+        new(_repo, _teamService, _userService, _emailService, _auditLog, _clock,
             NullLogger<RotaCoordinatorMessageService>.Instance);
 
     [HumansFact]
@@ -53,7 +52,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenRotaMissing()
     {
         var rotaId = Guid.NewGuid();
-        _signupRepo.GetRotaWithShiftsAsync(rotaId, Arg.Any<CancellationToken>())
+        _repo.GetRotaWithShiftsAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
         var result = await CreateSut().SendRotaMessageAsync(rotaId, Guid.NewGuid(), "hello");
@@ -67,8 +66,8 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenNoActiveSignups()
     {
         var rota = MakeRota(out var eventSettings);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello");
@@ -81,7 +80,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser()
     {
         var rota = MakeRota(out var es);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -91,7 +90,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift2 = MakeShift(rota.Id, dayOffset: 2, startHour: 14);
 
         // userA has two signups (same shift twice + another shift), userB has one.
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([
                 MakeSignup(userA, shift1),
                 MakeSignup(userA, shift2),
@@ -114,7 +113,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_PersonalisesShiftListPerRecipient()
     {
         var rota = MakeRota(out var es);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -124,7 +123,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var lateShift = MakeShift(rota.Id, dayOffset: 3, startHour: 18);
         var midShift = MakeShift(rota.Id, dayOffset: 2, startHour: 12);
 
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([
                 MakeSignup(userA, lateShift),  // userA: late + early (should sort)
                 MakeSignup(userA, earlyShift),
@@ -159,13 +158,13 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_WritesOneAuditEntry_WithSenderActor()
     {
         var rota = MakeRota(out _);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var sender = Guid.NewGuid();
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([MakeSignup(userA, shift)]);
 
         StubUsers(sender, userA);
@@ -190,14 +189,14 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_SkipsRecipientWithNoEmail_DoesNotFail()
     {
         var rota = MakeRota(out _);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var withEmail = Guid.NewGuid();
         var noEmail = Guid.NewGuid();
         var sender = Guid.NewGuid();
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([
                 MakeSignup(withEmail, shift),
                 MakeSignup(noEmail, shift)
@@ -236,14 +235,14 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits()
     {
         var rota = MakeRota(out _);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
         var sender = Guid.NewGuid();
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([
                 MakeSignup(userA, shift),
                 MakeSignup(userB, shift)
@@ -282,14 +281,14 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow()
     {
         var rota = MakeRota(out _);
-        _signupRepo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
+        _repo.GetRotaWithShiftsAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
         var sender = Guid.NewGuid();
         var shift = MakeShift(rota.Id, dayOffset: 1, startHour: 10);
 
-        _signupRepo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
+        _repo.GetActiveByRotaAsync(rota.Id, Arg.Any<CancellationToken>())
             .Returns([
                 MakeSignup(userA, shift),
                 MakeSignup(userB, shift)
@@ -351,7 +350,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
     {
         var (teamId, _) = StubTeam();
-        _mgmtRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventSettings?)null);
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello");
@@ -375,7 +374,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var pastOnlyRota = MakeTeamRota(teamId, es, "PastOnly", [(pastShift, [userA])]);
         var futureRota = MakeTeamRota(teamId, es, "Future", [(futureShift, [userB])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([pastOnlyRota, futureRota]);
 
         var sender = Guid.NewGuid();
@@ -410,7 +409,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         rota.Shifts.First().ShiftSignups.First(s => s.UserId == pending).Status = SignupStatus.Pending;
         rota.Shifts.First().ShiftSignups.First(s => s.UserId == bailed).Status = SignupStatus.Bailed;
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rota]);
 
         // Bailed user is filtered before user lookup, so only the two active
@@ -442,7 +441,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rotaA = MakeTeamRota(teamId, es, "Aardvark", [(shiftR1, [userA])]);
         var rotaB = MakeTeamRota(teamId, es, "Beaver", [(shiftR2, [userA])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rotaA, rotaB]);
 
         StubUsers(sender, userA);
@@ -476,7 +475,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var zRota = MakeTeamRota(teamId, es, "Zebra", [(shiftZ, [userA])]);
         var aRota = MakeTeamRota(teamId, es, "Antelope", [(shiftA, [userA])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([zRota, aRota]);
 
         StubUsers(sender, userA);
@@ -504,7 +503,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rota]);
         StubUsers(sender, userA);
 
@@ -532,7 +531,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA, userB])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rota]);
         StubUsers(sender, userA, userB);
 
@@ -564,7 +563,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rota1 = MakeTeamRota(teamId, es, "R1", [(shift1, [userA, userB])]);
         var rota2 = MakeTeamRota(teamId, es, "R2", [(shift2, [userA])]);
 
-        _mgmtRepo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
+        _repo.GetRotasByDepartmentAsync(teamId, es.Id, Arg.Any<CancellationToken>())
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
@@ -612,7 +611,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        _mgmtRepo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(es);
         return es;
     }

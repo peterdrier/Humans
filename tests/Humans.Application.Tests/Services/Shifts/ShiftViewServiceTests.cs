@@ -14,11 +14,10 @@ namespace Humans.Application.Tests.Services.Shifts;
 public class ShiftViewServiceTests
 {
     private readonly IShiftManagementRepository _management = Substitute.For<IShiftManagementRepository>();
-    private readonly IShiftSignupRepository _signups = Substitute.For<IShiftSignupRepository>();
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
 
     private ShiftViewService CreateSut() =>
-        new(_management, _signups, _tracking);
+        new(_management, _tracking);
 
     [HumansFact]
     public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
@@ -28,9 +27,9 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();
@@ -57,9 +56,9 @@ public class ShiftViewServiceTests
         _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _tracking.GetAvailabilityByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
             .Returns(availability);
@@ -81,14 +80,14 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeEmpty();
-        await _signups.DidNotReceive().GetByUserAsync(
+        await _management.DidNotReceive().GetByUserAsync(
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
@@ -103,16 +102,16 @@ public class ShiftViewServiceTests
         _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
+        _management.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeSameAs(scoped);
-        await _signups.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
-        await _signups.DidNotReceive().GetByUserAsync(
+        await _management.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
+        await _management.DidNotReceive().GetByUserAsync(
             userId, null, Arg.Any<CancellationToken>());
     }
 
@@ -169,9 +168,9 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();

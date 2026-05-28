@@ -41,8 +41,7 @@ internal static class ShiftsSectionExtensions
         // CantinaAdminOrAdmin authorization policy, not a bespoke service.
         services.AddScoped<ICantinaRosterService, CantinaRosterServiceImpl>();
 
-        // ShiftSignup keeps a scoped repository surface so multi-step mutation transactions share one change-tracker.
-        services.AddScoped<IShiftSignupRepository>(sp => sp.GetRequiredService<ShiftRepository>());
+        // ShiftSignup mutations share the scoped ShiftRepository change-tracker.
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());

@@ -13,10 +13,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// and <c>volunteer_event_profiles</c>.
 ///
 /// <para>
-/// The <c>shift_signups</c> table is still mutated through
-/// <see cref="IShiftSignupRepository"/>. This interface exposes the read
-/// helpers over signups that management workflows need for summaries, urgency
-/// scoring, and dashboard computations.
+/// Signup state-machine reads and writes are declared on the signup-focused
+/// partial declaration of this interface so Shifts has one repository contract
+/// backed by one concrete persistence adapter.
 /// </para>
 ///
 /// <para>
@@ -27,13 +26,12 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </para>
 ///
 /// <para>
-/// Implemented by the same scoped <c>ShiftRepository</c> that backs
-/// <see cref="IShiftSignupRepository"/>. Management methods create short-lived
-/// contexts per call.
+/// Implemented by the scoped <c>ShiftRepository</c>. Management methods create
+/// short-lived contexts per call.
 /// </para>
 /// </summary>
 [Section("Shifts")]
-public interface IShiftManagementRepository : IRepository
+public partial interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================
     // EventSettings

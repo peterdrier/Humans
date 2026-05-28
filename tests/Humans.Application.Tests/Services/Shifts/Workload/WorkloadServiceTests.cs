@@ -33,7 +33,6 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         // GetUserAsync, which the workload service does not call. Stub them.
         var view = new ShiftViewService(
             repo,
-            Substitute.For<IShiftSignupRepository>(),
             Substitute.For<IVolunteerTrackingRepository>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

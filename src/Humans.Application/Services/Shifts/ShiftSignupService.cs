@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Shifts;
 /// Manages the shift signup state machine. No caching decorator (§15 Option A).
 /// </summary>
 public sealed class ShiftSignupService(
-    IShiftSignupRepository repo,
+    IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,

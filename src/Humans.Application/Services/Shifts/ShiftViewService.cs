@@ -9,16 +9,13 @@ namespace Humans.Application.Services.Shifts;
 public sealed class ShiftViewService : IShiftView
 {
     private readonly IShiftManagementRepository _management;
-    private readonly IShiftSignupRepository _signups;
     private readonly IVolunteerTrackingRepository _tracking;
 
     public ShiftViewService(
         IShiftManagementRepository management,
-        IShiftSignupRepository signups,
         IVolunteerTrackingRepository tracking)
     {
         _management = management;
-        _signups = signups;
         _tracking = tracking;
     }
 
@@ -27,7 +24,7 @@ public sealed class ShiftViewService : IShiftView
         var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
 
         var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
-        var tagPrefs = await _signups.GetVolunteerTagPreferencesForUserAsync(userId, ct).ConfigureAwait(false);
+        var tagPrefs = await _management.GetVolunteerTagPreferencesForUserAsync(userId, ct).ConfigureAwait(false);
 
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
@@ -38,7 +35,7 @@ public sealed class ShiftViewService : IShiftView
                 .GetAvailabilityByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
             buildStatus = await _tracking
                 .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
-            signups = await _signups
+            signups = await _management
                 .GetByUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
         }
 
@@ -71,7 +68,7 @@ public sealed class ShiftViewService : IShiftView
         var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
-        var tagPrefs = await _signups.GetVolunteerTagPreferencesByUserIdsAsync(ids, ct).ConfigureAwait(false);
+        var tagPrefs = await _management.GetVolunteerTagPreferencesByUserIdsAsync(ids, ct).ConfigureAwait(false);
         var tagPrefsByUser = tagPrefs
             .GroupBy(t => t.UserId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<VolunteerTagPreference>)g.ToList());
@@ -90,7 +87,7 @@ public sealed class ShiftViewService : IShiftView
                 .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
             buildStatusByUser = builds.ToDictionary(b => b.UserId);
 
-            var batchSignups = await _signups
+            var batchSignups = await _management
                 .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
             signupsByUser = batchSignups
                 .GroupBy(s => s.UserId)

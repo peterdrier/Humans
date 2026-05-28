@@ -17,8 +17,7 @@ namespace Humans.Application.Services.Shifts;
 /// One audit row per dispatch (recipient rows are auditable through the outbox).
 /// </summary>
 public sealed class RotaCoordinatorMessageService(
-    IShiftSignupRepository signupRepo,
-    IShiftManagementRepository mgmtRepo,
+    IShiftManagementRepository repo,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IEmailService emailService,
@@ -35,7 +34,7 @@ public sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return RotaMessageDispatchResult.Failure("Message body is required.");
 
-        var rota = await signupRepo.GetRotaWithShiftsAsync(rotaId, ct);
+        var rota = await repo.GetRotaWithShiftsAsync(rotaId, ct);
         if (rota is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
 
@@ -43,7 +42,7 @@ public sealed class RotaCoordinatorMessageService(
             ?? throw new InvalidOperationException(
                 $"Rota {rotaId} loaded without EventSettings — repository contract broken.");
 
-        var signups = await signupRepo.GetActiveByRotaAsync(rotaId, ct);
+        var signups = await repo.GetActiveByRotaAsync(rotaId, ct);
         if (signups.Count == 0)
             return RotaMessageDispatchResult.Failure("This rota has no active signups to email.");
 
@@ -188,10 +187,10 @@ public sealed class RotaCoordinatorMessageService(
         Guid teamId,
         CancellationToken ct)
     {
-        var eventSettings = await mgmtRepo.GetActiveEventSettingsAsync(ct);
+        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
         if (eventSettings is null) return [];
 
-        var rotas = await mgmtRepo.GetRotasByDepartmentAsync(teamId, eventSettings.Id, ct);
+        var rotas = await repo.GetRotasByDepartmentAsync(teamId, eventSettings.Id, ct);
         if (rotas.Count == 0) return [];
 
         var now = clock.GetCurrentInstant();

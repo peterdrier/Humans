@@ -1,22 +1,15 @@
 using Humans.Domain.Entities;
 using NodaTime;
-using Humans.Domain.Attributes;
-
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the Shifts section's <c>shift_signups</c> table plus the
-/// narrow within-section cross-service reads ShiftSignupService currently
-/// performs on <c>rotas</c>, <c>shifts</c>, <c>volunteer_event_profiles</c>,
-/// and <c>volunteer_tag_preferences</c>.
+/// Signup-focused members of the Shifts repository contract.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>ShiftRepository</c> is now the single concrete persistence adapter for
-/// Shifts, but this contract remains the signup mutation surface. A few
-/// read-only helpers for rotas, shifts, volunteer profiles, and tag preferences
-/// remain here because the signup workflow needs them immediately next to
-/// signup state-machine operations.
+/// <c>ShiftRepository</c> is the single concrete persistence adapter for Shifts.
+/// These members stay beside the signup state-machine operations even though
+/// they are declared on the same repository interface as rota/event management.
 /// </para>
 /// <para>
 /// Read methods are <c>AsNoTracking</c> by default; methods named
@@ -25,8 +18,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (same Scoped <c>HumansDbContext</c> instance).
 /// </para>
 /// </remarks>
-[Section("Shifts")]
-public interface IShiftSignupRepository : IRepository
+public partial interface IShiftManagementRepository
 {
     // ============================================================
     // Reads — ShiftSignup (per-user / per-shift / per-block)
@@ -204,8 +196,8 @@ public interface IShiftSignupRepository : IRepository
     /// Persists all pending mutations on the repository's underlying context.
     /// Entities loaded via <see cref="GetByIdForMutationAsync"/> or
     /// <see cref="GetBlockForMutationAsync"/> and mutated by the caller are
-    /// persisted here, along with any <see cref="Add"/>/<see cref="AddRange"/>
-    /// <see cref="AddRange"/> calls made in the same request.
+    /// persisted here, along with any <see cref="AddRange"/> calls made in the
+    /// same request.
     /// </summary>
     Task SaveChangesAsync(CancellationToken ct = default);
 
