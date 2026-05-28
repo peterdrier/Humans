@@ -36,8 +36,7 @@ public sealed class ShiftAdminPageBuilder(
             : await userService.GetUserInfosAsync(allUserIds);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department);
         var allTags = await shiftManagement.GetTagsAsync();
-        var staffingData = await shiftManagement.GetStaffingDataAsync(request.EventSettings.Id, request.Department.Id);
-        var staffingHours = await shiftManagement.GetStaffingHoursAsync(request.EventSettings.Id, request.Department.Id);
+        var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id);
 
         return new ShiftAdminViewModel
         {
@@ -52,8 +51,8 @@ public sealed class ShiftAdminPageBuilder(
             VolunteerProfiles = profileDict,
             Users = userLookup,
             CanViewMedical = request.CanViewMedical,
-            StaffingData = staffingData.ToList(),
-            StaffingHours = staffingHours.ToList(),
+            StaffingData = staffingSnapshot.StaffingData.ToList(),
+            StaffingHours = staffingSnapshot.StaffingHours.ToList(),
             Now = request.Now,
             AllDepartments = allDepartments,
             AllTags = allTags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList(),

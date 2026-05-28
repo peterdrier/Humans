@@ -174,17 +174,9 @@ public interface IShiftManagementService : IApplicationService
     // === Staffing & Summary ===
 
     /// <summary>
-    /// Gets per-day staffing data for all periods (set-up, event, strike).
+    /// Gets the per-day staffing chart snapshot for all periods.
     /// </summary>
-    Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
-        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
-
-    /// <summary>
-    /// Gets per-day staffing hours across all periods, grouped by shift priority.
-    /// Hours = shift duration × MaxVolunteers. All-day shifts count as 8 hours per slot.
-    /// </summary>
-    Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
+    Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null);
 
@@ -361,6 +353,13 @@ public record DailyStaffingData(
     int TotalSlots,
     int MinSlots,
     string Period);
+
+public sealed record ShiftStaffingSnapshot(
+    IReadOnlyList<DailyStaffingData> StaffingData,
+    IReadOnlyList<DailyStaffingHours> StaffingHours)
+{
+    public static ShiftStaffingSnapshot Empty { get; } = new([], []);
+}
 
 /// <summary>
 /// Aggregated shift summary for a department.

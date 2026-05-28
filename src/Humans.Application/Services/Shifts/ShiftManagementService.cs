@@ -830,35 +830,34 @@ public sealed class ShiftManagementService(
     }
 
 
-    public async Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
+    public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
         var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return [];
+        if (es is null) return ShiftStaffingSnapshot.Empty;
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
-        if (dayOffsets.Count == 0) return [];
+        if (dayOffsets.Count == 0) return ShiftStaffingSnapshot.Empty;
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             departmentTeamIds));
 
-        // Need signup counts per shift (confirmed).
         var shiftIds = shifts.Select(s => s.Id).ToList();
         var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
 
-        var results = new List<DailyStaffingData>();
+        var staffingData = new List<DailyStaffingData>();
+        var staffingHours = new List<DailyStaffingHours>();
 
         foreach (var dayOffset in dayOffsets)
         {
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var dateLabel = dayDate.ToDisplayShiftDate();
 
             var overlapping = shifts.Where(s =>
@@ -868,48 +867,11 @@ public sealed class ShiftManagementService(
                 return start < dayEnd && end > dayStart;
             }).ToList();
 
+            var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
             var minSlots = overlapping.Sum(s => s.MinVolunteers);
             var confirmedCount = overlapping.Sum(s =>
                 confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0);
-
-            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, periodLabel));
-        }
-
-        return results;
-    }
-
-    public async Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
-        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null)
-    {
-        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return [];
-
-        var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
-
-        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
-        if (dayOffsets.Count == 0) return [];
-
-        var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
-        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
-            eventSettingsId,
-            departmentTeamIds));
-        var results = new List<DailyStaffingHours>();
-
-        foreach (var dayOffset in dayOffsets)
-        {
-            var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
-            var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
-            var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.ToDisplayShiftDate();
-
-            var overlapping = shifts.Where(s =>
-            {
-                var start = s.GetAbsoluteStart(es);
-                var end = s.GetAbsoluteEnd(es);
-                return start < dayEnd && end > dayStart;
-            }).ToList();
 
             var essentialHours = 0.0;
             var importantHours = 0.0;
@@ -936,10 +898,11 @@ public sealed class ShiftManagementService(
                 }
             }
 
-            results.Add(new DailyStaffingHours(dayOffset, dateLabel, essentialHours, importantHours, normalHours));
+            staffingData.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, periodLabel));
+            staffingHours.Add(new DailyStaffingHours(dayOffset, dateLabel, essentialHours, importantHours, normalHours));
         }
 
-        return results;
+        return new ShiftStaffingSnapshot(staffingData, staffingHours);
     }
 
     public async Task<ShiftsSummaryData?> GetShiftsSummaryAsync(

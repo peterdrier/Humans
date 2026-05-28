@@ -37,8 +37,7 @@ public sealed class ShiftDashboardPageBuilder(
             request.ActiveEnd,
             request.Period,
             request.SubPeriod);
-        var staffingData = await shiftManagement.GetStaffingDataAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
-        var staffingHours = await shiftManagement.GetStaffingHoursAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
+        var staffing = await shiftManagement.GetStaffingSnapshotAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
         var dashboardMetrics = await shiftManagement.GetDashboardMetricsAsync(es.Id, request.Period, request.SubPeriod);
         var deptTuples = await shiftManagement.GetDepartmentsWithRotasAsync(es.Id);
 
@@ -57,8 +56,8 @@ public sealed class ShiftDashboardPageBuilder(
             FilterStartDate = request.FilterStartDate,
             FilterEndDate = request.FilterEndDate,
             EventSettings = es,
-            StaffingData = staffingData.ToList(),
-            StaffingHours = staffingHours.ToList(),
+            StaffingData = staffing.StaffingData.ToList(),
+            StaffingHours = staffing.StaffingHours.ToList(),
             Overview = dashboardMetrics.Overview,
             CoordinatorActivity = dashboardMetrics.CoordinatorActivity,
             Trends = dashboardMetrics.Trends,

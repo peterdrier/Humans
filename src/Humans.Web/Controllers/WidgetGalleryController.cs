@@ -150,8 +150,7 @@ public sealed class WidgetGalleryController(
                 rota = rotas.FirstOrDefault();
             }
 
-            var staffing = await shiftMgmt.GetStaffingDataAsync(es.Id);
-            var hours = await shiftMgmt.GetStaffingHoursAsync(es.Id);
+            var staffing = await shiftMgmt.GetStaffingSnapshotAsync(es.Id);
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();
             if (rota is not null && sampleDeptId is not null)
@@ -174,7 +173,7 @@ public sealed class WidgetGalleryController(
                 .Select(s => s.Shift.Id)
                 .ToHashSet();
 
-            return new ShiftsSamples(es, rota, staffing, hours, sampleRotaShifts, userSignupShiftIds);
+            return new ShiftsSamples(es, rota, staffing.StaffingData, staffing.StaffingHours, sampleRotaShifts, userSignupShiftIds);
         }
         catch (Exception ex)
         {
