@@ -270,18 +270,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.TicketAttendees
-            .FirstOrDefaultAsync(a => a.VendorTicketId == attendee.VendorTicketId, ct);
-        if (existing is null)
-            ctx.TicketAttendees.Add(attendee);
-        else
-            ctx.Entry(existing).CurrentValues.SetValues(attendee);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task UpdateOrderVatAmountsAsync(
         IReadOnlyList<(Guid OrderId, decimal VatAmount)> updates,
         CancellationToken ct = default)
@@ -393,70 +381,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetMatchedOrderUserIdsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.MatchedUserId != null &&
-                        o.PurchasedAt >= fromInclusive &&
-                        o.PurchasedAt < toExclusive)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetMatchedAttendeeUserIdsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
-            .AsNoTracking()
-            .Where(a => a.MatchedUserId != null &&
-                        a.TicketOrder.PurchasedAt >= fromInclusive &&
-                        a.TicketOrder.PurchasedAt < toExclusive)
-            .Select(a => a.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<int>> GetMatchedOrderYearsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var purchasedAt = await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.MatchedUserId != null)
-            .Select(o => o.PurchasedAt)
-            .ToListAsync(ct);
-
-        return purchasedAt
-            .Select(i => i.ToDateTimeUtc().Year)
-            .Distinct()
-            .OrderDescending()
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<bool> HasAnyTicketMatchAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.TicketAttendees.AsNoTracking().AnyAsync(a => a.MatchedUserId == userId, ct))
-            return true;
-        return await ctx.TicketOrders.AsNoTracking().AnyAsync(o => o.MatchedUserId == userId, ct);
-    }
-
     public async Task<bool> HasEventTicketAsync(
         Guid userId, string vendorEventId, CancellationToken ct = default)
     {
@@ -489,15 +413,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountSoldAttendeesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
-            .AsNoTracking()
-            .CountAsync(a =>
-                a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn, ct);
-    }
-
     // ==========================================================================
     // Reads — TicketOrders
     // ==========================================================================
@@ -512,19 +427,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             .Where(o => o.MatchedUserId == userId)
             // arch:db-sort-ok user ticket history chronology over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.MatchedUserId == userId
-                && (o.PaymentStatus == TicketPaymentStatus.Paid
-                    || o.PaymentStatus == TicketPaymentStatus.Pending))
-            .Select(o => o.Id)
             .ToListAsync(ct);
     }
 
@@ -546,21 +448,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             .AsNoTracking()
             .Include(a => a.TicketOrder)
             .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                        && o.PurchasedAt >= fromInclusive
-                        && o.PurchasedAt < toExclusive)
-            .Select(o => o.PurchasedAt)
             .ToListAsync(ct);
     }
 
@@ -648,15 +535,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
                 PaymentStatus = o.PaymentStatus,
             })
             .ToListAsync(ct);
-    }
-
-    public async Task<decimal> GetGrossPaidRevenueAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-            .SumAsync(o => o.TotalAmount, ct);
     }
 
     public async Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(

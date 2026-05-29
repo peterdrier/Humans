@@ -177,9 +177,6 @@ public interface ITicketRepository : IRepository
     Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
         string vendorEventId, CancellationToken ct = default);
 
-    /// <summary>Insert or update a single TicketAttendee row. Used when the Tickets section creates an attendee outside the sync loop (e.g. on approved transfer reissue).</summary>
-    Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default);
-
     /// <summary>
     /// Persists <c>VatAmount</c> updates for the given orders in a single
     /// <c>SaveChanges</c>. Only the VAT column is written — other mutations
@@ -223,57 +220,13 @@ public interface ITicketRepository : IRepository
 
     Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns distinct <c>MatchedUserId</c> values for orders whose
-    /// <c>PurchasedAt</c> falls within <c>[fromInclusive, toExclusive)</c>. Used
-    /// by the admin audience-segmentation diagnostic to compute year-scoped
-    /// ticket buckets without reading the orders table directly.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetMatchedOrderUserIdsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns distinct <c>MatchedUserId</c> values for attendees whose owning
-    /// order's <c>PurchasedAt</c> falls within <c>[fromInclusive, toExclusive)</c>.
-    /// Mirrors <see cref="GetMatchedOrderUserIdsInWindowAsync"/> for the attendee
-    /// side of the audience-segmentation diagnostic.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetMatchedAttendeeUserIdsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct calendar years (UTC) of <c>PurchasedAt</c> for
-    /// every order with <c>MatchedUserId</c> set. Used by the admin
-    /// audience-segmentation diagnostic to populate the year picker.
-    /// </summary>
-    Task<IReadOnlyList<int>> GetMatchedOrderYearsAsync(CancellationToken ct = default);
-
-    Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default);
-
-    Task<bool> HasAnyTicketMatchAsync(Guid userId, CancellationToken ct = default);
-
     Task<bool> HasEventTicketAsync(Guid userId, string vendorEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default);
 
-    Task<int> CountSoldAttendeesAsync(CancellationToken ct = default);
-
     Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the ids of every order matched to <paramref name="userId"/> whose
-    /// <c>PaymentStatus</c> is <see cref="TicketPaymentStatus.Paid"/> or
-    /// <see cref="TicketPaymentStatus.Pending"/>. Refunded and Cancelled rows are
-    /// excluded so the agent snapshot only surfaces actionable tickets.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(Guid userId, CancellationToken ct = default);
-
     Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(Guid userId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default);
 
     Task<TicketDashboardTotals> GetDashboardTotalsAsync(CancellationToken ct = default);
 
@@ -282,8 +235,6 @@ public interface ITicketRepository : IRepository
     Task<IReadOnlyList<OrderDateAndCount>> GetOrderDateAttendeeCountsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<RecentOrder>> GetRecentOrdersAsync(int count, CancellationToken ct = default);
-
-    Task<decimal> GetGrossPaidRevenueAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(CancellationToken ct = default);
 
