@@ -44,10 +44,10 @@ public class TeamJoinRequestStateHistory
     /// <remarks>
     /// Cross-domain nav into the Users section — will be removed per
     /// design-rules §6c once the User-entity nav strip follow-up lands.
-    /// New callers resolve user data via <c>IUserService.GetByIdAsync</c>
+    /// New callers resolve user data via <c>IUserService.GetUserInfoAsync</c>
     /// keyed on <see cref="ChangedByUserId"/>.
     /// </remarks>
-    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(ChangedByUserId) instead. See design-rules §6c.")]
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetUserInfoAsync(ChangedByUserId) instead. See design-rules §6c.")]
     public User ChangedByUser { get; set; } = null!;
 
     /// <summary>

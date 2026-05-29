@@ -148,16 +148,6 @@ public sealed class UserService(
             "it indicates a DI registration mistake — IUserService should resolve " +
             "to CachingUserService.");
 
-    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        var user = await repo.GetByIdAsync(userId, ct);
-        if (user is null)
-            return null;
-
-        await HydrateUserEmailsAsync(user, ct);
-        return user;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -209,12 +199,6 @@ public sealed class UserService(
             return null;
 
         return await GetUserInfoAsync(legacyUser.Id, ct);
-    }
-
-    private async Task HydrateUserEmailsAsync(User user, CancellationToken ct)
-    {
-        var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(user.Id, ct);
-        AttachUserEmails(user, emails);
     }
 
     private async Task HydrateUserEmailsAsync(IEnumerable<User> users, CancellationToken ct)

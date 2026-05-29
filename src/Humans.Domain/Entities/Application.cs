@@ -20,7 +20,7 @@ public class Application
     public Guid Id { get; init; }
 
     /// <summary>
-    /// Foreign key to the applicant user. Use <c>IUserService.GetByIdAsync</c>
+    /// Foreign key to the applicant user. Use <c>IUserService.GetUserInfoAsync</c>
     /// or <c>IUserService.GetByIdsAsync</c> to hydrate user info — cross-domain
     /// navigation properties are forbidden on this entity (design-rules §6).
     /// </summary>

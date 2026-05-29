@@ -19,16 +19,6 @@ namespace Humans.Application.Interfaces.Users;
 public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
 {
     /// <summary>
-    /// Fetches a single user by id with the <see cref="User.UserEmails"/>
-    /// collection populated. Returns null if the user does not exist. Served
-    /// from the caching decorator's <see cref="UserInfo"/> dict for warm-cache
-    /// callers — the cache holds the full user payload, so there is no
-    /// "without emails" variant.
-    /// </summary>
-    [Obsolete("Callers must migrate to IUserService.GetUserInfoAsync()", false, DiagnosticId = "HUM_USER_GetById")]
-    Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Fetches a batched set of users keyed by id with each user's
     /// <see cref="User.UserEmails"/> collection populated. Missing users are
     /// absent from the returned dictionary. Used for in-memory stitching

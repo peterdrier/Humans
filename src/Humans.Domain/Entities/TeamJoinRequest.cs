@@ -18,9 +18,9 @@ public class TeamJoinRequest
     /// <remarks>
     /// Cross-domain nav into the Users section — will be removed per
     /// design-rules §6c once the User-entity nav strip follow-up lands.
-    /// New callers resolve user data via <c>IUserService.GetByIdAsync</c>.
+    /// New callers resolve user data via <c>IUserService.GetUserInfoAsync</c>.
     /// </remarks>
-    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(UserId) instead. See design-rules §6c.")]
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetUserInfoAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;
     public TeamJoinRequestStatus Status { get; set; } = TeamJoinRequestStatus.Pending;
     public string? Message { get; set; }
@@ -33,7 +33,7 @@ public class TeamJoinRequest
     /// <remarks>
     /// Cross-domain nav into the Users section — see <see cref="User"/>.
     /// </remarks>
-    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(ReviewedByUserId) instead. See design-rules §6c.")]
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetUserInfoAsync(ReviewedByUserId) instead. See design-rules §6c.")]
     public User? ReviewedByUser { get; set; }
     public string? ReviewNotes { get; set; }
     public ICollection<TeamJoinRequestStateHistory> StateHistory { get; } = new List<TeamJoinRequestStateHistory>();

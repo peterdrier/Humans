@@ -495,24 +495,13 @@ public sealed class CachingUserService(
         await work(inner);
     }
 
-    // GetByIdAsync / GetByIdsAsync — issue #744: serve from the in-memory
-    // UserInfo dict for cache hits, falling back to the inner UserService only
-    // for ids missing from the cache. The cached payload already carries every
-    // User-side column AND the UserEmails collection, so rehydration is
-    // mechanical and zero-DB for warm-cache callers. There is no
-    // "without emails" variant because there is nothing else the cache could
-    // serve — UserInfo is the whole person.
+    // GetByIdsAsync — issue #744: serve from the in-memory UserInfo dict for
+    // cache hits, falling back to the inner UserService only for ids missing
+    // from the cache. The cached payload already carries every User-side column
+    // AND the UserEmails collection, so rehydration is mechanical and zero-DB
+    // for warm-cache callers.
     // Callers consume the returned User as read-only (the repo emits the
     // entity AsNoTracking) so rehydrated instances are safe to share.
-
-    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (TryGet(userId, out var info))
-            return RehydrateUser(info);
-
-        var users = await WithInnerAsync(inner => inner.GetByIdsAsync([userId], ct));
-        return users.TryGetValue(userId, out var user) ? user : null;
-    }
 
     public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)

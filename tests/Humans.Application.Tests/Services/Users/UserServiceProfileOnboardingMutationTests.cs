@@ -80,29 +80,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_HydratesUserEmailsThroughUserRepository()
-    {
-        var userId = Guid.NewGuid();
-        SeedUser(userId, "Hydrated User");
-        var email = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "hydrated@example.com",
-            IsVerified = true,
-            IsPrimary = true,
-        };
-        Db.UserEmails.Add(email);
-        await Db.SaveChangesAsync();
-
-        var user = await _service.GetByIdAsync(userId);
-
-        user.Should().NotBeNull();
-        user!.UserEmails.Should().ContainSingle(e =>
-            e.Id == email.Id && e.Email == "hydrated@example.com");
-    }
-
-    [HumansFact]
     public async Task GetUsersWithLoginsButNoEmailsAsync_ComposesLoginAndUserEmailRepositories()
     {
         var userWithEmail = SeedUser(Guid.NewGuid(), "Has Email");

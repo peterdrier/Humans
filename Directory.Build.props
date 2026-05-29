@@ -43,11 +43,6 @@
           service entry point per issue #691. Kept visible as warnings (not
           hidden via NoWarn in production projects) so new render-path
           violations stay surfaced.
-        - HUM_USER_GetById: [Obsolete] marker on IUserService.GetByIdAsync.
-          Callers are being migrated to GetUserInfoAsync; remaining sites
-          (e.g. CampaignService.cs:550 private-helper overload) ride the
-          warning until the migration finishes. Kept visible as a warning
-          so new callers stay surfaced.
         - HUM0019: read of Identity-derived User column from Application or
           Web (issue nobodies-collective/Humans#506). Stays a warning while
           legacy reads (computed-override projections of UserEmails) are
@@ -73,7 +68,7 @@
           remove this entry once the last [Grandfathered("HUM0028", ...)] is
           gone (i.e., every cross-section invalidator has been absorbed).
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM0028;HUM_USER_DISPLAYNAME;HUM_USER_GetById</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM0028;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

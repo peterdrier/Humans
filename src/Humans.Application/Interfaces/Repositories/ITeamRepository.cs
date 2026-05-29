@@ -522,7 +522,7 @@ public interface ITeamRepository : IRepository
     /// cross-section read routed through <see cref="Users.IUserService"/> in
     /// the application service, not here.
     /// </summary>
-    // (no method on this interface — see IUserService.GetByIdAsync)
+    // (no method on this interface — see IUserService.GetUserInfoAsync)
 
     // ==========================================================================
     // Outbox (Google sync) — accessed from Teams writes

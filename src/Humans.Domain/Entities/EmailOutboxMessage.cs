@@ -32,7 +32,7 @@ public class EmailOutboxMessage
     // Navigation
     // Note: no User nav (FK-only per design-rules §6c — cross-domain nav
     // into the Users section would defeat table ownership). Callers resolve
-    // the user via IUserService.GetByIdAsync(message.UserId.Value) when needed.
+    // the user via IUserService.GetUserInfoAsync(message.UserId.Value) when needed.
     public CampaignGrant? CampaignGrant { get; set; }
     public ShiftSignup? ShiftSignup { get; set; }
 }

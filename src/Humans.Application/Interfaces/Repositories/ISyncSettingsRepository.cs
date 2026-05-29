@@ -22,7 +22,7 @@ public interface ISyncSettingsRepository : IRepository
     /// Returns every sync service settings row, ordered by <see cref="SyncServiceType"/>.
     /// Read-only (<c>AsNoTracking</c>). The <c>UpdatedByUser</c> navigation is
     /// <b>not</b> loaded — callers resolve the display name via
-    /// <c>IUserService.GetByIdAsync(UpdatedByUserId)</c>.
+    /// <c>IUserService.GetUserInfoAsync(UpdatedByUserId)</c>.
     /// </summary>
     Task<IReadOnlyList<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default);
 
