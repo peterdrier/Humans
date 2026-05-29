@@ -5,8 +5,10 @@ namespace Humans.Application.Interfaces.Email;
 
 /// <summary>
 /// Service for managing email outbox messages (retry, discard, stats, pause/resume).
+/// Per-user history reads live on <see cref="IEmailOutboxServiceRead"/>, the
+/// cross-section read surface this interface extends.
 /// </summary>
-public interface IEmailOutboxService : IApplicationService
+public interface IEmailOutboxService : IEmailOutboxServiceRead, IApplicationService
 {
     /// <summary>
     /// Requeues a failed or stuck email outbox message for retry.
@@ -24,18 +26,6 @@ public interface IEmailOutboxService : IApplicationService
     /// Gets aggregate statistics and recent messages for the email outbox dashboard.
     /// </summary>
     Task<EmailOutboxStats> GetOutboxStatsAsync(int recentMessageCount = 50, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets outbox messages for a specific user, ordered by CreatedAt descending.
-    /// </summary>
-    Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the count of outbox messages for a specific user.
-    /// </summary>
-    Task<int> GetMessageCountForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets whether email sending is currently paused.

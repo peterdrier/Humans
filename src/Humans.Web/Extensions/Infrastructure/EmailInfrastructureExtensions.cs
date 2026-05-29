@@ -57,7 +57,9 @@ internal static class EmailInfrastructureExtensions
         services.AddSingleton<IEmailBodyComposer, InfrastructureEmailBodyComposer>();
         services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
         services.AddScoped<IEmailService, OutboxEmailService>();
-        services.AddScoped<IEmailOutboxService, EmailOutboxService>();
+        services.AddScoped<EmailOutboxService>();
+        services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
+        services.AddScoped<IEmailOutboxServiceRead>(sp => sp.GetRequiredService<EmailOutboxService>());
 
         services.AddScoped<ProcessEmailOutboxJob>();
         services.AddScoped<CleanupEmailOutboxJob>();

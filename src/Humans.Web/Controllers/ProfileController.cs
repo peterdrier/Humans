@@ -69,7 +69,7 @@ public class ProfileController(
     ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
     ICampaignService campaignService,
-    IEmailOutboxService emailOutboxService,
+    IEmailOutboxServiceRead emailOutboxService,
     IClock clock,
     IAuthorizationService authorizationService,
     IConsentServiceRead consentService,
