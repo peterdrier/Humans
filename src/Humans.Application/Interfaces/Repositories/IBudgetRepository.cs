@@ -52,12 +52,6 @@ public interface IBudgetRepository : IRepository
     /// </summary>
     Task<BudgetYear?> GetActiveYearAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if the given year exists and is in
-    /// <see cref="BudgetYearStatus.Closed"/> status.
-    /// </summary>
-    Task<bool> IsYearClosedAsync(Guid id, CancellationToken ct = default);
-
     // ==========================================================================
     // Budget Years — atomic mutations
     // ==========================================================================

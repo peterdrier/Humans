@@ -87,19 +87,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .FirstOrDefaultAsync(y => y.Id == activeId.Value, ct);
     }
 
-    public async Task<bool> IsYearClosedAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        var status = await ctx.BudgetYears
-            .AsNoTracking()
-            .Where(y => y.Id == id)
-            .Select(y => (BudgetYearStatus?)y.Status)
-            .FirstOrDefaultAsync(ct);
-
-        return status == BudgetYearStatus.Closed;
-    }
-
     // Budget Years — atomic mutations
 
     public async Task CreateYearWithScaffoldAsync(
