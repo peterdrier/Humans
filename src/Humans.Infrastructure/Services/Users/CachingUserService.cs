@@ -891,12 +891,11 @@ public sealed class CachingUserService(
             await RefreshEntryAsync(userId, ct);
         });
 
-    public async Task<EventParticipation> DeclareNotAttendingAsync(
+    public async Task DeclareNotAttendingAsync(
         Guid userId, int year, CancellationToken ct = default)
     {
-        var result = await WithInnerAsync(inner => inner.DeclareNotAttendingAsync(userId, year, ct));
+        await WithInnerAsync(inner => inner.DeclareNotAttendingAsync(userId, year, ct));
         await RefreshEntryAsync(userId, ct);
-        return result;
     }
 
     public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)

@@ -835,7 +835,7 @@ public sealed class UserService(
 
     // --- EventParticipation writes ---
 
-    public async Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
+    public async Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var persisted = await repo.UpsertParticipationAsync(
@@ -848,14 +848,12 @@ public sealed class UserService(
             logger.LogWarning(
                 "Cannot declare NotAttending for user {UserId} year {Year} — already Attended",
                 userId, year);
-            // Re-read because upsert returned null.
-            return (await repo.GetParticipationAsync(userId, year, ct))!;
+            return;
         }
 
         logger.LogInformation(
             "User {UserId} declared NotAttending for year {Year}",
             userId, year);
-        return persisted;
     }
 
     public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)

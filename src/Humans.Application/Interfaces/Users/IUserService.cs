@@ -49,9 +49,11 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Declare that the user is not attending this year's event.
+    /// Declare that the user is not attending this year's event. Upserts a
+    /// UserDeclared NotAttending row unless the user is already Attended (in
+    /// which case the declaration is logged and ignored).
     /// </summary>
-    Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
+    Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
     /// Undo a "not attending" declaration. Removes the record.
