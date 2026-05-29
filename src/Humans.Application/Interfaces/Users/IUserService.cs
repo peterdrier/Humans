@@ -329,11 +329,14 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     // ---- Methods added for ContactService migration ----
 
     /// <summary>
-    /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
-    /// address (case-insensitive). Also checks the gmail/googlemail alternate
-    /// when applicable. Returns null if no match.
+    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
+    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
+    /// read-model for them. Also checks the gmail/googlemail alternate when
+    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
+    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
+    /// unset. Returns null if no match.
     /// </summary>
-    Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
+    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,

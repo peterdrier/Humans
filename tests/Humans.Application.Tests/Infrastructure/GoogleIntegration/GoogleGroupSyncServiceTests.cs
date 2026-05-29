@@ -363,7 +363,7 @@ public sealed class GoogleGroupSyncServiceTests
                 DisplayName = "Alice",
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
                 CreatedAt = _clock.GetCurrentInstant()
-            });
+            }.ToUserInfo());
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
 
@@ -401,7 +401,7 @@ public sealed class GoogleGroupSyncServiceTests
                 DisplayName = "Alice",
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
                 CreatedAt = _clock.GetCurrentInstant()
-            });
+            }.ToUserInfo());
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
 

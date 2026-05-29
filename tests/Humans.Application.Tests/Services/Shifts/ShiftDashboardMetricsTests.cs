@@ -1069,7 +1069,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<bool> UpdateUserEmailAsync(Guid userId, Guid emailId, UserEmailUpdateCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> RemoveUserEmailAsync(Guid userId, Guid emailId, UserEmailRemoveCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(Guid userId, UserEmailReconcilePlanCommand command, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(string email, Guid excludeUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();

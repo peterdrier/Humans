@@ -261,14 +261,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var user = MakeUser(TestUserId, TestUserEmail);
         _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(user);
         _userService.GetByEmailOrAlternateAsync(TestUserEmail, Arg.Any<CancellationToken>())
-            .Returns(new User
-            {
-                Id = TestUserId,
-                UserName = $"user-{TestUserId:N}",
-                DisplayName = "Alice Test",
-                Email = TestUserEmail,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown
-            });
+            .Returns(MakeUser(TestUserId, TestUserEmail));
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())

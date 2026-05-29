@@ -195,21 +195,20 @@ public sealed class UserService(
         return await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 
-    public async Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
+    public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
 
         var matchingUserIds = await repo.GetDistinctVerifiedUserEmailUserIdsAsync(normalized, alternate, ct);
         if (matchingUserIds.Count > 0)
-            return await GetByIdAsync(matchingUserIds[0], ct);
+            return await GetUserInfoAsync(matchingUserIds[0], ct);
 
         var legacyUser = await repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
         if (legacyUser is null)
             return null;
 
-        await HydrateUserEmailsAsync(legacyUser, ct);
-        return legacyUser;
+        return await GetUserInfoAsync(legacyUser.Id, ct);
     }
 
     [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]

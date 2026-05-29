@@ -629,7 +629,7 @@ public sealed class CachingUserService(
         return result;
     }
 
-    public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
+    public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
 
 #pragma warning disable CS0618

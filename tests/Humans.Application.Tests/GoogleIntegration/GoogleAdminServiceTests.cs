@@ -304,7 +304,7 @@ public class GoogleAdminServiceTests
                 Id = ownerId,
                 Email = "x@example.com",
                 DisplayName = "X",
-            });
+            }.ToUserInfo());
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId);
@@ -327,7 +327,7 @@ public class GoogleAdminServiceTests
             .Returns(false);
         _userService.GetByEmailOrAlternateAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
+            .Returns((UserInfo?)null);
         var commsTeamId = Guid.NewGuid();
         var commsTeam = new TeamInfo(
             commsTeamId, "Communications", null, "communications",
