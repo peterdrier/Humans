@@ -19,7 +19,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 - The **Outbox Pause Flag** is a `SystemSetting` row keyed `IsEmailSendingPaused` that, when `"true"`, causes `ProcessEmailOutboxJob` to skip all delivery attempts on its next tick. Resuming flips it back to `"false"`.
 - **Email Body Composition** is Infrastructure-free at the consumer boundary — `IEmailBodyComposer` is an Application-layer abstraction so business code can wrap a rendered HTML body without pulling MailKit. The current implementation (`BrandedEmailBodyComposer`) lives in Infrastructure.
 - **Delivery** is performed by `ProcessEmailOutboxJob` (Infrastructure) via `IEmailTransport` (`SmtpEmailTransport` in prod, `StubEmailTransport` in dev/test). `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
-- **Three `IEmailService` implementations exist:** `OutboxEmailService` (Application, default — writes to the outbox), `SmtpEmailService` (Infrastructure, legacy — sends inline via SMTP, no longer wired in DI), and `StubEmailService` (Infrastructure, no-op logger — also unwired; present as a local dev artifact). DI binds `IEmailService` to `OutboxEmailService`.
+- **Two `IEmailService` implementations exist:** `OutboxEmailService` (Application, default — writes to the outbox) and `StubEmailService` (Infrastructure, no-op logger — unwired; present as a local dev artifact). DI binds `IEmailService` to `OutboxEmailService`.
 
 ## Data Model
 
@@ -152,7 +152,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
   - `IImmediateOutboxProcessor` — triggers an out-of-band processor run for time-sensitive templates. Implementation `HangfireImmediateOutboxProcessor` lives in Infrastructure.
   - `IEmailRenderer` — renders email templates to `EmailContent` (subject + HTML body). Implementation `EmailRenderer` lives in Infrastructure.
   - `IEmailTransport` — delivers a single message over SMTP. Bound to `SmtpEmailTransport` when `Email:SmtpHost` is configured (required in Production), otherwise `StubEmailTransport` (dev/test). Used only by `ProcessEmailOutboxJob`; Application code never sees it.
-- **Legacy:** `SmtpEmailService` and `StubEmailService` (both Infrastructure `IEmailService`) are pre-outbox send implementations. Neither is registered in DI; both remain in the codebase.
+- **Legacy:** `StubEmailService` (Infrastructure `IEmailService`) is a pre-outbox send implementation. It is not registered in DI; it remains in the codebase.
 - **Architecture test:** `tests/Humans.Application.Tests/Architecture/EmailArchitectureTests.cs` pins namespace, no-DbContext, and connector-abstraction shape for `EmailOutboxService`, `OutboxEmailService`, `IEmailOutboxRepository`, `IEmailBodyComposer`, and `IImmediateOutboxProcessor`.
 
 ### Touch-and-clean guidance
