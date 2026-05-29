@@ -26,7 +26,6 @@ public interface IBudgetService : IApplicationService
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
 
     // Ticketing Projection
-    Task<TicketingProjectionSnapshot?> GetTicketingProjectionAsync(Guid budgetGroupId);
     Task UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId);

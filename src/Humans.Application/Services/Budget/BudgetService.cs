@@ -500,25 +500,6 @@ public sealed class BudgetService(
         logger.LogInformation("Deleted line item {LineItemId}", lineItemId);
     }
 
-    public async Task<TicketingProjectionSnapshot?> GetTicketingProjectionAsync(Guid budgetGroupId)
-    {
-        var projection = await repository.GetTicketingProjectionAsync(budgetGroupId);
-        return projection is null ? null : new TicketingProjectionSnapshot(
-            projection.Id,
-            projection.BudgetGroupId,
-            projection.StartDate,
-            projection.EventDate,
-            projection.InitialSalesCount,
-            projection.DailySalesRate,
-            projection.AverageTicketPrice,
-            projection.VatRate,
-            projection.StripeFeePercent,
-            projection.StripeFeeFixed,
-            projection.TicketTailorFeePercent,
-            projection.CreatedAt,
-            projection.UpdatedAt);
-    }
-
     public async Task UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
