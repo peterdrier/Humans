@@ -35,12 +35,6 @@ public static class GoogleGroupKeyHelper
             : null;
     }
 
-    public static string? TryDeriveGroupEmail(GoogleResource resource, string? configuredDomain = null)
-        => TryDeriveGroupEmail(resource.Url, configuredDomain);
-
-    public static string? TryDeriveGroupEmail(GoogleResourceSnapshot resource, string? configuredDomain = null)
-        => TryDeriveGroupEmail(resource.Url, configuredDomain);
-
     private static string? TryDeriveGroupEmail(string? url, string? configuredDomain = null)
     {
         if (string.IsNullOrWhiteSpace(url))
