@@ -184,10 +184,9 @@ public interface ITeamResourceService : IApplicationService
 
     /// <summary>
     /// Sets the RestrictInheritedAccess flag on a Drive folder resource and immediately
-    /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive.
+    /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive,
+    /// returning a result that captures any Google Drive mutation failure.
     /// </summary>
-    Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
-
     Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
 }
 

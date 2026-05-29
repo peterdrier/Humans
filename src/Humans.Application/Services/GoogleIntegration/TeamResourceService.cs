@@ -488,31 +488,34 @@ public sealed partial class TeamResourceService(
         }
     }
 
-    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    public async Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(
+        Guid resourceId,
+        bool restrict,
+        CancellationToken ct = default)
     {
-        var existing = await repository.GetByIdAsync(resourceId, ct);
-        if (existing is null)
-        {
-            logger.LogWarning("SetRestrictInheritedAccessAsync: resource {ResourceId} not found", resourceId);
-            return;
-        }
-
-        if (existing.ResourceType != GoogleResourceType.DriveFolder)
-        {
-            logger.LogWarning("Cannot set RestrictInheritedAccess on non-folder resource {ResourceId} (type: {Type})",
-                resourceId, existing.ResourceType);
-            return;
-        }
-
-        var mutated = await repository.SetRestrictInheritedAccessAsync(resourceId, restrict, ct);
-        if (mutated is null)
-        {
-            // Row disappeared between the read and the write; nothing to enforce.
-            return;
-        }
-
         try
         {
+            var existing = await repository.GetByIdAsync(resourceId, ct);
+            if (existing is null)
+            {
+                logger.LogWarning("SetRestrictInheritedAccessWithResultAsync: resource {ResourceId} not found", resourceId);
+                return TeamResourceMutationResult.Success();
+            }
+
+            if (existing.ResourceType != GoogleResourceType.DriveFolder)
+            {
+                logger.LogWarning("Cannot set RestrictInheritedAccess on non-folder resource {ResourceId} (type: {Type})",
+                    resourceId, existing.ResourceType);
+                return TeamResourceMutationResult.Success();
+            }
+
+            var mutated = await repository.SetRestrictInheritedAccessAsync(resourceId, restrict, ct);
+            if (mutated is null)
+            {
+                // Row disappeared between the read and the write; nothing to enforce.
+                return TeamResourceMutationResult.Success();
+            }
+
             var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
             if (error is not null)
             {
@@ -521,27 +524,12 @@ public sealed partial class TeamResourceService(
             }
             logger.LogInformation("Set RestrictInheritedAccess={Restrict} for resource {ResourceId} ({GoogleId})",
                 restrict, resourceId, mutated.GoogleId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId} ({GoogleId})",
-                resourceId, mutated.GoogleId);
-            throw;
-        }
-    }
-
-    public async Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(
-        Guid resourceId,
-        bool restrict,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            await SetRestrictInheritedAccessAsync(resourceId, restrict, ct);
             return TeamResourceMutationResult.Success();
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId}",
+                resourceId);
             return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
         }
     }
