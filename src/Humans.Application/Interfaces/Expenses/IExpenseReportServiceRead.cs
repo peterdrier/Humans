@@ -7,7 +7,7 @@ namespace Humans.Application.Interfaces.Expenses;
 /// Cross-section read surface for expense reports. External readers should use
 /// this interface instead of the mutation service.
 /// </summary>
-[SurfaceBudget(8)]
+[SurfaceBudget(7)]
 public interface IExpenseReportServiceRead
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
@@ -35,7 +35,4 @@ public interface IExpenseReportServiceRead
         Guid coordinatorUserId, CancellationToken ct = default);
 
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
-
-    Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
-        Guid submitterUserId, CancellationToken ct = default);
 }

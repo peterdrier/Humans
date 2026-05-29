@@ -101,7 +101,7 @@ public sealed record ExpenseIbanSaveResult(
     bool HasIban,
     string? MaskedIban);
 
-public sealed record ExpenseIbanViewData(bool HasIban, string? MaskedIban);
+internal sealed record ExpenseIbanViewData(bool HasIban, string? MaskedIban);
 
 public sealed record ExpenseDetailViewData(
     string CategoryDisplayName,

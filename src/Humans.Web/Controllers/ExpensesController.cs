@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
@@ -397,12 +398,13 @@ public sealed class ExpensesController(
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var iban = await expenseReadService.GetSubmitterIbanViewAsync(user.Id);
+            var iban = (await _userService.GetUserInfoAsync(user.Id))?.Profile?.Iban;
+            var hasIban = !string.IsNullOrEmpty(iban);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
-                HasIban = iban.HasIban,
-                MaskedIban = iban.MaskedIban
+                HasIban = hasIban,
+                MaskedIban = hasIban ? IbanFormatter.Mask(iban!) : null
             };
             return View(model);
         }

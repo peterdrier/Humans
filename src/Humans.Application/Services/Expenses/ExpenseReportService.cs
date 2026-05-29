@@ -611,7 +611,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
+    internal async Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
         Guid submitterUserId, CancellationToken ct = default)
     {
         var iban = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile?.Iban;
