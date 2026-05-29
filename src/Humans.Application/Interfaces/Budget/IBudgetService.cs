@@ -79,9 +79,7 @@ public interface IBudgetService : IApplicationService
     // Budget Line Items
     Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id);
     Task<BudgetLineItem> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetMutationResult> CreateLineItemWithResultAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetMutationResult> UpdateLineItemWithResultAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     // Coordinator
@@ -125,13 +123,6 @@ public sealed record BudgetAuditLogSnapshot(
     string Description,
     Guid ActorUserId,
     Instant OccurredAt);
-
-public sealed record BudgetMutationResult(bool Succeeded, string? ErrorMessage)
-{
-    public static BudgetMutationResult Success { get; } = new(true, null);
-
-    public static BudgetMutationResult Failure(string message) => new(false, message);
-}
 
 public sealed record CoordinatorBudgetViewData(
     BudgetYearDetail? Year,

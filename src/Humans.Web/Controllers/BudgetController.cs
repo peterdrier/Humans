@@ -153,13 +153,17 @@ public class BudgetController(
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
-        var result = await budgetService.CreateLineItemWithResultAsync(
-            budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
-
-        if (result.Succeeded)
+        try
+        {
+            await budgetService.CreateLineItemAsync(
+                budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' created.");
-        else
-            SetError($"Failed to create line item: {result.ErrorMessage}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
+            SetError($"Failed to create line item: {ex.Message}");
+        }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
     }
@@ -180,13 +184,17 @@ public class BudgetController(
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
-        var result = await budgetService.UpdateLineItemWithResultAsync(
-            id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
-
-        if (result.Succeeded)
+        try
+        {
+            await budgetService.UpdateLineItemAsync(
+                id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' updated.");
-        else
-            SetError($"Failed to update line item: {result.ErrorMessage}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating line item {LineItemId}", id);
+            SetError($"Failed to update line item: {ex.Message}");
+        }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }

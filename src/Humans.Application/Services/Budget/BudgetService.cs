@@ -460,24 +460,6 @@ public sealed class BudgetService(
         return lineItem;
     }
 
-    public async Task<BudgetMutationResult> CreateLineItemWithResultAsync(
-        Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        int vatRate, Guid actorUserId)
-    {
-        try
-        {
-            await CreateLineItemAsync(
-                budgetCategoryId, description, amount, responsibleTeamId, notes, expectedDate, vatRate, actorUserId);
-            return BudgetMutationResult.Success;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
-            return BudgetMutationResult.Failure(ex.Message);
-        }
-    }
-
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
@@ -499,24 +481,6 @@ public sealed class BudgetService(
         var ok = await repository.UpdateLineItemAsync(update, actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget line item {lineItemId} not found");
-    }
-
-    public async Task<BudgetMutationResult> UpdateLineItemWithResultAsync(
-        Guid lineItemId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        int vatRate, Guid actorUserId)
-    {
-        try
-        {
-            await UpdateLineItemAsync(
-                lineItemId, description, amount, responsibleTeamId, notes, expectedDate, vatRate, actorUserId);
-            return BudgetMutationResult.Success;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error updating line item {LineItemId}", lineItemId);
-            return BudgetMutationResult.Failure(ex.Message);
-        }
     }
 
     private static void ValidateVatRate(int vatRate)

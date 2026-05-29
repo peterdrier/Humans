@@ -62,11 +62,11 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CreateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemCreated()
+    public async Task CreateLineItemAsync_PersistsLineItem()
     {
         var category = await SeedCategoryAsync();
 
-        var result = await _service.CreateLineItemWithResultAsync(
+        var created = await _service.CreateLineItemAsync(
             category.Id,
             "Test line item",
             100m,
@@ -76,27 +76,10 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             0,
             Guid.NewGuid());
 
-        result.Succeeded.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task CreateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
-    {
-        var category = await SeedCategoryAsync();
-
-        var result = await _service.CreateLineItemWithResultAsync(
-            category.Id,
-            "Test line item",
-            100m,
-            null,
-            null,
-            null,
-            22,
-            Guid.NewGuid());
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("VAT rate");
+        var persisted = await _service.GetLineItemByIdAsync(created.Id);
+        persisted.Should().NotBeNull();
+        persisted!.Description.Should().Be("Test line item");
+        persisted.Amount.Should().Be(100m);
     }
 
     [HumansTheory]
@@ -137,7 +120,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
     [HumansFact]
-    public async Task UpdateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemUpdated()
+    public async Task UpdateLineItemAsync_PersistsChanges()
     {
         var category = await SeedCategoryAsync();
         var lineItem = new BudgetLineItem
@@ -154,7 +137,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             await ctx.SaveChangesAsync();
         }
 
-        var result = await _service.UpdateLineItemWithResultAsync(
+        await _service.UpdateLineItemAsync(
             lineItem.Id,
             "Updated",
             150m,
@@ -164,25 +147,10 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             0,
             Guid.NewGuid());
 
-        result.Succeeded.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task UpdateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
-    {
-        var result = await _service.UpdateLineItemWithResultAsync(
-            Guid.NewGuid(),
-            "Updated",
-            150m,
-            null,
-            null,
-            null,
-            22,
-            Guid.NewGuid());
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("VAT rate");
+        var persisted = await _service.GetLineItemByIdAsync(lineItem.Id);
+        persisted.Should().NotBeNull();
+        persisted!.Description.Should().Be("Updated");
+        persisted.Amount.Should().Be(150m);
     }
 
     [HumansFact]
