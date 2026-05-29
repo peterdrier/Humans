@@ -215,6 +215,7 @@ editorial_trees:
   - docs/guide/
   - docs/architecture/coding-rules.md
   - docs/architecture/design-rules.md
+  - docs/architecture/roslyn-analysis.md
   - docs/architecture/code-review-rules.md
   - docs/architecture/conventions.md
   - docs/seed-data.md

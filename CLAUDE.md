@@ -23,48 +23,27 @@ Atomic, task-fires rules (URL conventions, GitHub workflow, EF migration discipl
 
 See [`memory/META.md`](memory/META.md) for: when to add an atom vs prose doc, file format, bucket conventions, and how to maintain the catalog.
 
-### NEW PROJECT RULES GO HERE — NOT IN EXTERNAL CLAUDE MEMORY
+### New project rules → `memory/`, not external memory
 
-When a new project rule surfaces during a conversation (Peter corrects a pattern, an incident produces a rule, a "from now on X" emerges), capture it as a `memory/<bucket>/<name>.md` atom **in the same commit as the work that discovered it**. Add a one-line entry to `memory/INDEX.md`. Do **NOT** rely on the auto-memory system at `~/.claude/projects/H--source-Humans/memory/` — that storage is per-machine and does not sync across Peter's Windows / NUC / laptop, which is the exact problem this `memory/` directory solves.
-
-The auto-memory system can still capture session-ephemeral context (current task state, in-flight investigation notes). Anything that's a **project rule** — durable, applies across sessions, would matter on any machine — goes in this repo's `memory/`.
-
-Pattern + format spec: [`memory/META.md`](memory/META.md). Maintenance loop: [`memory/process/rules-maintenance.md`](memory/process/rules-maintenance.md).
+When a durable project rule surfaces, capture it as a `memory/<bucket>/<name>.md` atom **plus an `INDEX.md` line in the same commit** — never the per-machine auto-memory at `~/.claude/projects/…` (it doesn't sync across machines). Session-ephemeral notes can stay in auto-memory. Pattern: [`memory/META.md`](memory/META.md) · maintenance loop: [`rules-maintenance`](memory/process/rules-maintenance.md).
 
 ## Design Dialogue — 95% Confidence Loop
 
-When drafting an issue/spec/API/refactor proposal: audit from code (not memory), draft, self-assess. If <95% confident, ask focused clarifying questions on the load-bearing guesses (`AskUserQuestion`, multi-question batches, include a "let the implementer decide" option where genuine), update, repeat. *Then* ask to submit. Catches cow-path-as-design and hallucinated requirements. Cap at ~2 rounds; punt minor stuff to the implementer.
+When drafting an issue/spec/API/refactor: audit from code (not memory), draft, self-assess. If <95% confident, ask focused clarifying questions on the load-bearing guesses **inline** (include a genuine "let the implementer decide" option), update, repeat, *then* ask to submit. Catches cow-path-as-design and hallucinated requirements. Cap ~2 rounds; punt minor stuff to the implementer.
 
 ## Reuse-First Change Discipline
 
-Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first. Prefer reuse, caller-side composition, and small local LINQ/mapping over new durable surface. If new surface is still necessary, state which existing options were rejected and why; public/interface surface requires Peter approval.
-
-## Read-Model Enrichment Before New Surfaces
-
-If a caller needs stable facts about an aggregate already exposed through a bounded or cached canonical read model, prefer adding scalar fields to that DTO over adding a new interface, repository, service method, implementation, or DI registration. A few numbers/strings on `UserInfo`, `TeamInfo`, `TicketOrderInfo`, etc. are usually cheaper and clearer than a one-off read surface.
-
-Only add a new durable surface when the data is unbounded, permission-specific, expensive to materialize through the read model, transactional, sensitive, not a stable aggregate fact, or would pollute the canonical DTO with screen-only concerns. Before proposing a new interface/repository for a read projection, explicitly check whether enriching the existing read DTO eliminates it.
+Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner/surface first and prefer reuse, caller-side composition, and small local LINQ/mapping. State which existing options you rejected and why; public/interface surface needs Peter's approval. Detail: [`reuse-first-change-discipline`](memory/process/reuse-first-change-discipline.md); for read paths, [`read-model-enrichment`](memory/architecture/read-model-enrichment.md) (enrich a canonical read DTO before adding a read interface).
 
 ## Concepts — Volunteer vs Tier Applications
 
-These are SEPARATE concepts; do not conflate them.
+SEPARATE concepts; do not conflate:
 
-**Volunteer** = the standard member. ~100% of users. Onboarding: sign up → complete profile → consent to legal docs → Consent Coordinator clears → auto-approved → added to Volunteers team. **NOT done through the `Application` entity.**
+- **Volunteer** = the standard member (~100% of users). Onboarding: sign up → complete profile → consent → Consent Coordinator clears → auto-approved → Volunteers team. **NOT done through the `Application` entity.**
+- **Colaborador** = active contributor; application + Board vote; 2-year term.
+- **Asociado** = voting member (assemblies, elections); application + Board vote; 2-year term.
 
-**Colaborador** = active contributor with project/event responsibilities. Requires application + Board vote. 2-year term.
-
-**Asociado** = voting member with governance rights (assemblies, elections). Requires application + Board vote. 2-year term.
-
-The `Application` entity is for **Colaborador and Asociado tier applications only**, NOT for becoming a volunteer. Volunteer access proceeds in parallel and is **never blocked** by tier applications.
-
-Application workflow state machine:
-
-```
-Submitted → Approved/Rejected
-         ↘ Withdrawn ↙
-```
-
-Triggers: `Approve`, `Reject`, `Withdraw`.
+The `Application` entity is for **Colaborador/Asociado tier applications only**. Volunteer access runs in parallel and is **never blocked** by tier applications. Workflow: `Submitted → Approved/Rejected` or `Submitted → Withdrawn`; triggers `Approve`/`Reject`/`Withdraw`.
 
 ## Section Invariants — `docs/sections/`
 
@@ -92,27 +71,12 @@ dotnet run --project src/Humans.Web
 
 ## Git Workflow — Two-Remote
 
-- **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
+- **`origin`** = `peterdrier/Humans` (fork — QA auto-deploys from `main` via Coolify)
 - **`upstream`** = `nobodies-collective/Humans` (production)
 
-**All changes go on a feature branch** → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`. Use a worktree under `.worktrees/<name>`.
+All changes go on a **feature branch in a worktree** (`.worktrees/<name>`) → PR to `origin/main` (squash if multiple commits). Promote to prod by batching on `origin/main` → PR to `upstream/main` (rebase merge) — use `/pr-prod`. Per-PR preview deploys at `https://{pr_id}.n.burn.camp` (DB `humans_pr_{N}` cloned from QA, dropped on close; dev login enabled). Version check: `GET /api/version`.
 
-**Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge — individual efforts already squashed).
-
-**Preview environment:**
-- URL: `https://{pr_id}.n.burn.camp`
-- Database: cloned from QA via GitHub Action (`humans_pr_{N}`), dropped on PR close
-- Auth: dev login enabled (`DevAuth__Enabled=true`)
-- Connection string override: `docker-entrypoint.sh` extracts PR number from `COOLIFY_CONTAINER_NAME`
-
-**Version endpoint:** `GET /api/version` (unauthenticated) returns `{ version, commit, informationalVersion }`.
-
-**QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
-
-For workflow rules, see:
-- [`memory/process/no-direct-to-main.md`](memory/process/no-direct-to-main.md)
-- [`memory/process/issue-refs-qualified.md`](memory/process/issue-refs-qualified.md)
-- [`memory/process/after-prod-merge-reset.md`](memory/process/after-prod-merge-reset.md)
+Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-refs-qualified`](memory/process/issue-refs-qualified.md) · [`after-prod-merge-reset`](memory/process/after-prod-merge-reset.md) · [`cross-repo-pr-push-target`](memory/process/cross-repo-pr-push-target.md).
 
 ## Doc Freshness
 

@@ -27,21 +27,7 @@ gh pr view <number> --repo <repo> --json title,body,files
 
 ### 3. Check each changed file
 
-**`memory/` atoms** (read the atom before flagging):
-- Direct `ApplicationDbContext` injection in controllers — `memory/architecture/no-linq-at-db-layer.md`
-- `DateTime`/`DateOnly` instead of NodaTime in non-view-model code — `memory/code/nodatime-for-dates.md`
-- String comparisons without explicit `StringComparison` — `memory/code/string-comparisons-explicit.md`
-- Enum comparison operators in EF queries — `memory/code/no-enum-compare-in-ef.md`
-- Magic strings (missing `nameof()`, hardcoded role names) — `memory/code/no-magic-strings.md`
-- Hand-edited migration files — `memory/architecture/no-hand-edited-migrations.md`
-- `bi bi-*` icon classes (Bootstrap Icons not loaded) — `memory/code/icons-fa6-only.md`
-- Missing `[JsonInclude]` / `[JsonConstructor]` / `[JsonPolymorphic]` — `memory/code/json-serialization.md`
-- Inline `HtmlSanitizer`/`Markdig` instead of `@Html.SanitizedMarkdown` — `memory/code/sanitized-markdown-rendering.md`
-- Inline date format strings instead of shared display extensions — `memory/code/datetime-display-formatting.md`
-- `_userManager.GetUserAsync(User)` instead of base class helpers — `memory/code/controller-base-conventions.md`
-- Direct `TempData["SuccessMessage"]` instead of `SetSuccess`/`SetError`/`SetInfo` — `memory/code/controller-base-conventions.md`
-
-For unlisted areas, scan `memory/INDEX.md` for the relevant bucket.
+**`memory/` atoms** — scan `memory/INDEX.md` and read every atom whose trigger matches a changed file (read the atom before flagging). The INDEX is the source of truth; an inline copy here would drift as atoms are added or renamed.
 
 **`code-review-rules.md`:**
 - `disabled="@boolValue"` Razor boolean attribute traps
