@@ -53,12 +53,12 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SendWelcomeEmailAsync_CreatesOutboxRowWithCorrectFields()
+    public async Task SendAccessSuspendedAsync_CreatesOutboxRowWithCorrectFields()
     {
-        _renderer.RenderWelcome("Alice", "en")
-            .Returns(new EmailContent("Welcome!", "<p>Hello Alice</p>"));
+        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
+            .Returns(new EmailContent("Access Suspended", "<p>Hello Alice</p>"));
 
-        await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
+        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
 
         var messages = await Db.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);
@@ -66,23 +66,23 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         var msg = messages[0];
         msg.RecipientEmail.Should().Be("alice@example.com");
         msg.RecipientName.Should().Be("Alice");
-        msg.Subject.Should().Be("Welcome!");
+        msg.Subject.Should().Be("Access Suspended");
         msg.HtmlBody.Should().Contain("<p>Hello Alice</p>");
         msg.PlainTextBody.Should().Be("plain-text-stub");
-        msg.TemplateName.Should().Be("welcome");
+        msg.TemplateName.Should().Be("access_suspended");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
         msg.CreatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
-    public async Task SendWelcomeEmailAsync_RecordsEmailQueuedMetric()
+    public async Task SendAccessSuspendedAsync_RecordsEmailQueuedMetric()
     {
-        _renderer.RenderWelcome("Alice", "en")
-            .Returns(new EmailContent("Welcome!", "<p>Hello</p>"));
+        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
+            .Returns(new EmailContent("Access Suspended", "<p>Hello</p>"));
 
-        await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
+        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
 
-        _metrics.Received(1).RecordEmailQueued("welcome");
+        _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
     [HumansFact]
@@ -150,14 +150,14 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SendWelcomeEmailAsync_DoesNotTriggerImmediate()
+    public async Task SendAccessSuspendedAsync_DoesNotTriggerImmediate()
     {
-        _renderer.RenderWelcome("Alice", "en")
-            .Returns(new EmailContent("Welcome!", "<p>Hello</p>"));
+        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
+            .Returns(new EmailContent("Access Suspended", "<p>Hello</p>"));
 
-        await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
+        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
 
-        // Welcome email should NOT trigger immediate processing
+        // A non-verification email should NOT trigger immediate processing
         _immediate.DidNotReceive().TriggerImmediate();
     }
 

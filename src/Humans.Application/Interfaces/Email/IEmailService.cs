@@ -71,19 +71,6 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a welcome email to a new member.
-    /// </summary>
-    /// <param name="userEmail">The user's email.</param>
-    /// <param name="userName">The user's name.</param>
-    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task SendWelcomeEmailAsync(
-        string userEmail,
-        string userName,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sends an access suspended notification.
     /// </summary>
     /// <param name="userEmail">The user's email.</param>

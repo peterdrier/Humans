@@ -90,7 +90,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any service / job | Queue a message via a typed `IEmailService.Send…Async` method (e.g. `SendWelcomeEmailAsync`, `SendApplicationApprovedAsync`, `SendCampaignCodeAsync`). The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
+| Any service / job | Queue a message via a typed `IEmailService.Send…Async` method (e.g. `SendAccessSuspendedAsync`, `SendApplicationApprovedAsync`, `SendCampaignCodeAsync`). The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Profile/{id}/Admin/Outbox`). |

@@ -87,17 +87,6 @@ public sealed class OutboxEmailService(
     }
 
     /// <inheritdoc />
-    public async Task SendWelcomeEmailAsync(
-        string userEmail,
-        string userName,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = renderer.RenderWelcome(userName, culture);
-        await EnqueueAsync(userEmail, userName, content, "welcome", cancellationToken);
-    }
-
-    /// <inheritdoc />
     public async Task SendAccessSuspendedAsync(
         string userEmail,
         string userName,
