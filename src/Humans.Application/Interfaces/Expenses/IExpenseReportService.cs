@@ -103,15 +103,6 @@ public sealed record ExpenseIbanSaveResult(
 
 internal sealed record ExpenseIbanViewData(bool HasIban, string? MaskedIban);
 
-public sealed record ExpenseDetailViewData(
-    string CategoryDisplayName,
-    bool CanEdit,
-    bool CanSubmit,
-    bool CanWithdraw,
-    bool HasIban,
-    string? MaskedIban,
-    ExpenseHoldedTimeline? HoldedTimeline);
-
 /// <summary>Round-trip timeline for the submitter, sourced from the Holded creditor balance.</summary>
 public sealed record ExpenseHoldedTimeline(
     bool RegisteredInHolded,

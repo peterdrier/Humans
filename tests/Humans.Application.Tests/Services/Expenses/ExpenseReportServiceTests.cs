@@ -179,39 +179,6 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     // ─────────────────────────────── 4.3 ─────────────────────────────────────
 
     [HumansFact]
-    public async Task GetDetailViewDataAsync_ReturnsDraftSubmitterFlagsAndIban()
-    {
-        var (_, category) = SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
-        var report = await _sut.GetAsync(id);
-        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
-
-        var result = await _sut.GetDetailViewDataAsync(submitter, report!);
-
-        result.CanEdit.Should().BeTrue();
-        result.CanSubmit.Should().BeTrue();
-        result.CanWithdraw.Should().BeFalse();
-        result.HasIban.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetDetailViewDataAsync_DeniesSubmitterActionsForOtherViewer()
-    {
-        var (_, category) = SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
-        var report = await _sut.GetAsync(id);
-
-        var result = await _sut.GetDetailViewDataAsync(Guid.NewGuid(), report!);
-
-        result.CanEdit.Should().BeFalse();
-        result.CanSubmit.Should().BeFalse();
-        result.CanWithdraw.Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task AddLineAsync_AddsLine_AndUpdatesTotal()
     {
         var (_, category) = SetupActiveYear();
@@ -1253,7 +1220,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     // ─────────────────────── Holded timeline (submitter view) ───────────────────
 
     [HumansFact]
-    public async Task GetDetailViewData_builds_timeline_with_owed_and_other()
+    public async Task GetHoldedTimelineAsync_builds_timeline_with_owed_and_other()
     {
         var userId = Guid.NewGuid();
         var (_, category) = SetupActiveYear();
@@ -1267,12 +1234,12 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
                 LastPaymentDate: null, TotalPaid: 0m));
 
         var report = await _sut.GetAsync(reportId);
-        var detail = await _sut.GetDetailViewDataAsync(userId, report!);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!);
 
-        detail.HoldedTimeline.Should().NotBeNull();
-        detail.HoldedTimeline!.RegisteredInHolded.Should().BeTrue();
-        detail.HoldedTimeline.OwedToMember.Should().Be(200m);
-        detail.HoldedTimeline.OtherAmount.Should().Be(200m - report!.Total);
+        timeline.Should().NotBeNull();
+        timeline!.RegisteredInHolded.Should().BeTrue();
+        timeline.OwedToMember.Should().Be(200m);
+        timeline.OtherAmount.Should().Be(200m - report!.Total);
     }
 
     // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────

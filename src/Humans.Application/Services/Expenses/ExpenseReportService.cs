@@ -51,41 +51,13 @@ public sealed class ExpenseReportService(
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => repo.GetByIdAsync(id, ct);
 
-    public async Task<ExpenseDetailViewData> GetDetailViewDataAsync(
-        Guid viewerUserId, ExpenseReportDto report, CancellationToken ct = default)
-    {
-        var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
-        var categoryName = category is not null
-            ? $"{category.BudgetGroup?.Name} / {category.Name}"
-            : "(unknown category)";
-
-        var isSubmitter = report.SubmitterUserId == viewerUserId;
-        var canWithdraw = report.Status is ExpenseReportStatus.Submitted
-            or ExpenseReportStatus.CoordinatorEndorsed
-            or ExpenseReportStatus.Approved;
-        var iban = await GetSubmitterIbanViewAsync(viewerUserId, ct);
-
-        var timeline = isSubmitter
-            ? await BuildHoldedTimelineAsync(report, ct)
-            : null;
-
-        return new ExpenseDetailViewData(
-            CategoryDisplayName: categoryName,
-            CanEdit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
-            CanSubmit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
-            CanWithdraw: isSubmitter && canWithdraw,
-            HasIban: iban.HasIban,
-            MaskedIban: iban.MaskedIban,
-            HoldedTimeline: timeline);
-    }
-
     /// <summary>
     /// Aggregates the submitter's owed/paid round-trip from the cached Holded creditor balance.
     /// The balance already sums all of a member's outstanding docs; when it exceeds the member's
     /// own registered-unpaid ER totals, the remainder is shown as fronted/adjustments (spec §3).
     /// </summary>
-    private async Task<ExpenseHoldedTimeline?> BuildHoldedTimelineAsync(
-        ExpenseReportDto report, CancellationToken ct)
+    public async Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(report.HoldedContactId))
             return new ExpenseHoldedTimeline(

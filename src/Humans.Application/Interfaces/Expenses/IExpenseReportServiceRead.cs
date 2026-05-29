@@ -12,8 +12,8 @@ public interface IExpenseReportServiceRead
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
 
-    Task<ExpenseDetailViewData> GetDetailViewDataAsync(
-        Guid viewerUserId, ExpenseReportDto report, CancellationToken ct = default);
+    Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the report that owns the given attachment (via its line), with

@@ -137,17 +137,29 @@ public sealed class ExpensesController(
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return Forbid();
 
-            var detail = await expenseReadService.GetDetailViewDataAsync(user.Id, report);
+            var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
+            var categoryName = category is not null
+                ? $"{category.BudgetGroup?.Name} / {category.Name}"
+                : "(unknown category)";
+            var isSubmitter = report.SubmitterUserId == user.Id;
+            var canWithdraw = report.Status is ExpenseReportStatus.Submitted
+                or ExpenseReportStatus.CoordinatorEndorsed
+                or ExpenseReportStatus.Approved;
+            var iban = await GetIbanViewAsync(user.Id);
+            var timeline = isSubmitter
+                ? await expenseReadService.GetHoldedTimelineAsync(report)
+                : null;
+
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
-                CategoryDisplayName = detail.CategoryDisplayName,
-                CanEdit = detail.CanEdit,
-                CanSubmit = detail.CanSubmit,
-                CanWithdraw = detail.CanWithdraw,
-                HasIban = detail.HasIban,
-                MaskedIban = detail.MaskedIban,
-                HoldedTimeline = detail.HoldedTimeline
+                CategoryDisplayName = categoryName,
+                CanEdit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
+                CanSubmit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
+                CanWithdraw = isSubmitter && canWithdraw,
+                HasIban = iban.HasIban,
+                MaskedIban = iban.MaskedIban,
+                HoldedTimeline = timeline
             };
             return View(model);
         }
@@ -398,13 +410,12 @@ public sealed class ExpensesController(
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var iban = (await _userService.GetUserInfoAsync(user.Id))?.Profile?.Iban;
-            var hasIban = !string.IsNullOrEmpty(iban);
+            var iban = await GetIbanViewAsync(user.Id);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
-                HasIban = hasIban,
-                MaskedIban = hasIban ? IbanFormatter.Mask(iban!) : null
+                HasIban = iban.HasIban,
+                MaskedIban = iban.MaskedIban
             };
             return View(model);
         }
@@ -725,6 +736,13 @@ public sealed class ExpensesController(
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(c => new BudgetCategoryOption(c.Id, g.Name, c.Name)))
             .ToList();
+    }
+
+    private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId)
+    {
+        var iban = (await _userService.GetUserInfoAsync(userId))?.Profile?.Iban;
+        var hasIban = !string.IsNullOrEmpty(iban);
+        return (hasIban, hasIban ? IbanFormatter.Mask(iban!) : null);
     }
 
 }
