@@ -34,7 +34,8 @@ public sealed class ExpenseReportService(
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IClock clock,
-    ILogger<ExpenseReportService> logger) : IExpenseReportServiceRead, IExpenseReportService, IUserDataContributor
+    ILogger<ExpenseReportService> logger) : IExpenseReportServiceRead, IExpenseReportService,
+        IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     // Stored for future Holded Finance integration tasks (creditor status polling etc.).
     private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
@@ -821,8 +822,15 @@ public sealed class ExpenseReportService(
         return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
     }
 
-    /// <inheritdoc/>
-    public async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
+    Task IExpenseReportBackgroundProcessor.DrainHoldedOutboxAsync(
+        int batchSize, CancellationToken ct)
+        => DrainHoldedOutboxAsync(batchSize, ct);
+
+    Task IExpenseReportBackgroundProcessor.PollHoldedPaidStatusAsync(
+        int batchSize, CancellationToken ct)
+        => PollHoldedPaidStatusAsync(batchSize, ct);
+
+    internal async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
     {
         var events = await repo
             .GetUnprocessedOutboxAsync(batchSize, ct);
@@ -899,8 +907,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    /// <inheritdoc/>
-    public async Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default)
+    internal async Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default)
     {
         var reports = await repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, ct);
 

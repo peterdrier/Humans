@@ -67,19 +67,6 @@ public interface IExpenseReportService : IApplicationService
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Drains the Holded expense outbox: creates or updates purchase documents in Holded
-    /// for each approved expense report. Called by the recurring job.
-    /// </summary>
-    Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
-
-    /// <summary>
-    /// Reconciles payment status on SepaSent expense reports against the member's Holded creditor
-    /// balance and marks them Paid when that balance is settled (≥ 0) — treasury pays the creditor
-    /// account in aggregate, not per-document. Missing supplier-account numbers are backfilled here.
-    /// Called by the recurring job.
-    /// </summary>
-    Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);
 }
 
 public sealed record ExpenseAttachmentDownload(

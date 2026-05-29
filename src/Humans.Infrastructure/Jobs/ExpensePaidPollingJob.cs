@@ -10,10 +10,10 @@ namespace Humans.Infrastructure.Jobs;
 /// member's creditor account balance is settled (≥ 0) — treasury pays the account in aggregate.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 120)]
-public class ExpensePaidPollingJob(IExpenseReportService expenseService) : IRecurringJob
+public class ExpensePaidPollingJob(IExpenseReportBackgroundProcessor expenses) : IRecurringJob
 {
     private const int BatchSize = 50;
 
     public Task ExecuteAsync(CancellationToken cancellationToken = default) =>
-        expenseService.PollHoldedPaidStatusAsync(BatchSize, cancellationToken);
+        expenses.PollHoldedPaidStatusAsync(BatchSize, cancellationToken);
 }

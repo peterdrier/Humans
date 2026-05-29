@@ -15,10 +15,11 @@ internal static class ExpensesSectionExtensions
         this IServiceCollection services, IConfiguration config)
     {
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
-        // Dual-register: IExpenseReportService and IUserDataContributor resolve to the same instance.
+        // Register each Expenses surface against the same scoped orchestrator instance.
         services.AddScoped<ExpensesExpenseReportService>();
         services.AddScoped<IExpenseReportServiceRead>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
+        services.AddScoped<IExpenseReportBackgroundProcessor>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<HoldedExpenseOutboxJob>();
         services.AddScoped<ExpensePaidPollingJob>();

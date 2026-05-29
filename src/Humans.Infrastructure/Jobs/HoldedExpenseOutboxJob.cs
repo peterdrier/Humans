@@ -9,10 +9,10 @@ namespace Humans.Infrastructure.Jobs;
 /// for each approved expense report.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class HoldedExpenseOutboxJob(IExpenseReportService expenseService) : IRecurringJob
+public class HoldedExpenseOutboxJob(IExpenseReportBackgroundProcessor expenses) : IRecurringJob
 {
     private const int BatchSize = 100;
 
     public Task ExecuteAsync(CancellationToken cancellationToken = default) =>
-        expenseService.DrainHoldedOutboxAsync(BatchSize, cancellationToken);
+        expenses.DrainHoldedOutboxAsync(BatchSize, cancellationToken);
 }
