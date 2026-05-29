@@ -51,21 +51,6 @@ public interface IGoogleSyncOutboxRepository : IRepository
     /// </summary>
     Task<int> CountPendingAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Counts stale sync events — unprocessed, carrying an error, but not
-    /// permanently failed. Matches the pre-migration inline query
-    /// <c>e.ProcessedAt == null &amp;&amp; e.LastError != null &amp;&amp; !e.FailedPermanently</c>.
-    /// Surfaced in the Admin daily digest. Read-only.
-    /// </summary>
-    Task<int> CountStaleAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Counts unprocessed events currently in transient-retry state
-    /// (<c>ProcessedAt == null &amp;&amp; !FailedPermanently &amp;&amp; RetryCount &gt; 0</c>).
-    /// Surfaced in the Admin daily digest. Read-only.
-    /// </summary>
-    Task<int> CountTransientRetriesAsync(CancellationToken ct = default);
-
     // ==========================================================================
     // Read — admin dashboard (Part 2c)
     // ==========================================================================

@@ -35,26 +35,6 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbConte
             .CountAsync(e => e.ProcessedAt == null, ct);
     }
 
-    public async Task<int> CountStaleAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
-            .AsNoTracking()
-            .CountAsync(
-                e => e.ProcessedAt == null && e.LastError != null && !e.FailedPermanently,
-                ct);
-    }
-
-    public async Task<int> CountTransientRetriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
-            .AsNoTracking()
-            .CountAsync(
-                e => e.ProcessedAt == null && !e.FailedPermanently && e.RetryCount > 0,
-                ct);
-    }
-
     public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentAsync(
         int take, CancellationToken ct = default)
     {

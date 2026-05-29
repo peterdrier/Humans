@@ -69,33 +69,6 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CountStaleAsync_ExcludesPermanentFailures()
-    {
-        Seed(processedAt: null, lastError: "transient-1");
-        Seed(processedAt: null, lastError: "transient-2");
-        Seed(processedAt: null, failedPermanently: true, lastError: "perm"); // excluded
-        Seed(processedAt: null); // no error — excluded
-
-        var count = await _repository.CountStaleAsync();
-
-        count.Should().Be(2);
-    }
-
-    [HumansFact]
-    public async Task CountTransientRetriesAsync_RequiresRetryCountAboveZero()
-    {
-        Seed(processedAt: null, retryCount: 0, lastError: "first-attempt"); // excluded (never retried)
-        Seed(processedAt: null, retryCount: 2, lastError: "retrying"); // matches
-        Seed(processedAt: null, retryCount: 5, lastError: null); // matches (LastError can be null)
-        Seed(processedAt: null, retryCount: 3, lastError: "perm", failedPermanently: true); // excluded
-        Seed(processedAt: Instant.FromUtc(2026, 4, 23, 12, 0), retryCount: 4); // processed — excluded
-
-        var count = await _repository.CountTransientRetriesAsync();
-
-        count.Should().Be(2);
-    }
-
-    [HumansFact]
     public async Task GetRecentAsync_OrdersByOccurredAtDescending_AndAppliesTakeLimit()
     {
         var oldest = Seed(occurredAt: Instant.FromUtc(2026, 4, 20, 10, 0));
