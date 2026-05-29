@@ -629,9 +629,6 @@ public sealed class CachingUserService(
         return result;
     }
 
-    public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetAllUsersAsync(ct));
-
     public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
 

@@ -169,13 +169,6 @@ public sealed class UserService(
         return users;
     }
 
-    public async Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default)
-    {
-        var users = await repo.GetAllAsync(ct);
-        await HydrateUserEmailsAsync(users, ct);
-        return users;
-    }
-
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
         if (await repo.GetByIdAsync(userId, ct) is null)

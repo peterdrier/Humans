@@ -92,12 +92,6 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all users, read-only. At ~500 users this is cheap to load in full.
-    /// Used by admin list views that must include profileless users.
-    /// </summary>
-    Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Purges a human at the User aggregate — removes all UserEmail rows
     /// through <c>IUserRepository</c>, anonymizes the display name, and
     /// permanently locks out the account. Returns the prior display name on

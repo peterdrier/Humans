@@ -45,9 +45,6 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam([]));
 
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
-
         _userService.GetAllParticipationsForYearAsync(
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -480,8 +477,6 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         var allUsers = users.ToList();
         var userIds = users.Select(u => u.Id).ToList();
 
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(allUsers);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
                 allUsers.Select(u => u.ToUserInfo(profile: new Profile

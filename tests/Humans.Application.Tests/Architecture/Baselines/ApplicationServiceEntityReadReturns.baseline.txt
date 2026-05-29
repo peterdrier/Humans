@@ -29,7 +29,6 @@ Humans.Application.Interfaces.Teams.ITeamService.GetTeamByIdAsync:Humans.Domain.
 Humans.Application.Interfaces.Teams.ITeamService.GetTeamEntityBySlugAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetUserTeamsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Users.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Users.IUserService.GetAllUsersAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByEmailOrAlternateAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdsAsync:Humans.Domain.Entities.User
