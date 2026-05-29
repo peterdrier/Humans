@@ -706,7 +706,7 @@ public sealed class BudgetService(
             .ToList();
     }
 
-    public LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
     {
         var quarterEnd = expectedDate.Month switch
         {

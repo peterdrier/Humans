@@ -91,7 +91,6 @@ public interface IBudgetService : IApplicationService
     BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups);
     BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups);
     IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IReadOnlyList<BudgetGroupDetail> groups);
-    LocalDate ComputeVatSettlementDate(LocalDate expectedDate);
 }
 
 public sealed record TicketingProjectionSnapshot(
