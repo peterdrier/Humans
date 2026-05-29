@@ -60,17 +60,6 @@ public sealed class OutboxEmailService(
     }
 
     /// <inheritdoc />
-    public async Task SendReConsentRequiredAsync(
-        string userEmail,
-        string userName,
-        string documentName,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        await SendReConsentsRequiredAsync(userEmail, userName, [documentName], culture, cancellationToken);
-    }
-
-    /// <inheritdoc />
     public async Task SendReConsentsRequiredAsync(
         string userEmail,
         string userName,
