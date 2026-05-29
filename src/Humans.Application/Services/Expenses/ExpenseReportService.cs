@@ -34,7 +34,7 @@ public sealed class ExpenseReportService(
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IClock clock,
-    ILogger<ExpenseReportService> logger) : IExpenseReportService, IUserDataContributor
+    ILogger<ExpenseReportService> logger) : IExpenseReportServiceRead, IExpenseReportService, IUserDataContributor
 {
     // Stored for future Holded Finance integration tasks (creditor status polling etc.).
     private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
@@ -208,7 +208,7 @@ public sealed class ExpenseReportService(
         return report.Id;
     }
 
-    public async Task UpdateDraftAsync(
+    internal async Task UpdateDraftAsync(
         Guid reportId, Guid submitterUserId,
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default)
@@ -254,7 +254,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<Guid> AddLineAsync(
+    internal async Task<Guid> AddLineAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
         CancellationToken ct = default)
@@ -290,7 +290,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task UpdateLineAsync(
+    internal async Task UpdateLineAsync(
         Guid reportId, Guid submitterUserId,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default)
@@ -325,7 +325,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task RemoveLineAsync(
+    internal async Task RemoveLineAsync(
         Guid reportId, Guid submitterUserId, Guid lineId,
         CancellationToken ct = default)
     {
@@ -378,7 +378,7 @@ public sealed class ExpenseReportService(
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    public async Task<Guid> AttachFileToLineAsync(
+    internal async Task<Guid> AttachFileToLineAsync(
         Guid reportId, Guid submitterUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default)
@@ -473,7 +473,7 @@ public sealed class ExpenseReportService(
             submitterUserId);
     }
 
-    public async Task<bool> SubmitAsync(
+    internal async Task<bool> SubmitAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
@@ -531,7 +531,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<bool> WithdrawAsync(
+    internal async Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
@@ -632,7 +632,7 @@ public sealed class ExpenseReportService(
             MaskedIban: hasIban ? IbanFormatter.Mask(existingIban!) : null);
     }
 
-    public async Task<bool> CoordinatorEndorseAsync(
+    internal async Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid coordinatorUserId, CancellationToken ct = default)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
@@ -670,7 +670,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<bool> CoordinatorRejectAsync(
+    internal async Task<bool> CoordinatorRejectAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default)
     {
@@ -710,7 +710,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<bool> ApproveAsync(
+    internal async Task<bool> ApproveAsync(
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
         CancellationToken ct = default)
     {
@@ -758,7 +758,7 @@ public sealed class ExpenseReportService(
         }
     }
 
-    public async Task<bool> FinanceRejectAsync(
+    internal async Task<bool> FinanceRejectAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default)
     {
@@ -818,7 +818,7 @@ public sealed class ExpenseReportService(
         return flippedIds;
     }
 
-    public async Task<bool> MarkPaidAsync(
+    internal async Task<bool> MarkPaidAsync(
         Guid reportId, Instant paidAt, CancellationToken ct = default)
     {
         var ok = await repo.MarkPaidAsync(reportId, paidAt, ct);
@@ -833,8 +833,8 @@ public sealed class ExpenseReportService(
         return true;
     }
 
-    /// <inheritdoc/>
-    public async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
+    /// <summary>True iff the category has at least one budget coordinator.</summary>
+    internal async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
         Guid categoryId, CancellationToken ct = default)
     {
         // True iff category's team has ≥1 active Coordinator (cache hit, no DB).

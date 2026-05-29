@@ -19,7 +19,7 @@ namespace Humans.Application.Tests.Authorization;
 /// </summary>
 public sealed class IbanAccessHandlerTests
 {
-    private readonly IExpenseReportService _expenseService = Substitute.For<IExpenseReportService>();
+    private readonly IExpenseReportServiceRead _expenseReports = Substitute.For<IExpenseReportServiceRead>();
     private readonly IbanAccessHandler _handler;
 
     private static readonly Guid TargetUserId = Guid.NewGuid();
@@ -27,10 +27,10 @@ public sealed class IbanAccessHandlerTests
 
     public IbanAccessHandlerTests()
     {
-        _handler = new IbanAccessHandler(_expenseService);
+        _handler = new IbanAccessHandler(_expenseReports);
 
         // Default: report exists in Submitted status (non-Draft, non-Withdrawn)
-        _expenseService.GetAsync(ReportId, Arg.Any<CancellationToken>())
+        _expenseReports.GetAsync(ReportId, Arg.Any<CancellationToken>())
             .Returns(MakeReport(ReportId, ExpenseReportStatus.Submitted));
     }
 
@@ -74,7 +74,7 @@ public sealed class IbanAccessHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CanAccess_Iban_WhenReportIsCoordinatorEndorsed()
     {
-        _expenseService.GetAsync(ReportId, Arg.Any<CancellationToken>())
+        _expenseReports.GetAsync(ReportId, Arg.Any<CancellationToken>())
             .Returns(MakeReport(ReportId, ExpenseReportStatus.CoordinatorEndorsed));
         var user = CreateUserWithRole(RoleNames.FinanceAdmin);
         var requirement = new IbanAccessRequirement(TargetUserId, reportId: ReportId);
@@ -87,7 +87,7 @@ public sealed class IbanAccessHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CanAccess_Iban_WhenReportIsApproved()
     {
-        _expenseService.GetAsync(ReportId, Arg.Any<CancellationToken>())
+        _expenseReports.GetAsync(ReportId, Arg.Any<CancellationToken>())
             .Returns(MakeReport(ReportId, ExpenseReportStatus.Approved));
         var user = CreateUserWithRole(RoleNames.FinanceAdmin);
         var requirement = new IbanAccessRequirement(TargetUserId, reportId: ReportId);
@@ -102,7 +102,7 @@ public sealed class IbanAccessHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CannotAccess_Iban_WhenReportIsDraft()
     {
-        _expenseService.GetAsync(ReportId, Arg.Any<CancellationToken>())
+        _expenseReports.GetAsync(ReportId, Arg.Any<CancellationToken>())
             .Returns(MakeReport(ReportId, ExpenseReportStatus.Draft));
         var user = CreateUserWithRole(RoleNames.FinanceAdmin);
         var requirement = new IbanAccessRequirement(TargetUserId, reportId: ReportId);
@@ -115,7 +115,7 @@ public sealed class IbanAccessHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CannotAccess_Iban_WhenReportIsWithdrawn()
     {
-        _expenseService.GetAsync(ReportId, Arg.Any<CancellationToken>())
+        _expenseReports.GetAsync(ReportId, Arg.Any<CancellationToken>())
             .Returns(MakeReport(ReportId, ExpenseReportStatus.Withdrawn));
         var user = CreateUserWithRole(RoleNames.FinanceAdmin);
         var requirement = new IbanAccessRequirement(TargetUserId, reportId: ReportId);
