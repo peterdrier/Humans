@@ -15,4 +15,7 @@ public record OrderLineDto(
     decimal SubtotalEur,
     decimal VatEur,
     decimal DepositEur,
-    decimal TotalEur);
+    decimal TotalEur)
+{
+    public decimal UnitPriceSnapshotInclVat => Math.Round(UnitPriceSnapshot * (1 + VatRateSnapshot / 100m), 2);
+}

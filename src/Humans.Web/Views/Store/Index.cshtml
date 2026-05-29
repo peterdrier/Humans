@@ -126,8 +126,7 @@ else
             <tr>
                 <th>Name</th>
                 <th>Description</th>
-                <th class="text-end">Unit price</th>
-                <th class="text-end">VAT</th>
+                <th class="text-end">Unit price (incl. VAT)</th>
                 <th class="text-end">Deposit</th>
                 <th>Order by</th>
             </tr>
@@ -138,8 +137,10 @@ else
                 <tr>
                     <td>@product.Name</td>
                     <td>@Html.SanitizedMarkdown(product.Description)</td>
-                    <td class="text-end">&euro;@product.UnitPriceEur.ToString("N2")</td>
-                    <td class="text-end">@product.VatRatePercent.ToString("0.##")%</td>
+                    <td class="text-end">
+                        &euro;@product.UnitPriceInclVatEur.ToString("N2")
+                        <div class="text-muted small">(&euro;@product.UnitPriceEur.ToString("N2") + @product.VatRatePercent.ToString("0.##")% VAT)</div>
+                    </td>
                     <td class="text-end">@(product.DepositAmountEur.HasValue ? $"€{product.DepositAmountEur.Value:N2}" : "—")</td>
                     <td>@product.OrderableUntil.ToDisplayDate()</td>
                 </tr>

@@ -11,4 +11,7 @@ public record ProductDto(
     decimal VatRatePercent,
     decimal? DepositAmountEur,
     LocalDate OrderableUntil,
-    bool IsActive);
+    bool IsActive)
+{
+    public decimal UnitPriceInclVatEur => Math.Round(UnitPriceEur * (1 + VatRatePercent / 100m), 2);
+}
