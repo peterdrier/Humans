@@ -3,7 +3,6 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -250,17 +249,6 @@ public class TicketingBudgetServiceTests
         var result = await sut.GetProjectionsAsync(groupId);
 
         result.Should().BeSameAs(expected);
-    }
-
-    [HumansFact]
-    public void GetActualTicketsSold_DelegatesToBudgetService()
-    {
-        var group = new BudgetGroup { Id = Guid.NewGuid(), Name = "Ticketing" };
-        _budgetService.GetActualTicketsSold(group).Returns(187);
-
-        var sut = CreateSut();
-
-        sut.GetActualTicketsSold(group).Should().Be(187);
     }
 
     private static TicketOrderInfo BuildOrder(

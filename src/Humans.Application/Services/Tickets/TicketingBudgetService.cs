@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Tickets;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -94,11 +93,6 @@ public sealed class TicketingBudgetService(
     public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
     {
         return budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);
-    }
-
-    public int GetActualTicketsSold(BudgetGroup ticketingGroup)
-    {
-        return budgetService.GetActualTicketsSold(ticketingGroup);
     }
 
     // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
