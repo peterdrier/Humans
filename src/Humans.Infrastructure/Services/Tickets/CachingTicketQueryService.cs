@@ -102,10 +102,6 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
     public Task<List<OrderExportRow>> GetOrderExportDataAsync() =>
         WithInner(inner => inner.GetOrderExportDataAsync());
 
-    public Task<UserTicketExportData> GetUserTicketExportDataAsync(
-        Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetUserTicketExportDataAsync(userId, ct));
-
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetOrderDriftAsync(ct));
 

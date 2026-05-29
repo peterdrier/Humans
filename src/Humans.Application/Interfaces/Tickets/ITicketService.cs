@@ -102,11 +102,6 @@ public interface ITicketService : ITicketServiceRead, IApplicationService
     Task<List<OrderExportRow>> GetOrderExportDataAsync();
 
     /// <summary>
-    /// Returns ticket data for a user's GDPR data export.
-    /// </summary>
-    Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns paid orders where the number of valid+checked-in attendees is
     /// less than the total number of attendees on the order.
     /// </summary>

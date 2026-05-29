@@ -719,7 +719,7 @@ public sealed class TicketQueryService(
         return postEventInstant > now ? postEventInstant : null;
     }
 
-    public async Task<UserTicketExportData> GetUserTicketExportDataAsync(
+    private async Task<UserTicketExportData> GetUserTicketExportDataAsync(
         Guid userId, CancellationToken ct = default)
     {
         var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
