@@ -834,7 +834,7 @@ public sealed class UserService(
 
     // --- EventParticipation reads ---
 
-    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
+    public Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
         throw new NotSupportedException(
             "GetAllParticipationsForYearAsync is only meaningful through CachingUserService — " +
             "projects the year's participations from the cached UserInfo snapshot. If this is " +

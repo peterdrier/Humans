@@ -727,9 +727,11 @@ public class VolunteerTrackingServiceTests
             .Returns(call =>
             {
                 var year = call.Arg<int>();
-                return Task.FromResult(
+                return Task.FromResult<IReadOnlyList<UserParticipationRow>>(
                     (participations ?? [])
-                    .Where(p => p.Year == year).ToList());
+                    .Where(p => p.Year == year)
+                    .Select(p => new UserParticipationRow(p.UserId, p.Status, p.Source, p.CheckedInAt))
+                    .ToList());
             });
 
         trackingRepo ??= new FakeVolunteerTrackingRepository(

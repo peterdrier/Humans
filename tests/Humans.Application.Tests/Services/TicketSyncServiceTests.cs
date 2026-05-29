@@ -554,15 +554,9 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             .Returns(new EventSettings { Year = 2026 });
 
         _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>
+            .Returns(new List<UserParticipationRow>
             {
-                new()
-                {
-                    UserId = userId,
-                    Year = 2026,
-                    Status = ParticipationStatus.Ticketed,
-                    Source = ParticipationSource.TicketSync
-                }
+                new(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null)
             });
 
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -596,15 +590,9 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             .Returns(new EventSettings { Year = 2026 });
 
         _userService.GetAllParticipationsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>
+            .Returns(new List<UserParticipationRow>
             {
-                new()
-                {
-                    UserId = userId,
-                    Year = 2026,
-                    Status = ParticipationStatus.Ticketed,
-                    Source = ParticipationSource.TicketSync
-                }
+                new(userId, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null)
             });
 
         var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);

@@ -41,9 +41,12 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
         CancellationToken ct = default);
 
     /// <summary>
-    /// Get all participation records for a given year.
+    /// Get all participation records for a given year, projected to the slim
+    /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
+    /// section). Served from the caching decorator's <see cref="UserInfo"/>
+    /// snapshot.
     /// </summary>
-    Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>
     /// Declare that the user is not attending this year's event.
@@ -451,4 +454,16 @@ public record AnonymizedAccountSummary(
 public sealed record OnsiteUserRow(
     Guid UserId,
     string DisplayName,
+    Instant? CheckedInAt);
+
+/// <summary>
+/// Slim cross-section projection of an <see cref="EventParticipation"/> row for
+/// a given year, returned by <see cref="IUserService.GetAllParticipationsForYearAsync"/>.
+/// Carries only the facts consumers diff against (status, source, check-in
+/// instant) keyed by user — no EF entity crosses the section boundary.
+/// </summary>
+public sealed record UserParticipationRow(
+    Guid UserId,
+    ParticipationStatus Status,
+    ParticipationSource Source,
     Instant? CheckedInAt);

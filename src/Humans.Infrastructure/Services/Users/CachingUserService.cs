@@ -599,26 +599,17 @@ public sealed class CachingUserService(
         return user;
     }
 
-    public async Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var snapshot = Values;
-        var result = new List<EventParticipation>();
+        var result = new List<UserParticipationRow>();
         foreach (var u in snapshot)
         {
             foreach (var p in u.EventParticipations)
             {
                 if (p.Year != year) continue;
-                result.Add(new EventParticipation
-                {
-                    Id = p.Id,
-                    UserId = u.Id,
-                    Year = p.Year,
-                    Status = p.Status,
-                    Source = p.Source,
-                    DeclaredAt = p.DeclaredAt,
-                    CheckedInAt = p.CheckedInAt,
-                });
+                result.Add(new UserParticipationRow(u.Id, p.Status, p.Source, p.CheckedInAt));
             }
         }
         return result;
