@@ -211,11 +211,6 @@ public sealed class UserService(
         return await GetUserInfoAsync(legacyUser.Id, ct);
     }
 
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]
-    public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default) =>
-        repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
-
     private async Task HydrateUserEmailsAsync(User user, CancellationToken ct)
     {
         var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(user.Id, ct);

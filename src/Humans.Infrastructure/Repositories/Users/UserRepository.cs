@@ -96,19 +96,6 @@ internal sealed partial class UserRepository : IUserRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    public async Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .Where(u => EF.Property<string?>(u, "GoogleEmail") != null
-                        && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, email)
-                        && u.Id != excludeUserId)
-            .Select(u => (Guid?)u.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {

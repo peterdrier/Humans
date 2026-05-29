@@ -632,12 +632,6 @@ public sealed class CachingUserService(
     public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
 
-#pragma warning disable CS0618
-    public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct));
-#pragma warning restore CS0618
-
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));

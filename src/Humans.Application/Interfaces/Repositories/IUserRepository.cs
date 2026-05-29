@@ -58,15 +58,6 @@ public partial interface IUserRepository : IRepository
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose legacy <c>GoogleEmail</c> shadow column matches the given address
-    /// (case-insensitive), or null if no such user exists.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserRepository.GetOtherUserIdHavingUserEmailAsync (matches the user_emails table — the canonical location for Google identity once UserEmail.IsGoogle is sole source of truth).")]
-    Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the legacy <c>GoogleEmail</c> shadow-column value for the given
     /// users (only entries where the column is non-null are present in the
     /// result). The CLR property is gone — this is the only way to observe the

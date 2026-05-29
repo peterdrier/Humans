@@ -339,17 +339,6 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose legacy <c>User.GoogleEmail</c> shadow column matches <paramref name="email"/>
-    /// (case-insensitive), or null if no such user exists.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync — once UserEmail.IsGoogle is sole source of truth a Google identity always has a matching user_emails row, so any other user already owning the address is detected by the user_emails check.")]
-    Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-        string email,
-        Guid excludeUserId,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
     /// No-op if the user does not exist. Used by the re-consent reminder job
     /// so it does not write to the Users table directly (design-rules §2c).

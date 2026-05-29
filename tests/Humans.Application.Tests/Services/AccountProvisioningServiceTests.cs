@@ -190,9 +190,6 @@ public class AccountProvisioningServiceTests
         public Task<int> ReassignEventParticipationToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
-            string email, Guid excludeUserId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetGoogleEmailStatusAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) =>
