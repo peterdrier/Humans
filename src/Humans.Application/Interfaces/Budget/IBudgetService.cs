@@ -62,12 +62,6 @@ public interface IBudgetService : IApplicationService
     /// Compute the total number of tickets sold through completed weeks, derived
     /// from the revenue line item notes on an already-loaded ticketing group.
     /// </summary>
-    int GetActualTicketsSold(BudgetGroup ticketingGroup);
-
-    /// <summary>
-    /// DTO overload of <see cref="GetActualTicketsSold(BudgetGroup)"/> for callers
-    /// holding a projected <see cref="BudgetGroupDetail"/> rather than the EF entity.
-    /// </summary>
     int GetActualTicketsSold(BudgetGroupDetail ticketingGroup);
 
     // Budget Groups

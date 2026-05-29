@@ -227,7 +227,7 @@ Stored as string via `HasConversion<string>()`.
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
-- **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`, a Tickets-section service) reads paid orders via `ITicketServiceRead` and pushes results *into* Budget by calling `IBudgetService` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync` / `GetTicketingProjectionEntriesAsync` / `GetActualTicketsSold`). Budget exposes those write/read methods on `IBudgetService` and has no code path that reads Tickets tables directly. (The dedicated `ITicketingBudgetRepository` added for PR #545b was removed in #815.)
+- **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`, a Tickets-section service) reads paid orders via `ITicketServiceRead` and pushes results *into* Budget by calling `IBudgetService` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync` / `GetTicketingProjectionEntriesAsync`). Budget exposes those write/read methods on `IBudgetService` and has no code path that reads Tickets tables directly. (The dedicated `ITicketingBudgetRepository` added for PR #545b was removed in #815.)
 - **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
