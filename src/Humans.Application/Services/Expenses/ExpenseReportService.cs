@@ -40,7 +40,7 @@ public sealed class ExpenseReportService(
     // Stored for future Holded Finance integration tasks (creditor status polling etc.).
     private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
 
-    public static string AttachmentKey(Guid id, string extension) =>
+    internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
 
     private static readonly HashSet<string> AllowedExtensions =
