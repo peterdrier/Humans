@@ -249,9 +249,8 @@ public sealed class DevelopmentBudgetSeeder(
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
             if (category is null)
             {
-                var created = await budgetService.CreateCategoryAsync(
+                category = await budgetService.CreateCategoryAsync(
                     departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
-                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -265,9 +264,8 @@ public sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                var created = await budgetService.CreateCategoryAsync(
+                category = await budgetService.CreateCategoryAsync(
                     sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
-                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -281,9 +279,8 @@ public sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                var created = await budgetService.CreateCategoryAsync(
+                category = await budgetService.CreateCategoryAsync(
                     ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
-                category = ToCategoryDetail(created);
                 categoriesCreated++;
             }
 
@@ -347,18 +344,6 @@ public sealed class DevelopmentBudgetSeeder(
 
         onUpdated();
     }
-
-    // Newly created categories carry no line items yet; seeding adds them next.
-    private static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) =>
-        new(
-            category.Id,
-            category.BudgetGroupId,
-            category.Name,
-            category.AllocatedAmount,
-            category.ExpenditureType,
-            category.TeamId,
-            category.SortOrder,
-            []);
 
     private async Task SeedLineItemsAsync(
         BudgetCategoryDetail category,

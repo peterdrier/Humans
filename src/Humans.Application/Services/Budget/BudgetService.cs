@@ -131,7 +131,7 @@ public sealed class BudgetService(
         return new CoordinatorBudgetViewData(activeYear, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: false);
     }
 
-    public async Task<BudgetYear> CreateYearAsync(string year, string name, Guid actorUserId)
+    public async Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
@@ -157,15 +157,13 @@ public sealed class BudgetService(
             "Created budget year {Year} ({Name}) with {TeamCount} department categories",
             year, name, teamRefs.Count);
 
-        return new BudgetYear
-        {
-            Id = draft.Id,
-            Year = year,
-            Name = name,
-            Status = BudgetYearStatus.Draft,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+        return new BudgetYearDetail(
+            draft.Id,
+            year,
+            name,
+            BudgetYearStatus.Draft,
+            IsDeleted: false,
+            Groups: []);
     }
 
     public async Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
@@ -248,7 +246,7 @@ public sealed class BudgetService(
                 : "Ticketing group already exists for this budget year.");
     }
 
-    public async Task<BudgetGroup> CreateGroupAsync(
+    public async Task<BudgetGroupDetail> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
@@ -259,7 +257,7 @@ public sealed class BudgetService(
         logger.LogInformation(
             "Created budget group '{Name}' in year {YearId}", name, budgetYearId);
 
-        return group;
+        return ToGroupDetail(group);
     }
 
     public async Task UpdateGroupAsync(
@@ -375,7 +373,7 @@ public sealed class BudgetService(
                     item.SortOrder))
                 .ToList());
 
-    public async Task<BudgetCategory> CreateCategoryAsync(
+    public async Task<BudgetCategoryDetail> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
     {
@@ -387,7 +385,7 @@ public sealed class BudgetService(
         logger.LogInformation(
             "Created budget category '{Name}' in group {GroupId}", name, budgetGroupId);
 
-        return category;
+        return ToCategoryDetail(category);
     }
 
     public async Task UpdateCategoryAsync(
@@ -433,7 +431,7 @@ public sealed class BudgetService(
             lineItem.IsCashflowOnly,
             lineItem.SortOrder);
 
-    public async Task<BudgetLineItem> CreateLineItemAsync(
+    public async Task<BudgetLineItemSnapshot> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
@@ -457,7 +455,7 @@ public sealed class BudgetService(
             "Created line item '{Description}' in category {CategoryId}",
             description, budgetCategoryId);
 
-        return lineItem;
+        return ToLineItemSnapshot(lineItem);
     }
 
     public async Task UpdateLineItemAsync(
