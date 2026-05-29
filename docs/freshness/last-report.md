@@ -7,8 +7,9 @@
 | Mode | diff |
 | Mechanical entries dirty | 8 of 11 |
 | Mechanical files changed | 5 |
-| Editorial flag-on-change triggered | 36 |
-| Editorial unmarked (review needed) | 18 |
+| Editorial docs triggered & reviewed | 36 |
+| Editorial docs corrected for drift | 11 |
+| Editorial unmarked (no coverage) | 18 |
 | Husks pruned | 11 files (−7,065 lines) |
 | Wheat migrated | 0 (cluster pre-extracted by prior sweeps; re-verified) |
 | Docs tree | 121,855 → 114,790 lines (−5.80%) |
@@ -74,12 +75,39 @@ Previously-vetted chaff that didn't fit this sweep's 7% budget — apply on a fu
 
 None. The prune analyst found zero medium-confidence wheat — all 11 husks were confirmed fully pre-extracted against the current living docs.
 
-## Flagged for human review (editorial `freshness:flag-on-change`)
+## Editorial drift review (performed, not punted)
 
-36 editorial docs were flagged because their `freshness:triggers` matched source files changed this sweep (the heavy Camps/CampRole/CityPlanning/auth/read-split churn). These are not auto-updated — review whether prose needs updating.
+All 36 triggered editorial docs were read against the *specific* source files that changed this sweep, and corrected in place where the prose was factually contradicted. The dominant driver was the Camps lead-authorization refactor (lead/event-manager authority moved entirely off the legacy `CampLead`/`camp_leads` onto `CampRoleAssignment` → `CampInfo.IsLead`/`IsEventManager`, retirement now tracked by #774 not #753) and the cross-section read-split (Store/CityPlanning/Notifications/Containers/OnsiteRoster now inject `ICampServiceRead`; several `ICampService` lead/pending/display methods removed).
+
+**Corrected (11 docs):**
+
+- `docs/sections/Camps.md` — lead/event-manager authz rewritten to read-model (`CampInfo.IsLead`/`IsEventManager`, `CampSeasonInfo.LeadUserIds`); legacy `CampLead` no longer consulted for authz (#774); `AddCampMemberAsLeadAsync`→`AddCampMemberToActiveSeasonAsync`; account-merge `ReassignAssignmentsToUserAsync`→`ReassignAsync` (re-FKs `CampRoleAssignment.CampMemberId`, removed the stale "CampMember not folded" gap note); Containers/Profiles/internal cross-section deps moved to `ICampServiceRead`/`ICampRoleCampAccess`/`ICampInfoInvalidator`; caching-decorator + leads-invariant + touch-and-clean prose updated
+- `docs/features/camps/camps.md` — `AddMemberAndAssignRoleAsync`→`AddMemberAndAssignRoleInActiveSeasonAsync` (bare overload now private)
+- `docs/sections/CityPlanning.md` + `docs/sections/Containers.md` — Camps dependency narrowed to `ICampServiceRead`; removed-method lists replaced with the actually-called set + `CampInfo.IsLead` LINQ
+- `docs/sections/Store.md` + `docs/features/store/store.md` — `ICampService`→`ICampServiceRead`; `GetCampLeadSeasonIdForYearAsync`/`GetCampSeasonDisplayDataForYearAsync` replaced with `GetCampsForYearAsync` + read-model helpers
+- `docs/sections/Notifications.md` — per-lead pending meter: removed `ICampService.GetPendingMembershipCountForLeadAsync`, now `ICampServiceRead.GetSettingsAsync` + `GetCampsForYearAsync` derived in-memory
+- `docs/features/auth/magic-link-auth.md` + `docs/guide/Onboarding.md` — first-login signup now collects a burner name **and** first/last legal name (all required), not a single display name (`CompleteMagicLinkSignupAsync` signature + `CompleteSignup.cshtml` form)
+- `docs/features/mailer/audience-debug-screen.md` — debug-table page sizes `20/50/100/200`, default `20` (was `50/100/200`, default `50`)
+- `docs/guide/Budget.md` — added the new user-visible **VAT/IVA-inclusive amount** convention (gross figures; VAT% records the rate only, never adds on top) now shown on the Budget/Finance detail views
+
+**Reviewed, no drift (25 docs):** the triggering code changes were internal refactors with no documented/user-visible contradiction — `Auth`, `Onboarding`, `Users`, `Tickets`/`Store`/`CityPlanning`/`Camps` guides, `authentication`, `contact-accounts`, `preferred-email`, `workspace-account-provisioning`, `notification-inbox`, `gdpr-export`, `event-participation`, `ticket-vendor-integration`, `google-removal-notifications` (resx delta touched only `CompleteSignup_*` keys), `guide/{Admin,Events,Profiles}`, etc.
+
+### Open questions for Peter (judgment calls + pre-existing drift found during review)
+
+These were deliberately **not** edited (out of this sweep's "drift caused by recent changes" scope, or a rule-doc judgment call) — your call:
+
+1. **`design-rules.md` §9** — the CORRECT cross-service example injects `ICampStore`, but stores were retired project-wide (§4–5 / §15i say "0 stores exist today"). Pre-existing drift. Drop/replace the example?
+2. **`design-rules.md` §8** table-ownership map — Camps row omits `CampRoleService` and the `camp_role_definitions` / `camp_role_assignments` / `camp_members` tables (all accessed via the consolidated `ICampRepository`). Pre-existing. Add them?
+3. **`docs/sections/Camps.md`** read/write-split paragraph still describes `ICampService` as exposing "per-user/lead/membership reads" generally — several of those concrete methods were removed this sweep. Tighten the general sentence?
+4. **`docs/sections/Camps.md`** notes `BarrioEventsController` at `/Barrios/{slug}/Events/*` while the (now-deleted) `ICampService` XML doc referenced `EventsController` at `/Events/Barrio/{slug}/*` — the Events controller was outside this sweep's changed-file scope, so the route-alias discrepancy is unverified. Worth a follow-up check.
+5. Pre-existing, left untouched: `CityPlanning.md` lists `IProfileService` / un-suffixed `ITeamService`/`IUserService` (constructor already uses the `*Read` forms, no `IProfileService`); `Containers.md` dep list still names the unused `GetCampsWithLeadsForYearAsync`.
+
+> **Process note:** SKILL.md already mandated "the default is fix, not flag" for editorial drift — but the rule was buried in prose after the Phase 5 table, so the happy path read "flag-on-change → flag list" and punted (this is the first sweep to actually do the fix). This sweep strengthens `.claude/skills/freshness-sweep/SKILL.md` so the drift-fix is an explicit, mandatory **dispatched** Phase 5 step (with the exact matched-files list handed to each subagent), making the punt path unavailable to future executors.
+
+### Triggered docs reviewed (full list)
 
 <details>
-<summary>Full list (36 docs)</summary>
+<summary>36 docs</summary>
 
 **Sections (9):** `Auth`, `Camps`, `CityPlanning`, `Containers`, `Notifications`, `Onboarding`, `Store`, `Tickets`, `Users`
 
@@ -87,7 +115,7 @@ None. The prune analyst found zero medium-confidence wheat — all 11 husks were
 
 **Features (14):** `auth/authentication`, `auth/magic-link-auth`, `camps/camps`, `city-planning/city-planning`, `global/gdpr-export`, `google-integration/google-removal-notifications`, `google-integration/workspace-account-provisioning`, `mailer/audience-debug-screen`, `notifications/notification-inbox`, `profiles/contact-accounts`, `profiles/preferred-email`, `store/store`, `tickets/event-participation`, `tickets/ticket-vendor-integration`
 
-**Architecture (4, via broad fallback):** `code-review-rules`, `coding-rules`, `conventions`, `design-rules` — these have a `freshness:flag-on-change` marker but **no `freshness:triggers` header**, so they fall back to "any `src/**` change" and flag on essentially every sweep. Adding scoped trigger globs would cut the false-positive flagging.
+**Architecture (4, via broad fallback):** `code-review-rules`, `coding-rules`, `conventions`, `design-rules` — reviewed conservatively; no sweep-caused contradictions (two pre-existing drifts surfaced as questions 1–2 above). These carry a `freshness:flag-on-change` marker but **no `freshness:triggers` header**, so they flag on every `src/**` change — adding scoped triggers would cut the noise.
 
 </details>
 
@@ -103,7 +131,7 @@ None. The prune analyst found zero medium-confidence wheat — all 11 husks were
 
 ## Questions
 
-None this sweep.
+See "Open questions for Peter" under the editorial drift review above (5 items: 2 pre-existing `design-rules.md` drifts, a Camps read/write-split sentence to tighten, a Camps event-route alias to verify, and 2 minor pre-existing cross-section-dep nits).
 
 ## Skipped (errors)
 

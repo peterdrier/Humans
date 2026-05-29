@@ -58,7 +58,7 @@ A per-audience debug screen on the existing Mailer admin section that previews e
 
 ## Paging + Sorting
 
-Server-side. Page sizes 50 / 100 / 200, default 50. Sortable: name, email, "in-ML-since" (§2 only). Default sort: name ascending. State per section is independent (each table has its own `*.page` / `*.size` / `*.sort` / `*.desc` querystring keys).
+Server-side. Page sizes 20 / 50 / 100 / 200, default 20. Sortable: name, email, "in-ML-since" (§2 only). Default sort: name ascending. State per section is independent (each table has its own `*.page` / `*.size` / `*.sort` / `*.desc` querystring keys).
 
 ## Apply Button
 

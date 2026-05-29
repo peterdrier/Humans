@@ -71,10 +71,18 @@ Abort on validation failure → Phase 8.
 | Mechanical `update: script` | none | Run via `Bash`; warn if files touched outside `target` |
 | Mechanical `update: prompt` | 1 | Dispatch subagent |
 | Editorial `freshness:auto` | 1 | Dispatch subagent; regenerate each block per inline prompt; leave content outside markers untouched |
-| Editorial `freshness:flag-on-change` | none | See below — fix concrete broken facts directly; flag only subjective prose review |
-| Unmarked editorial | none | See below — same rule; also add to flag list: "Unmarked editorial; review for drift: \<files\>" |
+| Editorial `freshness:flag-on-change` | 1 | **Dispatch a drift-fix subagent** (see below) — MANDATORY every sweep, not optional. Read the doc against the *specific* changed files its triggers matched; fix every concrete factual contradiction in place; escalate only genuine judgment calls. A passive "flagged for review" list is a process failure. |
+| Unmarked editorial | none | No triggers → reviewing against all of `src/**` is noise. Add to flag list ("Unmarked editorial; add `freshness:triggers`: \<files\>") so a future sweep can scope it; do not full-review. |
 
-**Flag list ≠ dumping ground.** `freshness:flag-on-change` exists for *subjective* drift — prose that a human should re-judge ("does this still read right after the area changed?"). It is **not** a way to defer **concrete broken facts**. If a triggered editorial doc names a symbol that the diff renamed or removed (a deleted interface, a moved type, a dropped column, a renamed route), that is a verifiable factual error against the code — **fix it directly in this sweep** (a tightly-scoped subagent reading the current code is fine), don't just add it to the flag list for Peter to fix by hand. Reserve the flag list for genuinely subjective calls; if you're unsure whether a flagged doc has a hard error or just needs a tone pass, grep the code to find out before deciding. The default is fix, not flag.
+**Editorial drift-fix is the core of the sweep — DO IT, don't punt it.** `docs/sections/`, `docs/features/`, and `docs/guide/` are Claude-authored; the sweep *owns* keeping them true. Emitting a "flagged for human review" list of triggered docs instead of fixing them is the single most common way this skill has failed in practice. The default is **fix**, not flag.
+
+Procedure — for **each** triggered `freshness:flag-on-change` doc, dispatch a tightly-scoped subagent (≤3 concurrent; cluster docs that share the same changed files into one subagent) with:
+- the doc's absolute path in the worktree;
+- the **exact list of changed files its triggers matched** (not merely "it triggered" — compute this from the Phase 4 match so the subagent reviews the right diff, not all of `src/`);
+- instruction to, per changed file, view `git -C <worktree> diff <prev-anchor> HEAD -- <file>` AND read the current source, then **fix in place** every place the doc's prose is factually contradicted (renamed/removed/added symbol, route, field, enum, behavior, auth rule, default), preserving voice/structure/freshness-markers, surgical edits only;
+- escalate to the report's "Open questions" **only** genuine judgment calls or pre-existing drift outside the sweep's changed-file scope (be explicit which); `<90%` sure it's real drift → don't edit, ask.
+
+Guide docs are end-user facing: fix only user-visible behavior drift, not internal-implementation wording. Reserve a flag (no fix) strictly for subjective "does this still read right" prose that no code fact contradicts.
 
 Subagent prompt: worktree path, target file, trigger paths fired, entry's prompt content. Must NOT commit. Return JSON:
 

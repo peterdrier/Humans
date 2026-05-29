@@ -31,7 +31,7 @@ Budget Year ("2026", "2027-A", ...)
               -> Budget Line Item ("Food", "PA Rental", ...)
 ```
 
-Allocations live on the category; line items are the free-text breakdown. Positive amounts are income, negative expense. A line-item VAT rate (0 / 10 / 21 %) projects settlement about six weeks after the end of its quarter.
+Allocations live on the category; line items are the free-text breakdown. Positive amounts are income, negative expense. All amounts are entered **VAT/IVA-inclusive** — the gross figure actually paid or received; the VAT rate (0 / 10 / 21 %) only records the IVA portion (for projecting settlement about six weeks after the end of its quarter) and is never added on top of the amount you enter.
 
 Only one Budget Year can be **Active** at a time. Years progress **Draft -> Active -> Closed**. Archived years are hidden from non-admin views but their audit history is preserved.
 
@@ -69,7 +69,7 @@ Restricted groups (typically the Admin group holding staff and meeting costs) ap
 
 ### Add, edit, and remove line items
 
-Inside a category linked to a team you coordinate, use **Add Line Item** or inline edit controls. Each line item has a description, an amount (positive income, negative expense), an optional expected date that feeds the cash-flow projection, a VAT rate, an optional responsible team, and optional notes.
+Inside a category linked to a team you coordinate, use **Add Line Item** or inline edit controls. Each line item has a description, an amount entered VAT/IVA-inclusive (positive income, negative expense — enter the gross figure, do not subtract VAT), an optional expected date that feeds the cash-flow projection, a VAT rate, an optional responsible team, and optional notes.
 
 Every edit is audit-logged. You cannot change the category's allocated amount or CapEx / OpEx flag — those belong to FinanceAdmin. Coordinator access follows child teams: if you coordinate a department, you can edit line items on its sub-teams' categories too.
 

@@ -47,7 +47,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 **As** a Camp Lead, **I want** to add lines to my camp's Store order over the season as needs firm up, **so that** the camp's accumulating purchases are tracked in one ledger that maps directly to a single year-end factura.
 
 **Acceptance Criteria:**
-- `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampLeadSeasonIdForYearAsync` + `GetCampSeasonByIdAsync`) with a list of orders for each.
+- `/Store` shows the lead's camp seasons for the active year (resolved via `ICampServiceRead.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
 - "Create order" creates a new `StoreOrder` in `Open` state attached to the camp season; multiple orders per season are allowed and disambiguated by an optional `Label`.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time — later catalog edits never mutate existing lines (`docs/sections/Store.md`).
@@ -112,7 +112,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year.
   - **Cross-tab** — camps × products matrix with qty cells (blank for 0), row totals, column totals, grand total. Both axes alphabetical. Column totals are consistent with by-item totals.
 - Service surface: `IStoreService.GetStoreSummaryAsync(int year, CancellationToken)` returns a `StoreSummaryDto` composing the three projections. Replaces the earlier `GetAllOrderSummariesAsync` stub (no production callers existed).
-- Single repository round-trip via `IStoreRepository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampSeasonDisplayDataForYearAsync` and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
+- Single repository round-trip via `IStoreRepository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampServiceRead.GetCampsForYearAsync` (projecting each camp's seasons for the year) and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
 - Reachable from the admin nav under Money → "Store summary" (gated by the same policy so it stays hidden for non-admins).
 
 ## Data Model
@@ -168,7 +168,7 @@ Resource-based via `StoreOrderAuthorizationHandler` keyed on `StoreOrderOperatio
 
 | Dependency | Used for |
 |---|---|
-| `ICampService` | resolve current user's lead camp season for the active year, fetch season name |
+| `ICampServiceRead` | resolve current user's lead camp season for the active year, fetch season name |
 | `IShiftManagementService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification |
