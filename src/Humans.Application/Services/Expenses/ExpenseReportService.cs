@@ -545,17 +545,16 @@ public sealed class ExpenseReportService(
         Guid submitterUserId, string? iban, CancellationToken ct = default)
     {
         var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
-        var existingIban = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile?.Iban;
 
         if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
-            return IbanFailure("Invalid IBAN format.", isValidationError: true, existingIban);
+            return IbanFailure("Invalid IBAN format.", isValidationError: true);
 
         var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
         try
         {
             var saved = await userService.SetProfileIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
-                return IbanFailure("Failed to save IBAN.", isValidationError: false, existingIban);
+                return IbanFailure("Failed to save IBAN.", isValidationError: false);
 
             var isClearing = normalized is null;
             await auditLogService.LogAsync(
@@ -573,37 +572,17 @@ public sealed class ExpenseReportService(
             return new ExpenseIbanSaveResult(
                 Succeeded: true,
                 IsValidationError: false,
-                Message: normalized is null ? "IBAN removed." : "IBAN saved.",
-                HasIban: normalized is not null,
-                MaskedIban: normalized is null ? null : IbanFormatter.Mask(normalized));
+                Message: normalized is null ? "IBAN removed." : "IBAN saved.");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
-            return IbanFailure("Failed to save IBAN.", isValidationError: false, existingIban);
+            return IbanFailure("Failed to save IBAN.", isValidationError: false);
         }
     }
 
-    internal async Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
-        Guid submitterUserId, CancellationToken ct = default)
-    {
-        var iban = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile?.Iban;
-        var hasIban = !string.IsNullOrEmpty(iban);
-        return new ExpenseIbanViewData(
-            HasIban: hasIban,
-            MaskedIban: hasIban ? IbanFormatter.Mask(iban!) : null);
-    }
-
-    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, string? existingIban)
-    {
-        var hasIban = !string.IsNullOrEmpty(existingIban);
-        return new ExpenseIbanSaveResult(
-            Succeeded: false,
-            IsValidationError: isValidationError,
-            Message: message,
-            HasIban: hasIban,
-            MaskedIban: hasIban ? IbanFormatter.Mask(existingIban!) : null);
-    }
+    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError) =>
+        new(Succeeded: false, IsValidationError: isValidationError, Message: message);
 
     internal async Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid coordinatorUserId, CancellationToken ct = default)

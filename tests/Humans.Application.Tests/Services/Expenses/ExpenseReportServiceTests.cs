@@ -697,8 +697,6 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Be("IBAN saved.");
-        result.HasIban.Should().BeTrue();
-        result.MaskedIban.Should().NotBeNullOrWhiteSpace();
         await AuditLog.Received(1).LogAsync(
             AuditAction.IbanSet,
             nameof(Profile),
@@ -711,37 +709,12 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
     {
         var submitter = Guid.NewGuid();
-        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "not-an-iban");
 
         result.Succeeded.Should().BeFalse();
         result.IsValidationError.Should().BeTrue();
         result.Message.Should().Be("Invalid IBAN format.");
-        result.HasIban.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetSubmitterIbanViewAsync_ReturnsMaskedIban_WhenProfileHasIban()
-    {
-        var submitter = Guid.NewGuid();
-        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
-
-        var result = await _sut.GetSubmitterIbanViewAsync(submitter);
-
-        result.HasIban.Should().BeTrue();
-        result.MaskedIban.Should().NotBeNullOrWhiteSpace();
-    }
-
-    [HumansFact]
-    public async Task GetSubmitterIbanViewAsync_ReturnsEmptyState_WhenProfileMissing()
-    {
-        var result = await _sut.GetSubmitterIbanViewAsync(Guid.NewGuid());
-
-        result.HasIban.Should().BeFalse();
-        result.MaskedIban.Should().BeNull();
     }
 
     [HumansFact]

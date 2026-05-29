@@ -450,9 +450,10 @@ public sealed class ExpensesController(
         else
             SetError(result.Message);
 
+        var iban = await GetIbanViewAsync(user.Id);
         model.ReportId = id;
-        model.HasIban = result.HasIban;
-        model.MaskedIban = result.MaskedIban;
+        model.HasIban = iban.HasIban;
+        model.MaskedIban = iban.MaskedIban;
         return View(model);
     }
 

@@ -84,11 +84,7 @@ public sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
 public sealed record ExpenseIbanSaveResult(
     bool Succeeded,
     bool IsValidationError,
-    string Message,
-    bool HasIban,
-    string? MaskedIban);
-
-internal sealed record ExpenseIbanViewData(bool HasIban, string? MaskedIban);
+    string Message);
 
 /// <summary>Round-trip timeline for the submitter, sourced from the Holded creditor balance.</summary>
 public sealed record ExpenseHoldedTimeline(
