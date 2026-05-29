@@ -1,3 +1,8 @@
+---
+name: Users And Profiles Are One Section
+description: HARD RULE. Users, Profiles, and UserEmail are one ownership section (Humans); don't move code between Users/Profile just to satisfy a section-boundary rule.
+---
+
 # Users And Profiles Are One Section
 
 HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans.

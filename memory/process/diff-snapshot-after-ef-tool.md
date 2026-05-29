@@ -1,8 +1,6 @@
 ---
-name: diff-snapshot-after-ef-tool
+name: Diff the snapshot after running an EF tool
 description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`), always `git diff HumansDbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
-metadata:
-  type: process
 ---
 
 # Always `git diff` the snapshot after running an EF tool

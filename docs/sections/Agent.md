@@ -6,7 +6,7 @@ Conversational helper backed by Anthropic Claude. Available to any authenticated
 
 - **Turn** — one user message + one streamed assistant response (may include tool calls).
 - **Preload corpus** — cacheable markdown prefix containing the section *index* (one line per section: key + tagline), help glossaries, access matrix, and route map. Section invariant bodies are NOT preloaded; the model fetches them on demand via the `fetch_section_guide` tool.
-- **Preload config** — `Tier1` (8 highest-signal sections in the index) or `Tier2` (all 14 sections). Both fit comfortably under Anthropic ITPM caps because section bodies are routed through tool calls instead of preloaded.
+- **Preload config** — `Tier1` (8 highest-signal sections in the index) or `Tier2` (14 curated sections). Both fit comfortably under Anthropic ITPM caps because section bodies are routed through tool calls instead of preloaded.
 
 ## Data Model
 

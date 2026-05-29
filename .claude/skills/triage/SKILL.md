@@ -108,7 +108,7 @@ Pulled {total} events ({error_count} errors, {warning_count} warnings)
 **Proposed action:** Create issue / Already tracked in #{N} / Skip
 ```
 
-Then `AskUserQuestion`:
+Then present these options inline and ask which to take (do not use `AskUserQuestion` — `feedback_no_askuserquestion`):
 1. **Create issues for all**
 2. **Review individually**
 3. **Skip logs phase**
@@ -204,7 +204,7 @@ Build a `gitHubIssueNumber` → feedback report(s) lookup. Also scan issue bodie
 | 2 | #175 — Role edit exceeds varchar limit | 56187b8 | — | Close |
 ```
 
-`AskUserQuestion`:
+Present inline and ask which to take (do not use `AskUserQuestion`):
 1. **Close all** — close candidates + notify reporters
 2. **Review individually** — one at a time
 3. **Skip close phase**
@@ -293,7 +293,7 @@ If report has ScreenshotUrl: "Screenshot: {BASE_URL}{ScreenshotUrl}"
 
 If unsure mechanical vs spec: treat as spec. If unsure spec vs privilege: treat as privilege.
 
-`AskUserQuestion`:
+Present inline and ask which to take (do not use `AskUserQuestion`):
 
 | Option | Label | Description |
 |--------|-------|-------------|
@@ -395,7 +395,7 @@ Label: `needs-owner-review` (privilege) or `blocked:needs-design` (spec). Omit `
 
 ### Action: Respond & Resolve
 
-1. Draft response; present via `AskUserQuestion`
+1. Draft response; present it inline and ask Peter to approve (do not use `AskUserQuestion`)
 2. Send (use `jq`):
    ```bash
    jq -n --arg msg "<approved>" '{content: $msg}' | \

@@ -217,7 +217,7 @@ Flagged for review (see docs/freshness/last-report.md):
 Mode: diff
 Previous anchor: <sha-or-none>
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 EOF
 )"
 ```

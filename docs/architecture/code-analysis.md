@@ -62,23 +62,37 @@ Mono.Cecil IL-scan tests for call-site architecture rules ("X may not call Y",
 
 ### Catalogue
 
-Rule    | Title                                                                                          | Severity
---------|-----------------------------------------------------------------------------------------------|---------
-HUM0001 | Reference to deleted email-identity-decoupling legacy member                                  | Error
-HUM0002 | Identity column on User must not be written from Application or Web                           | Error
-HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync must not be called from Application or Web    | Error
-HUM0004 | Profile.IsSuspended must not be written outside the allowlisted dual-writers                  | Error
-HUM0005 | IUserEmailService.UpdateEmailAsync may only be called from AccountController                  | Error
-HUM0006 | IUserEmailRepository.UpdateEmailAsync may only be called from UserEmailService                | Error
-HUM0007 | Concurrency tokens are forbidden in live source                                               | Error
-HUM0008 | Controllers may not inject HumansDbContext                                                    | Error
-HUM0009 | Class uses HumansDbContext but does not implement IRepository                                 | Error
-HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods           | Error
-HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
-HUM0020 | Caching decorator references a repository directly instead of the keyed inner service         | Error
-HUM0021 | Cross-domain navigation property must not be read                                            | Warning
-HUM0024 | EF configuration creates a navigation join across section boundaries                         | Error
-HUM0025 | A DbSet table is referenced (read or written) by more than one repository                    | Error
+Rule    | Title | Severity
+--------|-------|---------
+HUM0001 | Reference to deleted email-identity-decoupling legacy member | Error
+HUM0002 | Identity-derived User column written from Application or Web | Error
+HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync called from Application or Web | Error
+HUM0004 | Profile.IsSuspended written outside the allowlisted dual-writers | Error
+HUM0005 | IUserEmailService.UpdateEmailAsync called from outside AccountController | Error
+HUM0006 | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services | Error
+HUM0007 | Concurrency-token metadata forbidden in live source | Error
+HUM0008 | Controller constructor injects HumansDbContext | Error
+HUM0009 | Class uses HumansDbContext but does not implement IRepository (`[Grandfathered("HUM0009")]` downgrades to Warning) | Error
+HUM0010 | Reference to a symbol decorated with `[ExpiresOn(date)]` (escalates to Error on/after the date) | Warning
+HUM0011 | Declaration decorated with `[ExpiresOn(date)]` is past its date (escalates to Error after the graceDays window) | Warning
+HUM0012 | Application service (IApplicationService implementer) declared outside `Humans.Application.Services.*` | Error
+HUM0013 | Repository interface (IRepository extender) declared outside `Humans.Application.Interfaces.Repositories` | Error
+HUM0014 | Class in `Humans.Web` injects a repository directly (must go through an application service) | Error
+HUM0015 | Type decorated with `[SurfaceBudget(N)]` declares more than N public-instance methods | Error
+HUM0016 | Type decorated with `[SurfaceBudget(N)]` declares fewer than N public-instance methods (slack — decrement budget) | Error
+HUM0017 | Application service injects a repository whose `[Section]` differs from the service's namespace section | Warning
+HUM0018 | Section-aware analyzer cannot determine a type's section (missing `[Section]` or unsection'd namespace) | Warning
+HUM0019 | Read of an Identity-derived User column (Email/NormalizedEmail/UserName/NormalizedUserName) from Application or Web | Warning
+HUM0020 | Caching decorator references a repository directly instead of the keyed inner service | Error
+HUM0021 | Read of an obsolete cross-domain navigation property from Application, Web, or Infrastructure | Warning
+HUM0024 | EF configuration creates a navigation join across section boundaries (`[Grandfathered("HUM0024")]` downgrades to Warning) | Error
+HUM0025 | A DbSet table is referenced by more than one repository (`[Grandfathered("HUM0025", scope: "<DbSet>")]` downgrades to Warning) | Error
+HUM0026 | IOrchestrator implementer injects an `I*Repository`, `HumansDbContext`, or `IDbContextFactory<HumansDbContext>` | Error
+HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error
+HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning) | Error
+HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microsoft.EntityFrameworkCore` type, or `IQueryable` in a method signature (`[Grandfathered("HUM0029")]` downgrades to Warning) | Error
+
+> The next free id is **HUM0030** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

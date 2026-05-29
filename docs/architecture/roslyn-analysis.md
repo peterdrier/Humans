@@ -1,5 +1,5 @@
 <!-- freshness:flag-on-change
-  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008/HUM0009.
+  Forward-looking inventory of Roslyn analyzer candidates beyond the shipped set (see the code-analysis.md catalogue).
   Flag if a new analyzer ships (move that entry from Tier 1 → catalogue in code-analysis.md),
   if a new atom lands with call-site shape, or if a recent clamp-fix commit would have been
   prevented by a not-yet-shipped analyzer.
@@ -7,11 +7,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the
-shipped `HUM0001`–`HUM0006` / `HUM0008` / `HUM0009` (catalogued in
-[`code-analysis.md`](code-analysis.md)). This file is the queue we draw from
-when adding the next analyzer; do not start writing one without checking here
-first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0021`, `HUM0024`–`HUM0029`; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0030`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 
@@ -105,7 +101,7 @@ assertion families that are plausible analyzer candidates:
   gives Peter a build-break the moment someone adds one, in-editor and in CI.
 - Current coverage: `HUM0007` analyzer.
 
-### HUM0010 — View components may not inject `IMemoryCache`
+### View components may not inject `IMemoryCache`
 
 - Rule: a class deriving from `ViewComponent` may not have a constructor
   parameter typed `Microsoft.Extensions.Caching.Memory.IMemoryCache`.
@@ -118,7 +114,7 @@ assertion families that are plausible analyzer candidates:
   in PR #222) is exactly the regression this catches at the keystroke level.
 - Current coverage: none.
 
-### HUM0011 — `Bootstrap Icons` (`bi bi-*`) class strings forbidden
+### `Bootstrap Icons` (`bi bi-*`) class strings forbidden
 
 - Rule: a string literal in any `.cshtml` / `.cs` file that matches the
   pattern `\bbi bi-[a-z0-9-]+` is a violation.
@@ -134,7 +130,7 @@ assertion families that are plausible analyzer candidates:
 - Current coverage: none. Today this is caught by review or by the user
   noticing missing icons.
 
-### HUM0012 — `TempData["SuccessMessage"]` / `["ErrorMessage"]` / `["InfoMessage"]` forbidden in controllers
+### `TempData["SuccessMessage"]` / `["ErrorMessage"]` / `["InfoMessage"]` forbidden in controllers
 
 - Rule: in classes under `Humans.Web.Controllers`, an element-access
   expression on `TempData` with one of the three magic-string keys is a
@@ -151,7 +147,7 @@ assertion families that are plausible analyzer candidates:
   codebase is already clean per the atom.
 - Current coverage: none — convention-only today.
 
-### HUM0013 — `System/` namespace shadows forbidden
+### `System/` namespace shadows forbidden
 
 - Rule: no type may live in a namespace whose components include a segment
   literally named `System` (other than the BCL `System` root itself).
@@ -187,7 +183,7 @@ assertion families that are plausible analyzer candidates:
   on classes/structs.
 - Status: shipped. Catalogued in `code-analysis.md`.
 
-### HUM0014 — `Cached*` type names forbidden for public surface
+### `Cached*` type names forbidden for public surface
 
 - Rule: a `public` or `internal` `INamedTypeSymbol` whose name starts with
   `Cached` may not be declared anywhere except `Humans.Infrastructure.Services.**`
