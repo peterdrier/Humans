@@ -23,7 +23,7 @@ namespace Humans.Application.Tests.Notifications;
 public class NotificationMeterProviderTests : IDisposable
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleSyncServiceRead _googleSyncService = Substitute.For<IGoogleSyncServiceRead>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSyncService _ticketSyncService = Substitute.For<ITicketSyncService>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();

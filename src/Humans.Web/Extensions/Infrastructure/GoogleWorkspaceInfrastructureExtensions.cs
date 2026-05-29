@@ -41,6 +41,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
+            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
             services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
             services.AddScoped<IGoogleDriveActivityClient, GoogleDriveActivityClient>();
 
@@ -71,6 +72,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         else
         {
             services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
+            services.AddScoped<IGoogleSyncServiceRead>(sp => sp.GetRequiredService<IGoogleSyncService>());
             services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
             services.AddScoped<IGoogleDriveActivityClient, StubGoogleDriveActivityClient>();
 

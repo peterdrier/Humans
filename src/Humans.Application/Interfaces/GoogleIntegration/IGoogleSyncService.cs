@@ -1,14 +1,16 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using NodaTime;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
-/// Service for provisioning and syncing Google resources.
+/// Service for provisioning and syncing Google resources. The cross-section
+/// read projections (outbox reads) live on
+/// <see cref="IGoogleSyncServiceRead"/>; this full surface adds the
+/// provisioning and sync mutations consumed inside the section.
 /// </summary>
-public interface IGoogleSyncService : IApplicationService
+public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationService
 {
     /// <summary>
     /// Provisions a new Google Drive folder for a team.
@@ -105,24 +107,6 @@ public interface IGoogleSyncService : IApplicationService
     /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
     /// </summary>
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the count of unprocessed Google sync outbox events that have a
-    /// non-null <c>LastError</c>. Used by the notification meter to surface
-    /// failed sync events to Admin without letting the Notifications section
-    /// read <c>google_sync_outbox_events</c> directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the most recent Google sync outbox events for the admin
-    /// dashboard, ordered newest-first and capped by <paramref name="take"/>.
-    /// Keeps <c>google_sync_outbox_events</c> reads inside the owning service
-    /// (design-rules §2a/§2c) so callers do not reach past <see cref="IGoogleSyncService"/>
-    /// into the repository directly.
-    /// </summary>
-    Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
-        int take, CancellationToken cancellationToken = default);
 }
 
 public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
@@ -131,13 +115,3 @@ public sealed record GroupSettingsRemediationResult(bool Succeeded, string? Erro
 
     public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
 }
-
-public sealed record GoogleSyncOutboxEventSnapshot(
-    string EventType,
-    Guid TeamId,
-    Guid UserId,
-    Instant OccurredAt,
-    Instant? ProcessedAt,
-    int RetryCount,
-    string? LastError,
-    bool FailedPermanently);
