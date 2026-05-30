@@ -64,7 +64,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
     }
 
     // ==================================================================
-    // Consent — chain-follow GetUserConsentRecordsAsync (Phase 4.2)
+    // Consent — chain-follow GetConsentDashboardAsync history (Phase 4.2)
     // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
@@ -87,16 +87,18 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // Act: per-user consent read for the TARGET should surface source's
-        // append-only consent record via the chain-follow union.
+        // Act: the per-user consent read for the TARGET should surface
+        // source's append-only consent record via the chain-follow union.
+        // GetConsentDashboardAsync builds its History list from the same
+        // chain-follow read; the uniquely-seeded version id is consented to
+        // by the source only, so a History match under a target read proves
+        // the source-tombstone id was unioned in.
         await using var assertScope = factory.Services.CreateAsyncScope();
-#pragma warning disable CS0618 // exercising obsolete method on purpose: chain-follow invariant coverage
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
-        var records = await consentService.GetUserConsentRecordsAsync(targetId);
-#pragma warning restore CS0618
+        var dashboard = await consentService.GetConsentDashboardAsync(targetId);
 
-        records.Should().Contain(
-            r => r.UserId == sourceId && r.DocumentVersionId == versionId,
+        dashboard.History.Should().Contain(
+            h => h.DocumentVersionId == versionId,
             "chain-follow surfaces the source-attributed consent record under target reads");
     }
 

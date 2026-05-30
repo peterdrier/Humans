@@ -39,7 +39,6 @@ namespace Humans.Infrastructure.Services.Consent;
 /// cache. Other reads
 /// (<see cref="GetConsentDashboardAsync"/>,
 /// <see cref="GetConsentReviewDetailAsync"/>,
-/// <see cref="GetUserConsentRecordsAsync"/>,
 /// <see cref="GetConsentRecordCountAsync"/>,
 /// <see cref="GetPendingDocumentNamesAsync"/>)
 /// either need richer record data (history view) or are off the hot
@@ -183,12 +182,6 @@ public sealed class CachingConsentService(
     public Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
-
-#pragma warning disable CS0618 // GetUserConsentRecordsAsync is obsolete; passthrough retained until delete sweep
-    public Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
-        Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetUserConsentRecordsAsync(userId, ct));
-#pragma warning restore CS0618
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetConsentRecordCountAsync(userId, ct));

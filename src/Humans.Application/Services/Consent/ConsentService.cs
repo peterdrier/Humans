@@ -189,22 +189,6 @@ public sealed class ConsentService(
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
     }
 
-    public async Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var records = await repo.GetAllForUserIdsAsync(chainIds, ct);
-
-        return records
-            .Select(c => new ConsentRecordSnapshot(
-                c.UserId,
-                c.DocumentVersionId,
-                c.DocumentVersion.LegalDocument.Name,
-                c.DocumentVersion.VersionNumber,
-                c.ConsentedAt))
-            .ToList();
-    }
-
     public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);

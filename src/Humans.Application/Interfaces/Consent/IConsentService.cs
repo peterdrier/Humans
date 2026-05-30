@@ -46,13 +46,6 @@ public record ConsentReviewDetail(
 /// </summary>
 public record RequiredConsentRow(Guid DocumentVersionId, string Title, bool Signed);
 
-public record ConsentRecordSnapshot(
-    Guid UserId,
-    Guid DocumentVersionId,
-    string DocumentName,
-    string VersionNumber,
-    Instant ConsentedAt);
-
 public interface IConsentService : IConsentServiceRead, IApplicationService
 {
     Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default);
@@ -60,11 +53,4 @@ public interface IConsentService : IConsentServiceRead, IApplicationService
     Task<ConsentSubmitResult> SubmitConsentAsync(
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets all consent records for a user, ordered by most recent first.
-    /// </summary>
-    [Obsolete("No production callers as of 2026-05; retained only for ChainFollowReadTests. Delete-sweep candidate.")]
-    Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
-        Guid userId, CancellationToken ct = default);
 }
