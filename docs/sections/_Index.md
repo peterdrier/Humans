@@ -14,14 +14,10 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 
 ## Vertical vs cross-cutting
 
-Sections fall into two kinds:
+- **Vertical sections** are the business domains — basically everything.
+- **Cross-cutting concerns** are the technical services the business verticals use: Auth, Audit, Notifications, GDPR. Per [`peters-hard-rules.md`](../architecture/peters-hard-rules.md), these are *horizontal* sections and must **not** reference vertical sections — that would create cycles in the call graph.
 
-- **Vertical sections** are the **business domains** — basically everything. Each owns a slice of business functionality end-to-end (its entities, tables, repositories, services, controllers, views). Some are pure orchestrators that coordinate other sections and own no tables of their own.
-- **Cross-cutting concerns** are the **technical services the business verticals use** — Auth, Audit, Notifications, GDPR. They are the plumbing the verticals call into, not business domains in their own right. Owning a table does **not** make a section vertical (Auth, Audit, and Notifications each own tables); being a business domain does. Per [`peters-hard-rules.md`](../architecture/peters-hard-rules.md), these are *horizontal* sections and must **not** reference vertical sections — that would create cycles in the call graph.
-
-## Vertical sections (business domains)
-
-### Own tables
+## Vertical sections
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
@@ -47,13 +43,6 @@ Sections fall into two kinds:
 | **Teams** | `TeamController`, `TeamAdminController` | — | `TeamService`, `TeamPageService`, *`CachingTeamService`* | `TeamRepository` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments` |
 | **Tickets** | `TicketController`, `TicketTransferController`, `TicketTransferAdminController`, `TicketsContactsAdminController`, `TicketsOnsiteAdminController` | `OnsiteRosterService`, `TicketingBudgetService` | `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, *`CachingTicketQueryService`* | `TicketRepository`, `TicketTransferRepository` | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
 | **Users / Identity** | `UsersAdminDebugController`, `UnsubscribeController`, `LanguageController` | `AccountDeletionService`, `UserParticipationBackfillService` | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `UserEmailProviderBackfillService`, *`CachingUserService`* | `UserRepository` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy) |
-
-### Orchestrators (no owned tables)
-
-These coordinate other sections' services and own no tables of their own.
-
-| Section | Controllers | Orchestrators | Services | Repositories | Tables |
-|---------|-------------|---------------|----------|--------------|--------|
 | **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController`, `WelcomeController` | `OnboardingService` | — | — | — |
 | **Human Lifecycle** | — (admin actions via `AdminController`) | `HumanLifecycleService` | — | — | — |
 | **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
@@ -64,9 +53,9 @@ These coordinate other sections' services and own no tables of their own.
 | **Scanner** | `ScannerController` | — | — | — | — (presentational, phase 1) |
 | **Debug / Dev** | `DebugController`, `DevSeedController`, `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — |
 
-## Cross-cutting concerns (technical services the verticals use)
+## Cross-cutting concerns
 
-The technical services the business verticals call into — Auth, Audit, Notifications, GDPR. These are horizontal/plumbing, not business domains. Several own tables (Auth, Audit, Notifications); GDPR is a pure orchestrator. Per the hard rules they must **not** reference vertical sections.
+The technical services the business verticals use. Per the hard rules these are horizontal sections and must **not** reference vertical sections.
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
