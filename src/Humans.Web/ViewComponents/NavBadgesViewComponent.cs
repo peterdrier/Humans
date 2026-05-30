@@ -12,7 +12,7 @@ namespace Humans.Web.ViewComponents;
 
 public class NavBadgesViewComponent(
     IAdminDashboardService adminDashboardService,
-    IApplicationDecisionService applicationDecisionService,
+    IApplicationServiceRead applicationDecisionService,
     IFeedbackService feedbackService,
     IIssuesService issuesService,
     IMemoryCache cache) : ViewComponent

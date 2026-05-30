@@ -42,8 +42,8 @@ public class SystemTeamSyncJob(
 
     // Lazy via IServiceProvider to break DI cycles (these services depend on ISystemTeamSync).
 
-    private IApplicationDecisionService ApplicationDecisionService =>
-        serviceProvider.GetRequiredService<IApplicationDecisionService>();
+    private IApplicationServiceRead ApplicationDecisionService =>
+        serviceProvider.GetRequiredService<IApplicationServiceRead>();
 
     private IRoleAssignmentService RoleAssignmentService =>
         serviceProvider.GetRequiredService<IRoleAssignmentService>();

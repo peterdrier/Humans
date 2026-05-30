@@ -26,7 +26,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly IGoogleSyncServiceRead _googleSyncService = Substitute.For<IGoogleSyncServiceRead>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSyncService _ticketSyncService = Substitute.For<ITicketSyncService>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly IMemoryCache _cache;
     private readonly NotificationMeterProvider _provider;

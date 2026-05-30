@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Dashboard;
 public sealed class AdminDashboardService(
     IUserServiceRead userService,
     IMembershipCalculator membershipCalculator,
-    IApplicationDecisionService applicationDecisionService,
+    IApplicationServiceRead applicationDecisionService,
     IShiftManagementService shiftManagement,
     IShiftView shiftView) : IAdminDashboardService
 {

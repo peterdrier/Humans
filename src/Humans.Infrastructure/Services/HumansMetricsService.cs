@@ -260,7 +260,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
         {
             using var scope = _scopeFactory.CreateScope();
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
-            var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
+            var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationServiceRead>();
             var teamService = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
             var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();

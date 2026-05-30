@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Services.Onboarding;
 public sealed class OnboardingServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();

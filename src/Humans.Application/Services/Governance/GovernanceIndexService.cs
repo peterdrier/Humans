@@ -6,7 +6,7 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Services.Governance;
 
 public sealed class GovernanceIndexService(
-    IApplicationDecisionService applicationDecisionService,
+    IApplicationServiceRead applicationDecisionService,
     ILegalDocumentService legalDocService,
     IUserServiceRead userService) : IGovernanceIndexService
 {

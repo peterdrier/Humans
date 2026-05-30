@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Notifications;
 /// are computed by calling into each owning section service
 /// (<see cref="IUserService"/>,
 /// <see cref="IGoogleSyncServiceRead"/>, <see cref="ITeamService"/>,
-/// <see cref="ITicketSyncService"/>, <see cref="IApplicationDecisionService"/>)
+/// <see cref="ITicketSyncService"/>, <see cref="IApplicationServiceRead"/>)
 /// and cached for ~2 minutes. No direct DB access.
 /// </summary>
 /// <remarks>
@@ -38,7 +38,7 @@ public sealed class NotificationMeterProvider(
     IGoogleSyncServiceRead googleSyncService,
     ITeamServiceRead teamService,
     ITicketSyncService ticketSyncService,
-    IApplicationDecisionService applicationDecisionService,
+    IApplicationServiceRead applicationDecisionService,
     ICampServiceRead campService,
     IMemoryCache cache,
     ILogger<NotificationMeterProvider> logger) : INotificationMeterProvider

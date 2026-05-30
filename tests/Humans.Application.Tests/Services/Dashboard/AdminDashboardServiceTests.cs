@@ -23,7 +23,7 @@ public class AdminDashboardServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
 

@@ -132,7 +132,7 @@ internal static class PillCounts
         var idClaim = http.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (idClaim is null || !Guid.TryParse(idClaim.Value, out var userId))
             return null;
-        var applications = sp.GetRequiredService<Application.Interfaces.Governance.IApplicationDecisionService>();
+        var applications = sp.GetRequiredService<Application.Interfaces.Governance.IApplicationServiceRead>();
         var count = await applications.GetUnvotedApplicationCountAsync(userId);
         return count > 0 ? count : null;
     }

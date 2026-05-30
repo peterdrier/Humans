@@ -19,7 +19,7 @@ namespace Humans.Application.Services.Onboarding;
 // admin dashboard (IAdminDashboardService), account deletion (future IAccountDeletionService).
 public sealed class OnboardingService(
     IUserService userService,
-    IApplicationDecisionService applicationDecisionService,
+    IApplicationServiceRead applicationDecisionService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     INotificationService notificationService,
