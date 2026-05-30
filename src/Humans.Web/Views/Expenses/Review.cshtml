@@ -1,6 +1,7 @@
 @model Humans.Web.Models.ExpenseReviewViewModel
 @{
     ViewData["Title"] = "Expense Reports — Finance Review";
+    Layout = "_AdminLayout";
     var badgeClass = (ExpenseReportStatus s) => s switch
     {
         ExpenseReportStatus.Draft => "bg-secondary",

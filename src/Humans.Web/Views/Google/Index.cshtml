@@ -9,29 +9,13 @@
 
 <vc:temp-data-alerts />
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">Google Tools</div>
-            <div class="list-group list-group-flush">
-                <a asp-action="SyncSettings" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-sliders me-2"></i>Sync Settings
-                </a>
-                <a asp-action="Sync" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-arrows-rotate me-2"></i>Resource Sync Status
-                </a>
-                <a asp-action="AllGroups" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-globe me-2"></i>All Domain Groups
-                </a>
-                <a asp-action="Accounts" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts
-                </a>
-                <a asp-action="SyncOutbox" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-clock-rotate-left me-2"></i>Sync Outbox
-                </a>
-            </div>
-        </div>
+<p class="text-muted">
+    Sync settings, accounts, domain groups, outbox, and detection results now live in the
+    <strong>Google</strong> section of the admin sidebar. The cards below trigger on-demand checks.
+</p>
 
+<div class="row">
+    <div class="col-md-4">
         <div class="card mb-4">
             <div class="card-header">System Team Sync</div>
             <div class="card-body">
@@ -47,7 +31,9 @@
                 </a>
             </div>
         </div>
+    </div>
 
+    <div class="col-md-4">
         <div class="card mb-4">
             <div class="card-header">Google Group Settings</div>
             <div class="card-body">
@@ -63,7 +49,9 @@
                 </a>
             </div>
         </div>
+    </div>
 
+    <div class="col-md-4">
         <div class="card mb-4">
             <div class="card-header">Email Rename Detection</div>
             <div class="card-body">
@@ -76,20 +64,6 @@
                 </form>
                 <a asp-action="EmailRenames" class="btn btn-outline-secondary btn-sm mt-3">
                     <i class="fa-solid fa-list-check me-1"></i>View Last Results
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">Quick Links</div>
-            <div class="list-group list-group-flush">
-                <a asp-controller="Admin" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-gear me-2"></i>Admin Tools
-                </a>
-                <a asp-controller="AuditLog" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-clipboard-list me-2"></i>Audit Log
                 </a>
             </div>
         </div>
