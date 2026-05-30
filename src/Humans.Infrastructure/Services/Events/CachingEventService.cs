@@ -337,9 +337,6 @@ public sealed class CachingEventService(
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
 
-    public Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetPreferenceAsync(userId, ct));
-
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
         WithInner(inner => inner.SavePreferenceAsync(userId, slugs, ct));
 

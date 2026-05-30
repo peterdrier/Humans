@@ -245,14 +245,6 @@ public sealed record EventFavouriteInfo(
     EventInfo Event);
 
 /// <summary>
-/// Per-user event guide preference projection (excluded category slugs).
-/// </summary>
-public sealed record EventPreferenceInfo(
-    Guid UserId,
-    string ExcludedCategorySlugs,
-    Instant UpdatedAt);
-
-/// <summary>
 /// Approved events plus the guide settings, projected for export surfaces.
 /// </summary>
 public sealed record ApprovedEventsExportInfo(

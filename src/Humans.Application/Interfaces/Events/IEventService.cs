@@ -83,7 +83,6 @@ public interface IEventService : IEventServiceRead, IApplicationService
 
     // ── Preferences ───────────────────────────────────────────────────────
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
-    Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
     Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default);
 
     // ── Moderation ────────────────────────────────────────────────────────
