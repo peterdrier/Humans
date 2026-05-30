@@ -52,17 +52,7 @@ src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#3
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#4
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#5
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderBy#3
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderByDescending#2
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#1

@@ -43,11 +43,11 @@ internal sealed partial class ShiftRepository
         if (eventSettingsId.HasValue)
             query = query.Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId.Value);
 
-        return await query
-            .OrderBy(d => d.UserId)
-            .ThenBy(d => d.Shift.DayOffset)
-            .ThenBy(d => d.Shift.StartTime)
-            .ToListAsync(ct);
+        // No display ordering here — every consumer either re-sorts for display
+        // (ShiftSignupBucketer orders by AbsoluteStart; GetNoShow/Contribute order
+        // by ReviewedAt/CreatedAt) or treats the result as an unordered set
+        // (dict/HashSet/Any/Count). Display ordering belongs at the presentation layer.
+        return await query.ToListAsync(ct);
     }
 
     public Task<ShiftSignup?> GetTeamProbeAsync(
