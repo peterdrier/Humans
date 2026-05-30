@@ -28,7 +28,7 @@ else
                     @cp.DisplayName
                     <span class="badge bg-light text-dark ms-2">@cp.CounterpartyType</span>
                 </h2>
-                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp && cp.Orders.Count == 0)
+                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
                 {
                     <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
                           method="post" class="d-flex gap-2 align-items-center mb-0">
@@ -38,7 +38,7 @@ else
                         <button type="submit" class="btn btn-sm btn-primary">Start order</button>
                     </form>
                 }
-                else if (cp.CounterpartyType == StoreOrderCounterpartyType.Team && cp.Orders.Count == 0)
+                else if (cp.CounterpartyType == StoreOrderCounterpartyType.Team && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
                 {
                     <form asp-action="CreateTeamOrder" asp-route-teamId="@cp.CounterpartyId"
                           method="post" class="mb-0">
@@ -86,7 +86,7 @@ else
                                     }
                                     <td class="text-end">
                                         <div class="d-inline-flex gap-1">
-                                            @if (Model.IsAdmin && order.BalanceEur == 0m)
+                                            @if (Model.CanManageByCounterparty[cp.CounterpartyId] && order.BalanceEur == 0m)
                                             {
                                                 <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
                                                     @Html.AntiForgeryToken()

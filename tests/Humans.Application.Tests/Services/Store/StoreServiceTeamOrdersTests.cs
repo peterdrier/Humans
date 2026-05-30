@@ -242,6 +242,26 @@ public class StoreServiceTeamOrdersTests
         data.ShowNoOrdersMessage.Should().BeTrue();
     }
 
+    [HumansFact]
+    public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
+    {
+        var viewerId = Guid.NewGuid();
+        var otherDeptId = Guid.NewGuid();
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>
+            {
+                [otherDeptId] = MakeDepartment(otherDeptId, "Other", coordinatorUserId: Guid.NewGuid()),
+            });
+        _repo.GetOrderForTeamAsync(otherDeptId, 2026, Arg.Any<CancellationToken>()).Returns((StoreOrder?)null);
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct>());
+
+        var data = await _service.GetIndexDataAsync(viewerId, isPrivilegedReader: true);
+
+        data.Counterparties.Should().ContainSingle(c =>
+            c.CounterpartyType == StoreOrderCounterpartyType.Team && c.CounterpartyId == otherDeptId);
+    }
+
     // ==========================================================================
     // Summary — team orders merge into cross-tab
     // ==========================================================================

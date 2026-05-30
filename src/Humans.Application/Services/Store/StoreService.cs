@@ -37,40 +37,51 @@ public class StoreService(
 
         var counterparties = new List<StoreCounterpartyOrders>();
 
-        // Camp-lead counterparty
-        CampSeasonInfo? leadSeason = null;
+        // Camp counterparties: the one camp the viewer leads, or every camp's
+        // season for the year when the viewer is a privileged reader.
+        var campSeasons = new List<CampSeasonInfo>();
         foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
         {
-            var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
-            if (leadSeasonId is null) continue;
-            leadSeason = camp.Seasons.First(season => season.Id == leadSeasonId.Value);
-            break;
+            if (isPrivilegedReader)
+            {
+                var season = camp.GetSeasonForYear(year);
+                if (season is not null) campSeasons.Add(season);
+            }
+            else
+            {
+                var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
+                if (leadSeasonId is null) continue;
+                campSeasons.Add(camp.Seasons.First(season => season.Id == leadSeasonId.Value));
+                break; // a user leads at most one camp
+            }
         }
 
-        if (leadSeason is not null)
+        foreach (var season in campSeasons)
         {
             // One order per camp-season; if legacy data has multiple, surface
             // only the highest-balance one and let the admin delete the rest.
-            var allOrders = await GetOrdersForCampSeasonAsync(leadSeason.Id, ct);
+            var allOrders = await GetOrdersForCampSeasonAsync(season.Id, ct);
             var primary = allOrders
                 .OrderByDescending(o => o.BalanceEur)
                 .FirstOrDefault();
             IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
             counterparties.Add(new StoreCounterpartyOrders(
                 StoreOrderCounterpartyType.Camp,
-                leadSeason.Id,
-                leadSeason.Name,
+                season.Id,
+                season.Name,
                 year,
                 orders));
         }
 
-        // Team-coordinator counterparties — departments only.
+        // Team counterparties — top-level departments only. The viewer's own
+        // coordinated departments, or every department when a privileged reader.
         // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = await teamService.GetTeamsAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
-                        && t.ManagementRoleHolderUserIds is not null
-                        && t.ManagementRoleHolderUserIds.Contains(userId)))
+                        && (isPrivilegedReader
+                            || (t.ManagementRoleHolderUserIds is not null
+                                && t.ManagementRoleHolderUserIds.Contains(userId)))))
         {
             var existing = await repo.GetOrderForTeamAsync(team.Id, year, ct);
             IReadOnlyList<OrderDto> orders;

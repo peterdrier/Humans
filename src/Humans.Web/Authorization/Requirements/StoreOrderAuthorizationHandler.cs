@@ -14,6 +14,9 @@ namespace Humans.Web.Authorization.Requirements;
 /// View/AddLine/RemoveLine/EditCounterparty and <see cref="StoreOrderCreateContext"/>
 /// resources for Create):
 /// - Admin or FinanceAdmin: allow any operation regardless of order state.
+/// - TeamsAdmin: View any order (camp or team); manage (AddLine/RemoveLine/Delete)
+///   team orders only. Camp orders are view-only. Additive — a TeamsAdmin who is also
+///   a camp lead still gets camp-edit rights through the lead path below.
 /// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
 /// - Coordinator (department-level management role holder) of the resource's Team:
 ///   allow team orders for View/AddLine/RemoveLine; EditCounterparty and Pay are
@@ -65,6 +68,27 @@ public class StoreOrderAuthorizationHandler(
                 context.Succeed(req);
             }
             return;
+        }
+
+        // TeamsAdmin: read any order; manage team orders only (camp orders stay
+        // view-only). Additive — fall through so a TeamsAdmin who is also a camp
+        // lead still picks up camp-edit rights in the lead/coordinator block below.
+        if (RoleChecks.IsTeamsAdmin(context.User))
+        {
+            foreach (var req in pending)
+            {
+                if (req == StoreOrderOperationRequirement.View)
+                {
+                    context.Succeed(req);
+                    continue;
+                }
+                if (teamId is null) continue; // camp orders are view-only for TeamsAdmin
+                // Team orders are non-billable — never Pay/EditCounterparty.
+                if (req == StoreOrderOperationRequirement.EditCounterparty ||
+                    req == StoreOrderOperationRequirement.Pay)
+                    continue;
+                context.Succeed(req);
+            }
         }
 
         var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);

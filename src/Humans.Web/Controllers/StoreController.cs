@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
@@ -26,11 +27,28 @@ public class StoreController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var isPrivilegedReader = RoleChecks.CanAdministerStore(User);
+        // Full store admins and TeamsAdmins read every counterparty; TeamsAdmins
+        // can edit team orders but only view camp orders, so per-row affordances
+        // are resolved against the order authorization handler below.
+        var isPrivilegedReader = RoleChecks.CanAdministerStore(User) || RoleChecks.IsTeamsAdmin(User);
         var pageData = await storeService.GetIndexDataAsync(user.Id, isPrivilegedReader, ct);
         if (pageData.ShowNoOrdersMessage)
         {
             SetInfo("You don't lead any camps or coordinate any departments this year, so there are no Store orders to manage.");
+        }
+
+        var canManage = new Dictionary<Guid, bool>(pageData.Counterparties.Count);
+        foreach (var cp in pageData.Counterparties)
+        {
+            // The order's one actionable affordance on this page: Delete when it
+            // exists, Create when it doesn't.
+            var (resource, requirement) = cp.Orders.Count > 0
+                ? ((object)cp.Orders[0], StoreOrderOperationRequirement.Delete)
+                : (new StoreOrderCreateContext(
+                       CampSeasonId: cp.CounterpartyType == StoreOrderCounterpartyType.Camp ? cp.CounterpartyId : null,
+                       TeamId: cp.CounterpartyType == StoreOrderCounterpartyType.Team ? cp.CounterpartyId : null),
+                   StoreOrderOperationRequirement.Create);
+            canManage[cp.CounterpartyId] = (await authService.AuthorizeAsync(User, resource, requirement)).Succeeded;
         }
 
         var model = new StoreIndexViewModel
@@ -38,7 +56,7 @@ public class StoreController(
             Year = pageData.Year,
             Catalog = pageData.Catalog,
             Counterparties = pageData.Counterparties,
-            IsAdmin = isPrivilegedReader
+            CanManageByCounterparty = canManage
         };
         return View(model);
     }

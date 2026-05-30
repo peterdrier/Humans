@@ -158,7 +158,10 @@ public class TeamController(
             CanCurrentUserEditTeam = teamPage.CanCurrentUserEditTeam,
             CurrentUserPendingRequestId = teamPage.CurrentUserPendingRequestId,
             PendingRequestCount = teamPage.PendingRequestCount,
-            ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug)
+            ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
+            CanOpenStore = (teamPage.IsCurrentUserCoordinator && team.ParentTeam is null && team.IsActive)
+                || RoleChecks.IsAdmin(User)
+                || RoleChecks.IsTeamsAdmin(User)
         };
 
         // Subteam member rollup: for departments, show child team members not already direct members

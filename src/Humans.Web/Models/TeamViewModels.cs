@@ -87,6 +87,12 @@ public class TeamDetailViewModel
     public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }
 
     /// <summary>
+    /// Whether to surface the "Open store" link: a coordinator of this active top-level department,
+    /// or an Admin / TeamsAdmin (who reach the Store regardless of coordinator status).
+    /// </summary>
+    public bool CanOpenStore { get; set; }
+
+    /// <summary>
     /// Coordinators/leads from child teams. Only populated for departments with child team coordinators.
     /// </summary>
     public List<ChildTeamMemberViewModel> SubteamLeads { get; set; } = [];

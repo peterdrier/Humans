@@ -7,8 +7,14 @@ public sealed class StoreIndexViewModel
     public int Year { get; init; }
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
     public IReadOnlyList<StoreCounterpartyOrders> Counterparties { get; init; } = [];
-    /// <summary>True when the viewer can administer the Store (StoreAdmin / FinanceAdmin / Admin). Surfaces per-row admin affordances such as Delete.</summary>
-    public bool IsAdmin { get; init; }
+    /// <summary>
+    /// Keyed by <see cref="StoreCounterpartyOrders.CounterpartyId"/>: whether the viewer may act on that
+    /// counterparty's order (Create when it has none, Delete when it does). Privileged readers see
+    /// counterparties they cannot manage (e.g. a TeamsAdmin sees camp orders read-only), so per-row gating
+    /// is resolved against the order authorization handler in the controller rather than a blanket admin flag.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, bool> CanManageByCounterparty { get; init; } =
+        new Dictionary<Guid, bool>();
 }
 
 public sealed class StoreOrderViewModel
