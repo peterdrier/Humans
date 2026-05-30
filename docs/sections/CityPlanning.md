@@ -168,7 +168,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampLeadSeasonIdForYearAsync`, `GetCampSeasonDisplayDataForYearAsync`, `GetCampSeasonBriefsForYearAsync` used by container admin and map pages.
+- **Camps:** `ICampServiceRead` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampsForYearAsync`, `GetCampSeasonByIdAsync`, `GetSettingsAsync` used by container admin and map pages. Lead/display data is derived via LINQ over the cached `GetCampsForYearAsync` projection (`CampInfo.IsLead` / `GetLeadSeasonIdForYear`).
 - **Containers:** `IContainerService` — placement API and container admin pages (`CityPlanningApiController`, `CityPlanningController`) read and write container placement via `IContainerService.GetAllAsync`, `GetPlacementsByYearAsync`, `SavePlacementAsync`, `ClearPlacementAsync`, plus per-camp container CRUD. City Planning hosts the placement API endpoints for an entity owned by the Containers section.
 - **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
 - **Profiles:** `IProfileService` — display data for polygon edit attribution.
@@ -183,7 +183,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - `CityPlanningService` lives in `Humans.Application.Services.CityPlanning` and never imports `Microsoft.EntityFrameworkCore` — enforced structurally by `Humans.Application.csproj`'s reference graph.
 - `ICityPlanningRepository` (`Humans.Application.Interfaces.Repositories`) / `CityPlanningRepository` (`Humans.Infrastructure.Repositories.CitiPlanning`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
-- **Cross-section reads** route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
+- **Cross-section reads** route through `ICampServiceRead`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.
 - **Per-map screens, not generic layers.** Issue #521 originally proposed a generic `MapFeature` entity with toggleable map layers; the implementation pivoted to dedicated per-map screens (overview / barrio placement / container placement) after thread discussion — see #521 for the rationale.
 

@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-05-28
+**Generated:** 2026-05-29
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -637,7 +637,13 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 > `CampRoleService` now injects `ICampRepository` directly. The Camps
 > section is back to a single repository owning all of its tables. The
 > earlier `GetCampLeadsAsync` cross-section read of `Users` remains retired,
-> and `CampService` continues to implement `IEarlyEntryProvider`.
+> and `CampService` continues to implement `IEarlyEntryProvider` — the
+> standalone `CampEarlyEntryProjection` helper was deleted and its grant
+> projection folded back into `CampService`. `CampRoleService` no longer
+> injects the full `ICampService`; it takes the narrow intra-section
+> `ICampRoleCampAccess` (implemented by `CampService`) for camp-member
+> status lookups, plus `ICampInfoInvalidator` to evict the cached
+> `CampInfo` on role-assignment writes.
 
 ### CampService (Scoped — wrapped by CachingCampService Singleton decorator)
 
@@ -658,12 +664,17 @@ Repository: `ICampRepository`.
 | `Camp.CampInfo` TrackedCache + settings slot (`ICampInfoInvalidator`) | yes |
 | `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | yes |
 
+| Cache (via invalidators) — cont. | Invalidate |
+|-------------------------|------------|
+| `EarlyEntry.UserEarlyEntry` TrackedCache (`IEarlyEntryInvalidator`) | yes (camp-lead grant changes) |
+
 Cross-section calls via `IUserServiceRead`, `IAuditLogService`,
-`ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`, plus
-`Lazy<ICampRoleService>` to break a DI cycle. Implements
-`IUserDataContributor`, `IUserMerge`, `IEarlyEntryProvider`. The inner
-service no longer touches `IMemoryCache` directly — all caching lives in
-the decorator.
+`ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
+`IEarlyEntryInvalidator`, plus `Lazy<ICampRoleService>` to break a DI
+cycle. Implements `ICampRoleCampAccess` (narrow intra-section surface
+consumed by `CampRoleService`), `IUserDataContributor`, `IUserMerge`,
+`IEarlyEntryProvider`. The inner service no longer touches `IMemoryCache`
+directly — all caching lives in the decorator.
 
 ### CachingCampService (Singleton, Infrastructure)
 
@@ -683,11 +694,20 @@ Repository: `ICampRepository`.
 |-------|-----|
 | CampRoleDefinitions | R/W |
 | CampRoleAssignments | R/W |
-| CampMembers | R |
+| CampMembers | R (camp-member status via `ICampRoleCampAccess`) |
 | Camps | R (via repo helper) |
 
-Cross-section calls via `ICampService`, `IUserService`,
-`IAuditLogService`, `INotificationEmitter`. No `IMemoryCache`.
+| Cache (via invalidators) | Invalidate |
+|-------------------------|------------|
+| `Camp.CampInfo` TrackedCache (`ICampInfoInvalidator.InvalidateSeasonAsync`) | yes (role-assignment writes) |
+
+Cross-section calls via `ICampRoleCampAccess` (implemented by
+`CampService` — camp-member status without the full camp surface),
+`IUserServiceRead`, `IUserEmailService`, `IAuditLogService`,
+`INotificationEmitter`, plus `ICampInfoInvalidator` to evict the cached
+`CampInfo` after role-assignment writes. Implements
+`IGoogleGroupMembershipSource` (camp-role Google group membership). No
+direct `IMemoryCache`.
 
 ### CampContactService (Scoped)
 
@@ -735,8 +755,9 @@ Repository: `ICityPlanningRepository`.
 | CampPolygons | R/W |
 | CampPolygonHistories | R/W |
 
-Cross-section calls via `ICampService`, `ITeamService`, `IUserService`.
-Uses `CityPlanningOptions`. No `IMemoryCache`.
+Cross-section calls via `ICampServiceRead`, `ITeamServiceRead`,
+`IUserServiceRead` (migrated to the read-split surfaces). Uses
+`CityPlanningOptions`. No `IMemoryCache`.
 
 ---
 
@@ -1194,8 +1215,8 @@ No repository. Pure read-aggregation over owning services.
 
 Cross-section calls via `IUserServiceRead`, `IGoogleSyncService`,
 `ITeamServiceRead`, `ITicketSyncService`, `IApplicationDecisionService`,
-`ICampService`. **No direct DB access** — every counter fans out through
-an owning-service interface call.
+`ICampServiceRead`. **No direct DB access** — every counter fans out
+through an owning-service interface call.
 
 ### NotificationRecipientResolver (Scoped)
 
@@ -1334,7 +1355,7 @@ ticket caches via `InvalidateAfterContactImport`. No `IMemoryCache` directly.
 
 No repository. "Who's onsite" roster orchestrator (#736). Pure read
 orchestration over `IUserServiceRead`, `IShiftManagementService`,
-`ICampService`, `ITeamServiceRead`, `IRoleAssignmentService`. Implements
+`ICampServiceRead`, `ITeamServiceRead`, `IRoleAssignmentService`. Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 
 `TicketAttendeeOwnership` is a stateless helper (current-owner predicate),
@@ -1645,7 +1666,7 @@ Repository: `IStoreRepository`.
 | StoreInvoices | R/W |
 | StoreTreasurySyncStates | R/W |
 
-Cross-section calls via `IAuditLogService`, `ICampService`,
+Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface, #816),
 `IShiftManagementService`, `IStripeService` (Infrastructure). No
 `IMemoryCache`.

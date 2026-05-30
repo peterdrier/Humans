@@ -72,7 +72,7 @@ A camp's order against a season.
 
 **Indexes:** `CampSeasonId`, `TeamId`, `State`.
 
-**Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampService.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
+**Cross-section linkage:** `CampSeasonId` and `TeamId` are bare `Guid?` columns — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampServiceRead.GetCampSeasonByIdAsync` / `ITeamServiceRead.GetTeamAsync`.
 
 **Year backfill rule:** new writes always populate `Year`. Pre-existing camp rows may carry `Year = 0` until they're next saved through the service, at which point the column is backfilled from `CampSeason.Year`.
 
@@ -227,7 +227,7 @@ Stored as int via `HasConversion<int>()`.
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampService` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
+- **Camps:** `ICampServiceRead` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
 - **Teams:** `ITeamServiceRead` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only — no new surface added to its `[SurfaceBudget(4)]`.
 - **Shifts:** `IShiftManagementService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
@@ -254,7 +254,7 @@ The Store section uses `IStripeService` (Application-layer abstraction; Infrastr
 - `IStoreRepository` interface lives in `Humans.Application.Interfaces.Repositories`. `StoreRepository` (impl `Humans.Infrastructure/Repositories/Store/StoreRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Store tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 - **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `StoreOrderLine.Order` and `StorePayment.Order` are aggregate-local and are kept.
-- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
+- **Cross-section calls** route through `ICampServiceRead` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 - **Architecture test:** none yet. `tests/Humans.Application.Tests/Architecture/StoreArchitectureTests.cs` is not present — gap to fill in a follow-up.
 
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.

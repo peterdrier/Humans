@@ -78,13 +78,13 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - Write access for barrio leads is gated by `CityPlanningSettings.IsContainerPlacementOpen`. Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.
 - Image storage uses `IContainerImageStorage`; container main images live at `wwwroot/uploads/containers/{containerId}/main-{guid}.{ext}`; placement images at `wwwroot/uploads/containers/{containerId}/placement-{guid}.{ext}`. Uploading a new image of a given kind deletes the prior file of that kind only.
-- Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch checks `IsUserCampLeadAsync` for the resource's `CampId`).
+- Resource-based authorization per design-rules §11: `ContainerAuthorizationHandler` + `ContainerOperationRequirement` gate container writes (lead branch derives lead status via LINQ over `ICampServiceRead.GetCampsForYearAsync`, matching the resource's `CampId` and a `Season.IsLead(userId)` for the settings year).
 - Deleting a container deletes all its `ContainerPlacement` rows in the same transaction.
 - Documented limitation: when a container is deleted, placement-image files on disk for years other than the deleted-row scan window may be orphaned. At ~500-user scale this is acceptable; a periodic disk sweep can reclaim space.
 
 ## Negative Access Rules
 
-- Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies `IsUserCampLeadAsync` for the container's `CampId`.
+- Camp leads **cannot** manage another camp's containers — `ContainerAuthorizationHandler` verifies the user leads a season of the container's `CampId` (via `ICampServiceRead.GetCampsForYearAsync` + `Season.IsLead`).
 - Barrio leads **cannot** create, edit, delete, or place containers when the placement phase is closed (`IsContainerPlacementOpen == false`).
 - Non-admins **cannot** toggle the placement phase open or closed.
 - Non-admins **cannot** access `/CityPlanning/ContainerMap/{year}` when the placement phase is closed (controller returns 403 for non-admins who are not barrio leads or when the phase is closed).
@@ -100,7 +100,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampService` — `GetCampBySlugAsync`, `IsUserCampLeadAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync` — camp lookups and lead verification for authorization. `Container.CampId` is a bare Guid pointing at `camps.Id`.
+- **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
 - **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container placement API endpoints (`PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `GET /api/city-planning/containers/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 
 ## Architecture

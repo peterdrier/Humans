@@ -56,7 +56,7 @@ Magic link authentication is the foundation: a human enters their email, receive
 
 **Acceptance criteria:**
 - If the email doesn't match any existing user, send a magic link that creates an account on click
-- On first login, the user is prompted to set a display name (email is pre-filled)
+- On first login, the user is prompted for a burner name and their first and last (legal) name (email is pre-filled); all three are required
 - The new user follows the normal onboarding flow (profile completion, consent, etc.)
 - A `UserEmail` record is created (non-OAuth, verified, notification target)
 
@@ -239,7 +239,7 @@ The same lookup pattern applies to the Google OAuth account linking in `External
 | Web | `Views/Account/Login.cshtml` | Add email input + "Send login link" form alongside Google button |
 | Web | `Views/Account/MagicLinkSent.cshtml` | Confirmation page ("Check your email") |
 | Web | `Views/Account/MagicLinkError.cshtml` | Expired/invalid token page with "Request new link" button |
-| Web | `Views/Account/CompleteSignup.cshtml` | Display name prompt for new users (email pre-filled, readonly) |
+| Web | `Views/Account/CompleteSignup.cshtml` | Burner name + first/last (legal) name prompt for new users (email pre-filled, readonly) |
 | Infrastructure | `Services/OutboxEmailService.cs` | New `SendMagicLinkAsync` method |
 | Web | `Program.cs` | Configure `DataProtectionTokenProviderOptions.TokenLifespan` |
 | Domain | `Entities/User.cs` | Add `MagicLinkSentAt` (nullable Instant) for rate limiting |

@@ -2,7 +2,7 @@
 
 Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers (including the Events Guide section, which now uses `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]`) use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-05-28 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-05-29 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -354,7 +354,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `DevSeedController.SeedBudget` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
 | `DevSeedController.SeedCampRoles` | Action | `CampAdmin, Admin` | `PolicyNames.CampAdminOrAdmin` |
 | `DevSeedController.SeedDashboard` | Action | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
-| `DevSeedController.ResetDashboard` | Action | `Admin` | `[Authorize(Roles = RoleNames.Admin)]` |
+| `DevSeedController.ResetDashboard` | Action | `Admin` | `PolicyNames.AdminOnly` |
 
 ### Guest / Consent
 
@@ -659,8 +659,8 @@ Composite (non-resource) handlers registered alongside the above:
 |---|---|---|
 | `src/Humans.Web/Controllers/HumansTeamControllerBase.cs` | 23 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` |
 | `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 24 | `AuthorizeAsync(User, campId, CampOperationRequirement.Manage)` |
-| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 55 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
-| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 85 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
+| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 58 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
+| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 88 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 33 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 96 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 116 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
@@ -670,7 +670,7 @@ Composite (non-resource) handlers registered alongside the above:
 | `src/Humans.Web/Controllers/ExpensesController.cs` | 134, 457, 503, 526, 574, 598, 685 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
 | `src/Humans.Web/Controllers/StoreController.cs` | 55, 58, 59, 60, 75, 109, 127, 156, 182, 204, 229 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create) |
 | `src/Humans.Web/Controllers/IssuesController.cs` | 195, 265, 311, 338, 365, 390 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
-| `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 276, 301, 339 | `AuthorizeAsync(User, ...)` (resource-based) |
+| `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 274, 299, 337 | `AuthorizeAsync(User, ...)` (resource-based) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 677, 710, 755, 797, 834, 871, 908, 928, 972, 1047, 1063, 1089, 1122, 1148, 1174, 1350, 1376, 1420 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 1826 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 2341 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
@@ -683,7 +683,7 @@ Composite (non-resource) handlers registered alongside the above:
 
 ## 7. Notes / Known Deviations
 
-- **`DevSeedController.ResetDashboard` uses `[Authorize(Roles = RoleNames.Admin)]`** rather than `[Authorize(Policy = PolicyNames.AdminOnly)]`. Single-purpose dev/test endpoint; behaviourally identical to AdminOnly.
+- **No `[Authorize(Roles = ...)]` attributes remain anywhere in `src/`** — every controller/action `[Authorize]` attribute now references a `PolicyNames` constant or is a bare authenticated/`[AllowAnonymous]` marker (verified 2026-05-29). `DevSeedController.ResetDashboard`, formerly the last `[Authorize(Roles = RoleNames.Admin)]` holdout, now uses `[Authorize(Policy = PolicyNames.AdminOnly)]`.
 - The Events Guide controllers and `_Layout.cshtml` Events sub-dropdowns have all been migrated to `PolicyNames.EventsAdminOrAdmin` (Phase-1 cleanup complete — verified 2026-05-28).
 
 ---

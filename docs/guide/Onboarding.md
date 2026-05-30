@@ -48,7 +48,7 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 You have two ways to create an account:
 
 - **Google OAuth.** Click "Sign in with Google" on the login page. Your display name and picture come across automatically. If you already have an account with the same email — verified or not — Google sign-in links to it rather than creating a duplicate (the OAuth callback checks verified UserEmails, then unverified UserEmails, then `User.Email`).
-- **Magic link.** Enter your email and click "Send me a login link". You receive a one-time link that expires in 15 minutes. If no account exists yet, the same flow creates one (via the "Complete signup" page) and asks you to choose a display name. To prevent email-scanner replay, the link goes to a landing page with a confirm button — clicking the button is what actually signs you in.
+- **Magic link.** Enter your email and click "Send me a login link". You receive a one-time link that expires in 15 minutes. If no account exists yet, the same flow creates one (via the "Complete signup" page) and asks you for a burner name and your first and last name. To prevent email-scanner replay, the link goes to a landing page with a confirm button — clicking the button is what actually signs you in.
 
 If your email was imported from a mailing list, your account already exists and clicking your first magic link claims it.
 
