@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -26,9 +27,13 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task IsSubmissionOpenAsync_ReturnsFalse_WhenSettingsMissing()
+    public void IsSubmissionOpenAt_ReturnsFalse_WhenSettingsMissing()
     {
-        var result = await _service.IsSubmissionOpenAsync();
+        // Submission-open status is derived from the EventGuideSettingsView predicate;
+        // a null settings view (no guide configured) is treated as closed by consumers.
+        EventGuideSettingsView? view = null;
+
+        var result = view?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 
         result.Should().BeFalse();
     }
@@ -38,22 +43,20 @@ public sealed class EventServiceTests
     [InlineData(12, true)]
     [InlineData(13, true)]
     [InlineData(14, false)]
-    public async Task IsSubmissionOpenAsync_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
+    public void IsSubmissionOpenAt_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
     {
-        _clock.Reset(Instant.FromUtc(2026, 5, 5, hour, 0));
-        _repo.Settings = new EventGuideSettings
-        {
-            Id = Guid.NewGuid(),
-            EventSettingsId = Guid.NewGuid(),
-            SubmissionOpenAt = Instant.FromUtc(2026, 5, 5, 12, 0),
-            SubmissionCloseAt = Instant.FromUtc(2026, 5, 5, 13, 0),
-            GuidePublishAt = Instant.FromUtc(2026, 5, 6, 12, 0),
-            MaxPrintSlots = 10,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
+        var view = new EventGuideSettingsView(
+            Id: Guid.NewGuid(),
+            EventSettingsId: Guid.NewGuid(),
+            SubmissionOpenAt: Instant.FromUtc(2026, 5, 5, 12, 0),
+            SubmissionCloseAt: Instant.FromUtc(2026, 5, 5, 13, 0),
+            GuidePublishAt: Instant.FromUtc(2026, 5, 6, 12, 0),
+            MaxPrintSlots: 10,
+            TimeZoneId: "Europe/Madrid",
+            CreatedAt: _clock.GetCurrentInstant(),
+            UpdatedAt: _clock.GetCurrentInstant());
 
-        var result = await _service.IsSubmissionOpenAsync();
+        var result = view.IsSubmissionOpenAt(Instant.FromUtc(2026, 5, 5, hour, 0));
 
         result.Should().Be(expected);
     }

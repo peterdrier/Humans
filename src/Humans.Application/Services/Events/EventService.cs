@@ -23,12 +23,6 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         return settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
     }
 
-    public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
-    {
-        var settings = await repo.GetGuideSettingsAsync(ct);
-        return settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
-    }
-
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Shifts-owned event_settings row via

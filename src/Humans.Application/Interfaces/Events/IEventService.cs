@@ -13,7 +13,6 @@ public interface IEventService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
-    Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
     Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveGuideSettingsAsync(
