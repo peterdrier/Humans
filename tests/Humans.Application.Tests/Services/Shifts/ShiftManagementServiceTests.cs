@@ -1213,4 +1213,64 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             targetTeamId,
             nameof(Team));
     }
+
+    // ============================================================
+    // GetActivePendingShiftSignupCountsByTeamAsync — no-active-event guard
+    // ============================================================
+
+    [HumansFact]
+    public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()
+    {
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettings?)null);
+        var service = BuildServiceWithRepo(repo);
+
+        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync();
+
+        result.Should().BeEmpty();
+        await repo.DidNotReceiveWithAnyArgs()
+            .GetPendingSignupCountsByTeamAsync(Guid.Empty, null, null, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task GetActivePendingShiftSignupCountsByTeam_delegates_to_repo_when_active_event_exists()
+    {
+        var es = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Active 2026",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var expected = new Dictionary<Guid, int> { [Guid.NewGuid()] = 3 };
+
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(es);
+        repo.GetPendingSignupCountsByTeamAsync(es.Id, null, null, Arg.Any<CancellationToken>())
+            .Returns(expected);
+        var service = BuildServiceWithRepo(repo);
+
+        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync();
+
+        result.Should().BeEquivalentTo(expected);
+    }
+
+    private ShiftManagementService BuildServiceWithRepo(IShiftManagementRepository repo) =>
+        new(
+            repo,
+            AuditLog,
+            AdminAuthorization,
+            new ServiceLocatorBuilder().Build(),
+            Cache,
+            Substitute.For<IShiftViewInvalidator>(),
+            Clock,
+            NullLogger<ShiftManagementService>.Instance);
 }
