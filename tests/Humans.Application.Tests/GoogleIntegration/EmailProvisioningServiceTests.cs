@@ -99,7 +99,7 @@ public class EmailProvisioningServiceTests
         IUserEmailService UserEmailService,
         ITeamService TeamService,
         IEmailService EmailService,
-        INotificationService NotificationService,
+        INotificationEmitter NotificationService,
         IAuditLogService AuditLogService);
 
     private static ProvisioningFixture BuildFixture()
@@ -110,7 +110,7 @@ public class EmailProvisioningServiceTests
         var teamService = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var emailMessages = Substitute.For<IEmailMessageFactory>();
-        var notify = Substitute.For<INotificationService>();
+        var notify = Substitute.For<INotificationEmitter>();
         var audit = Substitute.For<IAuditLogService>();
 
         var service = new EmailProvisioningService(
