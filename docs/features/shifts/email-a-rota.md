@@ -58,8 +58,8 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 
 The recipient set is computed once per dispatch:
 
-1. Load the rota with its shifts and `EventSettings` (`IShiftSignupRepository.GetRotaWithShiftsAsync`).
-2. Load all active signups for the rota (`IShiftSignupRepository.GetActiveByRotaAsync`) — currently `Pending` or `Confirmed`.
+1. Load the rota with its shifts, `EventSettings`, and signups in one read (`IShiftManagementRepository.GetRotaAsync(rotaId, RotaReadShape.View, ct)`).
+2. Filter the loaded signups to the active set (`Pending` or `Confirmed`) in memory (`RotaCoordinatorMessageService.GetActiveSignups(rota)`).
 3. Group signups by `UserId` (one email per distinct user, even if they have multiple shifts on the rota).
 4. Skip users with no user record or no email address; record skipped count for the audit row.
 
@@ -106,9 +106,7 @@ The compose + submit endpoints (`GET/POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Em
 
 No new entities or migrations. The feature is pure orchestration over existing types:
 
-- `IShiftSignupRepository` — new (or reused) read methods:
-  - `GetRotaWithShiftsAsync(rotaId, ct)` — rota + shifts + `EventSettings`.
-  - `GetActiveByRotaAsync(rotaId, ct)` — active signups for grouping.
+- `IShiftManagementRepository.GetRotaAsync(rotaId, RotaReadShape.View, ct)` — loads the rota with shifts, `EventSettings`, and signups in one read; active signups are filtered in memory for grouping.
 - `IUserService.GetUserInfosAsync(userIds, ct)` — recipient name/email/culture lookup.
 - `IEmailService.SendCoordinatorRotaMessageAsync(request, ct)` — outbox enqueue.
 - `IEmailRenderer` — rendering for the new template.

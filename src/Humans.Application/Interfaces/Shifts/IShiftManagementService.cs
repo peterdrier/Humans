@@ -164,7 +164,8 @@ public interface IShiftManagementService : IApplicationService
 
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
-    /// When <paramref name="priorityOnly"/> is true, results are restricted to shifts whose
+    /// When the query's <see cref="ShiftBrowseQueryFlags.PriorityOnly"/> flag is set, results are
+    /// restricted to shifts whose
     /// rota is <see cref="ShiftPriority.Important"/> or <see cref="ShiftPriority.Essential"/>,
     /// or whose rota has any shift where confirmed-signup count is below
     /// <see cref="Shift.MinVolunteers"/> (i.e. understaffed).

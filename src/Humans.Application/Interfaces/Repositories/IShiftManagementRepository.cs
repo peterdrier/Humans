@@ -123,9 +123,9 @@ public partial interface IShiftManagementRepository : IRepository
     Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
-     /// Returns the distinct day offsets already populated for a rota. Used
-     /// by additive bulk-shift generators.
-     /// </summary>
+    /// Returns the distinct day offsets already populated for a rota. Used
+    /// by additive bulk-shift generators.
+    /// </summary>
     Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default);
 
     // ==========================================================================
