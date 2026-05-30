@@ -4,7 +4,7 @@ A code-derived map of every section to the concrete classes that implement it. U
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
-- **Controllers** — `src/Humans.Web/Controllers/*.cs`, assigned by `[Route(...)]` prefix (and constructor dependencies where there is no route attribute). Infrastructure/base controllers (`HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`, `ApiControllerBase`, `HomeController`, `AboutController`) are cross-cutting and excluded.
+- **Controllers** — `src/Humans.Web/Controllers/*.cs`, assigned by `[Route(...)]` prefix (and constructor dependencies where there is no route attribute). Infrastructure/base controllers (`HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`, `ApiControllerBase`, `HomeController`, `AboutController`) are excluded.
 - **Orchestrators** — service classes that inject **no `I*Repository`** and coordinate one or more other services. Per [`peters-hard-rules.md`](../architecture/peters-hard-rules.md): "Some services are orchestrators, organizing calls to multiple services. These should not call repositories."
 - **Services** — service classes that own/inject a repository. Caching decorators (Infrastructure) are listed in italics.
 - **Repositories** — `*Repository.cs` under `src/Humans.Infrastructure/Repositories/`. Per the hard rules, only the repository may touch its section's tables.
@@ -12,13 +12,20 @@ A code-derived map of every section to the concrete classes that implement it. U
 
 Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architecture/design-rules.md#8-table-ownership-map). Where this table and §8 disagree, the divergence is a drift bug in one of them — fix it.
 
-## Vertical sections (own tables)
+## Vertical vs cross-cutting
+
+Sections fall into two kinds:
+
+- **Vertical sections** are the **business domains** — basically everything. Each owns a slice of business functionality end-to-end (its entities, tables, repositories, services, controllers, views). Some are pure orchestrators that coordinate other sections and own no tables of their own.
+- **Cross-cutting concerns** are the **technical services the business verticals use** — Auth, Audit, Notifications, GDPR. They are the plumbing the verticals call into, not business domains in their own right. Owning a table does **not** make a section vertical (Auth, Audit, and Notifications each own tables); being a business domain does. Per [`peters-hard-rules.md`](../architecture/peters-hard-rules.md), these are *horizontal* sections and must **not** reference vertical sections — that would create cycles in the call graph.
+
+## Vertical sections (business domains)
+
+### Own tables
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
 | **Agent** | `AgentController`, `AgentApiController`, `AdminAgentController` | — | `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient` | `AgentRepository` | `agent_conversations`, `agent_messages`, `agent_settings` |
-| **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
-| **Auth** | `AccountController`, `DevLoginController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
 | **Budget** | `BudgetController` | — | `BudgetService` | `BudgetRepository` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Calendar** | `CalendarController` | — | `CalendarService`, *`CachingCalendarService`* | `CalendarRepository` | `calendar_events`, `calendar_event_exceptions` |
 | **Campaigns** | `CampaignController` | — | `CampaignService` | `CampaignRepository` | `campaigns`, `campaign_codes`, `campaign_grants` |
@@ -34,7 +41,6 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Google Integration** | `GoogleController` | `GoogleGroupSyncService`, `GoogleAdminService`, `EmailProvisioningService`, `GoogleRemovalNotificationService` | `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `TeamResourceService`, Google clients (`GoogleDirectoryClient`, `GoogleGroupMembershipClient`, `GoogleGroupProvisioningClient`, `GoogleDriveActivityClient`, `GoogleDrivePermissionsClient`, `WorkspaceUserDirectoryClient`) | `GoogleResourceRepository`, `GoogleSyncOutboxRepository`, `DriveActivityMonitorRepository`, `SyncSettingsRepository` | `google_resources`, `google_sync_outbox`, `sync_service_settings`, `system_settings` (key `DriveActivityMonitor:LastRunAt`) |
 | **Issues** | `IssuesController`, `IssuesApiController` | — | `IssuesService` | `IssuesRepository` | `issues`, `issue_comments` |
 | **Legal & Consent** | `LegalController`, `AdminLegalDocumentsController`, `ConsentController` | — | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService`, *`CachingLegalDocumentSyncService`*, *`CachingConsentService`* | `LegalDocumentRepository`, `ConsentRepository` | `legal_documents`, `document_versions`, `consent_records` |
-| **Notifications** | `NotificationsController` | — | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `NotificationRepository` | `notifications`, `notification_recipients` |
 | **Profiles** | `ProfileController`, `ProfileApiController`, `ProfileAdminController`, `ProfileBackfillAdminController`, `ProfilePictureMigrationAdminController`, `AdminDuplicateAccountsController`, `AdminMergeController` | `ProfileEditorService`, `EmailProblemsService`, `AdminHumanListAssembler` | `ProfileService`, `ContactFieldService`, `CommunicationPreferenceService`, `UserEmailService`, `AccountMergeService`, `DuplicateAccountService` | `AccountMergeRepository`, `CommunicationPreferenceRepository` (+ `ProfileService` via `UserRepository`) | `profiles`, `profile_languages`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests` |
 | **Shifts** | `ShiftsController`, `ShiftAdminController`, `ShiftDashboardController`, `ShiftWorkloadAdminController`, `VolunteerTrackingController` | — | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService`, `VolunteerTrackingExportService`, `ShiftViewService`, `RotaCoordinatorMessageService`, `BurnSettingsService`, `WorkloadService`, *`CachingShiftViewService`* | `VolunteerTrackingRepository` (+ shift/rota repos) | `rotas`, `shifts`, `shift_signups`, `shift_tags`, `rota_shift_tags`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `volunteer_tag_preferences`, `event_participations` |
 | **Store** | `StoreController`, `StoreAdminController`, `StoreStripeWebhookController` | — | `StoreService` | `StoreRepository` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
@@ -42,7 +48,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Tickets** | `TicketController`, `TicketTransferController`, `TicketTransferAdminController`, `TicketsContactsAdminController`, `TicketsOnsiteAdminController` | `OnsiteRosterService`, `TicketingBudgetService` | `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, *`CachingTicketQueryService`* | `TicketRepository`, `TicketTransferRepository` | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
 | **Users / Identity** | `UsersAdminDebugController`, `UnsubscribeController`, `LanguageController` | `AccountDeletionService`, `UserParticipationBackfillService` | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `UserEmailProviderBackfillService`, *`CachingUserService`* | `UserRepository` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy) |
 
-## Cross-cutting / orchestrator sections (no owned tables)
+### Orchestrators (no owned tables)
 
 These coordinate other sections' services and own no tables of their own.
 
@@ -50,7 +56,6 @@ These coordinate other sections' services and own no tables of their own.
 |---------|-------------|---------------|----------|--------------|--------|
 | **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController`, `WelcomeController` | `OnboardingService` | — | — | — |
 | **Human Lifecycle** | — (admin actions via `AdminController`) | `HumanLifecycleService` | — | — | — |
-| **GDPR** | — (export/delete via `GuestController` / `ProfileController`) | `GdprExportService` | — | — | — |
 | **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
 | **Cantina** | `CantinaController` | `CantinaRosterService` | — | — | — (reads Shifts via `IShiftManagementService`) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
@@ -58,6 +63,17 @@ These coordinate other sections' services and own no tables of their own.
 | **Mailer** | — (background sync) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` | — | — (MailerLite is read-only; writes route through other sections) |
 | **Scanner** | `ScannerController` | — | — | — | — (presentational, phase 1) |
 | **Debug / Dev** | `DebugController`, `DevSeedController`, `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — |
+
+## Cross-cutting concerns (technical services the verticals use)
+
+The technical services the business verticals call into — Auth, Audit, Notifications, GDPR. These are horizontal/plumbing, not business domains. Several own tables (Auth, Audit, Notifications); GDPR is a pure orchestrator. Per the hard rules they must **not** reference vertical sections.
+
+| Section | Controllers | Orchestrators | Services | Repositories | Tables |
+|---------|-------------|---------------|----------|--------------|--------|
+| **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
+| **Auth** | `AccountController`, `DevLoginController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
+| **Notifications** | `NotificationsController` | — | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `NotificationRepository` | `notifications`, `notification_recipients` |
+| **GDPR** | — (export/delete via `GuestController` / `ProfileController`) | `GdprExportService` | — | — | — |
 
 ## Notes & known drift
 
