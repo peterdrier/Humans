@@ -30,7 +30,7 @@ public sealed class ApplicationDecisionService(
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     IUserEmailService userEmailService,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
     INavBadgeCacheInvalidator navBadge,
