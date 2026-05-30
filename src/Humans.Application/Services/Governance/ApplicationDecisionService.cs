@@ -405,28 +405,8 @@ public sealed class ApplicationDecisionService(
         if (application is null)
             return null;
 
-        var userIds = new HashSet<Guid> { application.UserId };
-        if (application.ReviewedByUserId is { } reviewerId)
-            userIds.Add(reviewerId);
-        foreach (var row in application.StateHistory)
-            userIds.Add(row.ChangedByUserId);
-
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-
-        var applicant = users.GetValueOrDefault(application.UserId);
-        var reviewer = application.ReviewedByUserId is { } rid
-            ? users.GetValueOrDefault(rid)
-            : null;
-
-        var history = application.StateHistory
-            .OrderByDescending(h => h.ChangedAt)
-            .Select(h => new ApplicationStateHistoryDto(
-                Status: h.Status,
-                ChangedAt: h.ChangedAt,
-                ChangedByUserId: h.ChangedByUserId,
-                ChangedByDisplayName: users.GetValueOrDefault(h.ChangedByUserId)?.BurnerName,
-                Notes: h.Notes))
-            .ToList();
+        var applicant = await userService.GetUserInfoAsync(application.UserId, ct);
+        var (reviewerName, history) = await StitchHistoryAsync(application, ct);
 
         return new ApplicationAdminDetailDto(
             Id: application.Id,
@@ -444,7 +424,7 @@ public sealed class ApplicationDecisionService(
             SubmittedAt: application.SubmittedAt,
             ReviewStartedAt: application.ReviewStartedAt,
             ResolvedAt: application.ResolvedAt,
-            ReviewerName: reviewer?.BurnerName,
+            ReviewerName: reviewerName,
             ReviewNotes: application.ReviewNotes,
             History: history);
     }
