@@ -1,33 +1,54 @@
 export const meta = {
   name: 'humans-reforge-section-refactor',
-  description: 'Parallel Reforge-guided section refactors (5 lanes, score-blind adversarial review)',
+  description: 'Parallel Reforge-guided section refactors (N lanes, score-blind adversarial review)',
   whenToUse: 'Reduce Reforge surface/internal in Humans sections via architecturally-correct refactors, one branch+PR per section.',
   phases: [
     { title: 'Scan', detail: 'Per-lane section thesis + >=8 candidate ledger' },
     { title: 'Implement', detail: 'One coherent structural change; build+tests+Reforge' },
-    { title: 'Review', detail: 'Adversarial 3-lens score-blind panel' },
+    { title: 'Review', detail: 'Adversarial score-blind panel (lenses per intensity)' },
     { title: 'Commit', detail: 'Commit with score+review appendix, push' },
     { title: 'PR', detail: 'Open draft PR per lane with progress' },
   ],
 }
 
-// ---------------------------------------------------------------------------
-// Inputs (hardcoded — args global is unreliable in this harness)
-// ---------------------------------------------------------------------------
-const ROOT = 'H:/source/Humans'
-const DLL = 'H:/source/reforge/src/Reforge/bin/Release/net10.0/Reforge.dll'
-const BASE = '77fd3583cd0fe23095d7c0137b007965d0b0515b'   // origin/main
-const RUN = '2026-05-29-parallel'
-const BASELINE_JSON = 'H:/source/Humans/local/refactor-runs/2026-05-29-parallel/baseline-all.json'
-const MAX_ITERS = 6
+// ===========================================================================
+// TEMPLATE — the controller fills the block below AFTER Phase-0 recon.
+// DO NOT ship frozen values. Specifically:
+//   • BASE  — resolve at recon time: `git rev-parse origin/main`. Never a stale sha.
+//   • LANES — DERIVED from the recomputed Reforge rank minus in-flight sections
+//             (SKILL Phase 0). Not a fixed list. Create the worktrees during recon,
+//             then paste the resulting block here. Lane COUNT comes from --lanes /
+//             intensity; WHICH sections comes from the score + conflict scan.
+//   • RUN / BASELINE_JSON — this run's scratch dir + the BUILT baseline score.
+// The harness `args` global is unreliable, so the controller hardcodes this block
+// per run rather than passing args.
+// ===========================================================================
+const ROOT          = '<repo root, e.g. H:/source/Humans>'
+const DLL           = '<built Reforge.dll, e.g. H:/source/reforge/src/Reforge/bin/Release/net10.0/Reforge.dll>'
+const BASE          = '<origin/main sha resolved during recon>'
+const RUN           = '<run id, e.g. 2026-05-30-parallel>'
+const BASELINE_JSON = '<BUILT baseline all-groups json, e.g. {ROOT}/local/refactor-runs/{RUN}/baseline-all.json>'
+const INTENSITY     = 'standard'   // 'light' | 'standard' | 'deep' — set from the skill arg
 const LANES = [
-  { section: 'Users', group: 'Users', n: 1, branch: 'refactor/2026-05-29-users-workflow-1', wt: 'H:/source/Humans/.worktrees/refactor-2026-05-29-users-workflow-1' },
-  { section: 'Tickets', group: 'Tickets', n: 2, branch: 'refactor/2026-05-29-tickets-workflow-2', wt: 'H:/source/Humans/.worktrees/refactor-2026-05-29-tickets-workflow-2' },
-  { section: 'GoogleIntegration', group: 'GoogleIntegration', n: 3, branch: 'refactor/2026-05-29-googleintegration-workflow-3', wt: 'H:/source/Humans/.worktrees/refactor-2026-05-29-googleintegration-workflow-3' },
-  { section: 'Budget', group: 'Budget', n: 4, branch: 'refactor/2026-05-29-budget-workflow-4', wt: 'H:/source/Humans/.worktrees/refactor-2026-05-29-budget-workflow-4' },
-  { section: 'Email', group: 'Email', n: 5, branch: 'refactor/2026-05-29-email-workflow-5', wt: 'H:/source/Humans/.worktrees/refactor-2026-05-29-email-workflow-5' },
+  // One entry per SELECTED lane (from recon). Example shape:
+  // { section: 'Users', group: 'Users', n: 1,
+  //   branch: 'refactor/<date>-users-workflow-1',
+  //   wt: '<abs worktree path>' },
 ]
 const DELTA = '.codex/skills/humans-refactor/scripts/reforge_delta.py'
+
+// Termination is STASIS-driven, not a fixed iteration count. A lane runs its
+// candidate ledger until the implementer reports no remaining high-confidence
+// candidate (stasis), OR `dryStreak` consecutive iterations land nothing, OR the
+// token budget runs low. SAFETY_CAP is only a runaway backstop, never a target.
+// Intensity trades autonomy-per-output against token burn: deeper = more review
+// lenses + more persistence through dry rounds.
+const PROFILE = ({
+  light:    { lenses: ['A'],           dryStreak: 1 },
+  standard: { lenses: ['A', 'B'],      dryStreak: 2 },
+  deep:     { lenses: ['A', 'B', 'C'], dryStreak: 3 },
+})[INTENSITY]
+const SAFETY_CAP = 40   // runaway backstop only — real stop is stasis / dryStreak / budget
 
 const safe = async (fn) => { try { return await fn() } catch (e) { return { __error: String(e && e.message || e) } } }
 const ok = (x) => x && !x.__error
@@ -44,6 +65,7 @@ ABSOLUTE CONSTRAINTS (Humans repo, peters-hard-rules.md is the constitution):
 - Layering (DbContext -> Repository -> Service -> Controller): only the repository touches its tables; services derive from IApplicationService and call only their own repositories + other sections' public read interfaces; controllers hold no logic beyond parse/call/format; caching decorators call the inner service, never the repository.
 - Section isolation: never reach into another section's repository, DbContext, or entity graph. Cross-section reads go through I<Section>ServiceRead and the canonical <Section>Info DTO facts. Cross-section dependence on a write/full service is high debt — only legitimate when truly orchestrating a mutation.
 - Surgical to the ${L.section} section. Do not "improve" unrelated code, reformat, or refactor things that are not broken. Do not move debt into another section or into shared/helper code to win points.
+- \`[SurfaceBudget]\` does NOT constrain this process — you MAY raise/extend a read interface's budget when routing a consumer onto the read surface. The panel still rejects bespoke projection/predicate methods.
 - Do NOT edit: reforge.surface-score.json, Humans.slnx, CLAUDE.md, anything under memory/ or docs/ (your section invariant doc may be updated only if a change makes it factually wrong — otherwise leave docs alone).
 - Scratch (JSON, messages, notes) goes under ${ROOT}/local/refactor-runs/${RUN}/${L.section}/ which is OUTSIDE the worktree, so it is never committed. Create it with mkdir -p.
 `
@@ -211,7 +233,7 @@ Then verify, all with absolute worktree paths:
 2. Targeted tests: run the ${L.section} tests AND the architecture tests (they enforce section/baseline rules), e.g.
    dotnet test "${L.wt}/Humans.slnx" --filter "FullyQualifiedName~${L.section}|FullyQualifiedName~Architecture" -v q --disable-build-servers
    (pick the precise filter/project that compiles fastest while covering ${L.section} + Architecture; record the exact command in testCommand.)
-3. Reforge after change:
+3. Reforge after change (BUILD-FIRST already satisfied by step 1, so the workspace is fully resolved):
    mkdir -p "${scratch(L)}"
    dotnet "${DLL}" surface-score --solution "${L.wt}/Humans.slnx" --format Json --all --top-symbols 200 > "${scratch(L)}/stage${String(i).padStart(2, '0')}-all.json"
 4. Score delta vs previous accepted stage:
@@ -257,11 +279,9 @@ ${stage.subject}
 
 ${stage.deltaText}
 
-Architecture-review (score-blind 3-lens panel):
-- Verdict: accept (unanimous)
-- Lens A (relocation/internal): ${panel.A}
-- Lens B (read-model): ${panel.B}
-- Lens C (behavior/contract): ${panel.C}
+Architecture-review (score-blind panel):
+- Verdict: accept (unanimous across active lenses)
+${Object.entries(panel).map(([k, v]) => `- Lens ${k}: ${v}`).join('\n')}
 - Concept deleted: ${stage.conceptDeleted}
 
 Verification:
@@ -279,7 +299,7 @@ Return committed/sha/pushed. The sha is \`git -C "${L.wt}" rev-parse HEAD\`.`
 
 function prPrompt(L, accepted, rejected, thesis) {
   const bodyPath = `${scratch(L)}/pr-body.md`
-  return `You are the PR agent for the ${L.section} lane. Open a DRAFT PR for branch ${L.branch} (already pushed) into main on peterdrier/Humans.
+  return `You are the PR agent for the ${L.section} lane. Open a DRAFT PR for branch ${L.branch} (already pushed) into main on the fork.
 ${HARD_RULES(L)}
 Confirm the branch is pushed and up to date: \`git -C "${L.wt}" status\`, \`git -C "${L.wt}" log --oneline origin/main..${L.branch}\`. If there are unpushed commits, push them: \`git -C "${L.wt}" push -u origin "${L.branch}"\`.
 
@@ -294,17 +314,15 @@ ${JSON.stringify(accepted, null, 1)}
 Rejected candidates:
 ${JSON.stringify(rejected, null, 1)}
 
-Then:
-  gh pr create --repo peterdrier/Humans --draft --base main --head "${L.branch}" --title "refactor(${L.section}): Reforge-guided section surface reduction" --body-file "${bodyPath}"
-Return opened/url/number. If a PR for this head already exists, return opened=true with its url instead of failing.`
+Then create the draft PR with gh (base = the fork's main, head = "${L.branch}"). Return opened/url/number. If a PR for this head already exists, return opened=true with its url instead of failing.`
 }
 
 // ---------------------------------------------------------------------------
-// Verdict combination: unanimous accept, zero rejects; else reject/rework
+// Verdict combination: every active lens must accept, zero rejects; else reject/rework
 // ---------------------------------------------------------------------------
 function combine(reviews) {
   const valid = reviews.filter((r) => ok(r) && r.verdict)
-  if (valid.length < 2) return { verdict: 'reject', reason: 'insufficient valid reviews', requiredChanges: [] }
+  if (valid.length < PROFILE.lenses.length) return { verdict: 'reject', reason: 'insufficient valid reviews', requiredChanges: [] }
   if (valid.some((r) => r.verdict === 'reject')) {
     const rj = valid.filter((r) => r.verdict === 'reject')
     return { verdict: 'reject', reason: rj.map((r) => r.reason).join(' | '), requiredChanges: rj.flatMap((r) => r.requiredChanges || []) }
@@ -317,18 +335,19 @@ function combine(reviews) {
 }
 
 async function runPanel(L, stage) {
-  const reviews = await parallel(['A', 'B', 'C'].map((lens) => () =>
+  const reviews = await parallel(PROFILE.lenses.map((lens) => () =>
     agent(reviewPrompt(L, stage, lens), { label: `review-${lens}:${L.section}`, phase: 'Review', schema: REVIEW_SCHEMA })))
   return { combined: combine(reviews), reviews }
 }
 
 function panelNotes(reviews) {
-  const g = (i) => (ok(reviews[i]) ? `${reviews[i].verdict} — ${reviews[i].reason}` : 'n/a')
-  return { A: g(0), B: g(1), C: g(2) }
+  const notes = {}
+  PROFILE.lenses.forEach((lens, idx) => { notes[lens] = ok(reviews[idx]) ? `${reviews[idx].verdict} — ${reviews[idx].reason}` : 'n/a' })
+  return notes
 }
 
 // ---------------------------------------------------------------------------
-// Lane loop
+// Lane loop — STASIS-driven (ledger exhaustion / dry streak / budget); SAFETY_CAP is a backstop
 // ---------------------------------------------------------------------------
 async function runLane(L) {
   const tag = L.section
@@ -341,17 +360,21 @@ async function runLane(L) {
   let prevJson = BASELINE_JSON
   let hint = ''
   let noAccept = 0
+  let i = 0
 
-  for (let i = 1; i <= MAX_ITERS; i++) {
+  // STASIS-driven: stop when the implementer reports no candidate, dryStreak
+  // consecutive non-accepts pile up, or budget runs low. SAFETY_CAP is a backstop.
+  while (i < SAFETY_CAP) {
+    i++
     if (budget.total && budget.remaining() < 80000) { log(`[${tag}] stopping: budget low`); break }
 
     let stage = await safe(() => agent(implPrompt(L, i, ledger, accepted, rejected, hint, prevJson), { label: `impl:${tag}#${i}`, phase: 'Implement', schema: STAGE_SCHEMA }))
-    if (!ok(stage)) { rejected.push({ iter: i, reason: `impl error: ${stage && stage.__error}` }); noAccept++; if (noAccept >= 2 && i >= 4) break; continue }
+    if (!ok(stage)) { rejected.push({ iter: i, reason: `impl error: ${stage && stage.__error}` }); noAccept++; if (noAccept >= PROFILE.dryStreak) { log(`[${tag}] stopping: dry streak`); break } continue }
     if (stage.outcome === 'no-candidate' || stage.stasis) { log(`[${tag}] stasis: ${stage.notes || ''}`); break }
     if (stage.outcome === 'build-or-test-failed') {
       rejected.push({ iter: i, candidateTitle: stage.candidateTitle, reason: `build/test failed: ${stage.notes || ''}` })
       hint = `Candidate "${stage.candidateTitle}" failed build/test: ${stage.notes || ''}. Pick a DIFFERENT candidate.`
-      noAccept++; if (noAccept >= 2 && i >= 4) break; continue
+      noAccept++; if (noAccept >= PROFILE.dryStreak) { log(`[${tag}] stopping: dry streak`); break } continue
     }
     stage.__thesis = ledger.thesis
 
@@ -367,7 +390,7 @@ async function runLane(L) {
       rejected.push({ iter: i, candidateTitle: stage.candidateTitle, verdict: combined.verdict, reason: combined.reason })
       hint = `Panel ${combined.verdict} "${stage.candidateTitle}": ${combined.reason}. The worktree will be reset; choose a different, more honest candidate.`
       log(`[${tag}] #${i} ${combined.verdict}: ${stage.candidateTitle} — ${combined.reason}`)
-      noAccept++; if (noAccept >= 2 && i >= 5) { log(`[${tag}] stopping: 2 consecutive non-accepts past floor`); break }
+      noAccept++; if (noAccept >= PROFILE.dryStreak) { log(`[${tag}] stopping: dry streak (${PROFILE.dryStreak})`); break }
       continue
     }
 
@@ -382,9 +405,10 @@ async function runLane(L) {
     } else {
       rejected.push({ iter: i, candidateTitle: stage.candidateTitle, reason: `commit failed: ${(commit && commit.error) || ''}` })
       hint = `Commit failed for "${stage.candidateTitle}". Choose another candidate.`
-      noAccept++; if (noAccept >= 2 && i >= 5) break
+      noAccept++; if (noAccept >= PROFILE.dryStreak) { log(`[${tag}] stopping: dry streak`); break }
     }
   }
+  if (i >= SAFETY_CAP) log(`[${tag}] hit SAFETY_CAP (${SAFETY_CAP}) — backstop, not stasis; ledger may have more`)
 
   let pr = null
   if (accepted.length > 0) {
@@ -400,12 +424,13 @@ async function runLane(L) {
 // Orchestrate
 // ---------------------------------------------------------------------------
 phase('Scan')
-log(`Launching ${LANES.length} lanes off origin/main ${BASE.slice(0, 9)}: ${LANES.map((l) => l.section).join(', ')}`)
+log(`Launching ${LANES.length} lanes (intensity=${INTENSITY}, lenses=${PROFILE.lenses.join('')}, dryStreak=${PROFILE.dryStreak}) off ${BASE.slice(0, 9)}: ${LANES.map((l) => l.section).join(', ')}`)
 const results = await parallel(LANES.map((L) => () => runLane(L)))
 
 return {
   run: RUN,
   base: BASE,
+  intensity: INTENSITY,
   lanes: results.map((r) => r && (r.section ? { section: r.section, branch: r.branch, accepted: r.acceptedCount, rejected: (r.rejected || []).length, pr: ok(r.pr) ? (r.pr.url || r.pr.number) : null } : { error: r.error })),
   detail: results,
 }

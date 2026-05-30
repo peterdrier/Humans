@@ -30,13 +30,15 @@ Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 
 ## Inputs / dials
 
 - **sections** — explicit list, or empty to auto-select by recomputed Reforge rank.
-- **`--intensity`** — trades token burn against autonomy-per-unit-output:
+- **`--intensity`** — trades token burn against autonomy-per-unit-output. **There is no fixed iteration cap.** Each lane runs its candidate ledger until *stasis* — the implementer reports no remaining high-confidence candidate — regardless of intensity. Intensity only sets how many review lenses gate each commit and how long a lane pushes through non-accepts (`dryStreak`) before giving up; a large `SAFETY_CAP` exists purely as a runaway backstop, never a target.
 
-  | intensity | lanes | maxIters/lane | review | extra | use when |
-  |---|---|---|---|---|---|
-  | `light` | 2–3 | 3 | single reviewer | slam-dunk dead-surface only | quick cheap sweep |
-  | `standard` (default) | 4–5 | 6 | 2-lens panel | — | the reference run |
-  | `deep` | 5–6 | 8–10 | 3-lens panel | loop-until-dry + completeness critic | overnight, maximize deletion |
+  | intensity | lanes | review lenses | persistence (`dryStreak`) | use when |
+  |---|---|---|---|---|
+  | `light` | 2–3 | 1 (A) | give up after 1 dry round | quick cheap sweep |
+  | `standard` (default) | 4–5 | 2 (A, B) | give up after 2 consecutive dry rounds | the reference run |
+  | `deep` | 5–6 | 3 (A, B, C) | persist through 3 dry rounds + completeness critic | overnight, maximize deletion |
+
+  (Lane *count* is a dial; *which* sections is always derived from the Phase-0 Reforge rank minus in-flight work — never a fixed list.)
 
 - **`--mode`** — `workflow` (default): parallel lanes in a background [Workflow](#orchestration-workflow-mode); `solo`: run lanes sequentially in-session (no Workflow tool, lower concurrency, easier to watch, far fewer tokens — good for 1–2 sections).
 - **`--lanes=N`** — override lane count.
