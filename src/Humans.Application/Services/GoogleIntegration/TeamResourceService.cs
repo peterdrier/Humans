@@ -528,9 +528,10 @@ public sealed partial class TeamResourceService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId}",
+            logger.LogError(ex, "Failed to apply RestrictInheritedAccess for resource {ResourceId}",
                 resourceId);
             return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
+        }
         }
     }
 
