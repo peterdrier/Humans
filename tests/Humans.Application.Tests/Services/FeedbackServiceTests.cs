@@ -26,7 +26,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
-    private readonly INotificationService _notificationService;
+    private readonly INotificationEmitter _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IFeedbackRepository _repository;
     private readonly FeedbackApplicationService _service;
@@ -101,7 +101,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
                     t.ParentTeamId));
             });
 
-        _notificationService = Substitute.For<INotificationService>();
+        _notificationService = Substitute.For<INotificationEmitter>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
         _repository = new FeedbackRepository(DbFactory);

@@ -33,7 +33,7 @@ public sealed class FeedbackService(
     ITeamServiceRead teamService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     INavBadgeCacheInvalidator navBadge,
     IClock clock,

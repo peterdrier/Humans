@@ -13,7 +13,7 @@ namespace Humans.Application.Services.Legal;
 public sealed class LegalDocumentSyncService(
     ILegalDocumentRepository repository,
     IGitHubLegalDocumentConnector gitHub,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     ITeamService teamService,
     IUserServiceRead userService,
     IClock clock,

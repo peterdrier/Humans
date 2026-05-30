@@ -28,7 +28,7 @@ public class TermRenewalReminderJob(
     IUserServiceRead userService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     IHumansMetrics metrics,
     ILogger<TermRenewalReminderJob> logger,
     IClock clock) : IRecurringJob
