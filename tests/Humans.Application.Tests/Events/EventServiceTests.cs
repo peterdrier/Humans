@@ -630,9 +630,6 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventFavourite>>(Favourites.Where(f => f.UserId == userId).ToList());
 
-        public Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-            => Task.FromResult(Favourites.Any(f => f.UserId == userId && f.GuideEventId == eventId));
-
         public Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
         {
             var existing = Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId);

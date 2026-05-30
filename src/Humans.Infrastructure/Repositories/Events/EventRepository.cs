@@ -389,13 +389,6 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
             .ToListAsync(ct);
     }
 
-    public async Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventFavourites.AsNoTracking()
-            .AnyAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
-    }
-
     public async Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

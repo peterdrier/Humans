@@ -84,7 +84,6 @@ public interface IEventRepository : IRepository
     // ── Favourites ────────────────────────────────────────────────────────
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
-    Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     /// <summary>Adds a favourite if absent, removes it if present. Returns whether the favourite now exists.</summary>
     Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default);
     /// <summary>Adds only when absent. Returns false if a favourite already existed.</summary>
