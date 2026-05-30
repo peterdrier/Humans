@@ -257,7 +257,7 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        await service.SetCampSetupAsync(userId, null, null, current.Id, ct);
+        await service.ClearCampSetupAsync(userId, current.Id, ct);
 
         await auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupCleared,
@@ -284,10 +284,9 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await service.ApplyDayOffAsync(
+        var result = await service.SetDayOffAsync(
             form.UserId,
             form.DayOffset,
-            VolunteerDayOffAction.Set,
             form.Reason,
             current.Id,
             ct);
@@ -322,12 +321,10 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var result = await service.ApplyDayOffAsync(
+        var result = await service.ClearDayOffAsync(
             form.UserId,
             form.DayOffset,
-            VolunteerDayOffAction.Clear,
-            reason: null,
-            coordinatorUserId: current.Id,
+            current.Id,
             ct);
         if (result.Removed)
         {
@@ -355,11 +352,11 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await service.ApplyAvailabilityDayAsync(
+        var changed = await service.SetDayAvailabilityAsync(
             userId,
             es.Id,
             dayOffset,
-            AvailabilityDayAction.Add,
+            available: true,
             ct);
         if (changed)
         {
@@ -383,11 +380,11 @@ public sealed class VolunteerTrackingController(
         var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
-        var changed = await service.ApplyAvailabilityDayAsync(
+        var changed = await service.SetDayAvailabilityAsync(
             userId,
             es.Id,
             dayOffset,
-            AvailabilityDayAction.Remove,
+            available: false,
             ct);
         if (changed)
         {

@@ -82,17 +82,26 @@ public interface IVolunteerTrackingRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Sets or clears a single day-off entry on the row's <c>DayOffs</c>
-    /// collection. Passing <paramref name="entry"/> inserts/replaces that
-    /// offset and creates the row if absent; passing null removes
-    /// <paramref name="dayOffset"/> and returns false when no entry existed.
+    /// Insert or replace a single day-off entry on the row's <c>DayOffs</c>
+    /// collection. Creates the row if absent. Replaces any existing entry for
+    /// the same <c>DayOffset</c> so there is at most one entry per day.
     /// Persists with the list sorted by <c>DayOffset</c> ascending.
     /// </summary>
-    Task<bool> ApplyDayOffAsync(
+    Task UpsertDayOffAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        DayOffEntry entry,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Remove the entry for (userId, eventSettingsId, dayOffset) from the
+    /// row's <c>DayOffs</c> collection. Returns whether an entry was actually
+    /// removed (false when no row exists or the offset wasn't present).
+    /// </summary>
+    Task<bool> RemoveDayOffAsync(
         Guid userId,
         Guid eventSettingsId,
         int dayOffset,
-        DayOffEntry? entry,
         CancellationToken ct = default);
 
     /// <summary>

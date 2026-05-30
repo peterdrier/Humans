@@ -33,15 +33,15 @@ public sealed class VolunteerTrackingService(
             .ToList();
     }
 
-    public async Task<bool> ApplyAvailabilityDayAsync(
-        Guid userId, Guid eventSettingsId, int dayOffset, AvailabilityDayAction action,
+    public async Task<bool> SetDayAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset, bool available,
         CancellationToken ct = default)
     {
         var current = (await trackingRepo.GetAvailabilityForUserAsync(userId, eventSettingsId, ct).ConfigureAwait(false))
             .FirstOrDefault();
         var offsets = current?.AvailableDayOffsets.ToList() ?? [];
 
-        if (action == AvailabilityDayAction.Add)
+        if (available)
         {
             if (dayOffset >= 0 || offsets.Contains(dayOffset)) return false;
             offsets.Add(dayOffset);
@@ -256,26 +256,11 @@ public sealed class VolunteerTrackingService(
     }
 
     public async Task<SetCampSetupResult> SetCampSetupAsync(
-        Guid targetUserId, LocalDate? barrioSetupStartDate, string? notes,
+        Guid targetUserId, LocalDate barrioSetupStartDate, string? notes,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-        if (barrioSetupStartDate is null)
-        {
-            await trackingRepo.UpsertCampSetupAsync(
-                targetUserId,
-                es.Id,
-                barrioSetupStartDate: null,
-                notes: null,
-                setByUserId: null,
-                setAt: null,
-                setupOffsetThreshold: null,
-                ct).ConfigureAwait(false);
-            viewInvalidator.InvalidateUser(targetUserId);
-            return new SetCampSetupResult(true, null, []);
-        }
-
-        var setupOffset = OffsetOf(es, barrioSetupStartDate.Value);
+        var setupOffset = OffsetOf(es, barrioSetupStartDate);
 
         if (setupOffset >= 0)
         {
@@ -307,32 +292,38 @@ public sealed class VolunteerTrackingService(
         return new SetCampSetupResult(true, null, trimmed);
     }
 
-    public async Task<DayOffActionResult> ApplyDayOffAsync(
-        Guid targetUserId, int dayOffset, VolunteerDayOffAction action, string? reason,
+    public async Task ClearCampSetupAsync(
+        Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
+    {
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
+        await trackingRepo.UpsertCampSetupAsync(
+            targetUserId,
+            es.Id,
+            barrioSetupStartDate: null,
+            notes: null,
+            setByUserId: null,
+            setAt: null,
+            setupOffsetThreshold: null,
+            ct).ConfigureAwait(false);
+        viewInvalidator.InvalidateUser(targetUserId);
+    }
+
+    public async Task<SetDayOffResult> SetDayOffAsync(
+        Guid targetUserId, int dayOffset, string? reason,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
-        if (action == VolunteerDayOffAction.Clear)
-        {
-            var removed = await trackingRepo
-                .ApplyDayOffAsync(targetUserId, es.Id, dayOffset, entry: null, ct)
-                .ConfigureAwait(false);
-            if (removed)
-                viewInvalidator.InvalidateUser(targetUserId);
-            return new DayOffActionResult(true, null, removed);
-        }
-
         if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
         {
-            return new DayOffActionResult(false, "VolTrack_Err_DayOffOutsideBuild", false);
+            return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
         }
 
         var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
-            return new DayOffActionResult(false, "VolTrack_Err_DayOffWithSignups", false);
+            return new SetDayOffResult(false, "VolTrack_Err_DayOffWithSignups");
         }
 
         var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
@@ -347,9 +338,22 @@ public sealed class VolunteerTrackingService(
             MarkedByUserId: coordinatorUserId,
             MarkedAt: clock.GetCurrentInstant());
 
-        await trackingRepo.ApplyDayOffAsync(targetUserId, es.Id, dayOffset, entry, ct).ConfigureAwait(false);
+        await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(targetUserId);
-        return new DayOffActionResult(true, null, false);
+        return new SetDayOffResult(true, null);
+    }
+
+    public async Task<ClearDayOffResult> ClearDayOffAsync(
+        Guid targetUserId, int dayOffset, Guid coordinatorUserId, CancellationToken ct = default)
+    {
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
+
+        var removed = await trackingRepo
+            .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
+            .ConfigureAwait(false);
+        if (removed)
+            viewInvalidator.InvalidateUser(targetUserId);
+        return new ClearDayOffResult(removed);
     }
 
     public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(

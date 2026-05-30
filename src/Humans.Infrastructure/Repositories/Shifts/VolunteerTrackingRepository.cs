@@ -153,7 +153,7 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
         IReadOnlyList<int> trimmed = [];
         if (setupOffsetThreshold is { } threshold)
         {
-            // DayOffs is persisted sorted (see ApplyDayOffAsync), so the
+            // DayOffs is persisted sorted (see UpsertDayOffAsync), so the
             // filter preserves canonical order — no resort needed.
             var toTrim = row.DayOffs
                 .Where(d => d.DayOffset >= threshold)
@@ -170,31 +170,31 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
         return trimmed;
     }
 
-    public async Task<bool> ApplyDayOffAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        int dayOffset,
-        DayOffEntry? entry,
+    public async Task UpsertDayOffAsync(
+        Guid userId, Guid eventSettingsId, DayOffEntry entry,
         CancellationToken ct = default)
     {
-        if (entry is not null)
-        {
-            var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
-            row.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
-            row.DayOffs.Add(entry);
-            // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
-            row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
-            await db.SaveChangesAsync(ct);
-            return true;
-        }
+        var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
 
-        var rowToClear = await db.VolunteerBuildStatuses
+        row.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
+        row.DayOffs.Add(entry);
+        // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
+        row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> RemoveDayOffAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset,
+        CancellationToken ct = default)
+    {
+        var existing = await db.VolunteerBuildStatuses
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
-        if (rowToClear is null) return false;
 
-        var removed = rowToClear.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
+        if (existing is null) return false;
+
+        var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
         if (removed)
         {
             await db.SaveChangesAsync(ct);

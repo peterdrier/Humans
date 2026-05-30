@@ -95,8 +95,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, -2, AvailabilityDayAction.Add);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, -2, true);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -112,8 +112,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, -2, AvailabilityDayAction.Remove);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, -2, false);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -128,8 +128,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var esId = SeedEventSettings();
         await Db.SaveChangesAsync();
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, -1, AvailabilityDayAction.Add);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, -1, true);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -145,8 +145,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var esId = SeedEventSettings();
         await Db.SaveChangesAsync();
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, 2, AvailabilityDayAction.Add);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, 2, true);
 
         changed.Should().BeFalse();
         var rec = await Db.GeneralAvailability.AsNoTracking()
@@ -162,8 +162,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-2]);
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, -2, AvailabilityDayAction.Add);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, -2, true);
 
         changed.Should().BeFalse();
     }
@@ -176,8 +176,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
-        var changed = await _service.ApplyAvailabilityDayAsync(
-            userId, esId, -2, AvailabilityDayAction.Remove);
+        var changed = await _service.SetDayAvailabilityAsync(
+            userId, esId, -2, false);
 
         changed.Should().BeFalse();
     }
