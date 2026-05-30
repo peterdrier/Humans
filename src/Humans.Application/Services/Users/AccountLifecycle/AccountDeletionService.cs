@@ -86,7 +86,7 @@ public sealed class AccountDeletionService(
             await emailService.SendAsync(emailMessages.AccountDeletionRequested(
                 notificationEmail,
                 user.BurnerName,
-                deletionDate.ToDateTimeUtc(),
+                deletionDate,
                 user.PreferredLanguage),
                 ct);
         }

@@ -1,4 +1,5 @@
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Email;
 
@@ -33,7 +34,7 @@ public interface IEmailMessageFactory
     EmailMessage EmailVerification(string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null);
 
     /// <summary>Account deletion requested confirmation (always-send).</summary>
-    EmailMessage AccountDeletionRequested(string userEmail, string userName, DateTime deletionDate, string? culture = null);
+    EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null);
 
     /// <summary>Account deleted confirmation (always-send).</summary>
     EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null);

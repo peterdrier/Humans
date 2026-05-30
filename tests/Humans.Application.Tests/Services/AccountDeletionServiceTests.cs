@@ -141,7 +141,7 @@ public class AccountDeletionServiceTests
 
         _emailMessages.Received(1).AccountDeletionRequested(
             user.Email!, user.BurnerName,
-            Arg.Any<DateTime>(), user.PreferredLanguage);
+            Arg.Any<Instant>(), user.PreferredLanguage);
 
         // Shift-authorization cache must drop in-orchestrator (parity with
         // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
@@ -164,7 +164,7 @@ public class AccountDeletionServiceTests
 
         _emailMessages.Received(1).AccountDeletionRequested(
             "notif@example.com", user.BurnerName,
-            Arg.Any<DateTime>(), user.PreferredLanguage);
+            Arg.Any<Instant>(), user.PreferredLanguage);
     }
 
     [HumansFact]
