@@ -1,0 +1,101 @@
+name: PR Surface Report Comment
+
+# Privileged half of the surface report. Triggered by the completion of the
+# "PR Surface Report" build workflow. This job NEVER checks out or builds PR
+# code — it only downloads the report artifact and posts it as a comment. That
+# isolation is what makes `issues: write` safe here even for fork PRs: there is
+# no fork-controlled code path in this job to capture the token, set NODE_OPTIONS,
+# or overwrite a consumed file.
+#
+# The target PR is resolved from the trusted head SHA recorded on the workflow
+# run (via the API), NOT from any artifact contents, so a fork cannot redirect
+# the bot to comment on a different PR. The report markdown body is still
+# fork-influenced for fork PRs, but it can only ever land on that fork's own PR.
+on:
+  workflow_run:
+    workflows: ["PR Surface Report"]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: pr-surface-report-comment-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  comment:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-surface-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Post or update PR comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const run = context.payload.workflow_run;
+            const headSha = run.head_sha;
+            const headRepo = run.head_repository ? run.head_repository.full_name : null;
+            const headBranch = run.head_branch;
+
+            // Resolve the target PR from the trusted workflow_run metadata GitHub
+            // recorded for this run — never from artifact contents, which a fork
+            // build controls. Match on head repo + branch + sha rather than "first
+            // open PR sharing the sha": commits are content-addressed, so an
+            // attacker can push a victim PR's exact head commit into their own fork
+            // and open a competing PR, making several open PRs share headSha. Tying
+            // to the run's own head repo/branch uniquely identifies the PR that
+            // produced THIS run and stops the bot commenting on someone else's PR.
+            const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: headSha,
+            });
+            const candidates = associated.data.filter(p =>
+              p.state === 'open' &&
+              p.head.sha === headSha &&
+              p.head.ref === headBranch &&
+              p.head.repo && p.head.repo.full_name === headRepo);
+            if (candidates.length !== 1) {
+              core.info(`Expected exactly one open PR for ${headRepo}@${headBranch} (${headSha}); found ${candidates.length}. Skipping.`);
+              return;
+            }
+            const issue_number = candidates[0].number;
+
+            const marker = '<!-- pr-surface-report -->';
+            const body = fs.readFileSync('pr-surface-report.md', 'utf8');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }

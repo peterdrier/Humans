@@ -98,8 +98,17 @@ def limited(items: list[str], limit: int = 25) -> list[str]:
     return [*items[:limit], f"... {len(items) - limit} more"]
 
 
+def md_safe(text: str) -> str:
+    # Strip characters a fork PR could use to break out of an inline-code span or
+    # markdown table cell (backtick, pipe) plus control chars / newlines. The bot
+    # posts this report verbatim, so fork-controlled identifiers and .cs paths are
+    # untrusted input; legitimate C# names/paths contain none of these, so this is
+    # lossless for real content while neutralizing markdown/@mention injection.
+    return "".join(c for c in str(text) if c not in "`|" and (c == " " or c >= "!"))
+
+
 def bullet_list(items: list[str]) -> str:
-    return "\n".join(f"- `{item}`" for item in limited(items))
+    return "\n".join(f"- `{md_safe(item)}`" for item in limited(items))
 
 
 def short_ref(ref: str) -> str:
@@ -224,7 +233,7 @@ def interface_delta_markdown(delta: dict[str, object]) -> str:
     if added_methods:
         sections.extend(["", "**Added interface methods**"])
         for name, methods in added_methods.items():
-            sections.extend(["", f"`{name}`", "", bullet_list(list(methods))])
+            sections.extend(["", f"`{md_safe(name)}`", "", bullet_list(list(methods))])
     return "\n".join(sections)
 
 
@@ -247,7 +256,7 @@ def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> 
     if section_rows:
         sections.extend(["#### Section Deltas", "", "| section | base | head | delta |", "|---|---:|---:|---:|"])
         sections.extend(
-            f"| {name} | {base} | {head} | {format_delta(delta)} |"
+            f"| `{md_safe(name)}` | {base} | {head} | {format_delta(delta)} |"
             for name, base, head, delta in section_rows
         )
         sections.append("")
@@ -258,7 +267,7 @@ def reforge_delta_markdown(base_score: dict | None, head_score: dict | None) -> 
     if rule_rows:
         sections.extend(["#### Rule Deltas", "", "| rule | base | head | delta |", "|---|---:|---:|---:|"])
         sections.extend(
-            f"| `{name}` | {base} | {head} | {format_delta(delta)} |"
+            f"| `{md_safe(name)}` | {base} | {head} | {format_delta(delta)} |"
             for name, base, head, delta in rule_rows
         )
         sections.append("")

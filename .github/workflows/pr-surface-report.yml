@@ -1,12 +1,19 @@
 name: PR Surface Report
 
+# Build/analysis half of the surface report. Runs on `pull_request` (NOT
+# pull_request_target) so that for fork PRs it carries only a read-only token
+# and no secrets. This job restores/builds PR-head code via reforge, which can
+# execute fork-authored MSBuild targets — that is acceptable ONLY because this
+# job has nothing privileged to steal and no privileged follow-up step to
+# poison (no commenting here). The privileged comment is posted by the separate
+# pr-surface-report-comment.yml workflow, triggered via workflow_run, which
+# never runs PR code.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: pr-surface-report-${{ github.repository }}-${{ github.event.pull_request.number }}
@@ -22,12 +29,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
-          # Don't leave the privileged GITHUB_TOKEN in .git/config: the reforge
-          # step below runs an MSBuild restore/design-time build over PR-head
-          # code (incl. fork PRs), which can execute fork-authored MSBuild
-          # targets. With no persisted token and no secrets referenced, that
-          # build has nothing privileged in reach. Public repo => the anonymous
-          # fetch below still works.
           persist-credentials: false
 
       - name: Fetch PR head
@@ -89,40 +90,12 @@ jobs:
             --output pr-surface-report.md \
             --json-output pr-surface-report.json
 
-      - name: Post or update PR comment
-        uses: actions/github-script@v9
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- pr-surface-report -->';
-            const body = fs.readFileSync('pr-surface-report.md', 'utf8');
-            const {owner, repo} = context.repo;
-            const issue_number = context.payload.pull_request.number;
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number,
-              per_page: 100,
-            });
-            const existing = comments.find(comment =>
-              comment.user.type === 'Bot' && comment.body.includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body,
-              });
-            }
+          name: pr-surface-report
+          path: pr-surface-report.md
+          if-no-files-found: error
 
       - name: Enforce migration count
         if: always()
