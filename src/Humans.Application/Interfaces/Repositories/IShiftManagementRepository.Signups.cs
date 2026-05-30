@@ -81,11 +81,11 @@ public partial interface IShiftManagementRepository
     // ============================================================
 
     /// <summary>
-     /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
-     /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
-     /// bulk path on
-     /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
-     /// </summary>
+    /// Loads <see cref="VolunteerTagPreference"/> rows for the supplied user
+    /// ids in one query, with <c>ShiftTag</c> included (read-only). Backs the
+    /// bulk path on
+    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// </summary>
     Task<IReadOnlyList<VolunteerTagPreference>> GetVolunteerTagPreferencesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
