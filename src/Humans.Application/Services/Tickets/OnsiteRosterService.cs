@@ -21,14 +21,14 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
     private readonly IShiftManagementService _shifts;
     private readonly ICampServiceRead _camps;
     private readonly ITeamServiceRead _teams;
-    private readonly IRoleAssignmentService _roles;
+    private readonly IRoleAssignmentServiceRead _roles;
 
     public OnsiteRosterService(
         IUserServiceRead users,
         IShiftManagementService shifts,
         ICampServiceRead camps,
         ITeamServiceRead teams,
-        IRoleAssignmentService roles)
+        IRoleAssignmentServiceRead roles)
     {
         _users = users;
         _shifts = shifts;

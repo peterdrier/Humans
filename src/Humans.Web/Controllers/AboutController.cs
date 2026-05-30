@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 [Route("[controller]")]
 public class AboutController(
     IUserServiceRead userService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IClock clock,
     ILogger<AboutController> logger) : HumansControllerBase(userService)
 {

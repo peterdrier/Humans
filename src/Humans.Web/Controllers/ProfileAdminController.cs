@@ -24,7 +24,7 @@ public class ProfileAdminController(
     IAuditLogService audit,
     ILogger<ProfileAdminController> logger,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService) : HumansControllerBase(userService)
+    IRoleAssignmentServiceRead roleAssignmentService) : HumansControllerBase(userService)
 {
     [HttpGet("EmailProblems")]
     public async Task<IActionResult> EmailProblems(CancellationToken ct)

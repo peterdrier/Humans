@@ -4,9 +4,9 @@ using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Governance;
 
-// Pass-through to ITeamServiceRead + IRoleAssignmentService. Exists to break the DI cycle
+// Pass-through to ITeamServiceRead + IRoleAssignmentServiceRead. Exists to break the DI cycle
 // MembershipCalculator → ITeamService → ISystemTeamSync → IMembershipCalculator.
-public sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmentService roleAssignmentService)
+public sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmentServiceRead roleAssignmentService)
     : IMembershipQuery
 {
     public async Task<IReadOnlyList<MembershipTeamSnapshot>> GetUserTeamsAsync(

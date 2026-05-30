@@ -48,8 +48,8 @@ public class IssuesArchitectureTests
             because: "Issues resolves reporter / assignee / resolver / comment-sender display names via IUserServiceRead instead of taking the write-capable user service or using cross-domain .Include() chains");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Issues resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
-        paramTypes.Should().Contain(typeof(IRoleAssignmentService),
-            because: "Issues fans out comment notifications to section role-holders via IRoleAssignmentService.GetActiveUserIdsInRoleAsync — no direct query on the role_assignments table");
+        paramTypes.Should().Contain(typeof(IRoleAssignmentServiceRead),
+            because: "Issues fans out comment notifications to section role-holders via IRoleAssignmentServiceRead.GetActiveUserIdsInRoleAsync — read-only cross-section access through the read interface, no direct query on the role_assignments table");
     }
 
     [HumansFact]

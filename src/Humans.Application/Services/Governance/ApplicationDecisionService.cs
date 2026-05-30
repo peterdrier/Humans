@@ -25,7 +25,7 @@ namespace Humans.Application.Services.Governance;
 public sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,

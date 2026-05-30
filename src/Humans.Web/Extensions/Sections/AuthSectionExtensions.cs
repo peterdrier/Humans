@@ -44,6 +44,8 @@ internal static class AuthSectionExtensions
         services.AddSingleton<CachingRoleAssignmentService>();
         services.AddSingleton<IRoleAssignmentService>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
+        services.AddSingleton<IRoleAssignmentServiceRead>(sp =>
+            sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddSingleton<IRoleAssignmentCacheInvalidator>(sp =>
             sp.GetRequiredService<CachingRoleAssignmentService>());
         services.AddSingleton<ICacheStats>(sp =>

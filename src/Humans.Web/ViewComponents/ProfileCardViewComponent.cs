@@ -24,7 +24,7 @@ public class ProfileCardViewComponent(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
-    IRoleAssignmentService roleAssignmentService,
+    IRoleAssignmentServiceRead roleAssignmentService,
     IMembershipCalculator membershipCalculator,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {

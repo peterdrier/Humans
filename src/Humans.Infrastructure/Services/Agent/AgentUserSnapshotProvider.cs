@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Services.Agent;
 
 public sealed class AgentUserSnapshotProvider(
     IUserServiceRead users,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     ITeamServiceRead teams,
     IConsentServiceRead consents,
     IFeedbackService feedback,

@@ -28,7 +28,7 @@ public sealed class IssuesService(
     IIssuesRepository repo,
     IUserServiceRead users,
     IUserEmailService userEmails,
-    IRoleAssignmentService roles,
+    IRoleAssignmentServiceRead roles,
     IEmailService email,
     IEmailMessageFactory emailMessages,
     INotificationService notifications,
