@@ -24,7 +24,7 @@ public sealed class CampaignService(
     ITeamServiceRead teamService,
     IUserEmailService userEmailService,
     IUserServiceRead userService,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     ICommunicationPreferenceService commPrefService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,

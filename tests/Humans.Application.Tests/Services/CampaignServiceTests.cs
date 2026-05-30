@@ -112,7 +112,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
             teamService,
             userEmailService,
             userService,
-            Substitute.For<INotificationService>(),
+            Substitute.For<INotificationEmitter>(),
             commPrefService,
             _emailService,
             _emailMessages,
