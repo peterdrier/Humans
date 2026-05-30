@@ -31,7 +31,7 @@ public class AdminSidebarViewComponentTests
     public async Task Hides_Empty_Groups()
     {
         var auth = Substitute.For<IAuthorizationService>();
-        // Allow only items in the Operations group
+        // Allow only items in the Tickets group
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 Arg.Is<string>(p => p == PolicyNames.TicketAdminBoardOrAdmin))
             .Returns(AuthorizationResult.Success());
@@ -42,7 +42,7 @@ public class AdminSidebarViewComponentTests
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         model!.Groups.Should().HaveCount(1);
-        model.Groups.Single().Label.Should().Be("Operations");
+        model.Groups.Single().Label.Should().Be("Tickets");
     }
 
     [HumansFact]

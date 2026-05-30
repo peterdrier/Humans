@@ -23,7 +23,7 @@ public class AdminBreadcrumbViewComponentTests
         sut.ViewComponentContext = ctx;
         var result = sut.Invoke() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminBreadcrumbViewModel;
-        model!.GroupLabel.Should().Be("Operations");
+        model!.GroupLabel.Should().Be("Tickets");
         model.ItemLabel.Should().Be("Tickets");
     }
 

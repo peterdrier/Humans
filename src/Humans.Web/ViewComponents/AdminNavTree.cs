@@ -12,7 +12,7 @@ public static class AdminNavTree
 {
     public static IReadOnlyList<AdminNavGroup> Groups { get; } =
     [
-        new("Operations", [
+        new("Tickets", [
             new("Tickets",            "Ticket",         "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin),
             new("Transfer requests",  "TicketTransferAdmin", "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin,
                  PillCount: PillCounts.TransferQueue),
@@ -22,27 +22,33 @@ public static class AdminNavTree
             new("Humans", "Profile", "AdminList",       null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),
             new("Roles",  "Profile", "Roles",           null, null, "fa-solid fa-id-badge",         PolicyNames.HumanAdminBoardOrAdmin),
             new("Review", "OnboardingReview", "Index",   null, null, "fa-solid fa-clipboard-check",  PolicyNames.ReviewQueueAccess,
-                 PillCount: PillCounts.ReviewQueue)
+                 PillCount: PillCounts.ReviewQueue),
+            new("Merge requests",      "AdminMerge", "Index",             null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
+            new("Duplicate detection", "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
+            new("Email problems",      "ProfileAdmin", "EmailProblems",   null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly)
         ]),
         new("Shifts", [
             new("Dashboard", "ShiftDashboard", "Index",  null, null, "fa-solid fa-gauge",            PolicyNames.ShiftDepartmentManager),
             new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
-            new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess)
+            new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess),
+            new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",  PolicyNames.AdminOnly)
         ]),
         new("Cantina", [
             new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
-        ]),
-        new("Money", [
-            new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
-            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
-            new("Store summary",  "StoreAdmin",   "Summary", null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin)
         ]),
         new("Expenses", [
             new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.IsActiveMember),
             new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.IsActiveMember),
             new("Expense Review",    "Expenses", "Review",      null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin)
         ]),
-        new("Events", [
+        new("Finance", [
+            new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin)
+        ]),
+        new("Store", [
+            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
+            new("Store summary",  "StoreAdmin",   "Summary", null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin)
+        ]),
+        new("Event Guide", [
             new("Guide settings", "EventsAdmin", "Settings", null, null, "fa-solid fa-calendar-days", PolicyNames.EventsAdminOrAdmin),
             new("Guide categories", "EventsAdmin", "Categories", null, null, "fa-solid fa-tags", PolicyNames.EventsAdminOrAdmin),
             new("Guide venues", "EventsAdmin", "Venues", null, null, "fa-solid fa-location-dot", PolicyNames.EventsAdminOrAdmin)
@@ -50,31 +56,37 @@ public static class AdminNavTree
         new("Governance", [
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
-            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
-            new("Audit log",    "AuditLog",    "Index",            null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin)
+            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin)
         ]),
-        new("Integrations", [
-            new("Google",             "Google", "Index",        null, null, "fa-brands fa-google",   PolicyNames.AdminOnly),
+        new("Google", [
+            new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
+            new("Sync settings",         "Google", "SyncSettings", null, null, "fa-solid fa-sliders",           PolicyNames.AdminOnly),
+            new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     PolicyNames.TeamsAdminBoardOrAdmin),
+            new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
+            new("Workspace accounts",    "Google", "Accounts",     null, null, "fa-solid fa-at",                PolicyNames.AdminOnly),
+            new("Sync outbox",           "Google", "SyncOutbox",   null, null, "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
+            new("Sync results",          "Google", "SyncResults",  null, null, "fa-solid fa-list-check",        PolicyNames.AdminOnly),
+            new("Group settings",        "Google", "GroupSettingsResults", null, null, "fa-solid fa-gears",     PolicyNames.AdminOnly),
+            new("Email renames",         "Google", "EmailRenames", null, null, "fa-solid fa-right-left",        PolicyNames.AdminOnly),
+            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly)
+        ]),
+        new("Messaging", [
             new("Email preview",      "Email",  "EmailPreview", null, null, "fa-solid fa-envelope",  PolicyNames.AdminOnly),
             new("Email outbox",       "Email",  "EmailOutbox",  null, null, "fa-solid fa-inbox",     PolicyNames.AdminOnly),
             new("Campaigns",          "Campaign", "Index",      null, null, "fa-solid fa-bullhorn",  PolicyNames.AdminOnly),
-            new("Workspace accounts", "Google",  "Accounts",    null, null, "fa-solid fa-at",        PolicyNames.AdminOnly),
-            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
-            new("Mailer",                "MailerAdmin", "Index",           null, null, "fa-solid fa-paper-plane",          PolicyNames.AdminOnly)
+            new("Mailer",             "MailerAdmin", "Index",   null, null, "fa-solid fa-paper-plane", PolicyNames.AdminOnly),
+            new("Audience segmentation", "Admin", "AudienceSegmentation", null, null, "fa-solid fa-chart-pie", PolicyNames.AdminOnly)
         ]),
         new("Agent", [
             new("Agent Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
             new("Agent Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",      PolicyNames.AdminOnly),
             new("Agent History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
         ]),
-        new("People data", [
-            new("Merge requests",        "AdminMerge", "Index",            null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
-            new("Duplicate detection",   "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
-            new("Email problems",        "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly),
-            new("Audience segmentation", "Admin", "AudienceSegmentation",   null, null, "fa-solid fa-chart-pie",  PolicyNames.AdminOnly),
-            new("Legal documents",       "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
-            new("Backfill Provider/IsGoogle", "Admin", "BackfillUserEmailProviders", null, null, "fa-solid fa-key", PolicyNames.AdminOnly),
-            new("Stub Profile Backfill",      "ProfileBackfillAdmin", "Index",       null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly)
+        new("Legal", [
+            new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly)
+        ]),
+        new("Audit", [
+            new("Audit log", "AuditLog", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
         ]),
         new("Diagnostics", [
             new("Logs",            "Admin", "Logs",          null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
@@ -84,8 +96,6 @@ public static class AdminNavTree
             new("All users (debug)", "UsersAdminDebug", "Index", null, null, "fa-solid fa-bug-slash", PolicyNames.AdminOnly),
             new("Configuration",   "Admin", "Configuration", null, null, "fa-solid fa-gear",                PolicyNames.AdminOnly),
             new("Maintenance",     "Admin", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",  PolicyNames.AdminOnly),
-            new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",        PolicyNames.AdminOnly),
-            new("Picture migration", "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image", PolicyNames.AdminOnly),
             new("Hangfire",        null, null, null, "/hangfire",      "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
             new("Health",          null, null, null, "/health/ready",  "fa-solid fa-heart-pulse",       PolicyNames.AdminOnly)
         ]),
@@ -98,6 +108,11 @@ public static class AdminNavTree
         new("Design", [
             new("Color palette", "ColorPalette",  "Index", null, null, "fa-solid fa-palette", PolicyNames.AdminOnly),
             new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly)
+        ]),
+        new("Temp", [
+            new("Picture migration",          "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image",     PolicyNames.AdminOnly),
+            new("Backfill Provider/IsGoogle", "Admin", "BackfillUserEmailProviders",    null, null, "fa-solid fa-key",       PolicyNames.AdminOnly),
+            new("Stub Profile Backfill",      "ProfileBackfillAdmin", "Index",          null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly)
         ])
     ];
 }
