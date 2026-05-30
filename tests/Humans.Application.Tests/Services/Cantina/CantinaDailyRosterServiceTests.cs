@@ -40,7 +40,8 @@ public class CantinaDailyRosterServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
         _service = new CantinaRosterService(_shiftMgmt, _userRead, _clock);
@@ -262,7 +263,8 @@ public class CantinaDailyRosterServiceTests
     // ---- helpers ----
 
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(dayOffset, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
     private void SetupHumans(params Profile[] profiles)

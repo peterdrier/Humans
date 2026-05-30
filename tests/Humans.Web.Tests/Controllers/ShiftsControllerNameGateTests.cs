@@ -31,7 +31,7 @@ public class ShiftsControllerNameGateTests
 {
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
-    private readonly IGeneralAvailabilityService _availabilityService = Substitute.For<IGeneralAvailabilityService>();
+    private readonly IVolunteerTrackingService _volunteerTrackingService = Substitute.For<IVolunteerTrackingService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -52,7 +52,7 @@ public class ShiftsControllerNameGateTests
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
-            _shiftMgmt, _signupService, _availabilityService, _shiftView, _teamService,
+            _shiftMgmt, _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
@@ -127,7 +127,7 @@ public class ShiftsControllerNameGateTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(Guid.Empty, Guid.Empty, null);
+        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(Guid.Empty, Guid.Empty);
     }
 
     [HumansFact]
@@ -144,7 +144,7 @@ public class ShiftsControllerNameGateTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpRangeAsync(
-            Guid.Empty, Guid.Empty, 0, 0, null, false);
+            Guid.Empty, Guid.Empty, 0, 0);
     }
 
     [HumansFact]

@@ -26,6 +26,7 @@ public class OnboardingWidgetController(
     IProfileEditorService profileEditorService,
     IShiftSignupService signupService,
     IShiftManagementService shiftMgmt,
+    IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -95,10 +96,11 @@ public class OnboardingWidgetController(
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
         // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
-        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(
-            es.Id, includeAdminOnly: false, includeSignups: true,
-            includeHidden: false, priorityOnly: false);
-        var (shiftIds, statuses) = await signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
+        var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            es.Id,
+            Flags: ShiftBrowseQueryFlags.IncludeSignups));
+        var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
+        var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
             es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
         return View(vm);
@@ -109,7 +111,7 @@ public class OnboardingWidgetController(
     public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
     {
         var userId = CurrentUserId();
-        var result = await signupService.SignUpAsync(userId, shiftId, userId, false);
+        var result = await signupService.SignUpAsync(userId, shiftId, actorUserId: userId);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up.");
@@ -123,7 +125,7 @@ public class OnboardingWidgetController(
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
     {
         // Multi-day Build/Strike signup. Mirrors ShiftsController but routes back through widget dispatcher.
-        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset, isPrivileged: false);
+        var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
         if (!result.Success)
         {
             SetError(result.Error ?? "Could not sign up for date range.");

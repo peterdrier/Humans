@@ -20,10 +20,9 @@ namespace Humans.Web.Controllers;
 public class ShiftDashboardController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
-    IShiftView shiftView,
-    IGeneralAvailabilityService availabilityService,
     IUserServiceRead userService,
     ShiftDashboardPageBuilder pageBuilder,
+    ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     ILogger<ShiftDashboardController> logger) : HumansControllerBase(userService)
 {
     private static LocalDate? ParseIsoDateOrNull(string? raw)
@@ -78,15 +77,10 @@ public class ShiftDashboardController(
     {
         try
         {
-            var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
+            var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await shiftMgmt.GetShiftByIdAsync(shiftId),
                 query,
-                shiftMgmt.GetActiveAsync,
-                ShiftRoleChecks.CanViewMedical(User),
-                UserService,
-                shiftView,
-                signupService,
-                availabilityService);
+                ShiftRoleChecks.CanViewMedical(User));
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)

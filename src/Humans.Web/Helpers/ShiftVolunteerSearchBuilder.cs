@@ -36,17 +36,17 @@ public sealed record VolunteerSearchBuildResult(
         new(VolunteerSearchBuildStatus.Success, results);
 }
 
-public static class ShiftVolunteerSearchBuilder
+public sealed class ShiftVolunteerSearchBuilder(
+    IShiftManagementService shiftManagement,
+    IUserServiceRead userService,
+    IShiftView shiftView,
+    IShiftSignupService signupService,
+    IVolunteerTrackingService volunteerTrackingService)
 {
-    public static async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
+    public async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
         Shift? shift,
         string? query,
-        Func<Task<EventSettings?>> getActiveEventSettings,
-        bool canViewMedical,
-        IUserServiceRead userService,
-        IShiftView shiftView,
-        IShiftSignupService signupService,
-        IGeneralAvailabilityService availabilityService)
+        bool canViewMedical)
     {
         if (!query.HasSearchTerm())
             return VolunteerSearchBuildResult.EmptyQuery;
@@ -54,7 +54,7 @@ public static class ShiftVolunteerSearchBuilder
         if (shift is null)
             return VolunteerSearchBuildResult.NotFound;
 
-        var activeEvent = await getActiveEventSettings();
+        var activeEvent = await shiftManagement.GetActiveAsync();
         var eventSettings = shift.Rota.EventSettings;
 
         var results = await BuildAsync(
@@ -62,25 +62,17 @@ public static class ShiftVolunteerSearchBuilder
             query.Trim(),
             eventSettings,
             activeEvent,
-            canViewMedical,
-            userService,
-            shiftView,
-            signupService,
-            availabilityService);
+            canViewMedical);
 
         return VolunteerSearchBuildResult.Success(results);
     }
 
-    public static async Task<List<VolunteerSearchResult>> BuildAsync(
+    private async Task<List<VolunteerSearchResult>> BuildAsync(
         Shift shift,
         string query,
         EventSettings eventSettings,
         EventSettings? activeEvent,
-        bool canViewMedical,
-        IUserServiceRead userService,
-        IShiftView shiftView,
-        IShiftSignupService signupService,
-        IGeneralAvailabilityService availabilityService)
+        bool canViewMedical)
     {
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
@@ -96,7 +88,7 @@ public static class ShiftVolunteerSearchBuilder
             .Take(10)
             .ToList();
 
-        var poolVolunteers = await availabilityService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
+        var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
         // Bulk-fetch the cached view for every candidate user — replaces the

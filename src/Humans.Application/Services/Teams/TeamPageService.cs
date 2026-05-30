@@ -130,8 +130,8 @@ public sealed class TeamPageService(
                 return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
             }
 
-            var childTeamIdsWithShifts = await shiftManagementService.GetTeamIdsWithShiftsInEventAsync(
-                activeEvent.Id, activeChildTeamIds, cancellationToken);
+            var childTeamCountWithShifts = activeChildTeamIds
+                .Count(aggregatedData.TeamIdsWithShifts.Contains);
 
             return new TeamPageShiftsSummary(
                 aggregatedData.TotalSlots,
@@ -139,7 +139,7 @@ public sealed class TeamPageService(
                 aggregatedData.PendingCount,
                 aggregatedData.UniqueVolunteerCount,
                 canManageShifts,
-                childTeamIdsWithShifts.Count);
+                childTeamCountWithShifts);
         }
 
         var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);

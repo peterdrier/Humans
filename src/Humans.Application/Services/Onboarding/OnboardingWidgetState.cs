@@ -9,7 +9,7 @@ namespace Humans.Application.Services.Onboarding;
 
 public class OnboardingWidgetState(
     IUserServiceRead users,
-    IShiftSignupService signups,
+    IShiftView shiftView,
     IMembershipCalculator membership,
     IShiftManagementService shiftMgmt,
     IConsentServiceRead consents,
@@ -37,8 +37,8 @@ public class OnboardingWidgetState(
         var hasCurrentEventSignup = false;
         if (activeEvent is not null)
         {
-            var (shiftIds, _) = await signups.GetActiveSignupStatusesAsync(userId, activeEvent.Id);
-            hasCurrentEventSignup = shiftIds.Count > 0;
+            var shifts = await shiftView.GetUserAsync(userId, ct);
+            hasCurrentEventSignup = shifts.HasShift;
         }
 
         return (hasSkip || hasCurrentEventSignup)

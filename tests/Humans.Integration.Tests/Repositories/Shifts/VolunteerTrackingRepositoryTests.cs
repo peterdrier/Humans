@@ -25,15 +25,16 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     : IClassFixture<HumansWebApplicationFactory>
 {
     [HumansFact]
-    public async Task GetAsync_returns_null_when_no_row_exists()
+    public async Task GetBuildStatusesForEventAsync_returns_empty_when_no_row_exists()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var sut = new VolunteerTrackingRepository(db);
+        var userId = Guid.NewGuid();
 
-        var result = await sut.GetAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await sut.GetBuildStatusesForEventAsync(Guid.NewGuid(), [userId]);
 
-        result.Should().BeNull();
+        result.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -55,7 +56,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         trimmed.Should().BeEmpty();
 
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.UserId.Should().Be(userId);
         fetched.BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
@@ -63,7 +64,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     }
 
     [HumansFact]
-    public async Task GetByEventAsync_returns_only_rows_for_requested_event()
+    public async Task GetBuildStatusesForEventAsync_returns_only_rows_for_requested_event()
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
@@ -80,7 +81,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null, null);
         await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null, null);
 
-        var rows = await sut.GetByEventAsync(es1.Id);
+        var rows = await sut.GetBuildStatusesForEventAsync(es1.Id);
 
         rows.Should().HaveCount(2);
         rows.Select(r => r.UserId).Should().BeEquivalentTo([u1, u2]);
@@ -150,7 +151,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             userId, es.Id,
             new DayOffEntry(DayOffset: -5, Reason: "doctor", MarkedByUserId: actor, MarkedAt: markedAt));
 
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
@@ -178,7 +179,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             userId, es.Id,
             new DayOffEntry(-5, "family emergency", actor, t2));
 
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
@@ -202,7 +203,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-7, "b", actor, t));
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "c", actor, t));
 
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-7, -5, -3);
     }
@@ -224,7 +225,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var removed = await sut.RemoveDayOffAsync(userId, es.Id, -5);
 
         removed.Should().BeTrue();
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-3);
@@ -276,7 +277,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             setupOffsetThreshold: -4);
 
         trimmed.Should().Equal(-3);
-        var fetched = await sut.GetAsync(userId, es.Id);
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
     }

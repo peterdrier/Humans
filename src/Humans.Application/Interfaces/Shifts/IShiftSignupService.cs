@@ -11,9 +11,14 @@ public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
     /// Creates a signup for a user on a shift. Auto-confirms for Public policy.
-    /// Pass isPrivileged=true when the controller has already verified the user is Admin/coordinator.
+    /// Use <see cref="ShiftSignupRequestFlags.Privileged"/> when the caller has
+    /// already verified the user is an admin or coordinator.
     /// </summary>
-    Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false);
+    Task<SignupResult> SignUpAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
     /// Approves a pending signup. Re-validates invariants.
@@ -56,19 +61,13 @@ public interface IShiftSignupService : IApplicationService
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
-    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false);
-
-    /// <summary>
-    /// Returns the set of all-day shifts within the given offset range on the rota.
-    /// Used by callers that need to peek the candidate set before calling
-    /// <see cref="SignUpRangeAsync"/> — e.g. the dietary-prompt gate that needs
-    /// to know whether any shift in the range qualifies for cantina meals.
-    /// </summary>
-    Task<IReadOnlyList<Shift>> PeekRangeShiftsAsync(
+    Task<SignupResult> SignUpRangeAsync(
+        Guid userId,
         Guid rotaId,
         int startDayOffset,
         int endDayOffset,
-        CancellationToken ct = default);
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
@@ -91,39 +90,14 @@ public interface IShiftSignupService : IApplicationService
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
     /// <summary>
-    /// Gets all active (Confirmed or Pending) signups for a user across every event,
-    /// with Shift.Rota.EventSettings included. Used by the dashboard to detect
-    /// cross-event conflicts when signing up for a date range.
+    /// Gets signup team ownership data for admin authorization checks.
     /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets a signup by primary key with Shift.Rota included.
-    /// </summary>
-    Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId);
-
-    /// <summary>
-    /// Gets the first signup in a block with Shift.Rota included (for team ownership checks).
-    /// </summary>
-    Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId);
-
-    /// <summary>
-    /// Gets all signups for a shift.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId);
+    Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope);
 
     /// <summary>
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
     /// </summary>
     Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
-
-    /// <summary>
-    /// Gets active signup statuses (Confirmed or Pending) for a user in a specific event.
-    /// Returns a tuple of (shiftIds the user is signed up for, shiftId → status dictionary).
-    /// This is the single source of truth for "which shifts has this user actively signed up for?"
-    /// </summary>
-    Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
-        Guid userId, Guid eventSettingsId);
 
     /// <summary>
     /// Cancels every Confirmed or Pending signup owned by
@@ -152,16 +126,6 @@ public interface IShiftSignupService : IApplicationService
     Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Filters a coordinator-side list of signups to only those whose users are
-    /// missing required Volunteer consents (i.e., they completed sign-up via the
-    /// onboarding widget but have not finished consents yet, so the signup is
-    /// force-Pending awaiting promotion). Used by the coordinator Pending-list
-    /// "Incomplete onboarding" filter chip.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns user-ids with at least one ShiftSignup for the given event whose
     /// Status is Pending or Confirmed. Used by audience computations to identify
     /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
@@ -174,6 +138,20 @@ public sealed record ShiftSignupTeamProbe(
     Guid Id,
     Guid ShiftId,
     Guid TeamId);
+
+public enum ShiftSignupTeamProbeScope
+{
+    Signup,
+    SignupBlock
+}
+
+[Flags]
+public enum ShiftSignupRequestFlags
+{
+    None = 0,
+    Privileged = 1,
+    SkipConflicts = 2
+}
 
 public sealed record OrphanSignupSnapshot(
     Guid Id,

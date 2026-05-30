@@ -1661,7 +1661,10 @@ public class ProfileController(
                     {
                         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
                         var result = await shiftSignupService.SignUpAsync(
-                            user.Id, sid, actorUserId: null, isPrivileged: privileged);
+                            user.Id,
+                            sid,
+                            actorUserId: null,
+                            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
                         if (!result.Success)
                             SetError(result.Error ?? "Shift signup failed.");
                         else
@@ -1675,8 +1678,15 @@ public class ProfileController(
                                          && model.EndDayOffset is { } ed:
                     {
                         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var flags = ShiftSignupRequestFlags.SkipConflicts;
+                        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
                         var result = await shiftSignupService.SignUpRangeAsync(
-                            user.Id, rid, sd, ed, actorUserId: null, isPrivileged: privileged, skipConflicts: true);
+                            user.Id,
+                            rid,
+                            sd,
+                            ed,
+                            actorUserId: null,
+                            flags: flags);
                         if (!result.Success)
                             SetError(result.Error ?? "Shift range signup failed.");
                         else

@@ -8,8 +8,8 @@ namespace Humans.Application.Tests.Architecture;
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the
 /// <c>ShiftManagementService</c> portion of the Shifts section (issue #541a).
-/// Sibling services (<c>ShiftSignupService</c>, <c>GeneralAvailabilityService</c>)
-/// migrate in follow-up sub-tasks.
+/// Sibling services (<c>ShiftSignupService</c>, <c>VolunteerTrackingService</c>)
+/// cover signup and user-oriented tracking workflows.
 /// </summary>
 public class ShiftManagementArchitectureTests
 {

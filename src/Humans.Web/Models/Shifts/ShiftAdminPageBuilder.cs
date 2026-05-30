@@ -1,7 +1,9 @@
 using Humans.Application;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -19,7 +21,7 @@ public sealed record ShiftAdminPageRequest(
 
 public sealed class ShiftAdminPageBuilder(
     IShiftManagementService shiftManagement,
-    IShiftSignupService signupService,
+    IMembershipCalculator membership,
     IUserServiceRead userService,
     ITeamServiceRead teamService)
 {
@@ -34,8 +36,7 @@ public sealed class ShiftAdminPageBuilder(
             : await userService.GetUserInfosAsync(allUserIds);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department);
         var allTags = await shiftManagement.GetTagsAsync();
-        var staffingData = await shiftManagement.GetStaffingDataAsync(request.EventSettings.Id, request.Department.Id);
-        var staffingHours = await shiftManagement.GetStaffingHoursAsync(request.EventSettings.Id, request.Department.Id);
+        var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id);
 
         return new ShiftAdminViewModel
         {
@@ -50,8 +51,8 @@ public sealed class ShiftAdminPageBuilder(
             VolunteerProfiles = profileDict,
             Users = userLookup,
             CanViewMedical = request.CanViewMedical,
-            StaffingData = staffingData.ToList(),
-            StaffingHours = staffingHours.ToList(),
+            StaffingData = staffingSnapshot.StaffingData.ToList(),
+            StaffingHours = staffingSnapshot.StaffingHours.ToList(),
             Now = request.Now,
             AllDepartments = allDepartments,
             AllTags = allTags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList(),
@@ -72,16 +73,28 @@ public sealed class ShiftAdminPageBuilder(
             foreach (var shift in rota.Shifts)
             {
                 totalSlots += shift.MaxVolunteers;
-                var shiftSignups = await signupService.GetByShiftAsync(shift.Id);
-                confirmedCount += shiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
-                pendingSignups.AddRange(shiftSignups.Where(s => s.Status == SignupStatus.Pending));
+                confirmedCount += shift.ShiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
+                pendingSignups.AddRange(shift.ShiftSignups.Where(s => s.Status == SignupStatus.Pending));
             }
         }
 
         if (incompleteOnboarding)
-            pendingSignups = (await signupService.FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
+            pendingSignups = (await FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
 
         return (pendingSignups, totalSlots, confirmedCount);
+    }
+
+    private async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftSignup> signups)
+    {
+        if (signups.Count == 0) return signups;
+
+        var userIds = signups.Select(s => s.UserId).Distinct().ToList();
+        var withConsents = await membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+            userIds,
+            SystemTeamIds.Volunteers);
+
+        return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
     }
 
     private async Task<Dictionary<Guid, VolunteerBadgesViewModel>> LoadProfilesAsync(

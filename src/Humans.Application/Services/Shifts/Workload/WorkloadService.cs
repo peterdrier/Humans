@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Shifts.Workload;
 public sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftView view,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     IUserServiceRead userService) : IWorkloadService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
@@ -28,8 +28,8 @@ public sealed class WorkloadService(
         var es = await repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
-        // Distinct rotaIds off GetShiftsForEventAsync — avoids adding an interface method.
-        var shiftStubs = await repo.GetShiftsForEventAsync(es.Id, null, ct);
+        // Distinct rotaIds off the shared event-shift query avoids adding an interface method.
+        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(es.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
         {
@@ -48,14 +48,15 @@ public sealed class WorkloadService(
             .SelectMany(v => v.Shifts.Select(s => (Rota: v.Rota!, Shift: s)))
             .ToList();
 
-        var teamIds = entries.Select(e => e.Rota.TeamId).Distinct().ToList();
-        var teamLookup = teamIds.Count > 0
-            ? await teamService.GetByIdsWithParentsAsync(teamIds, ct)
-            : new Dictionary<Guid, Team>();
+        var allTeams = await teamService.GetTeamsAsync(ct);
+        var teamLookup = entries
+            .Select(e => e.Rota.TeamId)
+            .Distinct()
+            .Where(allTeams.ContainsKey)
+            .ToDictionary(id => id, id => allTeams[id]);
 
         // Role estimates come from the cached team projection (definitions carry
         // EstimatedHours + RolePeriod; assignments carry the holder's user id).
-        var allTeams = await teamService.GetTeamsAsync(ct);
         var rolePersonHours = BuildRolePersonHours(allTeams);
         var roleDeptHours = BuildRoleDeptHours(allTeams);
 
@@ -77,7 +78,7 @@ public sealed class WorkloadService(
     // Unsorted; controller assembles display order (display-sort-in-controllers).
     private static List<WorkloadByRotaRow> BuildByRota(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        IReadOnlyDictionary<Guid, Team> teamLookup) =>
+        IReadOnlyDictionary<Guid, TeamInfo> teamLookup) =>
         entries
             .GroupBy(e => e.Rota.Id)
             .Select(g =>
@@ -109,7 +110,7 @@ public sealed class WorkloadService(
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        IReadOnlyDictionary<Guid, Team> teamLookup,
+        IReadOnlyDictionary<Guid, TeamInfo> teamLookup,
         IReadOnlyDictionary<Guid, RoleDeptHours> roleDeptHours)
     {
         var rows = entries

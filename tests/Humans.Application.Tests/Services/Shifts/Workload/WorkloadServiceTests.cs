@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Services.Shifts.Workload;
 public sealed class WorkloadServiceTests : ServiceTestHarness
 {
     private readonly WorkloadService _service;
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
@@ -33,26 +33,24 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         // GetUserAsync, which the workload service does not call. Stub them.
         var view = new ShiftViewService(
             repo,
-            Substitute.For<IShiftSignupRepository>(),
             Substitute.For<IVolunteerTrackingRepository>());
 
-        _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => GetTeamsByIdsAsync(call.Arg<IReadOnlyCollection<Guid>>()));
-
-        // Role hours come from the cached TeamInfo projection; default to none so
-        // shift-only tests are unaffected. Role tests override via StubTeams.
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, TeamInfo>());
+            .Returns(_ => GetTeamInfosAsync());
 
         _service = new WorkloadService(repo, view, _teamService, NewDbBackedUserService());
     }
 
-    private async Task<IReadOnlyDictionary<Guid, Team>> GetTeamsByIdsAsync(IReadOnlyCollection<Guid> ids)
-    {
-        if (ids.Count == 0) return new Dictionary<Guid, Team>();
-        var teams = await Db.Teams.Where(t => ids.Contains(t.Id)).ToListAsync();
-        return teams.ToDictionary(t => t.Id);
-    }
+    private Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamInfosAsync() =>
+        Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+            Db.Teams.AsEnumerable().ToDictionary(
+                t => t.Id,
+                t => new TeamInfo(
+                    t.Id, t.Name, t.Description, t.Slug,
+                    t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                    t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory, t.CreatedAt,
+                    Members: [],
+                    ParentTeamId: t.ParentTeamId)));
 
     [HumansFact]
     public async Task GetForActiveEvent_NoActiveEvent_ReturnsNull()

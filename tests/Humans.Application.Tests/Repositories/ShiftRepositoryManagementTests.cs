@@ -112,17 +112,6 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         preferences.Should().BeEquivalentTo([tagB.Id, tagC.Id]);
     }
 
-    [HumansFact]
-    public async Task GetActiveEventIdAsync_ReturnsEmpty_WhenEventInactive()
-    {
-        var es = NewEvent(isActive: false);
-        _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _repo.GetActiveEventIdAsync(es.Id);
-        result.Should().Be(Guid.Empty);
-    }
-
     // ─────────────────────────────────────────────────────────
     // helpers
     // ─────────────────────────────────────────────────────────

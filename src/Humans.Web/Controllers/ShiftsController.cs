@@ -24,7 +24,7 @@ namespace Humans.Web.Controllers;
 public class ShiftsController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
-    IGeneralAvailabilityService availabilityService,
+    IVolunteerTrackingService volunteerTrackingService,
     IShiftView shiftView,
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,
@@ -113,7 +113,10 @@ public class ShiftsController(
             return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
+        var result = await signupService.SignUpAsync(
+            user.Id,
+            shiftId,
+            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
 
         return RedirectToBrowseWithSignupResult(
             result,
@@ -160,17 +163,17 @@ public class ShiftsController(
             routeValues: new { returnAction = "signup", shiftId });
     }
 
-    // Range variant of the dietary gate. PeekRangeShiftsAsync already filters to
-    // all-day shifts in the inclusive window, and every all-day shift
-    // QualifiesForCantinaMeal(), so "any shift qualifies" reduces to "filtered
-    // list is non-empty". Mirrors the single-shift gate above, including the
-    // SetInfo message key, so the user sees a consistent nudge regardless of
-    // which signup path tripped the gate.
+    // Range variant of the dietary gate. The range signup flow only targets
+    // all-day shifts, and every all-day shift qualifies for a cantina meal, so
+    // "any shift qualifies" reduces to "the cached rota view has an all-day
+    // shift in this window".
     private async Task<IActionResult?> RedirectIfDietaryMissingForRangeAsync(
         UserInfo user, Guid rotaId, int startDayOffset, int endDayOffset)
     {
-        var rangeShifts = await signupService.PeekRangeShiftsAsync(rotaId, startDayOffset, endDayOffset, HttpContext.RequestAborted);
-        if (rangeShifts.Count == 0) return null;
+        var rotaView = await shiftView.GetRotaAsync(rotaId, HttpContext.RequestAborted);
+        var rangeHasQualifyingShift = rotaView.Shifts.Any(s =>
+            s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset);
+        if (!rangeHasQualifyingShift) return null;
 
         if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
 
@@ -196,7 +199,14 @@ public class ShiftsController(
             return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
+        var flags = ShiftSignupRequestFlags.SkipConflicts;
+        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
+        var result = await signupService.SignUpRangeAsync(
+            user.Id,
+            rotaId,
+            startDayOffset,
+            endDayOffset,
+            flags: flags);
 
         return RedirectToBrowseWithSignupResult(
             result,
@@ -381,7 +391,7 @@ public class ShiftsController(
         var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return BadRequest("No active event.");
 
-        await availabilityService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
+        await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
         SetSuccess("Availability updated.");
         return RedirectToAction(nameof(Mine));
     }
@@ -493,8 +503,9 @@ public class ShiftsController(
 
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
-        var allActiveSignups = await signupService.GetActiveSignupsForUserAsync(userId);
-        return allActiveSignups
+        var allSignups = await signupService.GetByUserAsync(userId);
+        return allSignups
+            .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Where(s => s.Shift?.Rota?.EventSettings is not null)
             .Select(s =>
             {

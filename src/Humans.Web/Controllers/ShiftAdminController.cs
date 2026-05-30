@@ -23,11 +23,11 @@ public class ShiftAdminController(
     IShiftManagementService shiftMgmt,
     IShiftSignupService signupService,
     IShiftView shiftView,
-    IGeneralAvailabilityService availabilityService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ShiftAdminPageBuilder pageBuilder,
+    ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     IRotaCoordinatorMessageService rotaMessenger,
     ILogger<ShiftAdminController> logger) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
@@ -97,13 +97,7 @@ public class ShiftAdminController(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        await shiftMgmt.CreateRotaAsync(rota);
-
-        if (!string.IsNullOrWhiteSpace(model.TagIds))
-        {
-            var tagIdList = ParseTagIds(model.TagIds);
-            await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
-        }
+        await shiftMgmt.CreateRotaAsync(rota, ParseTagIds(model.TagIds));
 
         SetSuccess($"Rota '{model.Name}' created.");
         return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
@@ -126,10 +120,7 @@ public class ShiftAdminController(
         rota.Period = model.Period;
         rota.PracticalInfo = model.PracticalInfo;
 
-        await shiftMgmt.UpdateRotaAsync(rota);
-
-        var tagIdList = ParseTagIds(model.TagIds);
-        await shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+        await shiftMgmt.UpdateRotaAsync(rota, ParseTagIds(model.TagIds));
 
         SetSuccess($"Rota '{model.Name}' updated.");
         return RedirectToAction(nameof(Index), new { slug });
@@ -662,15 +653,10 @@ public class ShiftAdminController(
 
         try
         {
-            var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
+            var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await GetShiftForTeamAsync(shiftId, team.Id),
                 query,
-                shiftMgmt.GetActiveAsync,
-                ShiftRoleChecks.CanViewMedical(User),
-                UserService,
-                shiftView,
-                signupService,
-                availabilityService);
+                ShiftRoleChecks.CanViewMedical(User));
             return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)
@@ -722,7 +708,8 @@ public class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        var result = await signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
+        var result = await signupService.VoluntellRangeAsync(
+            userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning is not null
@@ -792,13 +779,13 @@ public class ShiftAdminController(
 
     private async Task<ShiftSignupTeamProbe?> GetSignupForTeamAsync(Guid signupId, Guid teamId)
     {
-        var signup = await signupService.GetByIdAsync(signupId);
+        var signup = await signupService.GetTeamProbeAsync(signupId, ShiftSignupTeamProbeScope.Signup);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
     private async Task<ShiftSignupTeamProbe?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId)
     {
-        var signup = await signupService.GetByBlockIdFirstAsync(signupBlockId);
+        var signup = await signupService.GetTeamProbeAsync(signupBlockId, ShiftSignupTeamProbeScope.SignupBlock);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 

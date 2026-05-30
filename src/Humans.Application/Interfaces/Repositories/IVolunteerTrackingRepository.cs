@@ -15,41 +15,29 @@ namespace Humans.Application.Interfaces.Repositories;
 [Section("Shifts")]
 public interface IVolunteerTrackingRepository : IRepository
 {
-    /// <summary>Fetch the row for (userId, eventSettingsId), or null.</summary>
-    Task<VolunteerBuildStatus?> GetAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>All rows for the event keyed by UserId. Empty list if none.</summary>
-    Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
+    /// <summary>
+    /// Returns <see cref="VolunteerBuildStatus"/> rows for an event, optionally
+    /// restricted to the supplied users. Empty list if no rows match.
+    /// </summary>
+    Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? userIds = null,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Returns <see cref="VolunteerBuildStatus"/> rows for the supplied user
-    /// ids in the given event, in one query. Read-only. Backs the bulk path
-    /// on <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
+    /// Returns general availability rows for an event, optionally restricted to
+    /// the supplied users. Empty list if no rows match.
     /// </summary>
-    Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? userIds = null,
+        CancellationToken ct = default);
 
-    /// <summary>Fetch the general availability row for (userId, eventSettingsId), or null.</summary>
-    Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>All general availability rows for the event. Empty list if none.</summary>
-    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>All general availability rows for a user across events. Empty list if none.</summary>
-    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns general availability rows for the supplied user ids in the
-    /// given event, in one query. Read-only. Backs the bulk path on
-    /// <see cref="Application.Services.Shifts.ShiftViewService.GetUsersAsync"/>.
-    /// </summary>
-    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default);
+    /// <summary>Returns general availability rows for a user, optionally restricted to one event.</summary>
+    Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
+        Guid userId,
+        Guid? eventSettingsId = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Upserts the general availability row for the given user + event pair.
@@ -60,13 +48,6 @@ public interface IVolunteerTrackingRepository : IRepository
         IReadOnlyList<int> dayOffsets,
         Instant now,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes the general availability row for the given user + event pair,
-    /// if one exists.
-    /// </summary>
-    Task DeleteAvailabilityAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Account-merge fold for general availability rows.

@@ -23,7 +23,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// </summary>
 [Grandfathered("HUM0025", justification: "EventSettings is also read by VolunteerTrackingRepository; route VolunteerTracking through a Shifts read surface.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
 [Grandfathered("HUM0025", justification: "ShiftSignups is also read by VolunteerTrackingRepository; route VolunteerTracking through a Shifts read surface.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
-internal sealed partial class ShiftRepository : IShiftManagementRepository, IShiftSignupRepository
+internal sealed partial class ShiftRepository : IShiftManagementRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly HumansDbContext _dbContext;
@@ -69,17 +69,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return await query.AnyAsync(ct);
     }
 
-    public async Task AddEventSettingsAsync(EventSettings entity, CancellationToken ct = default)
+    public async Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.EventSettings.Add(entity);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.EventSettings.Update(entity);
+        if (mode == EntityMutationMode.Add)
+            ctx.EventSettings.Add(entity);
+        else
+            ctx.EventSettings.Update(entity);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -128,17 +124,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
     // Rota
     // ==========================================================================
 
-    public async Task AddRotaAsync(Rota rota, CancellationToken ct = default)
+    public async Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Rotas.Add(rota);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task UpdateRotaAsync(Rota rota, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Rotas.Update(rota);
+        if (mode == EntityMutationMode.Add)
+            ctx.Rotas.Add(rota);
+        else
+            ctx.Rotas.Update(rota);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -161,71 +153,24 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return true;
     }
 
-    public async Task<Rota?> GetRotaForUpdateAsync(Guid rotaId, CancellationToken ct = default)
+    public async Task<Rota?> GetRotaAsync(
+        Guid rotaId, RotaReadShape shape, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rota = await ctx.Rotas
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-        if (rota is null) return null;
+        IQueryable<Rota> query = ctx.Rotas.AsNoTracking();
 
-        // Detach: the caller typically mutates simple fields and then calls
-        // UpdateRotaAsync on a fresh context.
-        ctx.Entry(rota).State = EntityState.Detached;
-        return rota;
-    }
+        if (shape.HasFlag(RotaReadShape.EventSettings))
+            query = query.Include(r => r.EventSettings);
 
-    public async Task<Rota?> GetRotaWithShiftsAndSignupsForDeleteAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-    }
+        if (shape.HasFlag(RotaReadShape.ShiftSignups))
+            query = query.Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups);
+        else if (shape.HasFlag(RotaReadShape.Shifts))
+            query = query.Include(r => r.Shifts);
 
-    public async Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-    }
+        if (shape.HasFlag(RotaReadShape.Tags))
+            query = query.Include(r => r.Tags);
 
-    public async Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .Include(r => r.Tags)
-            .Include(r => r.EventSettings)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
-    }
-
-    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.EventSettings)
-            .Include(r => r.Tags)
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
-            .Where(r => r.TeamId == teamId && r.EventSettingsId == eventSettingsId)
-            .OrderBy(r => r.Name)
-            .ToListAsync(ct);
-    }
-
-    public async Task<Rota?> GetRotaWithEventSettingsAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.EventSettings)
-            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
+        return await query.FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
     public async Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default)
@@ -248,9 +193,8 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> SearchRotasAsync(
-        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
-        int max, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
+        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return [];
@@ -261,10 +205,8 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         var q = ctx.Rotas
             .AsNoTracking()
             .Where(r => r.EventSettingsId == eventSettingsId
+                && r.IsVisibleToVolunteers
                 && EF.Functions.ILike(r.Name, pattern, "\\"));
-
-        if (onlyVolunteerVisible)
-            q = q.Where(r => r.IsVisibleToVolunteers);
 
         return await q
             // Deterministic Take(max) for global search; controller re-ranks by score before display.
@@ -309,10 +251,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
     // Shift
     // ==========================================================================
 
-    public async Task AddShiftAsync(Shift shift, CancellationToken ct = default)
+    public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Shifts.Add(shift);
+        if (mode == EntityMutationMode.Add)
+            ctx.Shifts.Add(shift);
+        else
+            ctx.Shifts.Update(shift);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -323,19 +268,20 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateShiftAsync(Shift shift, CancellationToken ct = default)
+    public async Task<Shift?> GetShiftAsync(Guid shiftId, ShiftReadShape shape, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Shifts.Update(shift);
-        await ctx.SaveChangesAsync(ct);
-    }
+        IQueryable<Shift> query = ctx.Shifts.AsNoTracking();
 
-    public async Task<Shift?> GetShiftWithSignupsForDeleteAsync(Guid shiftId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
+        if (shape.HasFlag(ShiftReadShape.EventSettings))
+            query = query.Include(s => s.Rota).ThenInclude(r => r.EventSettings);
+        else if (shape.HasFlag(ShiftReadShape.Rota))
+            query = query.Include(s => s.Rota);
+
+        if (shape.HasFlag(ShiftReadShape.ShiftSignups))
+            query = query.Include(s => s.ShiftSignups);
+
+        return await query.FirstOrDefaultAsync(s => s.Id == shiftId, ct);
     }
 
     public async Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default)
@@ -350,29 +296,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         ctx.ShiftSignups.RemoveRange(shift.ShiftSignups);
         ctx.Shifts.Remove(shift);
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.ShiftSignups)
-            .Where(s => s.RotaId == rotaId)
-            .OrderBy(s => s.DayOffset)
-            .ThenBy(s => s.StartTime)
-            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default)
@@ -390,138 +313,71 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
     // Reads for dashboards / urgency / staffing
     // ==========================================================================
 
-    public async Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
-
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
-
-        return await query.ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetVisibleShiftsForEventAsync(
-        Guid eventSettingsId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId
-                        && !s.AdminOnly
-                        && s.Rota.IsVisibleToVolunteers)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        bool includeAdminOnly,
-        bool includeHidden,
-        int? fromDayOffset,
-        int? toDayOffset,
-        bool includeRotaTags,
+    public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
+        ShiftEventQuery request,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         IQueryable<Shift> query = ctx.Shifts
             .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups);
+            .Include(s => s.Rota);
 
-        if (includeRotaTags)
-        {
-            query = ctx.Shifts
-                .AsNoTracking()
-                .Include(s => s.Rota)
-                    .ThenInclude(r => r.EventSettings)
-                .Include(s => s.Rota)
-                    .ThenInclude(r => r.Tags)
-                .Include(s => s.ShiftSignups);
-        }
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeRotaTags))
+            query = query.Include(s => s.Rota).ThenInclude(r => r.Tags);
 
-        query = query.Where(s => s.Rota.EventSettingsId == eventSettingsId);
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeSignups))
+            query = query.Include(s => s.ShiftSignups);
 
-        if (!includeAdminOnly)
+        query = query.Where(s => s.Rota.EventSettingsId == request.EventSettingsId);
+
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.ExcludeAdminOnly))
             query = query.Where(s => !s.AdminOnly);
 
-        if (!includeHidden)
+        if (request.Flags.HasFlag(ShiftEventQueryFlags.ExcludeHiddenRotas))
             query = query.Where(s => s.Rota.IsVisibleToVolunteers);
 
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
+        if (request.TeamIds is { Count: > 0 })
+            query = query.Where(s => request.TeamIds.Contains(s.Rota.TeamId));
 
-        if (fromDayOffset.HasValue)
+        if (request.MinDayOffset.HasValue)
         {
-            var fromVal = fromDayOffset.Value;
-            query = query.Where(s => s.DayOffset >= fromVal);
-        }
-
-        if (toDayOffset.HasValue)
-        {
-            var toVal = toDayOffset.Value;
-            query = query.Where(s => s.DayOffset <= toVal);
-        }
-
-        return await query.ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        int? minDayOffset,
-        int? maxDayOffset,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        var query = ctx.Shifts
-            .AsNoTracking()
-            .Include(s => s.Rota)
-                .ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
-
-        if (departmentTeamIds is { Count: > 0 })
-            query = query.Where(s => departmentTeamIds.Contains(s.Rota.TeamId));
-
-        if (minDayOffset.HasValue)
-        {
-            var minv = minDayOffset.Value;
+            var minv = request.MinDayOffset.Value;
             query = query.Where(s => s.DayOffset >= minv);
         }
-        if (maxDayOffset.HasValue)
+
+        if (request.MaxDayOffset.HasValue)
         {
-            var maxv = maxDayOffset.Value;
+            var maxv = request.MaxDayOffset.Value;
             query = query.Where(s => s.DayOffset <= maxv);
         }
 
         return await query.ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> GetRotasWithShiftsAndSignupsAsync(
+    public async Task<IReadOnlyList<Rota>> GetRotasAsync(
         Guid eventSettingsId,
-        IReadOnlyList<Guid> teamIds,
+        IReadOnlyCollection<Guid> teamIds,
+        RotaReadShape shape,
         CancellationToken ct = default)
     {
         if (teamIds.Count == 0) return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Include(r => r.Shifts)
-                .ThenInclude(s => s.ShiftSignups)
+        var query = ctx.Rotas.AsNoTracking();
+
+        if (shape.HasFlag(RotaReadShape.EventSettings))
+            query = query.Include(r => r.EventSettings);
+
+        if (shape.HasFlag(RotaReadShape.ShiftSignups))
+            query = query.Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups);
+        else if (shape.HasFlag(RotaReadShape.Shifts))
+            query = query.Include(r => r.Shifts);
+
+        if (shape.HasFlag(RotaReadShape.Tags))
+            query = query.Include(r => r.Tags);
+
+        return await query
             .Where(r => r.EventSettingsId == eventSettingsId && teamIds.Contains(r.TeamId))
             .ToListAsync(ct);
     }
@@ -534,24 +390,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return await ctx.Rotas
             .AsNoTracking()
             .Where(r => r.EventSettingsId == eventSettingsId)
-            .Select(r => r.TeamId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0) return [];
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
-            .AsNoTracking()
-            .Where(r => r.EventSettingsId == eventSettingsId
-                && teamIds.Contains(r.TeamId)
-                && r.Shifts.Any())
             .Select(r => r.TeamId)
             .Distinct()
             .ToListAsync(ct);
@@ -671,45 +509,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return await query.Select(x => x.CreatedAt).ToListAsync(ct);
     }
 
-    public async Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .Where(e => e.IsActive && e.Id == eventSettingsId)
-            .OrderBy(e => e.Id)
-            .Select(e => e.Id)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift)
-            .Where(s => s.UserId == userId
-                && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
-                && s.Shift!.Rota!.EventSettingsId == eventSettingsId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
-        int dayOffset, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftSignups
-            .AsNoTracking()
-            .Where(ss => (ss.Status == SignupStatus.Pending || ss.Status == SignupStatus.Confirmed)
-                      && ss.Shift!.DayOffset == dayOffset)
-            .Select(ss => ss.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     // ==========================================================================
     // Shift tags
     // ==========================================================================
@@ -725,36 +524,27 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return await tags.ToListAsync(ct);
     }
 
-    public async Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default)
+    public async Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
+        var existing = await ctx.ShiftTags
             .AsNoTracking()
             .FirstOrDefaultAsync(t => EF.Functions.ILike(t.Name, name), ct);
-    }
+        if (existing is not null) return existing;
 
-    public async Task AddTagAsync(ShiftTag tag, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var tag = new ShiftTag
+        {
+            Id = Guid.NewGuid(),
+            Name = name
+        };
         ctx.ShiftTags.Add(tag);
         await ctx.SaveChangesAsync(ct);
+        return tag;
     }
 
     // ==========================================================================
     // Volunteer tag preferences
     // ==========================================================================
-
-    public async Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.VolunteerTagPreferences
-            .AsNoTracking()
-            .Where(v => v.UserId == userId)
-            .Select(v => v.ShiftTag)
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
-    }
 
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
@@ -920,4 +710,3 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository, IShi
         return profileCount + tagPrefCount;
     }
 }
-

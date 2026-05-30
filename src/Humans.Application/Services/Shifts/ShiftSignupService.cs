@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -22,11 +21,10 @@ namespace Humans.Application.Services.Shifts;
 /// Manages the shift signup state machine. No caching decorator (§15 Option A).
 /// </summary>
 public sealed class ShiftSignupService(
-    IShiftSignupRepository repo,
+    IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
-    IMembershipCalculator membership,
     IAuditLogService auditLogService,
     INotificationService notificationService,
     IAdminAuthorizationService adminAuthorization,
@@ -39,13 +37,18 @@ public sealed class ShiftSignupService(
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
-    public async Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false)
+    public async Task<SignupResult> SignUpAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
-        var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
-        if (existingSignup)
+        var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
+        var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
+        if (activeShiftIds.Contains(shiftId))
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await repo.GetShiftWithContextAsync(shiftId);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;
@@ -99,7 +102,7 @@ public sealed class ShiftSignupService(
             signup.ReviewedAt = now;
         }
 
-        repo.Add(signup);
+        repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(userId);
@@ -248,11 +251,11 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
-        var existingSignup = await repo.HasActiveSignupAsync(userId, shiftId);
-        if (existingSignup)
+        var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
+        if (activeShiftIds.Contains(shiftId))
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await repo.GetShiftWithContextAsync(shiftId);
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;
@@ -280,7 +283,7 @@ public sealed class ShiftSignupService(
             UpdatedAt = now
         };
 
-        repo.Add(signup);
+        repo.AddRange([signup]);
 
         await repo.SaveChangesAsync();
         viewInvalidator.InvalidateUser(userId);
@@ -318,18 +321,10 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
-        var rota = await repo.GetRotaWithShiftsAsync(rotaId);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
-        // Find all-day shifts in the range.
-        // TODO(#279): lift filter into PeekRangeShiftsAsync once the helper takes a
-        // pre-loaded Rota (or this method is restructured to avoid the extra
-        // GetRotaWithShiftsAsync round-trip a delegated call would introduce).
-        // Keep in lock-step with PeekRangeShiftsAsync manually until then.
-        var shiftsInRange = rota.Shifts
-            .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
-            .OrderBy(s => s.DayOffset)
-            .ToList();
+        var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (shiftsInRange.Count == 0)
             return SignupResult.Fail("No shifts found in the specified date range.");
@@ -360,7 +355,7 @@ public sealed class ShiftSignupService(
             return SignupResult.Fail("All shifts in range have time conflicts with existing signups.");
 
         var assignableIds = assignable.Select(s => s.Id).ToHashSet();
-        var signupCounts = await repo.GetConfirmedCountsByShiftAsync(assignableIds);
+        var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(assignableIds);
 
         var skippedCapacity = new List<int>();
         var capacityFiltered = new List<Shift>();
@@ -405,7 +400,7 @@ public sealed class ShiftSignupService(
                 UpdatedAt = now
             };
 
-            repo.Add(signup);
+            repo.AddRange([signup]);
             firstSignup ??= signup;
             voluntoldForAudit.Add((signup, shift.DayOffset));
         }
@@ -505,25 +500,17 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public async Task<IReadOnlyList<Shift>> PeekRangeShiftsAsync(
+    public async Task<SignupResult> SignUpRangeAsync(
+        Guid userId,
         Guid rotaId,
         int startDayOffset,
         int endDayOffset,
-        CancellationToken ct = default)
+        Guid? actorUserId = null,
+        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None)
     {
-        var rota = await repo.GetRotaWithShiftsAsync(rotaId, ct);
-        if (rota is null) return Array.Empty<Shift>();
-
-        return rota.Shifts
-            .Where(s => s.IsAllDay
-                        && s.DayOffset >= startDayOffset
-                        && s.DayOffset <= endDayOffset)
-            .ToList();
-    }
-
-    public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false)
-    {
-        var rota = await repo.GetRotaWithShiftsAsync(rotaId);
+        var isPrivileged = flags.HasFlag(ShiftSignupRequestFlags.Privileged);
+        var skipConflicts = flags.HasFlag(ShiftSignupRequestFlags.SkipConflicts);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
         var es = rota.EventSettings;
@@ -536,22 +523,14 @@ public sealed class ShiftSignupService(
         if (rota.Period == RotaPeriod.Build && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
             return SignupResult.Fail("Early entry signups are closed.");
 
-        // Find all-day shifts in the range.
-        // TODO(#279): lift filter into PeekRangeShiftsAsync once the helper takes a
-        // pre-loaded Rota (or this method is restructured to avoid the extra
-        // GetRotaWithShiftsAsync round-trip a delegated call would introduce).
-        // Keep in lock-step with PeekRangeShiftsAsync manually until then.
-        var shiftsInRange = rota.Shifts
-            .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
-            .OrderBy(s => s.DayOffset)
-            .ToList();
+        var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
 
         // Fetched upfront — used for both duplicate-check and time-overlap check.
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var existingSignups = await repo.GetActiveSignupsForUserAsync(userId);
+        var existingSignups = await GetActiveUserSignupsAsync(userId);
         var activeShiftIds = existingSignups
             .Where(s => shiftIdsInRange.Contains(s.ShiftId))
             .Select(s => s.ShiftId)
@@ -616,7 +595,7 @@ public sealed class ShiftSignupService(
         shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
 
         string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
-        var signupCounts = await repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
+        var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)
             .Select(s => s.DayOffset)
@@ -688,7 +667,7 @@ public sealed class ShiftSignupService(
                 signup.ReviewedAt = now;
             }
 
-            repo.Add(signup);
+            repo.AddRange([signup]);
             lastSignup = signup;
             rangeSignupsForAudit.Add((signup, shift.DayOffset));
         }
@@ -721,7 +700,9 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingOnly);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -823,7 +804,9 @@ public sealed class ShiftSignupService(
 
     public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingOnly);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -854,7 +837,9 @@ public sealed class ShiftSignupService(
 
     public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
     {
-        var signups = await repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: true);
+        var signups = await repo.GetBlockForMutationAsync(
+            signupBlockId,
+            ShiftSignupBlockMutationScope.PendingAndConfirmed);
 
         if (signups.Count == 0) return;
 
@@ -901,60 +886,59 @@ public sealed class ShiftSignupService(
     }
 
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
-        repo.GetByUserAsync(userId, eventSettingsId);
+        repo.GetForUsersAsync([userId], eventSettingsId);
 
-    public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        repo.GetActiveSignupsForUserAsync(userId, ct);
-
-    public async Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId)
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
     {
-        var signup = await repo.GetByIdAsync(signupId);
+        var signup = await repo.GetTeamProbeAsync(id, scope);
         return signup is null
             ? null
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
     }
-
-    public async Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId)
-    {
-        var signup = await repo.GetByBlockIdFirstAsync(signupBlockId);
-        return signup is null
-            ? null
-            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
-    }
-
-    public Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId) =>
-        repo.GetByShiftAsync(shiftId);
 
     public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId)
     {
-        var signups = await repo.GetNoShowHistoryAsync(userId);
-        return signups.Select(s =>
-        {
-            var rota = s.Shift.Rota;
-            var eventSettings = rota.EventSettings;
-            return new NoShowHistoryEntry(
-                ShiftLabel: rota.Name,
-                TeamId: rota.TeamId,
-                ShiftStart: s.Shift.GetAbsoluteStart(eventSettings),
-                TimeZoneId: eventSettings.TimeZoneId,
-                ReviewedByUserId: s.ReviewedByUserId,
-                ReviewedAt: s.ReviewedAt);
-        }).ToList();
+        var signups = await repo.GetForUsersAsync([userId]);
+        return signups
+            .Where(s => s.Status == SignupStatus.NoShow)
+            .OrderByDescending(s => s.ReviewedAt)
+            .Select(s =>
+            {
+                var rota = s.Shift.Rota;
+                var eventSettings = rota.EventSettings;
+                return new NoShowHistoryEntry(
+                    ShiftLabel: rota.Name,
+                    TeamId: rota.TeamId,
+                    ShiftStart: s.Shift.GetAbsoluteStart(eventSettings),
+                    TimeZoneId: eventSettings.TimeZoneId,
+                    ReviewedByUserId: s.ReviewedByUserId,
+                    ReviewedAt: s.ReviewedAt);
+            }).ToList();
     }
 
-    public async Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
-        Guid userId, Guid eventSettingsId)
+    private static List<Shift> SelectAllDayRangeShifts(Rota rota, int startDayOffset, int endDayOffset) =>
+        rota.Shifts
+            .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
+            .OrderBy(s => s.DayOffset)
+            .ToList();
+
+    private async Task<IReadOnlyList<ShiftSignup>> GetActiveUserSignupsAsync(Guid userId)
     {
-        var signups = await repo.GetByUserAsync(userId, eventSettingsId);
-        return ShiftSignupHelper.ResolveActiveStatuses(signups);
+        var signups = await repo.GetForUsersAsync([userId]);
+        return signups
+            .Where(IsActiveSignup)
+            .ToList();
     }
+
+    private static bool IsActiveSignup(ShiftSignup signup) =>
+        signup.Status is SignupStatus.Pending or SignupStatus.Confirmed;
 
     private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettings es)
     {
         var targetStart = targetShift.GetAbsoluteStart(es);
         var targetEnd = targetShift.GetAbsoluteEnd(es);
 
-        var userSignups = await repo.GetActiveSignupsForUserAsync(userId);
+        var userSignups = await GetActiveUserSignupsAsync(userId);
 
         IReadOnlyDictionary<Guid, string>? teamNames = null;
 
@@ -996,7 +980,9 @@ public sealed class ShiftSignupService(
         if (availableSlots <= 0)
             return "Early entry capacity reached for this day.";
 
-        var currentEeCount = await repo.GetDistinctEeUsersOnDayAsync(es.Id, dayOffset);
+        var currentEeCount = (await repo
+            .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
+            .Count;
 
         if (currentEeCount >= availableSlots)
             return "Early entry capacity reached.";
@@ -1088,7 +1074,9 @@ public sealed class ShiftSignupService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         // No `.Include(r => r.Team)` — Teams is a different section; resolve via ITeamService.
-        var signups = await repo.GetForGdprExportAsync(userId, ct);
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .OrderByDescending(ss => ss.CreatedAt)
+            .ToList();
 
         // GetTeamsAsync includes deactivated teams so historical signups still resolve a name (GDPR).
         var referencedTeamIds = signups
@@ -1100,12 +1088,14 @@ public sealed class ShiftSignupService(
             .Where(teamsByIdLookup.ContainsKey)
             .ToDictionary(id => id, id => teamsByIdLookup[id].Name);
 
-        var volunteerEventProfiles = await repo.GetVolunteerEventProfilesForUserAsync(userId, ct);
-        var generalAvailability = await trackingRepo.GetAvailabilityByUserAsync(userId, ct);
-        var tagPreferences = await repo.GetVolunteerTagPreferencesForUserAsync(userId, ct);
+        var volunteerEventProfile = await repo.GetVolunteerEventProfileAsync(userId, ct);
+        IReadOnlyList<VolunteerEventProfile> volunteerEventProfiles =
+            volunteerEventProfile is null ? [] : [volunteerEventProfile];
+        var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
+        var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
 
         // Resolve EventName for each distinct EventSettingsId via IBurnSettingsService
-        // (EventSettings.EventSettings nav is not included by GetAvailabilityByUserAsync).
+        // (EventSettings.EventSettings nav is not included by GetAvailabilityForUserAsync).
         var distinctEventSettingsIds = generalAvailability.Select(ga => ga.EventSettingsId).Distinct();
         var eventNamesById = new Dictionary<Guid, string>();
         foreach (var id in distinctEventSettingsIds)
@@ -1198,18 +1188,6 @@ public sealed class ShiftSignupService(
             s.ReviewedByUserId,
             s.EnrolledByUserId,
             s.SignupBlockId)).ToList();
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
-        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default)
-    {
-        if (signups.Count == 0) return signups;
-
-        var userIds = signups.Select(s => s.UserId).Distinct().ToList();
-        var withConsents = await membership.GetUsersWithAllRequiredConsentsForTeamAsync(
-            userIds, SystemTeamIds.Volunteers, ct);
-
-        return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
     }
 
     public Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(

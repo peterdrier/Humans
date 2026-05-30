@@ -13,10 +13,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// and <c>volunteer_event_profiles</c>.
 ///
 /// <para>
-/// The <c>shift_signups</c> table is still mutated through
-/// <see cref="IShiftSignupRepository"/>. This interface exposes the read
-/// helpers over signups that management workflows need for summaries, urgency
-/// scoring, and dashboard computations.
+/// Signup state-machine reads and writes are declared on the signup-focused
+/// partial declaration of this interface so Shifts has one repository contract
+/// backed by one concrete persistence adapter.
 /// </para>
 ///
 /// <para>
@@ -27,13 +26,12 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </para>
 ///
 /// <para>
-/// Implemented by the same scoped <c>ShiftRepository</c> that backs
-/// <see cref="IShiftSignupRepository"/>. Management methods create short-lived
-/// contexts per call.
+/// Implemented by the scoped <c>ShiftRepository</c>. Management methods create
+/// short-lived contexts per call.
 /// </para>
 /// </summary>
 [Section("Shifts")]
-public interface IShiftManagementRepository : IRepository
+public partial interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================
     // EventSettings
@@ -48,11 +46,8 @@ public interface IShiftManagementRepository : IRepository
     /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>
     Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default);
 
-    /// <summary>Inserts a new <see cref="EventSettings"/>.</summary>
-    Task AddEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
-
-    /// <summary>Updates an existing <see cref="EventSettings"/>.</summary>
-    Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
+    /// <summary>Inserts or updates an <see cref="EventSettings"/>.</summary>
+    Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes an <see cref="EventSettings"/> row and all Shifts-owned rows beneath it.
@@ -64,11 +59,8 @@ public interface IShiftManagementRepository : IRepository
     // Rota
     // ==========================================================================
 
-    /// <summary>Inserts a new rota.</summary>
-    Task AddRotaAsync(Rota rota, CancellationToken ct = default);
-
-    /// <summary>Updates an existing rota.</summary>
-    Task UpdateRotaAsync(Rota rota, CancellationToken ct = default);
+    /// <summary>Inserts or updates a rota.</summary>
+    Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>
     /// Targeted update that only writes the rota's <c>TeamId</c> and
@@ -80,43 +72,11 @@ public interface IShiftManagementRepository : IRepository
         Guid rotaId, Guid newTeamId, Instant updatedAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a tracked rota for a team-move operation. Does not include
-    /// cross-domain <see cref="Rota.Team"/>. Returns null if not found.
+    /// Loads one rota with an explicit same-section include shape. Read-only.
+    /// Cross-domain <see cref="Rota.Team"/> is NOT populated; callers stitch
+    /// via <c>ITeamService</c>.
     /// </summary>
-    Task<Rota?> GetRotaForUpdateAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts, all shift signups, and same-section
-    /// <see cref="Rota.EventSettings"/> nav, for delete pre-checks. Tracked.
-    /// </summary>
-    Task<Rota?> GetRotaWithShiftsAndSignupsForDeleteAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts (same-section nav). Read-only.
-    /// <see cref="Rota.Team"/> is NOT populated — callers stitch via <c>ITeamService</c>.
-    /// </summary>
-    Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its shifts, shift signups, and tags (same-section navs)
-    /// for the <see cref="DTOs.Shifts.ShiftRotaView"/> cache decorator. Read-only.
-    /// Returns null if the rota does not exist. Issue #720.
-    /// </summary>
-    Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads all rotas for a team+event with shifts, shift signups, and tags.
-    /// Read-only. Cross-domain navs (<see cref="Rota.Team"/>,
-    /// <see cref="ShiftSignup.User"/>) are NOT populated.
-    /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a rota with its <see cref="Rota.EventSettings"/> nav (same section).
-    /// Tracked so the service can attach new shifts via the context.
-    /// </summary>
-    Task<Rota?> GetRotaWithEventSettingsAsync(Guid rotaId, CancellationToken ct = default);
+    Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a rota plus every shift and signup under it in a single save.
@@ -125,17 +85,14 @@ public interface IShiftManagementRepository : IRepository
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rotas in the active event whose <c>Name</c> contains
-    /// <paramref name="query"/> (case-insensitive, Postgres ILike). When
-    /// <paramref name="onlyVolunteerVisible"/> is true, filters to
-    /// <c>IsVisibleToVolunteers</c> at the DB layer. Capped at
+    /// Volunteer-visible rotas in the active event whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive, Postgres ILike). Capped at
     /// <paramref name="max"/>; ordering is unspecified (caller ranks).
     /// Read-only, no cross-domain navs — caller stitches team display data
     /// via <c>ITeamService</c>.
     /// </summary>
-    Task<IReadOnlyList<Rota>> SearchRotasAsync(
-        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
-        int max, CancellationToken ct = default);
+    Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
+        string query, Guid eventSettingsId, int max, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the tag membership for a rota, replacing any existing tags. Unknown
@@ -147,40 +104,23 @@ public interface IShiftManagementRepository : IRepository
     // Shift
     // ==========================================================================
 
-    /// <summary>Inserts a new shift.</summary>
-    Task AddShiftAsync(Shift shift, CancellationToken ct = default);
+    /// <summary>Inserts or updates a shift.</summary>
+    Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>Bulk-inserts shifts in a single save.</summary>
     Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default);
 
-    /// <summary>Updates an existing shift.</summary>
-    Task UpdateShiftAsync(Shift shift, CancellationToken ct = default);
-
     /// <summary>
-    /// Loads a shift with all its signups (same-section nav) for a delete
-    /// pre-check. Tracked. Caller is expected to cancel pending signups
-    /// via the loaded entities before calling <see cref="DeleteShiftCascadeAsync"/>.
+    /// Loads one shift with an explicit same-section include shape. Read-only.
+    /// Cross-domain navs are NOT populated; callers stitch those via section services.
     /// </summary>
-    Task<Shift?> GetShiftWithSignupsForDeleteAsync(Guid shiftId, CancellationToken ct = default);
+    Task<Shift?> GetShiftAsync(Guid shiftId, ShiftReadShape shape, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a shift plus every signup under it in a single save. Service
     /// validates "no confirmed signups" first.
     /// </summary>
     Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads a shift with its rota, rota's event settings, and all signups.
-    /// Read-only. Cross-domain <see cref="Rota.Team"/> nav is NOT populated;
-    /// callers stitch team data via <c>ITeamService</c>.
-    /// </summary>
-    Task<Shift?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads all shifts for a rota with their signups (same-section nav).
-    /// Read-only.
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the distinct day offsets already populated for a rota. Used
@@ -193,55 +133,23 @@ public interface IShiftManagementRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads shifts for an event with the Rota nav only (same section). Reads
-    /// are <c>AsNoTracking</c>. Cross-domain <see cref="Rota.Team"/> is not
+    /// Loads event-scoped shifts with the same-section rota nav. Optional flags
+    /// control volunteer-visible filtering and same-section eager loads; no
+    /// cross-domain navs are populated.
+    /// </summary>
+    Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
+        ShiftEventQuery query,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads rotas for the supplied teams and event with an explicit
+    /// same-section include shape. Read-only; cross-domain navs are not
     /// populated.
     /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsForEventAsync(
+    Task<IReadOnlyList<Rota>> GetRotasAsync(
         Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Same as <see cref="GetShiftsForEventAsync"/> but filters to
-    /// <c>!AdminOnly &amp;&amp; Rota.IsVisibleToVolunteers</c> (dashboard).
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetVisibleShiftsForEventAsync(
-        Guid eventSettingsId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads shifts with their signups and the same-section rota nav.
-    /// Read-only. Used by browse-page queries. No cross-domain includes.
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        bool includeAdminOnly,
-        bool includeHidden,
-        int? fromDayOffset,
-        int? toDayOffset,
-        bool includeRotaTags,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads shifts (with signups) for urgency scoring. Filters by event,
-    /// optional department team-id set, and optional day-offset bounds (inclusive).
-    /// </summary>
-    Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? departmentTeamIds,
-        int? minDayOffset,
-        int? maxDayOffset,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads rotas for a team+event with their shifts and signups (same section).
-    /// Read-only. Used by <c>GetShiftsSummaryAsync</c>.
-    /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasWithShiftsAndSignupsAsync(
-        Guid eventSettingsId,
-        IReadOnlyList<Guid> teamIds,
+        IReadOnlyCollection<Guid> teamIds,
+        RotaReadShape shape,
         CancellationToken ct = default);
 
     /// <summary>
@@ -251,15 +159,6 @@ public interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Guid>> GetTeamIdsWithRotasInEventAsync(
         Guid eventSettingsId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Filters <paramref name="teamIds"/> to those that own at least one rota
-    /// with at least one shift in the given event.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
     /// <summary>
@@ -309,40 +208,6 @@ public interface IShiftManagementRepository : IRepository
         int? maxDayOffset,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the id of the active event with the given id, or <see cref="Guid.Empty"/>
-    /// if no such row exists or it is inactive.
-    /// </summary>
-    Task<Guid> GetActiveEventIdAsync(Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns a user's active signups (Pending or Confirmed) scoped to a single
-    /// event (via <c>ShiftSignup -> Shift -> Rota -> EventSettingsId</c>), with each
-    /// signup's <see cref="ShiftSignup.Shift"/> navigation eagerly loaded
-    /// so callers can inspect <see cref="Shift.Duration"/>, <see cref="Shift.IsAllDay"/>,
-    /// and call <see cref="Shift.GetAbsoluteEnd"/> without further DB hits.
-    /// Cross-section rule: signup-owner navigation is intentionally NOT eager-loaded
-    /// (volunteer identity is the consumer's concern, not this query's).
-    /// Event scoping is mandatory: stale signups from a prior event would otherwise
-    /// be resolved against the current event's <c>GateOpeningDate</c> and could
-    /// spuriously qualify the gate.
-    /// </summary>
-    Task<IReadOnlyList<ShiftSignup>> GetUserActiveSignupsForCantinaGateAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct <see cref="ShiftSignup.UserId"/>s of volunteers
-    /// on-site for the given event day: those with a <c>Pending</c>/<c>Confirmed</c>
-    /// signup on a <see cref="Shift"/> whose <see cref="Shift.DayOffset"/> matches.
-    /// The Cantina roster's on-site cohort (feature #36); dietary is read separately
-    /// from <c>Profile</c> via <c>IUserServiceRead</c>.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
-        int dayOffset,
-        CancellationToken ct = default);
-
     // ==========================================================================
     // Shift tags
     // ==========================================================================
@@ -350,18 +215,13 @@ public interface IShiftManagementRepository : IRepository
     Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Looks up a tag by case-insensitive name. Returns null if not found.
+    /// Gets an existing tag by case-insensitive name or creates it.
     /// </summary>
-    Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default);
-
-    Task AddTagAsync(ShiftTag tag, CancellationToken ct = default);
+    Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default);
 
     // ==========================================================================
     // Volunteer tag preferences
     // ==========================================================================
-
-    Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Replaces a volunteer's tag preferences with the given tag ids in a
@@ -431,3 +291,48 @@ public interface IShiftManagementRepository : IRepository
         Instant updatedAt,
         CancellationToken ct = default);
 }
+
+public enum EntityMutationMode
+{
+    Add,
+    Update
+}
+
+[Flags]
+public enum RotaReadShape
+{
+    None = 0,
+    EventSettings = 1,
+    Shifts = 2,
+    ShiftSignups = 4,
+    Tags = 8,
+    ShiftsWithSignups = Shifts | ShiftSignups,
+    View = EventSettings | Shifts | ShiftSignups | Tags
+}
+
+[Flags]
+public enum ShiftReadShape
+{
+    None = 0,
+    Rota = 1,
+    EventSettings = 2,
+    ShiftSignups = 4,
+    Context = Rota | EventSettings | ShiftSignups
+}
+
+[Flags]
+public enum ShiftEventQueryFlags
+{
+    None = 0,
+    ExcludeAdminOnly = 1,
+    ExcludeHiddenRotas = 2,
+    IncludeSignups = 4,
+    IncludeRotaTags = 8
+}
+
+public sealed record ShiftEventQuery(
+    Guid EventSettingsId,
+    IReadOnlyCollection<Guid>? TeamIds = null,
+    int? MinDayOffset = null,
+    int? MaxDayOffset = null,
+    ShiftEventQueryFlags Flags = ShiftEventQueryFlags.None);

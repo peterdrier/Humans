@@ -14,11 +14,10 @@ namespace Humans.Application.Tests.Services.Shifts;
 public class ShiftViewServiceTests
 {
     private readonly IShiftManagementRepository _management = Substitute.For<IShiftManagementRepository>();
-    private readonly IShiftSignupRepository _signups = Substitute.For<IShiftSignupRepository>();
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
 
     private ShiftViewService CreateSut() =>
-        new(_management, _signups, _tracking);
+        new(_management, _tracking);
 
     [HumansFact]
     public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
@@ -28,9 +27,14 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();
@@ -57,14 +61,22 @@ public class ShiftViewServiceTests
         _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _tracking.GetAvailabilityByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _tracking.GetAsync(userId, eventId, Arg.Any<CancellationToken>())
-            .Returns(buildStatus);
+        _tracking.GetAvailabilityForUserAsync(userId, eventId, Arg.Any<CancellationToken>())
+            .Returns([availability]);
+        _tracking.GetBuildStatusesForEventAsync(
+                eventId,
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns([buildStatus]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
@@ -81,15 +93,17 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeEmpty();
-        await _signups.DidNotReceive().GetByUserAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _management.DidNotReceive().GetForUsersAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -103,24 +117,35 @@ public class ShiftViewServiceTests
         _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
+        _management.GetForUsersAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                eventId,
+                Arg.Any<CancellationToken>())
+            .Returns(scoped);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
 
         view.Signups.Should().BeSameAs(scoped);
-        await _signups.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
-        await _signups.DidNotReceive().GetByUserAsync(
-            userId, null, Arg.Any<CancellationToken>());
+        await _management.Received(1).GetForUsersAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            eventId,
+            Arg.Any<CancellationToken>());
+        await _management.DidNotReceive().GetForUsersAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            null,
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task GetRotaAsync_UnknownRotaId_ReturnsEmptyView()
     {
         var rotaId = Guid.NewGuid();
-        _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>())
+        _management.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
         var sut = CreateSut();
@@ -149,7 +174,7 @@ public class ShiftViewServiceTests
         rota.Shifts.Add(shift2);
         rota.Tags.Add(new ShiftTag { Id = Guid.NewGuid(), Name = "indoor" });
 
-        _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>()).Returns(rota);
+        _management.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var sut = CreateSut();
         var view = await sut.GetRotaAsync(rotaId);
@@ -169,9 +194,14 @@ public class ShiftViewServiceTests
             .Returns((EventSettings?)null);
         _management.GetVolunteerEventProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
-        _signups.GetVolunteerTagPreferencesForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _management.GetVolunteerTagPreferencesForUsersAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
-        _signups.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+        _management.GetForUsersAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         var sut = CreateSut();

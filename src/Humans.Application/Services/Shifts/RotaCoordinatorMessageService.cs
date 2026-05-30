@@ -17,8 +17,7 @@ namespace Humans.Application.Services.Shifts;
 /// One audit row per dispatch (recipient rows are auditable through the outbox).
 /// </summary>
 public sealed class RotaCoordinatorMessageService(
-    IShiftSignupRepository signupRepo,
-    IShiftManagementRepository mgmtRepo,
+    IShiftManagementRepository repo,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IEmailService emailService,
@@ -36,7 +35,7 @@ public sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return RotaMessageDispatchResult.Failure("Message body is required.");
 
-        var rota = await signupRepo.GetRotaWithShiftsAsync(rotaId, ct);
+        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.View, ct);
         if (rota is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
 
@@ -44,7 +43,7 @@ public sealed class RotaCoordinatorMessageService(
             ?? throw new InvalidOperationException(
                 $"Rota {rotaId} loaded without EventSettings — repository contract broken.");
 
-        var signups = await signupRepo.GetActiveByRotaAsync(rotaId, ct);
+        var signups = GetActiveSignups(rota);
         if (signups.Count == 0)
             return RotaMessageDispatchResult.Failure("This rota has no active signups to email.");
 
@@ -189,10 +188,16 @@ public sealed class RotaCoordinatorMessageService(
         Guid teamId,
         CancellationToken ct)
     {
-        var eventSettings = await mgmtRepo.GetActiveEventSettingsAsync(ct);
+        var eventSettings = await repo.GetActiveEventSettingsAsync(ct);
         if (eventSettings is null) return [];
 
-        var rotas = await mgmtRepo.GetRotasByDepartmentAsync(teamId, eventSettings.Id, ct);
+        var rotas = (await repo.GetRotasAsync(
+                eventSettings.Id,
+                [teamId],
+                RotaReadShape.View,
+                ct))
+            .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
         if (rotas.Count == 0) return [];
 
         var now = clock.GetCurrentInstant();
@@ -201,7 +206,7 @@ public sealed class RotaCoordinatorMessageService(
         foreach (var rota in rotas)
         {
             // Per-rota EventSettings carries the timezone — the eager-load on
-            // GetRotasByDepartmentAsync attached it; keep the reference for
+            // GetRotasAsync attached it; keep the reference for
             // downstream shift-line formatting.
             var rotaEs = rota.EventSettings
                 ?? throw new InvalidOperationException(
@@ -210,15 +215,7 @@ public sealed class RotaCoordinatorMessageService(
             var hasFutureShift = rota.Shifts.Any(s => s.GetAbsoluteEnd(rotaEs) > now);
             if (!hasFutureShift) continue;
 
-            // ShiftSignup.Shift may not be populated when reached via the
-            // Shift.ShiftSignups eager-load (AsNoTracking skips reverse-nav
-            // fix-up); set it explicitly so the shift-line formatter can read
-            // IsAllDay/StartTime/Duration without another DB round-trip.
-            var activeSignups = rota.Shifts
-                .SelectMany(s => s.ShiftSignups
-                    .Where(ss => ss.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-                    .Select(ss => { ss.Shift = s; return ss; }))
-                .ToList();
+            var activeSignups = GetActiveSignups(rota);
 
             if (activeSignups.Count == 0) continue;
 
@@ -227,6 +224,18 @@ public sealed class RotaCoordinatorMessageService(
 
         return groups;
     }
+
+    private static IReadOnlyList<ShiftSignup> GetActiveSignups(Rota rota) =>
+        rota.Shifts
+            .SelectMany(shift => shift.ShiftSignups
+                .Where(signup => signup.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+                .Select(signup =>
+                {
+                    // AsNoTracking eager loads do not reliably fix up reverse navs.
+                    signup.Shift = shift;
+                    return signup;
+                }))
+            .ToList();
 
     /// <summary>
     /// Generic per-recipient dispatch loop shared by the per-rota and team-level

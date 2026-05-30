@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Teams;
 /// projections, no EF entities. See
 /// <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
-[SurfaceBudget(4)]
+[SurfaceBudget(5)]
 public interface ITeamServiceRead
 {
     /// <summary>
@@ -36,5 +36,13 @@ public interface ITeamServiceRead
     /// </summary>
     Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all non-system team IDs where the user is a coordinator or has a management role.
+    /// Used by shift services for authorization without exposing Teams-owned rows.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+        Guid userId,
         CancellationToken cancellationToken = default);
 }

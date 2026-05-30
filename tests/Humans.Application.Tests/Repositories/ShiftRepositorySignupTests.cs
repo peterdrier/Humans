@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -39,31 +40,6 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasActiveSignupAsync_ReturnsTrueForPendingOrConfirmed()
-    {
-        var userId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
-
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Pending));
-        await _dbContext.SaveChangesAsync();
-
-        (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task HasActiveSignupAsync_ReturnsFalseForBailedOrRefused()
-    {
-        var userId = Guid.NewGuid();
-        var shiftId = Guid.NewGuid();
-
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Bailed));
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, shiftId, SignupStatus.Refused));
-        await _dbContext.SaveChangesAsync();
-
-        (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task GetActiveShiftIdsForUserAsync_FiltersToPendingAndConfirmed()
     {
         var userId = Guid.NewGuid();
@@ -83,7 +59,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetConfirmedCountsByShiftAsync_ExcludesNonConfirmedAndMissingShifts()
+    public async Task GetConfirmedSignupCountsByShiftAsync_ExcludesNonConfirmedAndMissingShifts()
     {
         var shiftA = Guid.NewGuid();
         var shiftB = Guid.NewGuid();
@@ -94,26 +70,26 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftB, SignupStatus.Cancelled));
         await _dbContext.SaveChangesAsync();
 
-        var counts = await _repo.GetConfirmedCountsByShiftAsync([shiftA, shiftB]);
+        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([shiftA, shiftB]);
 
         counts[shiftA].Should().Be(2);
         counts.ContainsKey(shiftB).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task GetConfirmedCountsByShiftAsync_EmptyInputReturnsEmpty()
+    public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInputReturnsEmpty()
     {
-        var counts = await _repo.GetConfirmedCountsByShiftAsync([]);
+        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([]);
         counts.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task Add_AndSaveChangesAsync_Persists()
+    public async Task AddRange_AndSaveChangesAsync_Persists()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
 
-        _repo.Add(MakeSignup(userId, shiftId, SignupStatus.Pending));
+        _repo.AddRange([MakeSignup(userId, shiftId, SignupStatus.Pending)]);
         await _repo.SaveChangesAsync();
 
         (await _dbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId))
@@ -121,7 +97,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetDistinctEeUsersOnDayAsync_CountsDistinctConfirmedUsers()
+    public async Task GetUserIdsForDayAsync_FiltersEventDayAndStatusScope()
     {
         var esId = Guid.NewGuid();
         var otherEs = Guid.NewGuid();
@@ -134,6 +110,7 @@ public class ShiftRepositorySignupTests : IDisposable
 
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
+        var pendingUser = Guid.NewGuid();
 
         // Same user, two EE shifts on day -3 → counts once.
         _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3A, SignupStatus.Confirmed));
@@ -143,11 +120,16 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus4, SignupStatus.Confirmed));
         _dbContext.ShiftSignups.Add(MakeSignup(user2, shiftOtherEs, SignupStatus.Confirmed));
         // Non-confirmed → excluded.
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftDayMinus3A, SignupStatus.Pending));
+        _dbContext.ShiftSignups.Add(MakeSignup(pendingUser, shiftDayMinus3A, SignupStatus.Pending));
         await _dbContext.SaveChangesAsync();
 
-        var count = await _repo.GetDistinctEeUsersOnDayAsync(esId, -3);
-        count.Should().Be(2);
+        var confirmed = await _repo.GetUserIdsForDayAsync(
+            esId, -3, ShiftDayUserStatusScope.ConfirmedOnly);
+        confirmed.Should().BeEquivalentTo([user1, user2]);
+
+        var pendingOrConfirmed = await _repo.GetUserIdsForDayAsync(
+            esId, -3, ShiftDayUserStatusScope.PendingOrConfirmed);
+        pendingOrConfirmed.Should().BeEquivalentTo([user1, user2, pendingUser]);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

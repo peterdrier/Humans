@@ -150,14 +150,15 @@ public sealed class WidgetGalleryController(
                 rota = rotas.FirstOrDefault();
             }
 
-            var staffing = await shiftMgmt.GetStaffingDataAsync(es.Id);
-            var hours = await shiftMgmt.GetStaffingHoursAsync(es.Id);
+            var staffing = await shiftMgmt.GetStaffingSnapshotAsync(es.Id);
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();
             if (rota is not null && sampleDeptId is not null)
             {
-                var browse = await shiftMgmt.GetBrowseShiftsAsync(
-                    es.Id, departmentId: sampleDeptId.Value, includeSignups: true);
+                var browse = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+                    es.Id,
+                    sampleDeptId.Value,
+                    Flags: ShiftBrowseQueryFlags.IncludeSignups));
                 sampleRotaShifts = browse
                     .Where(u => u.Shift.RotaId == rota.Id)
                     .OrderBy(u => u.Shift.DayOffset)
@@ -172,7 +173,7 @@ public sealed class WidgetGalleryController(
                 .Select(s => s.Shift.Id)
                 .ToHashSet();
 
-            return new ShiftsSamples(es, rota, staffing, hours, sampleRotaShifts, userSignupShiftIds);
+            return new ShiftsSamples(es, rota, staffing.StaffingData, staffing.StaffingHours, sampleRotaShifts, userSignupShiftIds);
         }
         catch (Exception ex)
         {
@@ -183,13 +184,12 @@ public sealed class WidgetGalleryController(
 
     private ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings es)
     {
-        var (start, end, period) = shiftMgmt.ResolveShiftTimes(u.Shift, es);
         return new ShiftDisplayItem
         {
             Shift = u.Shift,
-            AbsoluteStart = start,
-            AbsoluteEnd = end,
-            Period = period,
+            AbsoluteStart = u.Shift.GetAbsoluteStart(es),
+            AbsoluteEnd = u.Shift.GetAbsoluteEnd(es),
+            Period = u.Shift.GetShiftPeriod(es),
             ConfirmedCount = u.ConfirmedCount,
             RemainingSlots = u.RemainingSlots,
             UrgencyScore = u.UrgencyScore,

@@ -9,16 +9,13 @@ namespace Humans.Application.Services.Shifts;
 public sealed class ShiftViewService : IShiftView
 {
     private readonly IShiftManagementRepository _management;
-    private readonly IShiftSignupRepository _signups;
     private readonly IVolunteerTrackingRepository _tracking;
 
     public ShiftViewService(
         IShiftManagementRepository management,
-        IShiftSignupRepository signups,
         IVolunteerTrackingRepository tracking)
     {
         _management = management;
-        _signups = signups;
         _tracking = tracking;
     }
 
@@ -27,19 +24,23 @@ public sealed class ShiftViewService : IShiftView
         var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
 
         var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
-        var tagPrefs = await _signups.GetVolunteerTagPreferencesForUserAsync(userId, ct).ConfigureAwait(false);
+        var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync([userId], ct).ConfigureAwait(false);
 
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
         IReadOnlyList<ShiftSignup> signups = [];
         if (activeEvent is not null)
         {
-            availability = await _tracking
-                .GetAvailabilityByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
-            buildStatus = await _tracking
-                .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
-            signups = await _signups
-                .GetByUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            var availabilityRows = await _tracking
+                .GetAvailabilityForUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            availability = availabilityRows.Count > 0 ? availabilityRows[0] : null;
+
+            var buildStatusRows = await _tracking
+                .GetBuildStatusesForEventAsync(activeEvent.Id, [userId], ct).ConfigureAwait(false);
+            buildStatus = buildStatusRows.Count > 0 ? buildStatusRows[0] : null;
+
+            signups = await _management
+                .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
         }
 
         return new ShiftUserView(
@@ -71,7 +72,7 @@ public sealed class ShiftViewService : IShiftView
         var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
-        var tagPrefs = await _signups.GetVolunteerTagPreferencesByUserIdsAsync(ids, ct).ConfigureAwait(false);
+        var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync(ids, ct).ConfigureAwait(false);
         var tagPrefsByUser = tagPrefs
             .GroupBy(t => t.UserId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<VolunteerTagPreference>)g.ToList());
@@ -83,26 +84,20 @@ public sealed class ShiftViewService : IShiftView
         if (activeEvent is not null)
         {
             var avail = await _tracking
-                .GetAvailabilityByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetAvailabilityForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
             availabilityByUser = avail.ToDictionary(a => a.UserId);
 
             var builds = await _tracking
-                .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+                .GetBuildStatusesForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
             buildStatusByUser = builds.ToDictionary(b => b.UserId);
 
-            var batchSignups = await _signups
-                .GetByUsersAndEventAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+            var batchSignups = await _management
+                .GetForUsersAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
             signupsByUser = batchSignups
                 .GroupBy(s => s.UserId)
-                // Match GetByUserAsync's per-user ordering for shape parity across the
-                // single-user and batch paths. Sort in-memory after the bulk read so the
-                // repo stays display-sort-free (memory/architecture/display-sort-in-controllers.md).
                 .ToDictionary(
                     g => g.Key,
-                    g => (IReadOnlyList<ShiftSignup>)g
-                        .OrderBy(s => s.Shift.DayOffset)
-                        .ThenBy(s => s.Shift.StartTime)
-                        .ToList());
+                    g => (IReadOnlyList<ShiftSignup>)g.ToList());
         }
 
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
@@ -122,7 +117,7 @@ public sealed class ShiftViewService : IShiftView
 
     public async ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
-        var rota = await _management.GetRotaForViewAsync(rotaId, ct).ConfigureAwait(false);
+        var rota = await _management.GetRotaAsync(rotaId, RotaReadShape.View, ct).ConfigureAwait(false);
         if (rota is null)
             return ShiftRotaView.Empty(rotaId);
 

@@ -3,9 +3,29 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
+public record GeneralAvailabilitySnapshot(
+    Guid UserId,
+    Guid EventSettingsId,
+    IReadOnlyList<int> AvailableDayOffsets);
+
 public interface IVolunteerTrackingService : IApplicationService, IVolunteerTrackingServiceRead
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
+
+    Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets);
+
+    Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
+        Guid eventSettingsId, int dayOffset);
+
+    /// <summary>
+    /// Add (available=true) or remove (available=false) one build-day offset from
+    /// the user's declared availability. Read-modify-write; preserves other
+    /// offsets; invalidates the user's shift view cache. No-op for positive
+    /// (event-day) offsets.
+    /// </summary>
+    Task<bool> SetDayAvailabilityAsync(
+        Guid userId, Guid eventSettingsId, int dayOffset, bool available,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Coordinator path. Caller has already authorized. When the new

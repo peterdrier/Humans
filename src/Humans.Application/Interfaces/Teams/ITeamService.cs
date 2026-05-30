@@ -519,14 +519,6 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // ==========================================================================
 
     /// <summary>
-    /// Gets all non-system team IDs where the user is a coordinator or has a management role.
-    /// Used by shift services for authorization — avoids cross-service team table queries.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the active (non-Volunteers) teams the user belongs to with the
     /// user's role on each team. Callers that only need names project via
     /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's

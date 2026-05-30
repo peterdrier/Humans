@@ -23,60 +23,53 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 [Grandfathered("HUM0025", justification: "Shifts-section table shared across the Shifts repositories; converge them on one owner per table.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
 internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunteerTrackingRepository
 {
-    public Task<VolunteerBuildStatus?> GetAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
-        db.VolunteerBuildStatuses
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
-                ct);
-
-    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        await db.VolunteerBuildStatuses
-            .Where(x => x.EventSettingsId == eventSettingsId)
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? userIds = null,
+        CancellationToken ct = default)
     {
-        if (userIds.Count == 0) return [];
-        return await db.VolunteerBuildStatuses
+        if (userIds is { Count: 0 }) return [];
+
+        var query = db.VolunteerBuildStatuses
             .AsNoTracking()
-            .Where(x => x.EventSettingsId == eventSettingsId && userIds.Contains(x.UserId))
-            .ToListAsync(ct);
+            .Where(x => x.EventSettingsId == eventSettingsId);
+
+        if (userIds is not null)
+            query = query.Where(x => userIds.Contains(x.UserId));
+
+        return await query.ToListAsync(ct);
     }
 
-    public Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
-        db.GeneralAvailability
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
-                ct);
-
-    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        await db.GeneralAvailability
-            .AsNoTracking()
-            .Where(g => g.EventSettingsId == eventSettingsId)
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await db.GeneralAvailability
-            .AsNoTracking()
-            .Where(g => g.UserId == userId)
-            .ToListAsync(ct);
-
-    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
-        IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? userIds = null,
+        CancellationToken ct = default)
     {
-        if (userIds.Count == 0) return [];
-        return await db.GeneralAvailability
+        if (userIds is { Count: 0 }) return [];
+
+        var query = db.GeneralAvailability
             .AsNoTracking()
-            .Where(g => g.EventSettingsId == eventSettingsId && userIds.Contains(g.UserId))
-            .ToListAsync(ct);
+            .Where(g => g.EventSettingsId == eventSettingsId);
+
+        if (userIds is not null)
+            query = query.Where(g => userIds.Contains(g.UserId));
+
+        return await query.ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
+        Guid userId,
+        Guid? eventSettingsId = null,
+        CancellationToken ct = default)
+    {
+        var query = db.GeneralAvailability
+            .AsNoTracking()
+            .Where(g => g.UserId == userId);
+
+        if (eventSettingsId is { } eventId)
+            query = query.Where(g => g.EventSettingsId == eventId);
+
+        return await query.ToListAsync(ct);
     }
 
     public async Task UpsertAvailabilityAsync(
@@ -109,20 +102,6 @@ internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunte
             });
         }
 
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteAvailabilityAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var existing = await db.GeneralAvailability
-            .FirstOrDefaultAsync(
-                g => g.UserId == userId && g.EventSettingsId == eventSettingsId,
-                ct);
-
-        if (existing is null) return;
-
-        db.GeneralAvailability.Remove(existing);
         await db.SaveChangesAsync(ct);
     }
 

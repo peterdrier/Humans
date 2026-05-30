@@ -33,6 +33,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -60,7 +61,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -76,7 +77,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, userId, false)
+        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Ok(new ShiftSignup()));
         var ctrl = BuildSut(userId);
 
@@ -84,7 +85,7 @@ public class OnboardingWidgetControllerShiftsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        await _signups.Received(1).SignUpAsync(userId, shiftId, userId, false);
+        await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
     }
 
     [HumansFact]
@@ -92,7 +93,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, userId, false)
+        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
         ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(

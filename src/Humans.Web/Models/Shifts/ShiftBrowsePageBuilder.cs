@@ -30,7 +30,7 @@ public sealed record ShiftBrowsePageRequest(
     IReadOnlyList<string>? Periods,
     bool IsPrivileged);
 
-public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamService teamService)
+public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamServiceRead teamService)
 {
     public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request, CancellationToken ct = default)
     {
@@ -60,14 +60,16 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
             }
         }
 
-        var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(
+        var browseFlags = ShiftBrowseQueryFlags.IncludeSignups;
+        if (request.IsPrivileged)
+            browseFlags |= ShiftBrowseQueryFlags.IncludeAdminOnly | ShiftBrowseQueryFlags.IncludeHidden;
+
+        var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
-            departmentId: request.DepartmentId,
-            fromDate: filterFromDate,
-            toDate: filterToDate,
-            includeAdminOnly: request.IsPrivileged,
-            includeSignups: true,
-            includeHidden: request.IsPrivileged);
+            request.DepartmentId,
+            filterFromDate,
+            filterToDate,
+            browseFlags));
 
         var periodFilteredShifts = postFilterByPeriod
             ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
@@ -130,15 +132,14 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
         IReadOnlyList<UrgentShift> shifts,
         EventSettings eventSettings)
     {
-        var shiftTeamIds = shifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await teamService.GetByIdsWithParentsAsync(shiftTeamIds);
+        var teamsById = await teamService.GetTeamsAsync();
 
         return shifts
             .GroupBy(u => u.Shift.Rota.TeamId)
             .Select(deptGroup =>
             {
                 var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
-                var team = teamLookup.TryGetValue(firstShift.Rota.TeamId, out var t) ? t : null;
+                var team = teamsById.TryGetValue(firstShift.Rota.TeamId, out var t) ? t : null;
                 var deptName = team?.Name ?? string.Empty;
                 var deptSlug = team?.Slug ?? string.Empty;
                 return new DepartmentShiftGroup

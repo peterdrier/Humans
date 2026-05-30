@@ -42,8 +42,8 @@ public class ShiftsControllerDietaryGateTests
 {
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly IGeneralAvailabilityService _availabilityService =
-        Substitute.For<IGeneralAvailabilityService>();
+    private readonly IVolunteerTrackingService _volunteerTrackingService =
+        Substitute.For<IVolunteerTrackingService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -77,7 +77,7 @@ public class ShiftsControllerDietaryGateTests
         _controller = new ShiftsController(
             _shiftMgmt,
             _signupService,
-            _availabilityService,
+            _volunteerTrackingService,
             _shiftView,
             _teamService,
             _auditLogService,
@@ -139,7 +139,11 @@ public class ShiftsControllerDietaryGateTests
         redirect.RouteValues!["returnAction"].Should().Be("signup");
         redirect.RouteValues["shiftId"].Should().Be(shiftId);
         await _signupService.DidNotReceive()
-            .SignUpAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<bool>());
+            .SignUpAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<ShiftSignupRequestFlags>());
     }
 
     [HumansFact]
@@ -148,13 +152,13 @@ public class ShiftsControllerDietaryGateTests
         var shiftId = Guid.NewGuid();
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: false));
         SetDietary(null);
-        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>())
+        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
         var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
 
         await _signupService.Received(1)
-            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>());
+            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         result.Should().BeOfType<RedirectToActionResult>()
               .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
     }
@@ -165,13 +169,13 @@ public class ShiftsControllerDietaryGateTests
         var shiftId = Guid.NewGuid();
         _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
         SetDietary("Vegan");
-        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>())
+        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
         var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
 
         await _signupService.Received(1)
-            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<bool>());
+            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         result.Should().BeOfType<RedirectToActionResult>()
               .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
     }
@@ -193,15 +197,18 @@ public class ShiftsControllerDietaryGateTests
         result.Should().BeOfType<RedirectToActionResult>()
               .Which.ActionName.Should().Be("DietaryMedical");
         await _signupService.DidNotReceive()
-            .SignUpAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<bool>());
+            .SignUpAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<ShiftSignupRequestFlags>());
     }
 
     [HumansFact]
     public async Task SignUpRange_DietaryEmpty_RangeHasQualifyingShift_RedirectsToDietaryMedical()
     {
         var rotaId = Guid.NewGuid();
-        _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
-                      .Returns(new[] { BuildShift(Guid.NewGuid(), qualifiesForCantina: true) });
+        SetRotaView(rotaId, BuildShift(Guid.NewGuid(), qualifiesForCantina: true));
         SetDietary(null);
 
         var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
@@ -215,23 +222,34 @@ public class ShiftsControllerDietaryGateTests
         redirect.RouteValues["endDayOffset"].Should().Be(2);
         await _signupService.DidNotReceive().SignUpRangeAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(),
-            Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>());
+            Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
     }
 
     [HumansFact]
     public async Task SignUpRange_DietaryEmpty_RangeEmpty_ProceedsToSignup()
     {
         var rotaId = Guid.NewGuid();
-        _signupService.PeekRangeShiftsAsync(rotaId, 0, 2, Arg.Any<CancellationToken>())
-                      .Returns(Array.Empty<Shift>());
+        SetRotaView(rotaId);
         SetDietary(null);
-        _signupService.SignUpRangeAsync(_user.Id, rotaId, 0, 2, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>())
+        _signupService.SignUpRangeAsync(
+                _user.Id,
+                rotaId,
+                0,
+                2,
+                Arg.Any<Guid?>(),
+                Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
         var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
 
         await _signupService.Received(1)
-            .SignUpRangeAsync(_user.Id, rotaId, 0, 2, Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<bool>());
+            .SignUpRangeAsync(
+                _user.Id,
+                rotaId,
+                0,
+                2,
+                Arg.Any<Guid?>(),
+                Arg.Any<ShiftSignupRequestFlags>());
         result.Should().BeOfType<RedirectToActionResult>()
               .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
     }
@@ -284,6 +302,10 @@ public class ShiftsControllerDietaryGateTests
         return result.Should().BeOfType<ViewResult>()
                      .Which.Model.Should().BeOfType<Humans.Web.Models.MyShiftsViewModel>().Subject;
     }
+
+    private void SetRotaView(Guid rotaId, params Shift[] shifts) =>
+        _shiftView.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ShiftRotaView(rotaId, new Rota { Id = rotaId }, shifts, [], []));
 
     // All-day shifts qualify; this is the simplest knob to flip the
     // QualifiesForCantinaMeal() check without fabricating Duration values.

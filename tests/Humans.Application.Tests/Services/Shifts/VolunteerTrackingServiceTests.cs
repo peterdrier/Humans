@@ -364,8 +364,10 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var sut = BuildSut(es);
 
-        var below = await sut.SetDayOffAsync(Guid.NewGuid(), -6, reason: null, Guid.NewGuid());
-        var above = await sut.SetDayOffAsync(Guid.NewGuid(), 0, reason: null, Guid.NewGuid());
+        var below = await sut.SetDayOffAsync(
+            Guid.NewGuid(), -6, reason: null, coordinatorUserId: Guid.NewGuid());
+        var above = await sut.SetDayOffAsync(
+            Guid.NewGuid(), 0, reason: null, coordinatorUserId: Guid.NewGuid());
 
         below.Ok.Should().BeFalse();
         below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
@@ -384,7 +386,8 @@ public class VolunteerTrackingServiceTests
         };
         var sut = BuildSut(es, signups: signups);
 
-        var result = await sut.SetDayOffAsync(userId, -3, reason: null, Guid.NewGuid());
+        var result = await sut.SetDayOffAsync(
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -401,7 +404,8 @@ public class VolunteerTrackingServiceTests
         };
         var sut = BuildSut(es, signups: signups);
 
-        var result = await sut.SetDayOffAsync(userId, -3, reason: null, Guid.NewGuid());
+        var result = await sut.SetDayOffAsync(
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid());
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -511,7 +515,8 @@ public class VolunteerTrackingServiceTests
             [], [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
-        var result = await sut.ClearDayOffAsync(userId, -3, Guid.NewGuid());
+        var result = await sut.ClearDayOffAsync(
+            userId, -3, coordinatorUserId: Guid.NewGuid());
 
         result.Removed.Should().BeTrue();
         bs.DayOffs.Should().BeEmpty();
@@ -525,7 +530,8 @@ public class VolunteerTrackingServiceTests
             [], [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        var result = await sut.ClearDayOffAsync(Guid.NewGuid(), -3, Guid.NewGuid());
+        var result = await sut.ClearDayOffAsync(
+            Guid.NewGuid(), -3, coordinatorUserId: Guid.NewGuid());
 
         result.Removed.Should().BeFalse();
     }
@@ -722,16 +728,30 @@ public class VolunteerTrackingServiceTests
         shiftMgmt.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(activeEvent);
 
-        var userService = Substitute.For<IUserService>();
-        userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        var userService = Substitute.For<IUserServiceRead>();
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var year = call.Arg<int>();
-                return Task.FromResult<IReadOnlyList<UserParticipationRow>>(
-                    (participations ?? [])
-                    .Where(p => p.Year == year)
-                    .Select(p => new UserParticipationRow(p.UserId, p.Status, p.Source, p.CheckedInAt))
-                    .ToList());
+                var users = (participations ?? [])
+                    .GroupBy(p => p.UserId)
+                    .Select(g => UserInfo.Create(
+                        new User
+                        {
+                            Id = g.Key,
+                            DisplayName = string.Empty,
+                            PreferredLanguage = "en",
+                            CreatedAt = TestNow
+                        },
+                        userEmails: [],
+                        eventParticipations: g.ToList(),
+                        externalLogins: [],
+                        profile: null,
+                        contactFields: [],
+                        profileLanguages: [],
+                        volunteerHistory: [],
+                        communicationPreferences: []))
+                    .ToList();
+                return Task.FromResult<IReadOnlyCollection<UserInfo>>(users);
             });
 
         trackingRepo ??= new FakeVolunteerTrackingRepository(
@@ -776,40 +796,34 @@ public class VolunteerTrackingServiceTests
         public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
         public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
 
-        public Task<VolunteerBuildStatus?> GetAsync(Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId));
-
-        public Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
-                BuildStatuses.Where(b => b.EventSettingsId == eventSettingsId).ToList());
-
-        public Task<IReadOnlyList<VolunteerBuildStatus>> GetByUsersAndEventAsync(
-            IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+        public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
                 BuildStatuses
-                    .Where(b => b.EventSettingsId == eventSettingsId && userIds.Contains(b.UserId))
+                    .Where(b => b.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(b.UserId)))
                     .ToList());
 
-        public Task<GeneralAvailability?> GetAvailabilityByUserAndEventAsync(
-            Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(Availabilities.FirstOrDefault(a =>
-                a.UserId == userId && a.EventSettingsId == eventSettingsId));
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByEventAsync(
-            Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
-                Availabilities.Where(a => a.EventSettingsId == eventSettingsId).ToList());
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUserAsync(
-            Guid userId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
-                Availabilities.Where(a => a.UserId == userId).ToList());
-
-        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityByUsersAndEventAsync(
-            IReadOnlyCollection<Guid> userIds, Guid eventSettingsId, CancellationToken ct = default)
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
                 Availabilities
-                    .Where(a => a.EventSettingsId == eventSettingsId && userIds.Contains(a.UserId))
+                    .Where(a => a.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(a.UserId)))
+                    .ToList());
+
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
+            Guid userId,
+            Guid? eventSettingsId = null,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
+                Availabilities
+                    .Where(a => a.UserId == userId
+                        && (!eventSettingsId.HasValue || a.EventSettingsId == eventSettingsId.Value))
                     .ToList());
 
         public Task UpsertAvailabilityAsync(
@@ -838,13 +852,6 @@ public class VolunteerTrackingServiceTests
                 existing.UpdatedAt = now;
             }
 
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteAvailabilityAsync(
-            Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-        {
-            Availabilities.RemoveAll(a => a.UserId == userId && a.EventSettingsId == eventSettingsId);
             return Task.CompletedTask;
         }
 
