@@ -251,41 +251,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .ToHashSet();
     }
 
-    public async Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
-        Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.ResolvedAt != null
-                && a.ResolvedAt.Value >= windowStart
-                && a.ResolvedAt.Value < windowEnd)
-            .ToListAsync(ct), ct);
-
-    public async Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
-        CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Submitted)
-            .Select(a => a.Id)
-            .ToListAsync(ct), ct);
-
-    public async Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
-        Guid boardMemberUserId,
-        IReadOnlyCollection<Guid> applicationIds,
-        CancellationToken ct = default)
-    {
-        if (applicationIds.Count == 0)
-            return 0;
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var votedCount = await ctx.BoardVotes
-            .AsNoTracking()
-            .CountAsync(v => v.BoardMemberUserId == boardMemberUserId
-                && applicationIds.Contains(v.ApplicationId), ct);
-
-        return applicationIds.Count - votedCount;
-    }
-
     public async Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default)
     {

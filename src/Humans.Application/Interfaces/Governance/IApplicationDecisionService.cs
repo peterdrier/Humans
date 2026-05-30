@@ -142,31 +142,6 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
     /// </summary>
     Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns every <see cref="ApplicationStatus.Approved"/> application
-    /// resolved within the half-open window
-    /// <c>[windowStart, windowEnd)</c>. Used by the Board daily digest.
-    /// </summary>
-    Task<IReadOnlyList<ApprovedApplicationDigestEntry>> GetApprovedInWindowAsync(
-        Instant windowStart, Instant windowEnd, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the ids of every <see cref="ApplicationStatus.Submitted"/>
-    /// application. Used by the Board daily digest.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of applications in <paramref name="applicationIds"/>
-    /// that the given board member has NOT yet voted on. Used by the Board
-    /// daily digest per-member queue size.
-    /// </summary>
-    Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
-        Guid boardMemberUserId,
-        IReadOnlyCollection<Guid> applicationIds,
-        CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);
@@ -190,10 +165,6 @@ public sealed record ApplicationRenewalReminderCandidate(
     MembershipTier MembershipTier,
     Instant SubmittedAt,
     LocalDate? TermExpiresAt);
-
-public sealed record ApprovedApplicationDigestEntry(
-    Guid UserId,
-    MembershipTier MembershipTier);
 
 public sealed record SubmittedApplicationSnapshot(
     Guid Id,

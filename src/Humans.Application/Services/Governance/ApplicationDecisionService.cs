@@ -590,26 +590,6 @@ public sealed class ApplicationDecisionService(
         Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
         repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
 
-    public async Task<IReadOnlyList<ApprovedApplicationDigestEntry>> GetApprovedInWindowAsync(
-        Instant windowStart, Instant windowEnd, CancellationToken ct = default)
-    {
-        var applications = await repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
-        return applications
-            .Select(a => new ApprovedApplicationDigestEntry(a.UserId, a.MembershipTier))
-            .ToList();
-    }
-
-    public Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
-        CancellationToken ct = default) =>
-        repository.GetSubmittedApplicationIdsAsync(ct);
-
-    public Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
-        Guid boardMemberUserId,
-        IReadOnlyCollection<Guid> applicationIds,
-        CancellationToken ct = default) =>
-        repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
-            boardMemberUserId, applicationIds, ct);
-
     public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
         repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);

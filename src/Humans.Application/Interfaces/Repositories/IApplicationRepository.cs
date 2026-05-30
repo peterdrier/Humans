@@ -167,33 +167,6 @@ public interface IApplicationRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns Approved applications that have been resolved within
-    /// the half-open window <c>[windowStart, windowEnd)</c>, ordered by
-    /// <see cref="MembershipTier"/> then <c>ResolvedAt</c>. Used by the
-    /// Board daily digest.
-    /// </summary>
-    Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
-        Instant windowStart, Instant windowEnd, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns every Submitted application id. Used by the Board daily
-    /// digest to compute per-member unvoted counts without re-loading the
-    /// full application set.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the number of applications from <paramref name="applicationIds"/>
-    /// that the given board member has NOT yet voted on. Used by the Board
-    /// daily digest to render the per-member queue size.
-    /// </summary>
-    Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
-        Guid boardMemberUserId,
-        IReadOnlyCollection<Guid> applicationIds,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Stamps <c>Application.RenewalReminderSentAt</c> to
     /// <paramref name="sentAt"/>. No-op if the application does not exist.
     /// </summary>
