@@ -30,7 +30,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
-    private readonly INotificationService _notificationService;
+    private readonly INotificationEmitter _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
@@ -70,7 +70,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             .GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
-        _notificationService = Substitute.For<INotificationService>();
+        _notificationService = Substitute.For<INotificationEmitter>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
 
