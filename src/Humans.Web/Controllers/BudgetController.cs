@@ -161,7 +161,7 @@ public class BudgetController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
+            logger.LogWarning("Failed to create line item in category {CategoryId}: {Reason}", budgetCategoryId, ex.Message);
             SetError($"Failed to create line item: {ex.Message}");
         }
 
@@ -192,7 +192,7 @@ public class BudgetController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating line item {LineItemId}", id);
+            logger.LogWarning("Failed to update line item {LineItemId}: {Reason}", id, ex.Message);
             SetError($"Failed to update line item: {ex.Message}");
         }
 
@@ -219,7 +219,7 @@ public class BudgetController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error deleting line item {LineItemId}", id);
+            logger.LogWarning("Failed to delete line item {LineItemId}: {Reason}", id, ex.Message);
             SetError($"Failed to delete line item: {ex.Message}");
         }
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
