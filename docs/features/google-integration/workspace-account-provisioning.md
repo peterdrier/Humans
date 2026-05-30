@@ -230,12 +230,19 @@ Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string email, CancellationT
 
 `WorkspaceUserAccount` carries the post-provisioning visibility fields used by the admin surface: `IsEnrolledIn2Sv` (from Directory API `isEnrolledIn2Sv`) and `RecoveryEmail` (from `recoveryEmail`).
 
-### IEmailService (credentials notification)
+### Credentials notification (IEmailService + IEmailMessageFactory)
+`IEmailService` exposes a single generic `Task SendAsync(EmailMessage message, CancellationToken ct = default)`. The credentials message is built by the factory and dispatched through it:
 ```csharp
-Task SendWorkspaceCredentialsAsync(
+// IEmailMessageFactory
+EmailMessage WorkspaceCredentials(
     string recoveryEmail, string userName, string workspaceEmail,
-    string tempPassword, string? culture, CancellationToken ct);
+    string tempPassword, string? culture = null);
+
+// EmailProvisioningService (Step 5)
+await emailService.SendAsync(emailMessages.WorkspaceCredentials(
+    recoveryEmail, userName, workspaceEmail, tempPassword, culture));
 ```
+The factory message carries `TriggerImmediate: true` for fast delivery.
 
 ## Security Considerations
 

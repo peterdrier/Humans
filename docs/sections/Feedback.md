@@ -124,7 +124,7 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 
 ## Triggers
 
-- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendFeedbackResponseAsync`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
+- When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(IEmailMessageFactory.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
 - When a report is created or any message is posted (admin or reporter), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 
@@ -134,7 +134,7 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 - **Profiles:** `IProfileService.GetByUserIdsAsync` — batched profile lookup to resolve `BurnerName`-first display names for reporter, assignee, resolver, and message senders (see `memory/architecture/burnername-is-the-display-name.md`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — assigned-team display names.
-- **Email:** `IEmailService.SendFeedbackResponseAsync` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
+- **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
 - **Notifications:** `INotificationService.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status and assignment changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`).
 - **Caching:** `INavBadgeCacheInvalidator` — invalidated whenever the actionable count could have changed.

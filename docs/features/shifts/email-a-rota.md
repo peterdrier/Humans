@@ -108,7 +108,7 @@ No new entities or migrations. The feature is pure orchestration over existing t
 
 - `IShiftManagementRepository.GetRotaAsync(rotaId, RotaReadShape.View, ct)` — loads the rota with shifts, `EventSettings`, and signups in one read; active signups are filtered in memory for grouping.
 - `IUserService.GetUserInfosAsync(userIds, ct)` — recipient name/email/culture lookup.
-- `IEmailService.SendCoordinatorRotaMessageAsync(request, ct)` — outbox enqueue.
+- `IEmailService.SendAsync(IEmailMessageFactory.CoordinatorRotaMessage(request), ct)` — outbox enqueue.
 - `IEmailRenderer` — rendering for the new template.
 - `AuditAction.CoordinatorRotaMessageSent` — new audit action value.
 

@@ -90,7 +90,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any service / job | Queue a message via a typed `IEmailService.Send…Async` method (e.g. `SendAccessSuspendedAsync`, `SendApplicationApprovedAsync`, `SendCampaignCodeAsync`). The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
+| Any service / job | Build a fully-rendered `EmailMessage` via a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `ApplicationApproved`, `CampaignCode`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
 | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Profile/{id}/Admin/Outbox`). |
@@ -111,7 +111,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 ## Negative Access Rules
 
 - Regular humans **cannot** view another human's outbox.
-- Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — route through a typed `IEmailService.Send…Async` method (which writes to the outbox).
+- Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync` (which writes to the outbox).
 - The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxRepository`.
 - Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based) or admin discard. No service clears rows as a side-effect.
 
@@ -156,7 +156,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 
 ### Touch-and-clean guidance
 
-- Do **not** call MailKit / `SmtpClient` / `IEmailTransport` directly from business code. Route through a typed `IEmailService.Send…Async` method.
+- Do **not** call MailKit / `SmtpClient` / `IEmailTransport` directly from business code. Build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync`.
 - Do **not** read or write the `IsEmailSendingPaused` `SystemSetting` key from outside this section.
-- New typed send methods (`Send…Async`) go on `IEmailService` and are implemented in `OutboxEmailService` (which calls `IEmailRenderer` + `IEmailBodyComposer` + `IEmailOutboxRepository.AddAsync`).
+- New message types add a typed builder method on `IEmailMessageFactory` (impl `EmailMessageFactory`, which calls `IEmailRenderer` and stamps routing policy) — not a new method on `IEmailService`. The single `IEmailService.SendAsync` (impl `OutboxEmailService`, which calls `IEmailBodyComposer` + `IEmailOutboxRepository.AddAsync`) is the one shared transport path.
 - New headers (e.g., `List-Unsubscribe`) go in `ExtraHeaders` as JSON — do not add new columns per-header. The outbox schema is stable.

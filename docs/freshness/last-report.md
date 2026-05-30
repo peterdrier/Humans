@@ -1,138 +1,90 @@
-# Freshness Sweep — 2026-05-29
+# Freshness Sweep — Report
 
-| | |
-|---|---|
-| Previous anchor | `cdd850bd` |
-| New anchor | `cd9a9345` |
-| Mode | diff |
-| Mechanical entries dirty | 8 of 11 |
-| Mechanical files changed | 5 |
-| Editorial docs triggered & reviewed | 36 |
-| Editorial docs corrected for drift | 11 |
-| Editorial unmarked (no coverage) | 18 |
-| Husks pruned | 11 files (−7,065 lines) |
-| Wheat migrated | 0 (cluster pre-extracted by prior sweeps; re-verified) |
-| Docs tree | 121,855 → 114,790 lines (−5.80%) |
+**Run:** 2026-05-31 (worktree `freshness-sweep/2026-05-30T230606Z`)
+**Mode:** diff (batch)
+**Previous anchor:** `cd9a9345` (`cd9a93458`)
+**New anchor:** `e2b9630e` (`e2b9630e4`, `upstream/main` HEAD)
+**Worktree base:** `origin/main` `e2b9630e4` (in sync with `upstream/main`)
+**Diff scope:** 281 changed files since the last anchor.
 
-## Updated automatically
+The range is dominated by Reforge-guided **section surface reductions** (Budget #836, GoogleIntegration #835, Users #838, Email #837, Tickets #833, Expenses #830) and the **Shifts service/repository refactor** (#820) — behaviour-preserving by design — plus genuinely behavioural changes: **Email `IEmailService`→single `SendAsync(EmailMessage)` collapse** (#844), **Store TeamsAdmin order access** (#845) + **VAT-inclusive pricing** (#839), and the **admin sidebar realign** (#842).
 
-- **dev-stats** — appended today's row (`docs/development-stats.md`); reforge data lacked a 2026-05-29 row so class/interface counts for today came from the regex fallback (script's intended behavior)
-- **authorization-inventory** — re-scanned all controllers/handlers/`AuthorizeAsync` sites; corrected `DevSeedController.ResetDashboard` (now `PolicyNames.AdminOnly`, not `[Authorize(Roles)]`), updated the §7 note to reflect zero `[Authorize(Roles)]` attributes remain, fixed §6 line drifts (`HumansCampControllerBase` 55/85→58/88, `CityPlanningApiController` 276/301/339→274/299/337), bumped refresh date
-- **service-data-access-map** — refreshed Camps (CampService folds in the EarlyEntry projection + adds `IEarlyEntryInvalidator`/`ICampRoleCampAccess`; `CampRoleService` now uses narrow `ICampRoleCampAccess` + `IUserServiceRead`/`IUserEmailService`/`ICampInfoInvalidator` + `IGoogleGroupMembershipSource`) and corrected CityPlanning/Store/NotificationMeterProvider/OnsiteRoster to the read-split `ICampServiceRead`/`ITeamServiceRead`/`IUserServiceRead` surfaces
-- **dependency-graph** — verified all service ctors against the Mermaid graph (edges/nodes/lazy edges all current, no diagram body changes); fixed stale prose that claimed `CampRoleService` injects `ICampService` (it now uses the narrow `ICampRoleCampAccess` port)
-- **controller-architecture-audit** — verified all 9 trigger-changed controllers (CampController, CampApiController, AccountController, CityPlanningController, CityPlanningApiController, EventsController, HumansCampControllerBase, MailerAdminController, ProfileBackfillAdminController) against live source — every action/route/verb still matches; no additions/removals/renames; header date bumped to 2026-05-29
+---
 
-### Already current — no change needed
+## Updated automatically (mechanical)
 
-- **docs-readme-index** — 33 sections / 63 features / 25 guide docs all present with matching descriptions; the 5 changed section docs (Budget, Camps, CityPlanning, Mailer, Tickets) already had accurate index rows
-- **data-model-index** — entity-index table verified against `src/Humans.Domain/Entities/`; the `CampSeason.cs` change (the trigger) is already covered by the existing Camps row; no rows to add/remove/relink
-- **reforge-history** — script reported "No new days to snapshot" (last snapshot 2026-05-28); no row appended
+- **dev-stats** — regenerated (`docs/development-stats.md`, script).
+- **reforge-history** — regenerated incrementally: 2 day-rows appended through HEAD `e2b9630e4`, 0 build failures (`docs/reforge-history.csv`, script).
+- **authorization-inventory** — Store team-order authz (#845) reflected (TeamsAdmin / `isPrivilegedReader = CanAdministerStore || IsTeamsAdmin`, camp-vs-team split, `Delete` op); `IbanAccessHandler` documented as registered-but-uninvoked; call-site line-numbers re-anchored.
+- **controller-architecture-audit** — no net change (all 80 controllers/actions match HEAD); date bump + stale "newly added" paragraph reworded.
+- **service-data-access-map** — corrected accumulated dep-list drift: `BudgetService`→`IUserServiceRead`, `ShiftSignupService` repo list, dropped phantom injections (`IMembershipCalculator`, `IEarlyEntryInvalidator`, `IEmailRenderer`), `OutboxEmailService` single `SendAsync`, `GoogleWorkspaceSyncService` deps.
+- **dependency-graph** — removed the `ShiftSignupService → IMembershipCalculator` edge (no longer injected); read-splits collapse onto the owning-service node per the diagram convention, so no edge changes; `linkStyle` indices recomputed.
+- **docs-readme-index** — added the one missing row (`sections/_Index.md`); 0 removed, 0 description changes.
+- **data-model-index** — verified no-op: every current `Domain/Entities` type is already indexed with the correct owning section; no entity added/removed in range.
+- **code-analysis-suppressions** — verified no-op: the block already matches current `NoWarn` (`CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200;HUM_PROFILE_ISSUSPENDED;HUM_USER_NORMALIZEDEMAIL` + tests `xUnit1051;HUM_USER_DISPLAYNAME`). The in-range `Directory.Build.props` change only dropped `HUM_USER_GetById` from `WarningsNotAsErrors` (never in this block).
 
-### Skipped (not dirty)
+Not dirty (no trigger match): **about-page-packages**, **guid-reservations**.
 
-- **about-page-packages** — no `Directory.Packages.props` or `*.csproj` changes since previous anchor
-- **guid-reservations** — no `Data/Configurations/**` or `Domain/Constants/**` changes
-- **code-analysis-suppressions** — no `Directory.Build.props` / `tests/BannedSymbols.txt` changes
+## Editorial drift-fix
+
+Every triggered `flag-on-change` doc was reviewed against the *specific* changed files its triggers matched and **fixed in place** (≈42 surgical edits across 21 docs). Highlights:
+
+- **Email (#844 collapse):** `IEmailService.Send<X>Async` → build an `EmailMessage` via `IEmailMessageFactory` + the single `IEmailService.SendAsync` — fixed in `sections/Email.md` (×4), `features/email/email-outbox.md`, `features/google-integration/google-removal-notifications.md`, `features/shifts/email-a-rota.md`, plus the same collapse named in `sections/{Governance,Onboarding,Campaigns,Feedback,Issues,GoogleIntegration}.md` and `features/google-integration/workspace-account-provisioning.md`.
+- **Store (#845 / #839):** TeamsAdmin order authz (view-any + manage team orders only; never Pay/EditCounterparty; `Delete` op confirmed against `StoreOrderAuthorizationHandler`) and VAT-inclusive pricing — `sections/Store.md` (×3), `features/store/store.md` (×2), `guide/Store.md` (×2).
+- **Shifts (#820):** `GetStaffingDataAsync`/`GetStaffingHoursAsync` → `GetStaffingSnapshotAsync`; `GeneralAvailabilityService` deleted (folded into `VolunteerTrackingService`) — removed from owning-services/cache/arch-test lists (all deletions verified by `ls`); `GetShiftsForEventAsync`→`GetEventShiftsAsync`; `ITeamService.GetByIdsWithParentsAsync`→`ITeamServiceRead.GetTeamsAsync` in workload-dashboard.
+- **Teams:** `ITeamServiceRead` 4→5 methods (`GetUserCoordinatedTeamIdsAsync` moved onto the read interface).
+- **Admin/Notifications (#842):** sidebar group list realigned to sections in `guide/Admin.md`; `IGoogleSyncService`→`IGoogleSyncServiceRead` (×3) in `sections/Notifications.md`.
+- **GoogleIntegration (#835):** retired admin-digest subsection → failed-sync meter (`GetFailedSyncEventCountAsync`); `/Google` dashboard nav rewrite.
+
+No drift found (reviewed, clean) in the **Profiles/Users**, **Budget/Tickets/Expenses**, and **Shifts-peripheral/Cantina/VolunteerTracking** clusters — the surface reductions there changed only internal/private surface the docs never cite.
 
 ## Pruned
 
-Goal: ~5% reduction (soft), 7% (soft cap). This sweep: **5.80%** — above the soft target, comfortably under the hard cap.
+Removed the shipped **email/OAuth decoupling PR sequence + comm-prefs redesign** — 6 husks, **7,264 lines (~6.3 %** of the 114,890-line doc base; within the 7 % cap):
 
-This sweep cleared the **Barrios / CityPlanning plan+spec cluster** plus two small migration plans that the previous sweep (PR #819) had explicitly deferred "by line budget" after confirming their wheat was already extracted into living section docs. A read-only prune analyst re-verified all 11 in full against the living targets (`Camps.md`, `CityPlanning.md`, `Governance.md`, `design-rules.md`, `conventions.md`) — **zero un-migrated wheat found**, so no migrations were needed; all 11 are safe husks.
+| Husk | Lines | All-chaff reason (durable signal already lives in) |
+|---|--:|---|
+| `plans/2026-04-28-email-oauth-pr1-decouple-writes.md` | 1,251 | `memory/architecture/no-identity-email-column-reads.md`, `email-mutation-paths.md`, `sections/Profiles.md` |
+| `plans/2026-04-29-email-oauth-pr2-identity-surgery.md` | 747 | same atoms; husk's column-drop migration was later **reversed** (shadow properties) |
+| `plans/2026-04-30-email-oauth-pr3-useremails-modernization.md` | 1,376 | `sections/Profiles.md` UserEmail table (`Provider`/`ProviderKey`/`IsGoogle`, shadow props) |
+| `plans/2026-04-30-email-oauth-pr4-grid-and-link.md` | 2,473 | `sections/Profiles.md`; husk surface later superseded by PR #477 `ReconcileOAuthIdentityAsync` |
+| `plans/2026-04-30-email-oauth-pr7-drop-legacy-columns.md` | 40 | never-executed deferred stub; rule in `no-drops-until-prod-verified.md` |
+| `plans/2026-04-04-communication-preferences-redesign.md` | 1,377 | `features/profiles/communication-preferences.md` (pre-confirmed by last sweep) |
 
-**Husks deleted:**
+**Wheat migrated:** none — verified (against current code + the three named memory atoms) that every durable rule is already captured in living docs; migrating would have injected stale method-level surface.
+**Inbound refs retargeted:** `specs/2026-04-27-email-and-oauth-decoupling-design.md` §312 — dead link to the deleted PR 7 stub rewritten as a historical note (rule retained inline + atom pointer).
 
-- `docs/superpowers/plans/2026-03-13-barrios.md` (3,030 lines) — *implementation plan: file lists, entity/enum/EF-config code samples, service skeletons, task checklists. Durable Camps signal (concepts, lifecycle, name-lock auto-log, returning-camp opt-in auto-approve, role-definition catalogue, IFileStorage keying) already in `docs/sections/Camps.md`, including the two wheat-tagged invariants from the (previously deleted) design spec.*
-- `docs/superpowers/plans/2026-03-14-barrio-map.md` (2,041 lines) — *implementation plan (entity code, EF configs, SignalR hub, controllers, test block). Durable CityPlanning signal in `docs/sections/CityPlanning.md`: CampPolygon/History model, one-polygon-per-season constraint, append-only history, edit-authz, placement gating, SignalR broadcast, and the wheat-tagged `text`-not-`jsonb` storage rationale.*
-- `docs/superpowers/plans/2026-04-04-barrio-map-official-zones.md` (372 lines) — *mechanical: add `OfficialZonesGeoJson` field + upload/delete + admin card + JS layer. Result (column, admin routes, client-side overlap detection) already in CityPlanning.md.*
-- `docs/superpowers/plans/2026-04-04-barrio-map-placement-dates.md` (381 lines) — *mechanical: add `PlacementOpensAt`/`PlacementClosesAt` fields + form. The only non-obvious fact (informational, NOT enforced) is already noted in CityPlanning.md.*
-- `docs/superpowers/plans/2026-04-25-city-planning-import.md` (452 lines) — *mostly an admin-import.js block + modal markup + manual smoke steps. The history-Note conventions are already in CityPlanning.md; the rest is import-tool UX detail.*
-- `docs/superpowers/plans/2026-04-26-city-planning-marquee-selection.md` (233 lines) — *pure frontend: MapboxDraw custom-mode JS + smoke checklist. No backend/section invariant — code is the spec.*
-- `docs/superpowers/specs/2026-03-30-barrio-map-sound-zone-colors-design.md` (59 lines) — *the one surviving system fact (soundZone on the SignalR broadcast) is in CityPlanning.md line 132; the rest is hex-color/rendering presentation detail.*
-- `docs/superpowers/specs/2026-04-25-city-planning-import-design.md` (145 lines) — *companion design spec to the import plan; same content at design altitude. Reused endpoints + history-Note conventions already in CityPlanning.md.*
-- `docs/superpowers/specs/2026-04-26-city-planning-marquee-selection-design.md` (79 lines) — *design spec for the marquee vertex-selection frontend feature; entirely client-side editor interaction, no durable invariant.*
-- `docs/superpowers/plans/2026-04-15-governance-migration.md` (165 lines) — *Governance repo/store/decorator migration plan (#503). Durable outcomes fully reflected in `docs/sections/Governance.md` + `design-rules.md` §4–§5/§15 (incl. the #533 caching-layer drop). "Reference template" framing is historical — section docs are the live reference.*
-- `docs/superpowers/plans/2026-04-22-di-split-by-section.md` (108 lines) — *split `AddHumansInfrastructure` into per-section extension files. The resulting `Extensions/Sections/` layout IS the spec and is referenced by `design-rules.md` §5 (line 112) / §2b.*
+## Freshness-marker maintenance
 
-**Wheat migrated:** none — the cluster was pre-extracted by sweeps PR #819 and earlier; this sweep re-verified and deleted the husks.
+Added scoped `<!-- freshness:triggers -->` headers to the 5 architecture docs that previously carried `flag-on-change` with **no triggers** (false-firing on every `src/**` change — flagged unactioned by the last two sweeps): `design-rules.md`, `code-review-rules.md`, `coding-rules.md`, `conventions.md`, `roslyn-analysis.md`. No content drift found in any (reviewed conservatively; `design-rules.md` and `roslyn-analysis.md` were already updated in-range by their PRs).
 
-**Inbound refs:** the only live references to the deleted plans were in `docs/freshness/last-report.md` (overwritten this sweep). The `<!-- wheat: ... -->` provenance comments in `Camps.md` / `CityPlanning.md` point to the previously-deleted **design specs** (`specs/2026-03-13-barrios-design.md`, `specs/2026-03-14-barrio-map.md`), not the **plan** files deleted here — they are intentional provenance breadcrumbs and were left untouched.
+## Flagged for human review
 
-### Deferred to next sweep (under hard cap)
+Confirmed concrete drift that lives **outside this sweep's changed-file scope** (pre-existing) or is a genuine code-vs-doc judgment call — escalated, not edited:
 
-Previously-vetted chaff that didn't fit this sweep's 7% budget — apply on a future sweep:
+1. **`sections/Auth.md` §41 — `CompleteSignup`** still says "creates User + UserEmail". Current `AccountController.CompleteSignup` collects burner + first/last legal name and provisions a **Profile** via `CompleteMagicLinkSignupAsync` (#826, but `AccountController` not in this range). Ready rewrite: "collects burner + first/last legal name, provisions User + UserEmail + Profile via `CompleteMagicLinkSignupAsync`, signs in (double-click safe)". (`guide/Onboarding.md` and `features/auth/magic-link-auth.md` already describe this correctly.)
+2. **`sections/Shifts.md` §270/§281 — account-merge reassign trio** names `IGeneralAvailabilityService.ReassignToUserAsync` (interface **deleted** by #820) and the old per-service `Reassign*` names. Rewrite to the `IUserMerge.ReassignAsync` pattern: `ShiftSignupService` / `ShiftManagementService` / `VolunteerTrackingService` each implement it, invoked by `AccountMergeService.AcceptAsync`. (Left unedited — the current merge API needs confirmation before rewriting an invariant doc.)
+3. **`features/profiles/dietary-medical-nudge.md` vs `sections/Profiles.md`** disagree on field ownership: Profiles.md (and the now-verified `sections/Shifts.md`) say `DietaryPreference`/`Allergies`/`Intolerances`/`MedicalConditions` **moved to `Profile`**; dietary-medical-nudge.md still places them on `VolunteerEventProfile`. Reconcile dietary-medical-nudge.md against current `Domain/Entities`.
+4. **`features/cantina/daily-roster.md` §149** states "There is no per-day route" but `CantinaController` still ships `GET /Cantina/Roster/Day(/Csv)` (documented as current in `sections/Cantina.md`). Code-vs-doc judgment call: fix the doc, or the per-day route is dead code that should be removed.
+5. **`IbanAccessHandler`** (Expenses) is registered in DI and unit-tested but has **no production call site** (`ProfileController.RevealIban` gates on `AdminOnly` directly). Dead code — consider a tech-debt issue.
+6. **`sections/Expenses.md` §138** cites `CategoryRequiresCoordinatorEndorsementAsync`, which #830 made `internal` (method still exists, behaviour unchanged) — not a contradiction, just a now-internal-method citation. Optional reword.
 
-- `docs/superpowers/plans/2026-04-20-pr235-cache-collapse.md` (1,702) + spec `2026-04-20-pr235-cache-collapse-design.md` (261) — §15 cache pattern documented in `design-rules.md` §15, pinned by `ProfileArchitectureTests`
-- `docs/superpowers/plans/2026-04-04-communication-preferences-redesign.md` (1,130) — fully covered by `docs/features/profiles/communication-preferences.md`
-- `docs/superpowers/plans/2026-04-20-user-guide.md` (1,201) — `docs/guide/` + `docs/sections/Guide.md` capture everything. **Blocker:** `docs/architecture/maintenance-log.md:26` cites this plan path; deleting it creates a dead link, and maintenance-log is hand-maintained (never touched by the sweep). Peter must fix that ref first, then this can be dropped.
-- Old ticket-vendor design docs (`plans/2026-03-15-ticket-vendor-integration.md` 3,258, `specs/2026-03-15-ticket-vendor-integration-design.md` 397) — feature is live (`docs/features/tickets/ticket-vendor-integration.md`); needs a wheat-extraction pass before deletion, not a blind drop
+## Unmarked editorial (add `freshness:triggers` in a future pass)
 
-### Kept (had open items)
+19 editorial docs carry no freshness markers, so they are invisible to the sweep's dirty-matching: `features/{26-events,27-guide-browser,43-google-group-membership-sync,test-system-reliability}.md`, `features/agent/agent-section.md`, `features/scanner/scanner-barcode.md`, `guide/{AiHelper,EmailAccount,SigningIn,TicketTransfers,TwoStepVerification,YourData}.md`, `sections/{Agent,Debug,Events,Mailer,Scanner,_Index,admin-shell}.md`.
 
-- `docs/architecture/tech-debt-2026-04-23.md` — multiple `[OPEN]` items remain; not a prune candidate
+## Future-sweep prune candidates (budget-deferred, not stranded)
+
+Analyzed-confidence-dead shipped plans/specs left for a future sweep to keep this PR's deletions skimmable (would push past the 7 % cap): `ticket-vendor-integration` plan+spec, `store-section`, `issues-section`, `holded-read-integration`, `user-guide`, `in-app-guide`, `admin-shell-left-nav`, `community-calendar-slice1`, `pr235-cache-collapse` (≈ 22k lines). `2026-04-25-freshness-sweep.md` deliberately retained (the sweep's own active design).
 
 ## Proposed for review
 
-None. The prune analyst found zero medium-confidence wheat — all 11 husks were confirmed fully pre-extracted against the current living docs.
-
-## Editorial drift review (performed, not punted)
-
-All 36 triggered editorial docs were read against the *specific* source files that changed this sweep, and corrected in place where the prose was factually contradicted. The dominant driver was the Camps lead-authorization refactor (lead/event-manager authority moved entirely off the legacy `CampLead`/`camp_leads` onto `CampRoleAssignment` → `CampInfo.IsLead`/`IsEventManager`, retirement now tracked by #774 not #753) and the cross-section read-split (Store/CityPlanning/Notifications/Containers/OnsiteRoster now inject `ICampServiceRead`; several `ICampService` lead/pending/display methods removed).
-
-**Corrected (11 docs):**
-
-- `docs/sections/Camps.md` — lead/event-manager authz rewritten to read-model (`CampInfo.IsLead`/`IsEventManager`, `CampSeasonInfo.LeadUserIds`); legacy `CampLead` no longer consulted for authz (#774); `AddCampMemberAsLeadAsync`→`AddCampMemberToActiveSeasonAsync`; account-merge `ReassignAssignmentsToUserAsync`→`ReassignAsync` (re-FKs `CampRoleAssignment.CampMemberId`, removed the stale "CampMember not folded" gap note); Containers/Profiles/internal cross-section deps moved to `ICampServiceRead`/`ICampRoleCampAccess`/`ICampInfoInvalidator`; caching-decorator + leads-invariant + touch-and-clean prose updated
-- `docs/features/camps/camps.md` — `AddMemberAndAssignRoleAsync`→`AddMemberAndAssignRoleInActiveSeasonAsync` (bare overload now private)
-- `docs/sections/CityPlanning.md` + `docs/sections/Containers.md` — Camps dependency narrowed to `ICampServiceRead`; removed-method lists replaced with the actually-called set + `CampInfo.IsLead` LINQ
-- `docs/sections/Store.md` + `docs/features/store/store.md` — `ICampService`→`ICampServiceRead`; `GetCampLeadSeasonIdForYearAsync`/`GetCampSeasonDisplayDataForYearAsync` replaced with `GetCampsForYearAsync` + read-model helpers
-- `docs/sections/Notifications.md` — per-lead pending meter: removed `ICampService.GetPendingMembershipCountForLeadAsync`, now `ICampServiceRead.GetSettingsAsync` + `GetCampsForYearAsync` derived in-memory
-- `docs/features/auth/magic-link-auth.md` + `docs/guide/Onboarding.md` — first-login signup now collects a burner name **and** first/last legal name (all required), not a single display name (`CompleteMagicLinkSignupAsync` signature + `CompleteSignup.cshtml` form)
-- `docs/features/mailer/audience-debug-screen.md` — debug-table page sizes `20/50/100/200`, default `20` (was `50/100/200`, default `50`)
-- `docs/guide/Budget.md` — added the new user-visible **VAT/IVA-inclusive amount** convention (gross figures; VAT% records the rate only, never adds on top) now shown on the Budget/Finance detail views
-
-**Reviewed, no drift (25 docs):** the triggering code changes were internal refactors with no documented/user-visible contradiction — `Auth`, `Onboarding`, `Users`, `Tickets`/`Store`/`CityPlanning`/`Camps` guides, `authentication`, `contact-accounts`, `preferred-email`, `workspace-account-provisioning`, `notification-inbox`, `gdpr-export`, `event-participation`, `ticket-vendor-integration`, `google-removal-notifications` (resx delta touched only `CompleteSignup_*` keys), `guide/{Admin,Events,Profiles}`, etc.
-
-### Open questions for Peter (judgment calls + pre-existing drift found during review)
-
-These were deliberately **not** edited (out of this sweep's "drift caused by recent changes" scope, or a rule-doc judgment call) — your call:
-
-1. **`design-rules.md` §9** — the CORRECT cross-service example injects `ICampStore`, but stores were retired project-wide (§4–5 / §15i say "0 stores exist today"). Pre-existing drift. Drop/replace the example?
-2. **`design-rules.md` §8** table-ownership map — Camps row omits `CampRoleService` and the `camp_role_definitions` / `camp_role_assignments` / `camp_members` tables (all accessed via the consolidated `ICampRepository`). Pre-existing. Add them?
-3. **`docs/sections/Camps.md`** read/write-split paragraph still describes `ICampService` as exposing "per-user/lead/membership reads" generally — several of those concrete methods were removed this sweep. Tighten the general sentence?
-4. **`docs/sections/Camps.md`** notes `BarrioEventsController` at `/Barrios/{slug}/Events/*` while the (now-deleted) `ICampService` XML doc referenced `EventsController` at `/Events/Barrio/{slug}/*` — the Events controller was outside this sweep's changed-file scope, so the route-alias discrepancy is unverified. Worth a follow-up check.
-5. Pre-existing, left untouched: `CityPlanning.md` lists `IProfileService` / un-suffixed `ITeamService`/`IUserService` (constructor already uses the `*Read` forms, no `IProfileService`); `Containers.md` dep list still names the unused `GetCampsWithLeadsForYearAsync`.
-
-> **Process note:** SKILL.md already mandated "the default is fix, not flag" for editorial drift — but the rule was buried in prose after the Phase 5 table, so the happy path read "flag-on-change → flag list" and punted (this is the first sweep to actually do the fix). This sweep strengthens `.claude/skills/freshness-sweep/SKILL.md` so the drift-fix is an explicit, mandatory **dispatched** Phase 5 step (with the exact matched-files list handed to each subagent), making the punt path unavailable to future executors.
-
-### Triggered docs reviewed (full list)
-
-<details>
-<summary>36 docs</summary>
-
-**Sections (9):** `Auth`, `Camps`, `CityPlanning`, `Containers`, `Notifications`, `Onboarding`, `Store`, `Tickets`, `Users`
-
-**Guide (9):** `Admin`, `Budget`, `Camps`, `CityPlanning`, `Events`, `Onboarding`, `Profiles`, `Store`, `Tickets`
-
-**Features (14):** `auth/authentication`, `auth/magic-link-auth`, `camps/camps`, `city-planning/city-planning`, `global/gdpr-export`, `google-integration/google-removal-notifications`, `google-integration/workspace-account-provisioning`, `mailer/audience-debug-screen`, `notifications/notification-inbox`, `profiles/contact-accounts`, `profiles/preferred-email`, `store/store`, `tickets/event-participation`, `tickets/ticket-vendor-integration`
-
-**Architecture (4, via broad fallback):** `code-review-rules`, `coding-rules`, `conventions`, `design-rules` — reviewed conservatively; no sweep-caused contradictions (two pre-existing drifts surfaced as questions 1–2 above). These carry a `freshness:flag-on-change` marker but **no `freshness:triggers` header**, so they flag on every `src/**` change — adding scoped triggers would cut the noise.
-
-</details>
-
-## Unmarked editorial (no `freshness:triggers` — please add markers)
-
-18 editorial docs have no freshness markers at all, so they're invisible to the sweep's dirty-matching (neither flagged nor auto-updated). Adding `freshness:triggers` + `freshness:flag-on-change` headers brings them into coverage:
-
-- `docs/features/26-events.md`, `27-guide-browser.md`, `43-google-group-membership-sync.md`, `test-system-reliability.md`
-- `docs/features/agent/agent-section.md`
-- `docs/features/scanner/scanner-barcode.md`
-- `docs/guide/{AiHelper,EmailAccount,SigningIn,TicketTransfers,TwoStepVerification,YourData}.md`
-- `docs/sections/{Agent,Debug,Events,Mailer,Scanner,admin-shell}.md`
+None — all candidates resolved this sweep.
 
 ## Questions
 
-See "Open questions for Peter" under the editorial drift review above (5 items: 2 pre-existing `design-rules.md` drifts, a Camps read/write-split sentence to tighten, a Camps event-route alias to verify, and 2 minor pre-existing cross-section-dep nits).
+None asked this sweep.
 
 ## Skipped (errors)
 
-None this sweep.
+None.

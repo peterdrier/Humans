@@ -27,7 +27,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 
 ## Key pages at a glance
 
-- **Google dashboard** (`/Google`) — entry point; buttons for Check Group Settings, Check Email Mismatches, and links to the sub-pages.
+- **Google dashboard** (`/Google`) — entry point; on-demand check buttons (Sync System Teams, Check Group Settings, Check Email Renames). Sub-pages (sync settings, accounts, domain groups, outbox, detection results) are reached from the Google section of the admin sidebar.
 - **Sync status** (`/Google/Sync`) — tabbed Drive / Groups view of every active linked resource with drift and Sync Now.
 - **Sync settings** (`/Google/SyncSettings`) — per-service sync mode (None / AddOnly / AddAndRemove).
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.

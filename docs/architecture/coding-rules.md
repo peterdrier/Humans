@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  memory/code/**
+  memory/architecture/**
+  src/Humans.Analyzers/**
+-->
 <!-- freshness:flag-on-change
   Stub. The cross-cutting C# coding rules previously listed here are now atomized in `memory/code/`. Flag if any architectural pattern shift in src/** invalidates a coding-style assumption — but update the relevant atom under `memory/code/`, not this file.
 -->

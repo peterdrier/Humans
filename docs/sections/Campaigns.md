@@ -117,7 +117,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Triggers
 
-- When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendCampaignCodeAsync` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant.
+- When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(IEmailMessageFactory.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant.
 - When a human unsubscribes (legacy campaign-only token or new category-aware token), `ICommunicationPreferenceService.UpdatePreferenceAsync` flips their `MessageCategory.CampaignCodes` (legacy tokens map to `MessageCategory.Marketing`) preference to opted-out; they are then excluded from future wave sends. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is no longer the active gate.)
 - When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
 - When an enqueue throws during `SendWaveAsync` or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up.
@@ -126,7 +126,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 ## Cross-Section Dependencies
 
 - **Tickets:** `ITicketVendorService` — TicketAdmin can generate discount codes via the ticket vendor integration. Generation is invoked from the Campaign Detail page, not from the Tickets section.
-- **Email:** `IEmailService.SendCampaignCodeAsync` — composes and queues the campaign-code email through the outbox.
+- **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` — composes and queues the campaign-code email through the outbox.
 - **Profiles / Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserService.GetByIdAsync` / `GetByIdsAsync` — recipient `DisplayName` for the email payload and code-tracking display; `ICommunicationPreferenceService.IsOptedOutAsync(MessageCategory.CampaignCodes)` — opt-out gate; `IUnsubscribeService` (in `Humans.Application.Services.Users`) processes the public `/Unsubscribe/{token}` endpoint, validating both new category-aware tokens and legacy campaign-only tokens before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync`.
 - **Notifications:** `INotificationService.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
 - **Teams:** `ITeamService.GetActiveTeamOptionsAsync` (Send Wave team picker) and `ITeamService.GetTeamMembersAsync` (team-scoped wave targeting).
@@ -141,7 +141,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - `CampaignService` lives in `Humans.Application.Services.Campaigns` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `Humans.Application/Interfaces/Repositories/ICampaignRepository.cs`, impl `Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
-- **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetByIdAsync` / `GetByIdsAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendCampaignCodeAsync` (the outbox service owns the email_outbox_messages table).
+- **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetByIdAsync` / `GetByIdsAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` (the outbox service owns the email_outbox_messages table).
 - **Cross-domain navs `[Obsolete]`-marked:** `Campaign.CreatedByUser`, `CampaignGrant.User`. Both are kept solely so EF can model the FK constraint (configured under `#pragma warning disable CS0618` in `CampaignConfiguration` / `CampaignGrantConfiguration`). All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`, never the obsolete navs.
 - **Architecture test** — no dedicated `CampaignArchitectureTests.cs` exists. Cross-cutting architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) covers this section generically.
 

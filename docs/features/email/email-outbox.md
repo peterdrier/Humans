@@ -21,7 +21,7 @@ Transactional emails (onboarding, campaign codes, notifications) must be deliver
 
 ## How It Works
 
-1. Application code calls `IOutboxEmailService.QueueAsync(...)` instead of sending directly.
+1. Application code builds a rendered `EmailMessage` via `IEmailMessageFactory` and calls `IEmailService.SendAsync(message)` instead of sending directly.
 2. The service writes an `EmailOutboxMessage` row with `Status = Queued`.
 3. `ProcessEmailOutboxJob` (Hangfire, runs every minute) picks up batches of queued messages and delivers them via `IEmailTransport`.
 4. On success: `Status = Sent`, `SentAt` stamped.
@@ -40,11 +40,11 @@ All settings live under the `Email` section in `appsettings.json`:
 
 ## Admin Dashboard
 
-Route: `/Admin/EmailOutbox` — requires Admin role.
+Route: `/Email/EmailOutbox` — requires Admin role.
 
 Features:
 - Stats: queued count, sent in last 24h, failed count
-- Global pause/resume toggle (stored in `SystemSettings` as `email_outbox_paused`)
+- Global pause/resume toggle (stored in `system_settings` as `IsEmailSendingPaused`)
 - Message table: recent messages with status, recipient, subject, retry count, last error
 - Per-message retry button (resets a Failed message back to Queued)
 
@@ -52,7 +52,7 @@ When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages
 
 ## Global Pause
 
-The `email_outbox_paused` key in `system_settings` controls whether the outbox processor runs. Pause/Resume actions on the dashboard update this setting. Useful during maintenance windows or when diagnosing delivery issues.
+The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. Pause/Resume actions on the dashboard update this setting. Useful during maintenance windows or when diagnosing delivery issues.
 
 ## Metrics (OpenTelemetry)
 

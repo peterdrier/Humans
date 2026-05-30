@@ -36,7 +36,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Operations, Members, Money, Governance, Integrations, Agent, People data, Diagnostics). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
 - `/Profile/Admin` — humans list; `?filter=pending` scopes to pending approvals.
 - `/Profile/{id}/Admin` — per-human detail, with suspend, unsuspend, approve, reject, add role, end role.
 - `/Profile/{id}/Admin/Outbox` — per-human email outbox.

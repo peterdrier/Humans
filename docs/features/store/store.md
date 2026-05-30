@@ -154,15 +154,16 @@ All cross-section linkage is bare `Guid` columns — no FK constraints, no nav p
 
 ## Authorization
 
-Resource-based via `StoreOrderAuthorizationHandler` keyed on `StoreOrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`}). Logic:
+Resource-based via `StoreOrderAuthorizationHandler` keyed on `StoreOrderOperationRequirement` ({`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`}). Logic:
 
 | Role | View | AddLine / RemoveLine / EditCounterparty | Pay |
 |---|---|---|---|
 | `Admin` / `StoreAdmin` / `FinanceAdmin` | any state | any state | any state |
+| `TeamsAdmin` | any order (camp or team) | team orders only, `Open` only (no EditCounterparty) | denied |
 | Camp lead/co-lead of the camp owning the order's `CampSeason` | any state | `Open` only | any state |
 | Anyone else | denied | denied | denied |
 
-`StoreAdmin` is the Store-domain superset (per `memory/code/admin-role-superset.md`): full access to catalog, orders, payments, and invoices. `FinanceAdmin` retains parallel access for accounting workflows. The shared check is `RoleChecks.CanAdministerStore`.
+`StoreAdmin` is the Store-domain superset (per `memory/code/admin-role-superset.md`): full access to catalog, orders, payments, and invoices. `FinanceAdmin` retains parallel access for accounting workflows. The shared check is `RoleChecks.CanAdministerStore`. A `TeamsAdmin` (`RoleChecks.IsTeamsAdmin`) is a read-all-orders viewer that can manage team orders but only view camp orders, and is never granted `EditCounterparty`/`Pay` (team orders are non-billable).
 
 ## Cross-Section Dependencies
 

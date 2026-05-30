@@ -37,7 +37,7 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 
 ### Browse and start an order
 
-Go to `/Store` to see what's available for your camp this year. Start a new order and add items for what you need. Each item locks in the product's price, VAT, and deposit at the moment you add it — later catalogue changes won't shift your existing items.
+Go to `/Store` to see what's available for your camp this year. Prices are shown VAT-inclusive as the headline amount, with the net price and VAT rate underneath. Start a new order and add items for what you need. Each item locks in the product's price, VAT, and deposit at the moment you add it — later catalogue changes won't shift your existing items.
 
 You can have more than one order for the same camp season; give each a label to tell them apart.
 
@@ -61,7 +61,7 @@ The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. 
 
 ### Manage the catalogue
 
-Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store/Admin/Catalog/Edit`. Each product has a name, description, unit price (EUR), VAT rate, an optional per-unit deposit, an ordering deadline, and an active/inactive switch. Switching a product off hides it from new orders without touching orders that already include it. Products belong to a year — the current event year decides which catalogue is live.
+Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store/Admin/Catalog/Edit`. Each product has a name, description, unit price (EUR), VAT rate, an optional per-unit deposit, an ordering deadline, and an active/inactive switch. The product form shows both an ex-VAT and an incl-VAT price field — enter either and the other updates automatically. Switching a product off hides it from new orders without touching orders that already include it. Products belong to a year — the current event year decides which catalogue is live.
 
 ### Summary report
 
