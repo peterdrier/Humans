@@ -30,17 +30,17 @@ public sealed class ConsentService(
     IClock clock,
     ILogger<ConsentService> logger) : IConsentService, IUserDataContributor
 {
-    // Chain-follow: returns {merged-source-ids ∪ userId} if userId is a fold target, else null.
-    private async Task<IReadOnlyCollection<Guid>?> GetChainFollowIdsAsync(
+    // Chain-follow read ids: always {userId ∪ merged-source-ids}. When userId is not a
+    // fold target the set is just [userId], so every consent read runs through the
+    // multi-id repository methods uniformly (the single-id repo overloads are exactly
+    // these called with one id).
+    private async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
         Guid userId, CancellationToken ct)
     {
         var sourceIds = await userService.GetMergedSourceIdsAsync(userId, ct);
-        if (sourceIds.Count == 0)
-            return null;
 
-        var allIds = new List<Guid>(sourceIds.Count + 1);
+        var allIds = new List<Guid>(sourceIds.Count + 1) { userId };
         allIds.AddRange(sourceIds);
-        allIds.Add(userId);
         return allIds;
     }
 
@@ -55,9 +55,7 @@ public sealed class ConsentService(
         var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var userConsents = chainIds is null
-            ? await repo.GetAllForUserAsync(userId, ct)
-            : await repo.GetAllForUserIdsAsync(chainIds, ct);
+        var userConsents = await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var groups = documents
             .GroupBy(d => d.TeamId)
@@ -110,9 +108,7 @@ public sealed class ConsentService(
             return null;
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var consentRecord = chainIds is null
-            ? await repo.GetByUserAndVersionAsync(userId, documentVersionId, ct)
-            : await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+        var consentRecord = await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         // Profile is owned by Profiles section — go through UserInfo cache, not the DbSet.
         var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
@@ -144,9 +140,7 @@ public sealed class ConsentService(
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var alreadyConsented = chainIds is null
-            ? await repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct)
-            : await repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
@@ -199,9 +193,7 @@ public sealed class ConsentService(
         Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var records = chainIds is null
-            ? await repo.GetAllForUserAsync(userId, ct)
-            : await repo.GetAllForUserIdsAsync(chainIds, ct);
+        var records = await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         return records
             .Select(c => new ConsentRecordSnapshot(
@@ -216,18 +208,14 @@ public sealed class ConsentService(
     public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        return chainIds is null
-            ? await repo.GetCountForUserAsync(userId, ct)
-            : await repo.GetCountForUserIdsAsync(chainIds, ct);
+        return await repo.GetCountForUserIdsAsync(chainIds, ct);
     }
 
     public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        return chainIds is null
-            ? await repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct)
-            : await repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
+        return await repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
@@ -347,9 +335,7 @@ public sealed class ConsentService(
     {
         // Chain-follow for GDPR export. Source User rows are anonymized by AnonymizeForMergeAsync.
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var consents = chainIds is null
-            ? await repo.GetAllForUserAsync(userId, ct)
-            : await repo.GetAllForUserIdsAsync(chainIds, ct);
+        var consents = await repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var shaped = consents.Select(c => new
         {

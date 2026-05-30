@@ -68,52 +68,52 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // ExistsForUserAndVersionAsync
+    // ExistsForUserIdsAndVersionAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task ExistsForUserAndVersionAsync_ReturnsTrue_WhenRecordExists()
+    public async Task ExistsForUserIdsAndVersionAsync_ReturnsTrue_WhenRecordExists()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, versionId));
 
-        var exists = await _repo.ExistsForUserAndVersionAsync(userId, versionId);
+        var exists = await _repo.ExistsForUserIdsAndVersionAsync([userId], versionId);
 
         exists.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task ExistsForUserAndVersionAsync_ReturnsFalse_WhenNoRecord()
+    public async Task ExistsForUserIdsAndVersionAsync_ReturnsFalse_WhenNoRecord()
     {
-        var exists = await _repo.ExistsForUserAndVersionAsync(Guid.NewGuid(), Guid.NewGuid());
+        var exists = await _repo.ExistsForUserIdsAndVersionAsync([Guid.NewGuid()], Guid.NewGuid());
 
         exists.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task ExistsForUserAndVersionAsync_ReturnsFalse_ForDifferentUser()
+    public async Task ExistsForUserIdsAndVersionAsync_ReturnsFalse_ForDifferentUser()
     {
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionId));
 
-        var exists = await _repo.ExistsForUserAndVersionAsync(Guid.NewGuid(), versionId);
+        var exists = await _repo.ExistsForUserIdsAndVersionAsync([Guid.NewGuid()], versionId);
 
         exists.Should().BeFalse();
     }
 
     // ==========================================================================
-    // GetByUserAndVersionAsync
+    // GetByUserIdsAndVersionAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetByUserAndVersionAsync_ReturnsRecord_WhenExists()
+    public async Task GetByUserIdsAndVersionAsync_ReturnsRecord_WhenExists()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, versionId));
 
-        var record = await _repo.GetByUserAndVersionAsync(userId, versionId);
+        var record = await _repo.GetByUserIdsAndVersionAsync([userId], versionId);
 
         record.Should().NotBeNull();
         record.UserId.Should().Be(userId);
@@ -121,19 +121,19 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserAndVersionAsync_ReturnsNull_WhenMissing()
+    public async Task GetByUserIdsAndVersionAsync_ReturnsNull_WhenMissing()
     {
-        var record = await _repo.GetByUserAndVersionAsync(Guid.NewGuid(), Guid.NewGuid());
+        var record = await _repo.GetByUserIdsAndVersionAsync([Guid.NewGuid()], Guid.NewGuid());
 
         record.Should().BeNull();
     }
 
     // ==========================================================================
-    // GetAllForUserAsync
+    // GetAllForUserIdsAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetAllForUserAsync_ReturnsOnlyThatUsersRecords_NewestFirst()
+    public async Task GetAllForUserIdsAsync_ReturnsOnlyThoseUsersRecords_NewestFirst()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -148,7 +148,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(newer);
         await _repo.AddAsync(otherUserRecord);
 
-        var results = await _repo.GetAllForUserAsync(userId);
+        var results = await _repo.GetAllForUserIdsAsync([userId]);
 
         results.Should().HaveCount(2);
         results[0].Id.Should().Be(newer.Id);
@@ -156,14 +156,14 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllForUserAsync_IncludesDocumentVersionAndLegalDocumentNavs()
+    public async Task GetAllForUserIdsAsync_IncludesDocumentVersionAndLegalDocumentNavs()
     {
         var userId = Guid.NewGuid();
         var versionId = await SeedVersionAsync("Privacy Policy");
 
         await _repo.AddAsync(BuildRecord(userId, versionId));
 
-        var results = await _repo.GetAllForUserAsync(userId);
+        var results = await _repo.GetAllForUserIdsAsync([userId]);
 
         results.Should().HaveCount(1);
         results[0].DocumentVersion.Should().NotBeNull();
@@ -172,44 +172,89 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllForUserAsync_ReturnsEmpty_WhenNoRecords()
+    public async Task GetAllForUserIdsAsync_ReturnsEmpty_WhenNoRecords()
     {
-        var results = await _repo.GetAllForUserAsync(Guid.NewGuid());
+        var results = await _repo.GetAllForUserIdsAsync([Guid.NewGuid()]);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetAllForUserIdsAsync_UnionsRecordsAcrossIds_NewestFirst()
+    {
+        // Chain-follow: a fold target's history includes records that stayed
+        // attributed to merged-source ids.
+        var targetId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var v1 = await SeedVersionAsync();
+        var v2 = await SeedVersionAsync();
+
+        var sourceRecord = BuildRecord(sourceId, v1, consentedAt: _clock.GetCurrentInstant() - Duration.FromHours(2));
+        var targetRecord = BuildRecord(targetId, v2, consentedAt: _clock.GetCurrentInstant() - Duration.FromMinutes(10));
+
+        await _repo.AddAsync(sourceRecord);
+        await _repo.AddAsync(targetRecord);
+
+        var results = await _repo.GetAllForUserIdsAsync([targetId, sourceId]);
+
+        results.Should().HaveCount(2);
+        results[0].Id.Should().Be(targetRecord.Id);
+        results[1].Id.Should().Be(sourceRecord.Id);
+    }
+
+    [HumansFact]
+    public async Task GetAllForUserIdsAsync_ReturnsEmpty_WhenIdsEmpty()
+    {
+        var results = await _repo.GetAllForUserIdsAsync([]);
 
         results.Should().BeEmpty();
     }
 
     // ==========================================================================
-    // GetCountForUserAsync
+    // GetCountForUserIdsAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetCountForUserAsync_ReturnsCount()
+    public async Task GetCountForUserIdsAsync_ReturnsCount()
     {
         var userId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()));
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()));
         await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid())); // other user
 
-        var count = await _repo.GetCountForUserAsync(userId);
+        var count = await _repo.GetCountForUserIdsAsync([userId]);
 
         count.Should().Be(2);
     }
 
     [HumansFact]
-    public async Task GetCountForUserAsync_ReturnsZero_WhenNoRecords()
+    public async Task GetCountForUserIdsAsync_ReturnsZero_WhenNoRecords()
     {
-        var count = await _repo.GetCountForUserAsync(Guid.NewGuid());
+        var count = await _repo.GetCountForUserIdsAsync([Guid.NewGuid()]);
 
         count.Should().Be(0);
     }
 
+    [HumansFact]
+    public async Task GetCountForUserIdsAsync_SumsAcrossIds()
+    {
+        var targetId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        await _repo.AddAsync(BuildRecord(targetId, Guid.NewGuid()));
+        await _repo.AddAsync(BuildRecord(sourceId, Guid.NewGuid()));
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid())); // unrelated user
+
+        var count = await _repo.GetCountForUserIdsAsync([targetId, sourceId]);
+
+        count.Should().Be(2);
+    }
+
     // ==========================================================================
-    // GetExplicitlyConsentedVersionIdsAsync
+    // GetExplicitlyConsentedVersionIdsForUserIdsAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsAsync_ReturnsOnlyExplicitConsents()
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsOnlyExplicitConsents()
     {
         var userId = Guid.NewGuid();
         var explicitId = Guid.NewGuid();
@@ -217,7 +262,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(userId, explicitId, explicitConsent: true));
         await _repo.AddAsync(BuildRecord(userId, implicitId, explicitConsent: false));
 
-        var ids = await _repo.GetExplicitlyConsentedVersionIdsAsync(userId);
+        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([userId]);
 
         ids.Should().HaveCount(1);
         ids.Should().Contain(explicitId);
@@ -225,11 +270,28 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsAsync_ReturnsEmpty_WhenNone()
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsEmpty_WhenNone()
     {
-        var ids = await _repo.GetExplicitlyConsentedVersionIdsAsync(Guid.NewGuid());
+        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([Guid.NewGuid()]);
 
         ids.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_UnionsAcrossIds()
+    {
+        var targetId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var targetVersion = Guid.NewGuid();
+        var sourceVersion = Guid.NewGuid();
+        await _repo.AddAsync(BuildRecord(targetId, targetVersion, explicitConsent: true));
+        await _repo.AddAsync(BuildRecord(sourceId, sourceVersion, explicitConsent: true));
+
+        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([targetId, sourceId]);
+
+        ids.Should().HaveCount(2);
+        ids.Should().Contain(targetVersion);
+        ids.Should().Contain(sourceVersion);
     }
 
     // ==========================================================================
