@@ -475,30 +475,21 @@ public sealed class ApplicationDecisionService(
     {
         var applications = await repository.GetAllSubmittedWithVotesAsync(ct);
 
-        var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
-        var applicantsById = await userService.GetUserInfosAsync(applicantIds, ct);
-
-        var rows = applications.Select(a =>
-        {
-            var applicant = applicantsById.GetValueOrDefault(a.UserId);
-            return new BoardVotingDashboardRow(
-                ApplicationId: a.Id,
-                UserId: a.UserId,
-                UserDisplayName: applicant?.BurnerName ?? string.Empty,
-                UserProfilePictureUrl: applicant?.ProfilePictureUrl,
-                MembershipTier: a.MembershipTier,
-                ApplicationMotivation: a.Motivation,
-                SubmittedAt: a.SubmittedAt,
-                Status: a.Status,
-                Votes: a.BoardVotes
-                    .Select(v => new BoardVoteRow(
-                        BoardMemberUserId: v.BoardMemberUserId,
-                        BoardMemberDisplayName: null,
-                        Vote: v.Vote,
-                        Note: v.Note,
-                        VotedAt: v.VotedAt))
-                    .ToList());
-        }).ToList();
+        var rows = applications.Select(a => new BoardVotingDashboardRow(
+            ApplicationId: a.Id,
+            UserId: a.UserId,
+            MembershipTier: a.MembershipTier,
+            ApplicationMotivation: a.Motivation,
+            SubmittedAt: a.SubmittedAt,
+            Status: a.Status,
+            Votes: a.BoardVotes
+                .Select(v => new BoardVoteRow(
+                    BoardMemberUserId: v.BoardMemberUserId,
+                    BoardMemberDisplayName: null,
+                    Vote: v.Vote,
+                    Note: v.Note,
+                    VotedAt: v.VotedAt))
+                .ToList())).ToList();
 
         var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);

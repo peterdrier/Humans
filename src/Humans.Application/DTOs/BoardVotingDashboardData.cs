@@ -4,9 +4,9 @@ namespace Humans.Application.DTOs;
 
 /// <summary>
 /// Shape returned by <c>IApplicationDecisionService.GetBoardVotingDashboardAsync</c>.
-/// Holds a stitched list of application rows (applicant display/picture
-/// resolved via IUserService after the cross-domain nav was stripped) plus
-/// the set of current Board members the view renders columns for.
+/// Holds the list of application rows (identified by UserId; the view resolves
+/// applicant display/picture itself via the human view component) plus the set
+/// of current Board members the view renders columns for.
 /// </summary>
 public record BoardVotingDashboardData(
     List<BoardVotingDashboardRow> Applications,
