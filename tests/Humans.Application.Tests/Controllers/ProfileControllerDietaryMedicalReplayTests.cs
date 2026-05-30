@@ -173,7 +173,7 @@ public class ProfileControllerDietaryMedicalReplayTests
     public async Task Post_ValidSave_ReturnActionSignup_CallsSignupService()
     {
         var shiftId = Guid.NewGuid();
-        _signupService.CreateSignupAsync(_userId, shiftId, ShiftSignupCreationMode.Self, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
+        _signupService.SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
 
         var model = MakeValidModel();
@@ -184,7 +184,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
-            .CreateSignupAsync(_userId, shiftId, ShiftSignupCreationMode.Self, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
+            .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Shifts");
@@ -194,12 +194,11 @@ public class ProfileControllerDietaryMedicalReplayTests
     public async Task Post_ValidSave_ReturnActionSignupRange_CallsRangeSignup()
     {
         var rotaId = Guid.NewGuid();
-        _signupService.CreateSignupRangeAsync(
+        _signupService.SignUpRangeAsync(
                 _userId,
                 rotaId,
                 0,
                 2,
-                ShiftSignupCreationMode.Self,
                 Arg.Any<Guid?>(),
                 Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
@@ -214,12 +213,11 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
-            .CreateSignupRangeAsync(
+            .SignUpRangeAsync(
                 _userId,
                 rotaId,
                 0,
                 2,
-                ShiftSignupCreationMode.Self,
                 Arg.Any<Guid?>(),
                 Arg.Any<ShiftSignupRequestFlags>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -237,9 +235,9 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
-            .CreateSignupAsync(default, default, default, default, default);
+            .SignUpAsync(default, default, default, default);
         await _signupService.DidNotReceiveWithAnyArgs()
-            .CreateSignupRangeAsync(default, default, default, default, default, default, default);
+            .SignUpRangeAsync(default, default, default, default, default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Shifts");
@@ -255,7 +253,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
-            .CreateSignupAsync(default, default, default, default, default);
+            .SignUpAsync(default, default, default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Home");
@@ -278,7 +276,7 @@ public class ProfileControllerDietaryMedicalReplayTests
         await _profileEditor.DidNotReceiveWithAnyArgs()
             .SaveDietaryMedicalAsync(default, default!, default);
         await _signupService.DidNotReceiveWithAnyArgs()
-            .CreateSignupAsync(default, default, default, default, default);
+            .SignUpAsync(default, default, default, default);
     }
 
     [HumansFact]
@@ -288,7 +286,7 @@ public class ProfileControllerDietaryMedicalReplayTests
         // lands on /Shifts with the signup error flash and can retry the signup
         // directly without re-entering dietary info.
         var shiftId = Guid.NewGuid();
-        _signupService.CreateSignupAsync(_userId, shiftId, ShiftSignupCreationMode.Self, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
+        _signupService.SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
                       .Returns(SignupResult.Fail("Shift full"));
 
         var model = MakeValidModel();
@@ -299,7 +297,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.Received(1)
-            .CreateSignupAsync(_userId, shiftId, ShiftSignupCreationMode.Self, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
+            .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Shifts");

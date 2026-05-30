@@ -37,22 +37,7 @@ public sealed class ShiftSignupService(
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
 
-    public Task<SignupResult> CreateSignupAsync(
-        Guid userId,
-        Guid shiftId,
-        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
-        Guid? actorUserId = null,
-        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None) =>
-        mode switch
-        {
-            ShiftSignupCreationMode.Self => SignUpAsync(userId, shiftId, actorUserId, flags),
-            ShiftSignupCreationMode.Voluntell when actorUserId is { } enrollerUserId =>
-                VoluntellAsync(userId, shiftId, enrollerUserId),
-            ShiftSignupCreationMode.Voluntell => Task.FromResult(SignupResult.Fail("Voluntell requires an actor user.")),
-            _ => Task.FromResult(SignupResult.Fail($"Unsupported signup creation mode '{mode}'."))
-        };
-
-    internal async Task<SignupResult> SignUpAsync(
+    public async Task<SignupResult> SignUpAsync(
         Guid userId,
         Guid shiftId,
         Guid? actorUserId = null,
@@ -142,43 +127,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup, warning);
     }
 
-    public Task<SignupResult> ApplySignupActionAsync(
-        Guid signupId,
-        ShiftSignupAction action,
-        Guid actorUserId,
-        string? reason = null) =>
-        action switch
-        {
-            ShiftSignupAction.Approve => ApproveAsync(signupId, actorUserId),
-            ShiftSignupAction.Refuse => RefuseAsync(signupId, actorUserId, reason),
-            ShiftSignupAction.Bail => BailAsync(signupId, actorUserId, reason),
-            ShiftSignupAction.MarkNoShow => MarkNoShowAsync(signupId, actorUserId),
-            ShiftSignupAction.Remove => RemoveSignupAsync(signupId, actorUserId, reason),
-            _ => Task.FromResult(SignupResult.Fail($"Unsupported signup action '{action}'."))
-        };
-
-    public async Task<SignupResult> ApplySignupBlockActionAsync(
-        Guid signupBlockId,
-        ShiftSignupBlockAction action,
-        Guid actorUserId,
-        string? reason = null)
-    {
-        return action switch
-        {
-            ShiftSignupBlockAction.Approve => await ApproveRangeAsync(signupBlockId, actorUserId),
-            ShiftSignupBlockAction.Refuse => await RefuseRangeAsync(signupBlockId, actorUserId, reason),
-            ShiftSignupBlockAction.Bail => await BailRangeAndReturnAsync(signupBlockId, actorUserId, reason),
-            _ => SignupResult.Fail($"Unsupported signup block action '{action}'.")
-        };
-    }
-
-    private async Task<SignupResult> BailRangeAndReturnAsync(Guid signupBlockId, Guid actorUserId, string? reason)
-    {
-        await BailRangeAsync(signupBlockId, actorUserId, reason);
-        return SignupResult.Ok();
-    }
-
-    internal async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
+    public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
@@ -232,7 +181,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup, warning);
     }
 
-    internal async Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason)
+    public async Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
@@ -255,7 +204,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    internal async Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason)
+    public async Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
@@ -300,7 +249,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    internal async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
+    public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
         var activeShiftIds = await repo.GetActiveShiftIdsForUserAsync(userId, [shiftId]);
         if (activeShiftIds.Contains(shiftId))
@@ -370,7 +319,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    internal async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
+    public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.EventSettings | RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail("Rota not found.");
@@ -494,7 +443,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(firstSignup!, warning);
     }
 
-    internal async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
+    public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
@@ -521,7 +470,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    internal async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
+    public async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
     {
         var signup = await repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
@@ -551,25 +500,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signup);
     }
 
-    public Task<SignupResult> CreateSignupRangeAsync(
-        Guid userId,
-        Guid rotaId,
-        int startDayOffset,
-        int endDayOffset,
-        ShiftSignupCreationMode mode = ShiftSignupCreationMode.Self,
-        Guid? actorUserId = null,
-        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None) =>
-        mode switch
-        {
-            ShiftSignupCreationMode.Self => SignUpRangeAsync(
-                userId, rotaId, startDayOffset, endDayOffset, actorUserId, flags),
-            ShiftSignupCreationMode.Voluntell when actorUserId is { } enrollerUserId =>
-                VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, enrollerUserId),
-            ShiftSignupCreationMode.Voluntell => Task.FromResult(SignupResult.Fail("Voluntell requires an actor user.")),
-            _ => Task.FromResult(SignupResult.Fail($"Unsupported signup creation mode '{mode}'."))
-        };
-
-    internal async Task<SignupResult> SignUpRangeAsync(
+    public async Task<SignupResult> SignUpRangeAsync(
         Guid userId,
         Guid rotaId,
         int startDayOffset,
@@ -767,7 +698,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(lastSignup!, warning);
     }
 
-    internal async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
+    public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,
@@ -871,7 +802,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(approved[0], warning);
     }
 
-    internal async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
+    public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
     {
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,
@@ -904,7 +835,7 @@ public sealed class ShiftSignupService(
         return SignupResult.Ok(signups[0]);
     }
 
-    internal async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
+    public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
     {
         var signups = await repo.GetBlockForMutationAsync(
             signupBlockId,

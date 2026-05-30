@@ -389,8 +389,8 @@ public sealed class DevelopmentDashboardSeeder(
                 var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                var signup = await shiftSignupService.CreateSignupAsync(
-                    user.Id, shift.Id, ShiftSignupCreationMode.Voluntell, users[0].Id);
+                var signup = await shiftSignupService.VoluntellAsync(
+                    user.Id, shift.Id, users[0].Id);
                 if (signup.Success)
                     signupsCreated++;
             }
@@ -401,7 +401,7 @@ public sealed class DevelopmentDashboardSeeder(
                 var user = candidates[_rng.Next(candidates.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                var signup = await shiftSignupService.CreateSignupAsync(user.Id, shift.Id);
+                var signup = await shiftSignupService.SignUpAsync(user.Id, shift.Id);
                 if (signup.Success)
                     signupsCreated++;
             }
@@ -415,17 +415,17 @@ public sealed class DevelopmentDashboardSeeder(
             var key = (shift.Id, user.Id);
             if (!pickedSignups.Add(key)) continue;
             var signup = i % 2 == 0
-                ? await shiftSignupService.CreateSignupAsync(
-                    user.Id, shift.Id, ShiftSignupCreationMode.Voluntell, users[0].Id)
-                : await shiftSignupService.CreateSignupAsync(user.Id, shift.Id);
+                ? await shiftSignupService.VoluntellAsync(
+                    user.Id, shift.Id, users[0].Id)
+                : await shiftSignupService.SignUpAsync(user.Id, shift.Id);
             if (!signup.Success || signup.Signup is null)
                 continue;
 
             var final = i % 2 == 0
-                ? await shiftSignupService.ApplySignupActionAsync(
-                    signup.Signup.Id, ShiftSignupAction.Bail, user.Id, "Seeded for demo")
-                : await shiftSignupService.ApplySignupActionAsync(
-                    signup.Signup.Id, ShiftSignupAction.Refuse, users[0].Id, "Seeded for demo");
+                ? await shiftSignupService.BailAsync(
+                    signup.Signup.Id, user.Id, "Seeded for demo")
+                : await shiftSignupService.RefuseAsync(
+                    signup.Signup.Id, users[0].Id, "Seeded for demo");
             if (final.Success)
                 signupsCreated++;
         }

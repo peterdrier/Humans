@@ -507,7 +507,7 @@ public class ShiftAdminController(
 
         try
         {
-            await signupService.ApplySignupBlockActionAsync(signupBlockId, ShiftSignupBlockAction.Bail, user.Id, reason);
+            await signupService.BailRangeAsync(signupBlockId, user.Id, reason);
             SetSuccess("Range bail completed.");
         }
         catch (InvalidOperationException ex)
@@ -529,7 +529,7 @@ public class ShiftAdminController(
         var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
         if (probe is null) return NotFound();
 
-        var result = await signupService.ApplySignupBlockActionAsync(signupBlockId, ShiftSignupBlockAction.Approve, user.Id);
+        var result = await signupService.ApproveRangeAsync(signupBlockId, user.Id);
         if (result.Success)
             SetSuccess(result.Warning ?? "Range approved.");
         else
@@ -548,7 +548,7 @@ public class ShiftAdminController(
         var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
         if (probe is null) return NotFound();
 
-        var result = await signupService.ApplySignupBlockActionAsync(signupBlockId, ShiftSignupBlockAction.Refuse, user.Id, reason);
+        var result = await signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
         if (result.Success)
             SetSuccess("Range refused.");
         else
@@ -567,7 +567,7 @@ public class ShiftAdminController(
         var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
 
-        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.Approve, user.Id);
+        var result = await signupService.ApproveAsync(signupId, user.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning ?? "Signup approved.");
@@ -590,7 +590,7 @@ public class ShiftAdminController(
         var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
 
-        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.Refuse, user.Id, reason);
+        var result = await signupService.RefuseAsync(signupId, user.Id, reason);
         if (result.Success)
         {
             SetSuccess("Signup refused.");
@@ -613,7 +613,7 @@ public class ShiftAdminController(
         var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
 
-        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.MarkNoShow, user.Id);
+        var result = await signupService.MarkNoShowAsync(signupId, user.Id);
         if (result.Success)
         {
             SetSuccess("Marked as no-show.");
@@ -636,7 +636,7 @@ public class ShiftAdminController(
         var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
 
-        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.Remove, user.Id, reason);
+        var result = await signupService.RemoveSignupAsync(signupId, user.Id, reason);
         if (result.Success)
             SetSuccess("Signup removed.");
         else
@@ -685,8 +685,7 @@ public class ShiftAdminController(
         var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
 
-        var result = await signupService.CreateSignupAsync(
-            userId, shiftId, ShiftSignupCreationMode.Voluntell, currentUser.Id);
+        var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
         if (result.Success)
         {
             SetSuccess("Volunteer assigned to shift.");
@@ -709,8 +708,8 @@ public class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        var result = await signupService.CreateSignupRangeAsync(
-            userId, rotaId, startDayOffset, endDayOffset, ShiftSignupCreationMode.Voluntell, currentUser.Id);
+        var result = await signupService.VoluntellRangeAsync(
+            userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)
         {
             SetSuccess(result.Warning is not null

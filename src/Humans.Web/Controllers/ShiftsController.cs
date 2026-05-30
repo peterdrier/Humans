@@ -113,10 +113,9 @@ public class ShiftsController(
             return gate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.CreateSignupAsync(
+        var result = await signupService.SignUpAsync(
             user.Id,
             shiftId,
-            ShiftSignupCreationMode.Self,
             flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
 
         return RedirectToBrowseWithSignupResult(
@@ -202,12 +201,11 @@ public class ShiftsController(
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var flags = ShiftSignupRequestFlags.SkipConflicts;
         if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-        var result = await signupService.CreateSignupRangeAsync(
+        var result = await signupService.SignUpRangeAsync(
             user.Id,
             rotaId,
             startDayOffset,
             endDayOffset,
-            ShiftSignupCreationMode.Self,
             flags: flags);
 
         return RedirectToBrowseWithSignupResult(
@@ -274,7 +272,7 @@ public class ShiftsController(
 
         try
         {
-            await signupService.ApplySignupBlockActionAsync(signupBlockId, ShiftSignupBlockAction.Bail, user.Id);
+            await signupService.BailRangeAsync(signupBlockId, user.Id);
             SetSuccess("Successfully bailed from shift range.");
         }
         catch (InvalidOperationException ex)
@@ -296,7 +294,7 @@ public class ShiftsController(
             return currentUserNotFound;
         }
 
-        var result = await signupService.ApplySignupActionAsync(signupId, ShiftSignupAction.Bail, user.Id, reason);
+        var result = await signupService.BailAsync(signupId, user.Id, reason);
 
         if (!result.Success)
         {

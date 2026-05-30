@@ -77,7 +77,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.CreateSignupAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Ok(new ShiftSignup()));
         var ctrl = BuildSut(userId);
 
@@ -85,7 +85,7 @@ public class OnboardingWidgetControllerShiftsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        await _signups.Received(1).CreateSignupAsync(userId, shiftId, actorUserId: userId);
+        await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
     }
 
     [HumansFact]
@@ -93,7 +93,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.CreateSignupAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
         ctrl.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
