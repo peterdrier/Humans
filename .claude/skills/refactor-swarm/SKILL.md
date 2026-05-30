@@ -16,7 +16,7 @@ Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 
 
 - **No DB/persistence changes of any kind** — no EF migrations, schema, DbContext/model, persistence-shape, or JSON-serialization-attribute edits. Repository-layer-and-above only.
 - **Never `rm -rf`** — discard experiments with `git -C <wt> reset --hard HEAD` + `git -C <wt> clean -fd`; remove worktrees with `git worktree remove`. No bypass flags (`--no-verify`, suppressing analyzers, deleting tests to pass).
-- **`[SurfaceBudget]` is user-controlled.** A lane MUST NOT raise/expand any section's `[SurfaceBudget(n)]` to fit a migration. If the ideal fix needs another section's read surface to grow, that is a **needs-owner-approval** finding, not a lane action.
+- **`[SurfaceBudget]` does NOT constrain this process.** The budget is a guardrail against *ad-hoc* surface growth during ordinary feature work; here the Reforge point system plus the score-blind panel already govern surface, so it is redundant. A lane MAY raise or extend a section's `[SurfaceBudget(n)]` when that is the correct way to route a consumer onto a read surface or expose a needed read fact — the panel still rejects bespoke projection/predicate methods, so this can't be abused. (Outside this process the budget remains user-controlled — never expand it during normal feature work.)
 - Every git command is `git -C <abs-worktree> …`; every file path is under that worktree. Never operate on the main checkout (it auto-deploys).
 
 ## BUILD-FIRST (mandatory — see reforge#9)
@@ -70,7 +70,7 @@ Forbidden moves (reject regardless of score): helper/extension extraction for co
 
 ## Cross-section lanes (`--cross-section`)
 
-The single-section model **cannot** complete a read-split when the consumer lives in section X and the needed read method lives on section Y's interface — both sides span sections, so each lane defers it. With `--cross-section`, a lane may own one such slice end-to-end **provided**: (a) it does not raise any `[SurfaceBudget]` without recording a needs-approval finding, (b) it serializes against any section-level lane touching the same interfaces, and (c) the review panel additionally checks that the move reduces, not relocates, cross-section coupling. Otherwise, emit these as `needs-owner-approval` findings (see Output) rather than acting.
+The single-section model **cannot** complete a read-split when the consumer lives in section X and the needed read method lives on section Y's interface — both sides span sections, so each lane defers it. With `--cross-section`, a lane may own one such slice end-to-end **provided**: (a) it serializes against any section-level lane touching the same interfaces, and (b) the review panel additionally checks that the move *reduces*, not relocates, cross-section coupling (adding a read method to Y's interface so X can drop a full/write-service dependency is a reduction; growing Y's read surface without removing coupling is not). Expanding Y's `[SurfaceBudget]` to fit the migration is allowed here (see Hard rules).
 
 ## Orchestration (workflow mode)
 
@@ -82,4 +82,4 @@ Use `scripts/refactor-swarm.workflow.mjs` as the template. The `args` global is 
 
 - One draft PR per lane that landed ≥1 commit, with the section thesis, accepted commits (concept deleted + built-baseline→final Reforge delta + panel verdict), cumulative score movement, rejected candidates with reasons, and remaining high-value work.
 - A coordinator summary: per-section score movement (built-vs-built), token breakdown, sequential-vs-parallel timing.
-- A **`needs-owner-approval` list**: cross-section read-splits blocked on a `[SurfaceBudget]` raise, plus any product/design decisions surfaced (overlapping projections to consolidate, big crosscut restructures).
+- A **`needs-owner-approval` list**: genuine product/design decisions surfaced — overlapping projections to consolidate (which is canonical?), large crosscut restructures, deprecation-program campaigns — i.e. judgment calls, not mechanical refactors. (`[SurfaceBudget]` raises are NOT on this list — they're allowed in-process.)
