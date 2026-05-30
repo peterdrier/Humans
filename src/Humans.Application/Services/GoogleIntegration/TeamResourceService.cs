@@ -532,7 +532,6 @@ public sealed partial class TeamResourceService(
                 resourceId);
             return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
         }
-        }
     }
 
     // ==========================================================================
