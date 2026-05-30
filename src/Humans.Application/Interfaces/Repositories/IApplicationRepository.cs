@@ -122,14 +122,6 @@ public interface IApplicationRepository : IRepository
     Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the existing board vote for (applicationId, boardMemberUserId),
-    /// or null if none. Read-only for callers that will mutate via
-    /// <see cref="UpsertBoardVoteAsync"/>.
-    /// </summary>
-    Task<BoardVote?> GetBoardVoteAsync(
-        Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default);
-
-    /// <summary>
     /// Upserts a board vote: if a vote row exists for the
     /// (applicationId, boardMemberUserId) pair, updates its
     /// <see cref="BoardVote.Vote"/>/<see cref="BoardVote.Note"/>/

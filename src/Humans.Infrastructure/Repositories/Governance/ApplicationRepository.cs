@@ -158,14 +158,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
     public async Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
         await WithContextAsync(ctx => ctx.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct), ct);
 
-    public async Task<BoardVote?> GetBoardVoteAsync(
-        Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.BoardVotes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
-                ct), ct);
-
     public async Task UpsertBoardVoteAsync(
         Guid applicationId,
         Guid boardMemberUserId,
