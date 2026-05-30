@@ -18,6 +18,10 @@ on:
 
 permissions:
   contents: read
+  # createComment targets a pull request, so the GITHUB_TOKEN needs
+  # pull-requests: write — issues: write alone only authorizes comments on
+  # plain issues and yields "Resource not accessible by integration" on a PR.
+  pull-requests: write
   issues: write
 
 concurrency:
