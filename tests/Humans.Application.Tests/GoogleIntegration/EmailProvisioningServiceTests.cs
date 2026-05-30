@@ -109,12 +109,13 @@ public class EmailProvisioningServiceTests
         var userEmail = Substitute.For<IUserEmailService>();
         var teamService = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
+        var emailMessages = Substitute.For<IEmailMessageFactory>();
         var notify = Substitute.For<INotificationService>();
         var audit = Substitute.For<IAuditLogService>();
 
         var service = new EmailProvisioningService(
             userService, workspace, userEmail, teamService,
-            email, notify, audit,
+            email, emailMessages, notify, audit,
             NullLogger<EmailProvisioningService>.Instance);
 
         return new ProvisioningFixture(

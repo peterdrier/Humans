@@ -22,6 +22,7 @@ namespace Humans.Application.Tests.Services;
 public sealed class FeedbackServiceTests : ServiceTestHarness
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
@@ -34,6 +35,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         : base(Instant.FromUtc(2026, 3, 18, 12, 0))
     {
         _emailService = Substitute.For<IEmailService>();
+        _emailMessages = Substitute.For<IEmailMessageFactory>();
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
 
@@ -106,7 +108,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
 
         _service = new FeedbackApplicationService(
             _repository, _userService, _userEmailService, _teamService,
-            _emailService, _notificationService, AuditLog, _navBadge, Clock, env,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge, Clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }
 
@@ -264,9 +266,9 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         updated.LastAdminMessageAt.Should().NotBeNull();
         updated.LastReporterMessageAt.Should().BeNull();
 
-        await _emailService.Received(1).SendFeedbackResponseAsync(
+        _emailMessages.Received(1).FeedbackResponse(
             "reporter@test.com", "Reporter", "Test", "Looking into it",
-            $"/Feedback/{report.Id}", "en", Arg.Any<CancellationToken>());
+            $"/Feedback/{report.Id}", "en");
     }
 
     [HumansFact]
@@ -323,9 +325,9 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         updated.LastReporterMessageAt.Should().NotBeNull();
         updated.LastAdminMessageAt.Should().BeNull();
 
-        await _emailService.DidNotReceive().SendFeedbackResponseAsync(
+        _emailMessages.DidNotReceive().FeedbackResponse(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
     }
 
     [HumansFact]

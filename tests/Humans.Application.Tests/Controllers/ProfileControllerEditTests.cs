@@ -94,6 +94,7 @@ public class ProfileControllerEditTests
             _profileEditorService,
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
+            Substitute.For<IEmailMessageFactory>(),
             Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),

@@ -45,6 +45,7 @@ public class AccountDeletionServiceTests
         Substitute.For<IShiftViewInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly AccountDeletionService _service;
 
@@ -69,6 +70,7 @@ public class AccountDeletionServiceTests
             _shiftViewInvalidator,
             _auditLogService,
             _emailService,
+            _emailMessages,
             _clock,
             NullLogger<AccountDeletionService>.Instance);
     }
@@ -137,9 +139,9 @@ public class AccountDeletionServiceTests
             userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        await _emailService.Received(1).SendAccountDeletionRequestedAsync(
+        _emailMessages.Received(1).AccountDeletionRequested(
             user.Email!, user.BurnerName,
-            Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
+            Arg.Any<Instant>(), user.PreferredLanguage);
 
         // Shift-authorization cache must drop in-orchestrator (parity with
         // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
@@ -160,9 +162,9 @@ public class AccountDeletionServiceTests
 
         await _service.RequestDeletionAsync(userId);
 
-        await _emailService.Received(1).SendAccountDeletionRequestedAsync(
+        _emailMessages.Received(1).AccountDeletionRequested(
             "notif@example.com", user.BurnerName,
-            Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
+            Arg.Any<Instant>(), user.PreferredLanguage);
     }
 
     [HumansFact]

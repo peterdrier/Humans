@@ -82,8 +82,7 @@
                 <th class="text-end">Qty</th>
                 @if (!isTeamOrder)
                 {
-                    <th class="text-end">Unit price</th>
-                    <th class="text-end">VAT %</th>
+                    <th class="text-end">Unit price (incl. VAT)</th>
                     <th class="text-end">Deposit</th>
                     <th class="text-end">Line total (incl. VAT &amp; deposit)</th>
                 }
@@ -98,8 +97,10 @@
                     <td class="text-end">@line.Qty</td>
                     @if (!isTeamOrder)
                     {
-                        <td class="text-end">&euro;@line.UnitPriceSnapshot.ToString("N2")</td>
-                        <td class="text-end">@line.VatRateSnapshot.ToString("0.##")%</td>
+                        <td class="text-end">
+                            &euro;@line.UnitPriceSnapshotInclVat.ToString("N2")
+                            <div class="text-muted small">(&euro;@line.UnitPriceSnapshot.ToString("N2") + @line.VatRateSnapshot.ToString("0.##")% VAT)</div>
+                        </td>
                         <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
                         <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     }
@@ -134,7 +135,7 @@ else
                 <option value="">Choose a product…</option>
                 @foreach (var product in Model.Catalog)
                 {
-                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceEur.ToString("N2") (deadline @product.OrderableUntil.ToDisplayDate())</option>
+                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceInclVatEur.ToString("N2") incl. VAT (deadline @product.OrderableUntil.ToDisplayDate())</option>
                 }
             </select>
         </div>

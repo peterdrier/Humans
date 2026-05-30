@@ -147,7 +147,7 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(currentUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(currentUserId, "Current User")));
 
-        return new EventsController(_guide, _users, _camps, _authz, _clock, _email, NullLogger<EventsController>.Instance)
+        return new EventsController(_guide, _users, _camps, _authz, _clock, _email, Substitute.For<IEmailMessageFactory>(), NullLogger<EventsController>.Instance)
         {
             ControllerContext = new ControllerContext
             {

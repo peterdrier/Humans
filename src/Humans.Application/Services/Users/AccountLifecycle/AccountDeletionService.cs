@@ -32,6 +32,7 @@ public sealed class AccountDeletionService(
     IShiftViewInvalidator shiftViewInvalidator,
     IAuditLogService auditLogService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IClock clock,
     ILogger<AccountDeletionService> logger) : IAccountDeletionService
 {
@@ -82,11 +83,11 @@ public sealed class AccountDeletionService(
         var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
         {
-            await emailService.SendAccountDeletionRequestedAsync(
+            await emailService.SendAsync(emailMessages.AccountDeletionRequested(
                 notificationEmail,
                 user.BurnerName,
-                deletionDate.ToDateTimeUtc(),
-                user.PreferredLanguage,
+                deletionDate,
+                user.PreferredLanguage),
                 ct);
         }
 

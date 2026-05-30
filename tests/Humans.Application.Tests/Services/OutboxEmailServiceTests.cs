@@ -1,31 +1,30 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Email;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Repositories.Email;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Application.Tests.Infrastructure;
-using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Repositories.Email;
 
 namespace Humans.Application.Tests.Services;
 
 /// <summary>
-/// Service-level tests for the Application-layer <see cref="OutboxEmailService"/>
-/// (Email §15 migration, issue #548). Uses a real
-/// <see cref="EmailOutboxRepository"/> backed by the EF InMemory provider so the
-/// enqueue path is exercised end-to-end; cross-section abstractions
-/// (<see cref="IUserEmailService"/>, <see cref="ICommunicationPreferenceService"/>)
-/// and Infrastructure connectors (<see cref="IEmailBodyComposer"/>,
-/// <see cref="IImmediateOutboxProcessor"/>) are NSubstitute fakes so the Application
-/// service stays free of Infrastructure dependencies.
+/// Transport-level tests for the Application-layer <see cref="OutboxEmailService"/>:
+/// the single <see cref="IEmailService.SendAsync"/> path. Per-type policy stamping
+/// (template / category / reply-to / immediate) is covered by
+/// <see cref="EmailMessageFactoryTests"/>; these tests exercise the shared
+/// transport — opt-out suppression, unsubscribe headers, body composition,
+/// immediate-drain, and user-id resolution — over a real
+/// <see cref="EmailOutboxRepository"/> (EF InMemory) with NSubstitute fakes for the
+/// cross-section and Infrastructure dependencies.
 /// </summary>
 public sealed class OutboxEmailServiceTests : ServiceTestHarness
 {
     private readonly OutboxEmailService _service;
-    private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
@@ -43,7 +42,6 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         _service = new OutboxEmailService(
             repo,
             _userEmailService,
-            _renderer,
             _bodyComposer,
             _immediate,
             _metrics,
@@ -52,18 +50,25 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
             NullLogger<OutboxEmailService>.Instance);
     }
 
+    private static EmailMessage Message(
+        string recipient = "alice@example.com",
+        string? name = "Alice",
+        string subject = "Subject",
+        string html = "<p>Body</p>",
+        string template = "access_suspended",
+        MessageCategory? category = null,
+        string? replyTo = null,
+        bool triggerImmediate = false,
+        Guid? userId = null,
+        Guid? campaignGrantId = null) =>
+        new(recipient, name, subject, html, template, category, replyTo, triggerImmediate, userId, campaignGrantId);
+
     [HumansFact]
-    public async Task SendAccessSuspendedAsync_CreatesOutboxRowWithCorrectFields()
+    public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
     {
-        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
-            .Returns(new EmailContent("Access Suspended", "<p>Hello Alice</p>"));
+        await _service.SendAsync(Message(subject: "Access Suspended", html: "<p>Hello Alice</p>"));
 
-        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().HaveCount(1);
-
-        var msg = messages[0];
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
         msg.RecipientEmail.Should().Be("alice@example.com");
         msg.RecipientName.Should().Be("Alice");
         msg.Subject.Should().Be("Access Suspended");
@@ -75,189 +80,88 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SendAccessSuspendedAsync_RecordsEmailQueuedMetric()
+    public async Task SendAsync_RecordsEmailQueuedMetricKeyedOnTemplate()
     {
-        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
-            .Returns(new EmailContent("Access Suspended", "<p>Hello</p>"));
-
-        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
-
+        await _service.SendAsync(Message(template: "access_suspended"));
         _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
     [HumansFact]
-    public async Task SendEmailVerificationAsync_CreatesOutboxRowAndTriggersImmediate()
+    public async Task SendAsync_TriggerImmediate_RunsImmediateProcessor()
     {
-        _renderer.RenderEmailVerification("Bob", "bob@example.com", "https://verify", false, "en")
-            .Returns(new EmailContent("Verify Email", "<p>Click to verify</p>"));
-
-        await _service.SendEmailVerificationAsync("bob@example.com", "Bob", "https://verify", culture: "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().HaveCount(1);
-
-        var msg = messages[0];
-        msg.TemplateName.Should().Be("email_verification");
-        msg.Status.Should().Be(EmailOutboxStatus.Queued);
-
-        // Verify immediate processor was triggered
+        await _service.SendAsync(Message(template: "email_verification", triggerImmediate: true));
         _immediate.Received(1).TriggerImmediate();
     }
 
     [HumansFact]
-    public async Task SendFacilitatedMessageAsync_SetsReplyToOnOutboxMessage()
+    public async Task SendAsync_WithoutTriggerImmediate_DoesNotRunImmediateProcessor()
     {
-        _renderer.RenderFacilitatedMessage("Charlie", "Dave", "Hey!", true, "dave@example.com", "en")
-            .Returns(new EmailContent("Message from Dave", "<p>Hey!</p>"));
-
-        await _service.SendFacilitatedMessageAsync(
-            "charlie@example.com", "Charlie", "Dave", "Hey!",
-            includeContactInfo: true, senderEmail: "dave@example.com", culture: "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().HaveCount(1);
-        messages[0].ReplyTo.Should().Be("dave@example.com");
-    }
-
-    [HumansFact]
-    public async Task SendFacilitatedMessageAsync_NoContactInfo_ReplyToIsNull()
-    {
-        _renderer.RenderFacilitatedMessage("Charlie", "Dave", "Hey!", false, null, "en")
-            .Returns(new EmailContent("Message from Dave", "<p>Hey!</p>"));
-
-        await _service.SendFacilitatedMessageAsync(
-            "charlie@example.com", "Charlie", "Dave", "Hey!",
-            includeContactInfo: false, senderEmail: null, culture: "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().HaveCount(1);
-        messages[0].ReplyTo.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task SendApplicationApprovedAsync_CreatesOutboxRowWithCorrectTemplateName()
-    {
-        _renderer.RenderApplicationApproved("Eve", MembershipTier.Colaborador, "en")
-            .Returns(new EmailContent("Approved!", "<p>Congrats</p>"));
-
-        await _service.SendApplicationApprovedAsync(
-            "eve@example.com", "Eve", MembershipTier.Colaborador, "en");
-
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
-        msg.TemplateName.Should().Be("application_approved");
-        msg.RecipientEmail.Should().Be("eve@example.com");
-        _metrics.Received(1).RecordEmailQueued("application_approved");
-    }
-
-    [HumansFact]
-    public async Task SendAccessSuspendedAsync_DoesNotTriggerImmediate()
-    {
-        _renderer.RenderAccessSuspended("Alice", "Outstanding consent", "en")
-            .Returns(new EmailContent("Access Suspended", "<p>Hello</p>"));
-
-        await _service.SendAccessSuspendedAsync("alice@example.com", "Alice", "Outstanding consent", "en");
-
-        // A non-verification email should NOT trigger immediate processing
+        await _service.SendAsync(Message(triggerImmediate: false));
         _immediate.DidNotReceive().TriggerImmediate();
     }
 
     [HumansFact]
-    public async Task EnqueueAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
+    public async Task SendAsync_PersistsReplyTo()
+    {
+        await _service.SendAsync(Message(
+            template: "facilitated_message",
+            category: MessageCategory.FacilitatedMessages,
+            replyTo: "dave@example.com"));
+
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        msg.ReplyTo.Should().Be("dave@example.com");
+    }
+
+    [HumansFact]
+    public async Task SendAsync_NullCategory_NeverSuppressesAndStampsNoUnsubscribe()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+
+        await _service.SendAsync(Message(category: null));
+
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        msg.ExtraHeaders.Should().BeNull("always-send mail carries no List-Unsubscribe headers");
+        await _commPrefService.DidNotReceive()
+            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
+        _commPrefService.DidNotReceive().GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_SystemCategory_NeverSuppressesAndStampsNoUnsubscribe()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+
+        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System));
+
+        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        msg.ExtraHeaders.Should().BeNull();
+        await _commPrefService.DidNotReceive()
+            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
     {
         var userId = Guid.NewGuid();
         _userEmailService.GetUserIdByVerifiedEmailAsync("charlie@example.com", Arg.Any<CancellationToken>())
             .Returns(userId);
-
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
             .Returns(true);
-        _commPrefService.GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
-            .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
-        _commPrefService.GenerateBrowserUnsubscribeUrl(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
-            .Returns("https://example.com/unsubscribe/token");
 
-        _renderer.RenderAddedToTeam(
-                "Charlie", "Alpha Team", "alpha", Arg.Any<List<(string Name, string? Url)>>(), null)
-            .Returns(new EmailContent("Added to Alpha Team", "<p>You joined Alpha Team</p>"));
+        await _service.SendAsync(Message(
+            recipient: "charlie@example.com", name: "Charlie",
+            template: "added_to_team", category: MessageCategory.TeamUpdates));
 
-        await _service.SendAddedToTeamAsync(
-            "charlie@example.com", "Charlie", "Alpha Team", "alpha",
-            []);
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().BeEmpty("the email should have been suppressed because the user opted out of TeamUpdates");
+        (await Db.EmailOutboxMessages.ToListAsync()).Should()
+            .BeEmpty("the email is suppressed because the user opted out of TeamUpdates");
     }
 
     [HumansFact]
-    public async Task EnqueueAsync_WhenUserOptedInToCategory_CreatesOutboxRow()
-    {
-        var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("dana@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
-
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
-            .Returns(false);
-        _commPrefService.GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
-            .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
-        _commPrefService.GenerateBrowserUnsubscribeUrl(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
-            .Returns("https://example.com/unsubscribe/token");
-
-        _renderer.RenderAddedToTeam(
-                "Dana", "Beta Team", "beta", Arg.Any<List<(string Name, string? Url)>>(), null)
-            .Returns(new EmailContent("Added to Beta Team", "<p>You joined Beta Team</p>"));
-
-        await _service.SendAddedToTeamAsync(
-            "dana@example.com", "Dana", "Beta Team", "beta",
-            []);
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().HaveCount(1, "opted-in user should receive the email");
-        messages[0].RecipientEmail.Should().Be("dana@example.com");
-        messages[0].TemplateName.Should().Be("added_to_team");
-        messages[0].UserId.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task SendApplicationApprovedAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
-    {
-        var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("eve@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        _renderer.RenderApplicationApproved("Eve", MembershipTier.Colaborador, "en")
-            .Returns(new EmailContent("Approved!", "<p>Congrats</p>"));
-
-        await _service.SendApplicationApprovedAsync(
-            "eve@example.com", "Eve", MembershipTier.Colaborador, "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().BeEmpty(
-            "ApplicationApproved is now Governance-categorized and must be suppressed when opted out.");
-    }
-
-    [HumansFact]
-    public async Task SendApplicationRejectedAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
-    {
-        var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("frank@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        _renderer.RenderApplicationRejected("Frank", MembershipTier.Asociado, "Insufficient tenure", "en")
-            .Returns(new EmailContent("Rejected", "<p>Sorry</p>"));
-
-        await _service.SendApplicationRejectedAsync(
-            "frank@example.com", "Frank", MembershipTier.Asociado, "Insufficient tenure", "en");
-
-        var messages = await Db.EmailOutboxMessages.ToListAsync();
-        messages.Should().BeEmpty(
-            "ApplicationRejected is now Governance-categorized and must be suppressed when opted out.");
-    }
-
-    [HumansFact]
-    public async Task SendApplicationApprovedAsync_WhenOptedIn_StampsUnsubscribeUrlIntoBody()
+    public async Task SendAsync_WhenOptedIn_StampsUnsubscribeHeadersAndUrl()
     {
         var userId = Guid.NewGuid();
         _userEmailService.GetUserIdByVerifiedEmailAsync("grace@example.com", Arg.Any<CancellationToken>())
@@ -272,77 +176,53 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.Governance)
             .Returns("https://example.com/Unsubscribe/abc");
 
-        _renderer.RenderApplicationApproved("Grace", MembershipTier.Colaborador, "en")
-            .Returns(new EmailContent("Approved!", "<p>Congrats Grace</p>"));
-
-        await _service.SendApplicationApprovedAsync(
-            "grace@example.com", "Grace", MembershipTier.Colaborador, "en");
+        await _service.SendAsync(Message(
+            recipient: "grace@example.com", name: "Grace",
+            template: "application_approved", category: MessageCategory.Governance));
 
         var msg = await Db.EmailOutboxMessages.SingleAsync();
         msg.UserId.Should().Be(userId);
-        msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for Governance emails.");
+        msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for opt-outable mail");
         _bodyComposer.Received().Compose(Arg.Any<string>(), "https://example.com/Unsubscribe/abc");
     }
 
     [HumansFact]
-    public async Task SendCampaignCodeAsync_UsesRendererAndStampsFullRow()
+    public async Task SendAsync_ExplicitUserId_UsedDirectlyWithoutAddressLookup()
     {
         var userId = Guid.NewGuid();
         var grantId = Guid.NewGuid();
-
-        _renderer.RenderCampaignCode("Subject {{Name}}", "Hello {{Name}}! Your code is {{Code}}.", "ABC123", "Zoe")
-            .Returns(new EmailContent("Subject Zoe", "<p>Hello Zoe! Your code is ABC123.</p>"));
-
         _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.CampaignCodes)
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal) { ["List-Unsubscribe"] = "<mailto:x>" });
         _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.CampaignCodes)
             .Returns("https://example.com/unsub");
 
-        await _service.SendCampaignCodeAsync(new CampaignCodeEmailRequest(
-            UserId: userId,
-            CampaignGrantId: grantId,
-            RecipientEmail: "zoe@example.com",
-            RecipientName: "Zoe",
-            Subject: "Subject {{Name}}",
-            MarkdownBody: "Hello {{Name}}! Your code is {{Code}}.",
-            Code: "ABC123",
-            ReplyTo: "reply@example.com"));
+        await _service.SendAsync(Message(
+            recipient: "zoe@example.com", name: "Zoe",
+            template: "campaign_code", category: MessageCategory.CampaignCodes,
+            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId));
 
         var msg = await Db.EmailOutboxMessages.SingleAsync();
-        msg.RecipientEmail.Should().Be("zoe@example.com");
-        msg.Subject.Should().Be("Subject Zoe");
-        msg.HtmlBody.Should().Contain("Hello Zoe! Your code is ABC123.");
-        msg.TemplateName.Should().Be("campaign_code");
         msg.UserId.Should().Be(userId);
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
-        _metrics.Received(1).RecordEmailQueued("campaign_code");
+        await _userEmailService.DidNotReceive()
+            .GetUserIdByVerifiedEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SendEventLifecycleNotificationAsync_CreatesOutboxRowAndTriggersImmediate()
+    public async Task SendAsync_CampaignCode_AlwaysOn_IsNeverSuppressed()
     {
-        var request = new EventLifecycleNotification(
-            NewStatus: EventStatus.Pending,
-            UserName: "Alice",
-            EventTitle: "Sunrise Parade",
-            ActionUrl: "https://humans.example/Events/MySubmissions",
-            Culture: "en");
-        _renderer.RenderEventLifecycle(request, null)
-            .Returns(new EmailContent("Event received", "<p>Thanks for your submission</p>"));
+        // CampaignCodes is always-on, so CommunicationPreferenceService reports
+        // not-opted-out; the campaign mail enqueues regardless (preserves the old
+        // inline-enqueue bypass behaviour now that it routes through SendAsync).
+        var userId = Guid.NewGuid();
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, Arg.Any<CancellationToken>())
+            .Returns(false);
 
-        await _service.SendEventLifecycleNotificationAsync(request, "alice@example.com");
+        await _service.SendAsync(Message(
+            template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId));
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
-        msg.RecipientEmail.Should().Be("alice@example.com");
-        msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be("event_submitted");
-        msg.Subject.Should().Be("Event received");
-        msg.HtmlBody.Should().Contain("Thanks for your submission");
-        msg.Status.Should().Be(EmailOutboxStatus.Queued);
-
-        _metrics.Received(1).RecordEmailQueued("event_submitted");
-        _immediate.Received(1).TriggerImmediate();
+        (await Db.EmailOutboxMessages.ToListAsync()).Should().HaveCount(1);
     }
 }

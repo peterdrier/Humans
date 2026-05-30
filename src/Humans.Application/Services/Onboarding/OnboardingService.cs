@@ -21,6 +21,7 @@ public sealed class OnboardingService(
     IUserService userService,
     IApplicationDecisionService applicationDecisionService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculator membershipCalculator,
@@ -195,11 +196,11 @@ public sealed class OnboardingService(
 
         try
         {
-            await emailService.SendSignupRejectedAsync(
+            await emailService.SendAsync(emailMessages.SignupRejected(
                 rejectUser?.Email ?? string.Empty,
                 rejectUser?.BurnerName ?? string.Empty,
                 reason,
-                rejectUser?.PreferredLanguage ?? "en");
+                rejectUser?.PreferredLanguage ?? "en"));
         }
         catch (Exception ex)
         {

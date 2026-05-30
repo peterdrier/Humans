@@ -24,6 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 public class SyncLegalDocumentsJob(
     ILegalDocumentSyncService syncService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IConsentRepository consentRepository,
@@ -144,11 +145,11 @@ public class SyncLegalDocumentsJob(
                 continue;
             }
 
-            await emailService.SendReConsentsRequiredAsync(
+            await emailService.SendAsync(emailMessages.ReConsentsRequired(
                 effectiveEmail,
                 user.BurnerName,
                 documentNames,
-                user.PreferredLanguage,
+                user.PreferredLanguage),
                 cancellationToken);
 
             notificationCount++;

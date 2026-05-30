@@ -44,6 +44,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
@@ -63,6 +64,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _googleGroupSync,
             _auditLogService,
             _emailService,
+            _emailMessages,
             _roleAssignmentClaimsInvalidator,
             _metrics,
             NullLogger<SystemTeamSyncJob>.Instance,

@@ -37,6 +37,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly RecordingGoogleGroupSyncScheduler _syncScheduler = new();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 4, 12, 0));
 
@@ -61,6 +62,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _userEmailService,
             _userService,
             _emailService,
+            _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
 
         _syncService = new GoogleGroupSyncService(
@@ -126,18 +128,17 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
 
-        await _emailService.Received(1).SendGoogleAccessRemovalSecondaryCleanupAsync(
+        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             removedEmail,
             "Alice",
             primaryEmail,
-            "es",
-            Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+            "es");
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleDriveRemovalLossOfAccessAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -156,12 +157,12 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
         await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
 
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleAccessRemovalSecondaryCleanupAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     private void StageGroupResource()

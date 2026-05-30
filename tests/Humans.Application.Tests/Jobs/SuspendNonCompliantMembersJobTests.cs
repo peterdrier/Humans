@@ -25,6 +25,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages;
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
@@ -43,6 +44,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _teamService = Substitute.For<ITeamService>();
         _membershipCalculator = Substitute.For<IMembershipCalculator>();
         _emailService = Substitute.For<IEmailService>();
+        _emailMessages = Substitute.For<IEmailMessageFactory>();
         _notificationService = Substitute.For<INotificationService>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
@@ -60,7 +62,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         _job = new SuspendNonCompliantMembersJob(
             _userService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
-            _emailService, _notificationService, _googleSyncService, _auditLogService,
+            _emailService, _emailMessages, _notificationService, _googleSyncService, _auditLogService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger, _clock);
     }
@@ -111,9 +113,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await _emailService.DidNotReceive().SendAccessSuspendedAsync(
+        _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -132,9 +134,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _emailService.DidNotReceive().SendAccessSuspendedAsync(
+        _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -159,9 +161,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _emailService.DidNotReceive().SendAccessSuspendedAsync(
+        _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
 
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -179,12 +181,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _emailService.Received(1).SendAccessSuspendedAsync(
+        _emailMessages.Received(1).AccessSuspended(
             "test@example.com",
             "Test User",
             Arg.Is<string>(s => s.Contains("consent")),
-            "en",
-            Arg.Any<CancellationToken>());
+            "en");
     }
 
     [HumansFact]

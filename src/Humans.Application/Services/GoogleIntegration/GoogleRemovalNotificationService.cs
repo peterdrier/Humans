@@ -15,6 +15,7 @@ public sealed class GoogleRemovalNotificationService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     ILogger<GoogleRemovalNotificationService> logger) : IGoogleRemovalNotificationService
 {
     /// <inheritdoc />
@@ -69,11 +70,11 @@ public sealed class GoogleRemovalNotificationService(
 
         if (otherGoogleEmail is not null)
         {
-            await emailService.SendGoogleAccessRemovalSecondaryCleanupAsync(
+            await emailService.SendAsync(emailMessages.GoogleAccessRemovalSecondaryCleanup(
                 removedEmail,
                 userName,
                 otherGoogleEmail,
-                culture,
+                culture),
                 cancellationToken);
             logger.LogInformation(
                 "Sent Google removal Variant 2 (secondary cleanup) to {Email} for user {UserId}; " +
@@ -97,12 +98,12 @@ public sealed class GoogleRemovalNotificationService(
             var groupEmail = !string.IsNullOrWhiteSpace(resourceIdentifier)
                 ? resourceIdentifier
                 : displayName;
-            await emailService.SendGoogleGroupRemovalLossOfAccessAsync(
+            await emailService.SendAsync(emailMessages.GoogleGroupRemovalLossOfAccess(
                 removedEmail,
                 userName,
                 displayName,
                 groupEmail,
-                culture,
+                culture),
                 cancellationToken);
             logger.LogInformation(
                 "Sent Google removal Variant 1 (group loss-of-access) to {Email} for user {UserId} group {Group}",
@@ -110,11 +111,11 @@ public sealed class GoogleRemovalNotificationService(
         }
         else
         {
-            await emailService.SendGoogleDriveRemovalLossOfAccessAsync(
+            await emailService.SendAsync(emailMessages.GoogleDriveRemovalLossOfAccess(
                 removedEmail,
                 userName,
                 displayName,
-                culture,
+                culture),
                 cancellationToken);
             logger.LogInformation(
                 "Sent Google removal Variant 1 (drive loss-of-access) to {Email} for user {UserId} folder {Folder}",

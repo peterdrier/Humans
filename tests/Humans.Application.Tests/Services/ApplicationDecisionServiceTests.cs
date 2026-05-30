@@ -26,6 +26,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     private readonly ApplicationRepository _repository;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -51,6 +52,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             _roleAssignmentService,
             AuditLog,
             _emailService,
+            _emailMessages,
             _userEmailService,
             _notificationService,
             _syncJob,
@@ -379,7 +381,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _emailService.Received().SendApplicationApprovedAsync(
+        _emailMessages.Received().ApplicationApproved(
             "alice@test.com",
             "Alice",
             MembershipTier.Colaborador,
@@ -408,12 +410,12 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _emailService.Received().SendApplicationApprovedAsync(
+        _emailMessages.Received().ApplicationApproved(
             "bob.notify@test.com",
             "Bob",
             MembershipTier.Colaborador,
             "en");
-        await _emailService.DidNotReceive().SendApplicationApprovedAsync(
+        _emailMessages.DidNotReceive().ApplicationApproved(
             string.Empty,
             Arg.Any<string>(),
             Arg.Any<MembershipTier>(),
@@ -438,7 +440,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _emailService.DidNotReceive().SendApplicationApprovedAsync(
+        _emailMessages.DidNotReceive().ApplicationApproved(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<MembershipTier>(),

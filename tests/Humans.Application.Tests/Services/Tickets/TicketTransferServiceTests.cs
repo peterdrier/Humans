@@ -39,6 +39,7 @@ public sealed class TicketTransferServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
 
     private readonly TicketTransferService _service;
@@ -51,6 +52,7 @@ public sealed class TicketTransferServiceTests
             _userService,
             _userEmailService,
             _emailService,
+            _emailMessages,
             _auditLog,
             _clock,
             NullLogger<TicketTransferService>.Instance);
@@ -143,30 +145,30 @@ public sealed class TicketTransferServiceTests
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferRequested, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), _senderId, _receiverId, Arg.Any<string>());
-        await _emailService.Received(1).SendTicketTransferRequestedAsync(
+        _emailMessages.Received(1).TicketTransferRequested(
             "bob@example.com", Arg.Any<string>(), "Alice Smith", Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.Received(1).SendTicketTransferTeamNotificationAsync(
+            Arg.Any<string?>());
+        _emailMessages.Received(1).TicketTransferTeamNotification(
             Arg.Any<string>(), "Alice Smith", "alice@example.com", Arg.Any<string>(),
-            "Going abroad", Arg.Any<string>(), Arg.Any<CancellationToken>());
+            "Going abroad", Arg.Any<string>());
     }
 
     [HumansFact]
     public async Task CreateRequest_StillNotifiesTeam_WhenSenderEmailFails()
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-        _emailService.SendTicketTransferRequestedAsync(
+        _emailMessages.TicketTransferRequested(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException("smtp down")));
+                Arg.Any<string?>())
+            .Returns(_ => throw new InvalidOperationException("smtp down"));
 
         // Must not throw (request is already persisted) and the team must still be alerted.
         await _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
 
-        await _emailService.Received(1).SendTicketTransferTeamNotificationAsync(
+        _emailMessages.Received(1).TicketTransferTeamNotification(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -249,9 +251,9 @@ public sealed class TicketTransferServiceTests
             AuditAction.TicketTransferApproved, Arg.Any<string>(), req.Id, Arg.Any<string>(),
             _adminId, _senderId, Arg.Any<string>());
         // Sender + Receiver each get a "successful" decision email.
-        await _emailService.Received(2).SendTicketTransferDecisionAsync(
+        _emailMessages.Received(2).TicketTransferDecision(
             Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>());
     }
 
     // ── RejectAsync (cancel with reason) ────────────────────────────────────────
@@ -277,9 +279,9 @@ public sealed class TicketTransferServiceTests
 
         req.Status.Should().Be(TicketTransferStatus.Rejected);
         req.AdminNotes.Should().Be("duplicate request");
-        await _emailService.Received(2).SendTicketTransferDecisionAsync(
+        _emailMessages.Received(2).TicketTransferDecision(
             Arg.Any<string>(), Arg.Any<string>(), false, Arg.Any<string>(), Arg.Any<string>(),
-            "duplicate request", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            "duplicate request", Arg.Any<string?>());
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────

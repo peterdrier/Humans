@@ -32,6 +32,7 @@ public sealed class FeedbackService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     IAuditLogService auditLogService,
     INavBadgeCacheInvalidator navBadge,
@@ -275,10 +276,10 @@ public sealed class FeedbackService(
         if (reporter is not null && emails.TryGetValue(report.UserId, out var recipientEmail) &&
             !string.IsNullOrWhiteSpace(recipientEmail))
         {
-            await emailService.SendFeedbackResponseAsync(
+            await emailService.SendAsync(emailMessages.FeedbackResponse(
                 recipientEmail, reporter.BurnerName,
                 report.Description, content, reportLink,
-                reporter.PreferredLanguage, ct);
+                reporter.PreferredLanguage), ct);
         }
         else
         {

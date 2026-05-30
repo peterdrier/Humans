@@ -29,12 +29,14 @@ public sealed class OnboardingServiceTests
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
 
     private OnboardingService BuildSut() =>
         new(
             _userService,
             _applicationDecisionService,
             _emailService,
+            _emailMessages,
             _notificationService,
             _syncJob,
             _membershipCalculator,
@@ -104,7 +106,7 @@ public sealed class OnboardingServiceTests
             Arg.Any<string>(),
             reviewerId);
         await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, default);
-        await _emailService.DidNotReceiveWithAnyArgs().SendSignupRejectedAsync(default!, default!, default);
+        _emailMessages.DidNotReceiveWithAnyArgs().SignupRejected(default!, default!, default);
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default,
             default,

@@ -29,6 +29,7 @@ public class EventsController(
     IAuthorizationService authorizationService,
     IClock clock,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
@@ -190,13 +191,13 @@ public class EventsController(
         {
             var userInfo = await UserService.GetUserInfoAsync(user.Id);
             var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-            await emailService.SendEventLifecycleNotificationAsync(
+            await emailService.SendAsync(emailMessages.EventLifecycle(
                 new EventLifecycleNotification(
                     NewStatus: EventStatus.Pending,
                     UserName: userInfo?.BurnerName ?? userEmail,
                     EventTitle: model.Title,
                     ActionUrl: viewUrl),
-                userEmail);
+                userEmail));
         }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");
@@ -680,9 +681,9 @@ public class EventsController(
         {
             var userInfo = await UserService.GetUserInfoAsync(user.Id);
             var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-            await emailService.SendEventLifecycleNotificationAsync(
+            await emailService.SendAsync(emailMessages.EventLifecycle(
                 new EventLifecycleNotification(EventStatus.Pending, userInfo?.BurnerName ?? userEmail, model.Title, viewUrl),
-                userEmail);
+                userEmail));
         }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");

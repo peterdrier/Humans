@@ -29,11 +29,12 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
     private RotaCoordinatorMessageService CreateSut() =>
-        new(_repo, _teamService, _userService, _emailService, _auditLog, _clock,
+        new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog, _clock,
             NullLogger<RotaCoordinatorMessageService>.Instance);
 
     [HumansFact]
@@ -43,7 +44,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("required", "blank body must surface a clear error");
-        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(null!);
+        _emailMessages.DidNotReceiveWithAnyArgs().CoordinatorRotaMessage(null!);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, Guid.Empty, null!, Guid.Empty);
     }
@@ -59,7 +60,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("not found");
-        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorRotaMessageAsync(null!);
+        _emailMessages.DidNotReceiveWithAnyArgs().CoordinatorRotaMessage(null!);
     }
 
     [HumansFact]
@@ -98,12 +99,10 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello team");
 
-        await _emailService.Received(1).SendCoordinatorRotaMessageAsync(
-            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com"),
-            Arg.Any<CancellationToken>());
-        await _emailService.Received(1).SendCoordinatorRotaMessageAsync(
-            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "b@example.com"),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CoordinatorRotaMessage(
+            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com"));
+        _emailMessages.Received(1).CoordinatorRotaMessage(
+            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "b@example.com"));
     }
 
     [HumansFact]
@@ -130,13 +129,12 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         CoordinatorRotaMessageRequest? captured_A = null;
         CoordinatorRotaMessageRequest? captured_B = null;
-        await _emailService.SendCoordinatorRotaMessageAsync(
+        _emailMessages.CoordinatorRotaMessage(
             Arg.Do<CoordinatorRotaMessageRequest>(r =>
             {
                 if (string.Equals(r.RecipientEmail, "a@example.com", StringComparison.Ordinal)) captured_A = r;
                 else if (string.Equals(r.RecipientEmail, "b@example.com", StringComparison.Ordinal)) captured_B = r;
-            }),
-            Arg.Any<CancellationToken>());
+            }));
 
         await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello");
 
@@ -221,8 +219,8 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1, "only the recipient with an email is queued");
-        await _emailService.Received(1).SendCoordinatorRotaMessageAsync(
-            Arg.Any<CoordinatorRotaMessageRequest>(), Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CoordinatorRotaMessage(
+            Arg.Any<CoordinatorRotaMessageRequest>());
     }
 
     [HumansFact]
@@ -245,10 +243,9 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // First recipient throws (simulating a transient outbox-write failure);
         // the loop must continue, enqueue the second, and still write the audit row.
-        _emailService
-            .When(s => s.SendCoordinatorRotaMessageAsync(
-                Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com"),
-                Arg.Any<CancellationToken>()))
+        _emailMessages
+            .When(f => f.CoordinatorRotaMessage(
+                Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com")))
             .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
@@ -256,9 +253,8 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.Succeeded.Should().BeTrue("partial dispatch still returns success");
         result.RecipientCount.Should().Be(1, "only the surviving enqueue counts as queued");
 
-        await _emailService.Received(1).SendCoordinatorRotaMessageAsync(
-            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "b@example.com"),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CoordinatorRotaMessage(
+            Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "b@example.com"));
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CoordinatorRotaMessageSent,
@@ -289,9 +285,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         StubUsers(sender, userA, userB);
 
         // Every recipient's enqueue throws — no email gets queued.
-        _emailService
-            .When(s => s.SendCoordinatorRotaMessageAsync(
-                Arg.Any<CoordinatorRotaMessageRequest>(), Arg.Any<CancellationToken>()))
+        _emailMessages
+            .When(f => f.CoordinatorRotaMessage(
+                Arg.Any<CoordinatorRotaMessageRequest>()))
             .Do(_ => throw new InvalidOperationException("simulated outbox outage"));
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
@@ -323,7 +319,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("required");
-        await _emailService.DidNotReceiveWithAnyArgs().SendCoordinatorTeamRotasMessageAsync(null!);
+        _emailMessages.DidNotReceiveWithAnyArgs().CoordinatorTeamRotasMessage(null!);
     }
 
     [HumansFact]
@@ -379,9 +375,8 @@ public sealed class RotaCoordinatorMessageServiceTests
         await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
 
         // Exactly one email queued, to userB; past-only rota produced no work.
-        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
-            Arg.Any<CoordinatorTeamRotasMessageRequest>(),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CoordinatorTeamRotasMessage(
+            Arg.Any<CoordinatorTeamRotasMessageRequest>());
     }
 
     [HumansFact]
@@ -413,9 +408,8 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(2, "bailed is excluded; pending + confirmed are kept");
-        await _emailService.Received(2).SendCoordinatorTeamRotasMessageAsync(
-            Arg.Any<CoordinatorTeamRotasMessageRequest>(),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(2).CoordinatorTeamRotasMessage(
+            Arg.Any<CoordinatorTeamRotasMessageRequest>());
     }
 
     [HumansFact]
@@ -444,13 +438,12 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.RecipientCount.Should().Be(1, "user appears in two rotas but should receive exactly one email");
         result.RotaCount.Should().Be(2);
 
-        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
+        _emailMessages.Received(1).CoordinatorTeamRotasMessage(
             Arg.Is<CoordinatorTeamRotasMessageRequest>(r =>
                 r.RecipientEmail == "a@example.com"
                 && r.ShiftGroups.Count == 2
                 && r.ShiftGroups.Any(g => g.RotaName == "Aardvark")
-                && r.ShiftGroups.Any(g => g.RotaName == "Beaver")),
-            Arg.Any<CancellationToken>());
+                && r.ShiftGroups.Any(g => g.RotaName == "Beaver")));
     }
 
     [HumansFact]
@@ -473,9 +466,8 @@ public sealed class RotaCoordinatorMessageServiceTests
         StubUsers(sender, userA);
 
         CoordinatorTeamRotasMessageRequest? captured = null;
-        await _emailService.SendCoordinatorTeamRotasMessageAsync(
-            Arg.Do<CoordinatorTeamRotasMessageRequest>(r => captured = r),
-            Arg.Any<CancellationToken>());
+        _emailMessages.CoordinatorTeamRotasMessage(
+            Arg.Do<CoordinatorTeamRotasMessageRequest>(r => captured = r));
 
         await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
 
@@ -527,19 +519,17 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota]);
         StubUsers(sender, userA, userB);
 
-        _emailService
-            .When(s => s.SendCoordinatorTeamRotasMessageAsync(
-                Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com"),
-                Arg.Any<CancellationToken>()))
+        _emailMessages
+            .When(f => f.CoordinatorTeamRotasMessage(
+                Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com")))
             .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hi");
 
         result.Succeeded.Should().BeTrue("partial dispatch returns success");
         result.RecipientCount.Should().Be(1);
-        await _emailService.Received(1).SendCoordinatorTeamRotasMessageAsync(
-            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "b@example.com"),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CoordinatorTeamRotasMessage(
+            Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "b@example.com"));
     }
 
     [HumansFact]

@@ -38,14 +38,19 @@
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="UnitPriceEur" class="form-label">Unit price (€)</label>
-                    <input asp-for="UnitPriceEur" type="number" step="0.01" min="0" class="form-control" />
+                    <label asp-for="UnitPriceEur" class="form-label">Unit price ex. VAT (€)</label>
+                    <input asp-for="UnitPriceEur" id="priceExVat" type="number" step="0.01" min="0" class="form-control" />
                     <span asp-validation-for="UnitPriceEur" class="text-danger small"></span>
                 </div>
                 <div class="col-md-3">
                     <label asp-for="VatRatePercent" class="form-label">VAT %</label>
-                    <input asp-for="VatRatePercent" type="number" step="0.01" min="0" class="form-control" />
+                    <input asp-for="VatRatePercent" id="vatRate" type="number" step="0.01" min="0" class="form-control" />
                     <span asp-validation-for="VatRatePercent" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Unit price incl. VAT (€)</label>
+                    <input id="priceInclVat" type="number" step="0.01" min="0" class="form-control" />
+                    <div class="form-text">Enter either price — the other updates automatically.</div>
                 </div>
                 <div class="col-md-3">
                     <label asp-for="DepositAmountEur" class="form-label">Deposit (€, optional)</label>
@@ -77,4 +82,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script nonce="@Context.Items["CspNonce"]">
+        (function () {
+            var exInput = document.getElementById('priceExVat');
+            var inclInput = document.getElementById('priceInclVat');
+            var vatInput = document.getElementById('vatRate');
+
+            function multiplier() {
+                var rate = parseFloat(vatInput.value);
+                return isNaN(rate) ? 1 : 1 + rate / 100;
+            }
+
+            function round2(v) { return Math.round(v * 100) / 100; }
+
+            function syncInclFromEx() {
+                var ex = parseFloat(exInput.value);
+                inclInput.value = isNaN(ex) ? '' : round2(ex * multiplier()).toFixed(2);
+            }
+
+            function syncExFromIncl() {
+                var incl = parseFloat(inclInput.value);
+                exInput.value = isNaN(incl) ? '' : round2(incl / multiplier()).toFixed(2);
+            }
+
+            exInput.addEventListener('input', syncInclFromEx);
+            inclInput.addEventListener('input', syncExFromIncl);
+            vatInput.addEventListener('input', syncInclFromEx);
+
+            // Initialise incl. field from the server-rendered ex-VAT value
+            syncInclFromEx();
+        })();
+    </script>
 }

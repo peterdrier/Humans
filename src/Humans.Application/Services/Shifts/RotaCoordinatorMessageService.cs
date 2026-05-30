@@ -21,6 +21,7 @@ public sealed class RotaCoordinatorMessageService(
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
     IClock clock,
     ILogger<RotaCoordinatorMessageService> logger) : IRotaCoordinatorMessageService
@@ -68,7 +69,7 @@ public sealed class RotaCoordinatorMessageService(
                 // one group in this path so the flatten is trivial.
                 ShiftLines: shiftGroups[0].ShiftLines,
                 Culture: recipient.PreferredLanguage),
-            enqueue: (req, token) => emailService.SendCoordinatorRotaMessageAsync(req, token),
+            enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorRotaMessage(req), token),
             logScope: ("rota", rota.Id.ToString()),
             ct);
 
@@ -126,7 +127,7 @@ public sealed class RotaCoordinatorMessageService(
                 MessageText: messageText,
                 ShiftGroups: shiftGroups,
                 Culture: recipient.PreferredLanguage),
-            enqueue: (req, token) => emailService.SendCoordinatorTeamRotasMessageAsync(req, token),
+            enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorTeamRotasMessage(req), token),
             logScope: ("team", teamId.ToString()),
             ct);
 

@@ -27,6 +27,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly IAccountDeletionService _accountDeletionService;
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages;
     private readonly IAuditLogService _auditLogService;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
@@ -39,13 +40,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService = Substitute.For<IUserService>();
         _accountDeletionService = Substitute.For<IAccountDeletionService>();
         _emailService = Substitute.For<IEmailService>();
+        _emailMessages = Substitute.For<IEmailMessageFactory>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
-            _userService, _accountDeletionService, _emailService, _auditLogService, _metrics, logger, _clock);
+            _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -64,8 +66,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
             .AnonymizeExpiredAccountAsync(Guid.Empty, CancellationToken.None);
-        await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            null!, null!, null, CancellationToken.None);
+        _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
+            null!, null!, null);
     }
 
     [HumansFact]
@@ -102,9 +104,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
-        await _emailService.Received(1).SendAccountDeletedAsync(
-            "test@example.com", "Test User", "en",
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).AccountDeleted(
+            "test@example.com", "Test User", "en");
     }
 
     [HumansFact]
@@ -125,10 +126,10 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _emailService.Received(1).SendAccountDeletedAsync(
-            "other@example.com", "Other User", "es", Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendAccountDeletedAsync(
-            Arg.Any<string>(), "Test User", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).AccountDeleted(
+            "other@example.com", "Other User", "es");
+        _emailMessages.DidNotReceive().AccountDeleted(
+            Arg.Any<string>(), "Test User", Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -146,8 +147,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
-            null!, null!, null, CancellationToken.None);
+        _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
+            null!, null!, null);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(
@@ -175,7 +176,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _job.ExecuteAsync();
 
         // User 2 still gets its email/audit despite user 1 failing.
-        await _emailService.Received(1).SendAccountDeletedAsync(
-            "u2@example.com", "User Two", "en", Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).AccountDeleted(
+            "u2@example.com", "User Two", "en");
     }
 }
