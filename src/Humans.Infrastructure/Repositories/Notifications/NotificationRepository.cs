@@ -386,20 +386,6 @@ internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> 
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetRecipientUserIdsAsync(
-        IReadOnlyCollection<Guid> notificationIds, CancellationToken ct = default)
-    {
-        if (notificationIds.Count == 0) return [];
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.NotificationRecipients
-            .AsNoTracking()
-            .Where(nr => notificationIds.Contains(nr.NotificationId))
-            .Select(nr => nr.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     // ==========================================================================
     // Account-merge fold
     // ==========================================================================

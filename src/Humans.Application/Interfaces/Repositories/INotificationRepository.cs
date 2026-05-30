@@ -160,14 +160,6 @@ public interface INotificationRepository : IRepository
     Task<IReadOnlyList<NotificationRecipient>> GetAllForUserContributorAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads the recipient user ids for a set of notifications in a single
-    /// query. Used to build cache-invalidation recipient sets without
-    /// re-reading each notification individually.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetRecipientUserIdsAsync(
-        IReadOnlyCollection<Guid> notificationIds, CancellationToken ct = default);
-
     // ==========================================================================
     // Account-merge fold
     // ==========================================================================
