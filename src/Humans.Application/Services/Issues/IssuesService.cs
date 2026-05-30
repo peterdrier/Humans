@@ -332,15 +332,7 @@ public sealed class IssuesService(
         Guid? senderUserId,
         string content,
         bool senderIsReporter,
-        CancellationToken ct = default) =>
-        await PostCommentAsync(issueId, senderUserId, content, senderIsReporter, resolveOnPost: false, ct);
-
-    public async Task<IssueComment> PostCommentAsync(
-        Guid issueId,
-        Guid? senderUserId,
-        string content,
-        bool senderIsReporter,
-        bool resolveOnPost,
+        bool resolveOnPost = false,
         CancellationToken ct = default)
     {
         var issue = await repo.FindForMutationAsync(issueId, ct)

@@ -47,11 +47,7 @@ public interface IIssuesService : IApplicationService
 
     Task<IssueComment> PostCommentAsync(
         Guid issueId, Guid? senderUserId, string content,
-        bool senderIsReporter, CancellationToken ct = default);
-
-    Task<IssueComment> PostCommentAsync(
-        Guid issueId, Guid? senderUserId, string content,
-        bool senderIsReporter, bool resolveOnPost, CancellationToken ct = default);
+        bool senderIsReporter, bool resolveOnPost = false, CancellationToken ct = default);
 
     Task UpdateStatusAsync(
         Guid issueId, IssueStatus newStatus, Guid? actorUserId, CancellationToken ct = default);
