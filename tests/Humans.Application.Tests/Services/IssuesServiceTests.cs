@@ -26,6 +26,7 @@ namespace Humans.Application.Tests.Services;
 public sealed class IssuesServiceTests : ServiceTestHarness
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
@@ -39,6 +40,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         : base(Instant.FromUtc(2026, 4, 29, 12, 0))
     {
         _emailService = Substitute.For<IEmailService>();
+        _emailMessages = Substitute.For<IEmailMessageFactory>();
         AuditLog
             .GetFilteredEntriesAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
@@ -76,7 +78,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
 
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
     }
@@ -247,14 +249,13 @@ public sealed class IssuesServiceTests : ServiceTestHarness
 
         await _service.PostCommentAsync(issueId, adminId, "Looking at it", senderIsReporter: false);
 
-        await _emailService.Received(1).SendIssueCommentAsync(
+        _emailMessages.Received(1).IssueComment(
             "reporter@test.com",
             "Reporter",
             "Report Title",
             "Looking at it",
             $"/Issues/{issueId}",
-            "en",
-            Arg.Any<CancellationToken>());
+            "en");
 
         await _notificationService.Received().SendAsync(
             NotificationSource.IssueComment,
@@ -276,10 +277,9 @@ public sealed class IssuesServiceTests : ServiceTestHarness
 
         await _service.PostCommentAsync(issueId, reporterId, "More info", senderIsReporter: true);
 
-        await _emailService.DidNotReceive().SendIssueCommentAsync(
+        _emailMessages.DidNotReceive().IssueComment(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -626,7 +626,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -654,7 +654,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -686,7 +686,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -769,7 +769,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -796,7 +796,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 

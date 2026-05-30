@@ -20,6 +20,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
     private readonly MagicLinkService _service;
@@ -56,6 +57,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
             _userEmailService,
             _userService,
             _emailService,
+            _emailMessages,
             _urlBuilder,
             _rateLimiter,
             Clock,
@@ -92,12 +94,10 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
 
         await _service.SendMagicLinkAsync("alice@work.com", "/dashboard");
 
-        await _emailService.Received(1).SendMagicLinkLoginAsync(
+        _emailMessages.Received(1).MagicLinkLogin(
             "alice@work.com",
             "Alice",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)));
         _urlBuilder.Received(1).BuildLoginUrl(userId, "/dashboard");
     }
 
@@ -122,12 +122,10 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
 
-        await _emailService.Received(1).SendMagicLinkLoginAsync(
+        _emailMessages.Received(1).MagicLinkLogin(
             "alice@gmail.com",
             "Alice",
-            Arg.Any<string>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>());
     }
 
     [HumansFact]
@@ -137,11 +135,9 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         // no setup needed; the service falls through to signup.
         await _service.SendMagicLinkAsync("newperson@example.com", "/welcome");
 
-        await _emailService.Received(1).SendMagicLinkSignupAsync(
+        _emailMessages.Received(1).MagicLinkSignup(
             "newperson@example.com",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Is<string>(url => url.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)));
     }
 
     private static UserInfo CreateUserInfo(User user) =>
@@ -177,9 +173,8 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
 
-        await _emailService.DidNotReceive().SendMagicLinkLoginAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        _emailMessages.DidNotReceive().MagicLinkLogin(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -187,16 +182,15 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     {
         // First call succeeds
         await _service.SendMagicLinkAsync("newperson@example.com", null);
-        _emailService.ClearReceivedCalls();
+        _emailMessages.ClearReceivedCalls();
 
         // Subsequent TryReserveSignupSendAsync returns false
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
 
         await _service.SendMagicLinkAsync("newperson@example.com", null);
 
-        await _emailService.DidNotReceive().SendMagicLinkSignupAsync(
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        _emailMessages.DidNotReceive().MagicLinkSignup(
+            Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -208,9 +202,8 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         // straight to the signup-link branch.
         await _service.SendMagicLinkAsync("alice@work.com", null);
 
-        await _emailService.Received(1).SendMagicLinkSignupAsync(
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).MagicLinkSignup(
+            Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

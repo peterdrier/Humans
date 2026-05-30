@@ -27,6 +27,7 @@ public class TermRenewalReminderJob(
     IApplicationDecisionService applicationDecisionService,
     IUserServiceRead userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     IHumansMetrics metrics,
     ILogger<TermRenewalReminderJob> logger,
@@ -105,12 +106,12 @@ public class TermRenewalReminderJob(
                     var expiresFormatted = application.TermExpiresAt!.Value
                         .ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
 
-                    await emailService.SendTermRenewalReminderAsync(
+                    await emailService.SendAsync(emailMessages.TermRenewalReminder(
                         email,
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
                         expiresFormatted,
-                        applicant.PreferredLanguage,
+                        applicant.PreferredLanguage),
                         cancellationToken);
 
                     await applicationDecisionService.MarkRenewalReminderSentAsync(

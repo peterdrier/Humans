@@ -14,6 +14,7 @@ public sealed class MagicLinkService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IMagicLinkUrlBuilder urlBuilder,
     IMagicLinkRateLimiter rateLimiter,
     IClock clock,
@@ -109,8 +110,8 @@ public sealed class MagicLinkService(
         var userInfo = await userService.GetUserInfoAsync(user.Id, ct);
         var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
-        await emailService.SendMagicLinkLoginAsync(
-            sendToEmail, displayName, magicLinkUrl, ct: ct);
+        await emailService.SendAsync(
+            emailMessages.MagicLinkLogin(sendToEmail, displayName, magicLinkUrl), ct);
 
         user.MagicLinkSentAt = now;
         await userManager.UpdateAsync(user);
@@ -131,7 +132,7 @@ public sealed class MagicLinkService(
         {
             var magicLinkUrl = urlBuilder.BuildSignupUrl(email, returnUrl);
 
-            await emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
+            await emailService.SendAsync(emailMessages.MagicLinkSignup(email, magicLinkUrl), ct);
 
             logger.LogInformation("Magic link signup sent to {Email}", email);
         }

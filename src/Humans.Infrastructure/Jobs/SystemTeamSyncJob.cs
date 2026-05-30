@@ -32,6 +32,7 @@ public class SystemTeamSyncJob(
     IGoogleGroupSync googleGroupSync,
     IAuditLogService auditLogService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IHumansMetrics metrics,
     ILogger<SystemTeamSyncJob> logger,
@@ -603,9 +604,9 @@ public class SystemTeamSyncJob(
                 try
                 {
                     var email = user.Email!;
-                    await emailService.SendAddedToTeamAsync(
+                    await emailService.SendAsync(emailMessages.AddedToTeam(
                         email, user.BurnerName, team.Name, team.Slug,
-                        resourceTuples, user.PreferredLanguage, cancellationToken);
+                        resourceTuples, user.PreferredLanguage), cancellationToken);
                 }
                 catch (Exception ex)
                 {

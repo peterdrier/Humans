@@ -22,6 +22,7 @@ public sealed class GoogleRemovalNotificationServiceTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly GoogleRemovalNotificationService _service;
 
     public GoogleRemovalNotificationServiceTests()
@@ -30,6 +31,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             _userEmailService,
             _userService,
             _emailService,
+            _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
     }
 
@@ -47,15 +49,15 @@ public sealed class GoogleRemovalNotificationServiceTests
             "some-group@nobodies.team",
             SyncRemovalReason.Reconciliation);
 
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleDriveRemovalLossOfAccessAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleAccessRemovalSecondaryCleanupAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -89,15 +91,14 @@ public sealed class GoogleRemovalNotificationServiceTests
             "some-group@nobodies.team",
             SyncRemovalReason.EmailRotation);
 
-        await _emailService.Received(1).SendGoogleAccessRemovalSecondaryCleanupAsync(
+        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             "old@nobodies.team",
             "Alice",
             "new@nobodies.team",
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -129,20 +130,19 @@ public sealed class GoogleRemovalNotificationServiceTests
             "my-group@nobodies.team",
             SyncRemovalReason.Reconciliation);
 
-        await _emailService.Received(1).SendGoogleAccessRemovalSecondaryCleanupAsync(
+        _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             "old@nobodies.team",
             "Alice",
             "new@nobodies.team",
-            "fr",
-            Arg.Any<CancellationToken>());
+            "fr");
 
         // Variant 1 sub-templates must NOT be invoked.
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleDriveRemovalLossOfAccessAsync(
+            Arg.Any<string?>());
+        _emailMessages.DidNotReceive().GoogleDriveRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -170,16 +170,15 @@ public sealed class GoogleRemovalNotificationServiceTests
             "comms@nobodies.team",
             SyncRemovalReason.Reconciliation);
 
-        await _emailService.Received(1).SendGoogleGroupRemovalLossOfAccessAsync(
+        _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
             "primary@nobodies.team",
             "Bob",
             "Comms Team",
             "comms@nobodies.team",
-            "es",
-            Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleAccessRemovalSecondaryCleanupAsync(
+            "es");
+        _emailMessages.DidNotReceive().GoogleAccessRemovalSecondaryCleanup(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -207,15 +206,14 @@ public sealed class GoogleRemovalNotificationServiceTests
             "https://drive.google.com/drive/folders/abc",
             SyncRemovalReason.Reconciliation);
 
-        await _emailService.Received(1).SendGoogleDriveRemovalLossOfAccessAsync(
+        _emailMessages.Received(1).GoogleDriveRemovalLossOfAccess(
             "only@nobodies.team",
             "Carol",
             "Public Resources",
-            "ca",
-            Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
+            "ca");
+        _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -243,13 +241,12 @@ public sealed class GoogleRemovalNotificationServiceTests
             resourceIdentifier: "fallback@nobodies.team",
             SyncRemovalReason.Reconciliation);
 
-        await _emailService.Received(1).SendGoogleGroupRemovalLossOfAccessAsync(
+        _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
             "dee@nobodies.team",
             "Dee",
             "fallback@nobodies.team", // displayName falls back to identifier
             "fallback@nobodies.team",
-            "en",
-            Arg.Any<CancellationToken>());
+            "en");
     }
 
     [HumansFact]

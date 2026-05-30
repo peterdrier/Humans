@@ -26,6 +26,7 @@ public sealed class TicketTransferService(
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IAuditLogService auditLog,
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
@@ -290,14 +291,14 @@ public sealed class TicketTransferService(
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
-                emailService.SendTicketTransferRequestedAsync(
-                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null, ct));
+                emailService.SendAsync(emailMessages.TicketTransferRequested(
+                    senderEmail, senderName, request.ReceiverLegalName, ticketLabel, culture: null), ct));
         }
 
         await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
-            emailService.SendTicketTransferTeamNotificationAsync(
+            emailService.SendAsync(emailMessages.TicketTransferTeamNotification(
                 senderName, request.ReceiverLegalName, request.ReceiverEmail,
-                ticketLabel, request.SenderReason, reviewUrl, ct));
+                ticketLabel, request.SenderReason, reviewUrl), ct));
     }
 
     private async Task NotifyDecisionAsync(
@@ -312,17 +313,17 @@ public sealed class TicketTransferService(
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
-                emailService.SendTicketTransferDecisionAsync(
+                emailService.SendAsync(emailMessages.TicketTransferDecision(
                     senderEmail, senderName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null, ct));
+                    request.ReceiverLegalName, reason, culture: null), ct));
         }
 
         if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
         {
             await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
-                emailService.SendTicketTransferDecisionAsync(
+                emailService.SendAsync(emailMessages.TicketTransferDecision(
                     request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
-                    request.ReceiverLegalName, reason, culture: null, ct));
+                    request.ReceiverLegalName, reason, culture: null), ct));
         }
     }
 

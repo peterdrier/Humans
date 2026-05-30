@@ -30,6 +30,7 @@ public sealed class IssuesService(
     IUserEmailService userEmails,
     IRoleAssignmentService roles,
     IEmailService email,
+    IEmailMessageFactory emailMessages,
     INotificationService notifications,
     IAuditLogService audit,
     INavBadgeCacheInvalidator navBadge,
@@ -812,13 +813,13 @@ public sealed class IssuesService(
             emails.TryGetValue(issue.ReporterUserId, out var to) &&
             !string.IsNullOrWhiteSpace(to))
         {
-            await email.SendIssueCommentAsync(
+            await email.SendAsync(emailMessages.IssueComment(
                 to,
                 reporter.BurnerName,
                 issue.Title,
                 comment.Content,
                 $"/Issues/{issue.Id}",
-                reporter.PreferredLanguage,
+                reporter.PreferredLanguage),
                 ct);
         }
         else

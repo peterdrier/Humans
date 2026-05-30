@@ -27,6 +27,7 @@ public sealed class CampaignService(
     INotificationService notificationService,
     ICommunicationPreferenceService commPrefService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     ITicketVendorService ticketVendorService,
     IClock clock,
     ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
@@ -474,8 +475,8 @@ public sealed class CampaignService(
 
             try
             {
-                await emailService.SendCampaignCodeAsync(
-                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id),
+                await emailService.SendAsync(emailMessages.CampaignCode(
+                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id)),
                     ct);
             }
             catch (Exception ex)
@@ -529,13 +530,13 @@ public sealed class CampaignService(
             throw new InvalidOperationException(
                 $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 
-        await emailService.SendCampaignCodeAsync(
+        await emailService.SendAsync(emailMessages.CampaignCode(
             BuildCampaignCodeRequest(
                 grant.CampaignTitle,
                 grant.CampaignEmailSubject,
                 grant.CampaignEmailBodyTemplate,
                 grant.CampaignReplyToAddress,
-                user, recipientEmail, grant.CodeString, grant.GrantId),
+                user, recipientEmail, grant.CodeString, grant.GrantId)),
             ct);
 
         logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
@@ -635,13 +636,13 @@ public sealed class CampaignService(
 
             try
             {
-                await emailService.SendCampaignCodeAsync(
+                await emailService.SendAsync(emailMessages.CampaignCode(
                     BuildCampaignCodeRequest(
                         grant.CampaignTitle,
                         grant.CampaignEmailSubject,
                         grant.CampaignEmailBodyTemplate,
                         grant.CampaignReplyToAddress,
-                        user, recipientEmail, grant.CodeString, grant.GrantId),
+                        user, recipientEmail, grant.CodeString, grant.GrantId)),
                     ct);
             }
             catch (Exception ex)

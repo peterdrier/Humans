@@ -13,6 +13,7 @@ namespace Humans.Application.Tests.Services;
 public class CampContactServiceTests : IDisposable
 {
     private readonly IEmailService _emailService;
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly IMemoryCache _cache;
@@ -29,6 +30,7 @@ public class CampContactServiceTests : IDisposable
         _cache = new MemoryCache(new MemoryCacheOptions());
         _service = new CampContactService(
             _emailService,
+            _emailMessages,
             _auditLogService,
             _notificationEmitter,
             _cache,
@@ -59,7 +61,7 @@ public class CampContactServiceTests : IDisposable
         result.Success.Should().BeTrue();
         result.RateLimited.Should().BeFalse();
 
-        await _emailService.Received(1).SendFacilitatedMessageAsync(
+        _emailMessages.Received(1).FacilitatedMessage(
             "camp@example.com",
             "Cool Camp",
             "Alice",
@@ -95,7 +97,7 @@ public class CampContactServiceTests : IDisposable
         result2.RateLimited.Should().BeTrue();
 
         // Email only sent once
-        await _emailService.Received(1).SendFacilitatedMessageAsync(
+        _emailMessages.Received(1).FacilitatedMessage(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>());
     }
@@ -120,9 +122,7 @@ public class CampContactServiceTests : IDisposable
     [HumansFact]
     public async Task SendFacilitatedMessageAsync_EmailFails_RollsBackRateLimit()
     {
-        _emailService.SendFacilitatedMessageAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>())
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP error"));
 
         var act = () => _service.SendFacilitatedMessageAsync(
@@ -132,9 +132,7 @@ public class CampContactServiceTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         // Rate limit should be rolled back, so next attempt should not be rate-limited
-        _emailService.SendFacilitatedMessageAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>())
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         var retryResult = await _service.SendFacilitatedMessageAsync(
@@ -155,7 +153,7 @@ public class CampContactServiceTests : IDisposable
             [],
             "/Barrios/camp");
 
-        await _emailService.Received(1).SendFacilitatedMessageAsync(
+        _emailMessages.Received(1).FacilitatedMessage(
             "camp@example.com",
             "Camp",
             "Alice",

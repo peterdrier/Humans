@@ -44,6 +44,9 @@ public sealed class TeamService(
     private IEmailService EmailService
         => serviceProvider.GetRequiredService<IEmailService>();
 
+    private IEmailMessageFactory EmailMessages
+        => serviceProvider.GetRequiredService<IEmailMessageFactory>();
+
     private ISystemTeamSync SystemTeamSync
         => serviceProvider.GetRequiredService<ISystemTeamSync>();
 
@@ -2104,10 +2107,10 @@ public sealed class TeamService(
             {
                 var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
-                await EmailService.SendAddedToTeamAsync(
+                await EmailService.SendAsync(EmailMessages.AddedToTeam(
                     email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
-                    user.PreferredLanguage,
+                    user.PreferredLanguage),
                     cancellationToken);
             }
         }

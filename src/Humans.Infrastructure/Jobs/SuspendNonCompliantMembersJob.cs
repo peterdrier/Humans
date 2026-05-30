@@ -37,6 +37,7 @@ public class SuspendNonCompliantMembersJob(
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     IGoogleSyncService googleSyncService,
     IAuditLogService auditLogService,
@@ -104,11 +105,11 @@ public class SuspendNonCompliantMembersJob(
                 {
                     try
                     {
-                        await emailService.SendAccessSuspendedAsync(
+                        await emailService.SendAsync(emailMessages.AccessSuspended(
                             effectiveEmail,
                             user.BurnerName,
                             "Missing required document consent (grace period expired)",
-                            user.PreferredLanguage,
+                            user.PreferredLanguage),
                             cancellationToken);
                     }
                     catch (Exception ex)

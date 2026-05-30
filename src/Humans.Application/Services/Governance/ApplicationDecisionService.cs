@@ -28,6 +28,7 @@ public sealed class ApplicationDecisionService(
     IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IUserEmailService userEmailService,
     INotificationService notificationService,
     ISystemTeamSync syncJob,
@@ -102,11 +103,11 @@ public sealed class ApplicationDecisionService(
             {
                 try
                 {
-                    await emailService.SendApplicationApprovedAsync(
+                    await emailService.SendAsync(emailMessages.ApplicationApproved(
                         recipientEmail,
                         user.BurnerName,
                         application.MembershipTier,
-                        user.PreferredLanguage);
+                        user.PreferredLanguage));
                 }
                 catch (Exception ex)
                 {
@@ -194,12 +195,12 @@ public sealed class ApplicationDecisionService(
             {
                 try
                 {
-                    await emailService.SendApplicationRejectedAsync(
+                    await emailService.SendAsync(emailMessages.ApplicationRejected(
                         recipientEmail,
                         user.BurnerName,
                         application.MembershipTier,
                         reason,
-                        user.PreferredLanguage);
+                        user.PreferredLanguage));
                 }
                 catch (Exception ex)
                 {

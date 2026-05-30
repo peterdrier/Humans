@@ -13,6 +13,7 @@ namespace Humans.Application.Services.Camps;
 
 public class CampContactService(
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
     INotificationEmitter notificationEmitter,
     IMemoryCache cache,
@@ -42,13 +43,13 @@ public class CampContactService(
             var cleanMessage = Regex.Replace(
                 message, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
 
-            await emailService.SendFacilitatedMessageAsync(
+            await emailService.SendAsync(emailMessages.FacilitatedMessage(
                 campContactEmail,
                 campDisplayName,
                 senderDisplayName,
                 cleanMessage,
                 includeContactInfo,
-                senderEmail);
+                senderEmail));
 
             await auditLogService.LogAsync(
                 AuditAction.FacilitatedMessageSent,

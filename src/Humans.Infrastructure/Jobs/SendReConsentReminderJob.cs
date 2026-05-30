@@ -27,6 +27,7 @@ public class SendReConsentReminderJob(
     ILegalDocumentSyncService legalDocService,
     IUserService userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IOptions<EmailSettings> emailSettings,
     IHumansMetrics metrics,
     ILogger<SendReConsentReminderJob> logger,
@@ -83,12 +84,12 @@ public class SendReConsentReminderJob(
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
-                    await emailService.SendReConsentReminderAsync(
+                    await emailService.SendAsync(emailMessages.ReConsentReminder(
                         effectiveEmail,
                         user.BurnerName,
                         requiredDocNames,
                         daysBeforeSuspension,
-                        user.PreferredLanguage,
+                        user.PreferredLanguage),
                         cancellationToken);
 
                     await userService.SetLastConsentReminderSentAsync(userId, now, cancellationToken);

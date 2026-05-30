@@ -20,6 +20,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 {
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ITicketVendorService _ticketVendorService;
 
     public CampaignServiceTests()
@@ -114,6 +115,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
             Substitute.For<INotificationService>(),
             commPrefService,
             _emailService,
+            _emailMessages,
             _ticketVendorService,
             Clock,
             NullLogger<CampaignServiceImpl>.Instance);
@@ -436,13 +438,12 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         grants[0].LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
 
         // CampaignService delegates to IEmailService — verify the request was passed through.
-        await _emailService.Received(1).SendCampaignCodeAsync(
+        _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.CampaignGrantId == grants[0].Id
                 && r.UserId == user.Id
                 && r.RecipientEmail == user.Email
-                && (r.Code == "CODE-A" || r.Code == "CODE-B")),
-            Arg.Any<CancellationToken>());
+                && (r.Code == "CODE-A" || r.Code == "CODE-B")));
     }
 
     [HumansFact]
@@ -461,13 +462,12 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         // CampaignService delegates rendering to IEmailService: it must pass through
         // the raw template subject/body + code so OutboxEmailService can render it.
-        await _emailService.Received(1).SendCampaignCodeAsync(
+        _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.Subject == "Hi {{Name}}, your code"
                 && r.MarkdownBody == "<p>Hi {{Name}}, your code is {{Code}}</p>"
                 && r.Code == "CODE-1"
-                && r.RecipientName == "Charlie"),
-            Arg.Any<CancellationToken>());
+                && r.RecipientName == "Charlie"));
     }
 
     [HumansFact]
@@ -525,11 +525,10 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
 
-        await _emailService.Received(1).SendCampaignCodeAsync(
+        _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r =>
                 r.Code == "A<B>C"
-                && r.RecipientName == "O'Brien & Co"),
-            Arg.Any<CancellationToken>());
+                && r.RecipientName == "O'Brien & Co"));
     }
 
     // ==========================================================================
@@ -547,7 +546,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
-        _emailService.ClearReceivedCalls();
+        _emailMessages.ClearReceivedCalls();
 
         var grant = await Db.CampaignGrants.SingleAsync();
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
@@ -555,9 +554,8 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         await _service.ResendToGrantAsync(grant.Id);
 
-        await _emailService.Received(1).SendCampaignCodeAsync(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CampaignCode(
+            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id));
 
         Db.ChangeTracker.Clear();
         var updatedGrant = await Db.CampaignGrants.FindAsync(grant.Id);
@@ -581,7 +579,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
 
         await _service.SendWaveAsync(campaign.Id, team.Id);
-        _emailService.ClearReceivedCalls();
+        _emailMessages.ClearReceivedCalls();
 
         // Mark one as failed
         var grants = await Db.CampaignGrants.ToListAsync();
@@ -591,9 +589,8 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         await _service.RetryAllFailedAsync(campaign.Id);
 
         // Only the failed grant should be re-enqueued.
-        await _emailService.Received(1).SendCampaignCodeAsync(
-            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id),
-            Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).CampaignCode(
+            Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id));
 
         Db.ChangeTracker.Clear();
         var retriedGrant = await Db.CampaignGrants.FindAsync(grants[0].Id);

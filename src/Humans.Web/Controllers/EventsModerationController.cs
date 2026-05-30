@@ -23,6 +23,7 @@ public class EventsModerationController(
     IEventService guide,
     IUserServiceRead userService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IUserServiceRead users,
     ICampServiceRead camps,
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
@@ -214,14 +215,14 @@ public class EventsModerationController(
             };
             if (lifecycleStatus.HasValue)
             {
-                await emailService.SendEventLifecycleNotificationAsync(
+                await emailService.SendAsync(emailMessages.EventLifecycle(
                     new EventLifecycleNotification(
                         NewStatus: lifecycleStatus.Value,
                         UserName: submitterName,
                         EventTitle: guideEvent.Title,
                         Reason: reason,
                         ActionUrl: editUrl),
-                    submitterEmail);
+                    submitterEmail));
             }
         }
 

@@ -78,4 +78,24 @@ public class EmailArchitectureTests
         typeof(IImmediateOutboxProcessor).Namespace
             .Should().Be("Humans.Application.Interfaces.Email");
     }
+
+    // ── IEmailService surface (issue #712) ──────────────────────────────────
+
+    [HumansFact]
+    public void IEmailService_HasNoPerContentTypeSendMethods()
+    {
+        // #712 collapsed the transport interface to one generic
+        // SendAsync(EmailMessage); per-message construction moved to
+        // IEmailMessageFactory. Guard against the fat per-content-type
+        // interface growing back.
+        var sendMethods = typeof(IEmailService).GetMethods()
+            .Where(m => m.Name.StartsWith("Send", StringComparison.Ordinal))
+            .Select(m => m.Name)
+            .ToList();
+
+        sendMethods.Should().ContainSingle(
+                because: "the only transport entry point is SendAsync(EmailMessage); "
+                    + "domain verbs live on IEmailMessageFactory, not IEmailService")
+            .Which.Should().Be("SendAsync");
+    }
 }

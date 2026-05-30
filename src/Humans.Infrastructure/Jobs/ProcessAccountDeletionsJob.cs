@@ -31,6 +31,7 @@ public class ProcessAccountDeletionsJob(
     IUserService userService,
     IAccountDeletionService accountDeletionService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
     IHumansMetrics metrics,
     ILogger<ProcessAccountDeletionsJob> logger,
@@ -95,10 +96,10 @@ public class ProcessAccountDeletionsJob(
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))
                     {
-                        await emailService.SendAccountDeletedAsync(
+                        await emailService.SendAsync(emailMessages.AccountDeleted(
                             summary.OriginalEmail,
                             summary.OriginalDisplayName,
-                            summary.PreferredLanguage,
+                            summary.PreferredLanguage),
                             cancellationToken);
                     }
 

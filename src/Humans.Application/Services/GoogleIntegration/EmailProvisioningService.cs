@@ -20,6 +20,7 @@ public sealed class EmailProvisioningService(
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     IAuditLogService auditLogService,
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
@@ -123,9 +124,9 @@ public sealed class EmailProvisioningService(
             // Step 4: Send credentials to the PERSONAL email captured in step 1.
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
-                await emailService.SendWorkspaceCredentialsAsync(
+                await emailService.SendAsync(emailMessages.WorkspaceCredentials(
                     recoveryEmail, user.BurnerName, fullEmail, tempPassword,
-                    user.PreferredLanguage);
+                    user.PreferredLanguage));
             }
 
             // In-app notification (best-effort)

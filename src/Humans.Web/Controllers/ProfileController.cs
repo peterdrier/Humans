@@ -52,6 +52,7 @@ public class ProfileController(
     IProfileEditorService profileEditorService,
     IContactFieldService contactFieldService,
     IEmailService emailService,
+    IEmailMessageFactory emailMessages,
     IUserEmailService userEmailService,
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
@@ -587,12 +588,12 @@ public class ProfileController(
 
         var info = await _userService.GetUserInfoAsync(user.Id);
 
-        await emailService.SendEmailVerificationAsync(
+        await emailService.SendAsync(emailMessages.EmailVerification(
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            user.PreferredLanguage);
+            user.PreferredLanguage));
 
         logger.LogInformation(
             "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
@@ -1222,12 +1223,12 @@ public class ProfileController(
 
         var info = await _userService.GetUserInfoAsync(userId, ct);
 
-        await emailService.SendEmailVerificationAsync(
+        await emailService.SendAsync(emailMessages.EmailVerification(
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
-            targetUser.PreferredLanguage,
+            targetUser.PreferredLanguage),
             ct);
 
         logger.LogInformation(
@@ -2032,14 +2033,14 @@ public class ProfileController(
             return View(model);
         }
 
-        await emailService.SendFacilitatedMessageAsync(
+        await emailService.SendAsync(emailMessages.FacilitatedMessage(
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,
             request.CleanMessage,
             request.IncludeContactInfo,
             request.SenderEmail,
-            request.RecipientPreferredLanguage);
+            request.RecipientPreferredLanguage));
 
         await auditLogService.LogAsync(
             AuditAction.FacilitatedMessageSent,

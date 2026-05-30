@@ -72,6 +72,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IProfileEditorService>(),
             Substitute.For<IContactFieldService>(),
             Substitute.For<IEmailService>(),
+            Substitute.For<IEmailMessageFactory>(),
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
