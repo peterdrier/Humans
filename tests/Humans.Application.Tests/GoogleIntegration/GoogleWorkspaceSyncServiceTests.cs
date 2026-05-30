@@ -56,8 +56,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository =
         Substitute.For<IGoogleSyncOutboxRepository>();
 
-    private readonly ITeamService _teamService =
-        Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService =
+        Substitute.For<ITeamServiceRead>();
 
     private readonly IUserService _userService =
         Substitute.For<IUserService>();
@@ -167,10 +167,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns([driveResource]);
 
         // No parent team — prevents the subteam rollup from needing additional setup.
-        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
-        _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
 
@@ -286,10 +286,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
-        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
-        _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -347,10 +347,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
-        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
-        _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -407,10 +407,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns([driveResource]);
 
-        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
-        _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
 
         _drivePermissions
             .CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
