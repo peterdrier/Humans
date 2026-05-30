@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Events;
 /// <summary>
 /// Service for the Events section (camp-event guide).
 /// </summary>
-public interface IEventService : IApplicationService
+public interface IEventService : IEventServiceRead, IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
@@ -70,9 +70,8 @@ public interface IEventService : IApplicationService
         CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
-    Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
-        Guid? campId, Guid? venueId, Guid? categoryId, string? q,
-        IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
+    // GetApprovedEventsAsync is the cross-section read surface — declared on
+    // IEventServiceRead (which this interface extends).
     Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
 
     // ── Favourites ────────────────────────────────────────────────────────

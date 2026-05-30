@@ -39,6 +39,7 @@ internal static class EventsSectionExtensions
         // IServiceScopeFactory per-call.
         services.AddSingleton<CachingEventService>();
         services.AddSingleton<IEventService>(sp => sp.GetRequiredService<CachingEventService>());
+        services.AddSingleton<IEventServiceRead>(sp => sp.GetRequiredService<CachingEventService>());
 
         // IEventViewInvalidator must resolve to the SAME Singleton instance
         // that backs IEventService (§15e CRITICAL).
