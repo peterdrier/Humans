@@ -357,7 +357,7 @@ public class IssuesApiControllerTests
 
         _issues.SubmitIssueAsync(
                 reporterId, IssueCategory.Bug, "T", "D",
-                "Tickets", null, null, null, null, null,
+                "Tickets", null, null, null, null, null, null,
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(created));
 
@@ -375,7 +375,7 @@ public class IssuesApiControllerTests
 
         await _issues.Received(1).SubmitIssueAsync(
             reporterId, IssueCategory.Bug, "T", "D",
-            "Tickets", null, null, null, null, null,
+            "Tickets", null, null, null, null, null, null,
             Arg.Any<CancellationToken>());
     }
 

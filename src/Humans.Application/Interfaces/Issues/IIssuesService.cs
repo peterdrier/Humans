@@ -18,20 +18,7 @@ public interface IIssuesService : IApplicationService
         string? additionalContext,
         IFormFile? screenshot,
         LocalDate? dueDate = null,
-        CancellationToken ct = default);
-
-    Task<Issue> SubmitIssueAsync(
-        Guid reporterUserId,
-        IssueCategory category,
-        string title,
-        string description,
-        string? section,
-        string? pageUrl,
-        string? userAgent,
-        string? additionalContext,
-        IFormFile? screenshot,
-        LocalDate? dueDate,
-        IReadOnlyList<string>? reporterRoles,
+        IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default);
 
     Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default);
