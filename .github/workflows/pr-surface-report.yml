@@ -44,8 +44,14 @@ jobs:
       - name: Generate Reforge score delta inputs
         run: |
           set -euo pipefail
-          dotnet tool install --global reforge --version 0.13.*
+          dotnet tool install --global reforge
           REFORGE="$HOME/.dotnet/tools/reforge"
+
+          # Record the resolved version so the report can name which reforge
+          # scored it — rules/weightings change between releases, so the version
+          # is what makes one run's score comparable to another's.
+          REFORGE_VERSION="$(dotnet tool list --global | awk 'tolower($1)=="reforge"{print $2}')"
+          echo "REFORGE_VERSION=$REFORGE_VERSION" >> "$GITHUB_ENV"
 
           BASE_DIR="$(mktemp -d)"
           HEAD_DIR="$(mktemp -d)"
@@ -79,6 +85,9 @@ jobs:
           REFORGE_ARGS=()
           if [ -f reforge-base.json ] && [ -f reforge-head.json ]; then
             REFORGE_ARGS=(--reforge-base-json reforge-base.json --reforge-head-json reforge-head.json)
+          fi
+          if [ -n "${REFORGE_VERSION:-}" ]; then
+            REFORGE_ARGS+=(--reforge-version "$REFORGE_VERSION")
           fi
 
           python3 scripts/pr-surface-report.py \
