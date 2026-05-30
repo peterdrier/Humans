@@ -13,5 +13,9 @@ public record ProductDto(
     LocalDate OrderableUntil,
     bool IsActive)
 {
-    public decimal UnitPriceInclVatEur => Math.Round(UnitPriceEur * (1 + VatRatePercent / 100m), 2);
+    /// <summary>
+    /// Unit price including VAT, for display. Rounded to 2 dp away-from-zero to match the
+    /// authoritative VAT rounding used by BalanceCalculator.
+    /// </summary>
+    public decimal UnitPriceInclVatEur => Math.Round(UnitPriceEur * (1 + VatRatePercent / 100m), 2, MidpointRounding.AwayFromZero);
 }
