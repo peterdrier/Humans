@@ -93,18 +93,18 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+    public async Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var category = await ctx.EventCategories
             .Include(c => c.Events)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
-        if (category == null) return (false, -1);
-        if (category.Events.Count > 0) return (false, category.Events.Count);
+        if (category == null) return EventDeletionResult.NotFound;
+        if (category.Events.Count > 0) return EventDeletionResult.Blocked(category.Events.Count);
 
         ctx.EventCategories.Remove(category);
         await ctx.SaveChangesAsync(ct);
-        return (true, 0);
+        return EventDeletionResult.Deleted;
     }
 
     public async Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default)
@@ -170,18 +170,18 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+    public async Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var venue = await ctx.EventVenues
             .Include(v => v.Events)
             .FirstOrDefaultAsync(v => v.Id == id, ct);
-        if (venue == null) return (false, -1);
-        if (venue.Events.Count > 0) return (false, venue.Events.Count);
+        if (venue == null) return EventDeletionResult.NotFound;
+        if (venue.Events.Count > 0) return EventDeletionResult.Blocked(venue.Events.Count);
 
         ctx.EventVenues.Remove(venue);
         await ctx.SaveChangesAsync(ct);
-        return (true, 0);
+        return EventDeletionResult.Deleted;
     }
 
     public async Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default)

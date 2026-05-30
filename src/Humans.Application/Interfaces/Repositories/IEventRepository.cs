@@ -38,8 +38,8 @@ public interface IEventRepository : IRepository
     Task<int> GetMaxCategoryOrderAsync(CancellationToken ct = default);
     Task AddCategoryAsync(EventCategory category, CancellationToken ct = default);
     Task SaveCategoryAsync(EventCategory category, CancellationToken ct = default);
-    /// <summary>Deletes when no events reference the category. Returns (deleted, linkedCount); linkedCount=-1 means not found.</summary>
-    Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Deletes when no events reference the category.</summary>
+    Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Venues ────────────────────────────────────────────────────────────
@@ -54,8 +54,8 @@ public interface IEventRepository : IRepository
     Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default);
     Task AddVenueAsync(EventVenue venue, CancellationToken ct = default);
     Task SaveVenueAsync(EventVenue venue, CancellationToken ct = default);
-    /// <summary>Deletes when no events reference the venue. Returns (deleted, linkedCount); linkedCount=-1 means not found.</summary>
-    Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Deletes when no events reference the venue.</summary>
+    Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default);
     Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Events (submitter) ────────────────────────────────────────────────

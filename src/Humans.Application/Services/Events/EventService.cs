@@ -107,7 +107,7 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default)
         => repo.SaveCategoryAsync(category, ct);
 
-    public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+    public Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
         => repo.DeleteCategoryAsync(id, ct);
 
     public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
@@ -141,7 +141,7 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default)
         => repo.SaveVenueAsync(venue, ct);
 
-    public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+    public Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default)
         => repo.DeleteVenueAsync(id, ct);
 
     public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)

@@ -146,10 +146,10 @@ public sealed class CachingEventService(
         await RefreshAllEventsAsync(ct);
     }
 
-    public async Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+    public async Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
     {
         var result = await WithInner(inner => inner.DeleteCategoryAsync(id, ct));
-        if (result.deleted)
+        if (result.Status == EventDeletionStatus.Deleted)
             await RefreshCategoriesAsync(ct);
         return result;
     }
@@ -205,10 +205,10 @@ public sealed class CachingEventService(
         await RefreshAllEventsAsync(ct);
     }
 
-    public async Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+    public async Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default)
     {
         var result = await WithInner(inner => inner.DeleteVenueAsync(id, ct));
-        if (result.deleted)
+        if (result.Status == EventDeletionStatus.Deleted)
             await RefreshVenuesAsync(ct);
         return result;
     }

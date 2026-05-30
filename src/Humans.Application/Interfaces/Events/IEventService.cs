@@ -31,8 +31,7 @@ public interface IEventService : IApplicationService
     /// <summary>
     /// Deletes a category when no guide events reference it.
     /// </summary>
-    /// <returns>null if not found; (false, count) if has linked events; (true, 0) on success.</returns>
-    Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
+    Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Venues ────────────────────────────────────────────────────────────
@@ -45,8 +44,7 @@ public interface IEventService : IApplicationService
     /// <summary>
     /// Deletes a shared venue when no guide events reference it.
     /// </summary>
-    /// <returns>(false, count) if has linked events; (true, 0) on success.</returns>
-    Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
+    Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default);
     Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Submissions ───────────────────────────────────────────────────────

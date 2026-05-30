@@ -1,3 +1,4 @@
+using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -211,13 +212,15 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteCategory(Guid id)
     {
-        var (deleted, linkedCount) = await guide.DeleteCategoryAsync(id);
-        if (linkedCount > 0)
+        var result = await guide.DeleteCategoryAsync(id);
+        switch (result.Status)
         {
-            SetError($"Cannot delete this category — it has {linkedCount} associated event(s).");
-            return RedirectToAction(nameof(Categories));
+            case EventDeletionStatus.HasLinkedEvents:
+                SetError($"Cannot delete this category — it has {result.LinkedEventCount} associated event(s).");
+                return RedirectToAction(nameof(Categories));
+            case EventDeletionStatus.NotFound:
+                return NotFound();
         }
-        if (!deleted) return NotFound();
 
         logger.LogInformation("Category ({Id}) deleted", id);
         SetSuccess("Category deleted.");
@@ -344,13 +347,15 @@ public class EventsAdminController(IEventService guide, ILogger<EventsAdminContr
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteVenue(Guid id)
     {
-        var (deleted, linkedCount) = await guide.DeleteVenueAsync(id);
-        if (linkedCount > 0)
+        var result = await guide.DeleteVenueAsync(id);
+        switch (result.Status)
         {
-            SetError($"Cannot delete this venue — it has {linkedCount} associated event(s).");
-            return RedirectToAction(nameof(Venues));
+            case EventDeletionStatus.HasLinkedEvents:
+                SetError($"Cannot delete this venue — it has {result.LinkedEventCount} associated event(s).");
+                return RedirectToAction(nameof(Venues));
+            case EventDeletionStatus.NotFound:
+                return NotFound();
         }
-        if (!deleted) return NotFound();
 
         logger.LogInformation("Venue ({Id}) deleted", id);
         SetSuccess("Venue deleted.");

@@ -138,7 +138,7 @@ public sealed class EventServiceTests
 
         var result = await _service.DeleteVenueAsync(venue.Id);
 
-        result.Should().Be((false, 1));
+        result.Should().Be(EventDeletionResult.Blocked(1));
         _repo.RemovedVenues.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
@@ -499,14 +499,14 @@ public sealed class EventServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+        public Task<EventDeletionResult> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
         {
             var category = Categories.FirstOrDefault(c => c.Id == id);
-            if (category == null) return Task.FromResult((false, -1));
-            if (category.Events.Count > 0) return Task.FromResult((false, category.Events.Count));
+            if (category == null) return Task.FromResult(EventDeletionResult.NotFound);
+            if (category.Events.Count > 0) return Task.FromResult(EventDeletionResult.Blocked(category.Events.Count));
             Categories.Remove(category);
             SaveChangesCount++;
-            return Task.FromResult((true, 0));
+            return Task.FromResult(EventDeletionResult.Deleted);
         }
 
         public Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default)
@@ -547,15 +547,15 @@ public sealed class EventServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+        public Task<EventDeletionResult> DeleteVenueAsync(Guid id, CancellationToken ct = default)
         {
             var venue = Venues.FirstOrDefault(v => v.Id == id);
-            if (venue == null) return Task.FromResult((false, -1));
-            if (venue.Events.Count > 0) return Task.FromResult((false, venue.Events.Count));
+            if (venue == null) return Task.FromResult(EventDeletionResult.NotFound);
+            if (venue.Events.Count > 0) return Task.FromResult(EventDeletionResult.Blocked(venue.Events.Count));
             RemovedVenues.Add(venue);
             Venues.Remove(venue);
             SaveChangesCount++;
-            return Task.FromResult((true, 0));
+            return Task.FromResult(EventDeletionResult.Deleted);
         }
 
         public Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default)
