@@ -193,7 +193,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                     break;
                 }
 
-                var result = await _tools.DispatchAsync(call, request.UserId, conversation.Id, cancellationToken);
+                var result = await _tools.DispatchAsync(call, request.UserId, cancellationToken);
                 results.Add(result);
                 // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
                 fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));

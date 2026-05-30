@@ -26,7 +26,7 @@ public sealed class AgentToolDispatcher(
     internal const int MaxAuditHistoryLimit = 50;
 
     public async Task<AnthropicToolResult> DispatchAsync(
-        AnthropicToolCall call, Guid userId, Guid conversationId, CancellationToken cancellationToken)
+        AnthropicToolCall call, Guid userId, CancellationToken cancellationToken)
     {
         if (!AgentToolNames.All.Contains(call.Name))
         {
