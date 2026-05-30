@@ -13,7 +13,6 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
@@ -25,7 +24,6 @@ public class TeamController(
     ITeamService teamService,
     ITeamPageService teamPageService,
     IUserServiceRead userService,
-    INotificationService notificationService,
     IGoogleSyncService googleSyncService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<SharedResource> localizer,
@@ -35,7 +33,6 @@ public class TeamController(
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
-    private readonly INotificationService _notificationService = notificationService;
 
     [AllowAnonymous]
     [HttpGet("")]

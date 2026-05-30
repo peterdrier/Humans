@@ -11,7 +11,6 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
@@ -26,7 +25,6 @@ public class TeamAdminController(
     IGoogleSyncService googleSyncService,
     IUserServiceRead userService,
     IEmailProvisioningService emailProvisioningService,
-    INotificationService notificationService,
     IAuthorizationService authorizationService,
     ISystemTeamSync systemTeamSyncJob,
     ILogger<TeamAdminController> logger,
@@ -35,7 +33,6 @@ public class TeamAdminController(
 {
     private readonly ITeamService _teamService = teamService;
     private readonly IUserServiceRead _userService = userService;
-    private readonly INotificationService _notificationService = notificationService;
 
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]
