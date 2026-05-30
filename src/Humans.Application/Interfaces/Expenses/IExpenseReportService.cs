@@ -1,6 +1,6 @@
 namespace Humans.Application.Interfaces.Expenses;
 
-public interface IExpenseReportService : IApplicationService
+public interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
 {
     Task<Guid> CreateDraftAsync(
         Guid submitterUserId, Guid budgetCategoryId, string? note,

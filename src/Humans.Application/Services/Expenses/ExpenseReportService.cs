@@ -34,7 +34,7 @@ public sealed class ExpenseReportService(
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IClock clock,
-    ILogger<ExpenseReportService> logger) : IExpenseReportServiceRead, IExpenseReportService,
+    ILogger<ExpenseReportService> logger) : IExpenseReportService,
         IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     // Stored for future Holded Finance integration tasks (creditor status polling etc.).
