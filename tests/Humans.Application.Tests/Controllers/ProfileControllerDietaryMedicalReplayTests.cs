@@ -114,7 +114,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculator>(),
+            Substitute.For<IMembershipCalculatorRead>(),
             Substitute.For<SignInManager<User>>(
                 _userManager,
                 Substitute.For<IHttpContextAccessor>(),

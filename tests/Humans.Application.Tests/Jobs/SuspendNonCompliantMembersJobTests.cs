@@ -23,7 +23,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 {
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
-    private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IMembershipCalculatorRead _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly IEmailMessageFactory _emailMessages;
     private readonly INotificationService _notificationService;
@@ -42,7 +42,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     {
         _userService = Substitute.For<IUserService>();
         _teamService = Substitute.For<ITeamService>();
-        _membershipCalculator = Substitute.For<IMembershipCalculator>();
+        _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = Substitute.For<IEmailMessageFactory>();
         _notificationService = Substitute.For<INotificationService>();

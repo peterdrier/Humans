@@ -51,8 +51,8 @@ public class SystemTeamSyncJob(
     private ITeamResourceService TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    private IMembershipCalculator MembershipCalculator =>
-        serviceProvider.GetRequiredService<IMembershipCalculator>();
+    private IMembershipCalculatorRead MembershipCalculator =>
+        serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
 
     /// <summary>
     /// Executes the system team sync job and returns a report of what changed.

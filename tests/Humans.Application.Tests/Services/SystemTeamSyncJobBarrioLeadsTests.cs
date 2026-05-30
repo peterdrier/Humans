@@ -51,7 +51,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private SystemTeamSyncJob CreateJob()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(Substitute.For<IMembershipCalculator>());
+        services.AddSingleton<IMembershipCalculatorRead>(Substitute.For<IMembershipCalculatorRead>());
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(

@@ -27,7 +27,7 @@ public class ThingsToDoViewComponentDietaryGateTests
 {
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly ThingsToDoViewComponent _sut;
 

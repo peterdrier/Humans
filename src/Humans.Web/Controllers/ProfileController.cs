@@ -76,7 +76,7 @@ public class ProfileController(
     IConsentServiceRead consentService,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {

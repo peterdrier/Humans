@@ -35,7 +35,7 @@ public class SuspendNonCompliantMembersJob(
     IUserService userService,
     ITeamServiceRead teamService,
     IActiveTeamsCacheInvalidator activeTeamsCacheInvalidator,
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     INotificationService notificationService,

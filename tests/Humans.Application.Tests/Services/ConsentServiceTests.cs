@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Services;
 public sealed class ConsentServiceTests : ServiceTestHarness
 {
     private readonly ConsentService _service;
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();

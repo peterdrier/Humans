@@ -10,7 +10,7 @@ namespace Humans.Application.Services.Onboarding;
 public class OnboardingWidgetState(
     IUserServiceRead users,
     IShiftView shiftView,
-    IMembershipCalculator membership,
+    IMembershipCalculatorRead membership,
     IShiftManagementService shiftMgmt,
     IConsentServiceRead consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState

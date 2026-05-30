@@ -21,7 +21,7 @@ public sealed record ShiftAdminPageRequest(
 
 public sealed class ShiftAdminPageBuilder(
     IShiftManagementService shiftManagement,
-    IMembershipCalculator membership,
+    IMembershipCalculatorRead membership,
     IUserServiceRead userService,
     ITeamServiceRead teamService)
 {

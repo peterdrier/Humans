@@ -106,7 +106,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculator>(),
+            Substitute.For<IMembershipCalculatorRead>(),
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 

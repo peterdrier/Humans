@@ -48,7 +48,7 @@ public sealed class ConsentService(
     {
         var now = clock.GetCurrentInstant();
 
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
         var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
         // Doc listing still goes through ILegalDocumentSyncService (#547a not yet done).
@@ -181,7 +181,7 @@ public sealed class ConsentService(
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try
         {
-            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
+            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
             {
                 await notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
@@ -320,7 +320,7 @@ public sealed class ConsentService(
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
     {
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
         var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)

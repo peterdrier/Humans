@@ -23,7 +23,7 @@ namespace Humans.Infrastructure.Jobs;
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendReConsentReminderJob(
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     ILegalDocumentSyncService legalDocService,
     IUserService userService,
     IEmailService emailService,

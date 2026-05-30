@@ -24,7 +24,7 @@ public sealed class OnboardingService(
     IEmailMessageFactory emailMessages,
     INotificationService notificationService,
     ISystemTeamSync syncJob,
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     IAuditLogService auditLogService,
     IHumansMetrics metrics,
     ILogger<OnboardingService> logger) : IOnboardingService

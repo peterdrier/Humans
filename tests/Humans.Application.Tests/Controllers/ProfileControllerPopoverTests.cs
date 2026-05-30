@@ -96,7 +96,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculator>(),
+            Substitute.For<IMembershipCalculatorRead>(),
             signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 

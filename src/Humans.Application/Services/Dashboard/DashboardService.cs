@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Dashboard;
 
 /// <summary>Orchestrates the member dashboard snapshot across profile/membership/applications/shifts/tickets/participation.</summary>
 public class DashboardService(
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     IApplicationServiceRead applicationDecisionService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,

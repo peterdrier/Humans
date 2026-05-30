@@ -118,7 +118,7 @@ public class ProfileControllerEditTests
             Substitute.For<IConsentServiceRead>(),
             _applicationDecisionService,
             Substitute.For<IAccountDeletionService>(),
-            Substitute.For<IMembershipCalculator>(),
+            Substitute.For<IMembershipCalculatorRead>(),
             Substitute.For<SignInManager<User>>(
                 userManager,
                 Substitute.For<IHttpContextAccessor>(),

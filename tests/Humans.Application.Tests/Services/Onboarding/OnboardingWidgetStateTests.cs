@@ -18,7 +18,7 @@ public class OnboardingWidgetStateTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
+    private readonly IMembershipCalculatorRead _membership = Substitute.For<IMembershipCalculatorRead>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentServiceRead _consents = Substitute.For<IConsentServiceRead>();
     private readonly IOnboardingWidgetSessionState _session = Substitute.For<IOnboardingWidgetSessionState>();

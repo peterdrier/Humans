@@ -13,7 +13,7 @@ namespace Humans.Web.ViewComponents;
 public class ThingsToDoViewComponent(
     IUserServiceRead userService,
     IShiftManagementService shiftMgmt,
-    IMembershipCalculator membershipCalculator,
+    IMembershipCalculatorRead membershipCalculator,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ThingsToDoViewComponent> logger) : ViewComponent
 {
