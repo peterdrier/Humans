@@ -24,7 +24,7 @@ namespace Humans.Application.Services.Tickets;
 public sealed class TicketQueryService(
     ITicketRepository ticketRepository,
     IBudgetService budgetService,
-    ICampaignService campaignService,
+    ICampaignServiceRead campaignService,
     IUserService userService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,

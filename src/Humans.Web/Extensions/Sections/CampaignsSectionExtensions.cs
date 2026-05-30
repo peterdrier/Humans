@@ -16,6 +16,7 @@ internal static class CampaignsSectionExtensions
         services.AddSingleton<ICampaignRepository, CampaignRepository>();
         services.AddScoped<CampaignsCampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignsCampaignService>());
+        services.AddScoped<ICampaignServiceRead>(sp => sp.GetRequiredService<CampaignsCampaignService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignsCampaignService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CampaignsCampaignService>());
 
