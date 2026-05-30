@@ -2,8 +2,9 @@ name: PR Surface Report
 
 # Build/analysis half of the surface report. Runs on `pull_request` (NOT
 # pull_request_target) so that for fork PRs it carries only a read-only token
-# and no secrets. This job restores/builds PR-head code via reforge, which can
-# execute fork-authored MSBuild targets — that is acceptable ONLY because this
+# and no secrets. This job restores+builds PR-head code (`dotnet build`) and
+# scores it with reforge; both execute fork-authored MSBuild targets — that is
+# acceptable ONLY because this
 # job has nothing privileged to steal and no privileged follow-up step to
 # poison (no commenting here). The privileged comment is posted by the separate
 # pr-surface-report-comment.yml workflow, triggered via workflow_run, which
@@ -71,11 +72,19 @@ jobs:
           "$REFORGE" stop || true
           (
             cd "$BASE_DIR"
+            # Restore+build before scoring: reforge opens the solution via
+            # MSBuildWorkspace, which needs each project's obj/project.assets.json
+            # to resolve package/project references. An unbuilt worktree yields
+            # tens of thousands of unresolved-reference errors and a PARTIAL
+            # surface-score (cross-section/DI/entity rules under-count). reforge
+            # is a query tool, not a build tool, so the caller must build.
+            dotnet build Humans.slnx --disable-build-servers -v quiet
             "$REFORGE" surface-score --solution Humans.slnx "${CONFIG_ARGS[@]}" --format Json --top 200 > "$GITHUB_WORKSPACE/reforge-base.json"
           )
           "$REFORGE" stop || true
           (
             cd "$HEAD_DIR"
+            dotnet build Humans.slnx --disable-build-servers -v quiet
             "$REFORGE" surface-score --solution Humans.slnx "${CONFIG_ARGS[@]}" --format Json --top 200 > "$GITHUB_WORKSPACE/reforge-head.json"
           )
           "$REFORGE" stop || true
