@@ -188,36 +188,6 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendToTeamAsync_CreatesSharedNotification()
-    {
-        var teamId = Guid.NewGuid();
-        var user1 = Guid.NewGuid();
-        var user2 = Guid.NewGuid();
-
-        _recipientResolver.GetTeamNotificationInfoAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(new TeamNotificationInfo(teamId, "Logistics", [user1, user2]));
-
-        await _service.SendToTeamAsync(
-            NotificationSource.ShiftCoverageGap,
-            NotificationClass.Actionable,
-            NotificationPriority.High,
-            "Coverage gap: Saturday 10:00-14:00",
-            teamId,
-            actionUrl: "/Shifts/Dashboard");
-
-        var notifications = await _dbContext.Notifications
-            .Include(n => n.Recipients)
-            .ToListAsync();
-
-        notifications.Should().HaveCount(1);
-        var notification = notifications.Single();
-        notification.TargetGroupName.Should().Be("Logistics");
-        notification.Recipients.Should().HaveCount(2);
-        notification.Recipients.Select(r => r.UserId).Should().Contain(user1);
-        notification.Recipients.Select(r => r.UserId).Should().Contain(user2);
-    }
-
-    [HumansFact]
     public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
     {
         var user1 = Guid.NewGuid();

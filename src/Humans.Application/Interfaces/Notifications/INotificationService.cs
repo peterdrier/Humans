@@ -16,21 +16,6 @@ namespace Humans.Application.Interfaces.Notifications;
 public interface INotificationService : IApplicationService, INotificationEmitter
 {
     /// <summary>
-    /// Sends a single shared notification to all members of a team.
-    /// Group resolution: when any recipient resolves, it resolves for all.
-    /// </summary>
-    Task SendToTeamAsync(
-        NotificationSource source,
-        NotificationClass notificationClass,
-        NotificationPriority priority,
-        string title,
-        Guid teamId,
-        string? body = null,
-        string? actionUrl = null,
-        string? actionLabel = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sends a single shared notification to all users with a specific role.
     /// Group resolution: when any recipient resolves, it resolves for all.
     /// </summary>
