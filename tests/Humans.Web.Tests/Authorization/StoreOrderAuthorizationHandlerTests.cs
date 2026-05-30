@@ -46,6 +46,10 @@ public class StoreOrderAuthorizationHandlerTests
     public Task TeamsAdmin_cannot_pay_team_order() =>
         AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: true), StoreOrderOperationRequirement.Pay, expectAllowed: false);
 
+    [HumansFact]
+    public Task TeamsAdmin_cannot_edit_issued_team_order() =>
+        AssertOutcome(RoleNames.TeamsAdmin, MakeOrder(team: true, StoreOrderState.InvoiceIssued), StoreOrderOperationRequirement.AddLine, expectAllowed: false);
+
     private async Task AssertOutcome(
         string role,
         OrderDto order,
@@ -67,7 +71,7 @@ public class StoreOrderAuthorizationHandlerTests
             ],
             authenticationType: "test"));
 
-    private static OrderDto MakeOrder(bool team) =>
+    private static OrderDto MakeOrder(bool team, StoreOrderState state = StoreOrderState.Open) =>
         new(
             Id: Guid.NewGuid(),
             CampSeasonId: team ? null : Guid.NewGuid(),
@@ -76,7 +80,7 @@ public class StoreOrderAuthorizationHandlerTests
             CounterpartyDisplayName: "x",
             Year: 2026,
             Label: null,
-            State: StoreOrderState.Open,
+            State: state,
             CounterpartyName: null,
             CounterpartyVatId: null,
             CounterpartyAddress: null,

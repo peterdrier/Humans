@@ -87,6 +87,12 @@ public class StoreOrderAuthorizationHandler(
                 if (req == StoreOrderOperationRequirement.EditCounterparty ||
                     req == StoreOrderOperationRequirement.Pay)
                     continue;
+                // Line edits require an Open order, matching the coordinator path and the
+                // StoreService guard ("Cannot add/remove lines from an issued order").
+                var isLineEdit = req == StoreOrderOperationRequirement.AddLine
+                    || req == StoreOrderOperationRequirement.RemoveLine;
+                if (isLineEdit && orderState is not null and not StoreOrderState.Open)
+                    continue;
                 context.Succeed(req);
             }
         }
