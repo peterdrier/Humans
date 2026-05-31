@@ -104,7 +104,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
 - **Governance:** `IApplicationDecisionService` — pending-application lookup (review queue) and approved-tier lookup (consent-check clear path). Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados system team membership sync.
-- **Notifications / Email:** `IEmailService` (`SendSignupRejectedAsync`), `INotificationService` (`VolunteerApproved`, `ProfileRejected`, `ConsentReviewNeeded` dispatch). `INotificationInboxService` moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
+- **Notifications / Email:** `IEmailService.SendAsync` (with `IEmailMessageFactory.SignupRejected`), `INotificationService` (`VolunteerApproved`, `ProfileRejected`, `ConsentReviewNeeded` dispatch). `INotificationInboxService` moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
 - **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + review-queue snapshots), `IHumansMetrics`, `ILogger`.
 
 ## Architecture

@@ -76,6 +76,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 
 | Document | Description |
 |----------|-------------|
+| [Sections Index](sections/_Index.md) | Code-derived map of every section to its concrete controllers, orchestrators, services, repositories, and tables |
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
 | [Agent](sections/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](sections/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |

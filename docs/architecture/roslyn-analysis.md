@@ -1,3 +1,9 @@
+<!-- freshness:triggers
+  src/Humans.Analyzers/**
+  Directory.Build.props
+  tests/Humans.Application.Tests/Architecture/**
+  docs/architecture/code-analysis.md
+-->
 <!-- freshness:flag-on-change
   Forward-looking inventory of Roslyn analyzer candidates beyond the shipped set (see the code-analysis.md catalogue).
   Flag if a new analyzer ships (move that entry from Tier 1 → catalogue in code-analysis.md),

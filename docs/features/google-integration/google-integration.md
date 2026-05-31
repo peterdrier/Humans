@@ -579,12 +579,9 @@ On Google API error (resource provisioning):
 | Folder not found | Re-provision |
 | Inherited permission delete | Skip (cannot remove inherited Shared Drive permissions) |
 
-### Admin Digest Reporting
+### Failed-Sync Admin Meter
 
-The daily admin digest reports sync health:
-- **Failed sync events (transient):** Unprocessed events with errors, still being retried
-- **Humans with rejected email:** Distinct users with `GoogleEmailStatus = Rejected`
-- **Transient retries:** Events being retried (have errors but not permanently failed)
+Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — the count of unprocessed outbox events carrying a non-null `LastError`. The meter links to `/Google/Sync`. (There is no longer a daily admin digest reporting these counts; that job was retired.)
 
 ## Security Considerations
 

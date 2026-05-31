@@ -1,3 +1,11 @@
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/**
+  src/Humans.Application/Services/**
+  src/Humans.Infrastructure/Repositories/**
+  src/Humans.Infrastructure/Data/**
+  src/Humans.Analyzers/**
+  docs/architecture/freshness-catalog.yml
+-->
 <!-- freshness:flag-on-change
   Layer responsibilities, service/repository/store ownership, caching decorator pattern, and authorization handler doctrine. Flag if any architectural pattern shift in src/** alters the layering or ownership rules.
 -->

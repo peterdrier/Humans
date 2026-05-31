@@ -8,7 +8,7 @@ Directed graph of service-to-service dependencies, reflecting the post-§15 Part
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()`. This pattern breaks DI cycles where two services legitimately call each other. The edges are colored via Mermaid `linkStyle` so the cycle-breaking sites stand out — a healthy graph minimizes them.
 - Cross-cutting services (AuditLog, Email, Notification, RoleAssignment, HumansMetrics) are shown separately to reduce noise.
 - Intra-section edges are omitted when they don't cross a section boundary.
-- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary (e.g. `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `ITicketServiceRead`, `IConsentServiceRead`) are collapsed onto the owning service node. The label on the node still names the full service; the read interface is the cross-section consumption surface.
+- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary (e.g. `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `ITicketServiceRead`, `IConsentServiceRead`, `IGoogleSyncServiceRead`) are collapsed onto the owning service node. The label on the node still names the full service; the read interface is the cross-section consumption surface.
 
 ## Mermaid diagram
 
@@ -160,6 +160,10 @@ graph LR
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
     %% ═══════════════════════════════════
+    %% Read-split note: edges into User/Team/Camp/Tickets/Consent/GoogleSync drawn
+    %% to the owning service node may be consumed via the I<Section>ServiceRead
+    %% interface (which the full service implements). The node is the section owner;
+    %% the read interface is the cross-section surface. See "How to read".
 
     %% Profiles section
     %% ProfileService is now picture-only (#685+) — IProfilePictureService.
@@ -222,7 +226,6 @@ graph LR
     ShiftMgmt --> AdminAuth
     ShiftSign --> ShiftMgmt
     ShiftSign --> BurnSettings
-    ShiftSign --> MembershipCalc
     ShiftSign --> Notif
     ShiftSign --> Audit
     ShiftSign --> AdminAuth
@@ -338,7 +341,7 @@ graph LR
     DriveMon --> Audit
 
     %% AuditLog read+render side
-    %% AuditLogService injects IUserServiceRead for display-name lookups.
+    %% AuditLogService injects IUserServiceRead for display-name + merged-source-id lookups ([DontFix] crosscut→User).
     %% AuditViewerService composes resolved audit pages; calls cross-section services
     %% for display-name stitching (lifted out of AuditLogRepository in 2026-05 alignment).
     Audit --> User
@@ -508,9 +511,10 @@ graph LR
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
     %% Eager count (including the DriveMon → Audit "pending" dashed arrow that
-    %% Mermaid counts as a link): 263 eager-or-pending links, indices 0..262.
-    %% The 16 lazy edges are indices 263..278.
-    linkStyle 263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
+    %% Mermaid counts as a link): 262 eager-or-pending links, indices 0..261.
+    %% (One fewer than the prior sweep: ShiftSign → MembershipCalc was removed.)
+    %% The 16 lazy edges are indices 262..277.
+    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -553,7 +557,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `HumansMetricsService` | 5 | 0 | Invoked from Application services that emit counter events (ConsentService, OnboardingService, HumanLifecycleService, AppDec, OutboxEmail). Scheduled for push-model inversion in #580. |
 | `ApplicationDecisionService` | 5 | 0 | Tier-application decisions; read by GovIndex, Onboard, Dash, AdminDash, NotifMeter. |
 | `TeamResourceService` | 5 | 2 | Teams-owned Google resources. Lazy-in from Team + GoogleWorkspaceSync cycles. |
-| `MembershipCalculator` | 4 | 1 | Membership-status snapshot consumed by ShiftSign, Onboard, Dash, AdminDash; lazy half of the Consent cycle. |
+| `MembershipCalculator` | 3 | 1 | Membership-status snapshot consumed by Onboard, Dash, AdminDash; lazy half of the Consent cycle. ShiftSignupService dropped its eager `IMembershipCalculator` since the last sweep. |
 | `BudgetService` | 4 | 0 | Read by TicketQ, TicketBudget, ExpenseReport, and now `HoldedFinanceService` (Finance section). |
 | `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
 | `LegalDocumentSyncService` | 3 | 0 | Required-docs snapshot for Membership + Consent + AdminLegal. |

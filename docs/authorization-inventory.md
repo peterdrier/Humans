@@ -2,7 +2,7 @@
 
 Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers (including the Events Guide section, which now uses `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]`) use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-05-29 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-05-31 (full re-scan via `/freshness-sweep`; reflects PR #845 Store team-order authorization). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -138,7 +138,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `StoreController` | Class | `[Authorize]` (authenticated) | — |
-| `StoreController` runtime guards | In-method | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay, Delete})` and `StoreOrderCreateContext` for Create | Resource-based (see §6) |
+| `StoreController` runtime guards | In-method | `authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay, Delete})` for existing orders and `StoreOrderCreateContext` for Create (both camp orders via `Create` and team orders via `CreateTeamOrder`). Index also seeds `isPrivilegedReader = RoleChecks.CanAdministerStore(User) \|\| RoleChecks.IsTeamsAdmin(User)` (PR #845). | Resource-based (see §6) |
 | `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Admin` | `PolicyNames.StoreCatalogAdmin` |
 | `StoreStripeWebhookController` | Class | `AllowAnonymous` (Stripe signature-verified) | — |
 
@@ -528,9 +528,9 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Resource: camp-event submit | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` | (no view spelling — controller-only) |
 | Resource: budget edit | `_authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` | `Model.CanEdit` (view-model) |
 | Resource: container place/manage | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` | `Model.CanX` (view-model) |
-| Resource: store order | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay})` | `Model.CanX` (view-model) |
-| Resource: expense report | `_authService.AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` | `Model.CanX` (view-model) |
-| Resource: IBAN access | `_authService.AuthorizeAsync(User, requirement)` (IbanAccessRequirement) | `Model.CanRevealIban` (view-model) |
+| Resource: store order | `authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, Create, AddLine, RemoveLine, EditCounterparty, Pay, Delete})` (and `StoreOrderCreateContext` for Create) | `Model.CanManageByCounterparty` / per-order flags (view-model) |
+| Resource: expense report | `authService.AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` | `Model.CanX` (view-model) |
+| Resource: IBAN access | `IbanAccessHandler` / `IbanAccessRequirement` are **registered but have no production call site** (only `IbanAccessHandlerTests` exercise them). `ProfileController.RevealIban` is gated by `[Authorize(Policy = PolicyNames.AdminOnly)]`; expense-report IBAN views show masked self-IBAN with no resource check. | (none today) |
 | Resource: issue handle | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` | `Model.CanHandle` (view-model) |
 | Resource: user-email edit | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` | (no view spelling) |
 | Resource: agent rate-limit | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` | (no view spelling) |
@@ -638,7 +638,7 @@ Resource-based authorization handlers are subclasses of `AuthorizationHandler<TR
 | `ContainerAuthorizationHandler` | `ContainerOperationRequirement` (`Manage`, `Place`) | `ContainerAuthorizationTarget` | `src/Humans.Web/Authorization/Requirements/ContainerAuthorizationHandler.cs` |
 | `StoreOrderAuthorizationHandler` | `StoreOrderOperationRequirement` (`View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`) | `OrderDto` / `StoreOrderCreateContext` | `src/Humans.Web/Authorization/Requirements/StoreOrderAuthorizationHandler.cs` |
 | `ExpenseReportAuthorizationHandler` | `ExpenseReportOperationRequirement` | `ExpenseReportDto` | `src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs` |
-| `IbanAccessHandler` | `IbanAccessRequirement` | (intrinsic — fields on requirement) | `src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs` |
+| `IbanAccessHandler` | `IbanAccessRequirement` | (intrinsic — `TargetUserId` / `ReportId` / `IsAdminPageContext` fields on requirement) | `src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs` — **registered in DI but no production call site today** (only `IbanAccessHandlerTests`); `ProfileController.RevealIban` uses `[Authorize(Policy = AdminOnly)]` instead. |
 | `IssuesAuthorizationHandler` | `IssuesOperationRequirement` (`Handle`) | `IssueDetail` | `src/Humans.Web/Authorization/Requirements/IssuesAuthorizationHandler.cs` |
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs` |
 | `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` (`Manage`) | `string` (roleName) | `src/Humans.Application/Authorization/RoleAssignmentAuthorizationHandler.cs` |
@@ -665,16 +665,16 @@ Composite (non-resource) handlers registered alongside the above:
 | `src/Humans.Web/Controllers/BudgetController.cs` | 96 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 116 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 122 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 226 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 234 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Humans.Web/Controllers/ContainerController.cs` | 24 | `AuthorizeAsync(User, target, requirement)` (private helper) |
-| `src/Humans.Web/Controllers/ExpensesController.cs` | 134, 457, 503, 526, 574, 598, 685 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
-| `src/Humans.Web/Controllers/StoreController.cs` | 55, 58, 59, 60, 75, 109, 127, 156, 182, 204, 229 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create) |
+| `src/Humans.Web/Controllers/ExpensesController.cs` | 136, 472, 518, 541, 589, 613, 700 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
+| `src/Humans.Web/Controllers/StoreController.cs` | 51, 73, 76, 77, 78, 93, 127, 145, 174, 200, 222, 247 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create at 127/145 — camp + team orders) |
 | `src/Humans.Web/Controllers/IssuesController.cs` | 195, 265, 311, 338, 365, 390 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
 | `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 274, 299, 337 | `AuthorizeAsync(User, ...)` (resource-based) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 677, 710, 755, 797, 834, 871, 908, 928, 972, 1047, 1063, 1089, 1122, 1148, 1174, 1350, 1376, 1420 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 1826 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2341 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2394 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 678, 711, 756, 798, 835, 872, 909, 929, 973, 1048, 1064, 1090, 1123, 1149, 1175, 1351, 1377, 1421 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 1837 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2352 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2405 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
 | `src/Humans.Web/Controllers/AgentController.cs` | 48 | `AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` |
 | `src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
 | `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 31 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |

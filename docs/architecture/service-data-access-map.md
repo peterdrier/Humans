@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-05-29
+**Generated:** 2026-05-31
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -533,9 +533,9 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleSyncOutboxEvents | R/W |
 
 Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
-`ITeamService`, `ITeamResourceService`, `IUserEmailService`,
-`ISyncSettingsService`, `IAuditLogService`, `IGoogleDirectoryClient`,
-`IGoogleDrivePermissionsClient`, `IGoogleGroupSync` (sync orchestrator),
+`ITeamService`, `IUserEmailService`, `ISyncSettingsService`,
+`IAuditLogService`, `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`,
+`IGoogleGroupProvisioningClient`, `IGoogleGroupSync` (sync orchestrator),
 `ITeamResourceGoogleClient`, `IGoogleRemovalNotificationService`. Lazy
 `IServiceProvider` resolution for parallel/per-batch scope creation. No
 `IMemoryCache`.
@@ -843,14 +843,15 @@ Repository: `IShiftManagementRepository`.
 | `shift-auth:{userId}` | 60 sec | yes | yes | yes (also via `IShiftAuthorizationInvalidator`) |
 
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
-`IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
-for cycle-breaking. Implements `IShiftAuthorizationInvalidator`,
-`IUserMerge`. Also exposes the Cantina-gating predicates
+`IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking.
+Injects `IMemoryCache` directly for the `shift-auth:{userId}` slot.
+Implements `IShiftAuthorizationInvalidator`, `IUserMerge`. Also exposes the
+Cantina-gating predicates
 (`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
 
 ### ShiftSignupService (Scoped)
 
-Repositories: `IShiftSignupRepository`, `IVolunteerTrackingRepository`.
+Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -862,10 +863,10 @@ Repositories: `IShiftSignupRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R (via `IVolunteerTrackingRepository`, GDPR export) |
 
 Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
-`IMembershipCalculator`, `IAuditLogService`, `INotificationService`,
-`IAdminAuthorizationService`, `IShiftViewInvalidator`,
-`IEarlyEntryInvalidator`, `IServiceProvider`. Implements
-`IUserDataContributor`, `IUserMerge`. No `IMemoryCache`.
+`IAuditLogService`, `INotificationService`, `IAdminAuthorizationService`,
+`IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
+(lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).
+Implements `IUserDataContributor`, `IUserMerge`. No `IMemoryCache`.
 
 ### GeneralAvailabilityService (Scoped)
 
@@ -1386,8 +1387,9 @@ Repository: `IBudgetRepository`.
 | BudgetAuditLogs | R/W |
 | TicketingProjections | R/W |
 
-Cross-section calls via `ITeamService`, `IUserService`. Implements
-`IUserDataContributor`. No `IMemoryCache`.
+Cross-section calls via `ITeamService`, `IUserServiceRead` (migrated to the
+read-split surface this sweep — was the full `IUserService`), plus `IClock`.
+Implements `IUserDataContributor`. No `IMemoryCache`.
 
 ---
 
@@ -1438,10 +1440,11 @@ Repository: `IEmailOutboxRepository`.
 |-------|-----|
 | EmailOutboxMessages | R/W |
 
-Implements `IEmailService` — the canonical send path. Cross-section
-calls via `IUserEmailService`, `IEmailRenderer`, `IEmailBodyComposer`,
-`IImmediateOutboxProcessor`, `IHumansMetrics`,
-`ICommunicationPreferenceService`. No `IMemoryCache`.
+Implements `IEmailService` — the single `SendAsync(EmailMessage)` send
+path (the interface collapsed to one method). Cross-section calls via
+`IUserEmailService`, `IEmailBodyComposer`, `IImmediateOutboxProcessor`,
+`IHumansMetrics`, `ICommunicationPreferenceService`, plus `IClock`. No
+`IMemoryCache`.
 
 ---
 

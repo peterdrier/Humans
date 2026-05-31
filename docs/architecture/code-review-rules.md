@@ -1,3 +1,12 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/**
+  src/Humans.Web/Views/**
+  src/Humans.Web/Authorization/**
+  src/Humans.Infrastructure/Repositories/**
+  src/Humans.Infrastructure/Migrations/**
+  src/Humans.Infrastructure/Data/**
+  tests/Humans.Testing/**
+-->
 <!-- freshness:flag-on-change
   Reviewer-facing reject rules (Razor booleans, authorization gaps, missing .Include, exception swallowing, cache invalidation, JSON serialization, migration integrity). Flag if any architectural pattern shift in src/** changes what reviewers must catch.
 -->

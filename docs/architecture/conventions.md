@@ -1,3 +1,10 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/**
+  src/Humans.Web/Controllers/**
+  src/Humans.Web/ViewComponents/**
+  src/Humans.Web/Views/**
+  Directory.Build.props
+-->
 <!-- freshness:flag-on-change
   Cross-cutting conventions (domain invariants, transaction boundary, caching, authorization, time, configuration, rendering, testing, exceptions). Flag if any architectural pattern shift in src/** invalidates a stated convention.
 -->
