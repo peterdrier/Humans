@@ -357,7 +357,7 @@ public class IssuesApiControllerTests
 
         _issues.SubmitIssueAsync(
                 reporterId, IssueCategory.Bug, "T", "D",
-                "Tickets", null, null, null, null, null,
+                "Tickets", null, null, null, null, null, null,
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(created));
 
@@ -375,7 +375,7 @@ public class IssuesApiControllerTests
 
         await _issues.Received(1).SubmitIssueAsync(
             reporterId, IssueCategory.Bug, "T", "D",
-            "Tickets", null, null, null, null, null,
+            "Tickets", null, null, null, null, null, null,
             Arg.Any<CancellationToken>());
     }
 
@@ -394,7 +394,7 @@ public class IssuesApiControllerTests
             Content = "From admin agent",
             CreatedAt = Instant.FromUtc(2026, 4, 29, 12, 0)
         };
-        _issues.PostCommentAsync(issueId, null, "From admin agent", false, Arg.Any<CancellationToken>())
+        _issues.PostCommentAsync(issueId, null, "From admin agent", false, false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(comment));
 
         var result = await _sut.PostComment(issueId, new PostIssueCommentModel { Content = "From admin agent" });
@@ -405,6 +405,7 @@ public class IssuesApiControllerTests
             senderUserId: null,
             content: "From admin agent",
             senderIsReporter: false,
+            resolveOnPost: false,
             ct: Arg.Any<CancellationToken>());
     }
 

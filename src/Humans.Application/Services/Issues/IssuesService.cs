@@ -70,33 +70,7 @@ public sealed class IssuesService(
         string? additionalContext,
         IFormFile? screenshot,
         LocalDate? dueDate = null,
-        CancellationToken ct = default) =>
-        await SubmitIssueAsync(
-            reporterUserId,
-            category,
-            title,
-            description,
-            section,
-            pageUrl,
-            userAgent,
-            additionalContext,
-            screenshot,
-            dueDate,
-            reporterRoles: null,
-            ct);
-
-    public async Task<Issue> SubmitIssueAsync(
-        Guid reporterUserId,
-        IssueCategory category,
-        string title,
-        string description,
-        string? section,
-        string? pageUrl,
-        string? userAgent,
-        string? additionalContext,
-        IFormFile? screenshot,
-        LocalDate? dueDate,
-        IReadOnlyList<string>? reporterRoles,
+        IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
@@ -332,15 +306,7 @@ public sealed class IssuesService(
         Guid? senderUserId,
         string content,
         bool senderIsReporter,
-        CancellationToken ct = default) =>
-        await PostCommentAsync(issueId, senderUserId, content, senderIsReporter, resolveOnPost: false, ct);
-
-    public async Task<IssueComment> PostCommentAsync(
-        Guid issueId,
-        Guid? senderUserId,
-        string content,
-        bool senderIsReporter,
-        bool resolveOnPost,
+        bool resolveOnPost = false,
         CancellationToken ct = default)
     {
         var issue = await repo.FindForMutationAsync(issueId, ct)

@@ -18,20 +18,7 @@ public interface IIssuesService : IApplicationService
         string? additionalContext,
         IFormFile? screenshot,
         LocalDate? dueDate = null,
-        CancellationToken ct = default);
-
-    Task<Issue> SubmitIssueAsync(
-        Guid reporterUserId,
-        IssueCategory category,
-        string title,
-        string description,
-        string? section,
-        string? pageUrl,
-        string? userAgent,
-        string? additionalContext,
-        IFormFile? screenshot,
-        LocalDate? dueDate,
-        IReadOnlyList<string>? reporterRoles,
+        IReadOnlyList<string>? reporterRoles = null,
         CancellationToken ct = default);
 
     Task<IssueDetail?> GetIssueByIdAsync(Guid id, CancellationToken ct = default);
@@ -47,11 +34,7 @@ public interface IIssuesService : IApplicationService
 
     Task<IssueComment> PostCommentAsync(
         Guid issueId, Guid? senderUserId, string content,
-        bool senderIsReporter, CancellationToken ct = default);
-
-    Task<IssueComment> PostCommentAsync(
-        Guid issueId, Guid? senderUserId, string content,
-        bool senderIsReporter, bool resolveOnPost, CancellationToken ct = default);
+        bool senderIsReporter, bool resolveOnPost = false, CancellationToken ct = default);
 
     Task UpdateStatusAsync(
         Guid issueId, IssueStatus newStatus, Guid? actorUserId, CancellationToken ct = default);
