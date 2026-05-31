@@ -14,7 +14,6 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", "delete_users", "{}"),
             userId: Guid.NewGuid(),
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeTrue();
@@ -40,7 +39,6 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":5}"""),
             userId: viewer,
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
@@ -59,7 +57,6 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
             userId: Guid.NewGuid(),
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
@@ -77,19 +74,19 @@ public class AgentToolDispatcherTests
         // Request 999 → clamps to 50.
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":999}"""),
-            userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(50);
 
         // Omit limit → defaults to 20.
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
-            userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(20);
 
         // Request 0 → clamps to 1 (minimum).
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":0}"""),
-            userId: Guid.NewGuid(), conversationId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), CancellationToken.None);
         stub.LastLimit.Should().Be(1);
     }
 
@@ -171,7 +168,6 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{blockId}}"}"""),
             userId: viewer,
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
@@ -203,7 +199,6 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{signup.Id}}"}"""),
             userId: viewer,
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
@@ -229,7 +224,6 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{Guid.NewGuid()}}"}"""),
             userId: viewer,
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeTrue();
@@ -258,7 +252,6 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{foreignBlockId}}"}"""),
             userId: viewer,
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
 
         result.IsError.Should().BeTrue();
@@ -272,7 +265,6 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails, """{"shiftId":"not-a-guid"}"""),
             userId: Guid.NewGuid(),
-            conversationId: Guid.NewGuid(),
             CancellationToken.None);
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("must be a valid GUID");
@@ -328,7 +320,6 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
                 """{"title":"Calendar feature","category":"Feature","description":"User asked about calendar; not implemented yet."}"""),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            conversationId: Guid.Parse("33333333-3333-3333-3333-333333333333"),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
