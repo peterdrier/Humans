@@ -769,15 +769,8 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             UserName = "r@t.com",
             Email = "r@t.com"
         };
-        _userService.GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                new Dictionary<Guid, User>
-                {
-                    [applicantId] = applicant,
-                    [reviewerId] = reviewer
-                }));
+        _userService.GetUserInfoAsync(applicantId, Arg.Any<CancellationToken>())
+            .Returns(applicant.ToUserInfo());
         _userService.GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
