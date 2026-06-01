@@ -33,14 +33,14 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private readonly INotificationService _notificationService;
+    private readonly INotificationEmitter _notificationService;
     private readonly ITeamService _teamService;
     private readonly ShiftSignupService _service;
 
     public ShiftSignupServiceCoverageGapTests()
         : base(TestNow)
     {
-        _notificationService = Substitute.For<INotificationService>();
+        _notificationService = Substitute.For<INotificationEmitter>();
         _teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 

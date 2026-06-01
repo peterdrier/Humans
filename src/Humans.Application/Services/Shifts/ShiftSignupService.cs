@@ -26,7 +26,7 @@ public sealed class ShiftSignupService(
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
     IAuditLogService auditLogService,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     IAdminAuthorizationService adminAuthorization,
     IShiftViewInvalidator viewInvalidator,
     IEarlyEntryInvalidator earlyEntryInvalidator,

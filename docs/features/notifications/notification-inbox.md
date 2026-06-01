@@ -56,13 +56,12 @@ Resolution lives on `Notification`, not `NotificationRecipient`. When any recipi
 
 Callers decide resolution scope:
 - **Individual target**: one Notification per user, each resolves independently
-- **Group target** (team/role): one shared Notification, any recipient can resolve for all
+- **Group target** (role): one shared Notification, any recipient can resolve for all
 
 ## Dispatch Service
 
-`INotificationService` provides three dispatch methods:
+`INotificationService` provides two dispatch methods:
 - `SendAsync` -- individual users, one notification per user
-- `SendToTeamAsync` -- shared notification for all team members
 - `SendToRoleAsync` -- shared notification for all users with a role
 
 Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informational notifications when disabled. Actionable notifications are always delivered.

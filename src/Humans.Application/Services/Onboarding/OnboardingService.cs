@@ -22,7 +22,7 @@ public sealed class OnboardingService(
     IApplicationDecisionService applicationDecisionService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculator membershipCalculator,
     IAuditLogService auditLogService,

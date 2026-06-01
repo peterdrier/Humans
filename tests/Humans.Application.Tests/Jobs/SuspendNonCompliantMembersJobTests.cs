@@ -26,7 +26,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly IEmailMessageFactory _emailMessages;
-    private readonly INotificationService _notificationService;
+    private readonly INotificationEmitter _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
@@ -45,7 +45,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _membershipCalculator = Substitute.For<IMembershipCalculator>();
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = Substitute.For<IEmailMessageFactory>();
-        _notificationService = Substitute.For<INotificationService>();
+        _notificationService = Substitute.For<INotificationEmitter>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();

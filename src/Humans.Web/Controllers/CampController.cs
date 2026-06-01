@@ -10,7 +10,6 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Web.Models.Camp;
@@ -24,7 +23,6 @@ public class CampController(
     ICampContactService campContactService,
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
-    INotificationService notificationService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -33,7 +31,6 @@ public class CampController(
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
     private readonly ICampService _campService = campService;
-    private readonly INotificationService _notificationService = notificationService;
     private readonly IUserServiceRead _userService = userService;
     private readonly IClock _clock = clock;
 

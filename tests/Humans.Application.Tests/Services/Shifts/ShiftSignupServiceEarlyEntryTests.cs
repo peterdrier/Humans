@@ -58,7 +58,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             _shiftMgmt,
             Substitute.For<IBurnSettingsService>(),
             AuditLog,
-            Substitute.For<INotificationService>(),
+            Substitute.For<INotificationEmitter>(),
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IEarlyEntryInvalidator>(),

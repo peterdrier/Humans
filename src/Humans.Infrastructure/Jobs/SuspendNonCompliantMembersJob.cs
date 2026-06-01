@@ -38,7 +38,7 @@ public class SuspendNonCompliantMembersJob(
     IMembershipCalculator membershipCalculator,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     IGoogleSyncService googleSyncService,
     IAuditLogService auditLogService,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,

@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -28,7 +27,6 @@ public class CampControllerTests
     private readonly ICampContactService _contacts = Substitute.For<ICampContactService>();
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
     private readonly ICityPlanningService _cityPlanning = Substitute.For<ICityPlanningService>();
-    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
@@ -107,7 +105,6 @@ public class CampControllerTests
             _contacts,
             _roles,
             _cityPlanning,
-            _notifications,
             _users,
             _authorization,
             _clock,

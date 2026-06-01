@@ -31,7 +31,7 @@ public sealed class IssuesService(
     IRoleAssignmentService roles,
     IEmailService email,
     IEmailMessageFactory emailMessages,
-    INotificationService notifications,
+    INotificationEmitter notifications,
     IAuditLogService audit,
     INavBadgeCacheInvalidator navBadge,
     IIssuesBadgeCacheInvalidator issuesBadge,

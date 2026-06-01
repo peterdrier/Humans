@@ -21,7 +21,7 @@ public sealed class EmailProvisioningService(
     ITeamServiceRead teamService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    INotificationService notificationService,
+    INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     ILogger<EmailProvisioningService> logger) : IEmailProvisioningService
 {
