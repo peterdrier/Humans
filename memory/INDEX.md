@@ -76,6 +76,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`log-file-debugging`](code/log-file-debugging.md) — Grep the log before speculating; write diagnostic logs with entity IDs and actual values
 - [`lsp-integration`](code/lsp-integration.md) — re-Read each `.cs` after editing; LSP diagnostics fire on Read, not Edit
 - [`namespace-alias-application`](code/namespace-alias-application.md) — `using MemberApplication = Humans.Domain.Entities.Application;` (namespace collision)
+- [`narrow-admin-role-needs-anyadminrole`](code/narrow-admin-role-needs-anyadminrole.md) — a new grantable narrow admin role (EarlyEntryArtAdmin, CantinaAdmin) must join the `AnyAdminRole` policy too, or holders pass their page but never see the ADMIN link
 - [`no-enum-compare-in-ef`](code/no-enum-compare-in-ef.md) — enums with `HasConversion<string>()` translate to lexicographic SQL; use `Contains()` with explicit allowed-values list
 - [`no-extensions-for-owned-classes`](code/no-extensions-for-owned-classes.md) — methods/properties go on owned classes; extensions only for BCL/NuGet types
 - [`no-hallucinated-content`](code/no-hallucinated-content.md) — never hardcode invented copy (benefits, policies, pricing); wire to admin-editable fields or ask

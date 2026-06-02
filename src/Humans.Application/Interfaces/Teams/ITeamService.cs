@@ -220,7 +220,6 @@ public record TeamActiveMemberSnapshot(
 /// </summary>
 public sealed record TeamEarlyEntryGrantInfo(
     Guid Id,
-    Guid TeamId,
     Guid UserId,
     LocalDate EntryDate,
     string ProjectName);
@@ -684,7 +683,8 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
-    // Early-Entry Grants (Teams-internal; called by TeamAdminController).
+    // Early-Entry Grants (Teams-internal; called by EarlyEntryAdminController,
+    // plus AccountDeletionService for erasure and IUserMerge for merge).
     // Not exposed on ITeamServiceRead — cross-section reads go through
     // IEarlyEntryProvider.
     // ==========================================================================

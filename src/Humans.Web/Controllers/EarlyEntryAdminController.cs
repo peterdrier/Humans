@@ -14,14 +14,14 @@ namespace Humans.Web.Controllers;
 /// Edit-Team checkbox). There is no team picker: the console resolves its target
 /// as the unique early-entry-enabled team server-side. Mutations reuse the
 /// Teams-section grant methods on <see cref="ITeamService"/> (team-scoped) with
-/// the resolved team's id; the per-team page at <c>TeamAdminController</c>
-/// coexists with this console.
+/// the resolved team's id. This console is the single management surface for
+/// early-entry grants — there is no per-team page.
 ///
 /// Authorization gate: the <see cref="PolicyNames.EarlyEntryArtAdminOrAdmin"/>
 /// policy (Admin or the grantable EarlyEntryArtAdmin role).
 /// </summary>
 [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
-[Route("EarlyEntry")]
+[Route("Teams/Admin/EarlyEntry")]
 public sealed class EarlyEntryAdminController : HumansControllerBase
 {
     private const string NotConfiguredError =

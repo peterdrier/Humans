@@ -109,7 +109,6 @@ public sealed class TeamServiceEarlyEntryTests
 
         var row = rows.Should().ContainSingle().Subject;
         row.Id.Should().Be(grant.Id);
-        row.TeamId.Should().Be(teamId);
         row.UserId.Should().Be(grant.UserId);
         row.EntryDate.Should().Be(new LocalDate(2026, 7, 4));
         row.ProjectName.Should().Be("Lanterns");

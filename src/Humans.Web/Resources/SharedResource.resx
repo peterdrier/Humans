@@ -1265,8 +1265,6 @@
   <data name="TeamAdmin_NoResults" xml:space="preserve"><value>No matching humans found</value></data>
   <data name="TeamAdmin_Add" xml:space="preserve"><value>Add</value></data>
 
-  <!-- Team Early Entry -->
-
   <!-- Facilitated Messaging -->
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
   <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message from {1}&lt;/h2&gt;&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;{1} has sent you a message through Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value><comment>{0}=recipient, {1}=sender, {2}=message, {3}=contact info html</comment></data>

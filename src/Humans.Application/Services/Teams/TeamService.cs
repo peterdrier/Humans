@@ -1871,7 +1871,7 @@ public sealed class TeamService(
     {
         var grants = await repo.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
         return grants
-            .Select(g => new TeamEarlyEntryGrantInfo(g.Id, g.TeamId, g.UserId, g.EntryDate, g.ProjectName))
+            .Select(g => new TeamEarlyEntryGrantInfo(g.Id, g.UserId, g.EntryDate, g.ProjectName))
             .ToList();
     }
 
