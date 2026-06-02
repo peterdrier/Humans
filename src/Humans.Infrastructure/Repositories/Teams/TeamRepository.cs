@@ -1179,7 +1179,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         return await db.TeamEarlyEntryGrants
             .AsNoTracking()
             .Where(g => g.TeamId == teamId)
-            .OrderBy(g => g.ProjectName).ThenBy(g => g.EntryDate)
             .ToListAsync(ct);
     }
 
