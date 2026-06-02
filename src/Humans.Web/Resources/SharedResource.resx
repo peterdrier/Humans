@@ -582,6 +582,7 @@
   <data name="TeamDetail_ManageResources" xml:space="preserve"><value>Manage Resources</value></data>
   <data name="TeamDetail_Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Legal Documents</value></data>
+  <data name="TeamDetail_ManageEarlyEntry" xml:space="preserve"><value>Early Entry</value></data>
 
   <!-- My Teams View -->
   <data name="MyTeams_TeamMemberships" xml:space="preserve"><value>Team Memberships</value></data>

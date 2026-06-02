@@ -2302,7 +2302,8 @@ public sealed class TeamService(
             callsToAction: team.CallsToAction ?? [],
             pageContentUpdatedAt: team.PageContentUpdatedAt,
             pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-            parentLink: team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
+            parentLink: team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam),
+            earlyEntryEnabled: team.EarlyEntryEnabled);
 
     private static TeamPageTeamLink MapTeamLink(Team team) => new(
         team.Id,

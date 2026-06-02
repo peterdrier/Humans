@@ -82,6 +82,13 @@ public class TeamDetailViewModel
     public bool CanCurrentUserLeave { get; set; }
     public bool CanCurrentUserManage { get; set; }
     public bool CanCurrentUserEditTeam { get; set; }
+
+    /// <summary>Whether this team has early entry enabled (admin flag).</summary>
+    public bool EarlyEntryEnabled { get; set; }
+
+    /// <summary>Whether the current viewer may manage this team's early-entry grants
+    /// (EE enabled AND viewer holds Admin or EarlyEntryArtAdmin). Gates the management-card link.</summary>
+    public bool CanManageEarlyEntry { get; set; }
     public Guid? CurrentUserPendingRequestId { get; set; }
     public int PendingRequestCount { get; set; }
     public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }

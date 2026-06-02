@@ -254,7 +254,8 @@ public sealed class CachingTeamService(
             callsToAction: team.CallsToAction is null ? [] : [.. team.CallsToAction],
             pageContentUpdatedAt: team.PageContentUpdatedAt,
             pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-            parentLink: parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug));
+            parentLink: parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug),
+            earlyEntryEnabled: team.EarlyEntryEnabled);
 
     private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
         new(team.Id, team.Name, team.Slug);

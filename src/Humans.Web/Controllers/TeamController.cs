@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Configuration;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
@@ -158,8 +159,12 @@ public class TeamController(
             ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
             CanOpenStore = (teamPage.IsCurrentUserCoordinator && team.ParentTeam is null && team.IsActive)
                 || RoleChecks.IsAdmin(User)
-                || RoleChecks.IsTeamsAdmin(User)
+                || RoleChecks.IsTeamsAdmin(User),
+            EarlyEntryEnabled = team.EarlyEntryEnabled
         };
+
+        viewModel.CanManageEarlyEntry = viewModel.EarlyEntryEnabled &&
+            (User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.EarlyEntryArtAdmin));
 
         // Subteam member rollup: for departments, show child team members not already direct members
         if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())
