@@ -11,18 +11,24 @@ public enum PersonSearchFields
     /// <summary>No fields. Returns no results.</summary>
     None = 0,
 
-    /// <summary>BurnerName only (never legacy User.DisplayName). Narrow picker subset.</summary>
+    /// <summary>Resolved display name (Profile.BurnerName, falling back to legacy User.DisplayName). Public.</summary>
     Name = 1 << 0,
 
-    /// <summary>Bio, city, contribution-interests, CV, pronouns, and AllActiveProfiles-visible ContactFields.</summary>
+    /// <summary>Bio, city, contribution-interests, CV, pronouns, AllActiveProfiles-visible ContactFields, and publicly-exposed emails. Public.</summary>
     Bio = 1 << 1,
 
-    /// <summary>Verified email addresses + non-public ContactFields. Controller MUST gate with Admin auth.</summary>
+    /// <summary>Verified email addresses (any visibility) + non-public ContactFields. Controller MUST gate with Admin/Board auth.</summary>
     Admin = 1 << 2,
+
+    /// <summary>Legal FirstName/LastName. Controller MUST gate with admin/coordinator auth — never on public endpoints (deanonymizes burners).</summary>
+    LegalName = 1 << 3,
 
     /// <summary>Name + Bio — public endpoints.</summary>
     PublicAll = Name | Bio,
 
-    /// <summary>Name + Bio + Admin — admin endpoints only.</summary>
-    AdminAll = Name | Bio | Admin,
+    /// <summary>Name + Bio + LegalName — admin/coordinator picker endpoints (find people by real name; no private contact data).</summary>
+    ManageAll = Name | Bio | LegalName,
+
+    /// <summary>Name + Bio + LegalName + Admin — admin/board endpoints only.</summary>
+    AdminAll = Name | Bio | LegalName | Admin,
 }
