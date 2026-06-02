@@ -42,7 +42,8 @@ else
                             <tr>
                                 <td>@grant.HumanName</td>
                                 <td colspan="2">
-                                    <form asp-action="Edit" method="post" class="row g-2 align-items-center">
+                                    @* Auto-saves on change (date pick / project blur) — see the script below. The hidden submit enables Enter-to-save + form.requestSubmit() validation. *@
+                                    <form asp-action="Edit" method="post" class="row g-2 align-items-center ee-edit-form">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="GrantId" value="@grant.GrantId" />
                                         <div class="col-auto">
@@ -54,9 +55,7 @@ else
                                                    value="@grant.ProjectName" maxlength="256" required
                                                    aria-label="Art project" />
                                         </div>
-                                        <div class="col-auto">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
-                                        </div>
+                                        <button type="submit" class="d-none" tabindex="-1" aria-hidden="true"></button>
                                     </form>
                                 </td>
                                 <td class="text-end">
@@ -104,4 +103,15 @@ else
             </form>
         </div>
     </div>
+
+    @* Inline auto-save: changing a grant's date (picker) or project (on blur / Enter) submits its row
+       form immediately — no Save button. Scoped to .ee-edit-form so the Add form is unaffected.
+       <script> gets a CSP nonce via NonceTagHelper. *@
+    <script>
+        document.querySelectorAll('form.ee-edit-form').forEach(function (form) {
+            form.querySelectorAll('input[name="EntryDate"], input[name="ProjectName"]').forEach(function (input) {
+                input.addEventListener('change', function () { form.requestSubmit(); });
+            });
+        });
+    </script>
 }
