@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260602124434_AddTeamEarlyEntry")]
+    [Migration("20260602125133_AddTeamEarlyEntry")]
     partial class AddTeamEarlyEntry
     {
         /// <inheritdoc />
@@ -4145,9 +4145,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)");
 
                     b.Property<bool>("EarlyEntryEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<string>("GoogleGroupPrefix")
                         .HasMaxLength(64)
@@ -4239,6 +4237,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000001"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active volunteers with signed required documents",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,
@@ -4257,6 +4256,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000002"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All team coordinators",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,
@@ -4275,6 +4275,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000003"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Board members with active role assignments",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,
@@ -4293,6 +4294,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000004"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Voting members with approved asociado applications",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,
@@ -4311,6 +4313,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000005"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Active contributors with approved colaborador applications",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,
@@ -4329,6 +4332,7 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000006"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active camp leads across all camps",
+                            EarlyEntryEnabled = false,
                             HasBudget = false,
                             IsActive = true,
                             IsHidden = false,

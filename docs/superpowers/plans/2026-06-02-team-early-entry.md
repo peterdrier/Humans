@@ -176,11 +176,13 @@ public DbSet<TeamEarlyEntryGrant> TeamEarlyEntryGrants => Set<TeamEarlyEntryGran
 
 - [ ] **Step 3: Store default for the flag**
 
-In `TeamConfiguration.cs`, alongside the existing store defaults (`RequiresApproval`, `ShowCoordinatorsOnPublicPage`):
+In `TeamConfiguration.cs`, alongside the existing flags. ⚠️ **Do NOT use `HasDefaultValue(false)`** — on a bool that triggers EF's "sentinel trap": EF treats CLR `false` as "unset" and emits empty `UPDATE teams SET WHERE …` rows for the seeded system teams, which is invalid SQL on Postgres and crashes the migration. For a **default-false** bool just mark it required (the CLR default backfills existing rows; the generated `AddColumn` still gets `defaultValue: false` for the backfill):
 
 ```csharp
-builder.Property(t => t.EarlyEntryEnabled).HasDefaultValue(false);
+builder.Property(t => t.EarlyEntryEnabled).IsRequired();
 ```
+
+(The `true`-defaulting flags in this file use `.HasDefaultValue(true).HasSentinel(true)`; a false default needs neither.)
 
 - [ ] **Step 4: Build**
 
