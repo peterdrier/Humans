@@ -349,5 +349,11 @@ public sealed class TeamServiceEarlyEntryTests
         var eeSlice = slices.Should().ContainSingle(s => s.SectionName == GdprExportSections.TeamEarlyEntry).Subject;
         var items = eeSlice.Data.Should().BeAssignableTo<System.Collections.IEnumerable>().Subject;
         items.Cast<object>().Should().ContainSingle();
+
+        // Assert projected field values via JSON serialization (mirrors ExpenseReportServiceGdprTests pattern)
+        var json = System.Text.Json.JsonSerializer.Serialize(eeSlice.Data);
+        json.Should().Contain("\"TeamName\":\"Pyro\"");
+        json.Should().Contain("\"ProjectName\":\"Big Burn\"");
+        json.Should().Contain("\"EntryDate\":\"2026-07-09\"");
     }
 }
