@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
@@ -26,6 +27,7 @@ internal static class TeamsSectionExtensions
             (TeamsTeamService)sp.GetRequiredKeyedService<ITeamService>(CachingTeamService.InnerServiceKey));
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<TeamsTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
+        services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<TeamsTeamService>());
 
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
