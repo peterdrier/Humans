@@ -213,6 +213,18 @@ public record TeamActiveMemberSnapshot(
     Instant JoinedAt);
 
 /// <summary>
+/// Persistence-free read model for a team early-entry grant, returned by the
+/// Teams-internal management read so the service boundary does not expose the
+/// <see cref="TeamEarlyEntryGrant"/> entity. The human display name is resolved
+/// by the caller via <c>IUserServiceRead</c> from <see cref="UserId"/>.
+/// </summary>
+public sealed record TeamEarlyEntryGrantInfo(
+    Guid Id,
+    Guid UserId,
+    LocalDate EntryDate,
+    string ProjectName);
+
+/// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
 public interface ITeamService : ITeamServiceRead, IApplicationService
@@ -676,8 +688,12 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // IEarlyEntryProvider.
     // ==========================================================================
 
-    /// <summary>Gets the early-entry grants for a single team (management view).</summary>
-    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
+    /// <summary>
+    /// Gets the early-entry grants for a single team (management view) as a
+    /// persistence-free read model. Display ordering is the caller's
+    /// responsibility (rendering layer).
+    /// </summary>
+    Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
     /// Grants early entry to a user for a team. Throws if the team does not have

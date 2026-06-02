@@ -1867,8 +1867,13 @@ public sealed class TeamService(
         return TeamEarlyEntryProjection.Project(grants);
     }
 
-    public Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
-        => repo.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
+    public async Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
+    {
+        var grants = await repo.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
+        return grants
+            .Select(g => new TeamEarlyEntryGrantInfo(g.Id, g.UserId, g.EntryDate, g.ProjectName))
+            .ToList();
+    }
 
     public async Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
     {

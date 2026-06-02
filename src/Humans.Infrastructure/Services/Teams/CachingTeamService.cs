@@ -459,7 +459,7 @@ public sealed class CachingTeamService(
     // Early-entry grants: no TeamInfo-cache impact; the inner service owns EE
     // invalidation. Pure pass-throughs.
 
-    public Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
+    public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
         => WithInner(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
 
     public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)

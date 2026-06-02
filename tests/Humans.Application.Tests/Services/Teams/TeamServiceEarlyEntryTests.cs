@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -90,6 +91,27 @@ public sealed class TeamServiceEarlyEntryTests
         var entries = await _service.GetEarlyEntriesAsync(CancellationToken.None);
 
         entries.Should().BeEmpty();
+    }
+
+    // ==========================================================================
+    // GetEarlyEntryGrantsForTeamAsync (management read model)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetEarlyEntryGrantsForTeamAsync_ProjectsToReadModel()
+    {
+        var teamId = Guid.NewGuid();
+        var grant = Grant(teamId, Guid.NewGuid(), "Lanterns", new LocalDate(2026, 7, 4));
+        _repo.GetEarlyEntryGrantsForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new List<TeamEarlyEntryGrant> { grant });
+
+        var rows = await _service.GetEarlyEntryGrantsForTeamAsync(teamId);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.Id.Should().Be(grant.Id);
+        row.UserId.Should().Be(grant.UserId);
+        row.EntryDate.Should().Be(new LocalDate(2026, 7, 4));
+        row.ProjectName.Should().Be("Lanterns");
     }
 
     // ==========================================================================

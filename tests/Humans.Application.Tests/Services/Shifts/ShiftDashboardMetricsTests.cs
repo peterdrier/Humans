@@ -1140,7 +1140,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Team> UpdateTeamAsync(Guid teamId, string name, string? description, bool requiresApproval, bool isActive, Guid? parentTeamId = null, string? googleGroupPrefix = null, string? customSlug = null, bool? hasBudget = null, bool? isHidden = null, bool? isSensitive = null, bool? isPromotedToDirectory = null, bool? earlyEntryEnabled = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default) => throw new NotSupportedException();
