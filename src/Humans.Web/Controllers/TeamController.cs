@@ -694,6 +694,7 @@ public class TeamController(
             IsHidden = team.IsHidden,
             IsSensitive = team.IsSensitive,
             IsPromotedToDirectory = team.IsPromotedToDirectory,
+            EarlyEntryEnabled = team.EarlyEntryEnabled,
             ParentTeamId = team.ParentTeamId,
             EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId: id, cancellationToken)
         };
@@ -719,7 +720,7 @@ public class TeamController(
 
         try
         {
-            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory);
+            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
             var currentUser = await GetCurrentUserInfoAsync();
             logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 

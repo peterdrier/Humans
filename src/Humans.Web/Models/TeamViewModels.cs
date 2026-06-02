@@ -213,6 +213,9 @@ public class EditTeamViewModel : TeamFormViewModelBase
     public bool HasBudget { get; set; }
     public bool IsSensitive { get; set; }
     public bool IsPromotedToDirectory { get; set; }
+
+    [Display(Name = "Enable Early Entry")]
+    public bool EarlyEntryEnabled { get; set; }
 }
 
 public class EditTeamPageViewModel
