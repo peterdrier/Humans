@@ -725,7 +725,11 @@ public class TeamController(
 
         try
         {
-            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
+            // The EarlyEntryEnabled checkbox is rendered AdminOnly; for non-Admin editors the tag
+            // helper suppresses it, so model.EarlyEntryEnabled binds to false. Passing null leaves
+            // the flag unchanged instead of silently disabling it.
+            bool? earlyEntryEnabled = User.IsInRole(RoleNames.Admin) ? model.EarlyEntryEnabled : null;
+            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: earlyEntryEnabled);
             var currentUser = await GetCurrentUserInfoAsync();
             logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 

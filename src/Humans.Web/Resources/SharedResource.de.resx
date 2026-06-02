@@ -1450,6 +1450,9 @@
   <data name="TeamDetail_ManageConsents" xml:space="preserve">
     <value>Rechtliche Dokumente</value>
   </data>
+  <data name="TeamDetail_ManageEarlyEntry" xml:space="preserve">
+    <value>Früher Einlass</value>
+  </data>
   <data name="MyTeams_TeamMemberships" xml:space="preserve">
     <value>Teammitgliedschaften</value>
   </data>
