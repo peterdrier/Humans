@@ -4,7 +4,7 @@
 
 **Goal:** Make Teams a third `IEarlyEntryProvider` so the Creativity department (or any team an admin enables) can grant early entry (human + date + art-project name), surfaced to the existing EE roster/ticket machinery as `"Art: {project}"`.
 
-**Architecture:** A new Teams-owned table `team_early_entry_grants` (one row = one human's EE grant for one art project), an admin-only `Team.EarlyEntryEnabled` flag, a coordinator/admin management page on `TeamAdminController`, and `TeamService` implementing `IEarlyEntryProvider`. Strict layering (Controller → Service → Repository → DbContext); cross-section calls only via service interfaces. GDPR export + right-to-erasure + user-merge all covered.
+**Architecture:** A new Teams-owned table `team_early_entry_grants` (one row = one human's EE grant for one art project), an admin-only `Team.EarlyEntryEnabled` flag, and `TeamService` implementing `IEarlyEntryProvider`. Management is gated by a **dedicated individually-granted role `EarlyEntryArtAdmin`** (cantina-style — granted via the existing role-assignment flow, used by exactly one policy), **not** team-coordinator status. Strict layering (Controller → Service → Repository → DbContext); cross-section calls only via service interfaces. GDPR export + right-to-erasure + user-merge all covered.
 
 **Tech Stack:** .NET, EF Core (Npgsql), NodaTime (`LocalDate`/`Instant`), Clean Architecture (Domain/Application/Infrastructure/Web), xUnit (`[HumansFact]`), Moq for pure-logic tests.
 
@@ -41,12 +41,15 @@
 - `src/Humans.Web/Models/TeamViewModels.cs` — `EarlyEntryEnabled` on edit + detail VMs.
 - `src/Humans.Web/Views/Team/EditTeam.cshtml` — checkbox.
 - `src/Humans.Web/Views/Team/Details.cshtml` — management-card link.
-- `src/Humans.Web/Controllers/TeamController.cs` — edit GET/POST flag wiring.
-- `src/Humans.Web/Controllers/TeamAdminController.cs` — management actions.
-- `src/Humans.Application/Services/Teams/TeamsTeamPageService.cs` (or wherever `CanCurrentUserManage`/detail VM is built) — populate `EarlyEntryEnabled`.
+- `src/Humans.Web/Controllers/TeamController.cs` — edit GET/POST flag wiring + `CanManageEarlyEntry` on the detail VM.
+- `src/Humans.Web/Controllers/TeamAdminController.cs` — management actions (role-gated).
+- `src/Humans.Application/Services/Teams/TeamsTeamPageService.cs` (or wherever the detail VM is built) — populate `EarlyEntryEnabled` from `TeamInfo`.
 - `src/Humans.Domain/Enums/AuditAction.cs` — three new audit actions.
+- `src/Humans.Domain/Constants/RoleNames.cs` — `EarlyEntryArtAdmin` role + add to `BoardManageableRoles`.
+- `src/Humans.Web/Authorization/PolicyNames.cs` — `EarlyEntryArtAdminOrAdmin`.
+- `src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs` — register the policy.
 
-**Reuse-first note:** the 9 new repo methods + 5 new service methods are all genuinely needed (CRUD + provider filter + GDPR export/erasure + merge). No existing method covers them; the table is new and only `TeamRepository` may touch it. The human picker, auth helper (`ResolveTeamManagementAsync`), audit log, and EE invalidator are all reused, not recreated.
+**Reuse-first note:** the 9 new repo methods + 5 new service methods are all genuinely needed (CRUD + provider filter + GDPR export/erasure + merge). No existing method covers them; the table is new and only `TeamRepository` may touch it. Auth reuses the **existing role-assignment system** (no new grant/revoke UI or table — `EarlyEntryArtAdmin` is granted via `ProfileController.AddRole` exactly like `CantinaAdmin`); the human picker, audit log, and EE invalidator are reused, not recreated.
 
 ---
 
@@ -93,7 +96,8 @@ In `src/Humans.Domain/Entities/Team.cs`, alongside the other boolean flags (`IsS
 ```csharp
 /// <summary>Admin-only gate: when true this team contributes early-entry grants
 /// (see <see cref="TeamEarlyEntryGrant"/>) and exposes the EE management page to
-/// coordinators. Default false. Toggling it never deletes existing grants.</summary>
+/// humans holding the EarlyEntryArtAdmin role. Default false. Toggling it never
+/// deletes existing grants.</summary>
 public bool EarlyEntryEnabled { get; set; }
 ```
 
@@ -779,7 +783,46 @@ git commit -m "feat(teams): erase early-entry grants on account anonymization"
 
 ## Chunk 4: Web UI
 
-### Task 13: Admin flag on Edit Team
+### Task 13: Role + policy (`EarlyEntryArtAdmin`) — cantina-clone
+
+This mirrors how `CantinaAdmin` is wired: a dedicated, **independent** role granted to individuals via the existing role-assignment flow, used by **exactly one** policy that gates only the EE management surface. It is never added to any other policy/role group, so it grants nothing beyond EE management.
+
+**Files:**
+- Modify: `src/Humans.Domain/Constants/RoleNames.cs` (new role constant + `BoardManageableRoles`)
+- Modify: `src/Humans.Web/Authorization/PolicyNames.cs` (new policy name)
+- Modify: `src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs` (register policy)
+
+- [ ] **Step 1:** In `RoleNames.cs`, add the role constant next to `CantinaAdmin` (match the existing `public const string` style):
+
+```csharp
+public const string EarlyEntryArtAdmin = "EarlyEntryArtAdmin";
+```
+
+- [ ] **Step 2:** Add `EarlyEntryArtAdmin` to the `BoardManageableRoles` set (the same set that contains `CantinaAdmin`, ~line 131) so Admin/Board/HumanAdmin can grant it via the existing Add-Role flow and it appears in `RoleChecks.GetAssignableRoles`. Do **not** add it to any other grouping (e.g. team-admin role bundles).
+
+- [ ] **Step 3:** In `PolicyNames.cs`, add:
+
+```csharp
+public const string EarlyEntryArtAdminOrAdmin = nameof(EarlyEntryArtAdminOrAdmin);
+```
+
+- [ ] **Step 4:** In `AuthorizationPolicyExtensions.cs`, register the policy next to `CantinaAdminOrAdmin`:
+
+```csharp
+options.AddPolicy(PolicyNames.EarlyEntryArtAdminOrAdmin, policy =>
+    policy.RequireRole(RoleNames.EarlyEntryArtAdmin, RoleNames.Admin));
+```
+
+- [ ] **Step 5: Build** — `dotnet build Humans.slnx -v quiet`. Expected: clean. Commit:
+
+```bash
+git add src/Humans.Domain/Constants/RoleNames.cs src/Humans.Web/Authorization/PolicyNames.cs src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
+git commit -m "feat(teams): EarlyEntryArtAdmin role + EarlyEntryArtAdminOrAdmin policy"
+```
+
+> No new grant/revoke UI or service is needed — `EarlyEntryArtAdmin` is granted through the existing `ProfileController.AddRole` flow exactly like `CantinaAdmin`, and claims are populated by the existing `RoleAssignmentClaimsTransformation`.
+
+### Task 14: Admin flag on Edit Team
 
 **Files:**
 - Modify: `src/Humans.Web/Models/TeamViewModels.cs` (`EditTeamViewModel`)
@@ -793,7 +836,7 @@ git commit -m "feat(teams): erase early-entry grants on account anonymization"
 public bool EarlyEntryEnabled { get; set; }
 ```
 
-- [ ] **Step 2:** In `EditTeam.cshtml`, near the other admin-only flag checkboxes (e.g. `IsSensitive`), add a checkbox bound to `EarlyEntryEnabled` with help text like "Lets this team's coordinators grant early entry for art projects." Use the same checkbox markup pattern as the sibling flags.
+- [ ] **Step 2:** In `EditTeam.cshtml`, near the other admin-only flag checkboxes (e.g. `IsSensitive`), add a checkbox bound to `EarlyEntryEnabled` with help text like "Lets humans with the Early Entry Art Admin role grant early entry for this team's art projects." Use the same checkbox markup pattern as the sibling flags.
 
 - [ ] **Step 3:** In `TeamController.EditTeam` **GET**, populate `EarlyEntryEnabled = team.EarlyEntryEnabled` when building the VM.
 
@@ -806,21 +849,37 @@ git add src/Humans.Web/Models/TeamViewModels.cs src/Humans.Web/Views/Team/EditTe
 git commit -m "feat(teams): admin Enable Early Entry checkbox on Edit Team"
 ```
 
-### Task 14: Management-card link on Team detail
+### Task 15: Management-card link on Team detail
+
+The EE link must be reachable by an `EarlyEntryArtAdmin` who is **not** a team coordinator. The Team Management card currently renders only on `CanCurrentUserManage` (coordinator+admin), so we add a separate `CanManageEarlyEntry` flag and let the card render when **either** is true.
 
 **Files:**
 - Modify: `src/Humans.Web/Models/TeamViewModels.cs` (`TeamDetailViewModel`)
-- Modify: the service/builder that populates `TeamDetailViewModel` (e.g. `TeamsTeamPageService` — find where `CanCurrentUserManage` is set)
+- Modify: `src/Humans.Web/Controllers/TeamController.cs` (`Details` action — compute the role-based flag from `User`)
 - Modify: `src/Humans.Web/Views/Team/Details.cshtml`
 
-- [ ] **Step 1:** Add `public bool EarlyEntryEnabled { get; set; }` to `TeamDetailViewModel`.
+- [ ] **Step 1:** Add to `TeamDetailViewModel`:
 
-- [ ] **Step 2:** In the detail/page builder, the team is available as a **`TeamInfo`** projection (not the entity). Read the flag from there: `EarlyEntryEnabled = teamInfo.EarlyEntryEnabled` (the field added to `TeamInfo` in Task 8, Step 1b and populated in Task 10, Step 0). Match the builder's actual local variable name for the `TeamInfo`.
+```csharp
+public bool EarlyEntryEnabled { get; set; }
+public bool CanManageEarlyEntry { get; set; }
+```
 
-- [ ] **Step 3:** In `Details.cshtml`, inside the Team Management card's `list-group` (same block as "Manage Members"), add — gated by both `CanCurrentUserManage` (already gates the card) and the flag:
+- [ ] **Step 2:** Populate `EarlyEntryEnabled` from the `TeamInfo` projection (the field added to `TeamInfo` in Task 8, Step 1b and populated in Task 10, Step 0) wherever the detail VM is built. Then, in `TeamController.Details` (the Web layer, which has `User`), compute the role-based flag after the VM is built:
+
+```csharp
+vm.CanManageEarlyEntry = vm.EarlyEntryEnabled &&
+    (User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.EarlyEntryArtAdmin));
+```
+
+(Keep the claims/role check in the Web layer, not the page service. Match the action's actual VM variable name.)
+
+- [ ] **Step 3:** In `Details.cshtml`:
+  - Where the Team Management card is gated, change the condition so the card renders for EE-admins too: `@if (Model.CanCurrentUserManage || Model.CanManageEarlyEntry)`.
+  - Inside the card's `list-group`, add the EE link gated by its own flag:
 
 ```cshtml
-@if (Model.EarlyEntryEnabled)
+@if (Model.CanManageEarlyEntry)
 {
     <a class="list-group-item list-group-item-action"
        asp-controller="TeamAdmin" asp-action="EarlyEntry" asp-route-slug="@Model.Slug">
@@ -829,23 +888,23 @@ git commit -m "feat(teams): admin Enable Early Entry checkbox on Edit Team"
 }
 ```
 
-(Use a localized string key consistent with the other links; add the resource entry if the project requires it.)
+  (Use a localized string key consistent with the other links; add the resource entry if the project requires it. The existing coordinator-only links stay gated on `CanCurrentUserManage` so an EE-admin-only viewer sees just the Early Entry link.)
 
 - [ ] **Step 4: Build** — `dotnet build Humans.slnx -v quiet`. Commit:
 
 ```bash
-git add src/Humans.Web/Models/TeamViewModels.cs src/Humans.Web/Views/Team/Details.cshtml src/Humans.Application/Services/Teams/
-git commit -m "feat(teams): Early Entry link in Team Management card"
+git add src/Humans.Web/Models/TeamViewModels.cs src/Humans.Web/Views/Team/Details.cshtml src/Humans.Web/Controllers/TeamController.cs src/Humans.Application/Services/Teams/
+git commit -m "feat(teams): Early Entry link in Team Management card (role-gated)"
 ```
 
-### Task 15: Management page (list + add/edit/remove)
+### Task 16: Management page (list + add/edit/remove)
 
 **Files:**
 - Create: `src/Humans.Web/Models/TeamEarlyEntryViewModels.cs`
 - Create: `src/Humans.Web/Views/TeamAdmin/EarlyEntry.cshtml`
 - Modify: `src/Humans.Web/Controllers/TeamAdminController.cs`
 
-> Mirror an existing `TeamAdminController` action (e.g. `Members`) exactly for: the `[Route]`/`[HttpGet]`/`[HttpPost]` attributes, the `ResolveTeamManagementAsync(slug)` guard + early-return on `ErrorResult`, and antiforgery. The actions add a defense-in-depth `if (!team.EarlyEntryEnabled) return NotFound();` after auth resolves.
+> **Auth differs from the other `TeamAdminController` actions.** The EE actions are gated by the **role policy** `[Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]` (Task 13), **not** `ResolveTeamManagementAsync` (which checks coordinator-of-team). Mirror `Members` only for the `[Route]`/`[HttpGet]`/`[HttpPost]` attributes + antiforgery. Resolve the team **read-only** by slug (`_teamService.GetTeamBySlugAsync(slug)` → `TeamInfo?`, `NotFound()` if null) and the current user via the base controller's existing current-user helper. Every action adds a defense-in-depth `if (!team.EarlyEntryEnabled) return NotFound();`.
 
 - [ ] **Step 1: View models**
 
@@ -906,21 +965,30 @@ var entryDate = parsed.Value;
 
 Use `<input type="date">` in the view (browsers post `yyyy-MM-dd`), bound to the string `EntryDate`.
 
-- [ ] **Step 2: Controller actions** (names/attributes mirroring `Members`)
+- [ ] **Step 2: Controller actions** — all four carry the role policy. A small private helper does the read-only team-resolve + flag check so the four actions stay parse/call/format only:
 
 ```csharp
-[HttpGet] // route mirrors Members, e.g. "Teams/{slug}/EarlyEntry"
+// Helper — read-only team resolve + EE-enabled gate. Returns null team => caller returns the error result.
+private async Task<(IActionResult? Error, TeamInfo? Team)> ResolveEarlyEntryTeamAsync(string slug)
+{
+    var team = await _teamService.GetTeamBySlugAsync(slug);   // ITeamServiceRead; TeamInfo?
+    if (team is null) return (NotFound(), null);
+    if (!team.EarlyEntryEnabled) return (NotFound(), null);
+    return (null, team);
+}
+
+[HttpGet("EarlyEntry")]
+[Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
 public async Task<IActionResult> EarlyEntry(string slug, CancellationToken ct)
 {
-    var (error, _, team) = await ResolveTeamManagementAsync(slug);
+    var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
     if (error is not null) return error;
-    if (!team.EarlyEntryEnabled) return NotFound();
 
-    var grants = await teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
+    var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team!.Id, ct);
 
-    // Batch-resolve human display names via IUserServiceRead. Confirm the exact method:
-    // it returns IReadOnlyDictionary<Guid, UserInfo>; the display name is UserInfo.BurnerName.
-    var infos = await userService.GetUserInfosAsync(grants.Select(g => g.UserId).Distinct().ToList(), ct);
+    // Batch-resolve human display names: IUserServiceRead.GetUserInfosAsync ->
+    // IReadOnlyDictionary<Guid, UserInfo>; display name is UserInfo.BurnerName.
+    var infos = await _userService.GetUserInfosAsync(grants.Select(g => g.UserId).Distinct().ToList(), ct);
 
     var vm = new TeamEarlyEntryPageViewModel
     {
@@ -939,31 +1007,30 @@ public async Task<IActionResult> EarlyEntry(string slug, CancellationToken ct)
     return View(vm);
 }
 
-[HttpPost, ValidateAntiForgeryToken]
+[HttpPost("EarlyEntry/Add"), ValidateAntiForgeryToken]
+[Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
 public async Task<IActionResult> AddEarlyEntry(string slug, AddTeamEarlyEntryInput input, CancellationToken ct)
 {
-    var (error, user, team) = await ResolveTeamManagementAsync(slug);
+    var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
     if (error is not null) return error;
-    if (!team.EarlyEntryEnabled) return NotFound();
 
     var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
     if (!ModelState.IsValid || !parsed.Success)
     {
         if (!parsed.Success) ModelState.AddModelError(nameof(input.EntryDate), "Enter a date as yyyy-MM-dd.");
-        // re-render the EarlyEntry page VM with the validation error (mirror the Members invalid-model path)
-        return await EarlyEntry(slug, ct);
+        return await EarlyEntry(slug, ct); // re-render with the validation error
     }
 
-    await teamService.AddEarlyEntryGrantAsync(team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+    await _teamService.AddEarlyEntryGrantAsync(team!.Id, input.UserId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
     return RedirectToAction(nameof(EarlyEntry), new { slug });
 }
 
-[HttpPost, ValidateAntiForgeryToken]
+[HttpPost("EarlyEntry/Edit"), ValidateAntiForgeryToken]
+[Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
 public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryInput input, CancellationToken ct)
 {
-    var (error, user, team) = await ResolveTeamManagementAsync(slug);
+    var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
     if (error is not null) return error;
-    if (!team.EarlyEntryEnabled) return NotFound();
 
     var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
     if (!parsed.Success)
@@ -971,22 +1038,28 @@ public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryI
         ModelState.AddModelError(nameof(input.EntryDate), "Enter a date as yyyy-MM-dd.");
         return await EarlyEntry(slug, ct);
     }
-    await teamService.EditEarlyEntryGrantAsync(input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+    await _teamService.EditEarlyEntryGrantAsync(input.GrantId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
     return RedirectToAction(nameof(EarlyEntry), new { slug });
 }
 
-[HttpPost, ValidateAntiForgeryToken]
+[HttpPost("EarlyEntry/Remove"), ValidateAntiForgeryToken]
+[Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
 public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, CancellationToken ct)
 {
-    var (error, user, team) = await ResolveTeamManagementAsync(slug);
+    var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
     if (error is not null) return error;
-    if (!team.EarlyEntryEnabled) return NotFound();
-    await teamService.RemoveEarlyEntryGrantAsync(grantId, user.Id, ct);
+    await _teamService.RemoveEarlyEntryGrantAsync(grantId, GetCurrentUserId()!.Value, ct);
     return RedirectToAction(nameof(EarlyEntry), new { slug });
 }
 ```
 
-> Add `using NodaTime.Text;` to the controller. In the snippets `userService`/`teamService` stand in for the controller's actual injected services — `TeamAdminController` exposes them as the underscore-prefixed backing fields **`_userService` / `_teamService`** (ctor params `userService`/`teamService`); use those. `user` and `team` are the `UserInfo` and `TeamInfo` from `ResolveTeamManagementAsync` — use their real member names (`team.Id`, `team.Slug`, the `UserInfo` id member); the verbatim `Members` action is the template. `IUserServiceRead.GetUserInfosAsync(...)` returns `IReadOnlyDictionary<Guid, UserInfo>` and `UserInfo.BurnerName` is the display name (both verified to exist).
+**Verified facts that make this safe:**
+- `TeamAdminController` is declared `[Authorize]` (bare — authenticated only, **no** restrictive class policy) + `[Route("Teams/{slug}")]`. So an action-level `[Authorize(Policy = EarlyEntryArtAdminOrAdmin)]` **AND-combines** to "authenticated AND holds the EE policy" — an `EarlyEntryArtAdmin` is authenticated, so it passes. **No separate controller is needed.**
+- Routes are relative to `Teams/{slug}`: use `[HttpGet("EarlyEntry")]`, `[HttpPost("EarlyEntry/Add")]`, `[HttpPost("EarlyEntry/Edit")]`, `[HttpPost("EarlyEntry/Remove")]` (mirror how `Members` writes its relative templates).
+- `ITeamServiceRead.GetTeamBySlugAsync(string slug, CancellationToken)` returns `TeamInfo?`. Confirm whether it expects a normalized slug (mirror what `Members`/`ResolveTeamManagementAsync` pass).
+- Actor id: the base `HumansControllerBase` exposes `GetCurrentUserId()` → `Guid?` (and `RequireCurrentUserAsync()` → `(IActionResult?, UserInfo)`). Under `[Authorize]` the id claim is present, so `GetCurrentUserId()!.Value` is safe in these actions (used above as the actor).
+
+> Add `using NodaTime.Text;`, `using Humans.Web.Authorization;` (for `PolicyNames`), `using Humans.Domain.Constants;` (for `RoleNames`, if referenced), and `using Microsoft.AspNetCore.Authorization;`. `_teamService` / `_userService` are the controller's injected backing fields (ctor params `teamService`/`userService`) — confirm the exact field names. `TeamInfo` now carries `EarlyEntryEnabled` (Task 8, Step 1b).
 
 - [ ] **Step 3: View** `Views/TeamAdmin/EarlyEntry.cshtml`
 
@@ -1001,7 +1074,7 @@ public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, Can
   plus `<input type="date" asp-for="EntryDate">` (posts `yyyy-MM-dd` into the string field) and a text input bound to `ProjectName`.
 - User-facing copy says "humans," not "users/members."
 
-- [ ] **Step 4: Build + smoke** — `dotnet build Humans.slnx -v quiet`. Then run the app (`dotnet run --project src/Humans.Web`), enable EE on a team as admin, open the management page as a coordinator, add/edit/remove a grant, and confirm the human appears on the EE roster (`/Shifts/Admin/EarlyEntry`) as `Art: {project}`. (Manual verification — UI is prototype-grade, no browser test required.)
+- [ ] **Step 4: Build + smoke** — `dotnet build Humans.slnx -v quiet`. Then run the app (`dotnet run --project src/Humans.Web`), enable EE on a team as admin, grant a human the EarlyEntryArtAdmin role (Profile → Add Role), then as that human open the management page and add/edit/remove a grant, and confirm the human appears on the EE roster (`/Shifts/Admin/EarlyEntry`) as `Art: {project}`. (Manual verification — UI is prototype-grade, no browser test required.)
 
 - [ ] **Step 5: Commit**
 
@@ -1019,7 +1092,7 @@ git commit -m "feat(teams): early-entry management page (add/edit/remove)"
 - [ ] `dotnet build Humans.slnx -v quiet` — clean (no analyzer errors; HUM0025 confirms single-repository ownership of `team_early_entry_grants`).
 - [ ] `dotnet test Humans.slnx -v quiet` — all green.
 - [ ] EE migration-review gate passed (Task 3).
-- [ ] Manual: admin toggles flag → card link appears; coordinator adds grant → shows on `/Shifts/Admin/EarlyEntry` as `Art: {project}`; toggle flag off → roster drops the grant but the row survives a re-enable.
+- [ ] Manual: admin enables flag + grants a human the `EarlyEntryArtAdmin` role → that human sees the card link and adds a grant → shows on `/Shifts/Admin/EarlyEntry` as `Art: {project}`; toggle flag off → roster drops the grant but the row survives a re-enable. Confirm a plain team coordinator (no role) does **not** see the link and gets 403 on the EE URL.
 - [ ] GDPR: run a user-data export for a granted human → `TeamEarlyEntry` section present; anonymize that account → grants gone.
 - [ ] Use superpowers:requesting-code-review before opening the PR.
 

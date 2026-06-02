@@ -13,10 +13,11 @@ an installation. The system already aggregates EE across sections via
 not contribute**, so there is nowhere to record "this human gets EE for art
 project X on date Y."
 
-The fix: let an **admin** switch EE on for a team, give that team's
-**coordinators + admins** a place to grant EE (human + date + project name), and
-make `TeamService` answer the existing `IEarlyEntryProvider` fan-out so the rest
-of the EE machinery (roster, ticket stubs, caching) works unchanged.
+The fix: let an **admin** switch EE on for a team, give **specific humans
+individually granted the `EarlyEntryArtAdmin` role** (cantina-style) a place to
+grant EE (human + date + project name), and make `TeamService` answer the
+existing `IEarlyEntryProvider` fan-out so the rest of the EE machinery (roster,
+ticket stubs, caching) works unchanged.
 
 This is **load-bearing** for the data shape (a new PII-bearing table + GDPR
 obligations) and **prototype-grade** for the UI polish.
@@ -80,6 +81,21 @@ Therefore **project name is free text per grant**, not a reference.
    non-destructive is the safe default.
 4. **Editing:** add / remove / **edit in place** (change date and/or project
    name of an existing row without re-adding).
+5. **Who manages grants (cantina-style individual enablement):** management is
+   gated by a **dedicated, independent role `EarlyEntryArtAdmin`**, granted to
+   specific humans through the existing role-assignment flow (Profile → Admin →
+   Add Role), exactly like `CantinaAdmin`. The role is wired into **exactly one**
+   policy, `EarlyEntryArtAdminOrAdmin` (`RequireRole(EarlyEntryArtAdmin, Admin)`),
+   which gates only the EE management surface — it is never added to any other
+   role group/policy, so it confers no permission beyond EE management.
+   **Coordinator status no longer grants EE management** (replaces the earlier
+   coordinator+admin model). Granting the role is delegated like cantina's: Admin
+   always, plus Board/HumanAdmin via `BoardManageableRoles`.
+   - Turning EE **on/off** for a team stays **admin-only** (the Edit Team flag,
+     `TeamsAdminBoardOrAdmin`) — unchanged.
+   - Because an `EarlyEntryArtAdmin` need not be a team coordinator, the EE
+     management entry point must be reachable independent of the coordinator-only
+     Team Management card (see Components §2).
 
 ## Data model
 
@@ -123,16 +139,21 @@ the `teams.EarlyEntryEnabled` column. (Subject to the EF migration-review gate.)
   re-evaluated immediately. Toggling **on** likewise invalidates those users.
 
 ### 2. Management entry point
-- `Views/Team/Details.cshtml`: new **"Early Entry"** list-group link in the Team
-  Management card, rendered only when `EarlyEntryEnabled && CanCurrentUserManage`
-  (coordinator + admin see it once an admin has switched it on).
-- `TeamDetailViewModel` gains `EarlyEntryEnabled` (populated by the existing team
-  page service).
+- `Views/Team/Details.cshtml`: new **"Early Entry"** list-group link gated by a new
+  `TeamDetailViewModel.CanManageEarlyEntry` flag — true when
+  `EarlyEntryEnabled && (User is Admin || User holds EarlyEntryArtAdmin)`. Because
+  an `EarlyEntryArtAdmin` may **not** be a coordinator, the Team Management card
+  (which renders only on `CanCurrentUserManage`) must also render when
+  `CanManageEarlyEntry` so EE-admins can reach the link. The role/claims check is
+  computed in the Web layer (controller, from `User`), not in the page service.
+- `TeamDetailViewModel` gains `EarlyEntryEnabled` and `CanManageEarlyEntry`.
 
-### 3. Management page (coordinator + admin)
-New actions on `TeamAdminController`, each guarded by `ResolveTeamManagementAsync(slug)`
-**and** an `EarlyEntryEnabled` check (defense in depth — returns NotFound/Forbid
-if the flag is off):
+### 3. Management page (EarlyEntryArtAdmin or Admin)
+New actions on `TeamAdminController`, gated by
+`[Authorize(Policy = EarlyEntryArtAdminOrAdmin)]` (role `EarlyEntryArtAdmin` or
+`Admin`) — **not** `ResolveTeamManagementAsync`. Each action resolves the team by
+slug (read-only, e.g. `ITeamServiceRead.GetTeamBySlugAsync`) and the current user,
+then enforces an `EarlyEntryEnabled` check (defense in depth — `NotFound` if off):
 - `GET  /Teams/{slug}/EarlyEntry` — lists current grants (human name + photo via
   the existing profile lookup, date, project) + the add form.
 - `POST /Teams/{slug}/EarlyEntry/Add` — `<vc:human-search field-name="UserId"
@@ -144,6 +165,15 @@ Controllers parse/format only; all logic in `TeamService`. Each write →
 `ITeamRepository` mutation, then `IEarlyEntryInvalidator.InvalidateUser(userId)`,
 then an audit-log entry (mirrors the Camps grant/revoke pattern via the existing
 `IAuditLogService`).
+
+### 3a. Role + policy (cantina-clone)
+- `RoleNames.EarlyEntryArtAdmin` — new role constant; add to `BoardManageableRoles`
+  so Admin/Board/HumanAdmin can grant it via the existing Add-Role flow (it then
+  appears in `RoleChecks.GetAssignableRoles`). Claims are populated by the existing
+  `RoleAssignmentClaimsTransformation` — no new infra.
+- `PolicyNames.EarlyEntryArtAdminOrAdmin` + registration in
+  `AuthorizationPolicyExtensions` as `RequireRole(EarlyEntryArtAdmin, Admin)`.
+  **Used only** to gate the four EE management actions; not referenced elsewhere.
 
 ### 4. Provider wiring
 - `TeamService : IEarlyEntryProvider`:
@@ -207,7 +237,7 @@ then an audit-log entry (mirrors the Camps grant/revoke pattern via the existing
 ## Out of scope (YAGNI)
 
 - Capacity limits / EE slot counting for teams (Shifts has its own; Teams grants
-  are explicit and admin/coordinator-curated).
+  are explicit and curated by EarlyEntryArtAdmins/admins).
 - Date validation against event gate/build windows (free date entry; revisit if
   coordinators ask for guardrails).
 - A durable art-project entity or per-human project roster (none exists; not
