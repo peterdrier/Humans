@@ -115,27 +115,6 @@ public sealed class TeamServiceEarlyEntryTests
         row.ProjectName.Should().Be("Lanterns");
     }
 
-    [HumansFact]
-    public async Task GetAllEarlyEntryGrantsAsync_ProjectsGrantsFromEnabledTeams_InclTeamId()
-    {
-        var teamA = Guid.NewGuid();
-        var teamB = Guid.NewGuid();
-        var grantA = Grant(teamA, Guid.NewGuid(), "Lanterns", new LocalDate(2026, 7, 4));
-        var grantB = Grant(teamB, Guid.NewGuid(), "Flaming Lotus", new LocalDate(2026, 7, 5));
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<TeamEarlyEntryGrant> { grantA, grantB });
-
-        var rows = await _service.GetAllEarlyEntryGrantsAsync();
-
-        rows.Should().HaveCount(2);
-        rows.Should().ContainSingle(r =>
-            r.Id == grantA.Id && r.TeamId == teamA && r.UserId == grantA.UserId &&
-            r.EntryDate == new LocalDate(2026, 7, 4) && r.ProjectName == "Lanterns");
-        rows.Should().ContainSingle(r =>
-            r.Id == grantB.Id && r.TeamId == teamB && r.UserId == grantB.UserId &&
-            r.EntryDate == new LocalDate(2026, 7, 5) && r.ProjectName == "Flaming Lotus");
-    }
-
     // ==========================================================================
     // AddEarlyEntryGrantAsync
     // ==========================================================================

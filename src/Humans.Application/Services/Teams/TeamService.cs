@@ -1875,14 +1875,6 @@ public sealed class TeamService(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetAllEarlyEntryGrantsAsync(CancellationToken ct = default)
-    {
-        var grants = await repo.GetEarlyEntryGrantsForEnabledTeamsAsync(ct);
-        return grants
-            .Select(g => new TeamEarlyEntryGrantInfo(g.Id, g.TeamId, g.UserId, g.EntryDate, g.ProjectName))
-            .ToList();
-    }
-
     public async Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
     {
         var team = await repo.GetByIdAsync(teamId, ct)
