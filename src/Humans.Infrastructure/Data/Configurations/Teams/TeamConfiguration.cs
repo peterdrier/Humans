@@ -79,6 +79,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         builder.Property(t => t.IsPromotedToDirectory)
             .IsRequired();
 
+        builder.Property(t => t.EarlyEntryEnabled).HasDefaultValue(false);
+
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
 

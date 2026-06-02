@@ -37,6 +37,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<TeamJoinRequestStateHistory> TeamJoinRequestStateHistories => Set<TeamJoinRequestStateHistory>();
     public DbSet<TeamRoleDefinition> TeamRoleDefinitions => Set<TeamRoleDefinition>();
     public DbSet<TeamRoleAssignment> TeamRoleAssignments => Set<TeamRoleAssignment>();
+    public DbSet<TeamEarlyEntryGrant> TeamEarlyEntryGrants => Set<TeamEarlyEntryGrant>();
     public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
     public DbSet<GoogleSyncOutboxEvent> GoogleSyncOutboxEvents => Set<GoogleSyncOutboxEvent>();
     public DbSet<ContactField> ContactFields => Set<ContactField>();
