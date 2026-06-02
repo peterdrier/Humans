@@ -220,6 +220,7 @@ public record TeamActiveMemberSnapshot(
 /// </summary>
 public sealed record TeamEarlyEntryGrantInfo(
     Guid Id,
+    Guid TeamId,
     Guid UserId,
     LocalDate EntryDate,
     string ProjectName);
@@ -694,6 +695,13 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     /// responsibility (rendering layer).
     /// </summary>
     Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the early-entry grants across every early-entry-enabled team
+    /// (global management view) as persistence-free read models. Display
+    /// ordering is the caller's responsibility (rendering layer).
+    /// </summary>
+    Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetAllEarlyEntryGrantsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Grants early entry to a user for a team. Throws if the team does not have

@@ -1,0 +1,118 @@
+@model Humans.Web.Models.EarlyEntryConsoleViewModel
+@{
+    ViewData["Title"] = "Art Early Entry";
+}
+
+<h1>Art Early Entry</h1>
+<p>Early entry across all teams' art projects. Each grant is one human, one date, one project.</p>
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+@* All grants — each row carries an inline edit form + a remove form, scoped by hidden TeamId. *@
+<div class="card mb-4">
+    <div class="card-header">Grants</div>
+    <div class="card-body p-0">
+        @if (Model.Grants.Count == 0)
+        {
+            <p class="text-muted m-3 mb-0">No early-entry grants yet.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Human</th>
+                        <th>Entry date</th>
+                        <th>Art project</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var grant in Model.Grants)
+                    {
+                        <tr>
+                            <td>@grant.TeamName</td>
+                            <td>@grant.HumanName</td>
+                            <td colspan="2">
+                                <form asp-action="Edit" method="post" class="row g-2 align-items-center">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="TeamId" value="@grant.TeamId" />
+                                    <input type="hidden" name="GrantId" value="@grant.GrantId" />
+                                    <div class="col-auto">
+                                        <input type="date" name="EntryDate" class="form-control form-control-sm"
+                                               value="@grant.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" required />
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" name="ProjectName" class="form-control form-control-sm"
+                                               value="@grant.ProjectName" maxlength="256" required
+                                               aria-label="Art project" />
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                    </div>
+                                </form>
+                            </td>
+                            <td class="text-end">
+                                <form asp-action="Remove" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="teamId" value="@grant.TeamId" />
+                                    <input type="hidden" name="grantId" value="@grant.GrantId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            data-confirm="Remove this early-entry grant?">
+                                        Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* Add card — Team dropdown + <vc:human-search> picker posting into the Add action. *@
+<div class="card mb-4 position-relative" style="z-index: 2;">
+    <div class="card-header">Grant early entry</div>
+    <div class="card-body">
+        @if (Model.Teams.Count == 0)
+        {
+            <p class="text-muted mb-0">No teams have early entry enabled. Enable it on a team first.</p>
+        }
+        else
+        {
+            <form asp-action="Add" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-3">
+                    <label class="form-label" for="ee-add-team">Team</label>
+                    <select id="ee-add-team" name="TeamId" class="form-select" required>
+                        <option value="">Choose a team…</option>
+                        @foreach (var team in Model.Teams)
+                        {
+                            <option value="@team.Id">@team.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Human</label>
+                    <vc:human-search field-name="UserId"
+                                     instance-key="art-ee-add"
+                                     placeholder="Search humans by name…"
+                                     scope="Name" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="ee-add-date">Entry date</label>
+                    <input type="date" id="ee-add-date" name="EntryDate" class="form-control" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="ee-add-project">Art project</label>
+                    <input type="text" id="ee-add-project" name="ProjectName" class="form-control" maxlength="256" required />
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-success">Grant</button>
+                </div>
+            </form>
+        }
+    </div>
+</div>

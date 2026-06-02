@@ -463,6 +463,9 @@ public sealed class CachingTeamService(
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
         => WithInner(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
 
+    public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetAllEarlyEntryGrantsAsync(CancellationToken ct = default)
+        => WithInner(inner => inner.GetAllEarlyEntryGrantsAsync(ct));
+
     public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
         => WithInner(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
 
