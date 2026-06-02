@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
@@ -1006,6 +1007,111 @@ public class TeamAdminController(
 
         var combined = matchingTeamMembers.Concat(nonMembers).ToList();
         return Json(combined);
+    }
+
+    // ==========================================================================
+    // Early-entry grants. Gated by the EarlyEntryArtAdmin role policy (NOT
+    // coordinator-of-team like the other actions): the management surface is open
+    // to a dedicated role + Admins, resolved read-only by slug.
+    // ==========================================================================
+
+    [HttpGet("EarlyEntry")]
+    [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
+    public async Task<IActionResult> EarlyEntry(string slug, CancellationToken ct)
+    {
+        var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
+        if (error is not null) return error;
+
+        var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team!.Id, ct);
+
+        var infos = await _userService.GetUserInfosAsync(
+            grants.Select(g => g.UserId).Distinct().ToList(), ct);
+
+        var vm = new TeamEarlyEntryPageViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            Slug = team.Slug,
+            Grants = grants
+                .OrderBy(g => g.ProjectName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(g => g.EntryDate)
+                .Select(g => new TeamEarlyEntryRowViewModel
+                {
+                    GrantId = g.Id,
+                    UserId = g.UserId,
+                    HumanName = infos.GetValueOrDefault(g.UserId)?.BurnerName ?? "",
+                    EntryDate = g.EntryDate,
+                    ProjectName = g.ProjectName,
+                })
+                .ToList(),
+        };
+        return View(vm);
+    }
+
+    [HttpPost("EarlyEntry/Add")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
+    public async Task<IActionResult> AddEarlyEntry(string slug, AddTeamEarlyEntryInput input, CancellationToken ct)
+    {
+        var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
+        if (error is not null) return error;
+
+        var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
+        if (!ModelState.IsValid || !parsed.Success)
+        {
+            if (!parsed.Success)
+                ModelState.AddModelError(nameof(input.EntryDate), localizer["TeamAdmin_EarlyEntry_InvalidDate"].Value);
+            return await EarlyEntry(slug, ct);
+        }
+
+        await _teamService.AddEarlyEntryGrantAsync(
+            team!.Id, input.UserId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
+        SetSuccess(localizer["TeamAdmin_EarlyEntry_Granted"].Value);
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpPost("EarlyEntry/Edit")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
+    public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryInput input, CancellationToken ct)
+    {
+        var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
+        if (error is not null) return error;
+
+        var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
+        if (!ModelState.IsValid || !parsed.Success)
+        {
+            if (!parsed.Success)
+                ModelState.AddModelError(nameof(input.EntryDate), localizer["TeamAdmin_EarlyEntry_InvalidDate"].Value);
+            return await EarlyEntry(slug, ct);
+        }
+
+        await _teamService.EditEarlyEntryGrantAsync(
+            input.GrantId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
+        SetSuccess(localizer["TeamAdmin_EarlyEntry_Updated"].Value);
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpPost("EarlyEntry/Remove")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
+    public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, CancellationToken ct)
+    {
+        var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
+        if (error is not null) return error;
+
+        await _teamService.RemoveEarlyEntryGrantAsync(grantId, GetCurrentUserId()!.Value, ct);
+        SetSuccess(localizer["TeamAdmin_EarlyEntry_Revoked"].Value);
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    // Read-only team resolve + EE-enabled gate. Returns a non-null Error result the
+    // caller returns directly; otherwise a non-null Team.
+    private async Task<(IActionResult? Error, TeamInfo? Team)> ResolveEarlyEntryTeamAsync(string slug)
+    {
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team is null || !team.EarlyEntryEnabled) return (NotFound(), null);
+        return (null, team);
     }
 
     private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
