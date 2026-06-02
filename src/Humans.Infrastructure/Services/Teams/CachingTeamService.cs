@@ -445,15 +445,34 @@ public sealed class CachingTeamService(
         bool? isHidden = null,
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
+        bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default)
     {
         var result = await WithInner(inner => inner.UpdateTeamAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
-            isPromotedToDirectory, cancellationToken));
+            isPromotedToDirectory, earlyEntryEnabled, cancellationToken));
         InvalidateTeamsCache();
         return result;
     }
+
+    // Early-entry grants: no TeamInfo-cache impact; the inner service owns EE
+    // invalidation. Pure pass-throughs.
+
+    public Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
+        => WithInner(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
+
+    public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+        => WithInner(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
+
+    public Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+        => WithInner(inner => inner.EditEarlyEntryGrantAsync(grantId, entryDate, projectName, actorUserId, ct));
+
+    public Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default)
+        => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(grantId, actorUserId, ct));
+
+    public Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+        => WithInner(inner => inner.DeleteEarlyEntryGrantsForUserAsync(userId, ct));
 
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
     {
@@ -1049,7 +1068,8 @@ public sealed class CachingTeamService(
         CallsToAction: team.CallsToAction,
         PageContentUpdatedAt: team.PageContentUpdatedAt,
         PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0);
+        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
+        EarlyEntryEnabled: team.EarlyEntryEnabled);
 
     private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
         new(
