@@ -180,4 +180,7 @@ public enum AuditAction
     // (Profile build strip).
     VolunteerAvailabilitySet,
     VolunteerAvailabilityCleared,
+    EarlyEntryGranted,
+    EarlyEntryUpdated,
+    EarlyEntryRevoked,
 }
