@@ -94,6 +94,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.CantinaAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.CantinaAdmin, RoleNames.Admin));
 
+            options.AddPolicy(PolicyNames.EarlyEntryArtAdminOrAdmin, policy =>
+                policy.RequireRole(RoleNames.EarlyEntryArtAdmin, RoleNames.Admin));
+
             options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
                 policy.RequireRole(RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin));
 
