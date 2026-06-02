@@ -411,7 +411,8 @@ namespace Humans.Application.Services.Teams;
 
 /// <summary>
 /// Pure projection from Teams' early-entry grants to EE grants. Per-grant date;
-/// source label is always "Art: {ProjectName}". Mirrors CampEarlyEntryProjection.
+/// source label is always "Art: {ProjectName}". Kept as a small pure, unit-tested
+/// helper (Camps/Shifts now inline their equivalent projection in the provider).
 /// </summary>
 internal static class TeamEarlyEntryProjection
 {
@@ -736,13 +737,15 @@ git commit -m "feat(teams): CachingTeamService pass-throughs for early entry"
 **Files:**
 - Modify: `src/Humans.Web/Extensions/Sections/TeamsSectionExtensions.cs`
 
-- [ ] **Step 1:** After the inner-service registrations (next to the `IUserDataContributor` line), add:
+- [ ] **Step 1:** After the inner-service registrations (next to the `IUserDataContributor` line at ~line 28), add:
 
 ```csharp
 services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<TeamsTeamService>());
 ```
 
 Add `using Humans.Application.Interfaces.EarlyEntry;` (the `TeamsTeamService` alias already exists at the top of the file).
+
+> **Why the scoped inner, not the singleton `CachingTeamService`:** this mirrors **Shifts** (`VolunteerTrackingExportService` is registered as a scoped `IEarlyEntryProvider`). Camps instead registers its caching decorator (`CachingCampService`) as the provider — but only because its EE read is served from the cached `CampInfo`. Teams' grants are **not** in the `TeamInfo` cache, so there's no caching benefit; the inner scoped `TeamService` reading the repo directly is correct, and `CachingTeamService` does **not** implement `IEarlyEntryProvider`. The EE orchestrator (`EarlyEntryService`) is keyed-scoped, so it resolves a scoped provider fine (same as Shifts today).
 
 - [ ] **Step 2: Build** — `dotnet build Humans.slnx -v quiet`. Expected: clean.
 
