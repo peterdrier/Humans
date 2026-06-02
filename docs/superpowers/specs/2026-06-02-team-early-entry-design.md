@@ -96,7 +96,7 @@ human's EE grant for one art project.
 | `ProjectName` | `string` (≤256) | free text; surfaces as `"Art: {ProjectName}"` |
 | `CreatedAt` | `Instant` | audit |
 | `CreatedByUserId` | `Guid` | audit |
-| `UpdatedAt` | `Instant` | audit (edit-in-place) |
+| `UpdatedAt` | `Instant?` | audit; null until first edit-in-place, then set |
 
 - **No** unique constraint on `(TeamId, UserId)`: the same human may legitimately
   hold EE for two different art projects on the same team (two rows → two
@@ -194,7 +194,9 @@ then an audit-log entry (mirrors the Camps grant/revoke pattern via the existing
 - **Pure-logic (mocked repo):** `TeamEarlyEntryProjection` mapping (label format,
   per-grant date); `GetEarlyEntriesAsync` returns grants only for EE-enabled
   teams and empty when none enabled; service add/edit/remove call the repo +
-  `InvalidateUser` + audit; merge reassigns grants.
+  `InvalidateUser` + audit; merge reassigns grants; **right-to-erasure deletes
+  the human's grants and GDPR export includes them** (Teams' `IUserDataContributor`
+  path — required deliverable, not discovery work).
 - **Architecture test:** `team_early_entry_grants` is referenced only by
   `TeamRepository` (table-ownership invariant).
 - **Integration (real Postgres):** repo query for enabled-teams grants + cascade
