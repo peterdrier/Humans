@@ -538,6 +538,20 @@ public interface ITeamRepository : IRepository
     Task AddOutboxEventAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default);
 
     // ==========================================================================
+    // Early-entry grants (team_early_entry_grants)
+    // ==========================================================================
+
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
+    Task<TeamEarlyEntryGrant?> FindEarlyEntryGrantForMutationAsync(Guid grantId, CancellationToken ct = default);
+    Task AddEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
+    Task UpdateEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
+    Task RemoveEarlyEntryGrantAsync(Guid grantId, CancellationToken ct = default);
+    Task ReassignEarlyEntryGrantsAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+    Task RemoveEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    // ==========================================================================
     // GDPR export contribution
     // ==========================================================================
 

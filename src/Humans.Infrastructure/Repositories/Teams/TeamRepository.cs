@@ -1161,6 +1161,78 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
     }
 
     // ==========================================================================
+    // Early-entry grants
+    // ==========================================================================
+
+    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.TeamEarlyEntryGrants
+            .AsNoTracking()
+            .Where(g => g.Team.EarlyEntryEnabled)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.TeamEarlyEntryGrants
+            .AsNoTracking()
+            .Where(g => g.TeamId == teamId)
+            .OrderBy(g => g.ProjectName).ThenBy(g => g.EntryDate)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.TeamEarlyEntryGrants
+            .AsNoTracking()
+            .Where(g => g.UserId == userId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<TeamEarlyEntryGrant?> FindEarlyEntryGrantForMutationAsync(Guid grantId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.TeamEarlyEntryGrants.FirstOrDefaultAsync(g => g.Id == grantId, ct);
+    }
+
+    public async Task AddEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.TeamEarlyEntryGrants.Add(grant);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.TeamEarlyEntryGrants.Update(grant);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveEarlyEntryGrantAsync(Guid grantId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await db.TeamEarlyEntryGrants.Where(g => g.Id == grantId).ExecuteDeleteAsync(ct);
+    }
+
+    public async Task ReassignEarlyEntryGrantsAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await db.TeamEarlyEntryGrants
+            .Where(g => g.UserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(g => g.UserId, targetUserId), ct);
+    }
+
+    public async Task RemoveEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await db.TeamEarlyEntryGrants.Where(g => g.UserId == userId).ExecuteDeleteAsync(ct);
+    }
+
+    // ==========================================================================
     // GDPR export contribution
     // ==========================================================================
 
