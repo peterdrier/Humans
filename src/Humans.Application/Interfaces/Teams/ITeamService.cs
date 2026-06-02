@@ -38,7 +38,8 @@ public record TeamInfo(
     IReadOnlyList<CallToAction>? CallsToAction = null,
     Instant? PageContentUpdatedAt = null,
     Guid? PageContentUpdatedByUserId = null,
-    int PendingRequestCount = 0)
+    int PendingRequestCount = 0,
+    bool EarlyEntryEnabled = false)
 {
     /// <summary>
     /// Full Google Group email address, or null if no prefix is set. Mirrors
@@ -284,6 +285,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         bool? isHidden = null,
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
+        bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -667,6 +669,31 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         IReadOnlyCollection<Guid> userIdsToRemove,
         Instant now,
         CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // Early-Entry Grants (Teams-internal; called by TeamAdminController).
+    // Not exposed on ITeamServiceRead — cross-section reads go through
+    // IEarlyEntryProvider.
+    // ==========================================================================
+
+    /// <summary>Gets the early-entry grants for a single team (management view).</summary>
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Grants early entry to a user for a team. Throws if the team does not have
+    /// <see cref="Team.EarlyEntryEnabled"/> set. Records an audit entry and evicts
+    /// the user's EE cache.
+    /// </summary>
+    Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Updates the entry date and project label of an existing grant.</summary>
+    Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Revokes an early-entry grant. Idempotent (no-op if already gone).</summary>
+    Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Deletes every early-entry grant belonging to a user (right-to-erasure).</summary>
+    Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 }
 
 public sealed record TeamRoleDefinitionSnapshot(

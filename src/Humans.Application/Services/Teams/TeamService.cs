@@ -7,6 +7,7 @@ using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -30,9 +31,10 @@ public sealed class TeamService(
     INotificationMeterCacheInvalidator notificationMeterInvalidator,
     IShiftAuthorizationInvalidator shiftAuthInvalidator,
     IAdminAuthorizationService adminAuthorization,
+    IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<TeamService> logger) : ITeamService, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge
+    ILogger<TeamService> logger) : ITeamService, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge, IEarlyEntryProvider
 {
     // Lazy resolution — UserService injects ITeamService, closing the cycle.
     private ITeamResourceService TeamResourceService
@@ -383,6 +385,7 @@ public sealed class TeamService(
         bool? isHidden = null,
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
+        bool? earlyEntryEnabled = null,
         CancellationToken cancellationToken = default)
     {
         var team = await repo.FindForMutationAsync(teamId, cancellationToken)
@@ -462,6 +465,11 @@ public sealed class TeamService(
             team.IsSensitive = isSensitive.Value;
         if (isPromotedToDirectory.HasValue)
             team.IsPromotedToDirectory = isPromotedToDirectory.Value;
+        if (earlyEntryEnabled is { } eeFlag && eeFlag != team.EarlyEntryEnabled)
+        {
+            team.EarlyEntryEnabled = eeFlag;
+            earlyEntryInvalidator.InvalidateAll(); // flag flip changes who contributes; cheap at ~500 users
+        }
         if (team.IsSystemTeam || parentTeamId.HasValue)
         {
             team.IsPublicPage = false;
@@ -1794,14 +1802,21 @@ public sealed class TeamService(
 
         // TeamJoinRequest fold.
         await repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
+
+        // Early-entry grants fold.
+        await repo.ReassignEarlyEntryGrantsAsync(sourceUserId, targetUserId, cancellationToken);
+        earlyEntryInvalidator.InvalidateUser(sourceUserId);
+        earlyEntryInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var memberships = await repo.GetAllMembershipsForUserAsync(userId, ct);
         var joinRequests = await repo.GetAllJoinRequestsForUserAsync(userId, ct);
+        var eeGrants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
         var teamIds = memberships.Select(tm => tm.TeamId)
             .Concat(joinRequests.Select(tjr => tjr.TeamId))
+            .Concat(eeGrants.Select(g => g.TeamId))
             .Distinct()
             .ToList();
         var teamsById = await repo.GetByIdsWithParentsAsync(teamIds, ct);
@@ -1831,7 +1846,81 @@ public sealed class TeamService(
             ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
         }).ToList());
 
-        return [membershipSlice, joinRequestSlice];
+        var earlyEntrySlice = new UserDataSlice(GdprExportSections.TeamEarlyEntry, eeGrants.Select(g => new
+        {
+            TeamName = GetTeamName(g.TeamId),
+            g.ProjectName,
+            EntryDate = g.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            GrantedAt = g.CreatedAt.ToInvariantInstantString(),
+        }).ToList());
+
+        return [membershipSlice, joinRequestSlice, earlyEntrySlice];
+    }
+
+    // ==========================================================================
+    // Early-Entry Grants
+    // ==========================================================================
+
+    public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
+    {
+        var grants = await repo.GetEarlyEntryGrantsForEnabledTeamsAsync(ct);
+        return TeamEarlyEntryProjection.Project(grants);
+    }
+
+    public Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
+        => repo.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
+
+    public async Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    {
+        var team = await repo.GetByIdAsync(teamId, ct)
+            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        if (!team.EarlyEntryEnabled)
+            throw new InvalidOperationException($"Early entry is not enabled for team {teamId}.");
+
+        var grant = new TeamEarlyEntryGrant
+        {
+            TeamId = teamId,
+            UserId = userId,
+            EntryDate = entryDate,
+            ProjectName = projectName.Trim(),
+            CreatedAt = clock.GetCurrentInstant(),
+            CreatedByUserId = actorUserId,
+        };
+        await repo.AddEarlyEntryGrantAsync(grant, ct);
+        earlyEntryInvalidator.InvalidateUser(userId);
+        await auditLogService.LogAsync(AuditAction.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), grant.Id,
+            $"EE granted to {userId} on {entryDate} for \"{grant.ProjectName}\" (team {teamId})", actorUserId);
+    }
+
+    public async Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    {
+        var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct)
+            ?? throw new InvalidOperationException($"EE grant {grantId} not found.");
+        grant.EntryDate = entryDate;
+        grant.ProjectName = projectName.Trim();
+        grant.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateEarlyEntryGrantAsync(grant, ct);
+        earlyEntryInvalidator.InvalidateUser(grant.UserId);
+        await auditLogService.LogAsync(AuditAction.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
+            $"EE updated for {grant.UserId}: {entryDate}, \"{grant.ProjectName}\"", actorUserId);
+    }
+
+    public async Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
+        if (grant is null) return; // idempotent
+        await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
+        earlyEntryInvalidator.InvalidateUser(grant.UserId);
+        await auditLogService.LogAsync(AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
+            $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);
+    }
+
+    public async Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var grants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
+        if (grants.Count == 0) return;
+        await repo.RemoveEarlyEntryGrantsForUserAsync(userId, ct);
+        earlyEntryInvalidator.InvalidateUser(userId);
     }
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default)
@@ -1908,7 +1997,8 @@ public sealed class TeamService(
         CallsToAction: team.CallsToAction,
         PageContentUpdatedAt: team.PageContentUpdatedAt,
         PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0);
+        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
+        EarlyEntryEnabled: team.EarlyEntryEnabled);
 
     private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
         new(

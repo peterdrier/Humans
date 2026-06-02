@@ -70,6 +70,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             Substitute.For<INotificationMeterCacheInvalidator>(),
             ShiftAuthInvalidator,
             AdminAuthorization,
+            EarlyEntryInvalidator,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
