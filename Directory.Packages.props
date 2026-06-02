@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.23.0" />
+    <PackageVersion Include="Anthropic" Version="12.24.1" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
