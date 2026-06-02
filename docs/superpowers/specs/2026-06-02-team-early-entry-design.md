@@ -4,6 +4,19 @@
 **Date:** 2026-06-02
 **Author:** Peter + Claude (design dialogue)
 
+## As-built amendments (post-design)
+
+The design below describes an earlier per-team shape. The shipped feature differs as follows (original text preserved below as history):
+
+- **Authorization:** management is gated by a dedicated, individually-granted role **`EarlyEntryArtAdmin`** (cantina-style — granted via the existing Profile → Add Role flow), used by exactly one policy `EarlyEntryArtAdminOrAdmin`. NOT coordinator-based. The role is registered in `RoleNames.All`, `RoleNames.BoardManageableRoles`, **and** the `AnyAdminRole` policy (the admin-shell entry gate — required so holders can reach the admin shell; see memory atom `narrow-admin-role-needs-anyadminrole`).
+- **Single management surface:** a global, role-gated **"Art Early Entry" console** in the admin shell at route **`/Teams/Admin/EarlyEntry`** (`EarlyEntryAdminController`). It auto-targets the single team with `EarlyEntryEnabled == true` (no team picker; "always Creativity" in practice). The add form is **human + date + art project**; the grants list has inline edit that **auto-saves on change** (date pick / project blur) with no Save button.
+- **Removed:** the per-team management page (`TeamAdmin/EarlyEntry`) and the Team Management card link built mid-development were removed as redundant once the global console existed.
+- **Read model:** the service returns a `TeamEarlyEntryGrantInfo` projection (not the EF entity), per the service-entity-boundary ratchet.
+- **Admin flag:** the per-team `Team.EarlyEntryEnabled` checkbox on Edit Team stays admin-only and is **server-enforced** (non-Admin editors can't toggle it; the controller passes `null`).
+- **Migration:** sentinel-safe bool (`IsRequired()`, not `HasDefaultValue(false)`).
+- **GDPR export + right-to-erasure + user-merge** are covered as designed.
+- **Known follow-up:** the same admin-only-flag-suppression footgun affects `IsSensitive` (pre-existing) — tracked as **nobodies-collective/Humans#824**. The admin dashboard "Recent activity" panel was gated to `AdminOnly` as part of the security review.
+
 ## Problem
 
 The Creativity department needs to bring people in for **early entry** (EE) tied
