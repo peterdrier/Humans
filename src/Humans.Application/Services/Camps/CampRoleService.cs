@@ -633,6 +633,18 @@ public sealed class CampRoleService(
                 g => g.Key,
                 g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
 
+        // Per-camp lookup used for the lead-fallback: which camps have a given
+        // (slug, year) filled, and which leads exist per (camp, year).
+        var assignmentsByCampSlugYear = assignments
+            .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
+            .GroupBy(a => (CampId: a.CampSeason.CampId, Slug: a.Definition.Slug, Year: a.CampSeason.Year))
+            .ToDictionary(g => g.Key, g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
+
+        var leadsByCampAndYear = assignments
+            .Where(a => a.Definition.SpecialRole == CampSpecialRole.Lead)
+            .GroupBy(a => (CampId: a.CampSeason.CampId, Year: a.CampSeason.Year))
+            .ToDictionary(g => g.Key, g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
+
         var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
         foreach (var def in activeDefs)
         {
@@ -644,10 +656,24 @@ public sealed class CampRoleService(
                 {
                     continue;
                 }
-                var userIds = assignmentsBySlugAndYear.TryGetValue((def.Slug, year), out var ids)
+                var directIds = assignmentsBySlugAndYear.TryGetValue((def.Slug, year), out var ids)
                     ? ids
                     : [];
-                result[key] = userIds;
+
+                // For non-Lead roles: any camp that has a lead but no direct
+                // assignee for this role contributes its lead(s) as a stand-in.
+                Guid[] fallbackIds = [];
+                if (def.SpecialRole != CampSpecialRole.Lead)
+                {
+                    fallbackIds = leadsByCampAndYear.Keys
+                        .Where(k => k.Year == year
+                            && !assignmentsByCampSlugYear.ContainsKey((k.CampId, def.Slug, year)))
+                        .SelectMany(k => leadsByCampAndYear[k])
+                        .Distinct()
+                        .ToArray();
+                }
+
+                result[key] = directIds.Concat(fallbackIds).Distinct().ToArray();
             }
         }
 
