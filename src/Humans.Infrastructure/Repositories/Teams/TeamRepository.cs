@@ -1195,7 +1195,7 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<TeamEarlyEntryGrant?> FindEarlyEntryGrantForMutationAsync(Guid grantId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TeamEarlyEntryGrants.FirstOrDefaultAsync(g => g.Id == grantId, ct);
+        return await db.TeamEarlyEntryGrants.FindAsync([grantId], ct);
     }
 
     public async Task AddEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default)

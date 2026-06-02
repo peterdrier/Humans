@@ -541,14 +541,31 @@ public interface ITeamRepository : IRepository
     // Early-entry grants (team_early_entry_grants)
     // ==========================================================================
 
+    /// <summary>All EE grants belonging to teams with EarlyEntryEnabled (JOIN-filtered). Detached. The IEarlyEntryProvider feed.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default);
+
+    /// <summary>A team's EE grants, ordered by project then date. Detached. For the management page.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>A user's EE grants across all teams. Detached. For GDPR export + erasure + merge lookups.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Load one grant by id, tracked, for edit/remove.</summary>
     Task<TeamEarlyEntryGrant?> FindEarlyEntryGrantForMutationAsync(Guid grantId, CancellationToken ct = default);
+
+    /// <summary>Insert a new EE grant.</summary>
     Task AddEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
+
+    /// <summary>Persist edits to an existing grant (full-row update).</summary>
     Task UpdateEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
+
+    /// <summary>Delete one grant by id (bulk ExecuteDelete).</summary>
     Task RemoveEarlyEntryGrantAsync(Guid grantId, CancellationToken ct = default);
+
+    /// <summary>Bulk-reassign a user's grants to a target user (merge); leaves UpdatedAt untouched.</summary>
     Task ReassignEarlyEntryGrantsAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>Delete all of a user's grants (GDPR erasure; bulk ExecuteDelete).</summary>
     Task RemoveEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
