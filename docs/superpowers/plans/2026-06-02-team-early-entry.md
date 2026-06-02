@@ -43,7 +43,8 @@
 - `src/Humans.Web/Views/Team/Details.cshtml` — management-card link.
 - `src/Humans.Web/Controllers/TeamController.cs` — edit GET/POST flag wiring + `CanManageEarlyEntry` on the detail VM.
 - `src/Humans.Web/Controllers/TeamAdminController.cs` — management actions (role-gated).
-- `src/Humans.Application/Services/Teams/TeamsTeamPageService.cs` (or wherever the detail VM is built) — populate `EarlyEntryEnabled` from `TeamInfo`.
+- `src/Humans.Application/Interfaces/Teams/ITeamPageService.cs` — add `EarlyEntryEnabled` to `TeamPageTeamSummary`.
+- `src/Humans.Application/Services/Teams/TeamPageSummaryMapper.cs` — carry `EarlyEntryEnabled` through `Map`.
 - `src/Humans.Domain/Enums/AuditAction.cs` — three new audit actions.
 - `src/Humans.Domain/Constants/RoleNames.cs` — `EarlyEntryArtAdmin` role + add to `BoardManageableRoles`.
 - `src/Humans.Web/Authorization/PolicyNames.cs` — `EarlyEntryArtAdminOrAdmin`.
@@ -798,7 +799,9 @@ This mirrors how `CantinaAdmin` is wired: a dedicated, **independent** role gran
 public const string EarlyEntryArtAdmin = "EarlyEntryArtAdmin";
 ```
 
-- [ ] **Step 2:** Add `EarlyEntryArtAdmin` to the `BoardManageableRoles` set (the same set that contains `CantinaAdmin`, ~line 131) so Admin/Board/HumanAdmin can grant it via the existing Add-Role flow and it appears in `RoleChecks.GetAssignableRoles`. Do **not** add it to any other grouping (e.g. team-admin role bundles).
+- [ ] **Step 1b: Add it to `RoleNames.All`** (the list ~lines 97–113). This is **test-enforced**: `RoleNamesTests.All_ContainsEveryDefinedRoleConstant` (tests/Humans.Domain.Tests/Constants/RoleNamesTests.cs) reflects over every `public const string` and asserts `All` contains it — omitting it fails the build. Add `EarlyEntryArtAdmin` to the `All` collection.
+
+- [ ] **Step 2:** Add `EarlyEntryArtAdmin` to the `BoardManageableRoles` set (the same set that contains `CantinaAdmin`, ~line 131) so Admin/Board/HumanAdmin can grant it via the existing Add-Role flow and it appears in `RoleChecks.GetAssignableRoles`. Do **not** add it to any other grouping (e.g. team-admin role bundles or `AnyAdminRole`) — it must confer nothing beyond EE management.
 
 - [ ] **Step 3:** In `PolicyNames.cs`, add:
 
@@ -855,6 +858,10 @@ The EE link must be reachable by an `EarlyEntryArtAdmin` who is **not** a team c
 
 **Files:**
 - Modify: `src/Humans.Web/Models/TeamViewModels.cs` (`TeamDetailViewModel`)
+- Modify: `src/Humans.Application/Interfaces/Teams/ITeamPageService.cs` (`TeamPageTeamSummary` record)
+- Modify: `src/Humans.Application/Services/Teams/TeamPageSummaryMapper.cs` (`Map`)
+- Modify: `src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs` (`MapTeamSummary` call site)
+- Modify: `src/Humans.Application/Services/Teams/TeamService.cs` (reference-impl `MapTeamSummary` call site)
 - Modify: `src/Humans.Web/Controllers/TeamController.cs` (`Details` action — compute the role-based flag from `User`)
 - Modify: `src/Humans.Web/Views/Team/Details.cshtml`
 
@@ -865,14 +872,20 @@ public bool EarlyEntryEnabled { get; set; }
 public bool CanManageEarlyEntry { get; set; }
 ```
 
-- [ ] **Step 2:** Populate `EarlyEntryEnabled` from the `TeamInfo` projection (the field added to `TeamInfo` in Task 8, Step 1b and populated in Task 10, Step 0) wherever the detail VM is built. Then, in `TeamController.Details` (the Web layer, which has `User`), compute the role-based flag after the VM is built:
+- [ ] **Step 2: Plumb `EarlyEntryEnabled` to the detail page.** ⚠️ `TeamController.Details` builds its VM from a **`TeamPageTeamSummary`** (via `TeamPageService.GetTeamPageDetailAsync` → `GetTeamDetailAsync` → `MapTeamSummary` → `TeamPageSummaryMapper.Map`), **not** directly from `TeamInfo`. So route the flag through that chain:
+  1. Add `bool EarlyEntryEnabled` to the `TeamPageTeamSummary` record (`ITeamPageService.cs`).
+  2. Add an `earlyEntryEnabled` parameter to `TeamPageSummaryMapper.Map(...)` and set it on the constructed record.
+  3. Pass `team.EarlyEntryEnabled` (read off the `TeamInfo` — which now carries it from Task 8 Step 1b / Task 10 Step 0) at **both** `Map` call sites: `CachingTeamService.MapTeamSummary` and the `TeamService` reference-impl `MapTeamSummary`.
+  4. In `TeamController.Details`, set `vm.EarlyEntryEnabled = teamPage.Team.EarlyEntryEnabled` (match the action's real local-variable name for the page detail / summary).
+
+- [ ] **Step 2b:** Still in `TeamController.Details` (the Web layer, which has `User`), compute the role-based flag after the VM is built:
 
 ```csharp
 vm.CanManageEarlyEntry = vm.EarlyEntryEnabled &&
     (User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.EarlyEntryArtAdmin));
 ```
 
-(Keep the claims/role check in the Web layer, not the page service. Match the action's actual VM variable name.)
+(Keep the claims/role check in the Web layer, not the page service. `RoleNames` is in `Humans.Domain.Constants` — add the `using`.)
 
 - [ ] **Step 3:** In `Details.cshtml`:
   - Where the Team Management card is gated, change the condition so the card renders for EE-admins too: `@if (Model.CanCurrentUserManage || Model.CanManageEarlyEntry)`.
@@ -893,7 +906,12 @@ vm.CanManageEarlyEntry = vm.EarlyEntryEnabled &&
 - [ ] **Step 4: Build** — `dotnet build Humans.slnx -v quiet`. Commit:
 
 ```bash
-git add src/Humans.Web/Models/TeamViewModels.cs src/Humans.Web/Views/Team/Details.cshtml src/Humans.Web/Controllers/TeamController.cs src/Humans.Application/Services/Teams/
+git add src/Humans.Web/Models/TeamViewModels.cs src/Humans.Web/Views/Team/Details.cshtml \
+        src/Humans.Web/Controllers/TeamController.cs \
+        src/Humans.Application/Interfaces/Teams/ITeamPageService.cs \
+        src/Humans.Application/Services/Teams/TeamPageSummaryMapper.cs \
+        src/Humans.Application/Services/Teams/TeamService.cs \
+        src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
 git commit -m "feat(teams): Early Entry link in Team Management card (role-gated)"
 ```
 
