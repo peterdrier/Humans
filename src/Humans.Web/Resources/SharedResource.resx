@@ -582,7 +582,6 @@
   <data name="TeamDetail_ManageResources" xml:space="preserve"><value>Manage Resources</value></data>
   <data name="TeamDetail_Resources" xml:space="preserve"><value>Resources</value></data>
   <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Legal Documents</value></data>
-  <data name="TeamDetail_ManageEarlyEntry" xml:space="preserve"><value>Early Entry</value></data>
 
   <!-- My Teams View -->
   <data name="MyTeams_TeamMemberships" xml:space="preserve"><value>Team Memberships</value></data>
@@ -1267,22 +1266,6 @@
   <data name="TeamAdmin_Add" xml:space="preserve"><value>Add</value></data>
 
   <!-- Team Early Entry -->
-  <data name="TeamAdmin_EarlyEntry_Title" xml:space="preserve"><value>Early Entry</value></data>
-  <data name="TeamAdmin_EarlyEntry_Intro" xml:space="preserve"><value>Grant early entry to humans working on this team's art projects. Each grant covers one human, one entry date, and one project.</value></data>
-  <data name="TeamAdmin_EarlyEntry_Human" xml:space="preserve"><value>Human</value></data>
-  <data name="TeamAdmin_EarlyEntry_Date" xml:space="preserve"><value>Entry date</value></data>
-  <data name="TeamAdmin_EarlyEntry_Project" xml:space="preserve"><value>Art project</value></data>
-  <data name="TeamAdmin_EarlyEntry_NoGrants" xml:space="preserve"><value>No early-entry grants yet.</value></data>
-  <data name="TeamAdmin_EarlyEntry_AddTitle" xml:space="preserve"><value>Grant early entry</value></data>
-  <data name="TeamAdmin_EarlyEntry_SearchPlaceholder" xml:space="preserve"><value>Search humans by name...</value></data>
-  <data name="TeamAdmin_EarlyEntry_Save" xml:space="preserve"><value>Save</value></data>
-  <data name="TeamAdmin_EarlyEntry_Grant" xml:space="preserve"><value>Grant</value></data>
-  <data name="TeamAdmin_EarlyEntry_Remove" xml:space="preserve"><value>Remove</value></data>
-  <data name="TeamAdmin_EarlyEntry_RemoveConfirm" xml:space="preserve"><value>Remove this early-entry grant?</value></data>
-  <data name="TeamAdmin_EarlyEntry_InvalidDate" xml:space="preserve"><value>Enter a date as yyyy-MM-dd.</value></data>
-  <data name="TeamAdmin_EarlyEntry_Granted" xml:space="preserve"><value>Early entry granted.</value></data>
-  <data name="TeamAdmin_EarlyEntry_Updated" xml:space="preserve"><value>Early-entry grant updated.</value></data>
-  <data name="TeamAdmin_EarlyEntry_Revoked" xml:space="preserve"><value>Early-entry grant removed.</value></data>
 
   <!-- Facilitated Messaging -->
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>

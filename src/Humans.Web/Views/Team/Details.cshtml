@@ -347,7 +347,7 @@
             @await Html.PartialAsync("_ShiftsSummaryCard", Model.ShiftsSummary)
         }
 
-        @if (Model.CanCurrentUserManage || Model.CanManageEarlyEntry)
+        @if (Model.CanCurrentUserManage)
         {
             <div class="card mb-4">
                 <div class="card-header">@Localizer["TeamDetail_TeamManagement"]</div>
@@ -382,12 +382,6 @@
                                 @Localizer["TeamDetail_ManageConsents"]
                             </a>
                         }
-                    }
-                    @if (Model.CanManageEarlyEntry)
-                    {
-                        <a asp-controller="TeamAdmin" asp-action="EarlyEntry" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                            @Localizer["TeamDetail_ManageEarlyEntry"]
-                        </a>
                     }
                 </div>
             </div>

@@ -44,8 +44,7 @@ public record TeamPageTeamSummary(
     List<CallToAction> CallsToAction,
     Instant? PageContentUpdatedAt,
     Guid? PageContentUpdatedByUserId,
-    TeamPageTeamLink? ParentTeam,
-    bool EarlyEntryEnabled);
+    TeamPageTeamLink? ParentTeam);
 
 public record TeamPageDetailResult(
     TeamPageTeamSummary Team,

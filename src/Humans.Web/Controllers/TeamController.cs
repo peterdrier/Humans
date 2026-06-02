@@ -160,11 +160,7 @@ public class TeamController(
             CanOpenStore = (teamPage.IsCurrentUserCoordinator && team.ParentTeam is null && team.IsActive)
                 || RoleChecks.IsAdmin(User)
                 || RoleChecks.IsTeamsAdmin(User),
-            EarlyEntryEnabled = team.EarlyEntryEnabled
         };
-
-        viewModel.CanManageEarlyEntry = viewModel.EarlyEntryEnabled &&
-            (User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.EarlyEntryArtAdmin));
 
         // Subteam member rollup: for departments, show child team members not already direct members
         if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())

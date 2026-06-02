@@ -26,8 +26,7 @@ public static class TeamPageSummaryMapper
         List<CallToAction> callsToAction,
         Instant? pageContentUpdatedAt,
         Guid? pageContentUpdatedByUserId,
-        TeamPageTeamLink? parentLink,
-        bool earlyEntryEnabled)
+        TeamPageTeamLink? parentLink)
     {
         var displayName = parentName is not null ? $"{parentName} - {name}" : name;
         return new TeamPageTeamSummary(
@@ -47,7 +46,6 @@ public static class TeamPageSummaryMapper
             callsToAction,
             pageContentUpdatedAt,
             pageContentUpdatedByUserId,
-            parentLink,
-            earlyEntryEnabled);
+            parentLink);
     }
 }
