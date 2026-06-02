@@ -362,6 +362,19 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
+    public async Task AnonymizeExpiredAccountAsync_ErasesTeamEarlyEntryGrants()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ExpiredDeletionAnonymizationResult("e@example.com", "Name", "es"));
+
+        await _service.AnonymizeExpiredAccountAsync(userId);
+
+        await _teamService.Received(1).DeleteEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AnonymizeExpiredAccountAsync_UserVanishedMidCascade_ReturnsPreCapturedSlice()
     {
         var userId = Guid.NewGuid();

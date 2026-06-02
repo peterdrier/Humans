@@ -173,6 +173,9 @@ public sealed class AccountDeletionService(
         // 1. End team memberships + role slots.
         await teamService.RevokeAllMembershipsAsync(userId, ct);
 
+        // 1b. Delete team early-entry grants (right-to-erasure; no DB cascade — bare UserId).
+        await teamService.DeleteEarlyEntryGrantsForUserAsync(userId, ct);
+
         // 2. End governance roles.
         await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
