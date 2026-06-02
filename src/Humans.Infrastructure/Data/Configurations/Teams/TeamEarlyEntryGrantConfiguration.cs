@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations.Teams;
 
-public sealed class TeamEarlyEntryGrantConfiguration : IEntityTypeConfiguration<TeamEarlyEntryGrant>
+public class TeamEarlyEntryGrantConfiguration : IEntityTypeConfiguration<TeamEarlyEntryGrant>
 {
     public void Configure(EntityTypeBuilder<TeamEarlyEntryGrant> builder)
     {
