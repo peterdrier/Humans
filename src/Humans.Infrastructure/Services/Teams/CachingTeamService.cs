@@ -466,11 +466,11 @@ public sealed class CachingTeamService(
     public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
         => WithInner(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
 
-    public Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
-        => WithInner(inner => inner.EditEarlyEntryGrantAsync(grantId, entryDate, projectName, actorUserId, ct));
+    public Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+        => WithInner(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct));
 
-    public Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default)
-        => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(grantId, actorUserId, ct));
+    public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
+        => WithInner(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
     public Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default)
         => WithInner(inner => inner.DeleteEarlyEntryGrantsForUserAsync(userId, ct));

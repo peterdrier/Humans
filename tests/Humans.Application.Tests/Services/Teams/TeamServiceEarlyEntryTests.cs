@@ -184,7 +184,7 @@ public sealed class TeamServiceEarlyEntryTests
         var grant = Grant(teamId, userId, "Old");
         _repo.FindEarlyEntryGrantForMutationAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
 
-        await _service.EditEarlyEntryGrantAsync(grant.Id, new LocalDate(2026, 7, 8), "  New Name ", actor);
+        await _service.EditEarlyEntryGrantAsync(teamId, grant.Id, new LocalDate(2026, 7, 8), "  New Name ", actor);
 
         grant.EntryDate.Should().Be(new LocalDate(2026, 7, 8));
         grant.ProjectName.Should().Be("New Name");
@@ -203,9 +203,26 @@ public sealed class TeamServiceEarlyEntryTests
             .Returns((TeamEarlyEntryGrant?)null);
 
         var act = () => _service.EditEarlyEntryGrantAsync(
-            Guid.NewGuid(), new LocalDate(2026, 7, 8), "x", Guid.NewGuid());
+            Guid.NewGuid(), Guid.NewGuid(), new LocalDate(2026, 7, 8), "x", Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task EditEarlyEntryGrantAsync_GrantOnDifferentTeam_TreatedAsNotFound()
+    {
+        var grant = Grant(Guid.NewGuid(), Guid.NewGuid(), "Old");
+        _repo.FindEarlyEntryGrantForMutationAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+
+        var act = () => _service.EditEarlyEntryGrantAsync(
+            Guid.NewGuid(), grant.Id, new LocalDate(2026, 7, 8), "x", Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        await _repo.DidNotReceive().UpdateEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
+        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ==========================================================================
@@ -221,7 +238,7 @@ public sealed class TeamServiceEarlyEntryTests
         var grant = Grant(teamId, userId);
         _repo.FindEarlyEntryGrantForMutationAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
 
-        await _service.RemoveEarlyEntryGrantAsync(grant.Id, actor);
+        await _service.RemoveEarlyEntryGrantAsync(teamId, grant.Id, actor);
 
         await _repo.Received(1).RemoveEarlyEntryGrantAsync(grant.Id, Arg.Any<CancellationToken>());
         _eeInvalidator.Received(1).InvalidateUser(userId);
@@ -236,7 +253,22 @@ public sealed class TeamServiceEarlyEntryTests
         _repo.FindEarlyEntryGrantForMutationAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((TeamEarlyEntryGrant?)null);
 
-        await _service.RemoveEarlyEntryGrantAsync(Guid.NewGuid(), Guid.NewGuid());
+        await _service.RemoveEarlyEntryGrantAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RemoveEarlyEntryGrantAsync_GrantOnDifferentTeam_IsNoOp()
+    {
+        var grant = Grant(Guid.NewGuid(), Guid.NewGuid());
+        _repo.FindEarlyEntryGrantForMutationAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+
+        await _service.RemoveEarlyEntryGrantAsync(Guid.NewGuid(), grant.Id, Guid.NewGuid());
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());

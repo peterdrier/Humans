@@ -702,11 +702,19 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     /// </summary>
     Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Updates the entry date and project label of an existing grant.</summary>
-    Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// Updates the entry date and project label of an existing grant. The grant
+    /// must belong to <paramref name="teamId"/>; a grant on another team is
+    /// treated the same as not found.
+    /// </summary>
+    Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Revokes an early-entry grant. Idempotent (no-op if already gone).</summary>
-    Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// Revokes an early-entry grant. Idempotent (no-op if already gone). The
+    /// grant must belong to <paramref name="teamId"/>; a grant on another team
+    /// is treated the same as not found (no-op).
+    /// </summary>
+    Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Deletes every early-entry grant belonging to a user (right-to-erasure).</summary>
     Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);

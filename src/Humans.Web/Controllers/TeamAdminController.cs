@@ -1075,7 +1075,7 @@ public class TeamAdminController(
     [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
     public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryInput input, CancellationToken ct)
     {
-        var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
+        var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
         if (error is not null) return error;
 
         var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
@@ -1087,7 +1087,7 @@ public class TeamAdminController(
         }
 
         await _teamService.EditEarlyEntryGrantAsync(
-            input.GrantId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
+            team!.Id, input.GrantId, parsed.Value, input.ProjectName, GetCurrentUserId()!.Value, ct);
         SetSuccess(localizer["TeamAdmin_EarlyEntry_Updated"].Value);
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -1097,10 +1097,10 @@ public class TeamAdminController(
     [Authorize(Policy = PolicyNames.EarlyEntryArtAdminOrAdmin)]
     public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, CancellationToken ct)
     {
-        var (error, _) = await ResolveEarlyEntryTeamAsync(slug);
+        var (error, team) = await ResolveEarlyEntryTeamAsync(slug);
         if (error is not null) return error;
 
-        await _teamService.RemoveEarlyEntryGrantAsync(grantId, GetCurrentUserId()!.Value, ct);
+        await _teamService.RemoveEarlyEntryGrantAsync(team!.Id, grantId, GetCurrentUserId()!.Value, ct);
         SetSuccess(localizer["TeamAdmin_EarlyEntry_Revoked"].Value);
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }

@@ -1897,10 +1897,11 @@ public sealed class TeamService(
             $"EE granted to {userId} on {entryDate} for \"{grant.ProjectName}\" (team {teamId})", actorUserId);
     }
 
-    public async Task EditEarlyEntryGrantAsync(Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    public async Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
     {
-        var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct)
-            ?? throw new InvalidOperationException($"EE grant {grantId} not found.");
+        var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
+        if (grant is null || grant.TeamId != teamId)
+            throw new InvalidOperationException($"EE grant {grantId} not found.");
         grant.EntryDate = entryDate;
         grant.ProjectName = projectName.Trim();
         grant.UpdatedAt = clock.GetCurrentInstant();
@@ -1910,10 +1911,10 @@ public sealed class TeamService(
             $"EE updated for {grant.UserId}: {entryDate}, \"{grant.ProjectName}\"", actorUserId);
     }
 
-    public async Task RemoveEarlyEntryGrantAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default)
+    public async Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
-        if (grant is null) return; // idempotent
+        if (grant is null || grant.TeamId != teamId) return; // idempotent / not found on this team
         await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
         earlyEntryInvalidator.InvalidateUser(grant.UserId);
         await auditLogService.LogAsync(AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
