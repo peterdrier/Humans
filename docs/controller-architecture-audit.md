@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-05-31 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-03 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,7 +10,7 @@ Living document. Last updated: 2026-05-31 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-05-31) found **no net change** versus the 2026-05-29 baseline: the same 80 controllers, with identical action names, HTTP verbs, and route segments. No controllers or actions were added, removed, or renamed. All purposes and rename suggestions below are carried forward unchanged.
+This regeneration (2026-06-03) found one change versus the 2026-05-31 baseline: `TeamAdminController` gained an early-entry management surface — `EarlyEntry` (GET, `/Teams/{slug}/EarlyEntry`) plus `AddEarlyEntry` / `EditEarlyEntry` / `RemoveEarlyEntry` (POST `EarlyEntry/Add`|`Edit`|`Remove`). All four conform to the action-naming heuristics (`EarlyEntry` is the sub-resource group, not a controller-name prefix; the verbs mirror the existing `AddMember` / `RemoveMember` pattern). The same 80 controllers remain; `CampController.Index` picked up `ShowLeadPositions` handling and dropped its `INotificationService` dependency, but neither changes its action name, verb, or route. All other purposes and rename suggestions below are carried forward unchanged.
 
 The additions captured in the 2026-05-29 sweep — now all stable in the tables below — were: `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), `DebugController` (`/Debug/ClientStats`); plus `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover`, `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay`, `TicketTransferController.Confirm` (replaced the prior `Lookup` action), `ShiftAdminController.EmailTeamRotas` (GET+POST), and `StoreController.CreateTeamOrder` / `Delete`.
 
@@ -937,6 +937,10 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | UnassignRole | /Teams/{slug}/Roles/{roleId}/Unassign/{memberId} | POST | Unassign member from role | OK |
 | EditPage | /Teams/{slug}/EditPage | GET | Edit team page content | OK |
 | EditPage | /Teams/{slug}/EditPage | POST | Save team page content | OK |
+| EarlyEntry | /Teams/{slug}/EarlyEntry | GET | Team early-entry grants management page | OK |
+| AddEarlyEntry | /Teams/{slug}/EarlyEntry/Add | POST | Grant early entry to a member | OK |
+| EditEarlyEntry | /Teams/{slug}/EarlyEntry/Edit | POST | Edit an early-entry grant | OK |
+| RemoveEarlyEntry | /Teams/{slug}/EarlyEntry/Remove | POST | Revoke an early-entry grant | OK |
 | SearchMembersForRole | /Teams/{slug}/Roles/SearchMembers | GET | Search members for role assignment (JSON) | OK |
 
 ## TeamController

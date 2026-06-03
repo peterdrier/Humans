@@ -31,6 +31,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Append-only (§12). |
 | TeamRoleDefinition | [Teams](../sections/Teams.md) | |
 | TeamRoleAssignment | [Teams](../sections/Teams.md) | |
+| TeamEarlyEntryGrant | [Teams](../sections/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
 | GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |

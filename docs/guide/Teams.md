@@ -36,6 +36,7 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 - **Members admin** (`/Teams/{slug}/Members`) — members, join requests, role assignments.
 - **Edit team page** (`/Teams/{slug}/EditPage`) — markdown and calls-to-action for a department's public page.
 - **Roles** (`/Teams/{slug}/Roles`) — define named role slots.
+- **Early Entry** (`/Teams/{slug}/EarlyEntry`) — grant festival early-entry access for a team (only shown when the team has Early Entry enabled).
 - **Summary**, **Create**, **Edit** — admin pages at `/Teams/Summary`, `/Teams/Create`, `/Teams/{id}/Edit`.
 - **Sync** — system-team and Google sync admin pages live under the Google controller: `/Google/SyncSettings`, `/Google/SyncResults`, `/Google/SyncSystemTeams` (POST, Admin only).
 
@@ -117,6 +118,10 @@ Department coordinators manage the linked Google Group membership and Shared Dri
 
 > **Don't share Drive links directly with people who aren't on your team in Humans.** It creates ungoverned access and a GDPR problem. Add them through Humans and Drive access follows automatically; remove them and it's revoked overnight.
 
+### Grant Early Entry (if your team has it enabled)
+
+Some teams can grant **Early Entry** — letting project crews onto site ahead of the gates. If an admin has turned Early Entry on for your team, an **Early Entry** page appears at `/Teams/{slug}/EarlyEntry`. There you grant access by choosing a person, an entry date, and a project name, and you can edit or remove grants later. Coordinators (including the department coordinator above a sub-team) manage Early Entry for their own team; an Early-Entry Team Administrator can do it for any team that has it enabled. Each grant adds the person to the festival's early-entry roster. If Early Entry is later turned off for the team, existing grants are kept but stop counting.
+
 ### Volunteer coordination, cross-department (2026)
 
 Three roles handle volunteer coordination across every department. Reach all three at [volunteers@nobodies.team](mailto:volunteers@nobodies.team) or in [#🤝-recruitment-relationships](https://discord.gg/pcq2DRH6) on Discord.
@@ -141,7 +146,7 @@ In many departments it's the sub-team leads — not the top-level coordinator �
 
 ### Edit team settings
 
-`/Teams/{id}/Edit` lets you change name, slug, approval mode, parent, Google Group prefix, directory promotion (for sub-teams), and `IsHidden`. Making a department into a sub-team re-scopes its coordinators to managers and syncs them out of the Coordinators system team.
+`/Teams/{id}/Edit` lets you change name, slug, approval mode, parent, Google Group prefix, directory promotion (for sub-teams), `IsHidden`, and the **Enable Early Entry** flag (which turns on the team's Early Entry management page). Making a department into a sub-team re-scopes its coordinators to managers and syncs them out of the Coordinators system team.
 
 ### Delete a team
 
