@@ -1,13 +1,17 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Teams;
+using Humans.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
 
 /// <summary>
 /// Resource-based authorization handler for team management operations.
-/// - Admin / TeamsAdmin: allow any team
+/// - Admin / TeamsAdmin / Board: allow any team, any requirement
+/// - EETeamAdmin: allow any team for ManageEarlyEntry only (cross-team EE management)
 /// - Team coordinator (or parent department coordinator): allow only their team
+///   (covers both ManageCoordinators and ManageEarlyEntry — coordinators manage their
+///   own team's early entry de facto)
 /// - Everyone else: deny
 /// </summary>
 public class TeamAuthorizationHandler(ITeamService teamService)
@@ -19,6 +23,13 @@ public class TeamAuthorizationHandler(ITeamService teamService)
         TeamInfo resource)
     {
         if (RoleChecks.IsTeamsAdminBoardOrAdmin(context.User))
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        if (string.Equals(requirement.OperationName, TeamOperationRequirement.ManageEarlyEntry.OperationName, StringComparison.Ordinal)
+            && context.User.IsInRole(RoleNames.EETeamAdmin))
         {
             context.Succeed(requirement);
             return;

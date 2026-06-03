@@ -36,9 +36,6 @@ public static class AdminNavTree
         new("Cantina", [
             new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
         ]),
-        new("Art Early Entry", [
-            new("Art Early Entry", "EarlyEntryAdmin", "Index", null, null, "fa-solid fa-palette", PolicyNames.EarlyEntryArtAdminOrAdmin)
-        ]),
         new("Expenses", [
             new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.IsActiveMember),
             new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.IsActiveMember),

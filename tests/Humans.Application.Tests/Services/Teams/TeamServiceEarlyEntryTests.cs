@@ -52,9 +52,10 @@ public sealed class TeamServiceEarlyEntryTests
             NullLogger<TeamService>.Instance);
     }
 
-    private static TeamEarlyEntryGrant Grant(Guid teamId, Guid userId, string project = "P", LocalDate? date = null) => new()
+    private static TeamEarlyEntryGrant Grant(Guid teamId, Guid userId, string project = "P", LocalDate? date = null, string teamName = "Creativity") => new()
     {
         TeamId = teamId,
+        Team = new Team { Id = teamId, Name = teamName },
         UserId = userId,
         ProjectName = project,
         EntryDate = date ?? new LocalDate(2026, 7, 5),
@@ -67,19 +68,22 @@ public sealed class TeamServiceEarlyEntryTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetEarlyEntriesAsync_ProjectsArtLabel_FromEnabledTeams()
+    public async Task GetEarlyEntriesAsync_ProjectsTeamNameLabel_FromEnabledTeams()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<TeamEarlyEntryGrant> { Grant(teamId, userId, "Flaming Lotus", new LocalDate(2026, 7, 5)) });
+            .Returns(new List<TeamEarlyEntryGrant>
+            {
+                Grant(teamId, userId, "Flaming Lotus", new LocalDate(2026, 7, 5), teamName: "Pyro")
+            });
 
         var entries = await _service.GetEarlyEntriesAsync(CancellationToken.None);
 
         entries.Should().ContainSingle();
         entries[0].UserId.Should().Be(userId);
         entries[0].EntryDate.Should().Be(new LocalDate(2026, 7, 5));
-        entries[0].Source.Should().Be("Art: Flaming Lotus");
+        entries[0].Source.Should().Be("Pyro: Flaming Lotus");
     }
 
     [HumansFact]
@@ -156,6 +160,21 @@ public sealed class TeamServiceEarlyEntryTests
             teamId, Guid.NewGuid(), new LocalDate(2026, 7, 6), "x", Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not enabled*");
+        await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
+        _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task AddEarlyEntryGrantAsync_EmptyUserId_Throws()
+    {
+        var teamId = Guid.NewGuid();
+        _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Team { Id = teamId, Name = "Art", Slug = "art", EarlyEntryEnabled = true });
+
+        var act = () => _service.AddEarlyEntryGrantAsync(
+            teamId, Guid.Empty, new LocalDate(2026, 7, 6), "x", Guid.NewGuid());
+
+        await act.Should().ThrowAsync<ArgumentException>();
         await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
         _eeInvalidator.DidNotReceive().InvalidateUser(Arg.Any<Guid>());
     }

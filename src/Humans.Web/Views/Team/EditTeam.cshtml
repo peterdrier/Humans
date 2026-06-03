@@ -84,10 +84,10 @@
                         <div class="form-text">When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</div>
                     </div>
 
-                    <div class="mb-3 form-check" authorize-policy="AdminOnly">
+                    <div class="mb-3 form-check">
                         <input asp-for="EarlyEntryEnabled" type="checkbox" class="form-check-input" />
                         <label asp-for="EarlyEntryEnabled" class="form-check-label">Enable Early Entry</label>
-                        <div class="form-text">Lets humans with the Early Entry Art Admin role grant early entry for this team's art projects.</div>
+                        <div class="form-text">When enabled, coordinators of this team (and Early-Entry Team Admins) can grant early entry for this team's projects.</div>
                     </div>
 
                     <div class="d-flex gap-2">

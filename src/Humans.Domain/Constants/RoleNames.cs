@@ -89,11 +89,13 @@ public static class RoleNames
     public const string CantinaAdmin = "CantinaAdmin";
 
     /// <summary>
-    /// Early Entry Art Administrator — can grant, edit, and revoke early-entry grants
-    /// for teams that have EarlyEntryEnabled. Confers nothing beyond EE management;
-    /// granted individually via the existing role-assignment flow (exactly like CantinaAdmin).
+    /// Early-Entry Team Administrator — a cross-team role that can grant, edit, and
+    /// revoke early-entry grants on ANY team that has EarlyEntryEnabled. Coordinators
+    /// manage early entry for their own team without this role; this role exists for
+    /// mid-level admins who manage EE across teams. Confers nothing beyond EE
+    /// management; granted individually via the existing role-assignment flow.
     /// </summary>
-    public const string EarlyEntryArtAdmin = "EarlyEntryArtAdmin";
+    public const string EETeamAdmin = "EETeamAdmin";
 
     /// <summary>
     /// Every role name defined above, in display order. The single source of truth
@@ -117,7 +119,7 @@ public static class RoleNames
         FinanceAdmin,
         StoreAdmin,
         CantinaAdmin,
-        EarlyEntryArtAdmin
+        EETeamAdmin
     ];
 
     /// <summary>
@@ -137,7 +139,7 @@ public static class RoleNames
         EventsAdmin,
         StoreAdmin,
         CantinaAdmin,
-        EarlyEntryArtAdmin,
+        EETeamAdmin,
         ConsentCoordinator,
         VolunteerCoordinator
     };

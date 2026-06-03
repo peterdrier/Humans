@@ -91,6 +91,12 @@ Period tag on a `TeamRoleDefinition` indicating when the role is active. Used fo
 
 Stored as string via `HasConversion<string>()`.
 
+### TeamEarlyEntryGrant
+
+**Table:** `team_early_entry_grants`
+
+One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EETeamAdmin` role (and TeamsAdmin/Board/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
+
 ### SystemTeamType
 
 | Value | Int | Description |
@@ -231,7 +237,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 ## Architecture
 
 **Owning services:** `TeamService`, `TeamPageService` (Teams section); `TeamResourceService` (GoogleIntegration section — see note below)
-**Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments` (Teams section); `google_resources` is a Team Resources sub-aggregate but is managed from the GoogleIntegration section
+**Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` (Teams section); `google_resources` is a Team Resources sub-aggregate but is managed from the GoogleIntegration section
 **Status:** (A) Migrated (2026-04-23). `TeamService` and `TeamPageService` live in `Humans.Application.Services.Teams`. `TeamResourceService` was relocated to `Humans.Application.Services.GoogleIntegration` (alongside `GoogleWorkspaceSyncService`) — its repository, EF impl, and connector clients all live there, and consolidating the section label keeps HUM0017 satisfied (see `memory/architecture/team-resources-google-integration-section.md`).
 
 - `TeamService` goes through `ITeamRepository` for owned-table access and routes every cross-section read through the public service interface (`IUserService`, `IRoleAssignmentService`, `IShiftManagementService`, `ITeamResourceService`).

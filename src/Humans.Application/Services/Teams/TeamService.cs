@@ -1881,6 +1881,8 @@ public sealed class TeamService(
             ?? throw new InvalidOperationException($"Team {teamId} not found.");
         if (!team.EarlyEntryEnabled)
             throw new InvalidOperationException($"Early entry is not enabled for team {teamId}.");
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId must be a non-empty GUID.", nameof(userId));
 
         var grant = new TeamEarlyEntryGrant
         {

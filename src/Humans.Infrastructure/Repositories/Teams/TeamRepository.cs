@@ -1169,6 +1169,7 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamEarlyEntryGrants
             .AsNoTracking()
+            .Include(g => g.Team)
             .Where(g => g.Team.EarlyEntryEnabled)
             .ToListAsync(ct);
     }

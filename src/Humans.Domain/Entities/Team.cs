@@ -129,10 +129,11 @@ public class Team
     /// </summary>
     public bool IsSensitive { get; set; }
 
-    /// <summary>Admin-only gate: when true this team contributes early-entry grants
-    /// (see <see cref="TeamEarlyEntryGrant"/>) and exposes the EE management page to
-    /// humans holding the EarlyEntryArtAdmin role. Default false. Toggling it never
-    /// deletes existing grants.</summary>
+    /// <summary>Per-team early-entry gate: when true this team contributes early-entry
+    /// grants (see <see cref="TeamEarlyEntryGrant"/>) and exposes the per-team EE
+    /// management page to the team's coordinators and the cross-team EETeamAdmin role.
+    /// Multiple teams may have this enabled. Default false. Toggling it never deletes
+    /// existing grants.</summary>
     public bool EarlyEntryEnabled { get; set; }
 
     /// <summary>

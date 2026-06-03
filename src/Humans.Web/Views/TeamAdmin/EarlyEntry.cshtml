@@ -1,0 +1,107 @@
+@model Humans.Web.Models.TeamEarlyEntryPageViewModel
+@{
+    ViewData["Title"] = $"Early Entry — {Model.TeamName}";
+}
+
+<h1>Early Entry — @Model.TeamName</h1>
+<p class="text-muted">Each grant is one human, one date, one project.</p>
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+@* All grants — each row carries an inline edit form + a remove form, scoped by hidden GrantId. *@
+<div class="card mb-4">
+    <div class="card-header">Grants</div>
+    <div class="card-body p-0">
+        @if (Model.Grants.Count == 0)
+        {
+            <p class="text-muted m-3 mb-0">No early-entry grants yet.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Human</th>
+                        <th>Entry date</th>
+                        <th>Project</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var grant in Model.Grants)
+                    {
+                        <tr>
+                            <td>@grant.HumanName</td>
+                            <td colspan="2">
+                                @* Auto-saves on change (date pick / project blur) — see the script below. The hidden submit enables Enter-to-save + form.requestSubmit() validation. *@
+                                <form asp-controller="TeamAdmin" asp-action="EditEarlyEntry" asp-route-slug="@Model.Slug" method="post" class="row g-2 align-items-center ee-edit-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="GrantId" value="@grant.GrantId" />
+                                    <div class="col-auto">
+                                        <input type="date" name="EntryDate" class="form-control form-control-sm"
+                                               value="@grant.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" required />
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" name="ProjectName" class="form-control form-control-sm"
+                                               value="@grant.ProjectName" maxlength="256" required
+                                               aria-label="Project" />
+                                    </div>
+                                    <button type="submit" class="d-none" tabindex="-1" aria-hidden="true"></button>
+                                </form>
+                            </td>
+                            <td class="text-end">
+                                <form asp-controller="TeamAdmin" asp-action="RemoveEarlyEntry" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="grantId" value="@grant.GrantId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            data-confirm="Remove this early-entry grant?">
+                                        Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* Add card — <vc:human-search> picker posting into the Add action (team from route slug). *@
+<div class="card mb-4 position-relative" style="z-index: 2;">
+    <div class="card-header">Grant early entry</div>
+    <div class="card-body">
+        <form asp-controller="TeamAdmin" asp-action="AddEarlyEntry" asp-route-slug="@Model.Slug" method="post" class="row g-2 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-5">
+                <label class="form-label">Human</label>
+                <vc:human-search field-name="UserId"
+                                 instance-key="team-ee-add"
+                                 placeholder="Search humans by name…"
+                                 scope="Name" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="ee-add-date">Entry date</label>
+                <input type="date" id="ee-add-date" name="EntryDate" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="ee-add-project">Project</label>
+                <input type="text" id="ee-add-project" name="ProjectName" class="form-control" maxlength="256" required />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-success">Grant</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Inline auto-save: changing a grant's date (picker) or project (on blur / Enter) submits its row
+   form immediately — no Save button. Scoped to .ee-edit-form so the Add form is unaffected.
+   <script> gets a CSP nonce via NonceTagHelper. *@
+<script>
+    document.querySelectorAll('form.ee-edit-form').forEach(function (form) {
+        form.querySelectorAll('input[name="EntryDate"], input[name="ProjectName"]').forEach(function (input) {
+            input.addEventListener('change', function () { form.requestSubmit(); });
+        });
+    });
+</script>

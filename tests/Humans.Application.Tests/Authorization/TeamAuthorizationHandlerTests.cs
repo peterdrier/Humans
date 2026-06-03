@@ -52,14 +52,37 @@ public sealed class TeamAuthorizationHandlerTests
         var user = CreateUser(userKind, regularUserId);
         var team = CreateTeam(teamKind);
 
-        var result = await EvaluateAsync(user, team);
+        var result = await EvaluateAsync(user, team, TeamOperationRequirement.ManageCoordinators);
 
         result.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, TeamInfo resource)
+    [HumansFact]
+    public async Task EETeamAdmin_can_manage_early_entry_on_any_team_but_not_coordinators()
     {
-        var requirement = TeamOperationRequirement.ManageCoordinators;
+        var user = CreateUserWithRoles(RoleNames.EETeamAdmin);
+        var team = CreateTeam("other");
+
+        var canManageEarlyEntry = await EvaluateAsync(user, team, TeamOperationRequirement.ManageEarlyEntry);
+        var canManageCoordinators = await EvaluateAsync(user, team, TeamOperationRequirement.ManageCoordinators);
+
+        canManageEarlyEntry.Should().BeTrue();
+        canManageCoordinators.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Coordinator_can_manage_early_entry_on_their_own_team()
+    {
+        var user = CreateUserWithId(UserId);
+        var team = CreateTeam("coordinator");
+
+        var result = await EvaluateAsync(user, team, TeamOperationRequirement.ManageEarlyEntry);
+
+        result.Should().BeTrue();
+    }
+
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, TeamInfo resource, TeamOperationRequirement requirement)
+    {
         var context = new AuthorizationHandlerContext([requirement], user, resource);
 
         await _handler.HandleAsync(context);

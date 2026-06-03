@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Configuration;
-using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using NodaTime;
@@ -31,6 +31,7 @@ public class TeamController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IClock clock,
+    IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -161,6 +162,13 @@ public class TeamController(
                 || RoleChecks.IsAdmin(User)
                 || RoleChecks.IsTeamsAdmin(User),
         };
+
+        // Surface the per-team Early Entry link when EE is enabled and the viewer can
+        // manage it (coordinator / cross-team EETeamAdmin / TeamsAdmin / Board / Admin).
+        var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
+        viewModel.CanManageEarlyEntry = teamInfo is { EarlyEntryEnabled: true }
+            && (await authorizationService.AuthorizeAsync(
+                User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)).Succeeded;
 
         // Subteam member rollup: for departments, show child team members not already direct members
         if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())
@@ -721,11 +729,7 @@ public class TeamController(
 
         try
         {
-            // The EarlyEntryEnabled checkbox is rendered AdminOnly; for non-Admin editors the tag
-            // helper suppresses it, so model.EarlyEntryEnabled binds to false. Passing null leaves
-            // the flag unchanged instead of silently disabling it.
-            bool? earlyEntryEnabled = User.IsInRole(RoleNames.Admin) ? model.EarlyEntryEnabled : null;
-            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: earlyEntryEnabled);
+            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
             var currentUser = await GetCurrentUserInfoAsync();
             logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 

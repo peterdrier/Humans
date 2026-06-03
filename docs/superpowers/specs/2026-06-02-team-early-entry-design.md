@@ -6,13 +6,19 @@
 
 ## As-built amendments (post-design)
 
-The design below describes an earlier per-team shape. The shipped feature differs as follows (original text preserved below as history):
+The design below describes an earlier shape (and an interim art-specific/single-team console). The shipped feature is generic and per-team (original text preserved below as history):
 
-- **Authorization:** management is gated by a dedicated, individually-granted role **`EarlyEntryArtAdmin`** (cantina-style — granted via the existing Profile → Add Role flow), used by exactly one policy `EarlyEntryArtAdminOrAdmin`. NOT coordinator-based. The role is registered in `RoleNames.All`, `RoleNames.BoardManageableRoles`, **and** the `AnyAdminRole` policy (the admin-shell entry gate — required so holders can reach the admin shell; see memory atom `narrow-admin-role-needs-anyadminrole`).
-- **Single management surface:** a global, role-gated **"Art Early Entry" console** in the admin shell at route **`/Teams/Admin/EarlyEntry`** (`EarlyEntryAdminController`). It auto-targets the single team with `EarlyEntryEnabled == true` (no team picker; "always Creativity" in practice). The add form is **human + date + art project**; the grants list has inline edit that **auto-saves on change** (date pick / project blur) with no Save button.
-- **Removed:** the per-team management page (`TeamAdmin/EarlyEntry`) and the Team Management card link built mid-development were removed as redundant once the global console existed.
+- **Early Entry is a generic per-team capability.** The `Team.EarlyEntryEnabled` checkbox ("Enable Early Entry") on Edit Team can be set on **multiple teams at once** — it is not limited to one team and is not art-specific.
+- **Management surface is a per-team page** at **`Teams/{slug}/EarlyEntry`** (`TeamAdminController.EarlyEntry` + `Views/TeamAdmin/EarlyEntry.cshtml`). There is **no** global admin-shell console — `EarlyEntryAdminController`, its view, and the "Art Early Entry" admin-nav group were deleted. The add form is **human + date + project**; the grants list has inline edit that **auto-saves on change** (date pick / project blur) with no Save button.
+- **Authorization is resource-based** via `TeamOperationRequirement.ManageEarlyEntry` (handled by `TeamAuthorizationHandler`):
+  - **Coordinators** of a team manage that team's early entry de facto (same authority as managing its members/roles) — no extra role needed.
+  - A cross-team role **`EETeamAdmin`** can manage early entry on **any** EE-enabled team. It is registered in `RoleNames.All` and `RoleNames.BoardManageableRoles`. It is **not** in `AnyAdminRole` (its surface is the team's own Details page, not the admin shell).
+  - `TeamsAdmin` / `Board` / `Admin` continue to manage any team for any operation.
+  - The Team Details "Team Management" card surfaces an **Early Entry** link when EE is enabled and the viewer can manage it (so a cross-team `EETeamAdmin` who is not a coordinator still sees just that link).
+- **Source label is team-derived:** `"{TeamName}: {ProjectName}"` (mirroring Shifts' `"Shift: {team}"`), not `"Art: …"`. The projection requires the grant's `Team` nav to be loaded (`GetEarlyEntryGrantsForEnabledTeamsAsync` `.Include`s it).
 - **Read model:** the service returns a `TeamEarlyEntryGrantInfo` projection (not the EF entity), per the service-entity-boundary ratchet.
-- **Admin flag:** the per-team `Team.EarlyEntryEnabled` checkbox on Edit Team stays admin-only and is **server-enforced** (non-Admin editors can't toggle it; the controller passes `null`).
+- **Admin flag binding:** the Edit Team `EarlyEntryEnabled` checkbox follows the page's own gate (TeamsAdmin/Board/Admin) — the prior admin-only suppression hack (controller passing `null` for non-Admins) was removed.
+- **Service guard:** `AddEarlyEntryGrantAsync` rejects an empty `UserId` (`ArgumentException`).
 - **Migration:** sentinel-safe bool (`IsRequired()`, not `HasDefaultValue(false)`).
 - **GDPR export + right-to-erasure + user-merge** are covered as designed.
 - **Known follow-up:** the same admin-only-flag-suppression footgun affects `IsSensitive` (pre-existing) — tracked as **nobodies-collective/Humans#824**. The admin dashboard "Recent activity" panel was gated to `AdminOnly` as part of the security review.

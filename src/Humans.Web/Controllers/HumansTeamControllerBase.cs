@@ -26,6 +26,19 @@ public abstract class HumansTeamControllerBase(
             });
     }
 
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveEarlyEntryManagementAsync(string slug)
+    {
+        return await ResolveTeamAccessAsync(
+            slug,
+            static _ => true,
+            async (team, _) =>
+            {
+                var result = await authorizationService.AuthorizeAsync(
+                    User, team, TeamOperationRequirement.ManageEarlyEntry);
+                return result.Succeeded;
+            });
+    }
+
     protected Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentAccessAsync(
         string slug,
         Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync)

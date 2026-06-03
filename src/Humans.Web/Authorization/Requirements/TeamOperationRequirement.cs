@@ -10,6 +10,7 @@ namespace Humans.Web.Authorization.Requirements;
 public sealed class TeamOperationRequirement : IAuthorizationRequirement
 {
     public static readonly TeamOperationRequirement ManageCoordinators = new(nameof(ManageCoordinators));
+    public static readonly TeamOperationRequirement ManageEarlyEntry = new(nameof(ManageEarlyEntry));
 
     public string OperationName { get; }
 

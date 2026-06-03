@@ -9,12 +9,18 @@ namespace Humans.Application.Tests.Services;
 public class TeamEarlyEntryProjectionTests
 {
     [HumansFact]
-    public void Project_maps_each_grant_to_Art_prefixed_source_and_preserves_date()
+    public void Project_maps_each_grant_to_team_name_prefixed_source_and_preserves_date()
     {
         var u1 = Guid.NewGuid();
         var grants = new List<TeamEarlyEntryGrant>
         {
-            new() { UserId = u1, EntryDate = new LocalDate(2026, 7, 3), ProjectName = "Flame Tower" },
+            new()
+            {
+                UserId = u1,
+                EntryDate = new LocalDate(2026, 7, 3),
+                ProjectName = "Flame Tower",
+                Team = new Team { Name = "Creativity" },
+            },
         };
 
         var result = TeamEarlyEntryProjection.Project(grants);
@@ -22,7 +28,7 @@ public class TeamEarlyEntryProjectionTests
         result.Should().ContainSingle();
         result[0].UserId.Should().Be(u1);
         result[0].EntryDate.Should().Be(new LocalDate(2026, 7, 3));
-        result[0].Source.Should().Be("Art: Flame Tower");
+        result[0].Source.Should().Be("Creativity: Flame Tower");
     }
 
     [HumansFact]

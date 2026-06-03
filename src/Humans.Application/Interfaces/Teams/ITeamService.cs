@@ -683,10 +683,10 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
-    // Early-Entry Grants (Teams-internal; called by EarlyEntryAdminController,
-    // plus AccountDeletionService for erasure and IUserMerge for merge).
-    // Not exposed on ITeamServiceRead — cross-section reads go through
-    // IEarlyEntryProvider.
+    // Early-Entry Grants (Teams-internal; called by TeamAdminController for the
+    // per-team management page, plus AccountDeletionService for erasure and
+    // IUserMerge for merge). Not exposed on ITeamServiceRead — cross-section reads
+    // go through IEarlyEntryProvider.
     // ==========================================================================
 
     /// <summary>
