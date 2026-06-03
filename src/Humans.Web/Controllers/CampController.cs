@@ -430,6 +430,21 @@ public class CampController(
         var editSeason = camp.Seasons.FirstOrDefault(s => s.Id == viewModel.SeasonId);
         PopulateEditMembers(viewModel, editSeason);
 
+        var memberUserIds = viewModel.PendingMembers.Select(m => m.UserId)
+            .Concat(viewModel.ActiveMembers.Select(m => m.UserId))
+            .Distinct()
+            .ToList();
+        if (memberUserIds.Count > 0)
+        {
+            var memberUsers = await _userService.GetUserInfosAsync(memberUserIds, ct);
+            string MemberName(CampMemberRowViewModel m) =>
+                memberUsers.TryGetValue(m.UserId, out var u) ? u.BurnerName : "";
+            viewModel.PendingMembers = viewModel.PendingMembers
+                .OrderBy(MemberName, StringComparer.OrdinalIgnoreCase).ToList();
+            viewModel.ActiveMembers = viewModel.ActiveMembers
+                .OrderBy(MemberName, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         viewModel.RolesPanel = openSeason is null
             ? null

@@ -40,6 +40,9 @@
                         @foreach (var role in Model.RolesPanel.Rows)
                         {
                             <div class="mb-3">
+                                @{
+                                    var descId = $"role-desc-{role.DefinitionId:N}";
+                                }
                                 <h6 class="mb-1">
                                     @role.Name
                                     @if (role.MinimumRequired > 0)
@@ -51,24 +54,39 @@
                                     {
                                         <span class="badge bg-warning text-dark" title="More assignments than the configured slot count.">Over capacity</span>
                                     }
+                                    @if (!string.IsNullOrWhiteSpace(role.Description))
+                                    {
+                                        <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-muted"
+                                                data-bs-toggle="collapse" data-bs-target="#@descId"
+                                                aria-expanded="false" aria-controls="@descId" title="Show description">
+                                            <i class="fa-solid fa-circle-info"></i>
+                                        </button>
+                                    }
                                 </h6>
                                 @if (!string.IsNullOrWhiteSpace(role.Description))
                                 {
-                                    <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
+                                    <div class="collapse" id="@descId">
+                                        <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
+                                    </div>
                                 }
 
-                                @foreach (var slot in role.FilledSlots)
+                                @if (role.FilledSlots.Count > 0)
                                 {
-                                    <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
-                                        <vc:human user-id="@slot.UserId" />
-                                        @if (Model.RolesPanel.CanManage)
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        @foreach (var slot in role.FilledSlots)
                                         {
-                                            <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove this assignment" data-confirm="Remove this assignment?">
-                                                    <i class="fa-solid fa-xmark"></i>
-                                                </button>
-                                            </form>
+                                            <div class="d-inline-flex align-items-center gap-1">
+                                                <vc:human user-id="@slot.UserId" layout="Avatar" size="36" />
+                                                @if (Model.RolesPanel.CanManage)
+                                                {
+                                                    <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1 lh-1" title="Remove this assignment" data-confirm="Remove this assignment?">
+                                                            <i class="fa-solid fa-xmark"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 }
