@@ -259,9 +259,9 @@ public interface IShiftServiceRead
 
 ### Task 2.2: Repository reads (TDD — the count query is logic-bearing)
 
-**Files:** Modify `src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs`; add method decls to `src/Humans.Application/Interfaces/Repositories/IShiftManagementRepository.cs`. Test: `tests/Humans.Application.Tests/Shifts/ShiftServiceReadTests.cs` (+ a real-DB integration test where the suite keeps them).
+**Files:** Modify `src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs`; add method decls to `src/Humans.Application/Interfaces/Repositories/IShiftManagementRepository.cs`. Test: `tests/Humans.Application.Tests/Shifts/ShiftServiceReadTests.cs`.
 
-- [ ] **Step 1: Write the failing integration test for the count query** (use the project's real-Postgres test harness — match an existing `ShiftRepository` integration test's setup)
+- [ ] **Step 1: Write the failing test for the count query** — match the **existing `ShiftRepositoryManagementTests` harness (EF `UseInMemoryDatabase`)**, not a Postgres harness. (The `GroupBy` + nav-traversal query translates fine on InMemory for this shape; the translation risk is low.) Copy that class's setup/attribute style verbatim rather than assuming `[HumansFact]`.
 
 ```csharp
 [HumansFact]
@@ -499,7 +499,7 @@ public async Task Cell_Done_SumsBarrioMembers_OverrideBeatsDefault_UnderMembered
 **Files:** same service; `CampsSectionExtensions`.
 
 - [ ] **Step 1: Implement** `GetFunctionsAsync` (resolve `TargetName` via Team/Rota reads), `UpsertFunctionAsync`, `SetOverrideAsync` (delegate to repo; write audit on config change).
-- [ ] **Step 2: Register the service** (no caching decorator): `services.AddScoped<IShiftObligationService, ShiftObligationService>();`
+- [ ] **Step 2: Register the service** (no caching decorator): `services.AddScoped<IShiftObligationService, ShiftObligationService>();` — **Scoped is required** (not Singleton): it depends on scoped reads (`IShiftServiceRead`, `IUserService`, `ICampServiceRead`), so a Singleton would be a captive-dependency bug. The repo (Task 3.1) is Singleton because it's stateless over `IDbContextFactory`, per Camps convention.
 - [ ] **Step 3: Build + tests pass. Commit** — `git commit -m "feat(camps): obligation config CRUD + DI"`
 
 ---

@@ -190,7 +190,8 @@ implemented by the existing Shifts service (and pass-through on its caching
 decorator, which must delegate to inner — hard rule):
 
 ```csharp
-public interface IShiftServiceRead : IApplicationService
+// Bare interface — like ITeamServiceRead/ICampServiceRead, NOT : IApplicationService.
+public interface IShiftServiceRead
 {
     /// Confirmed signup counts grouped by user, for shifts under ALL of the
     /// given team's rotas, in the currently-active event (resolved internally).
@@ -365,8 +366,8 @@ pattern (§15) — explicitly deferred.
 - **Shifts read:** both `...ForTeamAsync` (all the team's rotas) and
   `...ForRotaAsync` (one rota) count only `Confirmed` signups in the active
   event; users with none are absent; the rota variant excludes sibling rotas of
-  the same team (the Shit-ninja-vs-rest-of-LnT case). (Real-Postgres integration
-  test for the query translation per the test-tier doctrine; pure-logic
+  the same team (the Shit-ninja-vs-rest-of-LnT case). (Test on the existing
+  `ShiftRepository` test harness — **EF InMemory**, not Postgres; pure-logic
   elsewhere.)
 - **Architecture tests:** the two new tables are referenced only by
   `ShiftObligationRepository` (table-ownership invariant); `Camps → Shifts`
