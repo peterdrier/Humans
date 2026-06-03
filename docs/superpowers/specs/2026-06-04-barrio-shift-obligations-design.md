@@ -35,10 +35,14 @@ function team's existing rota page.
 - **Function teams already exist as `Team`s.** "Power" is a `Team` and owns all
   its shifts. Identify a team via `ITeamServiceRead.GetTeamAsync(id)` /
   `GetTeamBySlugAsync(slug)` (budget 5 read interface).
-- **"Power / Shit-ninja / Water / Auger" are also seeded `CampRoleDefinition`s**
-  (slugs `power`, `shit-ninja`, …; `DevelopmentCampRoleSeeder`). A barrio's
-  "power lead" = the `CampMember` holding that camp's `power` role for the
-  season. This is how we resolve the per-function barrio lead for emails.
+- **Some function camp-roles already exist; others don't.**
+  `DevelopmentCampRoleSeeder` defines `power` and `shit-ninja` (alongside
+  `consent-lead`, `lnt`, `build-lead`) — but **no `water` or `auger` camp
+  roles**, and the corresponding function *Teams* may also not exist yet. A
+  barrio's "power lead" = the `CampMember` holding that camp's `power` role for
+  the season; for a function whose camp-role has no holder (or doesn't exist),
+  reminder recipients fall back to **leads only** (Decision 7). So configuring a
+  new function is purely admin data entry — see the Functions sub-page.
 - **Shifts data:** `ShiftSignup (UserId → Shift)`, `Shift → Rota`,
   `Rota.TeamId`. "Confirmed Power shifts for human X" = signups with
   `Status = Confirmed` on shifts whose rota's `TeamId` is Power. `EventSettings`
@@ -75,7 +79,10 @@ function team's existing rota page.
    new dedicated section (over-engineered for ~few barrios × 4 functions at this
    scale).
 2. **General from the start** — obligations are configurable per function team,
-   not Power-hardcoded. Four functions seed-able now (Power/Water/Shit-ninja/Auger).
+   not Power-hardcoded. Power is the only fully-wired function today (team +
+   `power` camp-role exist); Water/Shit-ninja/Auger are added as admin config
+   when their teams/camp-roles exist (columns resolve leads-only/empty until
+   then).
 3. **Obligation = X shifts total per barrio**, with a **global default per
    function and a sparse per-barrio override**.
 4. **Cross-section read shape — team-scoped count map (#1).** Shifts owns the
@@ -113,7 +120,7 @@ the plan). No concurrency tokens (`memory/architecture/no-concurrency-tokens.md`
 | `TeamId` | `Guid` | the function team (Power, …). No EF nav — resolve name via `ITeamServiceRead`. **Unique.** |
 | `CampRoleSlug` | `string` (≤64) | camp role used to find the barrio's function lead (`power`, …) |
 | `DefaultRequiredShiftCount` | `int` | default obligation per barrio (≥0) |
-| `IsActive` | `bool` | inactive functions drop out of the matrix (store default per migration sentinel rules) |
+| `IsActive` | `bool` | inactive functions drop out of the matrix. **Migration store default `true`** (sentinel-safe: `IsRequired()`, not `HasDefaultValue`) |
 | `SortOrder` | `int` | column order in the matrix |
 | `CreatedAt` / `UpdatedAt` | `Instant` / `Instant?` | NodaTime; audit |
 
@@ -159,6 +166,11 @@ public interface IShiftServiceRead : IApplicationService
   carries this). One call per active function (≤4) — fine at this scale.
 - The join + `Status = Confirmed` filter live **inside** Shifts; no shift/rota
   entity crosses the boundary (only `Guid → int`).
+- **Active-event resolution:** route through the existing Shifts active-event
+  path (`ShiftRepository.GetActiveEventSettingsAsync`), **not** a fresh
+  `EventSettings` read — `EventSettings` carries a `Grandfathered("HUM0025")`
+  marker (read by both `ShiftRepository` and `VolunteerTrackingRepository`);
+  don't widen it.
 
 ### 2. Orchestration — `ShiftObligationService : IApplicationService` (Camps)
 
@@ -196,9 +208,11 @@ tables), so calling its own repo is allowed.
 
 - `IEmailMessageFactory.BarrioShiftObligationReminder(recipientEmail,
   recipientName, barrioName, functionName, doneCount, requiredCount,
-  rotaUrl, culture?)` + a renderer template. Operational reminder to leads —
-  **not** consent-gated (legitimate operational interest), category =
-  the existing operational/transactional `MessageCategory`.
+  rotaUrl, culture?)` + a renderer template. **Category = `VolunteerUpdates`**
+  (shift/schedule coordination) — it is default-on but **opt-out-able**, so the
+  reminder honours a lead who opted out of volunteer updates. (Rejected
+  locked-on `System`/`CampaignCodes`: this is coordination mail, not an
+  account/system notice, so suppressing the opt-out isn't justified.)
 
 ### 4. UI — `/Camps/Admin/ShiftObligations` (CampAdmin / Admin)
 
