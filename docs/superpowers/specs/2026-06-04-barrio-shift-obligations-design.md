@@ -104,6 +104,17 @@ function team's existing rota page.
 9. **Membership-gap handling** — show computed counts as-is, but **flag** any
    cell where a barrio's active member count `< required` (can't be met as
    joined). Surfaces the sparse-membership limitation rather than hiding it.
+10. **Function applicability — a barrio only owes a function it actually
+    consumes.** Power: only barrios **on the event grid** owe power shifts; a
+    self-powered barrio doesn't. Modelled generally (not Power-hardcoded) via an
+    `Applicability` flag on the function config. The grid signal already exists:
+    `CampSeason.ElectricalGrid` (enum `Yellow / Red / Norg / OwnSupply /
+    Unknown`, nullable). For the `ElectricalGridConnected` applicability,
+    **obligated = `{Yellow, Red, Norg}`**; **`OwnSupply`** = self-powered and
+    **`Unknown`/null** = unclassified are excluded from the obligation and
+    listed **below the matrix** (so they're visible, not silently dropped, and
+    the admin can spot barrios that still need a grid classification). Camps owns
+    `ElectricalGrid`, so this filter stays inside the Camps section.
 
 ## Data model
 
@@ -119,6 +130,7 @@ the plan). No concurrency tokens (`memory/architecture/no-concurrency-tokens.md`
 | `Id` | `Guid` | PK |
 | `TeamId` | `Guid` | the function team (Power, …). No EF nav — resolve name via `ITeamServiceRead`. **Unique.** |
 | `CampRoleSlug` | `string` (≤64) | camp role used to find the barrio's function lead (`power`, …) |
+| `Applicability` | enum `ObligationApplicability` | `AllBarrios` (default) or `ElectricalGridConnected` (only barrios with `CampSeason.ElectricalGrid` in `{Yellow,Red,Norg}`). Power = `ElectricalGridConnected`. New Domain enum. |
 | `DefaultRequiredShiftCount` | `int` | default obligation per barrio (≥0) |
 | `IsActive` | `bool` | inactive functions drop out of the matrix. **Migration store default `true`** (sentinel-safe: `IsRequired()`, not `HasDefaultValue`) |
 | `SortOrder` | `int` | column order in the matrix |
@@ -181,9 +193,14 @@ public interface IShiftServiceRead : IApplicationService
 - **Compliance computation** `GetComplianceMatrixAsync(year)`:
   1. Active functions ← `shift_obligations` (`IsActive`, ordered).
   2. Barrios ← active `CampSeason`s for `year` (reuse `ICampServiceRead`
-     projections for members/leads; **enrich `CampSeasonInfo`** with role-holder
-     `UserId`s by slug if not already exposed, per read-model-enrichment —
-     preferred over reading the Camps repo twice).
+     projections for members/leads + `ElectricalGrid`; **enrich `CampSeasonInfo`**
+     with role-holder `UserId`s by slug if not already exposed, per
+     read-model-enrichment — preferred over reading the Camps repo twice).
+  2a. **Applicability partition per function:** for an `ElectricalGridConnected`
+     function, split barrios into **obligated** (`ElectricalGrid ∈
+     {Yellow,Red,Norg}`) and **excluded** (`OwnSupply`, `Unknown`, or null).
+     Excluded barrios carry no cell value and surface in a separate group.
+     `AllBarrios` functions skip the partition.
   3. Per function: `counts = IShiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(fn.TeamId)`.
   4. Per (barrio, function): `done = Σ counts[memberUserId]`,
      `required = override ?? default`, `activeMembers = |Active members|`,
@@ -223,8 +240,12 @@ service), gated by the existing CampAdmin policy:
 - `GET /Camps/Admin/ShiftObligations` — **matrix**: rows = barrios (current
   year), columns = active functions. Cell shows `done / required`, colored
   met/unmet; **under-membered cells flagged** (icon + tooltip); the barrio's
-  active member count shown on the row. Each column header links to that team's
-  rota page.
+  active member count shown on the row. A cell for a function the barrio doesn't
+  consume (excluded by applicability) renders as **`—` / N/A**. Each column
+  header links to that team's rota page. Below the matrix, a **"Not on the grid"**
+  group lists barrios excluded from a grid-connected function (split
+  `Own supply` vs `Unclassified — needs grid`), so they're visible and the admin
+  can spot ones still needing classification. No reminder action on excluded rows.
 - `POST /Camps/Admin/ShiftObligations/Remind` — `{campSeasonId, shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/RemindAllNonCompliant` — `{shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/SetOverride` — `{campSeasonId,
