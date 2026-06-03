@@ -138,8 +138,9 @@ the plan). No concurrency tokens (`memory/architecture/no-concurrency-tokens.md`
   `DefaultRequiredShiftCount`.
 
 **Migration:** one EF migration adds both tables (subject to the EF
-migration-review gate). Seed the four function rows is a **data/ops step**, not
-schema — leave to an admin-managed config page (below), not the migration.
+migration-review gate). Creating function rows (Power first; others as their
+teams/camp-roles come online) is a **data/ops step**, not schema — done via the
+admin-managed Functions config page (below), not the migration.
 
 ## Components & flow
 
