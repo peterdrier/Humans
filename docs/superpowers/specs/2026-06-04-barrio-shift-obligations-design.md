@@ -107,27 +107,34 @@ function team's existing rota page.
 9. **Membership-gap handling** — show computed counts as-is, but **flag** any
    cell where a barrio's active member count `< required` (can't be met as
    joined). Surfaces the sparse-membership limitation rather than hiding it.
-10. **Function applicability — a barrio only owes a function it actually
-    consumes.** Power: only barrios **connected to an event power grid** owe
-    power shifts. Modelled generally (not Power-hardcoded) via an `Applicability`
-    flag on the function config. The grid signal already exists:
-    `CampSeason.ElectricalGrid` (enum `Yellow / Red / Norg / OwnSupply /
-    Unknown`, nullable). **Value meanings (from Frank):** `Yellow`/`Red` =
-    grid-connected zones (→ owe); `Norg` = **Nobodies organisation** (core event
-    team, *not* a barrio grid → no obligation); `OwnSupply` = self-powered
-    generator (→ no obligation); `Unknown`/null = unclassified / no electricity.
-    For `ElectricalGridConnected` applicability, **obligated = grid value is set
-    AND not in `{Norg, OwnSupply, Unknown}`** (defined by *exclusion* so a future
-    grid colour — e.g. **Orange**, see below — counts automatically). Excluded
-    barrios carry no power cell and are listed **below the matrix, split by
-    reason** (own supply · Nobodies org · no grid/unclassified), so they're
-    visible and the admin can spot barrios still needing a grid classification.
-    Camps owns `ElectricalGrid`, so this filter stays inside the Camps section.
-    **⚠ Enum gap (flagged):** Frank expects an **Orange** grid; the
-    `ElectricalGrid` enum has no `Orange` value today. If Orange grids are real,
-    add the enum value (a Camps-section/domain change) — the exclusion-based rule
-    above already includes it without further logic changes. Confirm before
-    implementation.
+10. **Two filtering layers (both keyed off `CampSeason.ElectricalGrid`,
+    Camps-owned). Value meanings (from Frank):** enum `Yellow / Red / Norg /
+    OwnSupply / Unknown`, nullable. `Yellow`/`Red` = grid-connected zones;
+    `Norg` = **Nobodies organisation** (core event team); `OwnSupply` =
+    self-powered generator; `Unknown`/null = unclassified / no electricity.
+
+    **(a) Global exemption — Nobodies org owes nothing.** A barrio with
+    `ElectricalGrid == Norg` is a core-org camp and is **exempt from every
+    function** (Power *and* Shit-ninja) — "not expected to provide anyone." Such
+    barrios are dropped from the matrix entirely and listed in a separate
+    **"Nobodies org — exempt"** group. (Assumption to confirm: `Norg` is the sole
+    marker for core-org camps.)
+
+    **(b) Per-function applicability** among the remaining barrios, via an
+    `Applicability` flag on the function config:
+    - **Power = `ElectricalGridConnected`** → owes only if grid value is set AND
+      not in `{OwnSupply, Unknown}` (Norg already removed in layer a). Defined by
+      *exclusion* so a future grid colour — e.g. **Orange** — counts
+      automatically. Barrios excluded here keep their other-function cells but
+      show **n/a** for Power, and are listed under **"Not on the power grid"**
+      split by reason (own supply · no grid/unclassified).
+    - **Shit-ninja = `AllBarrios`** → every non-exempt barrio owes it.
+
+    **⚠ Enum gap (flagged, deferred):** Frank expects an **Orange** grid as a
+    concept but is unsure how it maps on the grid side; `ElectricalGrid` has no
+    `Orange` value today. Left out for now — the exclusion-based Power rule will
+    pick it up automatically if/when an `Orange` enum value is added (a
+    Camps/domain change). Confirm before implementation.
 
 ## Data model
 
@@ -220,12 +227,16 @@ public interface IShiftServiceRead : IApplicationService
      projections for members/leads + `ElectricalGrid`; **enrich `CampSeasonInfo`**
      with role-holder `UserId`s by slug if not already exposed, per
      read-model-enrichment — preferred over reading the Camps repo twice).
-  2a. **Applicability partition per function:** for an `ElectricalGridConnected`
-     function (Power), split barrios into **obligated** (`ElectricalGrid` set and
-     ∉ `{Norg,OwnSupply,Unknown}`) and **excluded** (`Norg` = Nobodies org,
-     `OwnSupply` = self-powered, `Unknown`/null = no grid/unclassified). Excluded
-     barrios carry no cell value and surface in a group split by those reasons.
-     `AllBarrios` functions (Shit-ninja) skip the partition.
+  2a. **Global exemption first:** drop barrios with `ElectricalGrid == Norg`
+     (Nobodies org) from the matrix entirely — exempt from all functions —
+     and collect them for the "Nobodies org — exempt" group.
+  2b. **Per-function applicability** among the rest: for an
+     `ElectricalGridConnected` function (Power), split into **obligated**
+     (`ElectricalGrid` set and ∉ `{OwnSupply,Unknown}`) and **excluded**
+     (`OwnSupply` = self-powered, `Unknown`/null = no grid/unclassified) — the
+     excluded keep their other-function cells but show n/a for Power and surface
+     in the "Not on the power grid" group split by reason. `AllBarrios` functions
+     (Shit-ninja) apply to every non-exempt barrio.
   3. Per function, pick the count source by `TargetType`:
      `Team → GetConfirmedSignupCountsByUserForTeamAsync(fn.TargetId)`,
      `Rota → GetConfirmedSignupCountsByUserForRotaAsync(fn.TargetId)`.
@@ -267,14 +278,15 @@ service), gated by the existing CampAdmin policy:
 - `GET /Camps/Admin/ShiftObligations` — **matrix**: rows = barrios (current
   year), columns = active functions. Cell shows `done / required`, colored
   met/unmet; **under-membered cells flagged** (icon + tooltip); the barrio's
-  active member count shown on the row. A cell for a function the barrio doesn't
-  consume (excluded by applicability) renders as **`—` / N/A**. Each column
-  header links to its target — a **Team** target → the team's rota page; a
-  **Rota** target (Shit-ninja) → that rota's page (via `RotaTargetInfo`). Below
-  the matrix, a **"Not on the power grid"** group lists barrios excluded from a
-  grid-connected function, split by reason — **Own supply** · **Nobodies org
-  (Norg)** · **No grid / unclassified** — so they're visible and the admin can
-  spot ones still needing classification. No reminder action on excluded rows.
+  active member count shown on the row. A Power cell a barrio doesn't owe
+  (grid-excluded) renders as **`—` / n/a**. Each column header links to its
+  target — a **Team** target → the team's rota page; a **Rota** target
+  (Shit-ninja) → that rota's page (via `RotaTargetInfo`). Below the matrix, two
+  groups: **"Nobodies org — exempt"** (Norg camps, dropped from the matrix, owe
+  nothing) and **"Not on the power grid"** (barrios shown in the matrix but with
+  a Power n/a, split by reason — **Own supply** · **No grid / unclassified**) —
+  so both are visible and the admin can spot barrios still needing a grid
+  classification. No reminder action on exempt/excluded rows.
 - `POST /Camps/Admin/ShiftObligations/Remind` — `{campSeasonId, shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/RemindAllNonCompliant` — `{shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/SetOverride` — `{campSeasonId,
