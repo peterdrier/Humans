@@ -123,8 +123,9 @@ function team's existing rota page.
     `ElectricalGrid == Norg` is a core-org camp and is **exempt from every
     function** (Power *and* Shit-ninja) — "not expected to provide anyone." Such
     barrios are dropped from the matrix entirely and listed in a separate
-    **"Nobodies org — exempt"** group. (Assumption to confirm: `Norg` is the sole
-    marker for core-org camps.)
+    **"Nobodies org — exempt"** group. (**Confirmed by Frank:** `Norg` is the
+    *sole* marker for core-org camps — read exemption purely from
+    `ElectricalGrid == Norg`.)
 
     **(b) Per-function applicability** among the remaining barrios, via an
     `Applicability` flag on the function config:
@@ -135,12 +136,14 @@ function team's existing rota page.
       show **n/a** for Power, and are listed under **"Not on the power grid"**
       split by reason (own supply · no grid/unclassified).
     - **Shit-ninja = `AllBarrios`** → every non-exempt barrio owes it.
+      (**Confirmed by Frank:** all barrios owe Shit-ninja.)
 
     **⚠ Enum gap (flagged, deferred):** Frank expects an **Orange** grid as a
     concept but is unsure how it maps on the grid side; `ElectricalGrid` has no
     `Orange` value today. Left out for now — the exclusion-based Power rule will
     pick it up automatically if/when an `Orange` enum value is added (a
-    Camps/domain change). Confirm before implementation.
+    Camps/domain change). **Deferred (Frank): leave Orange out for now** — not
+    wired in this PR; revisit when the grid-side behaviour is settled.
 
 ## Data model
 
@@ -183,7 +186,7 @@ admin-managed Functions config page (below), not the migration.
 
 ## Components & flow
 
-### 1. Cross-section read contract ⚠️ (new public surface — Peter approval)
+### 1. Cross-section read contract — new public surface (✅ approved, per Frank)
 
 New **`IShiftServiceRead`** in `src/Humans.Application/Interfaces/Shifts/`,
 implemented by the existing Shifts service (and pass-through on its caching

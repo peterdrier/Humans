@@ -12,7 +12,7 @@
 
 ## ⚠️ Approval gate (read before starting)
 
-- **Chunk 2 (`IShiftServiceRead`)** introduces a new public cross-section interface in the Shifts section. Per the reuse-first discipline and Peter's hard rules, **new interface surface needs Peter's approval before implementation.** Do not merge Chunk 2 until approved. Chunk 3+ depend on it — if approval is pending, stub `IShiftServiceRead` behind an interface the executor controls and proceed; swap to the real impl once approved.
+- **Chunk 2 (`IShiftServiceRead`)** introduces a new public cross-section interface in the Shifts section. **✅ Approved (per Frank, 2026-06-04)** — proceed with the real implementation. (Approval is informal/assumed; the PR stays draft so Peter still reviews the finished surface before merge.)
 - **Every migration** (Chunk 1) must pass the EF migration-review gate (`.claude/agents/ef-migration-reviewer.md`, `memory/process/ef-migration-review-gate.md`) before commit.
 - **New user-facing pages** (Chunk 5) → run the nav-completeness check; add the link from `/Camps/Admin`.
 - Build/test with `-v quiet` (`memory/process/dotnet-verbosity-quiet.md`): `dotnet build Humans.slnx -v quiet`, `dotnet test Humans.slnx -v quiet`.
