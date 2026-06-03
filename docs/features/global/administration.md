@@ -402,6 +402,7 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. Bypasses MembershipRequiredFilter. |
 | **VolunteerCoordinator** | Read-only access to onboarding review queue. Bypasses MembershipRequiredFilter. |
+| **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
 
 ### Authorization Foundation
 

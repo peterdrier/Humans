@@ -38,8 +38,10 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Filter by vibe, sound zone, kids-friendly, accepting members, and a free-text search box that matches camp name (server-side, composes with the other filters and persists across submissions)
 - Live client-side name filter on the rendered cards mirrors the server search for instant feedback as the visitor types
 - Each card shows name, short description, image, vibes, and status badges
+- Optional **"Show lead positions"** toggle (server-side, composes with the other filters). When on, each card gains a row of role-coverage pills — one per **active** role definition — labelled `{role name}: {filled}/{slots}` (or just `{filled}` when the role has no slot cap). The pill colour reflects coverage (empty / partial / full). These are aggregate **counts only** (sourced from `CampRoleService.GetDirectoryRoleSummariesAsync`, denominator = `SlotCount`), never assignee identities, so they are safe on the public/anonymous directory.
 - Sorted alphabetically by name; **camps the signed-in user currently leads are pinned to the top of the list** (alphabetical within the pinned group, alphabetical for everyone else). Anonymous and non-lead users see the strict alphabetical order.
 - Clicking a card navigates to the camp detail page
+- A header button links the external **Barrio Guide 2026** (Google Drive doc, opens in a new tab)
 
 ### US-20.2: View Camp Details
 **As a** visitor or member
@@ -176,6 +178,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Compliance report at `/Camps/Admin/Compliance` lists camps where any required role's filled-slot count is below `MinimumRequired` for the chosen year (defaults to current public year).
 - All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
 - Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
+- Role email lists (the derived Google Groups `barrios-{year}-{slug}`) fall back to the camp's barrio lead(s): for a **non-Lead** role, any camp that has a Lead for that year but no direct assignee for the role contributes its Lead(s) as stand-in recipients, so messages to an unfilled role still reach the camp's lead instead of nobody (`CampRoleService.GetExpectedAsync`).
 
 ### US-20.13: Tell Humans I'm in a camp this season
 **As an** authenticated human
@@ -189,7 +192,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member.
 - Membership state (Pending / Active) is never rendered on anonymous views.
-- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button.
+- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
 - Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
 - When a season is rejected or withdrawn, pending requesters receive a notification. Pending rows are left as-is (so if the season is later reactivated, the request is still live).

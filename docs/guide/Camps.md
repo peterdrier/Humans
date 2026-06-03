@@ -43,7 +43,7 @@ A public JSON API at `/api/camps/{year}` and `/api/camps/{year}/placement` is av
 
 Most of what the directory offers is open to anyone, signed in or not:
 
-- **Browse the directory** at [/Camps](/Camps). Cards show each camp's name, short blurb, image, vibes, and status badges. Filter by vibe, [sound zone](Glossary.md#sound-zone), kids-friendliness, and whether the camp is accepting humans.
+- **Browse the directory** at [/Camps](/Camps). Cards show each camp's name, short blurb, image, vibes, and status badges. Filter by vibe, [sound zone](Glossary.md#sound-zone), kids-friendliness, and whether the camp is accepting humans. Tick **Show lead positions** to add coverage pills to each card — one per camp role (e.g. `lnt lead: 1/2`), showing how many slots are filled out of the total. The header also links the **Barrio Guide 2026** (opens in a new tab).
 - **View a camp's detail page** at `/Camps/{slug}` for the long description, images, links, current season info, and leads by display name. Previous names appear unless the camp has chosen to hide them.
 - **Contact a camp** via the "Contact this camp" button on the detail page. The camp's email is never exposed publicly — the button opens a facilitated form. Signing in is required so the camp knows who reached out.
 - **Register a new camp** at [/Camps/Register](/Camps/Register) when a season is open. You'll fill in the camp's identity (name, contact info, times at the event, Swiss camp flag) and season-specific details (blurb, languages, vibes, kids policy, sound zone, performance space, space requirement). On submit you become a lead of the camp and the season is created in **Pending** status, waiting on Camp Admin approval.
@@ -85,7 +85,7 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 - **Upload, delete, and reorder images** from the Edit page. Images appear on the directory card and detail page in the order you set.
 - **Opt into a new season** when Camp Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camp Admin review. Either way, review and update the season-specific fields before the event.
 - **Withdraw a season** if plans change. You can also **rejoin a Withdrawn season** yourself (it goes back to Pending for re-approval). Reactivating a season that's been marked **Full** back to Active is a Camp Admin action.
-- **Approve, reject, or remove camp members.** Pending and active members for the current season are listed on the Edit page; approve a request to make someone an active member, reject to dismiss the request, or remove an existing active member. Approvals and rejections trigger an in-app notification to the requester.
+- **Approve, reject, or remove camp members.** Pending and active members for the current season are listed on the Edit page; approve a request to make someone an active member, reject to dismiss the request, or remove an existing active member. Approvals and rejections trigger an in-app notification to the requester. An **EE** badge next to the active-members heading shows how many Early Entry slots you've granted out of your camp's allocation for the year (e.g. `EE: 3/5`).
 
 ## As a Board member / Admin (Camp Admin)
 
