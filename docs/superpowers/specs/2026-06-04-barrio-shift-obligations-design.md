@@ -96,9 +96,15 @@ function team's existing rota page.
    the Shifts section carrying *only* this method (seed of the read/write split;
    migrating existing cross-section callers off `IShiftManagementService` is
    **out of scope** and remains the `section-read-split` skill's job).
-6. **Access — CampAdmin / Admin only.** Cupcake uses it via a CampAdmin grant.
-   (Considered scoped per-function-coordinator access; deferred to keep auth
-   simple — noted as follow-up.)
+6. **Access — two tiers.**
+   - The **admin matrix** (all barrios × all functions + reminders) is
+     **CampAdmin / Admin only** (Cupcake via a CampAdmin grant).
+   - A read-only **per-barrio detail** (one barrio's obligations + the named
+     members who have signed up per function) is **also visible to that barrio's
+     own leads** (`CampInfo.IsLead`), scoped to their barrio. This refines the
+     original "admin-only" answer: leads get self-service visibility, not the
+     cross-barrio matrix and not the reminder action.
+   (Scoped per-function-coordinator access to the matrix is still deferred.)
 7. **Function lead mapping** — each obligation function carries a
    `CampRoleSlug`. Reminder recipients = barrio **leads + the holder of that
    camp role**; if no role-holder, leads only.
@@ -245,6 +251,15 @@ public interface IShiftServiceRead : IApplicationService
      `underMembered = activeMembers < required`.
   Returns a `BarrioObligationMatrix` projection (rows, columns, cells) — no EF
   entities cross into Web.
+- **Per-barrio detail** `GetBarrioObligationDetailAsync(campSeasonId)`: for one
+  barrio, per active applicable function → `required`, `done`, and the **named
+  members who have signed up** — intersect the barrio's active member `UserId`s
+  with the function's `{userId:count}` map (already fetched for the matrix),
+  resolve names via `IUserService.GetByIdsAsync`, return
+  `[{UserId, Name, Count}]` sorted desc by count. (Members with zero signups are
+  omitted; optionally include them as "0" so leads can chase — see UI.) Reuses
+  the same count source as the matrix; **no new cross-section surface**. Returns a
+  `BarrioObligationDetail` projection.
 - **Reminder dispatch** `SendReminderAsync(campSeasonId, shiftObligationId)` and
   `RemindAllNonCompliantAsync(shiftObligationId)`:
   - recipients = season `LeadUserIds` ∪ holder(s) of `fn.CampRoleSlug`
@@ -287,6 +302,11 @@ service), gated by the existing CampAdmin policy:
   a Power n/a, split by reason — **Own supply** · **No grid / unclassified**) —
   so both are visible and the admin can spot barrios still needing a grid
   classification. No reminder action on exempt/excluded rows.
+- `GET /Camps/Admin/ShiftObligations/{campSeasonId}` — **per-barrio detail**:
+  each applicable function with `done / required` and the **list of that barrio's
+  members who have signed up** (name + count, desc). A matrix cell links here.
+  Members with zero signups can be listed as a "not yet signed up" tail so the
+  lead/admin can chase them.
 - `POST /Camps/Admin/ShiftObligations/Remind` — `{campSeasonId, shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/RemindAllNonCompliant` — `{shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/SetOverride` — `{campSeasonId,
@@ -296,6 +316,15 @@ service), gated by the existing CampAdmin policy:
   (CRUD: target type + target (Team or Rota), camp-role slug, applicability,
   default count, active, sort) — how the two functions (Power, Shit-ninja) get
   set up/maintained without a migration.
+
+**Barrio-lead detail (scoped, read-only).** The same per-barrio detail is
+reachable by the barrio's own leads at `GET /Camps/{slug}/ShiftObligations`
+(resolve camp by slug → authorize via `CampInfo.IsLead(currentUser)` OR
+CampAdmin/Admin, mirroring the existing `/Camps/{slug}/Edit` lead gate). It shows
+only their barrio's obligations + who has signed up; **no matrix, no reminder
+action, no override editing.** Surfaced as a link from the camp's lead pages
+(e.g. the `/Camps/{slug}/Edit/Members` page). The controller calls the same
+`GetBarrioObligationDetailAsync(campSeasonId)`.
 
 ### 5. Caching
 
@@ -328,6 +357,11 @@ pattern (§15) — explicitly deferred.
 - **Reminder recipients:** leads ∪ role-holder; role-holder absent → leads only;
   emails resolved + one audit entry per send; bulk hits exactly the
   non-compliant barrios.
+- **Per-barrio detail:** lists only that barrio's active members with ≥1 confirmed
+  signup (name + count, desc); zero-signup members appear only in the optional
+  "not yet" tail; exempt/n-a functions are absent. **Scoped auth:** a lead of the
+  barrio (or CampAdmin/Admin) is allowed; a non-lead, non-admin is denied; a lead
+  of a *different* barrio is denied access to this barrio's detail.
 - **Shifts read:** both `...ForTeamAsync` (all the team's rotas) and
   `...ForRotaAsync` (one rota) count only `Confirmed` signups in the active
   event; users with none are absent; the rota variant excludes sibling rotas of
