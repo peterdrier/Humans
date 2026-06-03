@@ -193,6 +193,15 @@ Authoring N cultures by hand is the friction point in §6. We offer a **"pre-fil
 - **Cost — negligible.** Billed per source character × target language. A 10–15-question multiple-choice survey is ~4,000 source chars → ~16,000 chars to fill 4 other cultures. At the standard NMT rate ($20 / 1M chars) that's **~$0.32**, but the **free tier is 500,000 chars/month** (resets monthly), so realistic spend is **$0** — you'd need ~30 full surveys/month to exhaust it. Standard NMT is sufficient for short choice prompts; no need for the pricier LLM/adaptive tiers.
 - **Graceful absence:** if Google credentials aren't configured (dev/test, or the API isn't enabled), the stub is registered and the button is simply hidden — manual translation still works. Same `hasGoogleCredentials` gate the Workspace clients already use.
 
+### 6.2 Response translation (free-text answers)
+
+Free-text answers (`ShortText` / `LongText`) come back in whatever language the respondent answered in. The results view (§8) and the analysis API (§13) can **translate answers on read** into the reader's culture, reusing the **same `IGoogleTranslationService`** from §6.1 — no second mechanism.
+
+- **On-demand, not stored:** translation happens at read time (results view "translate" toggle, or API `?translateTo={culture}`). We don't persist translated copies — the original answer in `SurveyAnswer.TextValue` stays canonical; translation is a display/transport convenience. (Optional cache keyed by `(answerId, targetCulture)` if volume ever warrants — not v1.)
+- **Choice/rating answers** need no translation — they're keyed by the culture-neutral `Option.Value`, already labelled per culture from the authored `LocalizedText`.
+- **Cost** is the same trivial NMT rate; a few hundred short answers is well inside the monthly free tier.
+- **Egress note:** translating answers sends member-authored text to Google. Acceptable under the same posture as §6.1, but it's a third-party data flow over potentially sensitive free-text — see the consent/egress open question (§15).
+
 ## 7. Distribution & reminders (reuse Campaigns/Mailer + Email outbox)
 
 **Audience resolution** reuses the Mailer **`IMailerAudience`** framework — the existing `ComputeMemberUserIdsAsync` implementations already cover *all-users*, *ticket-holders* (`HasTicketAudience`), team/shift cohorts, etc. The Survey author picks an `AudienceKey`; the send flow resolves it to a user-id set the same way audience sync does today.
@@ -281,18 +290,61 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 - **Status:** (A) born §15-compliant.
 - **Architecture tests:** add `SurveyArchitectureTests` pinning no-EF-in-Application, single-repo table ownership, and cross-section-via-interface.
 
-## 13. Out of scope (v1)
+## 13. Results, export & external analysis (API)
 
+The point of a survey is the readout. We have two known consumers, and they want different shapes:
+
+- **App-feedback survey** ("how did you like the app, what would you change") → handled by **Claude reading the responses over an API**, turning free-text into a bug/improvement list. We are **not** building that analysis in-app; we are building **the API Claude reads**.
+- **Event survey** → **raw export** (CSV/JSON), with infographics produced **externally** (Claude over the export). Again, no in-app charting engine.
+
+So the section ships three things and stops there: an in-app results view (aggregates), a raw export, and a read-only analysis API. Synthesis (themes, bug extraction, infographics) lives **outside** this effort.
+
+### 13.1 In-app results view (§8 admin)
+
+Per-question aggregates (counts/%, rating distributions, free-text answer list with the §6.2 translate toggle), response-rate (responses ÷ invited), and an Identified-only per-respondent drill-down. This is the at-a-glance view — not the analysis surface.
+
+### 13.2 Raw export
+
+Admin download from `/Survey/Admin`:
+- **CSV** — one row per response, one column per question (multi-choice flattened to `value|value`); an `anonymity` column; user identity columns populated **only** for `Identified` responses.
+- **JSON** — the same data structured (response → answers), the format an LLM/agent ingests most cleanly. Optional `?translateFreeText={culture}`.
+
+Anonymous and completion-tracked responses export their answers with **no** user-identifying columns, by construction (there is nothing to join).
+
+### 13.3 Analysis API (key-authed, read-only) — the "Claude reads the responses" surface
+
+Mirrors the existing **Issues API** pattern exactly (`X-Api-Key` header; **503** if the key env var is unset, **401** if invalid), so the tooling and the `/triage`-style skill story are consistent.
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/surveys` | List surveys (id, title, status, response/invite counts). |
+| `GET /api/surveys/{id}` | Survey definition — questions, options, types, branching — so the reader knows the shape. |
+| `GET /api/surveys/{id}/responses` | All responses + answers. Optional `?translateFreeText={culture}` (reuses §6.2), `?anonymity=`, `?since=`, `?limit=&cursor=` paging for hundreds of rows. |
+| `GET /api/surveys/{id}/aggregates` | Pre-computed per-question aggregates (the cheap path when the consumer only needs counts). |
+
+- **Read-only.** No write routes. The API never creates issues, never mutates a survey — extraction of bugs/work items from the app-feedback survey is a **human+Claude step done elsewhere**, deliberately out of this section.
+- **Identity exposure follows anonymity tier**: `Identified` responses include the respondent's user id + display name; `CompletionTracked`/`Anonymous` responses expose answers only. Enforced server-side regardless of query params.
+- **Env var:** `SURVEY_API_KEY` (+ an `/Admin/Configuration` set/unset indicator, mirroring `ISSUES_API_KEY`).
+- **Stable shape:** enums serialised as strings; question/option `Value`s are the culture-neutral join keys so an agent can correlate answers across languages without translating choice labels.
+
+### 13.4 What this deliberately does NOT include
+
+In-app theme clustering, sentiment, summarisation, auto-generated infographics/charts, or auto-filing bugs from feedback. Those are produced by Claude over §13.2/§13.3 and are **out of scope** (see §14). The section's contract is: clean structured data out, by a stable read API + export. That keeps member free-text from being run through an in-app LLM pipeline nobody asked us to own, and keeps the egress decision (§15) explicit and one-hop.
+
+## 14. Out of scope (v1)
+
+- **In-app analysis/synthesis** — theme clustering, sentiment, summarisation, infographic/chart generation, and auto-extracting bugs/work-items from feedback. Done externally by Claude over the §13 API/export; the app ships data, not analysis.
 - Response **quotas / caps**, randomised question order, A/B variants.
 - Piped text / answer interpolation into later prompts.
 - File-upload answer type.
 - Multiple reminders / configurable reminder cadence (v1 = exactly one, at 7 days).
 - SMS / push delivery — email only.
-- Realtime results dashboards / charts beyond basic aggregates + CSV.
+- Realtime results dashboards / charts beyond basic aggregates + CSV/JSON export.
 - A `SurveyAdmin` delegation role.
 - Cross-survey respondent identity / longitudinal linking.
+- **Persisted/stored translations** of either authored content or answers — translation is on-read (§6.1/§6.2).
 
-## 14. Open questions / decisions for Peter
+## 15. Open questions / decisions for Peter
 
 1. **`LocalizedText` scope** — Survey-owned value object now (assumed), vs. promote to a shared Domain primitive for future Events/Camps localisation. (§6)
 2. **Audience reuse surface** — introduce `IMailerServiceRead.ResolveAudienceAsync(key)` (or `IAudienceResolver`) as the cross-section read, vs. Survey resolving cohorts directly via `ITicketServiceRead`/`ITeamService`/`IUserServiceRead`. The `IMailerAudience` set is MailerLite-coupled today. (§7)
@@ -300,8 +352,10 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 4. **Public slug** — ship the public-link path in v1, or invite-only first and add public links later?
 5. **Branch sources** — v1 restricts branching predicates to choice questions. Confirm rating/text branch sources aren't needed initially. (§5)
 6. **Assisted translation in v1?** — ship the Google Cloud Translation "pre-fill" button in v1 (cheap, reuses existing creds), or land manual translation first and add the button as a fast-follow. The `IGoogleTranslationClient` lives in GoogleIntegration either way. (§6.1)
+7. **Data egress / consent for translation + external analysis** — translating free-text answers sends them to Google (§6.2); the analysis API hands responses (incl. identified ones) to an external Claude agent (§13.3). Confirm the consent posture: e.g. a note on the wizard that free-text may be machine-translated/processed, and whether the analysis API should be restricted to anonymity-stripped payloads for some surveys. Load-bearing for the GDPR story.
+8. **Analysis API scope** — is the read API (`/api/surveys/*`) in v1, or a fast-follow after the core authoring/answering/results land? It's small and mirrors the Issues API, but it's the piece that unblocks the app-feedback workflow specifically. (§13.3)
 
-## 15. Acceptance criteria
+## 16. Acceptance criteria
 
 - An `AdminOrBoard` user can author a multi-question survey with single/multi-choice, text, and rating questions, translate it into ≥2 cultures, and add a branching rule that hides a question based on a prior choice answer.
 - The "pre-fill translations" action machine-translates missing `LocalizedText` from the source culture into the others, lands them editable/flagged, never overwrites author-edited strings, and is hidden when Google credentials are absent (stub registered).
@@ -310,6 +364,9 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 - Branching: a question whose `ShowIf` is unmet is skipped and, even if required, does not block submission; the server rejects answers to questions that should have been hidden.
 - An identified submission sets `Response.UserId` and `Invitation.CompletedAt`; a completion-tracked submission sets only `CompletedAt`; a fully-anonymous submission sets neither user link nor completion.
 - Seven days after send, un-completed invitations receive exactly one reminder email; completed (Identified/Completion-tracked) invitees receive none.
-- Results view shows per-question aggregates and a per-respondent drill-down limited to Identified responses; CSV export works.
+- Results view shows per-question aggregates and a per-respondent drill-down limited to Identified responses; CSV **and JSON** export work, with free-text columns optionally translated.
+- The results view (and API) can translate free-text answers into a chosen culture on read, without persisting the translation.
+- `GET /api/surveys/{id}/responses` with a valid `SURVEY_API_KEY` returns responses + answers (paged); identity fields appear only for Identified responses; the survey definition endpoint exposes question/option `Value`s as stable join keys. Missing/invalid key → 503/401.
+- No in-app code clusters, summarises, charts, or auto-files anything from responses — synthesis is external over the API/export.
 - A user's GDPR export includes their Identified responses and omits anonymous/completion-tracked ones.
 - Architecture tests pin: no EF in `Humans.Application.Survey`, `survey_*` tables owned solely by `SurveyRepository`, all cross-section access via service interfaces.
