@@ -32,21 +32,25 @@ function team's existing rota page.
   exposes `LeadUserIds`; leads are `CampMember`s with a `CampRoleAssignment` to
   the `SpecialRole = Lead` role definition.
   (`src/Humans.Domain/Entities/Camp*.cs`, `CampService.CreateCampSeasonInfo`.)
-- **Function teams already exist as `Team`s.** "Power" is a `Team` and owns all
-  its shifts. Identify a team via `ITeamServiceRead.GetTeamAsync(id)` /
-  `GetTeamBySlugAsync(slug)` (budget 5 read interface).
-- **Some function camp-roles already exist; others don't.**
-  `DevelopmentCampRoleSeeder` defines `power` and `shit-ninja` (alongside
-  `consent-lead`, `lnt`, `build-lead`) — but **no `water` or `auger` camp
-  roles**, and the corresponding function *Teams* may also not exist yet. A
-  barrio's "power lead" = the `CampMember` holding that camp's `power` role for
-  the season; for a function whose camp-role has no holder (or doesn't exist),
-  reminder recipients fall back to **leads only** (Decision 7). So configuring a
-  new function is purely admin data entry — see the Functions sub-page.
+- **An obligation target is a Team *or* a single Rota (from Frank).**
+  - **Power** is a whole `Team` and owns all its shifts → obligation = confirmed
+    signups across **all the Power team's rotas**.
+  - **Shit-ninja** is **one `Rota` within the LnT team** (not its own team) →
+    obligation = confirmed signups on **that specific rota only** (counting all
+    LnT signups would be wrong).
+  - **Water-truck / Auger are not shifts** → **out of scope**, dropped.
+  Identify a team via `ITeamServiceRead.GetTeamAsync(id)`/`GetTeamBySlugAsync`
+  (budget-5 read interface); a rota via the Shifts read interface (below).
+- **The relevant camp-roles exist.** `DevelopmentCampRoleSeeder` defines `power`
+  and `shit-ninja` (alongside `consent-lead`, `lnt`, `build-lead`). A barrio's
+  function lead = the `CampMember` holding that camp's role (`power` /
+  `shit-ninja`) for the season; if no holder, reminder recipients fall back to
+  **leads only** (Decision 7).
 - **Shifts data:** `ShiftSignup (UserId → Shift)`, `Shift → Rota`,
-  `Rota.TeamId`. "Confirmed Power shifts for human X" = signups with
-  `Status = Confirmed` on shifts whose rota's `TeamId` is Power. `EventSettings`
-  (the active event, `IsActive`) is **Shifts-owned**; only Shifts knows it.
+  `Rota.TeamId`. Confirmed-signup count for human X is signups with
+  `Status = Confirmed` filtered by **either** the rota's `TeamId` (team target)
+  **or** the `RotaId` (rota target). `EventSettings` (the active event,
+  `IsActive`) is **Shifts-owned**; only Shifts knows it.
 - **Cross-section read surfaces today:** Shifts has **no `IShiftServiceRead`**;
   cross-section callers use the read+write `IShiftManagementService` or narrower
   reads (`IShiftView`, `IVolunteerTrackingServiceRead`). None expose
@@ -78,11 +82,10 @@ function team's existing rota page.
    Rejected: Shifts-owned (forces a wrong-direction `Shifts → Camps` edge) and a
    new dedicated section (over-engineered for ~few barrios × 4 functions at this
    scale).
-2. **General from the start** — obligations are configurable per function team,
-   not Power-hardcoded. Power is the only fully-wired function today (team +
-   `power` camp-role exist); Water/Shit-ninja/Auger are added as admin config
-   when their teams/camp-roles exist (columns resolve leads-only/empty until
-   then).
+2. **General from the start** — obligations are configurable, each targeting
+   **a Team or a single Rota**, not Power-hardcoded. Two real functions:
+   **Power** (Team target) and **Shit-ninja** (Rota target, within LnT).
+   Water-truck/Auger are dropped (not shifts).
 3. **Obligation = X shifts total per barrio**, with a **global default per
    function and a sparse per-barrio override**.
 4. **Cross-section read shape — team-scoped count map (#1).** Shifts owns the
@@ -105,16 +108,26 @@ function team's existing rota page.
    cell where a barrio's active member count `< required` (can't be met as
    joined). Surfaces the sparse-membership limitation rather than hiding it.
 10. **Function applicability — a barrio only owes a function it actually
-    consumes.** Power: only barrios **on the event grid** owe power shifts; a
-    self-powered barrio doesn't. Modelled generally (not Power-hardcoded) via an
-    `Applicability` flag on the function config. The grid signal already exists:
+    consumes.** Power: only barrios **connected to an event power grid** owe
+    power shifts. Modelled generally (not Power-hardcoded) via an `Applicability`
+    flag on the function config. The grid signal already exists:
     `CampSeason.ElectricalGrid` (enum `Yellow / Red / Norg / OwnSupply /
-    Unknown`, nullable). For the `ElectricalGridConnected` applicability,
-    **obligated = `{Yellow, Red, Norg}`**; **`OwnSupply`** = self-powered and
-    **`Unknown`/null** = unclassified are excluded from the obligation and
-    listed **below the matrix** (so they're visible, not silently dropped, and
-    the admin can spot barrios that still need a grid classification). Camps owns
-    `ElectricalGrid`, so this filter stays inside the Camps section.
+    Unknown`, nullable). **Value meanings (from Frank):** `Yellow`/`Red` =
+    grid-connected zones (→ owe); `Norg` = **Nobodies organisation** (core event
+    team, *not* a barrio grid → no obligation); `OwnSupply` = self-powered
+    generator (→ no obligation); `Unknown`/null = unclassified / no electricity.
+    For `ElectricalGridConnected` applicability, **obligated = grid value is set
+    AND not in `{Norg, OwnSupply, Unknown}`** (defined by *exclusion* so a future
+    grid colour — e.g. **Orange**, see below — counts automatically). Excluded
+    barrios carry no power cell and are listed **below the matrix, split by
+    reason** (own supply · Nobodies org · no grid/unclassified), so they're
+    visible and the admin can spot barrios still needing a grid classification.
+    Camps owns `ElectricalGrid`, so this filter stays inside the Camps section.
+    **⚠ Enum gap (flagged):** Frank expects an **Orange** grid; the
+    `ElectricalGrid` enum has no `Orange` value today. If Orange grids are real,
+    add the enum value (a Camps-section/domain change) — the exclusion-based rule
+    above already includes it without further logic changes. Confirm before
+    implementation.
 
 ## Data model
 
@@ -128,9 +141,10 @@ the plan). No concurrency tokens (`memory/architecture/no-concurrency-tokens.md`
 | Column | Type | Notes |
 |---|---|---|
 | `Id` | `Guid` | PK |
-| `TeamId` | `Guid` | the function team (Power, …). No EF nav — resolve name via `ITeamServiceRead`. **Unique.** |
-| `CampRoleSlug` | `string` (≤64) | camp role used to find the barrio's function lead (`power`, …) |
-| `Applicability` | enum `ObligationApplicability` | `AllBarrios` (default) or `ElectricalGridConnected` (only barrios with `CampSeason.ElectricalGrid` in `{Yellow,Red,Norg}`). Power = `ElectricalGridConnected`. New Domain enum. |
+| `TargetType` | enum `ShiftObligationTargetType` | `Team` or `Rota`. New Domain enum. |
+| `TargetId` | `Guid` | a `TeamId` (Power) or `RotaId` (Shit-ninja) per `TargetType`. No EF nav — name/link resolved via the Shifts/Teams read interfaces. **Unique** with `TargetType`. |
+| `CampRoleSlug` | `string` (≤64) | camp role used to find the barrio's function lead (`power`, `shit-ninja`) |
+| `Applicability` | enum `ObligationApplicability` | `AllBarrios` (default; e.g. Shit-ninja) or `ElectricalGridConnected` (Power — only barrios whose `CampSeason.ElectricalGrid` is set and not in `{Norg,OwnSupply,Unknown}`). New Domain enum. |
 | `DefaultRequiredShiftCount` | `int` | default obligation per barrio (≥0) |
 | `IsActive` | `bool` | inactive functions drop out of the matrix. **Migration store default `true`** (sentinel-safe: `IsRequired()`, not `HasDefaultValue`) |
 | `SortOrder` | `int` | column order in the matrix |
@@ -165,20 +179,30 @@ decorator, which must delegate to inner — hard rule):
 ```csharp
 public interface IShiftServiceRead : IApplicationService
 {
-    /// Confirmed signup counts grouped by user, for shifts under the given
-    /// team's rotas, in the currently-active event. Resolves the active event
-    /// internally. Users with zero confirmed signups are absent from the map.
+    /// Confirmed signup counts grouped by user, for shifts under ALL of the
+    /// given team's rotas, in the currently-active event (resolved internally).
+    /// Users with zero confirmed signups are absent from the map.
     Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
         Guid teamId, CancellationToken ct = default);
+
+    /// Same, but scoped to a SINGLE rota (e.g. Shit-ninja within LnT).
+    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(
+        Guid rotaId, CancellationToken ct = default);
+
+    /// Display name + link parts for an obligation target (rota: name + owning
+    /// team slug + rotaId; team callers use ITeamServiceRead instead). Null if
+    /// the rota no longer exists. Web builds the URL.
+    Task<RotaTargetInfo?> GetRotaTargetInfoAsync(Guid rotaId, CancellationToken ct = default);
 }
 ```
 
-- **Reuse audit (why net-new):** no existing read returns team-scoped per-user
-  counts; `GetByUserAsync` is per-user and team-blind, and the
-  `read-model-enrichment` rule doesn't apply (no canonical shift read DTO
-  carries this). One call per active function (≤4) — fine at this scale.
+- **Reuse audit (why net-new):** no existing read returns team- or rota-scoped
+  per-user counts; `GetByUserAsync` is per-user and target-blind, and
+  `read-model-enrichment` doesn't apply (no canonical shift read DTO carries
+  this). One call per active function (2 today) — trivial at this scale.
 - The join + `Status = Confirmed` filter live **inside** Shifts; no shift/rota
-  entity crosses the boundary (only `Guid → int`).
+  entity crosses the boundary (only `Guid → int` and a small `RotaTargetInfo`
+  projection).
 - **Active-event resolution:** route through the existing Shifts active-event
   path (`ShiftRepository.GetActiveEventSettingsAsync`), **not** a fresh
   `EventSettings` read — `EventSettings` carries a `Grandfathered("HUM0025")`
@@ -197,11 +221,14 @@ public interface IShiftServiceRead : IApplicationService
      with role-holder `UserId`s by slug if not already exposed, per
      read-model-enrichment — preferred over reading the Camps repo twice).
   2a. **Applicability partition per function:** for an `ElectricalGridConnected`
-     function, split barrios into **obligated** (`ElectricalGrid ∈
-     {Yellow,Red,Norg}`) and **excluded** (`OwnSupply`, `Unknown`, or null).
-     Excluded barrios carry no cell value and surface in a separate group.
-     `AllBarrios` functions skip the partition.
-  3. Per function: `counts = IShiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(fn.TeamId)`.
+     function (Power), split barrios into **obligated** (`ElectricalGrid` set and
+     ∉ `{Norg,OwnSupply,Unknown}`) and **excluded** (`Norg` = Nobodies org,
+     `OwnSupply` = self-powered, `Unknown`/null = no grid/unclassified). Excluded
+     barrios carry no cell value and surface in a group split by those reasons.
+     `AllBarrios` functions (Shit-ninja) skip the partition.
+  3. Per function, pick the count source by `TargetType`:
+     `Team → GetConfirmedSignupCountsByUserForTeamAsync(fn.TargetId)`,
+     `Rota → GetConfirmedSignupCountsByUserForRotaAsync(fn.TargetId)`.
   4. Per (barrio, function): `done = Σ counts[memberUserId]`,
      `required = override ?? default`, `activeMembers = |Active members|`,
      `underMembered = activeMembers < required`.
@@ -242,23 +269,26 @@ service), gated by the existing CampAdmin policy:
   met/unmet; **under-membered cells flagged** (icon + tooltip); the barrio's
   active member count shown on the row. A cell for a function the barrio doesn't
   consume (excluded by applicability) renders as **`—` / N/A**. Each column
-  header links to that team's rota page. Below the matrix, a **"Not on the grid"**
-  group lists barrios excluded from a grid-connected function (split
-  `Own supply` vs `Unclassified — needs grid`), so they're visible and the admin
-  can spot ones still needing classification. No reminder action on excluded rows.
+  header links to its target — a **Team** target → the team's rota page; a
+  **Rota** target (Shit-ninja) → that rota's page (via `RotaTargetInfo`). Below
+  the matrix, a **"Not on the power grid"** group lists barrios excluded from a
+  grid-connected function, split by reason — **Own supply** · **Nobodies org
+  (Norg)** · **No grid / unclassified** — so they're visible and the admin can
+  spot ones still needing classification. No reminder action on excluded rows.
 - `POST /Camps/Admin/ShiftObligations/Remind` — `{campSeasonId, shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/RemindAllNonCompliant` — `{shiftObligationId}`.
 - `POST /Camps/Admin/ShiftObligations/SetOverride` — `{campSeasonId,
   shiftObligationId, requiredShiftCount?}` (null clears the override; edited
   inline in the cell).
 - **Function config** sub-page `/Camps/Admin/ShiftObligations/Functions`
-  (CRUD: team, camp-role slug, default count, active, sort) — how the four
-  functions get seeded/maintained without a migration.
+  (CRUD: target type + target (Team or Rota), camp-role slug, applicability,
+  default count, active, sort) — how the two functions (Power, Shit-ninja) get
+  set up/maintained without a migration.
 
 ### 5. Caching
 
 No new caching layer. The matrix is computed on demand from live reads; at ~few
-barrios × ≤4 functions the cost is trivial (scale doctrine: don't optimize).
+barrios × 2 functions the cost is trivial (scale doctrine: don't optimize).
 If the Shifts read needs memoizing later, it follows the section caching-decorator
 pattern (§15) — explicitly deferred.
 
@@ -286,10 +316,12 @@ pattern (§15) — explicitly deferred.
 - **Reminder recipients:** leads ∪ role-holder; role-holder absent → leads only;
   emails resolved + one audit entry per send; bulk hits exactly the
   non-compliant barrios.
-- **Shifts read:** `GetConfirmedSignupCountsByUserForTeamAsync` counts only
-  `Confirmed` signups on the team's rotas in the active event; users with none
-  are absent. (Real-Postgres integration test for the query translation per the
-  test-tier doctrine; pure-logic elsewhere.)
+- **Shifts read:** both `...ForTeamAsync` (all the team's rotas) and
+  `...ForRotaAsync` (one rota) count only `Confirmed` signups in the active
+  event; users with none are absent; the rota variant excludes sibling rotas of
+  the same team (the Shit-ninja-vs-rest-of-LnT case). (Real-Postgres integration
+  test for the query translation per the test-tier doctrine; pure-logic
+  elsewhere.)
 - **Architecture tests:** the two new tables are referenced only by
   `ShiftObligationRepository` (table-ownership invariant); `Camps → Shifts`
   read edge is via `IShiftServiceRead` only.
@@ -299,6 +331,7 @@ pattern (§15) — explicitly deferred.
 
 - Dedicated power-rota page / unfilled-day visibility (separate PR; we only link
   out).
+- **Water-truck and Auger** — not modelled as shifts; dropped entirely.
 - Per-function-coordinator scoped access (CampAdmin/Admin only for v1).
 - Counting anything other than `Confirmed` signups (pending/bailed excluded).
 - Auto-prompting / scheduled reminders (manual trigger only).
