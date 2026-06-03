@@ -33,6 +33,7 @@ This is a new **vertical section** (`Survey`), born compliant with current archi
 | **Reminders** | Hangfire recurring job (daily tick) enqueues a reminder for invitations that are **un-completed**, **sent ≥ 7 days ago**, and **not yet reminded**. One reminder per invitation. |
 | **Question types** | Single-choice, multi-choice, free text (short/long), rating/scale — **plus conditional branching** (skip logic). |
 | **Multi-language content** | New **section-local** `LocalizedText` value object (jsonb `{culture: string}`) for all authored strings — the app has no per-language *content* storage today (resx is UI-chrome only). See §6 + Open Questions for the "promote to shared" question. |
+| **Assisted translation** | **Reuse the existing Google service-account** to add Google **Cloud Translation** as a "pre-fill translations" button — author writes one culture, machine-translates the rest, **then reviews/edits**. Cost is negligible (~16k chars/survey, inside the 500k-chars/month free tier). See §6.1. |
 | Authoring/sending authority | `AdminOrBoard` policy (existing). A dedicated `SurveyAdmin` role is a follow-up if delegation is needed — not in v1. |
 
 ## 3. Data model
@@ -182,6 +183,16 @@ The app today localises only **UI chrome** via `IStringLocalizer` + `.resx` (cul
 
 > **Decision flagged for Peter (Open Q):** keep `LocalizedText` **Survey-owned** for now (reuse-first: don't build a shared abstraction before a second consumer exists), vs. promote it to a shared Domain value object usable by Events/Camps later. Spec assumes section-local; promotion is a later refactor.
 
+### 6.1 Assisted translation (Google Cloud Translation)
+
+Authoring N cultures by hand is the friction point in §6. We offer a **"pre-fill translations"** action that machine-translates a source culture into the others, leaving the author to **review and edit** before publish — never an auto-publish of raw machine output.
+
+- **Flow:** author writes the survey in one source culture → clicks *Translate to other languages* → every `LocalizedText` (title, intro, thank-you, prompts, help, option labels, scale labels) missing in a target culture is filled from the source via the API → fields land **editable**, flagged "machine-translated" until the author confirms. Re-running only fills blanks (never clobbers an author-edited string) unless the author explicitly chooses "retranslate".
+- **Why human-in-the-loop:** machine translation into Catalan and idiomatic es/it is good-not-perfect for a member-facing nonprofit voice; pre-fill-then-edit matches the existing one-culture-at-a-time authoring without inventing a new flow.
+- **Reuse, don't bolt on:** the codebase already authenticates to Google with a service account (`GoogleWorkspace:ServiceAccountKeyJson`, `GoogleCredentialLoader`, the `Google.Apis.*` packages). This adds **one more enabled API on the same GCP project** — not a new integration. New client follows the existing external-client pattern (MailerLite/Directory): `IGoogleTranslationClient` (Application interface) → `GoogleTranslationClient` (Infrastructure, reusing `GoogleCredentialLoader`) + a `StubGoogleTranslationClient` for dev/test. Survey calls it through a service interface (cross-section to GoogleIntegration), never imports `Google.Apis.*`.
+- **Cost — negligible.** Billed per source character × target language. A 10–15-question multiple-choice survey is ~4,000 source chars → ~16,000 chars to fill 4 other cultures. At the standard NMT rate ($20 / 1M chars) that's **~$0.32**, but the **free tier is 500,000 chars/month** (resets monthly), so realistic spend is **$0** — you'd need ~30 full surveys/month to exhaust it. Standard NMT is sufficient for short choice prompts; no need for the pricier LLM/adaptive tiers.
+- **Graceful absence:** if Google credentials aren't configured (dev/test, or the API isn't enabled), the stub is registered and the button is simply hidden — manual translation still works. Same `hasGoogleCredentials` gate the Workspace clients already use.
+
 ## 7. Distribution & reminders (reuse Campaigns/Mailer + Email outbox)
 
 **Audience resolution** reuses the Mailer **`IMailerAudience`** framework — the existing `ComputeMemberUserIdsAsync` implementations already cover *all-users*, *ticket-holders* (`HasTicketAudience`), team/shift cohorts, etc. The Survey author picks an `AudienceKey`; the send flow resolves it to a user-id set the same way audience sync does today.
@@ -246,11 +257,12 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 | `IMailerServiceRead` / `IMailerAudience` (read surface — §7 Open Q) | Resolve `AudienceKey` → recipient user-id set |
 | `IUserServiceRead.GetUserInfosAsync` | Recipient names + `PreferredLanguage` for invite/reminder emails and results display |
 | `IEmailService` + new `IEmailMessageFactory.SurveyInvitation/SurveyReminder` | Invite + reminder delivery through the outbox |
+| `IGoogleTranslationService` (GoogleIntegration, new) | Pre-fill authored `LocalizedText` translations (§6.1) |
 | `IAuditLogService.LogAsync` | Survey lifecycle + send audit entries |
 | `IDataProtectionProvider` | Tokenised invite/edit links (purpose `"survey-invitation"`) |
 | `IUserDataContributor` (implemented by `SurveyService`) | GDPR export of a user's **Identified** responses (`GdprExportSections.Survey`, new) |
 
-`Survey` sits **above** Users / Profiles / Tickets / Teams / Mailer / Email — it calls into them, never the reverse.
+`Survey` sits **above** Users / Profiles / Tickets / Teams / Mailer / Email / GoogleIntegration — it calls into them, never the reverse.
 
 ## 11. GDPR
 
@@ -287,10 +299,12 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 3. **Fully-anonymous reminder trade-off** — confirm the documented behaviour (a fully-anonymous invitee may get the one reminder, because we record no completion for them). Alternative would be a privacy-leaking "answered" bit — rejected here. (§4)
 4. **Public slug** — ship the public-link path in v1, or invite-only first and add public links later?
 5. **Branch sources** — v1 restricts branching predicates to choice questions. Confirm rating/text branch sources aren't needed initially. (§5)
+6. **Assisted translation in v1?** — ship the Google Cloud Translation "pre-fill" button in v1 (cheap, reuses existing creds), or land manual translation first and add the button as a fast-follow. The `IGoogleTranslationClient` lives in GoogleIntegration either way. (§6.1)
 
 ## 15. Acceptance criteria
 
 - An `AdminOrBoard` user can author a multi-question survey with single/multi-choice, text, and rating questions, translate it into ≥2 cultures, and add a branching rule that hides a question based on a prior choice answer.
+- The "pre-fill translations" action machine-translates missing `LocalizedText` from the source culture into the others, lands them editable/flagged, never overwrites author-edited strings, and is hidden when Google credentials are absent (stub registered).
 - Publishing with an `AudienceKey` creates one `SurveyInvitation` per resolved recipient and enqueues a localised invite email per recipient through the outbox.
 - A recipient opens the tokenised link without logging in; when `AllowAnonymous`, the first step offers Identified / Completion-tracked / Fully-anonymous and (for public/anon) a language picker.
 - Branching: a question whose `ShowIf` is unmet is skipped and, even if required, does not block submission; the server rejects answers to questions that should have been hidden.
