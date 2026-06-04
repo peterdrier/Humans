@@ -29,9 +29,32 @@ public interface IShiftObligationService : IApplicationService
     Task<UpsertFunctionResult> UpsertFunctionAsync(ShiftObligationConfigInput input, Guid actorUserId, CancellationToken ct = default);
     Task SetOverrideAsync(Guid campSeasonId, Guid shiftObligationId, int? requiredShiftCount, Guid actorUserId, CancellationToken ct = default);
 
-    Task SendReminderAsync(Guid campSeasonId, Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default);
-    Task<int> RemindAllNonCompliantAsync(Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default); // returns count emailed
+    /// <summary>
+    /// Renders the reminder exactly as it would be sent, for the preview-and-customize
+    /// modal. When <paramref name="campSeasonId"/> is supplied, renders that barrio's
+    /// real numbers (per-barrio "Remind"). When null (bulk "Remind all"), renders a
+    /// representative example for the function. Returns null when the function id is
+    /// unknown.
+    /// </summary>
+    Task<ReminderPreview?> GetReminderPreviewAsync(Guid shiftObligationId, Guid? campSeasonId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends the per-barrio reminder. When BOTH <paramref name="customSubject"/> and
+    /// <paramref name="customBody"/> are non-whitespace, the admin's custom message is
+    /// sent verbatim instead of the template (same recipients, link kept as a CTA).
+    /// </summary>
+    Task SendReminderAsync(Guid campSeasonId, Guid shiftObligationId, Guid actorUserId, string? customSubject = null, string? customBody = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reminds every non-compliant applicable barrio for the function. When BOTH
+    /// <paramref name="customSubject"/> and <paramref name="customBody"/> are
+    /// non-whitespace, the admin's custom message is sent verbatim instead of the
+    /// template. Returns the count of barrios emailed.
+    /// </summary>
+    Task<int> RemindAllNonCompliantAsync(Guid shiftObligationId, Guid actorUserId, string? customSubject = null, string? customBody = null, CancellationToken ct = default);
 }
+
+public sealed record ReminderPreview(string Subject, string BodyHtml);
 
 public sealed record BarrioObligationMatrix(
     int Year,

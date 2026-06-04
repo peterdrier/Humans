@@ -1,0 +1,78 @@
+@*
+    Shared preview-and-customize modal for barrio shift-obligation reminders.
+    One instance per page; the triggering buttons (.js-remind-trigger) carry the
+    POST action + ids via data attributes. On open, the modal fetches the rendered
+    template from ShiftObligations/ReminderPreview and shows it. The admin either
+    sends the template (default) or writes a custom subject + message. Custom fields
+    are only submitted when "Write my own message" is selected, so an empty custom
+    body server-side falls back to the template.
+
+    Markup only — render the matching script partial inside the host view's
+    @@section Scripts block (sections don't bubble up from partials):
+        @@section Scripts { <partial name="_ShiftObligationReminderModalScripts" /> }
+*@
+<div class="modal fade" id="reminderModal" tabindex="-1" aria-labelledby="reminderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form method="post" id="reminderForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="shiftObligationId" id="reminderSoid" value="" />
+            <input type="hidden" name="campSeasonId" id="reminderCsid" value="" />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reminderModalLabel">Send reminder</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" id="reminderScopeNote"></p>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="reminderMode" id="reminderModeTemplate" value="template" checked />
+                        <label class="form-check-label" for="reminderModeTemplate">
+                            Send this template
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="reminderMode" id="reminderModeCustom" value="custom" />
+                        <label class="form-check-label" for="reminderModeCustom">
+                            Write my own message instead
+                        </label>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong>Here is what will be sent:</strong>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-header py-2">
+                            <span class="text-muted small">Subject:</span>
+                            <span id="reminderPreviewSubject"></span>
+                        </div>
+                        <div class="card-body" id="reminderPreviewBody">
+                            <em class="text-muted">Loading preview&hellip;</em>
+                        </div>
+                    </div>
+
+                    @* Custom fields: hidden unless "Write my own message" is chosen.
+                       name attributes are added/removed in JS so the template path
+                       posts empty custom values and the server falls back. *@
+                    <div id="reminderCustomFields" class="d-none">
+                        <div class="mb-3">
+                            <label for="reminderCustomSubject" class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="reminderCustomSubject" maxlength="200" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminderCustomBody" class="form-label">Message</label>
+                            <textarea class="form-control" id="reminderCustomBody" rows="6"></textarea>
+                            <div class="form-text">The sign-up link is appended automatically so the message stays actionable.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="reminderSendBtn">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Send
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

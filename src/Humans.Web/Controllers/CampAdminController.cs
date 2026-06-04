@@ -620,18 +620,31 @@ public class CampAdminController(
                 .ToList(),
         };
 
+    // Backs the preview-and-customize modal: returns the rendered reminder (subject +
+    // body HTML) so the admin sees exactly what will be sent before confirming.
+    [HttpGet("ShiftObligations/ReminderPreview")]
+    public async Task<IActionResult> ShiftObligationReminderPreview(
+        Guid shiftObligationId, Guid? campSeasonId, CancellationToken ct)
+    {
+        var preview = await shiftObligationService.GetReminderPreviewAsync(shiftObligationId, campSeasonId, ct);
+        if (preview is null) return NotFound();
+        return Json(new { subject = preview.Subject, bodyHtml = preview.BodyHtml });
+    }
+
     [HttpPost("ShiftObligations/Remind")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemindShiftObligation(
-        Guid campSeasonId, Guid shiftObligationId, CancellationToken ct)
+        Guid campSeasonId, Guid shiftObligationId, string? customSubject, string? customBody, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
+        var isCustom = !string.IsNullOrWhiteSpace(customSubject) && !string.IsNullOrWhiteSpace(customBody);
         try
         {
-            await shiftObligationService.SendReminderAsync(campSeasonId, shiftObligationId, user.Id, ct);
-            SetSuccess("Reminder sent.");
+            await shiftObligationService.SendReminderAsync(
+                campSeasonId, shiftObligationId, user.Id, customSubject, customBody, ct);
+            SetSuccess(isCustom ? "Custom message sent." : "Reminder sent.");
         }
         catch (Exception ex)
         {
@@ -645,15 +658,19 @@ public class CampAdminController(
 
     [HttpPost("ShiftObligations/RemindAllNonCompliant")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RemindAllNonCompliant(Guid shiftObligationId, CancellationToken ct)
+    public async Task<IActionResult> RemindAllNonCompliant(
+        Guid shiftObligationId, string? customSubject, string? customBody, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
+        var isCustom = !string.IsNullOrWhiteSpace(customSubject) && !string.IsNullOrWhiteSpace(customBody);
         try
         {
-            var count = await shiftObligationService.RemindAllNonCompliantAsync(shiftObligationId, user.Id, ct);
-            SetSuccess($"{count} barrio(s) reminded.");
+            var count = await shiftObligationService.RemindAllNonCompliantAsync(
+                shiftObligationId, user.Id, customSubject, customBody, ct);
+            var what = isCustom ? "custom message" : "reminder";
+            SetSuccess($"{count} barrio(s) sent a {what}.");
         }
         catch (Exception ex)
         {

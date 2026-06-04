@@ -57,6 +57,9 @@ public interface IEmailMessageFactory
     /// <summary>Barrio shift-obligation reminder to a lead / role-holder (VolunteerUpdates).</summary>
     EmailMessage BarrioShiftObligationReminder(string recipientEmail, string recipientName, string barrioName, string functionName, int doneCount, int requiredCount, string link, string? culture = null);
 
+    /// <summary>Admin-authored custom message in place of the barrio reminder (VolunteerUpdates); keeps the function's rota link as a CTA footer.</summary>
+    EmailMessage BarrioShiftObligationCustomMessage(string recipientEmail, string recipientName, string subject, string bodyText, string link, string? culture = null);
+
     /// <summary>Coordinator "email a rota" message to one signup (VolunteerUpdates); reply-to is the coordinator.</summary>
     EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request);
 

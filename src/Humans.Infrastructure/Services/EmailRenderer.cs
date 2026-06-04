@@ -193,6 +193,29 @@ public class EmailRenderer(
                     HtmlEncode(fullLink)));
         });
 
+    public EmailContent RenderBarrioShiftObligationCustomMessage(
+        string recipientName,
+        string subject,
+        string bodyText,
+        string link,
+        string? culture)
+        => RenderLocalized(culture, () =>
+        {
+            // Admin's body verbatim: HTML-encoded, newlines preserved as <br/>.
+            var sanitizedBody = HtmlEncode(bodyText).Replace("\n", "<br />", StringComparison.Ordinal);
+
+            // Same absolutize-link pattern as RenderBarrioShiftObligationReminder, so the
+            // CTA footer link is usable from a mail client.
+            var fullLink = link.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? link
+                : $"{_settings.BaseUrl.TrimEnd('/')}{(link.StartsWith('/') ? "" : "/")}{link}";
+
+            // Subject is the admin's text verbatim (not HTML — it's an email header).
+            return new EmailContent(
+                subject,
+                Lf("Email_BarrioShiftCustom_Body", sanitizedBody, HtmlEncode(fullLink)));
+        });
+
     public EmailContent RenderCoordinatorRotaMessage(
         string recipientName,
         string senderName,

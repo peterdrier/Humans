@@ -45,14 +45,14 @@ else
                                    class="form-control form-control-sm" style="width:5rem" title="Required-shift override" />
                             <button type="submit" class="btn btn-outline-primary btn-sm">Set</button>
                         </form>
-                        <form asp-action="RemindShiftObligation" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="campSeasonId" value="@Model.CampSeasonId" />
-                            <input type="hidden" name="shiftObligationId" value="@fn.ShiftObligationId" />
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                <i class="fa-solid fa-bell me-1"></i>Remind
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-remind-trigger"
+                                data-soid="@fn.ShiftObligationId"
+                                data-csid="@Model.CampSeasonId"
+                                data-action="@Url.Action("RemindShiftObligation")"
+                                data-scope="barrio"
+                                data-label="@Model.BarrioName · @fn.Name">
+                            <i class="fa-solid fa-bell me-1"></i>Remind
+                        </button>
                     </div>
                 }
             </div>
@@ -79,5 +79,14 @@ else
                 }
             </div>
         </div>
+    }
+}
+
+@if (Model.ShowActions)
+{
+    <partial name="_ShiftObligationReminderModal" />
+
+    @section Scripts {
+        <partial name="_ShiftObligationReminderModalScripts" />
     }
 }

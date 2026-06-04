@@ -63,14 +63,14 @@ else
                                     <i class="fa-solid fa-plug ms-1 text-muted" title="Only barrios on the power grid"></i>
                                 }
                                 <div>
-                                    <form asp-action="RemindAllNonCompliant" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="shiftObligationId" value="@col.ShiftObligationId" />
-                                        <button type="submit" class="btn btn-link btn-sm p-0"
-                                                data-confirm="Remind all non-compliant barrios for this function?">
-                                            <i class="fa-solid fa-bell me-1"></i>Remind all
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-link btn-sm p-0 js-remind-trigger"
+                                            data-soid="@col.ShiftObligationId"
+                                            data-csid=""
+                                            data-action="@Url.Action("RemindAllNonCompliant")"
+                                            data-scope="all"
+                                            data-label="@col.Name">
+                                        <i class="fa-solid fa-bell me-1"></i>Remind all
+                                    </button>
                                 </div>
                             </th>
                         }
@@ -189,3 +189,9 @@ else
         }
     </div>
 </div>
+
+<partial name="_ShiftObligationReminderModal" />
+
+@section Scripts {
+    <partial name="_ShiftObligationReminderModalScripts" />
+}

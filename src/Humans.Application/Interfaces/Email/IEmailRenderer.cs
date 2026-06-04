@@ -146,6 +146,21 @@ public interface IEmailRenderer
         string? culture);
 
     /// <summary>
+    /// An admin-authored custom message sent in place of the templated barrio
+    /// shift-obligation reminder. The admin's <paramref name="subject"/> and
+    /// <paramref name="bodyText"/> are used verbatim (HTML-encoded, newlines →
+    /// &lt;br/&gt;), wrapped in the standard email shell, and the function's rota
+    /// <paramref name="link"/> is kept as a call-to-action footer so the message
+    /// stays actionable.
+    /// </summary>
+    EmailContent RenderBarrioShiftObligationCustomMessage(
+        string recipientName,
+        string subject,
+        string bodyText,
+        string link,
+        string? culture);
+
+    /// <summary>
     /// Magic link login email for an existing user.
     /// </summary>
     EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null);

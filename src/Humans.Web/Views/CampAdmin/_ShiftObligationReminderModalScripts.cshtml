@@ -1,0 +1,80 @@
+@*
+    Script half of the shift-obligation reminder modal. Render inside the host
+    view's @@section Scripts block. Pairs with _ShiftObligationReminderModal.cshtml.
+*@
+<script>
+    (function () {
+        var modalEl = document.getElementById('reminderModal');
+        if (!modalEl) { return; }
+        var modal = new bootstrap.Modal(modalEl);
+        var form = document.getElementById('reminderForm');
+        var soidInput = document.getElementById('reminderSoid');
+        var csidInput = document.getElementById('reminderCsid');
+        var scopeNote = document.getElementById('reminderScopeNote');
+        var label = document.getElementById('reminderModalLabel');
+        var previewSubject = document.getElementById('reminderPreviewSubject');
+        var previewBody = document.getElementById('reminderPreviewBody');
+        var modeTemplate = document.getElementById('reminderModeTemplate');
+        var modeCustom = document.getElementById('reminderModeCustom');
+        var customFields = document.getElementById('reminderCustomFields');
+        var customSubject = document.getElementById('reminderCustomSubject');
+        var customBody = document.getElementById('reminderCustomBody');
+        var previewUrl = '@Url.Action("ShiftObligationReminderPreview")';
+
+        function applyMode() {
+            var isCustom = modeCustom.checked;
+            customFields.classList.toggle('d-none', !isCustom);
+            // Only carry custom values to the server when the custom mode is active;
+            // otherwise leave them unnamed so the server sends the template.
+            customSubject.name = isCustom ? 'customSubject' : '';
+            customBody.name = isCustom ? 'customBody' : '';
+        }
+        modeTemplate.addEventListener('change', applyMode);
+        modeCustom.addEventListener('change', applyMode);
+
+        document.querySelectorAll('.js-remind-trigger').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var soid = btn.getAttribute('data-soid') || '';
+                var csid = btn.getAttribute('data-csid') || '';
+                var action = btn.getAttribute('data-action') || '';
+                var scope = btn.getAttribute('data-scope') || 'barrio';
+                var name = btn.getAttribute('data-label') || '';
+
+                form.setAttribute('action', action);
+                soidInput.value = soid;
+                csidInput.value = csid;
+
+                if (scope === 'all') {
+                    label.textContent = 'Remind all barrios — ' + name;
+                    scopeNote.textContent = 'This will email every non-compliant barrio for ' + name + '.';
+                } else {
+                    label.textContent = 'Remind barrio — ' + name;
+                    scopeNote.textContent = 'This will email the leads and role-holders of ' + name + '.';
+                }
+
+                // Reset to the template choice on each open.
+                modeTemplate.checked = true;
+                customSubject.value = '';
+                customBody.value = '';
+                applyMode();
+
+                previewSubject.textContent = '';
+                previewBody.innerHTML = '<em class="text-muted">Loading preview&hellip;</em>';
+
+                var qs = previewUrl + '?shiftObligationId=' + encodeURIComponent(soid);
+                if (csid) { qs += '&campSeasonId=' + encodeURIComponent(csid); }
+                fetch(qs, { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                    .then(function (data) {
+                        previewSubject.textContent = data.subject || '';
+                        previewBody.innerHTML = data.bodyHtml || '';
+                    })
+                    .catch(function () {
+                        previewBody.innerHTML = '<span class="text-danger">Could not load the preview.</span>';
+                    });
+
+                modal.show();
+            });
+        });
+    })();
+</script>

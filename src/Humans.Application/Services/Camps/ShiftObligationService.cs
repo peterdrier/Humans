@@ -277,7 +277,8 @@ public sealed class ShiftObligationService : IShiftObligationService
     }
 
     public async Task SendReminderAsync(
-        Guid campSeasonId, Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default)
+        Guid campSeasonId, Guid shiftObligationId, Guid actorUserId,
+        string? customSubject = null, string? customBody = null, CancellationToken ct = default)
     {
         var function = await obligationRepo.GetByIdAsync(shiftObligationId, ct);
         if (function is null)
@@ -291,11 +292,13 @@ public sealed class ShiftObligationService : IShiftObligationService
             return;
         }
 
-        await SendReminderForBarrioAsync(function, season, actorUserId, ct);
+        var custom = ResolveCustomMessage(customSubject, customBody);
+        await SendReminderForBarrioAsync(function, season, actorUserId, custom, ct);
     }
 
     public async Task<int> RemindAllNonCompliantAsync(
-        Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default)
+        Guid shiftObligationId, Guid actorUserId,
+        string? customSubject = null, string? customBody = null, CancellationToken ct = default)
     {
         var function = await obligationRepo.GetByIdAsync(shiftObligationId, ct);
         if (function is null)
@@ -306,6 +309,7 @@ public sealed class ShiftObligationService : IShiftObligationService
         // The function is year-agnostic; reminders fire for the current public
         // matrix year. Resolve the active seasons the same way the matrix does,
         // then keep only the applicable + not-met barrios.
+        var custom = ResolveCustomMessage(customSubject, customBody);
         var emailed = 0;
         var seasons = await ResolveCurrentYearActiveSeasonsAsync(ct);
         var counts = await CountsForFunctionAsync(function, ct);
@@ -332,7 +336,7 @@ public sealed class ShiftObligationService : IShiftObligationService
                 continue;
             }
 
-            if (await SendReminderForBarrioAsync(function, season, actorUserId, ct))
+            if (await SendReminderForBarrioAsync(function, season, actorUserId, custom, ct))
             {
                 emailed++;
             }
@@ -340,6 +344,59 @@ public sealed class ShiftObligationService : IShiftObligationService
 
         return emailed;
     }
+
+    public async Task<ReminderPreview?> GetReminderPreviewAsync(
+        Guid shiftObligationId, Guid? campSeasonId, CancellationToken ct = default)
+    {
+        var function = await obligationRepo.GetByIdAsync(shiftObligationId, ct);
+        if (function is null)
+        {
+            return null;
+        }
+
+        var (functionName, link) = await ResolveColumnTargetAsync(function, ct);
+
+        // Per-barrio preview: render with the barrio's real name + done/required.
+        if (campSeasonId is { } seasonId)
+        {
+            var season = await ResolveActiveSeasonAsync(seasonId, ct);
+            if (season is not null)
+            {
+                var counts = await CountsForFunctionAsync(function, ct);
+                var overrideLookup = await BuildOverrideLookupAsync([season], ct);
+                var done = DoneFor(counts, ActiveMemberIds(season));
+                var required = RequiredFor(overrideLookup, season.Id, function);
+                var perBarrio = emailMessageFactory.BarrioShiftObligationReminder(
+                    PreviewRecipientEmail, PreviewRecipientName, season.Name, functionName,
+                    done, required, link);
+                return new ReminderPreview(perBarrio.Subject, perBarrio.HtmlBody);
+            }
+        }
+
+        // Bulk preview: a representative example for the function (no specific barrio).
+        var example = emailMessageFactory.BarrioShiftObligationReminder(
+            PreviewRecipientEmail, PreviewRecipientName, ExampleBarrioName, functionName,
+            ExampleDoneCount, function.DefaultRequiredShiftCount, link);
+        return new ReminderPreview(example.Subject, example.HtmlBody);
+    }
+
+    // The preview only needs the rendered subject/body; recipient identity is a
+    // placeholder that never reaches a real inbox.
+    private const string PreviewRecipientEmail = "preview@example.com";
+    private const string PreviewRecipientName = "Barrio team";
+    private const string ExampleBarrioName = "Example barrio";
+    private const int ExampleDoneCount = 1;
+
+    /// <summary>
+    /// A custom message is in effect only when BOTH subject and body are non-whitespace;
+    /// otherwise the templated reminder is sent. Returns null to mean "use the template".
+    /// </summary>
+    private static CustomMessage? ResolveCustomMessage(string? subject, string? body) =>
+        !string.IsNullOrWhiteSpace(subject) && !string.IsNullOrWhiteSpace(body)
+            ? new CustomMessage(subject, body)
+            : null;
+
+    private sealed record CustomMessage(string Subject, string Body);
 
     // ----- internals --------------------------------------------------------
 
@@ -554,7 +611,8 @@ public sealed class ShiftObligationService : IShiftObligationService
     /// Zero recipients sends nothing and returns false.
     /// </summary>
     private async Task<bool> SendReminderForBarrioAsync(
-        ShiftObligation function, CampSeasonInfo season, Guid actorUserId, CancellationToken ct)
+        ShiftObligation function, CampSeasonInfo season, Guid actorUserId,
+        CustomMessage? custom, CancellationToken ct)
     {
         var recipientIds = await ResolveRecipientIdsAsync(function, season, ct);
         if (recipientIds.Count == 0)
@@ -580,9 +638,12 @@ public sealed class ShiftObligationService : IShiftObligationService
                 continue;
             }
 
-            var message = emailMessageFactory.BarrioShiftObligationReminder(
-                info.Email, info.BurnerName, season.Name, functionName,
-                done, required, link, info.PreferredLanguage);
+            var message = custom is not null
+                ? emailMessageFactory.BarrioShiftObligationCustomMessage(
+                    info.Email, info.BurnerName, custom.Subject, custom.Body, link, info.PreferredLanguage)
+                : emailMessageFactory.BarrioShiftObligationReminder(
+                    info.Email, info.BurnerName, season.Name, functionName,
+                    done, required, link, info.PreferredLanguage);
             await emailService.SendAsync(message, ct);
             sent++;
         }

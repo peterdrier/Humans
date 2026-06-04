@@ -26,6 +26,7 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
     private readonly ShiftObligationRepository _obligationRepo;
     private readonly CampRepository _campRepo;
     private readonly IEmailService _emailServiceMock;
+    private readonly IEmailMessageFactory _factory;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public ShiftObligationServiceTests()
@@ -41,12 +42,21 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
 
         // Pass-through factory so SendAsync receives a real EmailMessage built from
         // the recipient's resolved email — recipient resolution is what's under test.
-        var factory = Substitute.For<IEmailMessageFactory>();
-        factory.BarrioShiftObligationReminder(
+        // The template path renders a fixed "body"; the custom path echoes the admin's
+        // subject/body so tests can assert which path was taken and that the custom
+        // text reaches the sent message.
+        _factory = Substitute.For<IEmailMessageFactory>();
+        _factory.BarrioShiftObligationReminder(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>())
             .Returns(ci => new EmailMessage(
                 ci.ArgAt<string>(0), ci.ArgAt<string>(1), "subject", "body",
+                "barrio_shift_obligation_reminder", MessageCategory.VolunteerUpdates));
+        _factory.BarrioShiftObligationCustomMessage(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(ci => new EmailMessage(
+                ci.ArgAt<string>(0), ci.ArgAt<string>(1), ci.ArgAt<string>(2), ci.ArgAt<string>(3),
                 "barrio_shift_obligation_reminder", MessageCategory.VolunteerUpdates));
 
         _sut = new ShiftObligationService(
@@ -57,7 +67,7 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
             _teamServiceRead,
             _userService,
             _emailServiceMock,
-            factory,
+            _factory,
             AuditLog,
             Clock,
             NullLogger<ShiftObligationService>.Instance);
@@ -404,6 +414,183 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
 
         emailed.Should().Be(1); // only Short Camp
         await _emailServiceMock.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetReminderPreview_PerBarrio_ReturnsSubjectAndBody()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var lead = SeedUser("Lead").Id;
+        var seasonId = Guid.NewGuid();
+        SeedSeasonWithLeads(
+            Guid.NewGuid(), seasonId, "Yellow Camp", "yellow-camp", ElectricalGrid.Yellow,
+            leadUserIds: [lead], activeMembers: [lead]);
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var preview = await _sut.GetReminderPreviewAsync(functionId, seasonId);
+
+        preview.Should().NotBeNull();
+        preview!.Subject.Should().NotBeNullOrWhiteSpace();
+        preview.BodyHtml.Should().NotBeNullOrWhiteSpace();
+        // Per-barrio preview renders via the template (reminder) factory, not the custom one.
+        _factory.Received().BarrioShiftObligationReminder(
+            Arg.Any<string>(), Arg.Any<string>(), "Yellow Camp", "Power",
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GetReminderPreview_Bulk_ReturnsRepresentativeExample()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        // No campSeasonId => representative example (bulk "Remind all").
+        var preview = await _sut.GetReminderPreviewAsync(functionId, campSeasonId: null);
+
+        preview.Should().NotBeNull();
+        preview!.Subject.Should().NotBeNullOrWhiteSpace();
+        preview.BodyHtml.Should().NotBeNullOrWhiteSpace();
+        // Example barrio name + function name, required = the function's default (6).
+        _factory.Received().BarrioShiftObligationReminder(
+            Arg.Any<string>(), Arg.Any<string>(), "Example barrio", "Power",
+            Arg.Any<int>(), 6, Arg.Any<string>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GetReminderPreview_UnknownFunction_ReturnsNull()
+    {
+        var preview = await _sut.GetReminderPreviewAsync(Guid.NewGuid(), campSeasonId: null);
+        preview.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SendReminder_WithCustomMessage_SendsCustom_AndWritesOneAuditEntry()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var lead = SeedUser("Lead").Id;
+        var seasonId = Guid.NewGuid();
+        SeedSeasonWithLeads(
+            Guid.NewGuid(), seasonId, "Yellow Camp", "yellow-camp", ElectricalGrid.Yellow,
+            leadUserIds: [lead], activeMembers: [lead]);
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        EmailMessage? captured = null;
+        await _emailServiceMock.SendAsync(
+            Arg.Do<EmailMessage>(m => captured = m), Arg.Any<CancellationToken>());
+
+        await _sut.SendReminderAsync(
+            seasonId, functionId, _actorUserId,
+            customSubject: "Custom subject", customBody: "Custom body text");
+
+        // Custom factory method was used; the template one was not.
+        _factory.Received().BarrioShiftObligationCustomMessage(
+            Arg.Any<string>(), Arg.Any<string>(), "Custom subject", "Custom body text",
+            Arg.Any<string>(), Arg.Any<string?>());
+        _factory.DidNotReceive().BarrioShiftObligationReminder(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>());
+        captured.Should().NotBeNull();
+        captured!.Subject.Should().Be("Custom subject");
+        captured.HtmlBody.Should().Contain("Custom body text");
+
+        // Still exactly one audit entry for the send (custom or template).
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.BarrioShiftReminderSent, "ShiftObligation", functionId,
+            Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendReminder_EmptyCustomBody_FallsBackToTemplate()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var lead = SeedUser("Lead").Id;
+        var seasonId = Guid.NewGuid();
+        SeedSeasonWithLeads(
+            Guid.NewGuid(), seasonId, "Yellow Camp", "yellow-camp", ElectricalGrid.Yellow,
+            leadUserIds: [lead], activeMembers: [lead]);
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        // Subject supplied but body blank/whitespace -> not a custom message.
+        await _sut.SendReminderAsync(
+            seasonId, functionId, _actorUserId,
+            customSubject: "Has subject", customBody: "   ");
+
+        _factory.Received().BarrioShiftObligationReminder(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>());
+        _factory.DidNotReceive().BarrioShiftObligationCustomMessage(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RemindAllNonCompliant_WithCustomMessage_SendsCustom_AndWritesOneAuditEntry()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.ElectricalGridConnected, defaultRequired: 2, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var leadShort = SeedUser("LeadShort").Id;
+        var shortId = Guid.NewGuid();
+        var infos = new List<CampInfo>
+        {
+            MakeCampInfoWithLeads(Guid.NewGuid(), shortId, "Short Camp", "short-camp", ElectricalGrid.Yellow, [leadShort], [leadShort]),
+        };
+        await Db.SaveChangesAsync();
+
+        _campServiceRead.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<CampInfo>)infos);
+        _campServiceRead.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [], null));
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var emailed = await _sut.RemindAllNonCompliantAsync(
+            functionId, _actorUserId,
+            customSubject: "Bulk custom subject", customBody: "Bulk custom body");
+
+        emailed.Should().Be(1);
+        _factory.Received().BarrioShiftObligationCustomMessage(
+            Arg.Any<string>(), Arg.Any<string>(), "Bulk custom subject", "Bulk custom body",
+            Arg.Any<string>(), Arg.Any<string?>());
+        // One audit entry for the single emailed barrio.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.BarrioShiftReminderSent, "ShiftObligation", functionId,
+            Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
