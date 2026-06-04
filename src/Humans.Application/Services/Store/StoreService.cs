@@ -135,13 +135,42 @@ public class StoreService(
                 .ToList();
         }
 
+        var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
+
         return new StoreOrderPageData(
             order,
             catalog,
             order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
-            stripeService.IsStoreCheckoutConfigured);
+            stripeService.IsStoreCheckoutConfigured,
+            priceChanges);
+    }
+
+    /// <summary>
+    /// Price-change audit events (<see cref="AuditAction.StoreProductPriceChanged"/>) for the
+    /// products on this order, recorded since the order was created — the order page's
+    /// "price changes" view (#816). Reuses the existing per-entity audit query; the product
+    /// count per order is tiny.
+    /// </summary>
+    private async Task<IReadOnlyList<AuditLogEntrySnapshot>> LoadOrderPriceChangesAsync(OrderDto order, CancellationToken ct)
+    {
+        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
+        if (productIds.Count == 0)
+            return [];
+
+        var changes = new List<AuditLogEntrySnapshot>();
+        foreach (var productId in productIds)
+        {
+            var entries = await audit.GetFilteredEntriesAsync(
+                entityType: nameof(StoreProduct),
+                entityId: productId,
+                actions: [AuditAction.StoreProductPriceChanged],
+                limit: 50,
+                ct: ct);
+            changes.AddRange(entries.Where(e => e.OccurredAt >= order.CreatedAt));
+        }
+        return changes.OrderByDescending(e => e.OccurredAt).ToList();
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
@@ -192,11 +221,7 @@ public class StoreService(
         var product = await repo.GetProductByIdAsync(draft.Id, ct)
             ?? throw new InvalidOperationException($"Product {draft.Id} not found");
 
-        // Capture before/after for the audit trail before overwriting (#816).
-        var priceChange = DescribePriceChange(
-            product.UnitPriceEur, draft.UnitPriceEur,
-            product.VatRatePercent, draft.VatRatePercent,
-            product.DepositAmountEur, draft.DepositAmountEur);
+        var oldPrice = product.UnitPriceEur;
 
         product.Year = draft.Year;
         product.Name = draft.Name.Trim();
@@ -209,13 +234,17 @@ public class StoreService(
         product.UpdatedAt = clock.GetCurrentInstant();
 
         await repo.UpdateProductAsync(product, ct);
-        var description = priceChange is null
-            ? $"Updated store product '{product.Name}'"
-            : $"Updated store product '{product.Name}' — {priceChange}";
         await audit.LogAsync(
             AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
-            description,
+            $"Updated store product '{product.Name}'",
             actorUserId);
+
+        // Dedicated, queryable price-change event for the order-page audit view (#816).
+        if (oldPrice != draft.UnitPriceEur)
+            await audit.LogAsync(
+                AuditAction.StoreProductPriceChanged, nameof(StoreProduct), product.Id,
+                $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
+                actorUserId);
     }
 
     public async Task<StoreCatalogSaveResult> SaveProductWithResultAsync(
@@ -275,32 +304,6 @@ public class StoreService(
             $"Deactivated store product '{product.Name}'",
             actorUserId);
     }
-
-    /// <summary>
-    /// Builds a human-readable before/after summary of a product's price, VAT, and deposit
-    /// for the <see cref="AuditAction.StoreProductUpdated"/> audit entry, or null when none
-    /// of the three changed (nobodies-collective/Humans#816).
-    /// </summary>
-    private static string? DescribePriceChange(
-        decimal oldPrice, decimal newPrice,
-        decimal oldVat, decimal newVat,
-        decimal? oldDeposit, decimal? newDeposit)
-    {
-        var priceChanged = oldPrice != newPrice;
-        var vatChanged = oldVat != newVat;
-        var depositChanged = oldDeposit != newDeposit;
-        if (!priceChanged && !vatChanged && !depositChanged)
-            return null;
-
-        var price = priceChanged ? $"Unit price €{oldPrice:0.00} → €{newPrice:0.00}" : "Unit price unchanged";
-        var vat = vatChanged ? $"VAT {oldVat:0.##}% → {newVat:0.##}%" : "VAT unchanged";
-        var deposit = depositChanged
-            ? $"deposit {FormatDeposit(oldDeposit)} → {FormatDeposit(newDeposit)}"
-            : "deposit unchanged";
-        return $"{price}; {vat}; {deposit}.";
-    }
-
-    private static string FormatDeposit(decimal? deposit) => deposit is { } value ? $"€{value:0.00}" : "none";
 
     private static void ValidateProductDraft(ProductDto draft)
     {
@@ -937,7 +940,8 @@ public class StoreService(
             o.IssuedInvoiceId,
             lines,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
-            balance.PaymentsTotalEur, balance.BalanceEur);
+            balance.PaymentsTotalEur, balance.BalanceEur,
+            o.CreatedAt);
     }
 
     private async Task<string> ResolveCounterpartyDisplayNameAsync(StoreOrder o, CancellationToken ct)

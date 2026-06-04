@@ -113,7 +113,8 @@ public class StoreServiceTests
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: 25m);
+            BalanceEur: 25m,
+            CreatedAt: default);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([
                 MakeProduct(name: "Tent"),
@@ -128,6 +129,37 @@ public class StoreServiceTests
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
         result.IsStripeConfigured.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetOrderPageDataAsync_surfaces_price_changes_since_order_started()
+    {
+        var productId = Guid.NewGuid();
+        var orderStart = Instant.FromUtc(2026, 3, 1, 0, 0);
+        var line = new OrderLineDto(Guid.NewGuid(), Guid.NewGuid(), productId, "Ice", 1,
+            2.34m, 21m, null, orderStart, 2.34m, 0.49m, 0m, 2.83m);
+        var order = new OrderDto(
+            Id: Guid.NewGuid(), CampSeasonId: Guid.NewGuid(), TeamId: null,
+            CounterpartyType: StoreOrderCounterpartyType.Camp, CounterpartyDisplayName: "Camp",
+            Year: 2026, Label: null, State: StoreOrderState.Open,
+            CounterpartyName: null, CounterpartyVatId: null, CounterpartyAddress: null,
+            CounterpartyCountryCode: null, CounterpartyEmail: null, IssuedInvoiceId: null,
+            Lines: [line], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
+            PaymentsTotalEur: 0m, BalanceEur: 2.83m, CreatedAt: orderStart);
+
+        _audit.GetFilteredEntriesAsync(nameof(StoreProduct), productId, null,
+                Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<AuditLogEntrySnapshot>
+            {
+                PriceChangeEntry(productId, orderStart.Minus(Duration.FromDays(5)), "before this order existed"),
+                PriceChangeEntry(productId, orderStart.Plus(Duration.FromDays(2)), "Price for Ice changed from 1.23 to 2.34"),
+            });
+
+        var pageData = await _service.GetOrderPageDataAsync(order, canEdit: false, canPayAuthorized: false);
+
+        // Only the change after the order started is shown.
+        pageData.PriceChanges.Should().ContainSingle()
+            .Which.Description.Should().Be("Price for Ice changed from 1.23 to 2.34");
     }
 
     [HumansFact]
@@ -735,26 +767,44 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_audit_describes_price_before_and_after()
+    public async Task UpdateProductAsync_logs_price_changed_event_with_from_to()
     {
-        var existing = MakeProduct(name: "Tent", price: 10m, vat: 21m, deposit: null);
+        var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
         _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
 
-        string? auditDescription = null;
+        string? priceDescription = null;
         await _audit.LogAsync(
-            AuditAction.StoreProductUpdated, nameof(StoreProduct), existing.Id,
-            Arg.Do<string>(d => auditDescription = d), Arg.Any<Guid>(),
+            AuditAction.StoreProductPriceChanged, nameof(StoreProduct), existing.Id,
+            Arg.Do<string>(d => priceDescription = d), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
         var draft = new ProductDto(
-            existing.Id, existing.Year, existing.Name, existing.Description,
-            UnitPriceEur: 25m, VatRatePercent: 21m, DepositAmountEur: null,
+            existing.Id, existing.Year, "Ice", existing.Description,
+            UnitPriceEur: 2.34m, VatRatePercent: 21m, DepositAmountEur: null,
             existing.OrderableUntil, IsActive: true);
 
         await _service.UpdateProductAsync(draft, Guid.NewGuid());
 
-        auditDescription.Should().NotBeNull();
-        auditDescription.Should().Contain("10.00").And.Contain("25.00"); // before → after
+        priceDescription.Should().Be("Price for Ice changed from 1.23 to 2.34");
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_no_price_event_when_price_unchanged()
+    {
+        var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        // Name/VAT/deposit change but price stays the same — no price-change event.
+        var draft = new ProductDto(
+            existing.Id, existing.Year, "Ice Cold", existing.Description,
+            UnitPriceEur: 1.23m, VatRatePercent: 30m, DepositAmountEur: 5m,
+            existing.OrderableUntil, IsActive: true);
+
+        await _service.UpdateProductAsync(draft, Guid.NewGuid());
+
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.StoreProductPriceChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -1062,6 +1112,10 @@ public class StoreServiceTests
     // Helpers
     // ==========================================================================
 
+    private static AuditLogEntrySnapshot PriceChangeEntry(Guid productId, Instant occurredAt, string description) =>
+        new(Guid.NewGuid(), AuditAction.StoreProductPriceChanged, nameof(StoreProduct), productId,
+            description, occurredAt, null, null, null, null, null, null, null, null, null);
+
     private static StoreProduct MakeProduct(
         string name = "Test product",
         decimal price = 10m,
@@ -1148,6 +1202,7 @@ public class StoreServiceTests
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: balanceEur);
+            BalanceEur: balanceEur,
+            CreatedAt: default);
     }
 }

@@ -92,5 +92,6 @@ public class StoreOrderAuthorizationHandlerTests
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: 0m);
+            BalanceEur: 0m,
+            CreatedAt: default);
 }

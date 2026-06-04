@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Services.Store.Dtos;
 
 namespace Humans.Web.Models;
@@ -30,6 +31,9 @@ public sealed class StoreOrderViewModel
     /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
+    /// <summary>Price-change audit events for this order's items since it was created (#816).</summary>
+    public IReadOnlyList<AuditLogEntrySnapshot> PriceChanges { get; init; } = [];
+
     public static StoreOrderViewModel FromPageData(StoreOrderPageData pageData, bool canDelete) => new()
     {
         Order = pageData.Order,
@@ -38,6 +42,7 @@ public sealed class StoreOrderViewModel
         CanEdit = pageData.CanEdit,
         CanPay = pageData.CanPay,
         IsStripeConfigured = pageData.IsStripeConfigured,
-        CanDelete = canDelete
+        CanDelete = canDelete,
+        PriceChanges = pageData.PriceChanges
     };
 }

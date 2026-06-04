@@ -125,6 +125,30 @@ else
     <div class="alert alert-secondary">No lines on this order yet.</div>
 }
 
+@if (Model.PriceChanges.Any())
+{
+    <h2 class="h4 mb-3">Price changes since this order started</h2>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Event</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var change in Model.PriceChanges)
+            {
+                <tr>
+                    <td>@change.OccurredAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><span class="badge bg-warning text-dark">Price changed</span></td>
+                    <td>@change.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
 @if (Model.CanEdit)
 {
     <h2 class="h4 mb-3">Add line</h2>
