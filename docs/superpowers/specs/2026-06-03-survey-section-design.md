@@ -55,7 +55,8 @@ All cross-domain references are **bare `Guid` FK columns** — **no navigation p
 | `OpensAt` | Instant? | Optional scheduled open |
 | `ClosesAt` | Instant? | Optional auto-close; after this, the wizard rejects new responses |
 | `AudienceKey` | string? | Key of the reused `IMailerAudience` (null = manual/none) |
-| `PublicSlug` | string? (max 80) | Set when a shareable public link is enabled; null = invite-only |
+| `PublicSlug` | string? (max 80) | Set when a shareable public link is enabled (requires `AllowAnonymous`); null = invite-only. Unique, filtered non-null. Reserved words (`Admin`, `Answer`) rejected at save to avoid route collisions. |
+| `PublicStartedCount` | int | Count of public (slug) visitors who began the questionnaire — the slug-path "started" funnel number. Anonymous visitors have no per-person anchor, so this is a plain counter (inflated by reloads; rough by design). Default 0. |
 | `CreatedByUserId` | Guid | Creator user id — **bare `Guid` column**, no nav, no cross-section FK constraint; resolve via `IUserServiceRead` |
 | `CreatedAt` / `UpdatedAt` | Instant | |
 
@@ -248,7 +249,7 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 `/Survey/Answer?t={token}` (invited) or `/Survey/{publicSlug}` (public) — both `[AllowAnonymous]`, like `WelcomeController`/`GuestController`.
 
 1. **Step 0 — intro + privacy + language.** Renders `Survey.Intro`. If `AllowAnonymous`, shows the three-choice privacy selector (§4) with the reminder trade-off note. Anonymous/public path shows a language picker.
-2. **Question pages.** One page at a time; required-visible questions validated server-side; branching evaluated on each advance. The first advance past the intro flips `Invitation.Started = true` (boolean, no time — the funnel's "started"); the entry path (`UserSpecificLink` / `Slug`) is recorded on the response as `InputMethod`.
+2. **Question pages.** One page at a time; required-visible questions validated server-side; branching evaluated on each advance. The first advance past the intro records the "started" funnel signal — `Invitation.Started = true` for the link path, or an increment to `Survey.PublicStartedCount` for the slug path (anonymous visitors have no per-person anchor); the entry path (`UserSpecificLink` / `Slug`) is recorded on the response as `InputMethod`.
 3. **Submit.** Finalises the `SurveyResponse` (+ `SurveyAnswer`s) with the chosen `Anonymity` (sets `SubmittedAt`); flips `Invitation.Completed = true` for Identified/Completion-tracked (boolean only, no time). Renders `Survey.ThankYou`.
 
 **Resume (in-progress only):** an **Identified** respondent who re-clicks their invite link mid-survey resumes their persisted draft (found by `(SurveyId, UserId, SubmittedAt is null)`) — within the open window, no login, via the Data-Protection token. **Completion-tracked / Anonymous** responses carry no user/invitation link, so there is nothing to find on return → they **restart** from the beginning. Editing an already-submitted response is out of v1 (resume is for unfinished drafts only).
@@ -347,8 +348,6 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 **Deferred to a fast-follow (decided 2026-06-04 — planned, not abandoned):**
 
 - **Google translation client (whole slice).** The `IGoogleTranslationClient`/`IGoogleTranslationService` in GoogleIntegration is deferred, which defers **both** §6.1 authoring "pre-fill translations" **and** §6.2 free-text answer translate-on-read (they share that one client). v1 authoring is **manual per-culture** only; v1 results/API serve free-text **as-submitted** (no translate toggle, no `?translateFreeText`). All Google-translation features land together as one later slice. **Consequence:** v1 has **no Google data egress** — the only external data flow in v1 is the §13.3 analysis API/export to Claude.
-- **Public-slug / public-link path (§4).** v1 is **invite-only** (both known consumers — app-feedback and event surveys — are invite-driven). No `PublicSlug`-based anonymous entry in v1; the column/concept may remain modelled but the public answering route is not built.
-
 **Permanently out of scope:**
 
 - **In-app analysis/synthesis** — theme clustering, sentiment, summarisation, infographic/chart generation, and auto-extracting bugs/work-items from feedback. Done externally by Claude over the §13 API/export; the app ships data, not analysis.
@@ -369,7 +368,7 @@ The §15 open questions are now settled. Each resolution below is binding for v1
 1. **`LocalizedText` scope** → **Survey-owned** value object. Reuse-first/YAGNI: don't build a shared Domain primitive before a second consumer (Events/Camps) exists; promotion is a clean later refactor. (§6)
 2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **Predicates (decided 2026-06-04):** v1 ships **Team** first (a team's members), then the easy cohorts — **all active members**, **ticket-holders**, **shift participants**. (These mirror cohorts the Mailer audiences already express.) **Still open:** whether a survey invite honours the marketing opt-out (it is transactional → probably not). **Deferred (tech impl):** where predicates are computed / whether a cross-section read interface is introduced — not decided now.
 3. **Fully-anonymous reminder trade-off** → **accept** the documented behaviour (a fully-anon invitee may receive the one reminder). The alternative — a privacy-leaking "answered" bit — is rejected; never-leak wins. Disclosed to the respondent on the choice step. (§4)
-4. **Public slug** → **invite-only in v1**; public-link path deferred to a fast-follow (§14). Both known consumers are invite-driven. (§4)
+4. **Public slug** → **public-link answering path is IN v1** (decided 2026-06-04). A survey with a `PublicSlug` set (requires `AllowAnonymous`) can be answered at `/Survey/{slug}` with no invitation; such responses are always **Anonymous**, `InputMethod = Slug`. Public starts are counted by a per-survey integer counter (`Survey.PublicStartedCount`) — anonymous visitors have no per-person anchor; finishes are the submitted `Slug` responses. (§4, §8)
 5. **Branch sources** → **choice-question predicates only** in v1; rating/text branch sources are not built. (§5)
 6. **Assisted translation** → **deferred** (§14). v1 ships **manual per-culture** authoring. The Google translation client and both §6.1 pre-fill and §6.2 answer-translate features land together later.
 7. **Data egress / consent** → with §6/§6.2 translation deferred, v1 has **no Google egress**; the only external data flow is the §13.3 analysis API/export to Claude. Posture: (a) a short **transparency note on the wizard intro** — responses may be reviewed/analysed, including by automated tooling; (b) the existing **server-side anonymity-tier gating** on the API/export (identified responses expose identity; completion-tracked/anonymous never do). **No** per-survey "anonymise the payload" toggle in v1 (YAGNI — a survey needing that simply doesn't collect identified responses).

@@ -21,7 +21,7 @@ These refine the spec where the audit found the assumed mechanism absent or unsu
 3. **Email ↔ invitation linkage.** To avoid coupling the horizontal Email section to Survey, do **not** add a `SurveyInvitationId` FK to the shared `EmailOutboxMessage`/`EmailMessage`. Stamp `SurveyInvitation.LatestEmailStatus = Queued` at enqueue and `Failed` on a synchronous send exception — mirroring what `CampaignService` itself stamps. The outbox→grant *final-Sent* callback is **not** reproduced in v1 (acceptable at 500-user scale; revisit only if delivery-status accuracy is needed).
 4. **Caching.** Per spec §12, **none**. Register `SurveyService` as a plain Scoped service (Feedback/Issues pattern), not the Camps caching-decorator pattern.
 5. **`LocalizedText`.** A Survey-/Domain-owned value object wrapping `Dictionary<string,string>` (culture→text), persisted as jsonb via the `DocumentVersionConfiguration` precedent (`HasColumnType("jsonb")` + `HasConversion` + `ValueComparer`). Lives in `Humans.Domain/ValueObjects/` so entities can use it; promotion to a broader shared primitive stays a later refactor (§15.1).
-6. **`Cultures` / `PublicSlug` columns dropped.** Spec §3 listed `Survey.Cultures string[]` and `Survey.PublicSlug`. v1 is invite-only (no public path, §14) so **`PublicSlug` is omitted entirely**. "Which cultures have content" is **derived** from the `LocalizedText` dictionaries (no separate `Cultures` column to drift). Both can be added later without a destructive migration.
+6. **`Cultures` column dropped (derived); `PublicSlug` is IN v1.** Spec §3 listed `Survey.Cultures string[]` — dropped; "which cultures have content" is **derived** from the `LocalizedText` dictionaries (no separate column to drift). **`PublicSlug` stays** (the public answering path is in v1 per the 2026-06-04 decision), plus `PublicStartedCount` for the slug-side funnel. Public responses are always Anonymous, `InputMethod=Slug`.
 7. **Membership gate.** The answering wizard controller (`SurveyController`) must be reachable by invited non-members → add `"Survey"` to `MembershipRequiredFilter.ExemptControllers` and mark the answer actions `[AllowAnonymous]` (mirrors `Guest`/`Camp`).
 10. **Completion is a boolean, not a timestamp (privacy — Peter).** A completion-tracked response is "done but anonymous." Storing *when* the invitee completed (`Invitation.CompletedAt`) leaks: that user-linked time matches the unattributed response's `SubmittedAt` and re-identifies them. So `SurveyInvitation` records `Completed` as a **bool** with **no time column and no `UpdatedAt`**, and individual response submissions are **not** audit-logged. Identified completions are likewise just `Completed=true` (their `Response` is legitimately linked and carries `SubmittedAt` if a time is ever needed).
 
@@ -235,6 +235,8 @@ public class Survey
     public Instant? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
     public Guid? AudienceTeamId { get; set; }                 // bare Guid when AudienceType == Team; no nav, no cross-section FK constraint
+    public string? PublicSlug { get; set; }                   // public answering link; requires AllowAnonymous; null = invite-only
+    public int PublicStartedCount { get; set; }               // slug-path "started" funnel counter (anonymous → no per-person anchor)
     public Guid CreatedByUserId { get; init; }   // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
@@ -348,7 +350,9 @@ public class SurveyConfiguration : IEntityTypeConfiguration<Survey>
         b.Property(s => s.DefaultCulture).HasMaxLength(10).IsRequired();
         b.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
         b.Property(s => s.AudienceType).HasConversion<string>().HasMaxLength(20);
+        b.Property(s => s.PublicSlug).HasMaxLength(80);
         b.HasIndex(s => s.Status);
+        b.HasIndex(s => s.PublicSlug).IsUnique();   // filtered to non-null — copy an existing filtered-unique index's HasFilter(...) form
         b.HasMany(s => s.Questions).WithOne(q => q.Survey)
             .HasForeignKey(q => q.SurveyId).OnDelete(DeleteBehavior.Cascade);
         // CreatedByUserId / AudienceTeamId are bare Guid columns: NO navigation property and NO
@@ -520,7 +524,7 @@ internal static class SurveySectionExtensions
 
 - [ ] **Files:** `Controllers/SurveyAdminController.cs`, `Models/SurveyViewModels.cs`, `Views/SurveyAdmin/Index.cshtml`, `Views/SurveyAdmin/Builder.cshtml`.
 - [ ] **Step 1 — Index action** → `surveyService.GetSummariesAsync()` → `Views/SurveyAdmin/Index.cshtml` table (title, status, response/invited rate, links to Builder/Send/Results). Sorting/filtering done in the controller (hard rule).
-- [ ] **Step 2 — Create/Edit** GET renders `Builder` from `GetForEditAsync`; POST binds a `SurveyBuilderViewModel` → `SurveyEditInput` → `CreateAsync`/`UpdateAsync`. The builder edits: title/intro/thankyou per culture (culture switcher over `CultureCatalog.SupportedCultureCodes`), `AllowAnonymous`, `DefaultCulture`, pages/questions/options, per-question `ShowIf` rule builder (choice questions only), `OpensAt`/`ClosesAt`, audience (`SurveyAudienceType` + team picker when `Team`).
+- [ ] **Step 2 — Create/Edit** GET renders `Builder` from `GetForEditAsync`; POST binds a `SurveyBuilderViewModel` → `SurveyEditInput` → `CreateAsync`/`UpdateAsync`. The builder edits: title/intro/thankyou per culture (culture switcher over `CultureCatalog.SupportedCultureCodes`), `AllowAnonymous`, `DefaultCulture`, pages/questions/options, per-question `ShowIf` rule builder (choice questions only), `OpensAt`/`ClosesAt`, audience (`SurveyAudienceType` + team picker when `Team`), and **enable public link** (sets `PublicSlug`; requires `AllowAnonymous`; enforces uniqueness and rejects reserved slugs `Admin`/`Answer`).
 - [ ] **Step 3 — Build + manual smoke** (deferred to Phase 7 site test). **Commit:** `feat(survey): admin index and builder`
 
 ### Task 2.2: Open/Close + branching rule builder UX
@@ -597,6 +601,15 @@ internal static class SurveySectionExtensions
 - [ ] **Step 3 — Implement** `SubmitResponseAsync`; final branching re-evaluation; write response+answers in one save; stamp completion per tier.
 - [ ] **Step 4 — Run, expect PASS.** Render `Views/Survey/ThankYou.cshtml` (`Survey.ThankYou`). **Commit:** `feat(survey): submit response with anonymity tiers`
 
+### Task 4.4: Public-slug answering path
+
+**Files:** `Controllers/SurveyController.cs` (public entry action); reuse `Views/Survey/Intro.cshtml` (slug variant — language picker, no privacy selector).
+
+- [ ] **Step 1 — `GET /Survey/{slug}`** (`[AllowAnonymous]`) → resolve survey by `PublicSlug`; 404 if none; `Closed.cshtml` if not `Open` / past `ClosesAt`. No invitation/token. Responses are forced **Anonymous**, `InputMethod = Slug`. Show intro + **language picker** (default `CultureInfo.CurrentUICulture`); **no** privacy selector (always Anonymous).
+- [ ] **Step 2 — Reuse** the Task 4.2 page flow and Task 4.3 submit with `anonymity = Anonymous`, `InputMethod = Slug`, no invitation link. On the first advance, **increment `Survey.PublicStartedCount`** (repo `IncrementPublicStartedAsync(surveyId)`); finishes are submitted `Slug` responses.
+- [ ] **Step 3 — Route guard:** `/Survey/Answer` and `/Survey/Admin` must resolve before `{slug}` (literal-segment precedence) and the builder must have rejected those reserved slugs (Task 2.1). Add a controller/route test pinning that `Admin`/`Answer` are not treated as slugs.
+- [ ] **Step 4 — Commit:** `feat(survey): public-slug answering path`
+
 ---
 
 ## Phase 5 — Reminder job
@@ -618,7 +631,7 @@ internal static class SurveySectionExtensions
 
 ### Task 6.1: Results aggregation (TDD)
 
-- [ ] **Step 1 — Failing test** on `SurveyService.GetResultsAsync(surveyId)`: per-question aggregates (choice counts/%, rating distribution, free-text list), response-rate (responses ÷ invited), the **participation funnel** — `started` (invitations with `Started=true`) vs `finished` (submitted responses), split by `InputMethod` — and a per-respondent drill-down **limited to `Identified`** responses (others contribute to counts but expose no identity). Free-text returned **as-submitted** (no translation — deferred).
+- [ ] **Step 1 — Failing test** on `SurveyService.GetResultsAsync(surveyId)`: per-question aggregates (choice counts/%, rating distribution, free-text list), response-rate (responses ÷ invited), the **participation funnel** — `started` (link: invitations with `Started=true`; slug: `Survey.PublicStartedCount`) vs `finished` (submitted responses), split by `InputMethod` — and a per-respondent drill-down **limited to `Identified`** responses (others contribute to counts but expose no identity). Free-text returned **as-submitted** (no translation — deferred).
 - [ ] **Step 2 — Repository:** `GetResponsesForResultsAsync(surveyId)` (Include Answers only — no cross-section navs exist), `GetInvitedCountAsync`, `GetResponseCountAsync`. Stitch `Identified` respondent names via `IUserServiceRead.GetUserInfosAsync`.
 - [ ] **Step 3 — Implement**; **Commit:** `feat(survey): results aggregation`
 
