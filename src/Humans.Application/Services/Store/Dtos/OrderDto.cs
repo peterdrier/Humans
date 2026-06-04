@@ -1,4 +1,5 @@
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Services.Store.Dtos;
 
@@ -22,4 +23,5 @@ public record OrderDto(
     decimal VatTotalEur,
     decimal DepositTotalEur,
     decimal PaymentsTotalEur,
-    decimal BalanceEur);
+    decimal BalanceEur,
+    Instant CreatedAt);

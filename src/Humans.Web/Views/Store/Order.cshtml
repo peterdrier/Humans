@@ -10,12 +10,12 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">Store</a></li>
         <li class="breadcrumb-item">@Model.CounterpartyDisplayName</li>
-        <li class="breadcrumb-item active">@(string.IsNullOrWhiteSpace(order.Label) ? "Order" : order.Label)</li>
+        <li class="breadcrumb-item active">Order</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(order.Label) ? "Store order" : order.Label)</h1>
+    <h1 class="mb-0">Store order</h1>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
         <span class="badge bg-secondary fs-6">@order.State</span>
@@ -98,10 +98,10 @@
                     @if (!isTeamOrder)
                     {
                         <td class="text-end">
-                            &euro;@line.UnitPriceSnapshotInclVat.ToString("N2")
-                            <div class="text-muted small">(&euro;@line.UnitPriceSnapshot.ToString("N2") + @line.VatRateSnapshot.ToString("0.##")% VAT)</div>
+                            &euro;@line.EffectiveUnitPriceInclVat.ToString("N2")
+                            <div class="text-muted small">(&euro;@line.EffectiveUnitPrice.ToString("N2") + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
                         </td>
-                        <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
+                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
                         <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     }
                     <td class="text-end">
@@ -123,6 +123,30 @@
 else
 {
     <div class="alert alert-secondary">No lines on this order yet.</div>
+}
+
+@if (Model.PriceChanges.Any())
+{
+    <h2 class="h4 mb-3">Price changes since this order started</h2>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Event</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var change in Model.PriceChanges)
+            {
+                <tr>
+                    <td>@change.OccurredAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><span class="badge bg-warning text-dark">Price changed</span></td>
+                    <td>@change.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 
 @if (Model.CanEdit)
