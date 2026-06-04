@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Camps;
 /// Computes barrio shift-obligation compliance and owns the obligation config +
 /// per-season overrides. See <see cref="IShiftObligationService"/>. Cross-section
 /// reads go through <see cref="IShiftServiceRead"/> / <see cref="ITeamServiceRead"/>
-/// / <see cref="ICampServiceRead"/> / <see cref="IUserService"/>; same-section
+/// / <see cref="ICampServiceRead"/> / <see cref="IUserServiceRead"/>; same-section
 /// reads use <see cref="IShiftObligationRepository"/> and
 /// <see cref="ICampRepository"/>. No EF entity leaves the section.
 /// </summary>
@@ -27,7 +27,7 @@ public sealed class ShiftObligationService : IShiftObligationService
     private readonly ICampRepository campRepository;
     private readonly IShiftServiceRead shiftServiceRead;
     private readonly ITeamServiceRead teamServiceRead;
-    private readonly IUserService userService;
+    private readonly IUserServiceRead userService;
     private readonly IClock clock;
 
     // Wired now; consumed by the reminder methods in Chunk 4.
@@ -42,7 +42,7 @@ public sealed class ShiftObligationService : IShiftObligationService
         ICampRepository campRepository,
         IShiftServiceRead shiftServiceRead,
         ITeamServiceRead teamServiceRead,
-        IUserService userService,
+        IUserServiceRead userService,
         IEmailService emailService,
         IEmailMessageFactory emailMessageFactory,
         IAuditLogService auditLog,
@@ -191,7 +191,9 @@ public sealed class ShiftObligationService : IShiftObligationService
         var result = new List<ShiftObligationConfigInfo>(functions.Count);
         foreach (var f in functions)
         {
-            var targetName = await ResolveTargetNameAsync(f.TargetType, f.TargetId, ct);
+            // Reuse the matrix column's name resolution so the Functions list and the
+            // matrix column never diverge on display name (URL is irrelevant here).
+            var (targetName, _) = await ResolveColumnTargetAsync(f, ct);
             result.Add(new ShiftObligationConfigInfo(
                 f.Id, f.TargetType, f.TargetId, targetName, f.CampRoleSlug,
                 f.Applicability, f.DefaultRequiredShiftCount, f.IsActive, f.SortOrder));
@@ -494,27 +496,19 @@ public sealed class ShiftObligationService : IShiftObligationService
                 var name = rota?.RotaName ?? function.CampRoleSlug;
                 // Volunteer-facing browse filtered to the rota's owning team (so barrio
                 // leads can reach it and sign up), not the coordinator-only admin page.
+                // /Shifts has no rota filter, so this is best-effort: it deep-links to the
+                // rota's collapsible anchor on the team browse (id="rota-{Id:N}" in
+                // Views/Shifts/Index.cshtml). CAVEAT: the count is rota-scoped, but the
+                // browse is team-scoped — signing up for a *different* rota on the same
+                // team won't count toward this obligation.
                 var url = rota is null
                     ? string.Empty
-                    : $"/Shifts?departmentId={rota.TeamId}";
+                    : $"/Shifts?departmentId={rota.TeamId}#rota-{function.TargetId:N}";
                 return (name, url);
             }
             default:
                 return (function.CampRoleSlug, string.Empty);
         }
-    }
-
-    private async Task<string> ResolveTargetNameAsync(
-        ShiftObligationTargetType targetType, Guid targetId, CancellationToken ct)
-    {
-        return targetType switch
-        {
-            ShiftObligationTargetType.Team =>
-                (await teamServiceRead.GetTeamAsync(targetId, ct))?.Name ?? string.Empty,
-            ShiftObligationTargetType.Rota =>
-                (await shiftServiceRead.GetRotaTargetInfoAsync(targetId, ct))?.RotaName ?? string.Empty,
-            _ => string.Empty,
-        };
     }
 
     /// <summary>
