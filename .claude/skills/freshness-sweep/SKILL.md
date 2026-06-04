@@ -32,7 +32,7 @@ See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full desig
 
 ## Phase 2: Create worktree
 
-**Fetch `origin/main` first, and branch off its fresh HEAD** — not a stale local ref. The worktree base is the code the mechanical regens read; if it lags `origin/main`, every regenerated doc is generated against stale source and the PR Surface Report flags phantom interface/score deltas (base-vs-head sees code the branch hasn't caught up to). This bit sweep #819 (branch cut at `35ce66de8`, `origin/main` advanced to `cdd850bde` mid-sweep, surface report showed a removed `ITicketingBudgetRepository` as "new").
+**Fetch `origin/main` first, and branch off its fresh HEAD** — not a stale local ref. The worktree base is the code the mechanical regens read; if you cut from a *stale local* `main` that already lags `origin/main`, the regens read stale source and the merge-base the PR diffs against is wrong. This bit sweep #819: the branch was cut at `35ce66de8` while `origin/main` was already at `cdd850bde`, and the surface report flagged a removed `ITicketingBudgetRepository` as "new". The fix is to capture the **current** `origin/main` as the base, at the start. This is a *start-of-run freshness capture*, nothing more — once captured the base is **frozen** (see *Scope is frozen here* below); fetching fresh now is the point, re-fetching or reconciling later is not.
 
 ```bash
 git fetch origin main
@@ -41,7 +41,7 @@ git worktree add $REPO_ROOT/.worktrees/freshness-sweep-$TS -b freshness-sweep/$T
 WORKTREE=$REPO_ROOT/.worktrees/freshness-sweep-$TS  # cd here; all commands run inside
 ```
 
-If `git merge-base --is-ancestor upstream/main origin/main` is **false** — i.e. `origin/main` does not contain `upstream/main` HEAD (they've crossed, usually right after a prod promotion) — warn: the diff anchor (`upstream/main`) and the worktree code base (`origin/main`) describe different trees, so a doc regenerated here may not match what the PR diffs against. Proceed, but expect to reconcile in Phase 7 (re-fetch `origin/main` and merge it into the branch before opening the PR if the surface report shows code deltas on a docs-only sweep).
+**Scope is frozen here.** The diff anchor (`upstream/main` HEAD) and the worktree base (`origin/main` HEAD) are captured once, now, at the start of the run, and are **immutable for the rest of the sweep**. Do NOT re-fetch, re-resolve, or reconcile against `origin/main` / `upstream/main` if they move while the sweep runs — a parallel session merging a PR mid-run is expected and irrelevant. The PR diffs against `merge-base` (the frozen base), so a later fast-forward of `origin/main` cannot affect this sweep's diff; chasing it only wastes time and is a distraction. Anything that lands after the frozen anchors is the *next* sweep's input, full stop. (If `git merge-base --is-ancestor upstream/main origin/main` is false at start — they've crossed, usually right after a prod promotion — note it once in the report and proceed; still never reconcile mid-run.)
 
 Path/branch collision: error; instruct `git worktree list` / `git worktree remove`.
 
@@ -206,9 +206,11 @@ A prune-analysis subagent's manifest may surface **medium-confidence wheat** (th
 
 Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); "Pruned" section (file, lines removed, evidence) from Phase 5.5, including a **"Wheat migrated"** sub-list (`source §section → destination`, with the code symbol that verified it); "Flagged for human review" (file, triggers, reason — subjective prose only, never concrete broken facts, which are fixed inline); "Proposed for review" ("None — all candidates resolved this sweep" unless a question to Peter is pending); "Questions" (anything you asked Peter inline this sweep); "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
 
+**The report is the durable RECORD, not the delivery channel.** Every item that needs Peter's judgment — flagged drift that is a genuine judgment call, open questions, uncertain prune wheat — is delivered to him **inline** in Phase 7.5, not parked in the report for him to find later. Assume he never opens the report. Writing a review item only into the report and ending the run is a process failure.
+
 ## Phase 7: Commit, push, open PR
 
-**First, reconcile a moved base.** Re-run `git fetch origin main`. If `origin/main` advanced past the worktree base while the sweep ran, merge it into the branch now (`git merge origin/main` — clean, since the sweep only touches docs and code lands elsewhere) so the PR diffs against current `origin/main` and the Surface Report doesn't flag phantom code deltas on a docs-only PR. If any mechanical doc was regenerated against the now-superseded code, re-run that entry against the merged tree before committing.
+**Do not reconcile a moved base.** The base was frozen in Phase 2 and stays frozen. Do NOT re-fetch or merge `origin/main`, even if it fast-forwarded while the sweep ran — the PR diffs against `merge-base` (the frozen base), so a moved `origin/main` is invisible to this sweep's diff and to the merge-base-scored surface report. Commit and PR directly against the frozen base. Anything that landed after it is the next sweep's input; investigating it now is a distraction, not diligence.
 
 Commit title MUST be `docs: freshness sweep — N entries (upstream@<new-anchor-sha>)`. The `(upstream@<sha>)` token is parsed by the next sweep to locate the prior anchor.
 
@@ -253,9 +255,20 @@ EOF
 
 Print the PR URL.
 
+## Phase 7.5: Resolve review items inline (no homework)
+
+After the PR is open and **before** teardown, present **every item that needs Peter's judgment INLINE in the chat** — as a terse, numbered, actionable list, one line each: every "Flagged for human review" judgment call, every open "Question", every uncertain prune-wheat item. This is the delivery of the review; the report is only the record. Peter reviews **here, now, inline** — he does not read the report, so a sweep that ends with unresolved items sitting in the report has failed.
+
+- Phrase each as a decision he can answer in a word or two (e.g. "1. Refresh the stale §15i snapshot, or leave it frozen?"). Inline prose, never the `AskUserQuestion` tool (project rule). Don't pad with paragraph-long options.
+- Wait for his answers. Apply the resulting edits to the PR branch in the worktree, then **`git add` the touched files and make a new `git commit`** (the Phase 7 commit already happened — uncommitted working-tree edits will not push), update the report's Flagged / Questions / Proposed sections to record each resolution, and `git push` to update the PR. A bare `git push` without that follow-up commit sends nothing.
+- Only purely-informational notes that need **no** decision may remain solely in the report.
+- **Do not run Phase 8 (teardown) or declare the sweep done until every surfaced item is resolved or Peter explicitly defers it.** "I'll note it in the report for you to review" is the exact failure this phase exists to prevent.
+
+If there are genuinely zero judgment calls (everything was a concrete fix already applied, nothing subjective), say so in one line and proceed — don't manufacture questions.
+
 ## Phase 8: Tear down worktree
 
-`cd $REPO_ROOT && git worktree remove $WORKTREE` (add `--force` if Phase 7 errored). Never `rm -rf`. Branch stays on origin until PR closes.
+Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTREE` (add `--force` if Phase 7 errored). Never `rm -rf`. Branch stays on origin until PR closes.
 
 ## Failure modes
 
