@@ -345,16 +345,6 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns distinct user ids whose verified email set contains the given
-    /// case-insensitive substring. Used by admin search surfaces (Tickets
-    /// "who hasn't bought") so secondary verified addresses are discoverable
-    /// even when they differ from the notification-target email.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
-        string searchTerm,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
     /// whose user_emails rows contain the given address (case-insensitive), or
     /// null if no other user owns it. Used by @nobodies.team provisioning so

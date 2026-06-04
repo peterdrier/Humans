@@ -45,7 +45,7 @@ Don't roll a third. If you need a new search surface, route it through one of th
 **Out-of-scope carve-outs:**
 
 - `ShiftDashboardController.SearchVolunteers` and `ShiftVolunteerSearchBuilder` are intentionally separate. They search *people-against-shifts* (filtering by shift signups, availability, qualifications), not generic person-find. Different inputs, different output shape, different scope rules.
-- `/Tickets/HasNotBought` admin search reaches `IUserEmailService.SearchUserIdsByVerifiedEmailAsync` directly because it cross-references purchase data, not profile data.
+- `/Tickets/HasNotBought` admin search matches the term in-memory against the verified emails already carried on the loaded `UserInfo.UserEmails` (it cross-references purchase data, not profile data, so it does not route through the person-search funnel).
 
 **Rejected design alternatives:**
 

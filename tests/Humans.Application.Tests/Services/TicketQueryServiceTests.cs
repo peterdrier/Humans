@@ -396,6 +396,48 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         bought.Humans.Single().UserId.Should().Be(userWithTicket.Id);
     }
 
+    [HumansFact]
+    public async Task GetWhoHasntBoughtAsync_MatchesBySecondaryVerifiedEmail()
+    {
+        var target = CreateUser("Target", "primary@example.com");
+        target.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = target.Id,
+            Email = "secondary@alt.example",
+            IsVerified = true,
+            IsPrimary = false,
+        });
+        var other = CreateUser("Other", "other@example.com");
+
+        WireWhoHasntBoughtDependencies(target, other);
+
+        var result = await _service.GetWhoHasntBoughtAsync("alt.example", null, null, null, 1, 25);
+
+        result.TotalCount.Should().Be(1);
+        result.Humans.Single().UserId.Should().Be(target.Id);
+    }
+
+    [HumansFact]
+    public async Task GetWhoHasntBoughtAsync_IgnoresUnverifiedEmailWhenMatching()
+    {
+        var target = CreateUser("Target", "primary@example.com");
+        target.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = target.Id,
+            Email = "unverified@alt.example",
+            IsVerified = false,
+            IsPrimary = false,
+        });
+
+        WireWhoHasntBoughtDependencies(target);
+
+        var result = await _service.GetWhoHasntBoughtAsync("alt.example", null, null, null, 1, 25);
+
+        result.TotalCount.Should().Be(0);
+    }
+
     // ====================================================================
     // Export tests
     // ====================================================================
