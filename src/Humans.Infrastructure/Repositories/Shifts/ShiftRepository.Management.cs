@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using System.Linq.Expressions;
 
 namespace Humans.Infrastructure.Repositories.Shifts;
 
@@ -439,7 +440,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     // Single ShiftSignups access site shared by the team- and rota-scoped
     // confirmed-count reads (keeps the grandfathered HUM0025 surface flat).
     private async Task<IReadOnlyDictionary<Guid, int>> ConfirmedSignupCountsByUserAsync(
-        System.Linq.Expressions.Expression<Func<ShiftSignup, bool>> scope,
+        Expression<Func<ShiftSignup, bool>> scope,
         CancellationToken ct)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
