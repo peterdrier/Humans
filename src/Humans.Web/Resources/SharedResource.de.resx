@@ -4366,6 +4366,21 @@
   <data name="Shifts_Toggle_SignUp" xml:space="preserve">
     <value>Eintragen</value>
   </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Beworben — ausstehend</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>Du bist eingetragen.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Beworben — wir melden uns.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Entfernt.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value>
+  </data>
   <data name="Shifts_Toggle_Remove" xml:space="preserve">
     <value>Du bist dabei — zum Entfernen tippen</value>
   </data>
@@ -4392,13 +4407,6 @@
   </data>
   <data name="Shifts_Bail" xml:space="preserve">
     <value>Absagen</value>
-  </data>
-  <data name="Shifts_BailConfirm" xml:space="preserve">
-    <value>Bist du sicher, dass du absagen möchtest?</value>
-  </data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve">
-    <value>Von allen {0} Tagen absagen?</value>
-    <comment>{0} = number of days</comment>
   </data>
   <data name="Shifts_WithdrawButton" xml:space="preserve">
     <value>Zurückziehen</value>

@@ -4366,6 +4366,21 @@
   <data name="Shifts_Toggle_SignUp" xml:space="preserve">
     <value>M'inscrire</value>
   </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Demande envoyée — en attente</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>Tu es inscrit·e.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Demande envoyée — on te tient au courant.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Retiré·e.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Une erreur s'est produite. Réessaie.</value>
+  </data>
   <data name="Shifts_Toggle_Remove" xml:space="preserve">
     <value>Tu es inscrit·e — touche pour te retirer</value>
   </data>
@@ -4392,13 +4407,6 @@
   </data>
   <data name="Shifts_Bail" xml:space="preserve">
     <value>Se retirer</value>
-  </data>
-  <data name="Shifts_BailConfirm" xml:space="preserve">
-    <value>Êtes-vous sûr de vouloir vous retirer ?</value>
-  </data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve">
-    <value>Se retirer des {0} jours ?</value>
-    <comment>{0} = number of days</comment>
   </data>
   <data name="Shifts_WithdrawButton" xml:space="preserve">
     <value>Retirer</value>
