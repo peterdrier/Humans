@@ -482,19 +482,21 @@ public sealed class ShiftObligationService : IShiftObligationService
             {
                 var team = await teamServiceRead.GetTeamAsync(function.TargetId, ct);
                 var name = team?.Name ?? function.CampRoleSlug;
-                // Team shifts live at /Teams/{slug}/Shifts (ShiftAdminController route prefix).
-                var url = team is null ? string.Empty : $"/Teams/{team.Slug}/Shifts";
+                // Link to the VOLUNTEER-facing shift browse (/Shifts, [Authorize] only),
+                // filtered to this team — NOT /Teams/{slug}/Shifts (coordinator/admin-only
+                // management). Barrio leads must be able to open it and sign up.
+                var url = team is null ? string.Empty : $"/Shifts?departmentId={function.TargetId}";
                 return (name, url);
             }
             case ShiftObligationTargetType.Rota:
             {
                 var rota = await shiftServiceRead.GetRotaTargetInfoAsync(function.TargetId, ct);
                 var name = rota?.RotaName ?? function.CampRoleSlug;
-                // Rotas live under their owning team's shifts page (no standalone
-                // public rota route); anchor to the rota.
+                // Volunteer-facing browse filtered to the rota's owning team (so barrio
+                // leads can reach it and sign up), not the coordinator-only admin page.
                 var url = rota is null
                     ? string.Empty
-                    : $"/Teams/{rota.TeamSlug}/Shifts#rota-{rota.RotaId}";
+                    : $"/Shifts?departmentId={rota.TeamId}";
                 return (name, url);
             }
             default:
