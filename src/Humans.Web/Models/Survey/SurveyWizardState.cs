@@ -12,9 +12,9 @@ namespace Humans.Web.Models.Survey;
 internal sealed class SurveyWizardState
 {
     public Guid SurveyId { get; set; }
-    public Guid? InvitationId { get; set; }   // Identified only
-    public Guid? UserId { get; set; }          // Identified only
-    public Guid? DraftResponseId { get; set; } // Identified draft (set by StartIdentifiedDraftAsync)
+    public Guid? InvitationId { get; set; }   // the token's invitation — all invited tiers (drives Started/Completed funnel flags)
+    public Guid? UserId { get; set; }          // the token's user — all invited tiers; the RESPONSE columns are written only for Identified (see submit)
+    public Guid? DraftResponseId { get; set; } // Identified draft only (set by StartIdentifiedDraftAsync)
     public ResponseAnonymity Anonymity { get; set; }
     public SurveyInputMethod InputMethod { get; set; } = SurveyInputMethod.UserSpecificLink;
     public string Culture { get; set; } = "en";

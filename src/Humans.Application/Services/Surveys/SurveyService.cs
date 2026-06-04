@@ -298,6 +298,130 @@ public sealed class SurveyService(
         return response.Id;
     }
 
+    public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
+        => repo.MarkInvitationStartedAsync(invitationId, ct);
+
+    public Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswerInput> answers, CancellationToken ct = default)
+        => repo.SaveDraftAnswersAsync(draftResponseId, MapAnswers(draftResponseId, answers), submittedAt: null, ct);
+
+    public async Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default)
+    {
+        // Load the definition so branching can be re-evaluated authoritatively at submit time.
+        var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+
+        // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
+        var visibleAnswers = VisibleAnswers(survey, submission.Answers);
+
+        switch (submission.Anonymity)
+        {
+            case ResponseAnonymity.Identified:
+            {
+                var now = clock.GetCurrentInstant();
+                if (submission.DraftResponseId is { } draftId)
+                {
+                    await repo.SaveDraftAnswersAsync(draftId, MapAnswers(draftId, visibleAnswers), submittedAt: now, ct);
+                }
+                else
+                {
+                    var responseId = Guid.NewGuid();
+                    var response = new SurveyResponse
+                    {
+                        Id = responseId,
+                        SurveyId = submission.SurveyId,
+                        InvitationId = submission.InvitationId,
+                        UserId = submission.UserId,
+                        Anonymity = ResponseAnonymity.Identified,
+                        InputMethod = submission.InputMethod,
+                        Culture = submission.Culture,
+                        SubmittedAt = now,
+                        Answers = MapAnswers(responseId, visibleAnswers),
+                    };
+                    await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                }
+
+                if (submission.InvitationId is { } invId)
+                {
+                    await repo.SetInvitationCompletedAsync(invId, ct);
+                }
+
+                break;
+            }
+
+            case ResponseAnonymity.CompletionTracked:
+            {
+                var responseId = Guid.NewGuid();
+                var response = new SurveyResponse
+                {
+                    Id = responseId,
+                    SurveyId = submission.SurveyId,
+                    // No link stored on the response — only the invitation's Completed flag is flipped.
+                    InvitationId = null,
+                    UserId = null,
+                    Anonymity = ResponseAnonymity.CompletionTracked,
+                    InputMethod = submission.InputMethod,
+                    Culture = submission.Culture,
+                    SubmittedAt = clock.GetCurrentInstant(),
+                    Answers = MapAnswers(responseId, visibleAnswers),
+                };
+                await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+
+                if (submission.InvitationId is { } invId)
+                {
+                    await repo.SetInvitationCompletedAsync(invId, ct);
+                }
+
+                break;
+            }
+
+            case ResponseAnonymity.Anonymous:
+            default:
+            {
+                var responseId = Guid.NewGuid();
+                var response = new SurveyResponse
+                {
+                    Id = responseId,
+                    SurveyId = submission.SurveyId,
+                    InvitationId = null,
+                    UserId = null,
+                    Anonymity = ResponseAnonymity.Anonymous,
+                    InputMethod = submission.InputMethod,
+                    Culture = submission.Culture,
+                    SubmittedAt = clock.GetCurrentInstant(),
+                    Answers = MapAnswers(responseId, visibleAnswers),
+                };
+                // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
+                await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                break;
+            }
+        }
+    }
+
+    /// <summary>Keeps only the answers to questions visible under full branching against the submitted option values.</summary>
+    private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
+    {
+        var optionValues = answers.ToDictionary(
+            a => a.QuestionId,
+            a => (IReadOnlyList<string>)a.SelectedOptionValues);
+        var byId = survey.Questions.ToDictionary(q => q.Id);
+
+        return answers
+            .Where(a => byId.TryGetValue(a.QuestionId, out var q)
+                        && SurveyBranchingEvaluator.IsVisible(q.ShowIf, optionValues))
+            .ToList();
+    }
+
+    private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
+        => answers.Select(a => new SurveyAnswer
+        {
+            Id = Guid.NewGuid(),
+            ResponseId = responseId,
+            QuestionId = a.QuestionId,
+            SelectedOptionValues = a.SelectedOptionValues.ToList(),
+            TextValue = a.TextValue,
+            RatingValue = a.RatingValue,
+        }).ToList();
+
     /// <summary>
     /// Resolves an audience predicate into the set of recipient user ids via cross-section read
     /// interfaces. No marketing opt-out filter — surveys are System/always-send.

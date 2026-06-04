@@ -66,4 +66,21 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Inserts a response row and saves.</summary>
     Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
+
+    // ── Answering (submit) ──────────────────────────────────────────────────
+    /// <summary>
+    /// Replaces a draft response's answers with <paramref name="answers"/> (load tracked, remove
+    /// existing, add new) and saves. When <paramref name="submittedAt"/> is non-null it also stamps
+    /// <c>SubmittedAt</c> (the Identified finalise). No-op if the response does not exist.
+    /// </summary>
+    Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswer> answers, Instant? submittedAt, CancellationToken ct = default);
+
+    /// <summary>Inserts a response together with its answer graph and saves (CompletionTracked/Anonymous final submit).</summary>
+    Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);
+
+    /// <summary>Sets an invitation's <c>Completed</c> flag (no timestamp — see entity). No-op if the invitation is gone.</summary>
+    Task SetInvitationCompletedAsync(Guid invitationId, CancellationToken ct = default);
+
+    /// <summary>Sets an invitation's <c>Started</c> flag (no timestamp). No-op if the invitation is gone.</summary>
+    Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 }

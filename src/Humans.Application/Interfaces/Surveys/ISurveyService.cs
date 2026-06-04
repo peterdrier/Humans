@@ -57,6 +57,22 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     /// invitee. Identified is the only resumable tier. Returns the draft response id.
     /// </summary>
     Task<Guid> StartIdentifiedDraftAsync(Guid surveyId, Guid invitationId, Guid userId, string culture, CancellationToken ct = default);
+
+    /// <summary>Marks the invitation's funnel <c>Started</c> flag (set on the first advance past the intro). No-op if the invitation is gone.</summary>
+    Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces the answers on an in-progress Identified draft (per-page autosave). The draft's
+    /// <c>SubmittedAt</c> stays null. Branching is not re-applied here — final submit is authoritative.
+    /// </summary>
+    Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswerInput> answers, CancellationToken ct = default);
+
+    /// <summary>
+    /// Finalises a wizard submission per its anonymity tier (see <see cref="SurveySubmission"/>),
+    /// dropping answers to questions hidden under branching. Individual submissions are never
+    /// audit-logged (privacy).
+    /// </summary>
+    Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -135,6 +151,30 @@ public sealed record SurveyAnswerContext(
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
 public sealed record SurveyDraftAnswer(
+    Guid QuestionId,
+    IReadOnlyList<string> SelectedOptionValues,
+    string? TextValue,
+    int? RatingValue);
+
+/// <summary>
+/// A finalised wizard submission. Identity columns (<c>UserId</c>/<c>InvitationId</c>) are written on
+/// the response ONLY for <see cref="ResponseAnonymity.Identified"/>; CompletionTracked still flips the
+/// invitation's <c>Completed</c> flag (via <c>InvitationId</c>) but stores no link on the response;
+/// Anonymous leaves the invitation untouched. <c>DraftResponseId</c> is set only when resuming an
+/// Identified draft. <see cref="InputMethod"/> lets the public-slug path (Task 4.4) reuse submit.
+/// </summary>
+public sealed record SurveySubmission(
+    Guid SurveyId,
+    Guid? InvitationId,
+    Guid? UserId,
+    Guid? DraftResponseId,
+    ResponseAnonymity Anonymity,
+    SurveyInputMethod InputMethod,
+    string Culture,
+    IReadOnlyList<SurveyAnswerInput> Answers);
+
+/// <summary>One answer in a submission (or a draft autosave), keyed by question id.</summary>
+public sealed record SurveyAnswerInput(
     Guid QuestionId,
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,

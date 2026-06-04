@@ -176,6 +176,51 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SaveDraftAnswersAsync(
+        Guid draftResponseId, IReadOnlyList<SurveyAnswer> answers, Instant? submittedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var draft = await ctx.SurveyResponses
+            .Include(r => r.Answers)
+            .FirstOrDefaultAsync(r => r.Id == draftResponseId, ct);
+        if (draft is null) return;
+
+        ctx.SurveyAnswers.RemoveRange(draft.Answers);
+        foreach (var answer in answers)
+        {
+            answer.Response = draft;
+            draft.Answers.Add(answer);
+        }
+
+        if (submittedAt is not null) draft.SubmittedAt = submittedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.SurveyResponses.Add(response);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task SetInvitationCompletedAsync(Guid invitationId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
+        if (invitation is null) return;
+        invitation.Completed = true;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
+        if (invitation is null) return;
+        invitation.Started = true;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
     {

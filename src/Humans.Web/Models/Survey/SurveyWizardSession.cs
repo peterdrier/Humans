@@ -18,4 +18,7 @@ internal static class SurveyWizardSession
 
     public static void Save(ISession session, string token, SurveyWizardState state)
         => session.SetString(Key(token), JsonSerializer.Serialize(state));
+
+    public static void Clear(ISession session, string token)
+        => session.Remove(Key(token));
 }
