@@ -324,6 +324,43 @@ public class StoreServiceTests
         result.BalanceEur.Should().Be(60.50m);
     }
 
+    [HumansFact]
+    public async Task GetOrderAsync_legacy_year_zero_order_reprices_via_camp_season_year()
+    {
+        // Legacy camp order created before the StoreOrder.Year column existed (Year == 0):
+        // the price year must be resolved from the camp season so it still reprices (#878 review).
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var orderId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = seasonId,
+            Year = 0,
+            State = StoreOrderState.Open,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 1,
+                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+                "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
+                YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        repriced.Id = product.Id;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct> { repriced });
+
+        var result = await _service.GetOrderAsync(orderId);
+
+        result!.Lines[0].EffectiveUnitPrice.Should().Be(40m); // 2026 catalog resolved via camp season
+    }
+
     // ==========================================================================
     // Write paths (Task 2.4)
     // ==========================================================================
