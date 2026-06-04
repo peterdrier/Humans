@@ -168,7 +168,7 @@ Stored as int via `HasConversion<int>()`.
 ## Routing
 
 - `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `StoreOrderAuthorizationHandler` rather than a blanket admin flag.
-- `/Store/Order/{id}` — Order detail. Camp orders show balance + Pay button. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
+- `/Store/Order/{id}` — Order detail. Camp orders show summary cards (lines subtotal, VAT, deposits, total payments, balance owed), the recorded-payments list (date, method, Stripe/external reference, amount), the Pay button, and a collapsed-by-default counterparty section. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
 - `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
 - `/Store/Admin/Catalog` — StoreAdmin catalog CRUD (`StoreAdminController`, policy `StoreCatalogAdmin`).
 - `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
@@ -176,7 +176,7 @@ Stored as int via `HasConversion<int>()`.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
 - `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
 - `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. Reuses `PolicyNames.StoreCatalogAdmin`.
-- `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store`.
+- `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 

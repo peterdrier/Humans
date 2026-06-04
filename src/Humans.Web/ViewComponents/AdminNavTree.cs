@@ -45,8 +45,9 @@ public static class AdminNavTree
             new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin)
         ]),
         new("Store", [
-            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
-            new("Store summary",  "StoreAdmin",   "Summary", null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin)
+            new("Store catalog",  "StoreAdmin",   "Catalog",  null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
+            new("Store summary",  "StoreAdmin",   "Summary",   null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin),
+            new("Store payments", "StoreAdmin",   "Payments",  null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin)
         ]),
         new("Event Guide", [
             new("Guide settings", "EventsAdmin", "Settings", null, null, "fa-solid fa-calendar-days", PolicyNames.EventsAdminOrAdmin),

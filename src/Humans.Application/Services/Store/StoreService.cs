@@ -1021,6 +1021,12 @@ public class StoreService(
                 t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
         }).ToList();
 
+        var payments = o.Payments
+            .OrderBy(p => p.ReceivedAt)
+            .Select(p => new OrderPaymentDto(
+                p.AmountEur, p.Method, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+            .ToList();
+
         var counterpartyType = o.TeamId is not null
             ? StoreOrderCounterpartyType.Team
             : StoreOrderCounterpartyType.Camp;
@@ -1039,6 +1045,7 @@ public class StoreService(
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,
             lines,
+            payments,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
             balance.PaymentsTotalEur, balance.BalanceEur,
             o.CreatedAt);
