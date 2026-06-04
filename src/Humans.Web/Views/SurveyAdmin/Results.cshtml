@@ -1,0 +1,202 @@
+@using Humans.Domain.Enums
+@using Humans.Web.Models.Survey
+@model SurveyResultsViewModel
+
+@{
+    ViewData["Title"] = "Survey results";
+
+    static string StatusBadge(SurveyStatus s) => s switch
+    {
+        SurveyStatus.Open => "bg-success",
+        SurveyStatus.Closed => "bg-secondary",
+        _ => "bg-warning text-dark",
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">Surveys</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Results</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
+        <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download CSV</a>
+        <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">Download JSON</a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="card h-100"><div class="card-body text-center">
+            <div class="display-6">@Model.ResponseCount</div>
+            <div class="text-muted">Responses</div>
+        </div></div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card h-100"><div class="card-body text-center">
+            <div class="display-6">@Model.InvitedCount</div>
+            <div class="text-muted">Invited</div>
+        </div></div>
+    </div>
+    <div class="col-sm-4">
+        <div class="card h-100"><div class="card-body text-center">
+            <div class="display-6">@(Model.InvitedCount > 0 ? $"{Model.ResponseRatePercent}%" : "—")</div>
+            <div class="text-muted">Response rate</div>
+        </div></div>
+    </div>
+</div>
+
+<h2 class="h5">Participation funnel</h2>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h3 class="h6 text-muted">Invite link</h3>
+                <p class="mb-1">Started: <strong>@Model.Funnel.LinkStarted</strong></p>
+                <p class="mb-0">Finished: <strong>@Model.Funnel.LinkFinished</strong></p>
+            </div>
+            <div class="col-md-6">
+                <h3 class="h6 text-muted">Public link</h3>
+                <p class="mb-1">Started: <strong>@Model.Funnel.SlugStarted</strong></p>
+                <p class="mb-0">Finished: <strong>@Model.Funnel.SlugFinished</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5">Questions</h2>
+@if (Model.Questions.Count == 0)
+{
+    <p class="text-muted">This survey has no questions.</p>
+}
+@foreach (var q in Model.Questions)
+{
+    <div class="card mb-3">
+        <div class="card-header">@q.Prompt</div>
+        <div class="card-body">
+            @switch (q.Type)
+            {
+                case SurveyQuestionType.SingleChoice:
+                case SurveyQuestionType.MultiChoice:
+                    @if (q.OptionCounts.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No options.</p>
+                    }
+                    else
+                    {
+                        foreach (var o in q.OptionCounts)
+                        {
+                            var pct = (int)Math.Round(o.Percent);
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <span>@o.Label</span>
+                                    <span class="text-muted">@o.Count (@pct%)</span>
+                                </div>
+                                <div class="progress" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100" style="height: .75rem;">
+                                    <div class="progress-bar" style="width: @pct%;"></div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    break;
+
+                case SurveyQuestionType.Rating:
+                    <p class="mb-2">Average: <strong>@(q.RatingAverage ?? "—")</strong></p>
+                    @foreach (var b in q.RatingDistribution)
+                    {
+                        var w = q.RatingMaxCount > 0 ? (int)Math.Round(100.0 * b.Count / q.RatingMaxCount) : 0;
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>@b.Value</span>
+                                <span class="text-muted">@b.Count</span>
+                            </div>
+                            <div class="progress" role="progressbar" aria-valuenow="@w" aria-valuemin="0" aria-valuemax="100" style="height: .75rem;">
+                                <div class="progress-bar bg-info" style="width: @w%;"></div>
+                            </div>
+                        </div>
+                    }
+                    break;
+
+                default:
+                    @if (q.FreeTextAnswers.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No free-text answers.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var t in q.FreeTextAnswers)
+                            {
+                                <li class="list-group-item">@t</li>
+                            }
+                        </ul>
+                    }
+                    break;
+            }
+        </div>
+    </div>
+}
+
+<h2 class="h5">Identified respondents</h2>
+@if (Model.Respondents.Count == 0)
+{
+    <p class="text-muted">No identified respondents.</p>
+}
+else
+{
+    <div class="accordion mb-4" id="respondents">
+        @for (var i = 0; i < Model.Respondents.Count; i++)
+        {
+            var r = Model.Respondents[i];
+            var headingId = $"respondent-heading-{i}";
+            var collapseId = $"respondent-collapse-{i}";
+            <div class="accordion-item">
+                <h3 class="accordion-header" id="@headingId">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                        @r.Name <span class="text-muted ms-2 small">@r.SubmittedAt</span>
+                    </button>
+                </h3>
+                <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
+                    <div class="accordion-body">
+                        <dl class="row mb-0">
+                            @foreach (var a in r.Answers)
+                            {
+                                <dt class="col-sm-4">@a.Prompt</dt>
+                                <dd class="col-sm-8">
+                                    @if (a.SelectedLabels.Count > 0)
+                                    {
+                                        @string.Join(", ", a.SelectedLabels)
+                                    }
+                                    else if (a.RatingValue is { } rating)
+                                    {
+                                        @rating
+                                    }
+                                    else if (!string.IsNullOrEmpty(a.TextValue))
+                                    {
+                                        @a.TextValue
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="mt-3">
+    <a asp-controller="SurveyAdmin" asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to surveys</a>
+</div>

@@ -940,4 +940,121 @@ public class SurveyServiceTests
         result.Funnel.SlugStarted.Should().Be(9);
         result.Funnel.SlugFinished.Should().Be(2);   // two anonymous slug responses
     }
+
+    // ── Raw per-response export (Task 6.2) ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetResponseExportAsync_returns_null_when_survey_missing()
+    {
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
+
+        var export = await CreateService().GetResponseExportAsync(Guid.NewGuid());
+
+        export.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetResponseExportAsync_populates_identity_only_for_identified_rows()
+    {
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2)),
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var identifiedUser = Guid.NewGuid();
+        var responses = new List<SurveyResponse>
+        {
+            SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, now, identifiedUser,
+                ChoiceAnswer(choiceId, "yes")),
+            SubmittedResponse(surveyId, ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, now, null,
+                ChoiceAnswer(choiceId, "yes")),
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                ChoiceAnswer(choiceId, "no")),
+        };
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)responses);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [identifiedUser] = UserInfoWithName(identifiedUser, "Sparkle") }));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId);
+
+        export.Should().NotBeNull();
+        export!.Rows.Should().HaveCount(3);   // every tier appears so totals reconcile
+
+        var identified = export.Rows.Single(r => r.Anonymity == ResponseAnonymity.Identified);
+        identified.UserId.Should().Be(identifiedUser);
+        identified.UserName.Should().Be("Sparkle");
+
+        export.Rows.Where(r => r.Anonymity != ResponseAnonymity.Identified)
+            .Should().OnlyContain(r => r.UserId == null && r.UserName == null);
+    }
+
+    [HumansFact]
+    public async Task GetResponseExportAsync_maps_answer_values_and_labels_and_orders_questions_by_page_then_order()
+    {
+        var surveyId = Guid.NewGuid();
+        var multiId = Guid.NewGuid();
+        var textId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        // Declared out of order — export must re-order by (page, order). text is page 2, choice page 1.
+        var multi = ChoiceQuestion(multiId, surveyId, SurveyQuestionType.MultiChoice, 1, ("a", "Apple", 1), ("b", "Banana", 2));
+        var text = TextQuestion(textId, surveyId, 2);
+        text.PageNumber = 2;
+        survey.Questions = new List<SurveyQuestion> { text, multi };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse>
+            {
+                SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                    ChoiceAnswer(multiId, "a", "b"), TextAnswer(textId, "free")),
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId);
+
+        export.Should().NotBeNull();
+        export!.Questions.Select(q => q.QuestionId).Should().ContainInOrder(multiId, textId);
+
+        var row = export.Rows.Single();
+        var multiAnswer = row.Answers.Single(a => a.QuestionId == multiId);
+        multiAnswer.SelectedValues.Should().ContainInOrder("a", "b");
+        multiAnswer.SelectedLabels.Should().ContainInOrder("Apple", "Banana");
+
+        var textAnswer = row.Answers.Single(a => a.QuestionId == textId);
+        textAnswer.TextValue.Should().Be("free");
+    }
+
+    [HumansFact]
+    public async Task GetResponseExportAsync_orders_rows_by_submitted_at()
+    {
+        var surveyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>();
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var t0 = _clock.GetCurrentInstant();
+        var early = SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, t0, null);
+        var late = SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, t0 + Duration.FromHours(2), null);
+        // Provide them out of chronological order.
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse> { late, early });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var export = await CreateService().GetResponseExportAsync(surveyId);
+
+        export!.Rows.Select(r => r.ResponseId).Should().ContainInOrder(early.Id, late.Id);
+    }
 }

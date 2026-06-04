@@ -1,9 +1,13 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.Survey;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -23,6 +27,12 @@ public class SurveyAdminController(
     ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    private static readonly JsonSerializerOptions ExportJsonOptions = new()
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -147,6 +157,35 @@ public class SurveyAdminController(
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Send), new { id });
+    }
+
+    [HttpGet("Results/{id:guid}")]
+    public async Task<IActionResult> Results(Guid id, CancellationToken ct)
+    {
+        var results = await surveyService.GetResultsAsync(id, ct);
+        if (results is null) return NotFound();
+
+        return View(SurveyResultsBuilder.Build(results));
+    }
+
+    [HttpGet("Results/{id:guid}/Export.csv")]
+    public async Task<IActionResult> ExportCsv(Guid id, CancellationToken ct)
+    {
+        var export = await surveyService.GetResponseExportAsync(id, ct);
+        if (export is null) return NotFound();
+
+        var bytes = SurveyCsvExportBuilder.Build(export);
+        return File(bytes, "text/csv", $"survey-{id}.csv");
+    }
+
+    [HttpGet("Results/{id:guid}/Export.json")]
+    public async Task<IActionResult> ExportJson(Guid id, CancellationToken ct)
+    {
+        var export = await surveyService.GetResponseExportAsync(id, ct);
+        if (export is null) return NotFound();
+
+        var json = JsonSerializer.Serialize(export, ExportJsonOptions);
+        return File(Encoding.UTF8.GetBytes(json), "application/json", $"survey-{id}.json");
     }
 
     private async Task RunStatusTransitionAsync(Func<Task> transition, string success)

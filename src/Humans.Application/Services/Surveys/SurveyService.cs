@@ -503,6 +503,71 @@ public sealed class SurveyService(
             identified);
     }
 
+    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null) return null;
+
+        var culture = survey.DefaultCulture;
+        var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
+
+        var orderedQuestions = survey.Questions
+            .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+            .ToList();
+
+        var questions = orderedQuestions
+            .Select(q => new SurveyExportQuestion(
+                q.Id,
+                q.Prompt.Resolve(culture, culture),
+                q.Type,
+                q.Options.OrderBy(o => o.Order)
+                    .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))
+                    .ToList()))
+            .ToList();
+
+        var optionLabels = survey.Questions.ToDictionary(
+            q => q.Id,
+            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+
+        // Identity is resolved only for Identified rows (no name lookup for tracked/anonymous responses).
+        var identifiedUserIds = responses
+            .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
+            .Select(r => r.UserId!.Value)
+            .Distinct()
+            .ToList();
+        var users = identifiedUserIds.Count == 0
+            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            : await userService.GetUserInfosAsync(identifiedUserIds, ct);
+
+        var rows = responses
+            .OrderBy(r => r.SubmittedAt)
+            .Select(r =>
+            {
+                Guid? userId = null;
+                string? userName = null;
+                if (r.Anonymity == ResponseAnonymity.Identified && r.UserId is { } id)
+                {
+                    userId = id;
+                    userName = users.TryGetValue(id, out var user) ? user.BurnerName : id.ToString();
+                }
+
+                var answers = r.Answers
+                    .Select(a => new SurveyExportAnswer(
+                        a.QuestionId,
+                        a.SelectedOptionValues,
+                        ResolveSelectedLabels(a, optionLabels),
+                        a.TextValue,
+                        a.RatingValue))
+                    .ToList();
+
+                return new SurveyExportRow(
+                    r.Id, r.Anonymity, r.InputMethod, r.Culture, r.SubmittedAt, userId, userName, answers);
+            })
+            .ToList();
+
+        return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
+    }
+
     /// <summary>Aggregates one question across the submitted responses per its type (counts/distribution/free-text).</summary>
     private static QuestionAggregate BuildQuestionAggregate(
         SurveyQuestion question, IReadOnlyList<SurveyResponse> responses, string culture)

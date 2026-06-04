@@ -98,6 +98,16 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     /// exposure). Prompts/labels are resolved in the survey's default culture.
     /// </summary>
     Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The raw per-response export model backing the admin CSV/JSON downloads (and reused by the
+    /// analysis API): the question schema plus one row per submitted response, ordered by
+    /// <c>SubmittedAt</c>. Null if the survey does not exist. Identity (<c>UserId</c>/<c>UserName</c>)
+    /// is populated ONLY for <see cref="ResponseAnonymity.Identified"/> rows; CompletionTracked and
+    /// Anonymous rows still appear (so totals reconcile) but carry no identity. Prompts/labels are
+    /// resolved in the survey's default culture.
+    /// </summary>
+    Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -263,3 +273,49 @@ public sealed record RespondentDetail(Guid UserId, string Name, Instant? Submitt
 
 /// <summary>One answer in an Identified respondent's drill-down, with choice labels resolved in the default culture.</summary>
 public sealed record RespondentAnswer(Guid QuestionId, string Prompt, IReadOnlyList<string> SelectedLabels, string? TextValue, int? RatingValue);
+
+// ── Export DTOs (co-located; raw per-response, shared by CSV/JSON download and the analysis API) ──
+
+/// <summary>
+/// The raw export of a survey's submitted responses: the question schema (ordered by page then order)
+/// plus one row per response (ordered by submission time). Prompts/labels are resolved in
+/// <see cref="DefaultCulture"/>.
+/// </summary>
+public sealed record SurveyResponseExport(
+    Guid SurveyId,
+    string Title,
+    string DefaultCulture,
+    IReadOnlyList<SurveyExportQuestion> Questions,
+    IReadOnlyList<SurveyExportRow> Rows);
+
+/// <summary>One question in the export schema. <see cref="Options"/> is empty for non-choice questions.</summary>
+public sealed record SurveyExportQuestion(
+    Guid QuestionId,
+    string Prompt,
+    SurveyQuestionType Type,
+    IReadOnlyList<SurveyExportOption> Options);
+
+/// <summary>One choice option in the export schema: the stable machine <see cref="Value"/> + its resolved <see cref="Label"/>.</summary>
+public sealed record SurveyExportOption(string Value, string Label);
+
+/// <summary>
+/// One exported response. <see cref="UserId"/>/<see cref="UserName"/> are populated only for
+/// <see cref="ResponseAnonymity.Identified"/> rows; both are null for CompletionTracked/Anonymous.
+/// </summary>
+public sealed record SurveyExportRow(
+    Guid ResponseId,
+    ResponseAnonymity Anonymity,
+    SurveyInputMethod InputMethod,
+    string Culture,
+    Instant? SubmittedAt,
+    Guid? UserId,
+    string? UserName,
+    IReadOnlyList<SurveyExportAnswer> Answers);
+
+/// <summary>One answer in an exported response: choice keys + resolved labels, free text, or a rating.</summary>
+public sealed record SurveyExportAnswer(
+    Guid QuestionId,
+    IReadOnlyList<string> SelectedValues,
+    IReadOnlyList<string> SelectedLabels,
+    string? TextValue,
+    int? RatingValue);
