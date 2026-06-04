@@ -82,7 +82,7 @@
                     {
                         <hr />
                         <small class="text-muted">
-                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToString("MMMM d, yyyy")
+                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDisplayLongDate()
                             @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
                             {
                                 @: &mdash; @Model.PageContentUpdatedByDisplayName

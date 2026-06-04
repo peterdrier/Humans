@@ -72,12 +72,12 @@
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_OpensAt"]</label>
                             <input type="datetime-local" name="opensAt" class="form-control form-control-sm"
-                                   value="@(settings.PlacementOpensAt?.ToString("yyyy-MM-ddTHH:mm", null) ?? string.Empty)" />
+                                   value="@(settings.PlacementOpensAt is { } opensAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(opensAt) : string.Empty)" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ClosesAt"]</label>
                             <input type="datetime-local" name="closesAt" class="form-control form-control-sm"
-                                   value="@(settings.PlacementClosesAt?.ToString("yyyy-MM-ddTHH:mm", null) ?? string.Empty)" />
+                                   value="@(settings.PlacementClosesAt is { } closesAt ? DateFormattingExtensions.PlacementDateTimePattern.Format(closesAt) : string.Empty)" />
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">
                             <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_Admin_SaveDates"]

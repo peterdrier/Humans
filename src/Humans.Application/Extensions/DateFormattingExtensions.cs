@@ -24,6 +24,10 @@ public static class DateFormattingExtensions
     public static string? ToIsoDateString(this DateTime? value) =>
         value?.ToIsoDateString();
 
+    /// <summary>ISO-8601 basic date (no separators), "yyyyMMdd" — DOM-id/slug use.</summary>
+    public static string ToBasicIsoDate(this LocalDate value) =>
+        value.ToString("yyyyMMdd", null);
+
     public static string ToInvariantInstantString(this Instant value) =>
         value.ToString(null, CultureInfo.InvariantCulture);
 
@@ -178,6 +182,9 @@ public static class DateFormattingExtensions
 
     public static string ToMonthApostropheYear(this LocalDate value) =>
         value.ToString("MMM", CultureInfo.CurrentCulture) + "'" + value.ToString("yy", CultureInfo.CurrentCulture);
+
+    public static string ToDisplayMonthAbbrev(this LocalDate value) =>
+        value.ToString("MMM", CultureInfo.CurrentCulture);
 
     public static string ToTimeWithSeconds(this DateTimeOffset value) =>
         value.ToString("HH:mm:ss", CultureInfo.CurrentCulture);

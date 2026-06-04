@@ -321,7 +321,7 @@ else
                         <div class="card-body py-2">
                             <strong>This action will be recorded:</strong>
                             <em id="sensitiveAuditPreview">
-                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToString("d MMM yyyy") at @DateTime.UtcNow.ToString("HH:mm") UTC
+                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToDisplayDate() at @DateTime.UtcNow.ToDisplayTime24() UTC
                             </em>
                         </div>
                     </div>

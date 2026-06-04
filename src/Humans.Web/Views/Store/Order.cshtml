@@ -148,7 +148,7 @@ else
             @foreach (var change in Model.PriceChanges)
             {
                 <tr>
-                    <td>@change.OccurredAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@change.OccurredAt.ToDateTimeUtc().ToInvariantUtcMinuteLabel()</td>
                     <td><span class="badge bg-warning text-dark">Price changed</span></td>
                     <td>@change.Description</td>
                 </tr>

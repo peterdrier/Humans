@@ -351,7 +351,7 @@
             @Html.AntiForgeryToken()
             <label class="form-label mb-0">Set EE start date:</label>
             <input type="date" name="eeStartDate" class="form-control form-control-sm" style="max-width:180px;"
-                   value="@(Model.EeStartDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+                   value="@(Model.EeStartDate.ToIsoDateString())" />
             <button type="submit" class="btn btn-sm btn-primary text-nowrap">Save</button>
         </form>
     </div>

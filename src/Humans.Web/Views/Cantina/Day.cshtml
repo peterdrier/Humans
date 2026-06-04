@@ -9,7 +9,7 @@
     // the same regardless of the requester's browser locale (the surrounding
     // labels are still resx-localized).
     private static readonly LocalDatePattern LongDayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
+        DateFormattingExtensions.InvariantFullWeekdayDayMonthYearPattern;
 
     private static string FormatLong(LocalDate? d) =>
         d.HasValue ? LongDayPattern.Format(d.Value) : "";

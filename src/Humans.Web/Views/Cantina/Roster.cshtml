@@ -9,7 +9,7 @@
     // string is stable across user locales; the surrounding labels are still
     // resx-localized.
     private static readonly LocalDatePattern ShortDayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
+        DateFormattingExtensions.InvariantWeekdayDayMonthPattern;
 
     private static string FormatDay(LocalDate? d) =>
         d.HasValue ? ShortDayPattern.Format(d.Value) : "";
