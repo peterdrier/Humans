@@ -13,6 +13,11 @@ import {
   loginAsTeamsAdmin,
   loginAsTicketAdmin,
   loginAsVolunteerCoordinator,
+  loginAsEventsAdmin,
+  loginAsStoreAdmin,
+  loginAsCantinaAdmin,
+  loginAsEETeamAdmin,
+  loginAsBarrioLead,
 } from '../helpers/auth';
 
 /**
@@ -129,6 +134,34 @@ const roles: RoleTest[] = [
     name: 'volunteerCoordinator',
     login: loginAsVolunteerCoordinator,
     visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'eventsAdmin',
+    login: loginAsEventsAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'storeAdmin',
+    login: loginAsStoreAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'cantinaAdmin',
+    login: loginAsCantinaAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  // EETeamAdmin holds a role (passes AppAccess via HasAnyRole) but is NOT in the
+  // AnyAdminRole composite, so it does NOT see the Admin top-nav.
+  {
+    name: 'eeTeamAdmin',
+    login: loginAsEETeamAdmin,
+    visible: ['volunteer'],
+  },
+  // Camp lead: no governance role; access via UserState.Active. Sees Volunteer, not Admin.
+  {
+    name: 'barrioLead',
+    login: loginAsBarrioLead,
+    visible: ['volunteer'],
   },
 ];
 
