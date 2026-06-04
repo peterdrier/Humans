@@ -4363,6 +4363,12 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>Anmelden</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Eintragen</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Du bist dabei — zum Entfernen tippen</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>Schichten-Übersicht ist noch nicht geöffnet. Schau später wieder!</value>
   </data>

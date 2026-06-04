@@ -4363,6 +4363,12 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>Inscribirse</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Apuntarme</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Estás apuntado — toca para quitarte</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>La exploración de turnos aún no está abierta. ¡Vuelve más tarde!</value>
   </data>

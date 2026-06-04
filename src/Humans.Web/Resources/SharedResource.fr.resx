@@ -4363,6 +4363,12 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>S'inscrire</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>M'inscrire</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Tu es inscrit·e — touche pour te retirer</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>La navigation des quarts n'est pas encore ouverte. Revenez plus tard !</value>
   </data>

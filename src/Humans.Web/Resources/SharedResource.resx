@@ -1797,6 +1797,8 @@
   <data name="Shifts_ShiftSingular" xml:space="preserve"><value>shift</value></data>
   <data name="Shifts_ShiftPlural" xml:space="preserve"><value>shifts</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Sign Up</value></data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve"><value>Sign up</value></data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve"><value>You're on — tap to remove</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Shift browsing is not yet open. Check back later!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No active event is configured. An admin needs to set up event settings first.</value></data>
   <data name="Shifts_ConfigureEvent" xml:space="preserve"><value>Configure Event Settings</value></data>
