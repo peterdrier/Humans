@@ -258,22 +258,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_ApproveVolunteer_FlipsIsApprovedTrue()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.ApproveVolunteer));
-
-        result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.IsApproved.Should().BeTrue();
-        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
     public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedAndState()
     {
         var userId = Guid.NewGuid();
@@ -341,7 +325,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             Guid.NewGuid(),
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.ApproveVolunteer));
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.RejectSignup,
+                ActorUserId: Guid.NewGuid()));
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");

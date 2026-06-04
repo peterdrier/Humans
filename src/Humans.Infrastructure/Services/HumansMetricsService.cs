@@ -27,7 +27,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
     private readonly Counter<long> _emailsSent;
     private readonly Counter<long> _consentsGiven;
     private readonly Counter<long> _membersSuspended;
-    private readonly Counter<long> _volunteersApproved;
     private readonly Counter<long> _syncOperations;
     private readonly Counter<long> _applicationsProcessed;
     private readonly Counter<long> _jobRuns;
@@ -61,10 +60,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
         _membersSuspended = HumansMeter.CreateCounter<long>(
             "humans.members_suspended_total",
             description: "Total member suspensions");
-
-        _volunteersApproved = HumansMeter.CreateCounter<long>(
-            "humans.volunteers_approved_total",
-            description: "Total volunteers approved");
 
         _syncOperations = HumansMeter.CreateCounter<long>(
             "humans.sync_operations_total",
@@ -190,9 +185,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
 
     public void RecordMemberSuspended(string source)
         => _membersSuspended.Add(1, new KeyValuePair<string, object?>("source", source));
-
-    public void RecordVolunteerApproved()
-        => _volunteersApproved.Add(1);
 
     public void RecordSyncOperation(string result)
         => _syncOperations.Add(1, new KeyValuePair<string, object?>("result", result));

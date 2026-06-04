@@ -26,7 +26,6 @@ public sealed class OnboardingService(
     ISystemTeamSync syncJob,
     IMembershipCalculatorRead membershipCalculator,
     IAuditLogService auditLogService,
-    IHumansMetrics metrics,
     ILogger<OnboardingService> logger) : IOnboardingService
 {
     // --- Queries: review queue ---
@@ -97,28 +96,13 @@ public sealed class OnboardingService(
 
     // --- Consent-check mutations ---
 
-    public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
-    {
-        var result = await RecordConsentCheckAsync(
-            userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
-        if (!result.Success)
-            return result;
-
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
-
-        var approvedTiers = await applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
-
-        foreach (var tier in approvedTiers)
-        {
-            if (tier == MembershipTier.Colaborador)
-                await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
-            else if (tier == MembershipTier.Asociado)
-                await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
-        }
-
-        return result;
-    }
+    // Annotation-only after the name-only access switch: Clear records the consent-check status
+    // (and flips Profile.IsApproved via RecordConsentCheck) for the CC audit track. It no longer
+    // provisions any team — Volunteers/tier membership is reconciled by SystemTeamSyncJob on
+    // name + consents, decoupled from CC review.
+    public Task<OnboardingResult> ClearConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
+        RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
 
     public async Task<BulkOnboardingResult> BulkClearConsentChecksAsync(
         IReadOnlyCollection<Guid> userIds, Guid reviewerId, CancellationToken ct = default)
@@ -154,19 +138,14 @@ public sealed class OnboardingService(
         return new BulkOnboardingResult(approved);
     }
 
-    public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
-    {
-        var result = await RecordConsentCheckAsync(
-            userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
-        if (!result.Success)
-            return result;
+    // Annotation-only after the name-only access switch: Flag records the consent-check status for
+    // the CC audit track. It no longer deprovisions any team — the Flagged flag is a record nothing
+    // acts on; RejectSignupAsync (which sets RejectedAt) remains the CC's kick-out lever.
+    public Task<OnboardingResult> FlagConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
+        RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
 
-        await DeprovisionApprovalGatedSystemTeamsAsync(userId);
-        return result;
-    }
-
-    // --- Signup reject / volunteer approve ---
+    // --- Signup reject ---
 
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
@@ -225,52 +204,6 @@ public sealed class OnboardingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to dispatch ProfileRejected notification for user {UserId}", userId);
-        }
-
-        return result;
-    }
-
-    public async Task<OnboardingResult> ApproveVolunteerAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default)
-    {
-        var result = await userService.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(
-                UserProfileOnboardingMutation.ApproveVolunteer,
-                ActorUserId: adminId),
-            ct);
-        if (!result.Success)
-            return result;
-
-        await auditLogService.LogAsync(
-            AuditAction.VolunteerApproved,
-            nameof(User),
-            userId,
-            "Approved as volunteer",
-            adminId);
-
-        logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
-
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
-
-        metrics.RecordVolunteerApproved();
-
-        try
-        {
-            await notificationService.SendAsync(
-                NotificationSource.VolunteerApproved,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                "Welcome! You have been approved",
-                [userId],
-                body: "Your profile has been approved. Welcome to the community!",
-                actionUrl: "/Profile",
-                actionLabel: "View profile",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
         }
 
         return result;

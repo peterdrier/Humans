@@ -2271,23 +2271,6 @@ public class ProfileController(
     }
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Approve")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApproveVolunteer(Guid id)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var result = await onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
-        if (!result.Success)
-            return NotFound();
-
-        SetSuccess(localizer["Admin_VolunteerApproved"].Value);
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)

@@ -23,7 +23,6 @@ public sealed class ConsentService(
     IConsentRepository repo,
     ILegalDocumentSyncService legalDocumentSyncService,
     INotificationInboxService notificationInboxService,
-    ISystemTeamSync syncJob,
     IUserServiceRead userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
@@ -167,10 +166,9 @@ public sealed class ConsentService(
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
-
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
-
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, ct);
+        // Name-only access switch: signing a consent no longer provisions system-team membership.
+        // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from
+        // the consent write (access never depended on it).
 
         // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
         try

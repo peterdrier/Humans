@@ -19,7 +19,6 @@ public enum UserProfileOnboardingMutation
 {
     RecordConsentCheck,
     RejectSignup,
-    ApproveVolunteer,
     SetSuspension,
     SetConsentCheckPending,
 }

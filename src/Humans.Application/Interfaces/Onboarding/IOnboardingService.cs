@@ -21,10 +21,6 @@ public interface IOnboardingService : IOrchestrator
     Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default);
 
-    // --- Volunteer approval (FIXES missing cache eviction) ---
-    Task<OnboardingResult> ApproveVolunteerAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default);
-
     /// <summary>
     /// Threshold check fired by callers as a peer call after a profile-save or
     /// consent-grant. If the user has a profile, is not approved or rejected,

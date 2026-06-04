@@ -393,11 +393,6 @@ public sealed class UserService(
                 profile.UpdatedAt = now;
                 break;
 
-            case UserProfileOnboardingMutation.ApproveVolunteer:
-                profile.IsApproved = true;
-                profile.UpdatedAt = now;
-                break;
-
             case UserProfileOnboardingMutation.SetSuspension:
                 ApplySuspension(profile, command, now);
                 break;

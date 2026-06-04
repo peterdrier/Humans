@@ -25,7 +25,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
-    private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
@@ -103,7 +102,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             consentRepository,
             _legalDocumentSyncService,
             _notificationInboxService,
-            _syncJob,
             _userService,
             serviceProvider,
             _metrics,
@@ -216,20 +214,9 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     // IOnboardingService now, invoked by controllers as a peer call after
     // SubmitConsentAsync. ConsentService has no dep on Onboarding or Profile.
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_CallsSyncJobs()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
-
-        await _syncJob.Received().SyncMembershipForUserAsync(
-            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
-        await _syncJob.Received().SyncMembershipForUserAsync(
-            userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
-    }
+    // SubmitConsentAsync no longer provisions system-team membership (name-only access switch):
+    // SystemTeamSyncJob reconciles Volunteers/Coordinators on name + consents, decoupled from the
+    // consent write. ConsentService no longer depends on ISystemTeamSync.
 
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(
         LegalDocument document,
