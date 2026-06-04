@@ -102,6 +102,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 | `LatestEmailStatus` | `EmailOutboxStatus?` | Mirror of `CampaignGrant.LatestEmailStatus` |
 | `ReminderSentAt` | Instant? | Set when the one reminder is enqueued |
 | `Completed` | bool | Set true when this invitee submits as **Identified** or **Completion-tracked** (suppresses reminder; counts toward response rate). **No completion timestamp is stored** — a precise time would correlate with a completion-tracked/anonymous response's submit time and unmask the respondent (§4, §3 privacy note). Stays false for **Fully anonymous**. |
+| `Started` | bool | Set true when this invitee first advances past the intro into the questionnaire — the "started" side of the funnel for the link path. **No timestamp** (same privacy rule as `Completed`). Note: `Started=true`/`Completed=false` is indistinguishable from abandonment, so an anonymous finish leaves no "finished" trace on the invitation. |
 | `CreatedAt` | Instant | |
 
 **Indexes:** unique `(SurveyId, UserId)`; `(SurveyId, Completed, SentAt)` for the reminder sweep.
@@ -117,6 +118,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 | `InvitationId` | Guid? | FK → SurveyInvitation (SetNull). Set when answered via an invite link; null for public/anonymous-link responses. |
 | `UserId` | Guid? | Respondent user id — **bare `Guid?` column**, no nav, no cross-section FK constraint. **Null unless the respondent chose Identified.** |
 | `Anonymity` | enum `ResponseAnonymity` | `Identified` / `CompletionTracked` / `Anonymous` (see §4) |
+| `InputMethod` | enum `SurveyInputMethod` | How the response was entered: `UserSpecificLink` (tokenised invite) or `Slug` (public link). Lets the funnel split finishes by method. v1 records `UserSpecificLink` unless the public-slug path is in scope (open). |
 | `Culture` | string (max 10) | Language the wizard was answered in |
 | `SubmittedAt` | Instant? | **Null while an in-progress draft**; set at final submit. Only **Identified** drafts are persisted (resumable, §8); completion-tracked/anonymous are session-only until submit. |
 
@@ -246,7 +248,7 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 `/Survey/Answer?t={token}` (invited) or `/Survey/{publicSlug}` (public) — both `[AllowAnonymous]`, like `WelcomeController`/`GuestController`.
 
 1. **Step 0 — intro + privacy + language.** Renders `Survey.Intro`. If `AllowAnonymous`, shows the three-choice privacy selector (§4) with the reminder trade-off note. Anonymous/public path shows a language picker.
-2. **Question pages.** One page at a time; required-visible questions validated server-side; branching evaluated on each advance.
+2. **Question pages.** One page at a time; required-visible questions validated server-side; branching evaluated on each advance. The first advance past the intro flips `Invitation.Started = true` (boolean, no time — the funnel's "started"); the entry path (`UserSpecificLink` / `Slug`) is recorded on the response as `InputMethod`.
 3. **Submit.** Finalises the `SurveyResponse` (+ `SurveyAnswer`s) with the chosen `Anonymity` (sets `SubmittedAt`); flips `Invitation.Completed = true` for Identified/Completion-tracked (boolean only, no time). Renders `Survey.ThankYou`.
 
 **Resume (in-progress only):** an **Identified** respondent who re-clicks their invite link mid-survey resumes their persisted draft (found by `(SurveyId, UserId, SubmittedAt is null)`) — within the open window, no login, via the Data-Protection token. **Completion-tracked / Anonymous** responses carry no user/invitation link, so there is nothing to find on return → they **restart** from the beginning. Editing an already-submitted response is out of v1 (resume is for unfinished drafts only).
@@ -310,7 +312,7 @@ So the section ships three things and stops there: an in-app results view (aggre
 
 ### 13.1 In-app results view (§8 admin)
 
-Per-question aggregates (counts/%, rating distributions, free-text answer list with the §6.2 translate toggle), response-rate (responses ÷ invited), and an Identified-only per-respondent drill-down. This is the at-a-glance view — not the analysis surface.
+Per-question aggregates (counts/%, rating distributions, free-text answer list — the §6.2 translate toggle is deferred), response-rate (responses ÷ invited), the **participation funnel** (started vs finished, split by input method — `UserSpecificLink` vs `Slug`), and an Identified-only per-respondent drill-down. This is the at-a-glance view — not the analysis surface.
 
 ### 13.2 Raw export
 
@@ -328,8 +330,8 @@ Mirrors the existing **Issues API** pattern exactly (`X-Api-Key` header; **503**
 |-------|---------|
 | `GET /api/surveys` | List surveys (id, title, status, response/invite counts). |
 | `GET /api/surveys/{id}` | Survey definition — questions, options, types, branching — so the reader knows the shape. |
-| `GET /api/surveys/{id}/responses` | All responses + answers. Optional `?translateFreeText={culture}` (reuses §6.2), `?anonymity=`, `?since=`, `?limit=&cursor=` paging for hundreds of rows. |
-| `GET /api/surveys/{id}/aggregates` | Pre-computed per-question aggregates (the cheap path when the consumer only needs counts). |
+| `GET /api/surveys/{id}/responses` | All responses + answers. **`?format=md`** returns a token-lean **Markdown table** (one row per response — the compact shape for an agent reading the bulk); default is JSON. `?anonymity=`, `?since=`, `?limit=&cursor=` paging. (`?translateFreeText=` is part of the deferred translation slice, §6.2.) |
+| `GET /api/surveys/{id}/aggregates` | Pre-computed per-question aggregates **plus the participation funnel** — started vs finished counts split by input method (`UserSpecificLink` vs `Slug`) — the cheap path when the consumer only needs counts. |
 
 - **Read-only.** No write routes. The API never creates issues, never mutates a survey — extraction of bugs/work items from the app-feedback survey is a **human+Claude step done elsewhere**, deliberately out of this section.
 - **Identity exposure follows anonymity tier**: `Identified` responses include the respondent's user id + display name; `CompletionTracked`/`Anonymous` responses expose answers only. Enforced server-side regardless of query params.

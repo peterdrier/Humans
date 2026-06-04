@@ -195,6 +195,7 @@ public enum ResponseAnonymity { Identified = 0, CompletionTracked = 1, Anonymous
 public enum BranchCombine { All = 0, Any = 1 }
 public enum BranchOperator { Is = 0, IsNot = 1, Answered = 2, NotAnswered = 3 }
 public enum SurveyAudienceType { Team = 0, AllActiveMembers = 1, TicketHolders = 2, ShiftParticipants = 3 }
+public enum SurveyInputMethod { UserSpecificLink = 0, Slug = 1 }
 ```
 - [ ] **Step 2 — Implement `BranchCondition`** (`namespace Humans.Domain.ValueObjects`):
 ```csharp
@@ -278,6 +279,7 @@ public class SurveyInvitation
     public EmailOutboxStatus? LatestEmailStatus { get; set; }
     public Instant? ReminderSentAt { get; set; }
     public bool Completed { get; set; }   // flag only — NO completion timestamp (a precise time would correlate with an anon/completion-tracked response's SubmittedAt and unmask)
+    public bool Started { get; set; }     // funnel "started" — set on first advance past intro; bool only, no timestamp
     public Instant CreatedAt { get; init; }
 }
 
@@ -288,6 +290,7 @@ public class SurveyResponse
     public Guid? InvitationId { get; init; }                   // set ONLY for Identified
     public Guid? UserId { get; init; }                         // set ONLY for Identified; bare FK, no nav, no cross-section EF FK constraint
     public ResponseAnonymity Anonymity { get; init; }
+    public SurveyInputMethod InputMethod { get; init; }        // UserSpecificLink vs Slug — funnel split by entry path
     public string Culture { get; init; } = "en";
     public Instant? SubmittedAt { get; set; }                  // null = in-progress draft (Identified only; resumable §8); set at final submit
     public ICollection<SurveyAnswer> Answers { get; set; } = new List<SurveyAnswer>();
@@ -359,7 +362,7 @@ public class SurveyConfiguration : IEntityTypeConfiguration<Survey>
   - `SurveyQuestionConfiguration` → table `survey_questions`; `Prompt`/`HelpText`/`RatingMinLabel`/`RatingMaxLabel` via `SurveyJson.LocalizedText`; `Type` `HasConversion<string>()`; `ShowIf` jsonb (`HasColumnType("jsonb")` + `HasConversion` to/from `BranchCondition?` with `SurveyJson.Options`); `HasMany(Options).WithOne(Question).HasForeignKey(QuestionId).OnDelete(Cascade)`; index `(SurveyId, PageNumber, Order)`.
   - `SurveyQuestionOptionConfiguration` → `survey_question_options`; `Value` `HasMaxLength(100).IsRequired()`; `Label` localized jsonb.
   - `SurveyInvitationConfiguration` → `survey_invitations`; `LatestEmailStatus` `HasConversion<string>().HasMaxLength(20)`; **unique index `(SurveyId, UserId)`**; index `(SurveyId, Completed, SentAt)`. `Completed` is a plain `bool` — **no completion-time column, no `UpdatedAt`** (timing side-channel, §4). `UserId` is a bare `Guid` column — no nav, no cross-section FK constraint.
-  - `SurveyResponseConfiguration` → `survey_responses`; `Anonymity` `HasConversion<string>()`; `Culture` `HasMaxLength(10)`; `HasMany(Answers).WithOne(Response).HasForeignKey(ResponseId).OnDelete(Cascade)`; FK to `SurveyInvitation` via `InvitationId` `OnDelete(SetNull)` (intra-section, fine); `UserId` is a bare `Guid?` column — no nav, no cross-section FK constraint; indexes `SurveyId`, `(SurveyId, UserId)`.
+  - `SurveyResponseConfiguration` → `survey_responses`; `Anonymity` `HasConversion<string>()`; `InputMethod` `HasConversion<string>()`; `Culture` `HasMaxLength(10)`; `HasMany(Answers).WithOne(Response).HasForeignKey(ResponseId).OnDelete(Cascade)`; FK to `SurveyInvitation` via `InvitationId` `OnDelete(SetNull)` (intra-section, fine); `UserId` is a bare `Guid?` column — no nav, no cross-section FK constraint; indexes `SurveyId`, `(SurveyId, UserId)`.
   - `SurveyAnswerConfiguration` → `survey_answers`; `SelectedOptionValues` jsonb (`List<string>`, copy the `ProfileConfiguration` Allergies converter); `TextValue` `HasMaxLength(4000)`; FK to `SurveyQuestion` via `QuestionId` `OnDelete(Restrict)`; indexes `ResponseId`, `QuestionId`.
 - [ ] **Step 3 — Add DbSets** to `HumansDbContext`:
 ```csharp
@@ -579,7 +582,7 @@ internal static class SurveySectionExtensions
 
 - [ ] **Step 1 — Failing test** on a `SurveyWizardFlow` helper: given ordered questions with `ShowIf` and accumulated answers, `NextVisiblePage(currentPage, answers)` skips pages whose every question is hidden; `VisibleQuestionsOnPage(page, answers)` filters by `SurveyBranchingEvaluator.IsVisible`; `RequiredUnanswered(visibleQuestions, answers)` ignores hidden questions.
 - [ ] **Step 2 — Implement** the helper (pure, over the Phase-1 evaluator).
-- [ ] **Step 3 — Controller** `GET/POST /Survey/Answer/Page` renders one page; on POST records that page's answers into session, validates required-visible, computes next visible page.
+- [ ] **Step 3 — Controller** `GET/POST /Survey/Answer/Page` renders one page; on POST records that page's answers into session, validates required-visible, computes next visible page. On the **first** advance past the intro, flip `Invitation.Started = true` (bool, no time) for the funnel.
 - [ ] **Step 4 — Commit:** `feat(survey): wizard pages with server-side branching`
 
 ### Task 4.3: Submit (TDD — anonymity encoding)
@@ -588,6 +591,7 @@ internal static class SurveySectionExtensions
   - `Identified` → finalise draft `SurveyResponse` with `UserId`+`InvitationId` set, `Anonymity=Identified`, `SubmittedAt` set; invitation `Completed = true`.
   - `CompletionTracked` → response with `UserId=null`, `InvitationId=null`, `SubmittedAt` set; invitation `Completed = true` (**boolean only — no timestamp written**).
   - `Anonymous` → response with `UserId=null`, `InvitationId=null`, `SubmittedAt` set; invitation `Completed` left **false**.
+  - Every submitted response records `InputMethod` (`UserSpecificLink` in v1; `Slug` only if the public path is in scope).
   - Server **rejects** answers to questions that should have been hidden (re-evaluate full branching from the submission; drop/forbid hidden answers).
 - [ ] **Step 2 — Repository:** `AddResponseWithAnswersAndSaveAsync(response)` (or finalise the existing Identified draft), `SetInvitationCompletedAsync(invitationId)` (flips the bool — **no time argument**).
 - [ ] **Step 3 — Implement** `SubmitResponseAsync`; final branching re-evaluation; write response+answers in one save; stamp completion per tier.
@@ -614,7 +618,7 @@ internal static class SurveySectionExtensions
 
 ### Task 6.1: Results aggregation (TDD)
 
-- [ ] **Step 1 — Failing test** on `SurveyService.GetResultsAsync(surveyId)`: per-question aggregates (choice counts/%, rating distribution, free-text list), response-rate (responses ÷ invited), and a per-respondent drill-down **limited to `Identified`** responses (others contribute to counts but expose no identity). Free-text returned **as-submitted** (no translation — deferred).
+- [ ] **Step 1 — Failing test** on `SurveyService.GetResultsAsync(surveyId)`: per-question aggregates (choice counts/%, rating distribution, free-text list), response-rate (responses ÷ invited), the **participation funnel** — `started` (invitations with `Started=true`) vs `finished` (submitted responses), split by `InputMethod` — and a per-respondent drill-down **limited to `Identified`** responses (others contribute to counts but expose no identity). Free-text returned **as-submitted** (no translation — deferred).
 - [ ] **Step 2 — Repository:** `GetResponsesForResultsAsync(surveyId)` (Include Answers only — no cross-section navs exist), `GetInvitedCountAsync`, `GetResponseCountAsync`. Stitch `Identified` respondent names via `IUserServiceRead.GetUserInfosAsync`.
 - [ ] **Step 3 — Implement**; **Commit:** `feat(survey): results aggregation`
 
@@ -637,8 +641,8 @@ public class SurveyApiKeyAuthFilter(IOptions<SurveyApiSettings> s) : ApiKeyAuthF
 - [ ] **Step 2 — Controller** `[ApiController][Route("api/surveys")][ServiceFilter(typeof(SurveyApiKeyAuthFilter))]`:
   - `GET /api/surveys` → list (id, title, status, response/invite counts).
   - `GET /api/surveys/{id}` → definition (questions/options/types/branching; option `Value`s as join keys).
-  - `GET /api/surveys/{id}/responses` → responses+answers, `?anonymity=`, `?since=`, `?limit=&cursor=` paging. **Identity fields only for `Identified`** (enforced server-side regardless of params).
-  - `GET /api/surveys/{id}/aggregates` → the Task 6.1 aggregates.
+  - `GET /api/surveys/{id}/responses` → responses+answers. **`?format=md`** returns a Markdown table (one row per response — the token-lean shape for an agent reading the bulk); default `json`. Also `?anonymity=`, `?since=`, `?limit=&cursor=` paging. **Identity fields only for `Identified`** (enforced server-side regardless of params). _(MD writer: build the column set from the survey's questions; flatten multi-choice to `a|b`; include `anonymity` + `input_method` columns; identity columns only for Identified.)_
+  - `GET /api/surveys/{id}/aggregates` → the Task 6.1 aggregates **+ the participation funnel** (started vs finished by `InputMethod`).
   - All read-only; anonymous-object projections inline (Issues pattern); enums serialised as strings.
 - [ ] **Step 3 — Test** the 503 (key unset) / 401 (key wrong) behaviour via the filter (small WebApplicationFactory test or filter unit test, matching how Issues/Feedback are tested if at all).
 - [ ] **Step 4 — Commit:** `feat(survey): read-only analysis API`
