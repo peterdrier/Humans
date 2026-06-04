@@ -1,0 +1,170 @@
+@using Humans.Domain.Enums
+@using Humans.Web.Models.CampAdmin
+@model ShiftObligationMatrixViewModel
+@{
+    ViewData["Title"] = $"Barrio shift obligations — {Model.Year}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Shift obligations</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="mb-0">Barrio shift obligations &mdash; @Model.Year</h1>
+    <div class="d-flex gap-2 align-items-center">
+        <a asp-action="ShiftObligationFunctions" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-gear me-1"></i>Functions
+        </a>
+        <form asp-action="ShiftObligations" method="get" class="d-flex gap-2 align-items-center">
+            <label for="year" class="form-label mb-0 text-nowrap">Year</label>
+            <input type="number" id="year" name="year" class="form-control form-control-sm" style="max-width: 120px;" value="@Model.Year" min="2024" max="2099" required />
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Show
+            </button>
+        </form>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Columns.Count == 0)
+{
+    <div class="alert alert-info">
+        No shift-obligation functions are configured yet.
+        <a asp-action="ShiftObligationFunctions">Add one</a> to start tracking barrio obligations.
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Barrio</th>
+                        <th class="text-end" title="Active members in this barrio">Members</th>
+                        @foreach (var col in Model.Columns)
+                        {
+                            <th class="text-center">
+                                @if (!string.IsNullOrEmpty(col.TargetUrl))
+                                {
+                                    <a href="@col.TargetUrl">@col.Name</a>
+                                }
+                                else
+                                {
+                                    @col.Name
+                                }
+                                @if (col.Applicability == ObligationApplicability.ElectricalGridConnected)
+                                {
+                                    <i class="fa-solid fa-plug ms-1 text-muted" title="Only barrios on the power grid"></i>
+                                }
+                                <div>
+                                    <form asp-action="RemindAllNonCompliant" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="shiftObligationId" value="@col.ShiftObligationId" />
+                                        <button type="submit" class="btn btn-link btn-sm p-0"
+                                                data-confirm="Remind all non-compliant barrios for this function?">
+                                            <i class="fa-solid fa-bell me-1"></i>Remind all
+                                        </button>
+                                    </form>
+                                </div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@row.CampSeasonId">@row.BarrioName</a>
+                            </td>
+                            <td class="text-end">@row.ActiveMemberCount</td>
+                            @foreach (var col in Model.Columns)
+                            {
+                                var cell = row.Cells.FirstOrDefault(c => c.ShiftObligationId == col.ShiftObligationId);
+                                @if (cell is null || !cell.Applicable)
+                                {
+                                    <td class="text-center text-muted" title="Not applicable to this barrio">&mdash;</td>
+                                }
+                                else
+                                {
+                                    var cls = cell.Met ? "table-success" : "table-danger";
+                                    <td class="text-center @cls">
+                                        <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@row.CampSeasonId"
+                                           class="text-decoration-none">
+                                            @cell.Done / @cell.Required
+                                        </a>
+                                        @if (cell.UnderMembered)
+                                        {
+                                            <i class="fa-solid fa-triangle-exclamation text-warning ms-1"
+                                               title="Under-membered: fewer active members than required shifts"></i>
+                                        }
+                                    </td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* Nobodies org — exempt (dropped from the matrix; owe nothing). *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-circle-minus me-2"></i>Nobodies org &mdash; exempt
+    </div>
+    <div class="card-body">
+        @if (Model.ExemptNobodiesOrg.Count == 0)
+        {
+            <p class="text-muted mb-0">No exempt barrios.</p>
+        }
+        else
+        {
+            <ul class="list-unstyled mb-0">
+                @foreach (var e in Model.ExemptNobodiesOrg)
+                {
+                    <li>
+                        <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@e.CampSeasonId">@e.BarrioName</a>
+                        <span class="text-muted small">(@e.ActiveMemberCount active)</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@* Not on the power grid (in the matrix, but Power n/a — split by reason). *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-plug-circle-xmark me-2"></i>Not on the power grid
+    </div>
+    <div class="card-body">
+        @if (Model.OffGridForPower.Count == 0)
+        {
+            <p class="text-muted mb-0">All matrix barrios are grid-classified.</p>
+        }
+        else
+        {
+            @foreach (var group in Model.OffGridForPower.GroupBy(o => o.Reason).OrderBy(g => g.Key))
+            {
+                var label = group.Key == "OwnSupply" ? "Own supply" : "No grid / unclassified";
+                <h6 class="mt-2">@label</h6>
+                <ul class="list-unstyled mb-2">
+                    @foreach (var o in group)
+                    {
+                        <li>
+                            <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@o.CampSeasonId">@o.BarrioName</a>
+                        </li>
+                    }
+                </ul>
+            }
+        }
+    </div>
+</div>

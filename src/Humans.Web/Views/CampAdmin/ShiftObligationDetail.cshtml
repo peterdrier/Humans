@@ -1,0 +1,80 @@
+@using Humans.Web.Models.CampAdmin
+@model ShiftObligationDetailViewModel
+@{
+    ViewData["Title"] = $"Shift obligations — {Model.BarrioName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="ShiftObligations">Shift obligations</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.BarrioName</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Shift obligations &mdash; @Model.BarrioName</h1>
+
+<vc:temp-data-alerts />
+
+@if (Model.Functions.Count == 0)
+{
+    <div class="alert alert-info mb-0">This barrio has no applicable shift obligations.</div>
+}
+else
+{
+    @foreach (var fn in Model.Functions)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <strong>@fn.Name</strong>
+                    <span class="badge @(fn.Met ? "bg-success" : "bg-danger") ms-2">@fn.Done / @fn.Required</span>
+                </span>
+                @if (Model.ShowActions)
+                {
+                    <div class="d-flex gap-2 align-items-center">
+                        <form asp-action="SetShiftObligationOverride" method="post" class="d-flex gap-1 align-items-center">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="campSeasonId" value="@Model.CampSeasonId" />
+                            <input type="hidden" name="shiftObligationId" value="@fn.ShiftObligationId" />
+                            <input type="number" name="requiredShiftCount" min="0" value="@fn.Required"
+                                   class="form-control form-control-sm" style="width:5rem" title="Required-shift override" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Set</button>
+                        </form>
+                        <form asp-action="RemindShiftObligation" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="campSeasonId" value="@Model.CampSeasonId" />
+                            <input type="hidden" name="shiftObligationId" value="@fn.ShiftObligationId" />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-bell me-1"></i>Remind
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted small">Signed up (@fn.SignedUp.Count)</h6>
+                @if (fn.SignedUp.Count == 0)
+                {
+                    <p class="text-muted small">No one has signed up yet.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var m in fn.SignedUp)
+                        {
+                            <li><strong>@m.Name</strong> <span class="text-muted">&times; @m.Count</span></li>
+                        }
+                    </ul>
+                }
+
+                @if (fn.NotYetSignedUpNames.Count > 0)
+                {
+                    <h6 class="text-muted small">Not yet signed up (@fn.NotYetSignedUpNames.Count)</h6>
+                    <p class="small mb-0">@string.Join(", ", fn.NotYetSignedUpNames)</p>
+                }
+            </div>
+        </div>
+    }
+}

@@ -1,0 +1,133 @@
+@using Humans.Domain.Enums
+@using Humans.Web.Models.CampAdmin
+@model ShiftObligationFunctionsViewModel
+@{
+    ViewData["Title"] = "Shift-obligation functions";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="ShiftObligations">Shift obligations</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Functions</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Shift-obligation functions</h1>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-header"><i class="fa-solid fa-list me-2"></i>Configured functions</div>
+    @if (Model.Functions.Count == 0)
+    {
+        <div class="card-body"><p class="text-muted mb-0">No functions configured yet.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Role slug</th>
+                        <th>Applicability</th>
+                        <th class="text-end">Default required</th>
+                        <th class="text-end">Sort</th>
+                        <th>Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Functions)
+                    {
+                        <tr>
+                            <td>@(string.IsNullOrWhiteSpace(f.TargetName) ? f.TargetId.ToString() : f.TargetName)</td>
+                            <td>@f.TargetType</td>
+                            <td><code>@f.CampRoleSlug</code></td>
+                            <td>@f.Applicability</td>
+                            <td class="text-end">@f.DefaultRequiredShiftCount</td>
+                            <td class="text-end">@f.SortOrder</td>
+                            <td>
+                                @if (f.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="fa-solid fa-plus me-2"></i>Add / edit function</div>
+    <div class="card-body">
+        <p class="text-muted small">
+            To edit an existing function, paste its Id (from the audit log) into the optional Id field;
+            leave it blank to create a new one. Each (target type, target) pair may be used once.
+        </p>
+        <form asp-action="ShiftObligationFunctions" method="post" class="row g-3">
+            @Html.AntiForgeryToken()
+            <div class="col-md-6">
+                <label class="form-label">Function Id (optional — edit)</label>
+                <input type="text" name="Id" class="form-control form-control-sm"
+                       pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$"
+                       placeholder="Leave blank to create" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Target type</label>
+                <select name="TargetType" class="form-select form-select-sm">
+                    @foreach (var t in Enum.GetValues<ShiftObligationTargetType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Applicability</label>
+                <select name="Applicability" class="form-select form-select-sm">
+                    @foreach (var a in Enum.GetValues<ObligationApplicability>())
+                    {
+                        <option value="@a">@a</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Target Id (Team or Rota GUID)</label>
+                <input type="text" name="TargetId" class="form-control form-control-sm" required
+                       pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Camp role slug</label>
+                <input type="text" name="CampRoleSlug" class="form-control form-control-sm" maxlength="64" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Default required shifts</label>
+                <input type="number" name="DefaultRequiredShiftCount" min="0" value="0" class="form-control form-control-sm" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Sort order</label>
+                <input type="number" name="SortOrder" value="0" class="form-control form-control-sm" required />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check">
+                    <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="isActive" checked />
+                    <label class="form-check-label" for="isActive">Active</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save function
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

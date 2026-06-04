@@ -18,6 +18,7 @@ public class CampAdminController(
     ICampService campService,
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
+    IShiftObligationService shiftObligationService,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
     IUserServiceRead userService,
@@ -553,4 +554,190 @@ public class CampAdminController(
         };
         return View(vm);
     }
+
+    // --- Barrio shift obligations (see docs/sections + the design spec) ---
+
+    [HttpGet("ShiftObligations")]
+    public async Task<IActionResult> ShiftObligations(int? year, CancellationToken ct)
+    {
+        var settings = await campService.GetSettingsAsync(ct);
+        var resolvedYear = year ?? settings.PublicYear;
+        var matrix = await shiftObligationService.GetComplianceMatrixAsync(resolvedYear, ct);
+
+        var vm = new ShiftObligationMatrixViewModel
+        {
+            Year = matrix.Year,
+            Columns = matrix.Columns
+                .Select(c => new ShiftObligationColumnViewModel(
+                    c.ShiftObligationId, c.Name, c.TargetUrl, c.Applicability))
+                .ToList(),
+            Rows = matrix.Rows
+                .OrderBy(r => r.BarrioName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => new ShiftObligationBarrioRowViewModel(
+                    r.CampSeasonId, r.BarrioName, r.Slug, r.ActiveMemberCount,
+                    r.Cells.Select(cell => new ShiftObligationCellViewModel(
+                        cell.ShiftObligationId, cell.Applicable, cell.Done, cell.Required, cell.UnderMembered))
+                        .ToList()))
+                .ToList(),
+            ExemptNobodiesOrg = matrix.ExemptNobodiesOrg
+                .OrderBy(e => e.BarrioName, StringComparer.OrdinalIgnoreCase)
+                .Select(e => new ShiftObligationExemptViewModel(e.CampSeasonId, e.BarrioName, e.ActiveMemberCount))
+                .ToList(),
+            OffGridForPower = matrix.OffGridForPower
+                .OrderBy(o => o.BarrioName, StringComparer.OrdinalIgnoreCase)
+                .Select(o => new ShiftObligationOffGridViewModel(o.CampSeasonId, o.BarrioName, o.Reason))
+                .ToList(),
+        };
+        return View(vm);
+    }
+
+    [HttpGet("ShiftObligations/{campSeasonId:guid}")]
+    public async Task<IActionResult> ShiftObligationDetail(Guid campSeasonId, CancellationToken ct)
+    {
+        var detail = await shiftObligationService.GetBarrioObligationDetailAsync(campSeasonId, ct);
+        if (detail is null) return NotFound();
+        return View("ShiftObligationDetail", MapDetail(detail, showActions: true));
+    }
+
+    private static ShiftObligationDetailViewModel MapDetail(BarrioObligationDetail detail, bool showActions) =>
+        new()
+        {
+            CampSeasonId = detail.CampSeasonId,
+            BarrioName = detail.BarrioName,
+            ShowActions = showActions,
+            Functions = detail.Functions
+                .Select(f => new ShiftObligationDetailFunctionViewModel(
+                    f.ShiftObligationId, f.Name, f.Done, f.Required,
+                    f.SignedUp.Select(s => new ShiftObligationSignedUpMemberViewModel(s.UserId, s.Name, s.Count)).ToList(),
+                    f.NotYetSignedUpNames))
+                .ToList(),
+        };
+
+    [HttpPost("ShiftObligations/Remind")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemindShiftObligation(
+        Guid campSeasonId, Guid shiftObligationId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            await shiftObligationService.SendReminderAsync(campSeasonId, shiftObligationId, user.Id, ct);
+            SetSuccess("Reminder sent.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send shift-obligation reminder for season {SeasonId}, function {FunctionId}",
+                campSeasonId, shiftObligationId);
+            SetError("Failed to send reminder.");
+        }
+
+        return RedirectToAction(nameof(ShiftObligations));
+    }
+
+    [HttpPost("ShiftObligations/RemindAllNonCompliant")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemindAllNonCompliant(Guid shiftObligationId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            var count = await shiftObligationService.RemindAllNonCompliantAsync(shiftObligationId, user.Id, ct);
+            SetSuccess($"{count} barrio(s) reminded.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to remind all non-compliant barrios for function {FunctionId}", shiftObligationId);
+            SetError("Failed to send reminders.");
+        }
+
+        return RedirectToAction(nameof(ShiftObligations));
+    }
+
+    [HttpPost("ShiftObligations/SetOverride")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetShiftObligationOverride(
+        Guid campSeasonId, Guid shiftObligationId, int? requiredShiftCount, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            await shiftObligationService.SetOverrideAsync(
+                campSeasonId, shiftObligationId, requiredShiftCount, user.Id, ct);
+            SetSuccess(requiredShiftCount.HasValue ? "Required-shift override set." : "Override cleared.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to set override for season {SeasonId}, function {FunctionId}",
+                campSeasonId, shiftObligationId);
+            SetError("Failed to set override.");
+        }
+
+        return RedirectToAction(nameof(ShiftObligations));
+    }
+
+    [HttpGet("ShiftObligations/Functions")]
+    public async Task<IActionResult> ShiftObligationFunctions(CancellationToken ct)
+    {
+        var functions = await shiftObligationService.GetFunctionsAsync(ct);
+        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions));
+    }
+
+    [HttpPost("ShiftObligations/Functions")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ShiftObligationFunctions(
+        ShiftObligationFunctionFormViewModel form, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Unauthorized();
+
+        var input = new ShiftObligationConfigInput(
+            form.Id, form.TargetType, form.TargetId, form.CampRoleSlug,
+            form.Applicability, form.DefaultRequiredShiftCount, form.IsActive, form.SortOrder);
+
+        UpsertFunctionResult result;
+        try
+        {
+            result = await shiftObligationService.UpsertFunctionAsync(input, user.Id, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to upsert shift-obligation function {FunctionId}", form.Id);
+            SetError("Failed to save function.");
+            return RedirectToAction(nameof(ShiftObligationFunctions));
+        }
+
+        switch (result)
+        {
+            case UpsertFunctionResult.Saved:
+                SetSuccess("Function saved.");
+                break;
+            case UpsertFunctionResult.DuplicateTarget:
+                SetError("A function already targets that team or rota. Each target may be used once.");
+                break;
+            case UpsertFunctionResult.NotFound:
+                SetError("That function no longer exists.");
+                break;
+        }
+
+        return RedirectToAction(nameof(ShiftObligationFunctions));
+    }
+
+    private static ShiftObligationFunctionsViewModel BuildFunctionsViewModel(
+        IReadOnlyList<ShiftObligationConfigInfo> functions) =>
+        new()
+        {
+            Functions = functions
+                .OrderBy(f => f.SortOrder)
+                .ThenBy(f => f.TargetName, StringComparer.OrdinalIgnoreCase)
+                .Select(f => new ShiftObligationFunctionRowViewModel(
+                    f.Id, f.TargetType, f.TargetId, f.TargetName, f.CampRoleSlug,
+                    f.Applicability, f.DefaultRequiredShiftCount, f.IsActive, f.SortOrder))
+                .ToList(),
+        };
 }

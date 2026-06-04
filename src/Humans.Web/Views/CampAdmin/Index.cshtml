@@ -78,6 +78,15 @@
             </div>
         </div>
     </div>
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-calendar-check me-2"></i>Shift obligations</h5>
+                <p class="card-text">Track which barrios have staffed their required shift functions (Power, Shit-ninja) for the current public year.</p>
+                <a asp-action="ShiftObligations" class="btn btn-outline-primary">Open matrix</a>
+            </div>
+        </div>
+    </div>
     @if (Model.HasMissingSpecialRoles)
     {
         <div class="col-md-6 col-lg-4 mb-3">
