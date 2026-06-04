@@ -1740,6 +1740,14 @@
   <data name="Email_SignupRejected_Subject" xml:space="preserve">
     <value>Acerca de su registro</value>
   </data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve">
+    <value>Por favor, completa: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve">
+    <value>Recordatorio: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Acción requerida: {0} actualizado</value>
     <comment>{0} = document name</comment>
@@ -2737,6 +2745,22 @@
 &lt;p&gt;Si tienes alguna pregunta o deseas comentar esta decisión, contáctanos en &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
+  </data>
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Te invitamos a completar la encuesta &lt;strong&gt;{1}&lt;/strong&gt;. Solo te llevará unos minutos.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
+  <data name="Email_SurveyReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Solo un recordatorio de que la encuesta &lt;strong&gt;{1}&lt;/strong&gt; aún espera tu respuesta.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
   </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Actualización de documentos legales&lt;/h2&gt;
