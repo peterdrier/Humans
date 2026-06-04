@@ -398,4 +398,151 @@ public class SurveyServiceTests
         captured.SubmittedAt.Should().BeNull();
         await _repo.Received(1).AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
+
+    // ── Submit (anonymity encoding) ────────────────────────────────────────────
+
+    private Survey SurveyForSubmit(out Guid q1Id, out Guid q2Id)
+    {
+        q1Id = Guid.NewGuid();
+        q2Id = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Questions = new List<SurveyQuestion>
+        {
+            new() { Id = q1Id, SurveyId = survey.Id, PageNumber = 1, Order = 1, Type = SurveyQuestionType.SingleChoice },
+            new() { Id = q2Id, SurveyId = survey.Id, PageNumber = 1, Order = 2, Type = SurveyQuestionType.ShortText },
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        return survey;
+    }
+
+    private static SurveyAnswerInput Ans(Guid q, params string[] options) => new(q, options.ToList(), null, null);
+    private static SurveyAnswerInput TextAns(Guid q, string text) => new(q, [], text, null);
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_identified_finalises_existing_draft_and_completes_invitation()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out var q2Id);
+        var draftId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        var submission = new SurveySubmission(
+            survey.Id, invitationId, Guid.NewGuid(), draftId,
+            ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes"), TextAns(q2Id, "note") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        await _repo.Received(1).SaveDraftAnswersAsync(
+            draftId,
+            Arg.Is<IReadOnlyList<SurveyAnswer>>(a => a.Count == 2),
+            Arg.Is<Instant?>(t => t == _clock.GetCurrentInstant()),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(1).SetInvitationCompletedAsync(invitationId, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_identified_without_draft_creates_linked_response()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        var userId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, invitationId, userId, null,
+            ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        captured.Should().NotBeNull();
+        captured!.UserId.Should().Be(userId);
+        captured.InvitationId.Should().Be(invitationId);
+        captured.Anonymity.Should().Be(ResponseAnonymity.Identified);
+        captured.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
+        await _repo.Received(1).SetInvitationCompletedAsync(invitationId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_completion_tracked_stores_unlinked_response_and_completes_invitation()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        var invitationId = Guid.NewGuid();
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, invitationId, null, null,
+            ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        captured.Should().NotBeNull();
+        captured!.UserId.Should().BeNull();
+        captured.InvitationId.Should().BeNull();
+        captured.Anonymity.Should().Be(ResponseAnonymity.CompletionTracked);
+        captured.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
+        await _repo.Received(1).SetInvitationCompletedAsync(invitationId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_anonymous_stores_unlinked_response_and_leaves_invitation_untouched()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+        var submission = new SurveySubmission(
+            survey.Id, Guid.NewGuid(), null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        captured.Should().NotBeNull();
+        captured!.UserId.Should().BeNull();
+        captured.InvitationId.Should().BeNull();
+        captured.Anonymity.Should().Be(ResponseAnonymity.Anonymous);
+        await _repo.DidNotReceive().SetInvitationCompletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_drops_answers_to_questions_hidden_by_branching()
+    {
+        var gate = Guid.NewGuid();
+        var hidden = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Questions = new List<SurveyQuestion>
+        {
+            new() { Id = gate, SurveyId = survey.Id, PageNumber = 1, Order = 1, Type = SurveyQuestionType.SingleChoice },
+            // visible only when gate == "yes"
+            new()
+            {
+                Id = hidden, SurveyId = survey.Id, PageNumber = 2, Order = 1, Type = SurveyQuestionType.ShortText,
+                ShowIf = new BranchCondition
+                {
+                    Combine = BranchCombine.All,
+                    Clauses = { new BranchClause { QuestionId = gate, Operator = BranchOperator.Is, OptionValues = { "yes" } } },
+                },
+            },
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+
+        // gate answered "no" → the hidden question's stale answer must be dropped.
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(gate, "no"), TextAns(hidden, "leaked") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        captured.Should().NotBeNull();
+        captured!.Answers.Select(a => a.QuestionId).Should().Contain(gate);
+        captured.Answers.Select(a => a.QuestionId).Should().NotContain(hidden);
+    }
 }
