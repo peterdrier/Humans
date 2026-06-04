@@ -60,7 +60,15 @@ public sealed class ShiftObligationFunctionsViewModel
 {
     public required IReadOnlyList<ShiftObligationFunctionRowViewModel> Functions { get; init; }
     public ShiftObligationFunctionFormViewModel Form { get; init; } = new();
+
+    // Catalogue of selectable camp-role slugs for the add/edit dropdown (free text
+    // was error-prone — admins can't know which slugs exist). Sourced from
+    // ICampRoleService.ListDefinitionsAsync in the controller.
+    public IReadOnlyList<CampRoleSlugOptionViewModel> CampRoleSlugOptions { get; init; } =
+        Array.Empty<CampRoleSlugOptionViewModel>();
 }
+
+public sealed record CampRoleSlugOptionViewModel(string Slug, string Name);
 
 public sealed record ShiftObligationFunctionRowViewModel(
     Guid Id, ShiftObligationTargetType TargetType, Guid TargetId, string TargetName,

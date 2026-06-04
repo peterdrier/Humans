@@ -107,7 +107,20 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Camp role slug</label>
-                <input type="text" name="CampRoleSlug" class="form-control form-control-sm" maxlength="64" required />
+                <select name="CampRoleSlug" class="form-select form-select-sm">
+                    <option value="">— none (remind barrio leads only) —</option>
+                    @foreach (var opt in Model.CampRoleSlugOptions)
+                    {
+                        if (string.Equals(opt.Slug, Model.Form.CampRoleSlug, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@opt.Slug" selected>@opt.Name (@opt.Slug)</option>
+                        }
+                        else
+                        {
+                            <option value="@opt.Slug">@opt.Name (@opt.Slug)</option>
+                        }
+                    }
+                </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Default required shifts</label>
@@ -116,6 +129,7 @@
             <div class="col-md-3">
                 <label class="form-label">Sort order</label>
                 <input type="number" name="SortOrder" value="0" class="form-control form-control-sm" required />
+                <div class="form-text">Order of this function's column in the matrix (lowest first).</div>
             </div>
             <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check">

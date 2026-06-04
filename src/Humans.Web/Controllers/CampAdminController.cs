@@ -685,7 +685,8 @@ public class CampAdminController(
     public async Task<IActionResult> ShiftObligationFunctions(CancellationToken ct)
     {
         var functions = await shiftObligationService.GetFunctionsAsync(ct);
-        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions));
+        var roleDefs = await campRoleService.ListDefinitionsAsync(includeDeactivated: false, ct);
+        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions, roleDefs));
     }
 
     [HttpPost("ShiftObligations/Functions")]
@@ -729,7 +730,8 @@ public class CampAdminController(
     }
 
     private static ShiftObligationFunctionsViewModel BuildFunctionsViewModel(
-        IReadOnlyList<ShiftObligationConfigInfo> functions) =>
+        IReadOnlyList<ShiftObligationConfigInfo> functions,
+        IReadOnlyList<CampRoleDefinitionInfo> roleDefs) =>
         new()
         {
             Functions = functions
@@ -738,6 +740,13 @@ public class CampAdminController(
                 .Select(f => new ShiftObligationFunctionRowViewModel(
                     f.Id, f.TargetType, f.TargetId, f.TargetName, f.CampRoleSlug,
                     f.Applicability, f.DefaultRequiredShiftCount, f.IsActive, f.SortOrder))
+                .ToList(),
+            CampRoleSlugOptions = roleDefs
+                .Where(d => !string.IsNullOrWhiteSpace(d.Slug))
+                .GroupBy(d => d.Slug, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(d => new CampRoleSlugOptionViewModel(d.Slug, d.Name))
                 .ToList(),
         };
 }
