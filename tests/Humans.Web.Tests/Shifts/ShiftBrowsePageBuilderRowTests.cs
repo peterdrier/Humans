@@ -81,9 +81,11 @@ public class ShiftBrowsePageBuilderRowTests
 
         var builder = new ShiftBrowsePageBuilder(_shiftManagement, _teamService);
 
-        var (item, isSignedUp, status) = await builder.BuildRowAsync(
+        var result = await builder.BuildRowAsync(
             shiftId, userSignups, isPrivileged: false, CancellationToken.None);
 
+        result.Should().NotBeNull();
+        var (item, isSignedUp, status) = result!.Value;
         item.Shift.Id.Should().Be(shiftId);
         item.ConfirmedCount.Should().Be(3);
         isSignedUp.Should().BeTrue();

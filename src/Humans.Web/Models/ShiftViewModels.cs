@@ -664,6 +664,7 @@ public class BuildStrikeRotaTableViewModel
     public RotaShiftGroup RotaGroup { get; set; } = null!;
     public EventSettings EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
 
     /// <summary>
@@ -685,7 +686,7 @@ public class BuildStrikeRotaTableViewModel
     /// <summary>Controller the date-range Sign Up form posts to. Default = the
     /// public Shifts controller; the onboarding widget overrides this so the
     /// inline rota table posts back into the widget flow.</summary>
-    public string SignUpRangeController { get; set; } = "Shifts";
+    public string SignUpRangeController { get; set; } = "OnboardingWidget";
     public string SignUpRangeAction { get; set; } = "SignUpRange";
 
     /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
@@ -714,10 +715,10 @@ public class EventRotaTableViewModel
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
 
-    /// <summary>Controller the per-shift Sign Up form posts to. Default = the
-    /// public Shifts controller; the onboarding widget overrides this so its
-    /// inline rota table posts back into the widget flow.</summary>
-    public string SignUpController { get; set; } = "Shifts";
+    /// <summary>Controller the per-shift Sign Up form posts to. The FormPost
+    /// branch is only used by the onboarding widget, so the default targets it;
+    /// the browse page uses InstantToggle and never renders this form.</summary>
+    public string SignUpController { get; set; } = "OnboardingWidget";
     public string SignUpAction { get; set; } = "SignUp";
 
     /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
@@ -743,8 +744,23 @@ public class BuildStrikeRotaRowViewModel
     public ShiftDisplayItem Item { get; set; } = null!;
     public EventSettings Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
+    public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+}
+
+/// <summary>
+/// The instant per-day toggle button, shared by the Event and Build/Strike row
+/// partials so the JS contract (class, data-* and ARIA attributes) stays in one
+/// place. A Pending signup renders the "applied, awaiting approval" state.
+/// </summary>
+public class ShiftToggleButtonModel
+{
+    public Guid ShiftId { get; set; }
+    public bool IsSignedUp { get; set; }
+    public SignupStatus? Status { get; set; }
+    public bool IsFull { get; set; }
+    public bool DietaryBlocked { get; set; }
 }
 
 /// <summary>One timed Event-shift row. Action cell varies by Interaction; FormPost reuses the per-row signup form.</summary>
@@ -758,7 +774,8 @@ public class EventRotaRowViewModel
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 
     // FormPost-only: where the per-row signup form posts, plus filter context for the PRG redirect.
-    public string SignUpController { get; set; } = "Shifts";
+    // Default targets the onboarding widget (the only FormPost consumer); the browse page uses InstantToggle.
+    public string SignUpController { get; set; } = "OnboardingWidget";
     public string SignUpAction { get; set; } = "SignUp";
     public Guid? FilterDepartmentId { get; set; }
     public string? FilterFromDate { get; set; }

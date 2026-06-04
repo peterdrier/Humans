@@ -68,8 +68,11 @@
         </div>
     </div>
 
-    @* Toast alerts — bottom-right, auto-dismiss *@
-    <div class="shifts-toast-container">
+    @* Toast alerts — bottom-right, auto-dismiss. role/aria-live so AT announces
+       both server TempData alerts and the toggle toasts injected by shifts.js.
+       data-error-msg carries the localized client-side network-error string. *@
+    <div class="shifts-toast-container" role="status" aria-live="polite" aria-atomic="true"
+         data-error-msg="@Localizer["Shifts_Toggle_Error"]">
         <vc:temp-data-alerts />
     </div>
 
@@ -394,6 +397,7 @@
                                 EventSettings = es,
                                 SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
                                 UserSignupShiftIds = Model.UserSignupShiftIds,
+                                UserSignupStatuses = Model.UserSignupStatuses,
                                 ShowSignups = Model.ShowSignups,
                                 FilterDepartmentId = Model.FilterDepartmentId,
                                 FilterFromDate = Model.FilterFromDate,
@@ -554,6 +558,7 @@
                                                     EventSettings = es,
                                                     SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
                                                     UserSignupShiftIds = Model.UserSignupShiftIds,
+                                                    UserSignupStatuses = Model.UserSignupStatuses,
                                                     ShowSignups = Model.ShowSignups,
                                                     FilterDepartmentId = Model.FilterDepartmentId,
                                                     FilterFromDate = Model.FilterFromDate,
@@ -616,4 +621,4 @@
     });
 
 </script>
-<script src="~/js/shifts.js"></script>
+<script src="~/js/shifts.js" asp-append-version="true"></script>

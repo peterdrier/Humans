@@ -135,7 +135,7 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
     /// through the same <see cref="IShiftManagementService.GetBrowseShiftsAsync"/>
     /// path <see cref="BuildAsync"/> uses, so the row's counts stay consistent.
     /// </summary>
-    public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)> BuildRowAsync(
+    public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(
         Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
     {
         // GetActiveAsync() is EventSettings? — guard for nullable + TreatWarningsAsErrors.
@@ -148,7 +148,11 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
 
         var shifts = await shiftManagement.GetBrowseShiftsAsync(
             new ShiftBrowseQuery(es.Id, null, null, null, flags));
-        var urgent = shifts.First(u => u.Shift.Id == shiftId);
+        // Returns null when the shift isn't in the browse set for this caller (e.g. it
+        // just filled/closed, or a visibility race). The caller turns that into a benign
+        // reload rather than a 500 — never call .First() here.
+        var urgent = shifts.FirstOrDefault(u => u.Shift.Id == shiftId);
+        if (urgent is null) return null;
         var item = ShiftBrowseMapper.MapToDisplayItem(urgent, es);
 
         var (signedShiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);

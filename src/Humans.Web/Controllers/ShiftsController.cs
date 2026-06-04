@@ -114,17 +114,24 @@ public class ShiftsController(
             return RedirectHeader(Url.Action(
                 nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
 
-        if (await ShiftNeedsDietaryFirstAsync(user, shiftId))
+        var es = await shiftMgmt.GetActiveAsync()
+            ?? throw new InvalidOperationException("ToggleDay requires an active event.");
+
+        // Resolve sign-up-vs-bail before any gate: the dietary requirement applies to
+        // signing up, never to removing a signup you already hold. Event-scoped read so
+        // the count below matches the page badge (which is per active event).
+        var signups = await signupService.GetByUserAsync(user.Id, es.Id);
+        var existing = signups.FirstOrDefault(s =>
+            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
+
+        if (existing is null && await ShiftNeedsDietaryFirstAsync(user, shiftId))
         {
             SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
             return RedirectHeader(Url.Action(
                 "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
         }
 
-        var signups = await signupService.GetByUserAsync(user.Id);
-        var existing = signups.FirstOrDefault(s =>
-            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
-
+        // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only).
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         SignupResult result;
         bool signedUp;
@@ -142,37 +149,55 @@ public class ShiftsController(
             signedUp = result.Success;
         }
 
-        var after = await signupService.GetByUserAsync(user.Id);
-        var row = await browsePageBuilder.BuildRowAsync(shiftId, after, privileged, ct);
+        // Broad privilege — matches the browse page (Index.cshtml) so a department
+        // coordinator's row for an admin-only/hidden shift still renders instead of
+        // falling out of the browse set and 500-ing after the write already committed.
+        var canViewRestricted = privileged
+            || (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+
+        var after = await signupService.GetByUserAsync(user.Id, es.Id);
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, after, canViewRestricted, ct);
+        // Rare race (shift just closed/deleted between write and re-read): resync the
+        // whole page rather than swap a missing row.
+        if (row is null)
+            return RedirectHeader(Url.Action(nameof(Index)));
+
+        var value = row.Value;
         var blocked = await ComputeSignupsBlockedByMissingDietaryAsync(user, ct);
-        var es = await shiftMgmt.GetActiveAsync()
-            ?? throw new InvalidOperationException("ToggleDay requires an active event.");
 
         Response.Headers["X-Signed-Up"] = signedUp ? "true" : "false";
         Response.Headers["X-My-Signup-Count"] = after
             .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
             .ToString(CultureInfo.InvariantCulture);
+
         if (!result.Success && result.Error is not null)
             SetToastHeader("warning", result.Error);
         else if (result.Warning is not null)
             SetToastHeader("warning", result.Warning);
+        else if (signedUp)
+            SetToastHeader("success", value.Status == SignupStatus.Pending
+                ? localizer["Shifts_Toast_Applied"].Value
+                : localizer["Shifts_Toast_SignedUp"].Value);
+        else
+            SetToastHeader("success", localizer["Shifts_Toast_Removed"].Value);
 
-        if (row.Item.Shift.IsAllDay)
+        if (value.Item.Shift.IsAllDay)
             return PartialView("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
             {
-                Item = row.Item,
+                Item = value.Item,
                 Es = es,
-                IsSignedUp = row.IsSignedUp,
+                IsSignedUp = value.IsSignedUp,
+                SignupStatus = value.Status,
                 SignupsBlockedByMissingDietary = blocked,
                 Interaction = ShiftSignupInteraction.InstantToggle
             });
 
         return PartialView("_EventRotaRow", new EventRotaRowViewModel
         {
-            Item = row.Item,
+            Item = value.Item,
             Es = es,
-            IsSignedUp = row.IsSignedUp,
-            SignupStatus = row.Status,
+            IsSignedUp = value.IsSignedUp,
+            SignupStatus = value.Status,
             SignupsBlockedByMissingDietary = blocked,
             Interaction = ShiftSignupInteraction.InstantToggle
         });
