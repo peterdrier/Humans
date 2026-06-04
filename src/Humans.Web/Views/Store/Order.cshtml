@@ -195,10 +195,10 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var payment in order.Payments)
+                @foreach (var payment in order.Payments.OrderBy(p => p.ReceivedAt))
                 {
                     <tr>
-                        <td>@payment.ReceivedAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</td>
+                        <td>@payment.ReceivedAt.ToAuditMinuteTimestamp() UTC</td>
                         <td><span class="badge bg-secondary">@payment.Method</span></td>
                         <td>
                             @if (!string.IsNullOrEmpty(payment.StripePaymentIntentId ?? payment.ExternalRef))

@@ -1022,7 +1022,6 @@ public class StoreService(
         }).ToList();
 
         var payments = o.Payments
-            .OrderBy(p => p.ReceivedAt)
             .Select(p => new OrderPaymentDto(
                 p.AmountEur, p.Method, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
             .ToList();
