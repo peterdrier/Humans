@@ -411,6 +411,10 @@ builder.Services.AddCors(options =>
 
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
+        // Name-gate runs before the membership gate: a freshly-created OAuth /
+        // imported account with a blank BurnerName must be sent to the name form
+        // before MembershipRequiredFilter bounces it to Guest/Home. See #812.
+        options.Filters.Add<NameRequiredFilter>();
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
     })
