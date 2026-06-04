@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -94,7 +95,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var teamId = (await SeedTeamAsync(db)).Id;
         var userId = (await SeedUserAsync(db)).Id;
