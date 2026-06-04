@@ -30,6 +30,10 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
 
     /// <summary>Transitions Open → Closed.</summary>
     Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+
+    // ── Invitations ────────────────────────────────────────────────────────
+    /// <summary>Resolves the survey's audience and returns its size; 0 if the survey has no audience.</summary>
+    Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────

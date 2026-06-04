@@ -1,7 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Surveys;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Surveys;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,8 +23,14 @@ public class SurveyServiceTests
     private readonly ISurveyRepository _repo = Substitute.For<ISurveyRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly ITicketServiceRead _ticketService = Substitute.For<ITicketServiceRead>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
 
-    private SurveyService CreateService() => new(_repo, _audit, _clock, NullLogger<SurveyService>.Instance);
+    private SurveyService CreateService() => new(
+        _repo, _audit, _clock, NullLogger<SurveyService>.Instance,
+        _teamService, _userService, _ticketService, _shiftView);
 
     private static LocalizedText L(string en) => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
@@ -100,5 +110,39 @@ public class SurveyServiceTests
         var act = async () => await CreateService().OpenAsync(Guid.NewGuid(), Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    // ── Invitations ──────────────────────────────────────────────────────────
+
+    private static Survey SurveyWith(SurveyStatus status, SurveyAudienceType? audience, Guid? teamId) => new()
+    {
+        Id = Guid.NewGuid(),
+        Title = L("My Survey"),
+        DefaultCulture = "en",
+        Status = status,
+        AudienceType = audience,
+        AudienceTeamId = teamId,
+    };
+
+    private static TeamInfo TeamWith(Guid teamId, params Guid[] memberUserIds) => new(
+        teamId, "Team", null, "team",
+        IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+        IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
+        memberUserIds
+            .Select(u => new TeamMemberInfo(Guid.NewGuid(), u, "M", null, null, TeamMemberRole.Member, Instant.MinValue))
+            .ToList());
+
+    [HumansFact]
+    public async Task PreviewAudienceCountAsync_team_counts_team_members()
+    {
+        var teamId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(TeamWith(teamId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()));
+
+        var count = await CreateService().PreviewAudienceCountAsync(survey.Id);
+
+        count.Should().Be(3);
     }
 }

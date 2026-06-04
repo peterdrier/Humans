@@ -1,6 +1,10 @@
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Surveys;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -18,7 +22,11 @@ public sealed class SurveyService(
     ISurveyRepository repo,
     IAuditLogService auditLog,
     IClock clock,
-    ILogger<SurveyService> logger) : ISurveyService
+    ILogger<SurveyService> logger,
+    ITeamServiceRead teamService,
+    IUserServiceRead userService,
+    ITicketServiceRead ticketService,
+    IShiftView shiftView) : ISurveyService
 {
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -133,6 +141,70 @@ public sealed class SurveyService(
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyClosed, nameof(Survey), surveyId, "Closed survey", actorUserId);
+    }
+
+    public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey?.AudienceType is null) return 0;
+
+        var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, ct);
+        return recipients.Count;
+    }
+
+    /// <summary>
+    /// Resolves an audience predicate into the set of recipient user ids via cross-section read
+    /// interfaces. No marketing opt-out filter — surveys are System/always-send.
+    /// </summary>
+    private async Task<IReadOnlySet<Guid>> ResolveRecipientIdsAsync(
+        SurveyAudienceType type, Guid? teamId, CancellationToken ct)
+    {
+        switch (type)
+        {
+            case SurveyAudienceType.Team:
+            {
+                if (teamId is null) return new HashSet<Guid>();
+                var team = await teamService.GetTeamAsync(teamId.Value, ct);
+                return team?.Members.Select(m => m.UserId).ToHashSet() ?? new HashSet<Guid>();
+            }
+
+            case SurveyAudienceType.AllActiveMembers:
+                return (await ActiveMemberIdsAsync(ct)).ToHashSet();
+
+            case SurveyAudienceType.TicketHolders:
+            {
+                var orders = await ticketService.GetTicketOrdersAsync(ct);
+                return orders
+                    .Where(o => o.IsCurrentEvent)
+                    .SelectMany(o => o.Attendees)
+                    .Where(a => a.MatchedUserId.HasValue
+                        && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+                    .Select(a => a.MatchedUserId!.Value)
+                    .ToHashSet();
+            }
+
+            case SurveyAudienceType.ShiftParticipants:
+            {
+                var activeIds = await ActiveMemberIdsAsync(ct);
+                var views = await shiftView.GetUsersAsync(activeIds, ct);
+                return views
+                    .Where(kv => kv.Value.HasShift)
+                    .Select(kv => kv.Key)
+                    .ToHashSet();
+            }
+
+            default:
+                return new HashSet<Guid>();
+        }
+    }
+
+    private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
+    {
+        var users = await userService.GetAllUserInfosAsync(ct);
+        return users
+            .Where(u => u.IsApproved && !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
+            .Select(u => u.Id)
+            .ToList();
     }
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
