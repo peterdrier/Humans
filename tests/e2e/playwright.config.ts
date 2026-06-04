@@ -10,9 +10,11 @@ export default defineConfig({
     trace: 'retain-on-first-failure',
   },
   projects: [
+    { name: 'setup', testDir: '.', testMatch: /auth\.setup\.ts/ },
     {
       name: 'chromium',
       use: { browserName: 'chromium' },
+      dependencies: ['setup'],
     },
   ],
   reporter: [['html', { open: 'never' }]],

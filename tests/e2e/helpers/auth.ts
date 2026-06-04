@@ -1,6 +1,21 @@
-import { type Page, type APIResponse, expect } from '@playwright/test';
+import { type Page, type APIResponse, type BrowserContext, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
+
+// Single source of truth: every reusable persona slug (= /dev/login/{slug} segment).
+export const PERSONAS = [
+  'volunteer', 'admin', 'board', 'consent-coordinator', 'teams-admin',
+  'camp-admin', 'ticket-admin', 'no-info-admin', 'volunteer-coordinator',
+  'human-admin', 'finance-admin', 'feedback-admin', 'city-planning',
+  'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
+  'e-e-team-admin', 'barrio-1-lead',
+] as const;
+
+// Resolve relative to THIS file (not cwd): tests run via --config from a different cwd.
+const AUTH_DIR = path.join(__dirname, '..', 'playwright', '.auth');
+export const authFile = (slug: string): string => path.join(AUTH_DIR, `${slug}.json`);
 
 /**
  * Pre-seed the cookie-consent cookie so the banner never renders during tests.
@@ -21,10 +36,28 @@ async function seedCookieConsent(page: Page): Promise<void> {
   ]);
 }
 
-async function loginAs(page: Page, slug: string): Promise<void> {
+/**
+ * Live /dev/login + persona seed, then capture storageState to disk.
+ * Used ONLY by auth.setup.ts to mint the per-persona cookie once per run —
+ * this is the suite's sole coverage of the real login + seeding path.
+ */
+export async function liveLoginAndSave(context: BrowserContext, slug: string): Promise<void> {
+  const page = await context.newPage();
   await seedCookieConsent(page);
   await page.goto(`/dev/login/${slug}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector(NAV_SELECTOR);
+  await page.waitForSelector(NAV_SELECTOR, { timeout: 60_000 });
+  await context.storageState({ path: authFile(slug) });
+  await page.close();
+}
+
+/**
+ * Attach the persona's once-captured cookies to this test's context — no
+ * /dev/login, no seeding, no SeedLock contention. The saved state includes the
+ * cookie-consent cookie (seeded before capture), so the banner stays suppressed.
+ */
+async function loginAs(page: Page, slug: string): Promise<void> {
+  const state = JSON.parse(fs.readFileSync(authFile(slug), 'utf-8'));
+  await page.context().addCookies(state.cookies);
 }
 
 export const loginAsVolunteer = (page: Page) => loginAs(page, 'volunteer');
