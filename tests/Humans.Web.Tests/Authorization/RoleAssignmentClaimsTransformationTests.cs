@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -19,23 +19,22 @@ namespace Humans.Web.Tests.Authorization;
 /// every claim it emits through the application service / repository surface
 /// — never <c>HumansDbContext</c> directly (issue #750). HasProfile /
 /// IsSuspended come from the cached <see cref="UserInfo"/> read-model (issue
-/// #741), role claims come from <see cref="IRoleAssignmentRepository"/>, and
+/// #741), role claims come from <see cref="IRoleAssignmentService"/>, and
 /// Volunteers-team membership comes from <see cref="ITeamService"/> (cache-
 /// backed).
 /// </summary>
 public class RoleAssignmentClaimsTransformationTests : IDisposable
 {
-    private readonly IRoleAssignmentRepository _roleAssignments;
+    private readonly IRoleAssignmentService _roleAssignments;
     private readonly ITeamServiceRead _teams;
     private readonly IUserService _userService;
-    private readonly IClock _clock;
     private readonly IMemoryCache _cache;
 
     public RoleAssignmentClaimsTransformationTests()
     {
-        _roleAssignments = Substitute.For<IRoleAssignmentRepository>();
+        _roleAssignments = Substitute.For<IRoleAssignmentService>();
         _roleAssignments
-            .GetActiveRoleNamesAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         _teams = Substitute.For<ITeamServiceRead>();
@@ -44,8 +43,6 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
 
         _userService = Substitute.For<IUserService>();
-        _clock = Substitute.For<IClock>();
-        _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 17, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
     }
 
@@ -55,7 +52,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     }
 
     private RoleAssignmentClaimsTransformation BuildSut() =>
-        new(_roleAssignments, _teams, _userService, _clock, _cache);
+        new(_roleAssignments, _teams, _userService, _cache);
 
     private static ClaimsPrincipal BuildPrincipal(Guid userId)
     {
@@ -202,7 +199,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Transform_adds_role_claims_from_repository_active_role_names()
+    public async Task Transform_adds_role_claims_from_auth_service_active_roles()
     {
         var userId = Guid.NewGuid();
 
@@ -210,8 +207,11 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: false)));
 
         _roleAssignments
-            .GetActiveRoleNamesAsync(userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(["Board", "Treasurer"]);
+            .GetActiveForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([
+                new RoleAssignmentSnapshot("Board", ValidTo: null),
+                new RoleAssignmentSnapshot("Treasurer", ValidTo: null),
+            ]);
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
 
