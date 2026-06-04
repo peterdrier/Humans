@@ -481,31 +481,31 @@ public sealed class ShiftObligationService : IShiftObligationService
         switch (function.TargetType)
         {
             case ShiftObligationTargetType.Team:
-            {
-                var team = await teamServiceRead.GetTeamAsync(function.TargetId, ct);
-                var name = team?.Name ?? function.CampRoleSlug;
-                // Link to the VOLUNTEER-facing shift browse (/Shifts, [Authorize] only),
-                // filtered to this team — NOT /Teams/{slug}/Shifts (coordinator/admin-only
-                // management). Barrio leads must be able to open it and sign up.
-                var url = team is null ? string.Empty : $"/Shifts?departmentId={function.TargetId}";
-                return (name, url);
-            }
+                {
+                    var team = await teamServiceRead.GetTeamAsync(function.TargetId, ct);
+                    var name = team?.Name ?? function.CampRoleSlug;
+                    // Link to the VOLUNTEER-facing shift browse (/Shifts, [Authorize] only),
+                    // filtered to this team — NOT /Teams/{slug}/Shifts (coordinator/admin-only
+                    // management). Barrio leads must be able to open it and sign up.
+                    var url = team is null ? string.Empty : $"/Shifts?departmentId={function.TargetId}";
+                    return (name, url);
+                }
             case ShiftObligationTargetType.Rota:
-            {
-                var rota = await shiftServiceRead.GetRotaTargetInfoAsync(function.TargetId, ct);
-                var name = rota?.RotaName ?? function.CampRoleSlug;
-                // Volunteer-facing browse filtered to the rota's owning team (so barrio
-                // leads can reach it and sign up), not the coordinator-only admin page.
-                // /Shifts has no rota filter, so this is best-effort: it deep-links to the
-                // rota's collapsible anchor on the team browse (id="rota-{Id:N}" in
-                // Views/Shifts/Index.cshtml). CAVEAT: the count is rota-scoped, but the
-                // browse is team-scoped — signing up for a *different* rota on the same
-                // team won't count toward this obligation.
-                var url = rota is null
-                    ? string.Empty
-                    : $"/Shifts?departmentId={rota.TeamId}#rota-{function.TargetId:N}";
-                return (name, url);
-            }
+                {
+                    var rota = await shiftServiceRead.GetRotaTargetInfoAsync(function.TargetId, ct);
+                    var name = rota?.RotaName ?? function.CampRoleSlug;
+                    // Volunteer-facing browse filtered to the rota's owning team (so barrio
+                    // leads can reach it and sign up), not the coordinator-only admin page.
+                    // /Shifts has no rota filter, so this is best-effort: it deep-links to the
+                    // rota's collapsible anchor on the team browse (id="rota-{Id:N}" in
+                    // Views/Shifts/Index.cshtml). CAVEAT: the count is rota-scoped, but the
+                    // browse is team-scoped — signing up for a *different* rota on the same
+                    // team won't count toward this obligation.
+                    var url = rota is null
+                        ? string.Empty
+                        : $"/Shifts?departmentId={rota.TeamId}#rota-{function.TargetId:N}";
+                    return (name, url);
+                }
             default:
                 return (function.CampRoleSlug, string.Empty);
         }

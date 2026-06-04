@@ -643,15 +643,22 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         Db.Camps.Add(new Camp { Id = campId, Slug = slug });
         Db.CampSeasons.Add(new CampSeason
         {
-            Id = seasonId, CampId = campId, Year = 2026, Name = name,
-            Status = CampSeasonStatus.Active, ElectricalGrid = grid,
+            Id = seasonId,
+            CampId = campId,
+            Year = 2026,
+            Name = name,
+            Status = CampSeasonStatus.Active,
+            ElectricalGrid = grid,
         });
         foreach (var userId in activeMembers)
         {
             Db.CampMembers.Add(new CampMember
             {
-                Id = Guid.NewGuid(), CampSeasonId = seasonId, UserId = userId,
-                Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
+                Id = Guid.NewGuid(),
+                CampSeasonId = seasonId,
+                UserId = userId,
+                Status = CampMemberStatus.Active,
+                RequestedAt = Clock.GetCurrentInstant(),
                 ConfirmedAt = Clock.GetCurrentInstant(),
             });
         }
@@ -666,17 +673,23 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         var defId = Guid.NewGuid();
         Db.CampRoleDefinitions.Add(new CampRoleDefinition
         {
-            Id = defId, Name = roleSlug, Slug = roleSlug,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = defId,
+            Name = roleSlug,
+            Slug = roleSlug,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         });
         // The member must exist + be Active; SeedSeasonWithLeads already added it,
         // but the assignment FKs CampMemberId, so look it up.
         var member = Db.CampMembers.Local.First(m => m.CampSeasonId == seasonId && m.UserId == userId);
         Db.CampRoleAssignments.Add(new CampRoleAssignment
         {
-            Id = Guid.NewGuid(), CampSeasonId = seasonId,
-            CampRoleDefinitionId = defId, CampMemberId = member.Id,
-            AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId,
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            CampRoleDefinitionId = defId,
+            CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
         });
     }
 
@@ -777,15 +790,22 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         Db.Camps.Add(new Camp { Id = campId, Slug = slug });
         Db.CampSeasons.Add(new CampSeason
         {
-            Id = seasonId, CampId = campId, Year = 2026, Name = name,
-            Status = CampSeasonStatus.Active, ElectricalGrid = grid,
+            Id = seasonId,
+            CampId = campId,
+            Year = 2026,
+            Name = name,
+            Status = CampSeasonStatus.Active,
+            ElectricalGrid = grid,
         });
         foreach (var (mi, src) in memberInfos.Zip(members))
         {
             Db.CampMembers.Add(new CampMember
             {
-                Id = mi.Id, CampSeasonId = seasonId, UserId = src.UserId,
-                Status = src.Status, RequestedAt = Clock.GetCurrentInstant(),
+                Id = mi.Id,
+                CampSeasonId = seasonId,
+                UserId = src.UserId,
+                Status = src.Status,
+                RequestedAt = Clock.GetCurrentInstant(),
                 ConfirmedAt = mi.ConfirmedAt,
             });
         }
