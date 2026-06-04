@@ -174,19 +174,13 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.MedicalDataViewer, RoleNames.Board, false },
         { PolicyNames.MedicalDataViewer, RoleNames.VolunteerCoordinator, false },
 
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.Admin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.Board, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.TeamsAdmin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.NoInfoAdmin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.VolunteerCoordinator, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, "SomeNonAdminRole", false },
-
-        { PolicyNames.IsActiveMember, RoleNames.Admin, true },
-        { PolicyNames.IsActiveMember, RoleNames.Board, true },
-        { PolicyNames.IsActiveMember, RoleNames.TeamsAdmin, true },
-        { PolicyNames.IsActiveMember, RoleNames.NoInfoAdmin, false },
-        { PolicyNames.IsActiveMember, RoleNames.CampAdmin, false },
-        { PolicyNames.IsActiveMember, "SomeNonAdminRole", false },
+        // AppAccess = Active OR any role-holder. Every role passes (incl. the ones the former
+        // curated bypass excluded — CantinaAdmin, FeedbackAdmin, EETeamAdmin).
+        { PolicyNames.AppAccess, RoleNames.Admin, true },
+        { PolicyNames.AppAccess, RoleNames.NoInfoAdmin, true },
+        { PolicyNames.AppAccess, RoleNames.VolunteerCoordinator, true },
+        { PolicyNames.AppAccess, RoleNames.CampAdmin, true },
+        { PolicyNames.AppAccess, RoleNames.CantinaAdmin, true },
     };
 
     public static TheoryData<string> AnonymousPolicyCases =>
@@ -504,22 +498,21 @@ public class AuthorizationPolicyTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ActiveMemberOrShiftAccess_AllowsActiveStateUser()
+    public async Task AppAccess_AllowsActiveStateUserWithNoRole()
     {
         var user = CreateUserWithClaim(
             RoleAssignmentClaimsTransformation.UserStateClaimType,
             UserState.Active.ToString());
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ActiveMemberOrShiftAccess);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task IsActiveMember_AllowsActiveStateUser()
+    public async Task AppAccess_AllowsAnyRoleHolderEvenWhenNotActive()
     {
-        var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.UserStateClaimType,
-            UserState.Active.ToString());
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.IsActiveMember);
+        // A role-holder (staff) passes regardless of UserState — even a non-bypass role like Cantina.
+        var user = CreateUserWithRoles(RoleNames.CantinaAdmin);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeTrue();
     }
 
@@ -527,12 +520,12 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(nameof(UserState.Bare))]
     [InlineData(nameof(UserState.Suspended))]
     [InlineData(nameof(UserState.Rejected))]
-    public async Task IsActiveMember_DeniesNonActiveStateUser(string state)
+    public async Task AppAccess_DeniesNonActiveStateUserWithNoRole(string state)
     {
         var user = CreateUserWithClaim(
             RoleAssignmentClaimsTransformation.UserStateClaimType,
             state);
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.IsActiveMember);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeFalse();
     }
 

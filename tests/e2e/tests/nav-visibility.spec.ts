@@ -23,7 +23,7 @@ import {
  * a single composite-gated `Admin` link that opens the admin shell at `/Admin`.
  * Only two top-nav items are role/policy gated:
  *
- *   Volunteer  → ActiveMemberOrShiftAccess
+ *   Volunteer  → AppAccess (UserState == Active OR holds any role)
  *   Admin      → AnyAdminRole (composite: Admin, Board, HumanAdmin, TeamsAdmin,
  *                CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
  *                NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator)
@@ -31,12 +31,10 @@ import {
  * Sidebar coverage for items inside `/Admin` lives in admin-shell.spec.ts.
  *
  * Note on "Volunteer" (Shifts) visibility:
- * ActiveMemberOrShiftAccess succeeds via ActiveMember claim (Volunteers team
- * membership) OR via role checks (Admin/Board/TeamsAdmin/NoInfoAdmin/VolunteerCoordinator).
- * Dev personas may not have Volunteers team membership if seeded before the current
- * DevLoginController code, so we only assert "Volunteer" for roles that guarantee it
- * via role checks. The volunteer/coordinator personas always have it since they're
- * always seeded into the Volunteers team.
+ * The single `AppAccess` gate succeeds when UserState == Active (the user entered their
+ * legal name) OR the principal holds ANY role (RoleChecks.HasAnyRole). There is no
+ * separate shift access. Every dev persona therefore sees "Volunteer": role personas via
+ * HasAnyRole, the plain volunteer via Active.
  */
 
 type NavItem = 'volunteer' | 'admin';
@@ -58,18 +56,14 @@ interface RoleTest {
   visible: NavItem[];
 }
 
-// Volunteer (Shifts) visibility by role path:
-//   ActiveMember claim: volunteer, coordinator (always seeded into Volunteers team)
-//   IsTeamsAdminBoardOrAdmin: admin, board, teamsAdmin
-//   ShiftRoleChecks.CanAccessDashboard: admin, noInfoAdmin, volunteerCoordinator
+// "Volunteer" (Shifts) is gated by AppAccess = (UserState == Active OR HasAnyRole), so EVERY
+// authenticated dev persona sees it: the plain volunteer via Active, every role persona via
+// HasAnyRole.
 //
 // Admin top-nav link visibility (AnyAdminRole composite):
 //   admin, board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
 //   financeAdmin, noInfoAdmin, volunteerCoordinator, consentCoordinator
 //   (StoreAdmin is in the policy but no dev login helper exists for it.)
-//
-// Roles without a role-based "Volunteer" path only see it if they happen to have
-// ActiveMember claim — environment-dependent, so we omit it from those expectations.
 const roles: RoleTest[] = [
   {
     name: 'volunteer',
@@ -94,7 +88,7 @@ const roles: RoleTest[] = [
   {
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'teamsAdmin',
@@ -104,22 +98,22 @@ const roles: RoleTest[] = [
   {
     name: 'ticketAdmin',
     login: loginAsTicketAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'campAdmin',
     login: loginAsCampAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'consentCoordinator',
     login: loginAsConsentCoordinator,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'feedbackAdmin',
     login: loginAsFeedbackAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'noInfoAdmin',
@@ -129,7 +123,7 @@ const roles: RoleTest[] = [
   {
     name: 'financeAdmin',
     login: loginAsFinanceAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'volunteerCoordinator',

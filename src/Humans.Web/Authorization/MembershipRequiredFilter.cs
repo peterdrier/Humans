@@ -15,26 +15,22 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
+    // Only controllers a NOT-Active, NO-role user must still reach. Role-gated controllers (Admin,
+    // Board, CampAdmin, OnboardingReview) are reached via the HasAnyRole escape below; public ones
+    // (Camp, CampApi, Legal, FeedbackApi) are reached via [AllowAnonymous]/API-key — so neither
+    // needs listing here.
     private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Account",          // Login/logout/OAuth
-        "GovernanceApplications", // Tier application submission
-        "Consent",          // Sign required legal documents (onboarding surface)
-        "Profile",          // Profile setup (onboarding surface)
-        "Admin",            // Has its own Roles = "Admin" gate
-        "Board",            // Has its own Roles = "Board,Admin" gate
-        "Language",         // Language switching
-        "OnboardingReview", // Has its own coordinator/Board role gate
-        "Camp",             // Public camps pages ([AllowAnonymous])
-        "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
-        "CampApi",          // Public API ([AllowAnonymous])
-        "Feedback",         // Feedback submission — accessible to all authenticated users
-        "FeedbackApi",      // API key auth, no membership required
-        "Guest",            // Profileless account dashboard (being folded into Bare)
-        "Legal",            // Public legal documents ([AllowAnonymous])
-        "Notifications",    // Notification inbox — accessible to all authenticated users
         "OnboardingWidget", // Guided onboarding (name entry) — the Bare landing target
+        "Profile",          // Profile setup (onboarding surface)
+        "Consent",          // Sign required legal documents (onboarding surface)
         "User",             // Account-status wall + cancel-deletion landing (redirect targets)
+        "Language",         // Language switching
+        "Guest",            // Profileless account dashboard
+        "GovernanceApplications", // Tier application submission — any logged-in user
+        "Feedback",         // Feedback submission — any logged-in user
+        "Notifications",    // Notification inbox — any logged-in user
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -46,7 +42,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (RoleChecks.BypassesMembershipRequirement(user))
+        // Single privileged escape: any role-holder (staff) bypasses the access gate.
+        if (RoleChecks.HasAnyRole(user))
         {
             return next();
         }

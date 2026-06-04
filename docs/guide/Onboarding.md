@@ -88,7 +88,7 @@ Board members and Admins can do everything a Consent Coordinator can, plus:
 - **Vote on tier applications.** Board votes on Colaborador / Asociado applications at `/Governance/BoardVoting`; Admin can finalize a vote, set the meeting date, and override.
 - **Review the full onboarding pipeline.** See [humans](Glossary.md#human) at every stage, including those stuck waiting on documents or a coordinator.
 
-Admins and all coordinator roles bypass the membership gate entirely (`MembershipRequiredFilter` consults `RoleChecks.BypassesMembershipRequirement`), so you reach the full app regardless of your own onboarding status. Suspended Admins/Board keep their role claims so they can manage their own unsuspension, but lose the `ActiveMember` claim.
+Anyone holding any role bypasses the access gate entirely (`MembershipRequiredFilter` consults `RoleChecks.HasAnyRole`), so staff reach the full app regardless of their own onboarding status. Suspended staff keep their role claims so they can still reach the app to manage their own unsuspension.
 
 ## Related sections
 

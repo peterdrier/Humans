@@ -394,19 +394,19 @@ Views express authorization four ways today:
 |---|---|---|
 | 36 | `var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded` | Drives `isEventsAdminOrAdmin` flag for the Events admin sub-dropdowns below |
 | 37 | `var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isFullAdmin` flag for build-hash tooltip on brand link (commit SHA on hover) — gated to FullAdmin (`AdminOnly`), not `AnyAdminRole` |
-| 97 | `authorize-policy="IsActiveMember"` | City Planning nav link |
-| 102 | `authorize-policy="IsActiveMember"` | Events dropdown (feature-flagged) |
+| 97 | `authorize-policy="AppAccess"` | City Planning nav link |
+| 102 | `authorize-policy="AppAccess"` | Events dropdown (feature-flagged) |
 | 108 | `if (isEventsAdminOrAdmin)` | Guide Dashboard / Moderate / Export dropdown items |
 | 115 | `if (isEventsAdminOrAdmin)` | Guide Settings / Categories / Venues dropdown items |
-| 131 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
-| 134 | `authorize-policy="IsActiveMember"` | Budget nav link |
+| 131 | `authorize-policy="AppAccess"` | Shifts nav link (no separate shift access — merged into `AppAccess`) |
+| 134 | `authorize-policy="AppAccess"` | Budget nav link |
 | 137 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
 
 ### Login Partial (`_LoginPartial.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
-| 50 | `authorize-policy="IsActiveMember"` | Governance link in profile dropdown |
+| 50 | `authorize-policy="AppAccess"` | Governance link in profile dropdown |
 
 ### Guide Layout (`_GuideLayout.cshtml`)
 
@@ -522,8 +522,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `authorize-policy="ShiftDashboardAccess"` |
 | Shift department manager | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` | `authorize-policy="ShiftDepartmentManager"` |
 | Volunteer tracking write | `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]` | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` |
-| Active member or shift access | `[Authorize(Policy = PolicyNames.ActiveMemberOrShiftAccess)]` | `authorize-policy="ActiveMemberOrShiftAccess"` |
-| Active member | `[Authorize(Policy = PolicyNames.IsActiveMember)]` | `authorize-policy="IsActiveMember"` |
+| App access (Active or any role) | `[Authorize(Policy = PolicyNames.AppAccess)]` | `authorize-policy="AppAccess"` |
 | Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.{ManageCoordinators, ManageEarlyEntry})` | `Model.IsCurrentUserCoordinator` / `Model.CanManageEarlyEntry` (view-model) |
 | Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` (view-model) |
 | Resource: camp-event submit | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` | (no view spelling — controller-only) |
@@ -577,7 +576,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `ProfileController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` enforces the role-list filter |
 | `ProfileController` email-edit endpoints (~19 actions) | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
 | `TicketController.Index` | After class-level policy | `RoleChecks.CanAccessFinance(User)` toggles finance-only metrics |
-| `MembershipRequiredFilter` | All requests | `RoleChecks.BypassesMembershipRequirement(user)` skips active-member check for privileged roles |
+| `MembershipRequiredFilter` | All requests | `RoleChecks.HasAnyRole(user)` lets any role-holder (staff) bypass the `UserState == Active` access gate |
 | `HangfireAuthorizationFilter` | Hangfire dashboard | `RoleChecks.IsAdmin(User)` |
 | `AgentController.Ask` | Per-request | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` (resource-based) |
 
@@ -611,8 +610,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `VolunteerTrackingWrite` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerTrackingWrite` |
 | `PrivilegedSignupApprover` | Admin, NoInfoAdmin | `PolicyNames.PrivilegedSignupApprover`, `ShiftRoleChecks.IsPrivilegedSignupApprover` |
 | `VolunteerManager` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerManager`, `RoleChecks.IsVolunteerManager` |
-| `ActiveMemberOrShiftAccess` | ActiveMember claim OR ShiftDashboardAccess OR TeamsAdmin/Board/Admin | `PolicyNames.ActiveMemberOrShiftAccess` (composite — `ActiveMemberOrShiftAccessHandler`) |
-| `IsActiveMember` | ActiveMember claim OR TeamsAdmin/Board/Admin | `PolicyNames.IsActiveMember` (composite — `IsActiveMemberHandler`) |
+| `AppAccess` | `UserState == Active` OR holds any role (`RoleChecks.HasAnyRole`) | `PolicyNames.AppAccess` (single `RequireAssertion` — the nav-visibility gate; replaced the former `IsActiveMember` / `ActiveMemberOrShiftAccess` split) |
 | `HumanAdminOnly` | HumanAdmin AND NOT (Admin OR Board) | `PolicyNames.HumanAdminOnly` (composite — `HumanAdminOnlyHandler`) |
 | `MedicalDataViewer` | Admin, NoInfoAdmin | `PolicyNames.MedicalDataViewer`, `ShiftRoleChecks.CanViewMedical` |
 | `AgentRateLimit` | (per-user rate-limit) | `PolicyNames.AgentRateLimit` (resource-based — `AgentRateLimitHandler`) |
@@ -620,7 +618,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 ### Notes on Policy Design
 
 - `ShiftDashboardAccess` and `ShiftDepartmentManager` are intentionally distinct: dashboard access is role-list-based, department manager additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
-- `ActiveMemberOrShiftAccess` and `IsActiveMember` are composite policies that check the `ActiveMember` claim OR fall back to role-based access. They use custom `IAuthorizationRequirement` + handler rather than a simple `RequireRole`.
+- `AppAccess` is the single nav-visibility gate: `UserState == Active` (the user entered their legal name) OR `RoleChecks.HasAnyRole` (any role-holder / staff). A plain `RequireAssertion` — no custom requirement/handler. It replaced the former `IsActiveMember` / `ActiveMemberOrShiftAccess` policies (and there is no separate shift access).
 - `HumanAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has HumanAdmin but not the broader Board/Admin access.
 - `MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether medical fields are visible within pages the user already has access to.
 - `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy. The role list mirrors the top-nav check in `_Layout.cshtml` and includes the grantable `CantinaAdmin` role added with the Cantina coordinator surface (feature #36).
@@ -650,8 +648,6 @@ Composite (non-resource) handlers registered alongside the above:
 
 | Handler | Requirement | Path |
 |---|---|---|
-| `ActiveMemberOrShiftAccessHandler` | `ActiveMemberOrShiftAccessRequirement` | `src/Humans.Web/Authorization/Requirements/ActiveMemberOrShiftAccessHandler.cs` |
-| `IsActiveMemberHandler` | `IsActiveMemberRequirement` | `src/Humans.Web/Authorization/Requirements/IsActiveMemberHandler.cs` |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | `src/Humans.Web/Authorization/Requirements/HumanAdminOnlyHandler.cs` |
 | `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | `src/Humans.Web/Authorization/Requirements/IsAnyTeamManagerOrCoordinatorHandler.cs` |
 
@@ -733,7 +729,7 @@ Composite (non-resource) handlers registered alongside the above:
 | `IsFinanceAdmin` / `CanAccessFinance` | `FinanceAdminOrAdmin` |
 | `CanAdministerStore` | `StoreCatalogAdmin` |
 | `IsVolunteerManager` | `VolunteerManager` |
-| `BypassesMembershipRequirement` | (filter-level in `MembershipRequiredFilter`, not a page policy) |
+| `HasAnyRole` | (filter-level in `MembershipRequiredFilter` + the `AppAccess` nav gate — any role-holder bypasses the `UserState == Active` gate) |
 | `GetAssignableRoles` / `CanManageRole` | `RoleAssignmentOperationRequirement.Manage` (resource-based, see §6) |
 
 ### ShiftRoleChecks Methods → Canonical Policy Mapping
