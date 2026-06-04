@@ -23,6 +23,17 @@
             "statusMessage": "Linting Razor views..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/block-data-migration-hook.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for data migration..."
+          }
+        ]
       }
     ]
   }
