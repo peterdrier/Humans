@@ -546,7 +546,7 @@ internal static class SurveySectionExtensions
 
 ### Task 3.2: Audience resolution (TDD)
 
-> **v1 predicate menu (decided 2026-06-04):** `Team` (ship first), `AllActiveMembers`, `TicketHolders`, `ShiftParticipants`. The **locked** part is the idempotent diff-and-send in Task 3.4. Still open: whether invites honour the marketing opt-out (transactional → likely not) — confirm before this task.
+> **v1 predicate menu (decided 2026-06-04):** `Team` (ship first), `AllActiveMembers`, `TicketHolders`, `ShiftParticipants`. The **locked** part is the idempotent diff-and-send in Task 3.4. Surveys are **never marketing** (ticket-holders / members, operational comms) → invites do **not** honour the marketing opt-out; sent as `MessageCategory.System` (always-send).
 
 - [ ] **Step 1 — Failing test** on `SurveyService.PreviewAudienceCountAsync` / internal `ResolveRecipientIdsAsync(AudienceSelection)`: `Team` → `ITeamServiceRead.GetTeamAsync(teamId)` member ids; `AllActiveMembers` → active-member ids from `IUserServiceRead`; `TicketHolders` → `ITicketServiceRead` holder ids; `ShiftParticipants` → the shifts read interface that `HasShiftAudience` uses (exact name confirmed at impl). Mock the read interfaces.
 - [ ] **Step 2 — Implement** the resolver as a private method returning `IReadOnlySet<Guid>` from the injected reads (mirror `CampaignService.SendWaveAsync` team resolution). **No** `IMailerAudience` usage (avoids the marketing opt-out filter).
@@ -556,7 +556,7 @@ internal static class SurveySectionExtensions
 
 **Files:** modify `IEmailMessageFactory.cs`, `EmailMessageFactory.cs`, `IEmailRenderer.cs` (+ the renderer impl + resx/templates the renderer uses — follow `TermRenewalReminder`/`ReConsentReminder` end-to-end).
 
-- [ ] **Step 1 — Factory + renderer methods:** `EmailMessage SurveyInvitation(string email, string name, string surveyTitle, string surveyUrl, string? culture)` and `SurveyReminder(...)`; matching `IEmailRenderer.RenderSurveyInvitation/RenderSurveyReminder(...)`. `TemplateName` = `"survey_invitation"` / `"survey_reminder"`; `Category` = `MessageCategory.System` (transactional — bypasses marketing opt-out; confirm the right category by checking how magic-link/verification categorise).
+- [ ] **Step 1 — Factory + renderer methods:** `EmailMessage SurveyInvitation(string email, string name, string surveyTitle, string surveyUrl, string? culture)` and `SurveyReminder(...)`; matching `IEmailRenderer.RenderSurveyInvitation/RenderSurveyReminder(...)`. `TemplateName` = `"survey_invitation"` / `"survey_reminder"`; `Category` = `MessageCategory.System` (operational — surveys are never marketing, so always-send is correct; mirrors how magic-link/verification categorise).
 - [ ] **Step 2 — Implement renderer bodies** (localised subject/body, link to `surveyUrl`) following the existing renderer's culture-branching.
 - [ ] **Step 3 — Build** → success. **Commit:** `feat(survey): invite and reminder email templates`
 
