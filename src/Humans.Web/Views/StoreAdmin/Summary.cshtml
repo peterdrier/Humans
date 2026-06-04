@@ -75,14 +75,21 @@
                     </tr>
                 }
                 </tbody>
+                @* Totals cover camps only: teams never pay (paid/balance hardcoded to 0),
+                   so including their due would make Total due ≠ Paid + Balance. *@
+                @{
+                    var camps = s.ByCounterparty
+                        .Where(r => r.CounterpartyType != Humans.Domain.Enums.StoreOrderCounterpartyType.Team)
+                        .ToList();
+                }
                 <tfoot class="table-group-divider">
                     <tr class="fw-semibold">
                         <td>Total</td>
-                        <td>@s.ByCounterparty.Count rows</td>
+                        <td>@camps.Count camps</td>
                         <td></td>
-                        <td class="text-end">@s.ByCounterparty.Sum(r => r.TotalDueEur).ToString("N2")</td>
-                        <td class="text-end">@s.ByCounterparty.Sum(r => r.PaymentsTotalEur).ToString("N2")</td>
-                        <td class="text-end">@s.ByCounterparty.Sum(r => r.BalanceEur).ToString("N2")</td>
+                        <td class="text-end">@camps.Sum(r => r.TotalDueEur).ToString("N2")</td>
+                        <td class="text-end">@camps.Sum(r => r.PaymentsTotalEur).ToString("N2")</td>
+                        <td class="text-end">@camps.Sum(r => r.BalanceEur).ToString("N2")</td>
                     </tr>
                 </tfoot>
             </table>
