@@ -106,4 +106,12 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Count of a survey's invitations whose funnel <c>Started</c> flag is set. Read-only.</summary>
     Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default);
+
+    // ── GDPR export ────────────────────────────────────────────────────────
+    /// <summary>
+    /// A user's submitted <see cref="ResponseAnonymity.Identified"/> responses (with answer graph) for
+    /// the GDPR Article 15 export. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are
+    /// excluded — they are not personal data linkable to the user. No display ordering. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default);
 }

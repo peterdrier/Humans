@@ -49,4 +49,5 @@ public static class GdprExportSections
     public const string ExpenseReports = "ExpenseReports";
     public const string ExpenseAuditLog = "ExpenseAuditLog";
     public const string TeamEarlyEntry = "TeamEarlyEntry";
+    public const string SurveyResponses = "SurveyResponses";
 }

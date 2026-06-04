@@ -1,5 +1,7 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -32,7 +34,7 @@ public sealed class SurveyService(
     IUserEmailService userEmailService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    ISurveyInviteTokenProvider tokenProvider) : ISurveyService
+    ISurveyInviteTokenProvider tokenProvider) : ISurveyService, IUserDataContributor
 {
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -566,6 +568,62 @@ public sealed class SurveyService(
             .ToList();
 
         return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
+    }
+
+    /// <summary>
+    /// GDPR Article 15 contributor: the user's own submitted <see cref="ResponseAnonymity.Identified"/>
+    /// survey responses. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are excluded by
+    /// the repository query (not personal data linkable to the user). Prompts/labels are resolved in the
+    /// response's own <see cref="SurveyResponse.Culture"/>, falling back to the survey's default culture.
+    /// The collection slice is always emitted (an empty list, never null) so the export key stays stable.
+    /// </summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var responses = await repo.GetIdentifiedResponsesForUserAsync(userId, ct);
+
+        // Load each distinct survey definition once (few at this scale) to resolve titles, prompts, and labels.
+        var definitions = new Dictionary<Guid, Survey>();
+        foreach (var surveyId in responses.Select(r => r.SurveyId).Distinct())
+        {
+            var survey = await repo.GetByIdAsync(surveyId, ct);
+            if (survey is not null) definitions[surveyId] = survey;
+        }
+
+        var shaped = responses
+            .OrderBy(r => r.SubmittedAt)
+            .Select(r =>
+            {
+                definitions.TryGetValue(r.SurveyId, out var survey);
+                var culture = string.IsNullOrEmpty(r.Culture)
+                    ? survey?.DefaultCulture ?? "en"
+                    : r.Culture;
+
+                var prompts = survey is null
+                    ? new Dictionary<Guid, string>()
+                    : survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
+                var optionLabels = survey is null
+                    ? new Dictionary<Guid, Dictionary<string, string>>()
+                    : survey.Questions.ToDictionary(
+                        q => q.Id,
+                        q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+
+                return new
+                {
+                    Survey = survey?.Title.Resolve(culture, culture) ?? r.SurveyId.ToString(),
+                    SubmittedAt = r.SubmittedAt.ToInvariantInstantString(),
+                    Culture = culture,
+                    Answers = r.Answers.Select(a => new
+                    {
+                        Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
+                        SelectedLabels = ResolveSelectedLabels(a, optionLabels),
+                        a.TextValue,
+                        a.RatingValue,
+                    }).ToList(),
+                };
+            })
+            .ToList();
+
+        return [new UserDataSlice(GdprExportSections.SurveyResponses, shaped)];
     }
 
     /// <summary>Aggregates one question across the submitted responses per its type (counts/distribution/free-text).</summary>

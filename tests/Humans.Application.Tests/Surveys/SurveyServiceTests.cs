@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -1056,5 +1057,87 @@ public class SurveyServiceTests
         var export = await CreateService().GetResponseExportAsync(surveyId);
 
         export!.Rows.Select(r => r.ResponseId).Should().ContainInOrder(early.Id, late.Id);
+    }
+
+    // ── GDPR export contributor (Task 7.1) ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers()
+    {
+        var userId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var textId = Guid.NewGuid();
+        var ratingId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Title = L("Summer Feedback");
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2)),
+            RatingQuestion(ratingId, surveyId, 2, 1, 5),
+            TextQuestion(textId, surveyId, 3),
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var response = SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+            _clock.GetCurrentInstant(), userId,
+            ChoiceAnswer(choiceId, "yes"), RatingAnswer(ratingId, 4), TextAnswer(textId, "loved it"));
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse> { response });
+
+        var slices = await CreateService().ContributeForUserAsync(userId, CancellationToken.None);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        slice.Data.Should().NotBeNull();
+
+        // The payload serialises the user's response (title + answers). Round-trip through JSON to assert shape.
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain("Summer Feedback");
+        json.Should().Contain("Yes");        // resolved choice label
+        json.Should().Contain("loved it");   // free-text value
+        json.Should().Contain("4");          // rating value
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_returns_empty_collection_slice_when_user_has_no_identified_responses()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse>());
+
+        var slices = await CreateService().ContributeForUserAsync(userId, CancellationToken.None);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(GdprExportSections.SurveyResponses);
+        // Collection sections emit [] (not null) when the user has no records.
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Be("[]");
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_surfaces_only_what_the_repo_returns()
+    {
+        // The repository query is the gate that excludes CompletionTracked/Anonymous tiers.
+        // The contributor must not re-add any other responses — it surfaces exactly the repo result.
+        var userId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>();
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var one = SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+            _clock.GetCurrentInstant(), userId);
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse> { one });
+
+        var slices = await CreateService().ContributeForUserAsync(userId, CancellationToken.None);
+
+        // Exactly one slice, and it carries exactly the single response the repo surfaced.
+        slices.Should().ContainSingle();
+        await _repo.Received(1).GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

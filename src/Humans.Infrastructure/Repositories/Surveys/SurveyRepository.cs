@@ -283,6 +283,19 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
             .CountAsync(i => i.SurveyId == surveyId && i.Started, ct);
     }
 
+    public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        // No display ordering here — the GDPR contributor shapes/orders the payload (hard rule).
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyResponses
+            .AsNoTracking()
+            .Include(r => r.Answers)
+            .Where(r => r.UserId == userId
+                        && r.Anonymity == ResponseAnonymity.Identified
+                        && r.SubmittedAt != null)
+            .ToListAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
     {

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Services.Surveys;
@@ -11,7 +12,7 @@ namespace Humans.Web.Extensions.Sections;
 /// <summary>
 /// DI for the Survey section. Plain Scoped service (Feedback/Issues pattern) — no caching decorator
 /// per spec §12. Includes the invite token provider (Phase 3) and the key-authed analysis API
-/// filter + settings (Phase 6). The GDPR contributor lands in Phase 7.
+/// filter + settings (Phase 6), and the GDPR export contributor (Phase 7).
 /// </summary>
 internal static class SurveySectionExtensions
 {
@@ -21,6 +22,7 @@ internal static class SurveySectionExtensions
         services.AddScoped<SurveyService>();
         services.AddScoped<ISurveyService>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyServiceRead>(sp => sp.GetRequiredService<SurveyService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());   // Phase 7: GDPR export contributor
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
         services.AddScoped<SendSurveyReminderJob>();   // recurring 7-day reminder (RecurringJobExtensions)
 
