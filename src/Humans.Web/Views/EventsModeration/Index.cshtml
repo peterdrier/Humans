@@ -75,7 +75,7 @@ else
                             </div>
                             <div class="d-flex gap-2 align-items-center">
                                 <span class="badge bg-secondary">@evt.CategoryName</span>
-                                <small class="text-muted">@evt.StartAt.ToString("d MMM HH:mm") &middot; @evt.DurationMinutes min</small>
+                                <small class="text-muted">@evt.StartAt.ToDisplayMonthDayTime() &middot; @evt.DurationMinutes min</small>
                                 @if (evt.DuplicateCandidates.Count > 0)
                                 {
                                     <span class="badge bg-warning text-dark" title="Potential duplicate"><i class="fa-solid fa-triangle-exclamation"></i></span>
@@ -113,7 +113,7 @@ else
                                     }
 
                                     <dt class="col-sm-3">Date / Time</dt>
-                                    <dd class="col-sm-9">@evt.StartAt.ToString("ddd d MMM yyyy, HH:mm") (@evt.DurationMinutes min)</dd>
+                                    <dd class="col-sm-9">@evt.StartAt.ToDisplayWeekdayDateTime() (@evt.DurationMinutes min)</dd>
 
                                     @if (!string.IsNullOrEmpty(evt.LocationNote))
                                     {
@@ -146,7 +146,7 @@ else
                                         {
                                             <li class="mb-1">
                                                 <strong>@dup.Title</strong>
-                                                — @dup.StartAt.ToString("d MMM HH:mm") (@dup.DurationMinutes min)
+                                                — @dup.StartAt.ToDisplayMonthDayTime() (@dup.DurationMinutes min)
                                                 <span class="badge bg-secondary">@dup.Status</span>
                                             </li>
                                         }

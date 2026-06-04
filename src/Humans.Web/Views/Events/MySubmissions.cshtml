@@ -94,7 +94,7 @@
                             <tr>
                                 <td>@evt.Title</td>
                                 <td>@evt.CategoryName</td>
-                                <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                <td>@evt.StartAt.ToDisplayWeekdayDayMonthTime()</td>
                                 <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
                                 <td>
                                     @if (evt.CanEdit)
@@ -187,7 +187,7 @@
                                 <tr>
                                     <td>@evt.Title</td>
                                     <td>@evt.CategoryName</td>
-                                    <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                    <td>@evt.StartAt.ToDisplayWeekdayDayMonthTime()</td>
                                     <td>@evt.PriorityRank</td>
                                     <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
                                     <td>

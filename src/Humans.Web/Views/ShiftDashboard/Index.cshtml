@@ -64,7 +64,7 @@
                         @string.Format(Localizer["ShiftDash_Countdown_Days"].Value, daysToBuild)
                         <span class="text-muted fs-6 fw-normal ms-2">@weeksPart</span>
                     </div>
-                    <div class="text-muted small">@string.Format(Localizer["ShiftDash_Countdown_FirstDay"].Value, firstBuildDay.ToString("ddd, MMM d", null))</div>
+                    <div class="text-muted small">@string.Format(Localizer["ShiftDash_Countdown_FirstDay"].Value, firstBuildDay.ToDisplayWeekdayDayMonth())</div>
                 }
                 else if (daysToBuild == 0)
                 {
@@ -172,15 +172,15 @@
                     Showing
                     @if (Model.FilterStartDate.HasValue && Model.FilterEndDate.HasValue)
                     {
-                        <strong>@Model.FilterStartDate.Value.ToString("MMM d", null) – @Model.FilterEndDate.Value.ToString("MMM d yyyy", null)</strong>
+                        <strong>@Model.FilterStartDate.Value.ToDisplayMonthDay() – @Model.FilterEndDate.Value.ToDisplayDate()</strong>
                     }
                     else if (Model.FilterStartDate.HasValue)
                     {
-                        <text>from <strong>@Model.FilterStartDate.Value.ToString("MMM d yyyy", null)</strong> onwards</text>
+                        <text>from <strong>@Model.FilterStartDate.Value.ToDisplayDate()</strong> onwards</text>
                     }
                     else
                     {
-                        <text>up to <strong>@Model.FilterEndDate!.Value.ToString("MMM d yyyy", null)</strong></text>
+                        <text>up to <strong>@Model.FilterEndDate!.Value.ToDisplayDate()</strong></text>
                     }
                 </div>
             }

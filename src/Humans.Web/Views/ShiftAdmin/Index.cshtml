@@ -530,7 +530,7 @@
                                                         {
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Start</label>
-                                                                <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
+                                                                <input type="time" name="StartTime" value="@DateFormattingExtensions.TimeOfDayPattern.Format(shift.StartTime)" class="form-control form-control-sm" />
                                                             </div>
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Hours</label>

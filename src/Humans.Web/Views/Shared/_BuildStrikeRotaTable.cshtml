@@ -97,10 +97,10 @@ else
         <script type="application/json" class="js-user-signups-data">
             @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 Model.UserActiveSignups.Select(u => new {
-                    date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    date = u.Date.ToIsoDateString(),
                     rota = u.RotaName,
-                    absStart = u.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                    absEnd = u.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                    absStart = DateFormattingExtensions.ToIso8601(u.AbsoluteStart),
+                    absEnd = DateFormattingExtensions.ToIso8601(u.AbsoluteEnd),
                     displayStart = u.DisplayStart,
                     displayEnd = u.DisplayEnd
                 })))
@@ -110,8 +110,8 @@ else
                 Model.RotaWindowsByDayOffset.ToDictionary(
                     kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     kv => new {
-                        absStart = kv.Value.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                        absStart = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteStart),
+                        absEnd = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteEnd),
                         displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayShiftDate()
                     })))
         </script>

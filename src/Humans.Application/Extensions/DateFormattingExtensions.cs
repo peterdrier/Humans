@@ -71,6 +71,9 @@ public static class DateFormattingExtensions
     public static string? ToDisplayDateTime(this DateTime? value) =>
         value?.ToDisplayDateTime();
 
+    public static string ToDisplayDateTime(this LocalDateTime value) =>
+        value.ToDateTimeUnspecified().ToDisplayDateTime();
+
     public static string ToDisplayDateTime(this Instant value, DateTimeZone timeZone) =>
         value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayDateTime();
 
@@ -179,6 +182,33 @@ public static class DateFormattingExtensions
     public static string ToTimeWithSeconds(this DateTimeOffset value) =>
         value.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
 
+    // --- Canonical view display formats (current culture). One per concept; views normalise onto these. ---
+
+    /// <summary>Weekday + date with year, "ddd d MMM yyyy" (e.g. "Fri 5 Jun 2026").</summary>
+    public static string ToDisplayWeekdayDate(this DateTime value) =>
+        value.ToString("ddd d MMM yyyy", CultureInfo.CurrentCulture);
+
+    public static string ToDisplayWeekdayDate(this LocalDate value) =>
+        value.ToString("ddd d MMM yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>Weekday + date + time with year, "ddd d MMM yyyy HH:mm".</summary>
+    public static string ToDisplayWeekdayDateTime(this DateTime value) =>
+        value.ToString("ddd d MMM yyyy HH:mm", CultureInfo.CurrentCulture);
+
+    public static string ToDisplayWeekdayDateTime(this LocalDateTime value) =>
+        value.ToDateTimeUnspecified().ToDisplayWeekdayDateTime();
+
+    /// <summary>Weekday + date + time, no year, "ddd d MMM HH:mm".</summary>
+    public static string ToDisplayWeekdayDayMonthTime(this DateTime value) =>
+        value.ToString("ddd d MMM HH:mm", CultureInfo.CurrentCulture);
+
+    public static string ToDisplayWeekdayDayMonthTime(this LocalDateTime value) =>
+        value.ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
+
+    /// <summary>Day + month + time, no year, "d MMM HH:mm".</summary>
+    public static string ToDisplayMonthDayTime(this DateTime value) =>
+        value.ToString("d MMM HH:mm", CultureInfo.CurrentCulture);
+
     public static string ToDisplayWeekdayDayMonth(this DateTime value) =>
         value.ToString("ddd d MMM", CultureInfo.CurrentCulture);
 
@@ -204,6 +234,10 @@ public static class DateFormattingExtensions
 
     public static string ToInvariantUtcMinuteLabel(this DateTime value) =>
         value.ToString("uuuu-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+
+    /// <summary>ISO-8601 UTC instant to seconds, "uuuu-MM-ddTHH:mm:ssZ" (machine/data attributes).</summary>
+    public static string ToIso8601(this Instant value) =>
+        InstantPattern.General.Format(value);
 
     // --- Filename / export stamps ---
 

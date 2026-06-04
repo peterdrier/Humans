@@ -116,4 +116,16 @@ public static class DateTimeDisplayExtensions
 
     public static string? ToAuditMinuteTimestamp(this Instant? value) =>
         value?.ToAuditMinuteTimestamp();
+
+    public static string ToDisplayWeekdayDate(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).Date.ToDisplayWeekdayDate();
+
+    public static string ToDisplayWeekdayDateTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayWeekdayDateTime();
+
+    public static string ToDisplayWeekdayDayMonthTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
+
+    public static string ToDisplayMonthDayTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayMonthDayTime();
 }
