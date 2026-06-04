@@ -140,7 +140,38 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
             .Cells.Single(c => c.ShiftObligationId == powerId);
         cell.Done.Should().Be(3);           // 2 + 1, ignoring the non-member's 5
         cell.Required.Should().Be(8);       // override beats default 6
-        cell.UnderMembered.Should().BeTrue(); // 2 active members < 8
+        cell.UnderMembered.Should().BeTrue(); // unmet (3 < 8) AND 2 active members < 8
+    }
+
+    [HumansFact]
+    public async Task Cell_MetButUnderMembered_DoesNotFlagUnderMembered()
+    {
+        // The "Yes! 4/2 with 1 member" case: a single member did 4 shifts, meeting the
+        // requirement of 2. The cell is met (done >= required), so it must NOT warn it
+        // can't be met — even though only 1 member joined (fewer than required).
+        var teamId = Guid.NewGuid();
+        var powerId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.ElectricalGridConnected, defaultRequired: 2, sortOrder: 0);
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var soleMember = Guid.NewGuid();
+        SeedBarrioWithMembers(
+            "Yes!", "yes", ElectricalGrid.Yellow,
+            (soleMember, CampMemberStatus.Active));
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [soleMember] = 4 });
+
+        var m = await _sut.GetComplianceMatrixAsync(2026);
+
+        var cell = m.Rows.Single(r => string.Equals(r.BarrioName, "Yes!", StringComparison.Ordinal))
+            .Cells.Single(c => c.ShiftObligationId == powerId);
+        cell.Done.Should().Be(4);
+        cell.Required.Should().Be(2);
+        cell.UnderMembered.Should().BeFalse(); // met (4 >= 2): never flagged, despite 1 member < 2
     }
 
     [HumansFact]

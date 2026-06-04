@@ -96,7 +96,11 @@ public sealed class ShiftObligationService : IShiftObligationService
                 var counts = countsByFunction[function.Id];
                 var done = DoneFor(counts, activeMemberIds);
                 var required = RequiredFor(overrideLookup, season.Id, function);
-                var underMembered = applicable && activeMemberCount < required;
+                // Only warn when the cell actually can't be met: it must be applicable,
+                // still unmet (done < required), AND have too few in-app members to ever
+                // reach the requirement. A met cell never warns, and an unmet cell with
+                // enough members is just "not done yet", not under-membered.
+                var underMembered = applicable && done < required && activeMemberCount < required;
 
                 cells.Add(new ObligationCell(function.Id, applicable, done, required, underMembered));
             }

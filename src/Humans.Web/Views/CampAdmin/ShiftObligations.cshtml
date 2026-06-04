@@ -102,7 +102,7 @@ else
                                         @if (cell.UnderMembered)
                                         {
                                             <i class="fa-solid fa-triangle-exclamation text-warning ms-1"
-                                               title="Under-membered: fewer active members than required shifts"></i>
+                                               title="Only @row.ActiveMemberCount of this barrio's humans have joined in the app — fewer than the @cell.Required shifts required, so this can't be met yet."></i>
                                         }
                                     </td>
                                 }
@@ -113,6 +113,21 @@ else
             </table>
         </div>
     </div>
+
+    <ul class="list-inline small text-muted mb-4">
+        <li class="list-inline-item me-3">
+            <span class="badge table-success border">&nbsp;&nbsp;</span> Met (done &ge; required)
+        </li>
+        <li class="list-inline-item me-3">
+            <span class="badge table-danger border">&nbsp;&nbsp;</span> Not met
+        </li>
+        <li class="list-inline-item me-3">
+            <i class="fa-solid fa-triangle-exclamation text-warning"></i> Too few members joined to meet it
+        </li>
+        <li class="list-inline-item">
+            &mdash; Not applicable to this barrio
+        </li>
+    </ul>
 }
 
 @* Nobodies org — exempt (dropped from the matrix; owe nothing). *@
