@@ -319,12 +319,7 @@ public class StoreService(
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        // All orders belong to one camp season; reprice against that season's catalog year,
-        // resolving it from the season for legacy Year == 0 rows (#878 review).
-        var priceYear = orders.Select(o => o.Year).FirstOrDefault(y => y > 0);
-        if (priceYear == 0)
-            priceYear = (await campService.GetCampSeasonByIdAsync(campSeasonId, ct))?.Year ?? 0;
-        var currentPrices = await LoadCurrentPricesAsync([priceYear], ct);
+        var currentPrices = await LoadCurrentPricesAsync(orders.Select(o => o.Year), ct);
         var result = new List<OrderDto>(orders.Count);
         foreach (var o in orders)
             result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
@@ -337,7 +332,7 @@ public class StoreService(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync([await ResolvePriceYearAsync(o, ct)], ct);
+        var currentPrices = await LoadCurrentPricesAsync([o.Year], ct);
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
@@ -890,20 +885,6 @@ public class StoreService(
     /// price. Bulk callers pass every order's year so each year's catalog loads once
     /// (nobodies-collective/Humans#816).
     /// </summary>
-    /// <summary>
-    /// The catalog year to reprice an order against: its own <see cref="StoreOrder.Year"/>,
-    /// or — for a legacy camp order still at <c>Year == 0</c> — the year resolved from its
-    /// camp season, so legacy open orders still reprice instead of silently falling back to
-    /// snapshots (#878 review).
-    /// </summary>
-    private async Task<int> ResolvePriceYearAsync(StoreOrder order, CancellationToken ct)
-    {
-        if (order.Year > 0) return order.Year;
-        if (order.CampSeasonId is { } campSeasonId)
-            return (await campService.GetCampSeasonByIdAsync(campSeasonId, ct))?.Year ?? 0;
-        return 0;
-    }
-
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         IEnumerable<int> years,
         CancellationToken ct)
