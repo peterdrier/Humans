@@ -8,6 +8,20 @@
         <h1 class="mb-3">Welcome — let's start with your name</h1>
         <p class="text-muted mb-4">Two short steps before you pick a shift.</p>
 
+        <div class="alert alert-info small" role="note">
+            <p class="mb-2">
+                <strong>Legal name</strong> — Kept internally, visible only to Admins, and used only
+                where Spanish law requires it — for example, our audit record that you agreed to the
+                Volunteer Agreement on a specific date and time. We explicitly do <strong>not</strong>
+                export this information, and would only disclose it if required by law or a formal audit.
+            </p>
+            <p class="mb-0">
+                <strong>Burner name</strong> — The name everyone in the system sees. Uniqueness helps
+                but isn't required, though it may be hard to find "Bob" among the few thousand humans
+                here if someone comes looking for you.
+            </p>
+        </div>
+
         <form asp-action="Names" method="post">
             <div class="mb-3">
                 <label asp-for="FirstName" class="form-label"></label>

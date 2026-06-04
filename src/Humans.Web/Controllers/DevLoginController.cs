@@ -65,6 +65,10 @@ public class DevLoginController(
         try
         {
             resolvedUserId = await personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
+            // No-Name persona: re-blank the legal names on every sign-in so the
+            // onboarding name-gate (#812) re-triggers each time it's used.
+            if (string.Equals(info.Slug, "no-name", StringComparison.OrdinalIgnoreCase))
+                await personaSeeder.ResetLegalNamesAsync(resolvedUserId);
             if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
                 await personaSeeder.EnsureCoordinatorTeamsAsync(resolvedUserId);
             if (DevPersonaSeeder.IsBarrioLeadSlug(info.Slug))
@@ -155,6 +159,7 @@ public class DevLoginController(
         var list = new List<DevPersonaInfo>
         {
             new("guest", "Guest (No Profile)"),
+            new("no-name", "No Name (gate test)"),
             new("volunteer", "Volunteer"),
             new("barrio-1-lead", "Barrio 1 Lead"),
             new("barrio-2-lead", "Barrio 2 Lead"),
