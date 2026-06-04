@@ -43,6 +43,15 @@
         This list is empty until it is set.
     </div>
 }
+else if (!report.StripeQueried)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The Store Stripe key is set but the session list could not be read (missing
+        <code>checkout_session:read</code> scope). Matching and orphan checks are suppressed
+        until it is fixed.
+    </div>
+}
 
 <div class="card mb-4">
     <div class="card-body d-flex flex-wrap align-items-center gap-3">
@@ -62,7 +71,7 @@
                     </button>
                 </form>
             }
-            else
+            else if (report.StripeQueried)
             {
                 <span class="text-success"><i class="fa-solid fa-check me-1"></i>Stripe and the ledger are reconciled.</span>
             }
@@ -95,7 +104,7 @@ else
                     {
                         var (css, label) = StatusBadge(row.Status);
                         <tr>
-                            <td>@(row.CreatedAt?.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                            <td>@(row.CreatedAt?.ToAuditMinuteTimestamp() ?? "—")</td>
                             <td class="text-end">@(row.AmountEur.HasValue ? $"€{row.AmountEur.Value:0.00}" : "—")</td>
                             <td><span class="badge @css">@label</span></td>
                             <td>
@@ -136,7 +145,7 @@ else
                     @foreach (var o in report.Orphans)
                     {
                         <tr>
-                            <td>@o.ReceivedAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@o.ReceivedAt.ToAuditMinuteTimestamp()</td>
                             <td class="text-end">€@o.AmountEur.ToString("0.00")</td>
                             <td><a asp-controller="Store" asp-action="Order" asp-route-id="@o.OrderId">@(o.OrderLabel ?? o.OrderId.ToString())</a></td>
                             <td><code class="small">@o.PaymentIntentId</code></td>

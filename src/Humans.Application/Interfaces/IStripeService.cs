@@ -57,10 +57,13 @@ public interface IStripeService : IApplicationService
     /// Lists every Checkout Session on the Store account (Stripe returns them newest-first),
     /// each projected to <see cref="StoreCheckoutSessionData"/>. Used by Store payment
     /// reconciliation to diff Stripe (source of truth) against recorded payments. Reads with
-    /// the existing Store key (checkout_session Write ⊇ Read). Returns an empty list when the
-    /// Store key is unset or lacks read scope (logged internally) — never throws for those.
+    /// the existing Store key (checkout_session Write ⊇ Read).
+    /// Returns <c>null</c> when Stripe could not be queried (Store key unset or missing read
+    /// scope; logged internally) — callers must treat that as "unknown", not "no sessions",
+    /// so they don't false-flag recorded payments as orphans. An empty (non-null) list means
+    /// Stripe was queried successfully and returned no sessions.
     /// </summary>
-    Task<IReadOnlyList<StoreCheckoutSessionData>> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
 
 /// <summary>Fee and payment method data extracted from a Stripe PaymentIntent's charge.</summary>

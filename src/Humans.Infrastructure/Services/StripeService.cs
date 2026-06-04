@@ -232,13 +232,13 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
         return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);
     }
 
-    public async Task<IReadOnlyList<StoreCheckoutSessionData>> ListStoreCheckoutSessionsAsync(
+    public async Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(
         CancellationToken ct = default)
     {
         if (!_settings.IsStoreCheckoutConfigured)
         {
-            logger.LogWarning("Store Checkout Session list requested while STRIPE_STORE_KEY is unset; returning empty.");
-            return [];
+            logger.LogWarning("Store Checkout Session list requested while STRIPE_STORE_KEY is unset; Stripe not queried.");
+            return null;
         }
 
         var client = new StripeClient(_settings.StoreKey);
@@ -256,7 +256,7 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
             logger.LogWarning(
                 "Stripe permission_error listing Store Checkout Sessions: the Store key is missing checkout_session:read scope. {Message}",
                 ex.Message);
-            return [];
+            return null;
         }
 
         return results;

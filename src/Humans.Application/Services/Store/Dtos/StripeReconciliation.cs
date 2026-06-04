@@ -44,9 +44,15 @@ public sealed record StripeOrphanPayment(
 /// Full reconciliation report for the Store Stripe Payments admin screen: webhook/checkout
 /// health, every Stripe payment matched to its order, and recorded payments orphaned from Stripe.
 /// </summary>
+/// <param name="StripeQueried">
+/// True when the Stripe session list was actually read. False when Stripe could not be queried
+/// (key unset or missing read scope) — in which case <see cref="Orphans"/> is empty rather than
+/// false-flagging every recorded payment as an orphan.
+/// </param>
 public sealed record StripeReconciliationReport(
     bool WebhookConfigured,
     bool CheckoutConfigured,
+    bool StripeQueried,
     IReadOnlyList<StripeReconciliationRow> Rows,
     IReadOnlyList<StripeOrphanPayment> Orphans)
 {

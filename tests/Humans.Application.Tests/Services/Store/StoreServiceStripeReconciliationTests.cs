@@ -129,6 +129,26 @@ public class StoreServiceStripeReconciliationTests
 
         report.WebhookConfigured.Should().BeFalse();
         report.CheckoutConfigured.Should().BeTrue();
+        report.StripeQueried.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_suppresses_orphans_when_stripe_unavailable()
+    {
+        var order = Guid.NewGuid();
+        // Stripe could not be queried (key unset or missing read scope) → null, not empty list.
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<StoreCheckoutSessionData>?)null);
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
+        {
+            new("pi_x", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0)),
+        });
+
+        var report = await _service.GetStripeReconciliationAsync();
+
+        report.StripeQueried.Should().BeFalse();
+        report.Orphans.Should().BeEmpty(); // recorded payment is NOT false-flagged as an orphan
+        report.Rows.Should().BeEmpty();
     }
 
     [HumansFact]

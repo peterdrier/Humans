@@ -668,7 +668,9 @@ public class StoreService(
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
     {
-        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var stripeQueried = sessionsOrNull is not null;
+        var sessions = sessionsOrNull ?? [];
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
         var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
 
@@ -694,20 +696,25 @@ public class StoreService(
                 ClassifyStripeSession(s, order, recordedPis)));
         }
 
-        // Orphans: recorded Stripe payments whose PI is absent from the current Stripe list.
+        // Orphans: recorded Stripe payments whose PI is absent from the Stripe list — but only
+        // when Stripe was actually queried. If it couldn't be read, an empty session list does
+        // NOT mean those payments are orphans, so skip the check entirely.
         var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
             .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
-        var orphans = recorded
-            .Where(p => !stripePis.Contains(p.PaymentIntentId))
-            .Select(p => new StripeOrphanPayment(
-                p.PaymentIntentId, p.OrderId,
-                orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
-                p.AmountEur, p.ReceivedAt))
-            .ToList();
+        var orphans = stripeQueried
+            ? recorded
+                .Where(p => !stripePis.Contains(p.PaymentIntentId))
+                .Select(p => new StripeOrphanPayment(
+                    p.PaymentIntentId, p.OrderId,
+                    orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
+                    p.AmountEur, p.ReceivedAt))
+                .ToList()
+            : new List<StripeOrphanPayment>();
 
         return new StripeReconciliationReport(
             stripeService.IsStoreWebhookConfigured,
             stripeService.IsStoreCheckoutConfigured,
+            stripeQueried,
             rows,
             orphans);
     }
@@ -727,7 +734,7 @@ public class StoreService(
     public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
         Guid actorUserId, CancellationToken ct = default)
     {
-        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
         var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
 
