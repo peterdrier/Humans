@@ -119,8 +119,9 @@ public sealed class ShiftObligationService : IShiftObligationService
         }
 
         var camps = await campServiceRead.GetCampsForYearAsync(season.Year, ct);
-        var seasonInfo = camps
-            .SelectMany(c => c.Seasons)
+        // Same season-status gate as the matrix (ResolveActiveSeasons): a Pending/Rejected
+        // season is not part of the matrix, so it has no detail to render either.
+        var seasonInfo = ResolveActiveSeasons(camps, season.Year)
             .FirstOrDefault(s => s.Id == campSeasonId);
         if (seasonInfo is null)
         {
@@ -375,7 +376,10 @@ public sealed class ShiftObligationService : IShiftObligationService
         }
 
         var grid = season.ElectricalGrid;
-        var connected = grid is ElectricalGrid.Yellow or ElectricalGrid.Red;
+        // Exclusion-based on purpose: any *real* grid value counts as connected, so a future
+        // grid colour (e.g. Orange) is included automatically without touching this code.
+        // Norg is already removed in Layer A (global exemption).
+        var connected = grid is not (null or ElectricalGrid.OwnSupply or ElectricalGrid.Unknown);
         if (connected)
         {
             return true;

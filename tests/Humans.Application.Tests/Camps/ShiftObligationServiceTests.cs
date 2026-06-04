@@ -171,6 +171,53 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         func.NotYetSignedUpNames.Should().Contain("Carol");
     }
 
+    [HumansFact]
+    public async Task Matrix_PowerApplicability_IsExclusionBased_OnlyOwnSupplyUnknownAndUnsetAreOffGrid()
+    {
+        // Pins decision 10b: ElectricalGridConnected applicability is exclusion-based.
+        // Any grid value that is NOT in {OwnSupply, Unknown, null} counts as connected,
+        // so a future grid colour is included automatically. If this test breaks after
+        // adding an ElectricalGrid value, the new value should be classified here, not
+        // silently treated as off-grid.
+        var nonApplicable = new HashSet<ElectricalGrid?>
+        {
+            ElectricalGrid.OwnSupply,
+            ElectricalGrid.Unknown,
+            null,
+        };
+
+        // Every enum value except the globally-exempt Norg, plus the unset (null) case.
+        var grids = Enum.GetValues<ElectricalGrid>()
+            .Where(g => g != ElectricalGrid.Norg)
+            .Cast<ElectricalGrid?>()
+            .Append(null)
+            .ToList();
+
+        var teamId = Guid.NewGuid();
+        var powerId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.ElectricalGridConnected, defaultRequired: 6, sortOrder: 0);
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        SeedBarrios(grids
+            .Select((g, i) => ($"Camp {i}", $"camp-{i}", g))
+            .ToArray());
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        var m = await _sut.GetComplianceMatrixAsync(2026);
+
+        foreach (var (grid, index) in grids.Select((g, i) => (g, i)))
+        {
+            var row = m.Rows.Single(r => string.Equals(r.BarrioName, $"Camp {index}", StringComparison.Ordinal));
+            var applicable = row.Cells.Single(c => c.ShiftObligationId == powerId).Applicable;
+            applicable.Should().Be(!nonApplicable.Contains(grid),
+                $"grid {grid?.ToString() ?? "null"} should be {(nonApplicable.Contains(grid) ? "off-grid" : "connected")}");
+        }
+    }
+
     // ----- helpers ----------------------------------------------------------
 
     private async Task<Guid> SeedFunctionAsync(
