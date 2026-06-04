@@ -75,13 +75,13 @@
                                     <div class="d-flex flex-wrap gap-2 mb-2">
                                         @foreach (var slot in role.FilledSlots)
                                         {
-                                            <div class="d-inline-flex align-items-center gap-1">
-                                                <vc:human user-id="@slot.UserId" layout="Avatar" size="36" />
+                                            <div class="d-inline-flex align-items-center gap-2 border rounded-pill px-2 py-1">
+                                                <vc:human user-id="@slot.UserId" layout="AvatarName" size="32" />
                                                 @if (Model.RolesPanel.CanManage)
                                                 {
                                                     <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
                                                         @Html.AntiForgeryToken()
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1 lh-1" title="Remove this assignment" data-confirm="Remove this assignment?">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-0 lh-1" title="Remove this assignment" data-confirm="Remove this assignment?">
                                                             <i class="fa-solid fa-xmark"></i>
                                                         </button>
                                                     </form>
@@ -91,16 +91,21 @@
                                     </div>
                                 }
 
-                                @if (Model.RolesPanel.CanManage)
+                                @if (Model.RolesPanel.CanManage && role.EmptySlotCount > 0)
                                 {
                                     var alreadyInRole = role.FilledSlots.Select(s => s.UserId).ToList();
-                                    @for (var i = 0; i < role.EmptySlotCount; i++)
-                                    {
-                                        <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
+                                    var addId = $"role-add-{role.DefinitionId:N}";
+                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="collapse" data-bs-target="#@addId"
+                                            aria-expanded="false" aria-controls="@addId">
+                                        <i class="fa-solid fa-plus me-1"></i> Add to role
+                                    </button>
+                                    <div class="collapse mt-2" id="@addId">
+                                        <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2" style="max-width: 22rem;">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
                                             <vc:human-search field-name="userId"
-                                                             instance-key="@($"role-{role.DefinitionId:N}-slot-{i}")"
+                                                             instance-key="@($"role-{role.DefinitionId:N}")"
                                                              placeholder="Search humans…"
                                                              exclude-user-ids="@alreadyInRole"
                                                              scope="Name" />
@@ -108,7 +113,7 @@
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
-                                    }
+                                    </div>
                                 }
                             </div>
                         }
