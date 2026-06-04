@@ -467,6 +467,22 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return row is null ? null : (row.Id, row.Name, row.TeamId);
     }
 
+    public async Task<IReadOnlyList<(Guid RotaId, string RotaName, Guid TeamId)>> ListRotaCoresAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // No display ordering here — the service orders by name after resolving
+        // team display data (see memory/architecture/display-sort-in-controllers.md).
+        var rows = await ctx.Rotas
+            .AsNoTracking()
+            .Where(r => r.EventSettingsId == eventSettingsId)
+            .Select(r => new { r.Id, r.Name, r.TeamId })
+            .ToListAsync(ct);
+
+        return rows.Select(r => (r.Id, r.Name, r.TeamId)).ToList();
+    }
+
     public async Task<int> GetStalePendingSignupCountAsync(
         IReadOnlyCollection<Guid> shiftIds,
         Instant staleThreshold,

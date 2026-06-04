@@ -173,6 +173,86 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo([-3, -2, -1]);
     }
 
+    // ============================================================
+    // ListRotasAsync — name-based picker source (cross-section read)
+    // ============================================================
+
+    [HumansFact]
+    public async Task ListRotasAsync_ReturnsActiveEventRotas_OrderedByName_WithResolvedTeamName()
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event); // team "Test Department", rota "Test Rota"
+
+        // Second rota in the SAME active event, earlier alphabetically, owned by
+        // a different team — exercises ordering + per-rota TeamName resolution.
+        var otherTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "LnT",
+            Slug = "lnt",
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        Db.Teams.Add(otherTeam);
+        Db.Rotas.Add(new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = otherTeam.Id,
+            Name = "Shit-ninja",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        });
+
+        // Rota in a DIFFERENT (inactive) event — must be excluded.
+        var inactiveEvent = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Old Event",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2025, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        Db.EventSettings.Add(inactiveEvent);
+        Db.Rotas.Add(new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = inactiveEvent.Id,
+            TeamId = rota.TeamId,
+            Name = "Archived",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        });
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ListRotasAsync();
+
+        result.Should().HaveCount(2); // active-event rotas only ("Archived" excluded)
+        // Ordered by name; TeamName resolved per-rota via ITeamServiceRead.
+        result[0].Name.Should().Be("Shit-ninja");
+        result[0].TeamName.Should().Be("LnT");
+        result[1].Name.Should().Be("Test Rota");
+        result[1].TeamName.Should().Be("Test Department");
+    }
+
+    [HumansFact]
+    public async Task ListRotasAsync_ReturnsEmpty_WhenNoActiveEvent()
+    {
+        var result = await _service.ListRotasAsync();
+        result.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateShiftAsync_CreatesShift_WhenInputMatchesRotaPeriodAndTeam()
     {

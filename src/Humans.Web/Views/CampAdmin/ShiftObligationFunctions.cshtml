@@ -99,7 +99,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Target type</label>
-                <select name="TargetType" class="form-select form-select-sm">
+                <select name="TargetType" id="targetTypeSelect" class="form-select form-select-sm">
                     @foreach (var t in Enum.GetValues<ShiftObligationTargetType>())
                     {
                         <option value="@t" selected="@(t == Model.Form.TargetType)">@t</option>
@@ -116,10 +116,28 @@
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Target Id (Team or Rota GUID)</label>
-                <input type="text" name="TargetId" class="form-control form-control-sm" required
-                       value="@(Model.Form.TargetId == Guid.Empty ? "" : Model.Form.TargetId.ToString())"
-                       pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$" />
+                <label class="form-label">Target</label>
+                @* Name-based picker mirroring the HumanSearch autocomplete: a visible
+                   text input (the name), a hidden input that posts the GUID as TargetId,
+                   and a substring-filtered dropdown over a server-embedded list. The
+                   Target type select above switches the data source (teams vs rotas). *@
+                <div class="target-search-wrapper position-relative">
+                    <input type="text"
+                           id="target-search-input"
+                           class="form-control form-control-sm"
+                           placeholder="Search teams by name…"
+                           value="@(Model.SelectedTargetName ?? "")"
+                           autocomplete="off" />
+                    <input type="hidden"
+                           name="TargetId"
+                           id="target-search-hidden"
+                           value="@(Model.Form.TargetId == Guid.Empty ? "" : Model.Form.TargetId.ToString())" />
+                    <ul id="target-search-dropdown"
+                        class="list-group shadow-sm"
+                        style="display: none; position: fixed; max-height: 260px; overflow-y: auto; z-index: 2000; background: var(--h-bg-card, #fff); border: 1px solid var(--h-border, #ccc); border-radius: 4px;">
+                    </ul>
+                </div>
+                <div class="form-text">Pick a team or rota by name — the type selector switches the list.</div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Camp role slug</label>
@@ -161,3 +179,124 @@
         </form>
     </div>
 </div>
+
+@{
+    var teamOptionsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.TeamOptions.Select(o => new { id = o.Id.ToString(), name = o.Name }));
+    var rotaOptionsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.RotaOptions.Select(o => new { id = o.Id.ToString(), name = o.Name }));
+}
+
+@* Name-based Target picker. Mirrors Views/Shared/Components/HumanSearch/Default.cshtml
+   (visible text input + hidden GUID input + body-reparented fixed dropdown), but the
+   data source is embedded server-side and filtered locally — no AJAX. The Target type
+   select toggles between the team and rota lists. *@
+<script>
+(function () {
+    var teams = @Html.Raw(teamOptionsJson);
+    var rotas = @Html.Raw(rotaOptionsJson);
+
+    var typeSelect = document.getElementById('targetTypeSelect');
+    var textInput = document.getElementById('target-search-input');
+    var hiddenInput = document.getElementById('target-search-hidden');
+    var dropdown = document.getElementById('target-search-dropdown');
+    var isOpen = false;
+
+    // Reparent the dropdown to body so no parent stacking/clip applies (same as HumanSearch).
+    if (dropdown.parentNode !== document.body) {
+        document.body.appendChild(dropdown);
+    }
+
+    function currentSource() {
+        return typeSelect.value === 'Rota' ? rotas : teams;
+    }
+
+    function placeholderFor() {
+        return typeSelect.value === 'Rota' ? 'Search rotas by name…' : 'Search teams by name…';
+    }
+
+    function positionDropdown() {
+        var rect = textInput.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+    }
+
+    function showDropdown() {
+        positionDropdown();
+        dropdown.style.display = 'block';
+        isOpen = true;
+        window.addEventListener('scroll', positionDropdown, true);
+        window.addEventListener('resize', positionDropdown);
+    }
+
+    function hideDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        isOpen = false;
+        window.removeEventListener('scroll', positionDropdown, true);
+        window.removeEventListener('resize', positionDropdown);
+    }
+
+    function renderDropdown(items) {
+        dropdown.innerHTML = '';
+        if (!items || items.length === 0) {
+            hideDropdown();
+            return;
+        }
+        items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action py-2 px-3';
+            li.style.cursor = 'pointer';
+            li.textContent = item.name;
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                hiddenInput.value = item.id;
+                textInput.value = item.name;
+                hideDropdown();
+            });
+            dropdown.appendChild(li);
+        });
+        showDropdown();
+    }
+
+    function filterAndShow() {
+        var q = textInput.value.trim().toLowerCase();
+        var source = currentSource();
+        var matches = q.length === 0
+            ? source.slice(0, 50)
+            : source.filter(function (x) { return x.name.toLowerCase().indexOf(q) !== -1; });
+        renderDropdown(matches);
+    }
+
+    textInput.addEventListener('input', function () {
+        // Typing invalidates any prior selection until an item is picked.
+        hiddenInput.value = '';
+        filterAndShow();
+    });
+
+    textInput.addEventListener('focus', filterAndShow);
+
+    textInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideDropdown();
+    });
+
+    document.addEventListener('mousedown', function (e) {
+        if (!isOpen) return;
+        if (textInput.contains(e.target) || dropdown.contains(e.target)) return;
+        hideDropdown();
+    });
+
+    typeSelect.addEventListener('change', function () {
+        // Switching the target type swaps the data source; clear the selection so
+        // a team GUID can't survive into a rota target (or vice versa).
+        hiddenInput.value = '';
+        textInput.value = '';
+        textInput.placeholder = placeholderFor();
+        hideDropdown();
+    });
+
+    // Initial placeholder reflects the pre-selected type (matters on edit pre-fill).
+    textInput.placeholder = placeholderFor();
+})();
+</script>

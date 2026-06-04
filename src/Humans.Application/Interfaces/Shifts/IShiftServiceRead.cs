@@ -31,4 +31,14 @@ public interface IShiftServiceRead
     /// rota does not exist.
     /// </summary>
     Task<RotaTargetInfo?> GetRotaTargetInfoAsync(Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// All rotas in the active event as lightweight (id, name, owning-team name)
+    /// list items, ordered by name. The owning team's display name is resolved
+    /// via <c>ITeamServiceRead</c> (the stripped <c>Rota.Team</c> nav is never
+    /// queried). Returns an empty list when there is no active event. Consumed by
+    /// the Camps shift-obligation functions config page to let admins pick a rota
+    /// target by name instead of pasting a GUID.
+    /// </summary>
+    Task<IReadOnlyList<RotaListItem>> ListRotasAsync(CancellationToken ct = default);
 }

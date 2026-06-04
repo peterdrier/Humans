@@ -70,9 +70,28 @@ public sealed class ShiftObligationFunctionsViewModel
     // Display name of the function being edited (null in create mode). Drives the
     // "Editing: {name}" note on the form.
     public string? EditTargetName { get; init; }
+
+    // Name-based pickers for the Target field — admins must never see/type a GUID.
+    // The view serializes these to JSON and a local substring filter drives the
+    // dropdown (same UX as HumanSearch, but no AJAX: the lists are tiny at this
+    // scale). Team names are plain; rota names carry the owning team for
+    // disambiguation, e.g. "Shit-ninja (LnT)".
+    public IReadOnlyList<TargetPickerOptionViewModel> TeamOptions { get; init; } =
+        Array.Empty<TargetPickerOptionViewModel>();
+
+    public IReadOnlyList<TargetPickerOptionViewModel> RotaOptions { get; init; } =
+        Array.Empty<TargetPickerOptionViewModel>();
+
+    // Visible name to pre-fill the Target picker's text input on edit (resolved
+    // from the matching option list per TargetType). Null/empty in create mode.
+    public string? SelectedTargetName { get; init; }
 }
 
 public sealed record CampRoleSlugOptionViewModel(string Slug, string Name);
+
+// One pickable Target option: the GUID submitted as TargetId plus the name the
+// admin sees and searches by.
+public sealed record TargetPickerOptionViewModel(Guid Id, string Name);
 
 public sealed record ShiftObligationFunctionRowViewModel(
     Guid Id, ShiftObligationTargetType TargetType, Guid TargetId, string TargetName,

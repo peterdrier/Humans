@@ -7,3 +7,10 @@ namespace Humans.Application.Interfaces.Shifts;
 /// never queried). Consumed by the Camps section's shift-obligation logic.
 /// </summary>
 public sealed record RotaTargetInfo(Guid RotaId, string RotaName, Guid TeamId, string TeamSlug);
+
+/// <summary>
+/// Lightweight rota list item for name-based pickers: the rota id, its name, and
+/// the owning team's display name (for disambiguation, e.g. "Shit-ninja (LnT)").
+/// The team name is resolved at the service layer via <c>ITeamServiceRead</c>.
+/// </summary>
+public sealed record RotaListItem(Guid Id, string Name, string TeamName);

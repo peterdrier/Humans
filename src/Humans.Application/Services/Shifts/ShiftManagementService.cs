@@ -162,6 +162,26 @@ public sealed class ShiftManagementService(
         return new RotaTargetInfo(core.Value.RotaId, core.Value.RotaName, core.Value.TeamId, team.Slug);
     }
 
+    public async Task<IReadOnlyList<RotaListItem>> ListRotasAsync(CancellationToken ct = default)
+    {
+        var active = await repo.GetActiveEventSettingsAsync(ct);
+        if (active is null) return Array.Empty<RotaListItem>();
+
+        var cores = await repo.ListRotaCoresAsync(active.Id, ct);
+        if (cores.Count == 0) return Array.Empty<RotaListItem>();
+
+        // Resolve owning-team display names via the cross-section read surface —
+        // the Rota.Team nav is stripped, so the repo only returns TeamId.
+        var teamsById = await TeamService.GetTeamsAsync(ct);
+        return cores
+            .Select(c => new RotaListItem(
+                c.RotaId,
+                c.RotaName,
+                teamsById.TryGetValue(c.TeamId, out var team) ? team.Name : string.Empty))
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
         repo.GetEventSettingsByIdAsync(id);
 

@@ -203,6 +203,16 @@ public partial interface IShiftManagementRepository : IRepository
         Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
+    /// Core rota target fields (id, name, owning team id) for every rota in the
+    /// given event, in unspecified order (the service applies display ordering).
+    /// The owning team's display name is resolved at the service layer via
+    /// <c>ITeamServiceRead</c> — the stripped <c>Rota.Team</c> nav is never
+    /// queried here.
+    /// </summary>
+    Task<IReadOnlyList<(Guid RotaId, string RotaName, Guid TeamId)>> ListRotaCoresAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
     /// Count of pending signups on any of the given shifts whose
     /// <see cref="ShiftSignup.CreatedAt"/> is before <paramref name="staleThreshold"/>.
     /// </summary>

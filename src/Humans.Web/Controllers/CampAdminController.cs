@@ -1,5 +1,8 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models.CampAdmin;
@@ -19,6 +22,8 @@ public class CampAdminController(
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
     IShiftObligationService shiftObligationService,
+    ITeamServiceRead teamService,
+    IShiftServiceRead shiftServiceRead,
     CampAdminPageBuilder campAdminPageBuilder,
     CampCsvExportBuilder campCsvExportBuilder,
     IUserServiceRead userService,
@@ -687,6 +692,20 @@ public class CampAdminController(
         var functions = await shiftObligationService.GetFunctionsAsync(ct);
         var roleDefs = await campRoleService.ListDefinitionsAsync(includeDeactivated: false, ct);
 
+        // Name-based Target picker option lists (admins never type a GUID). Teams
+        // by name; rotas by name with their owning team for disambiguation. Both
+        // are embedded server-side and filtered client-side — no AJAX needed at
+        // this scale.
+        var teamOptions = (await teamService.GetTeamsAsync(ct)).Values
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new TargetPickerOptionViewModel(t.Id, t.Name))
+            .ToList();
+        var rotaOptions = (await shiftServiceRead.ListRotasAsync(ct))
+            .Select(r => new TargetPickerOptionViewModel(
+                r.Id,
+                string.IsNullOrWhiteSpace(r.TeamName) ? r.Name : $"{r.Name} ({r.TeamName})"))
+            .ToList();
+
         // Pre-fill the form from the row the admin asked to edit (reusing the list
         // fetch above — no GetById on the service). Unknown editId falls through to
         // a blank create form with a warning.
@@ -698,7 +717,8 @@ public class CampAdminController(
                 SetInfo("That function no longer exists — showing a blank create form.");
         }
 
-        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions, roleDefs, editTarget));
+        return View("ShiftObligationFunctions",
+            BuildFunctionsViewModel(functions, roleDefs, teamOptions, rotaOptions, editTarget));
     }
 
     [HttpPost("ShiftObligations/Functions")]
@@ -744,6 +764,8 @@ public class CampAdminController(
     private static ShiftObligationFunctionsViewModel BuildFunctionsViewModel(
         IReadOnlyList<ShiftObligationConfigInfo> functions,
         IReadOnlyList<CampRoleDefinitionInfo> roleDefs,
+        IReadOnlyList<TargetPickerOptionViewModel> teamOptions,
+        IReadOnlyList<TargetPickerOptionViewModel> rotaOptions,
         ShiftObligationConfigInfo? editTarget = null)
     {
         var slugOptions = roleDefs
@@ -765,6 +787,20 @@ public class CampAdminController(
                 editTarget.CampRoleSlug, "(not a defined role)"));
         }
 
+        // On edit, resolve the visible name for the Target picker from the option
+        // list matching the function's TargetType. Falls back to the service's
+        // TargetName (then the GUID) if the target isn't in the active-event list
+        // (e.g. a rota from a prior event).
+        string? selectedTargetName = null;
+        if (editTarget is not null)
+        {
+            var pool = editTarget.TargetType == ShiftObligationTargetType.Team ? teamOptions : rotaOptions;
+            selectedTargetName = pool.FirstOrDefault(o => o.Id == editTarget.TargetId)?.Name
+                ?? (string.IsNullOrWhiteSpace(editTarget.TargetName)
+                    ? editTarget.TargetId.ToString()
+                    : editTarget.TargetName);
+        }
+
         return new ShiftObligationFunctionsViewModel
         {
             Functions = functions
@@ -775,6 +811,9 @@ public class CampAdminController(
                     f.Applicability, f.DefaultRequiredShiftCount, f.IsActive, f.SortOrder))
                 .ToList(),
             CampRoleSlugOptions = slugOptions,
+            TeamOptions = teamOptions,
+            RotaOptions = rotaOptions,
+            SelectedTargetName = selectedTargetName,
             EditTargetName = editTarget is null
                 ? null
                 : (string.IsNullOrWhiteSpace(editTarget.TargetName)
