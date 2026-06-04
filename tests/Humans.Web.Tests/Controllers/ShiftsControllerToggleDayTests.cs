@@ -177,8 +177,6 @@ public class ShiftsControllerToggleDayTests
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
         _signupService.SignUpAsync(userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
             .Returns(SignupResult.Ok(created));
-        // After-toggle read reflects the new signup so the rebuilt row shows signed-up.
-        _signupService.GetByUserAsync(userId).Returns([]);
         StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
         var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);

@@ -3,6 +3,24 @@
     var el = document.querySelector('input[name="__RequestVerificationToken"]');
     return el ? el.value : '';
   }
+  // Create, update, or remove the "My Shifts" tab count badge. The server only
+  // renders the badge when count > 0, so we must be able to add/remove it too.
+  function updateMineBadge(count) {
+    var tabs = document.querySelectorAll('.shifts-nav-tabs .nav-link');
+    var mineTab = tabs.length > 1 ? tabs[tabs.length - 1] : null;
+    if (!mineTab) return;
+    var badge = mineTab.querySelector('.badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'badge bg-primary ms-1';
+        mineTab.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
   function showToast(type, msg) {
     var c = document.querySelector('.shifts-toast-container');
     if (!c || !msg) return;
@@ -35,15 +53,19 @@
       var toastMsg = r.headers.get('X-Toast-Msg');
       var count = r.headers.get('X-My-Signup-Count');
       if (toastType && toastMsg) showToast(toastType, decodeURIComponent(toastMsg));
-      if (count !== null) {
-        var badge = document.querySelector('.shifts-nav-tabs .badge');
-        if (badge) badge.textContent = count;
-      }
+      if (count !== null) updateMineBadge(parseInt(count, 10));
       return r.text();
     }).then(function (html) {
       if (html === null || html === undefined) return;
       var row = btn.closest('tr');
-      if (row) row.outerHTML = html;
+      if (!row) return;
+      // Event-shift rows are followed by their own description <tr> (td.shift-description).
+      // The returned fragment already contains a fresh description row, so drop the stale
+      // sibling first — otherwise replacing only the main row orphans the old one and they
+      // accumulate on every toggle. Build/Strike flat rows have no description sibling.
+      var next = row.nextElementSibling;
+      if (next && next.querySelector('td.shift-description')) next.remove();
+      row.outerHTML = html;
     }).catch(function () {
       btn.disabled = false;
       btn.innerHTML = original;

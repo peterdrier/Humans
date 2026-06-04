@@ -115,8 +115,11 @@ public class ShiftsController(
                 nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
 
         if (await ShiftNeedsDietaryFirstAsync(user, shiftId))
+        {
+            SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
             return RedirectHeader(Url.Action(
                 "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
+        }
 
         var signups = await signupService.GetByUserAsync(user.Id);
         var existing = signups.FirstOrDefault(s =>
