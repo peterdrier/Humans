@@ -12,20 +12,21 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
 {
     public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
+        // Order applied by the service/consumer (display-sort lives above the repository).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Surveys
             .AsNoTracking()
-            .Include(s => s.Questions.OrderBy(q => q.PageNumber).ThenBy(q => q.Order))
-                .ThenInclude(q => q.Options.OrderBy(o => o.Order))
+            .Include(s => s.Questions)
+                .ThenInclude(q => q.Options)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
     }
 
     public async Task<IReadOnlyList<Survey>> GetAllSummariesAsync(CancellationToken ct = default)
     {
+        // No display ordering here — the admin controller sorts the index (hard rule).
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Surveys
             .AsNoTracking()
-            .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(ct);
     }
 
