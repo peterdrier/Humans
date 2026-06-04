@@ -1,15 +1,12 @@
-using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
 /// Shifts-owned I/O for user-oriented volunteer state:
-/// <c>volunteer_build_statuses</c>, <c>general_availability</c>, and the
-/// scoped Build-period signup read used by the gap detector. All methods
+/// <c>volunteer_build_statuses</c> and <c>general_availability</c>. All methods
 /// return materialized lists / nullable rows - no IQueryable leaks.
 /// </summary>
 [Section("Shifts")]
@@ -104,34 +101,4 @@ public interface IVolunteerTrackingRepository : IRepository
         int dayOffset,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// All eligible Build-period signups for the event: rows where
-    /// Shift.DayOffset ∈ [BuildStartOffset, 0), the rota's period
-    /// is Build or All, and Status ∈ {Confirmed, Pending}.
-    /// </summary>
-    Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
-        Guid eventSettingsId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns confirmed shift signups whose [StartsAtUtc, EndsAtUtc) overlaps the date range
-    /// (in event-local time). When <paramref name="departmentId"/> is non-null, restricts to
-    /// shifts whose rota belongs to that team.
-    /// </summary>
-    Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
-        Guid eventSettingsId,
-        LocalDate startDate,
-        LocalDate endDate,
-        Guid? departmentId,
-        CancellationToken ct);
 }
-
-/// <summary>
-/// Projection: just what the gap-detector needs for a single eligible signup.
-/// RotaName is the parent rota's display name, used by the heatmap partial
-/// to populate cell-click popovers.
-/// </summary>
-public sealed record EligibleBuildSignup(
-    Guid UserId,
-    int DayOffset,
-    SignupStatus Status,
-    string RotaName);
