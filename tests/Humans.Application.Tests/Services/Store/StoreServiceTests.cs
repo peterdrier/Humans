@@ -109,6 +109,7 @@ public class StoreServiceTests
             CounterpartyEmail: null,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: 25m,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
@@ -144,7 +145,7 @@ public class StoreServiceTests
             Year: 2026, Label: null, State: StoreOrderState.Open,
             CounterpartyName: null, CounterpartyVatId: null, CounterpartyAddress: null,
             CounterpartyCountryCode: null, CounterpartyEmail: null, IssuedInvoiceId: null,
-            Lines: [line], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
+            Lines: [line], Payments: [], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
             PaymentsTotalEur: 0m, BalanceEur: 2.83m, CreatedAt: orderStart);
 
         _audit.GetFilteredEntriesAsync(nameof(StoreProduct), productId, null,
@@ -1198,6 +1199,7 @@ public class StoreServiceTests
             CounterpartyEmail: email,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: balanceEur,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
