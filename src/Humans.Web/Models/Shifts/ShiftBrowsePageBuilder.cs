@@ -128,6 +128,33 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
         };
     }
 
+    /// <summary>
+    /// Rebuilds a single shift's display item plus the caller's signup state, for
+    /// re-rendering one browse-table row after a signup/cancel toggle (avoids
+    /// rebuilding the whole page). Resolves the active event and re-reads the shift
+    /// through the same <see cref="IShiftManagementService.GetBrowseShiftsAsync"/>
+    /// path <see cref="BuildAsync"/> uses, so the row's counts stay consistent.
+    /// </summary>
+    public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)> BuildRowAsync(
+        Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
+    {
+        // GetActiveAsync() is EventSettings? — guard for nullable + TreatWarningsAsErrors.
+        var es = await shiftManagement.GetActiveAsync()
+            ?? throw new InvalidOperationException("BuildRowAsync requires an active event.");
+
+        var flags = ShiftBrowseQueryFlags.IncludeSignups;
+        if (isPrivileged)
+            flags |= ShiftBrowseQueryFlags.IncludeAdminOnly | ShiftBrowseQueryFlags.IncludeHidden;
+
+        var shifts = await shiftManagement.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, null, null, null, flags));
+        var urgent = shifts.First(u => u.Shift.Id == shiftId);
+        var item = ShiftBrowseMapper.MapToDisplayItem(urgent, es);
+
+        var (signedShiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
+        return (item, signedShiftIds.Contains(shiftId), statuses.GetValueOrDefault(shiftId));
+    }
+
     private async Task<List<DepartmentShiftGroup>> BuildDepartmentGroupsAsync(
         IReadOnlyList<UrgentShift> shifts,
         EventSettings eventSettings)
