@@ -426,6 +426,13 @@ public sealed class CachingCampService(
     public Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default) =>
         InvalidateBySeasonAsync(campSeasonId, ct);
 
+    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateAllAsync" />
+    public Task InvalidateAllAsync(CancellationToken ct = default)
+    {
+        RefreshAll();
+        return Task.CompletedTask;
+    }
+
     private Task InvalidateCampAsync(
         Guid campId,
         CancellationToken ct,

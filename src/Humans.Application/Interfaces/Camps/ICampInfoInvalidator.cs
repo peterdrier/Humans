@@ -51,4 +51,13 @@ public interface ICampInfoInvalidator : IInvalidator
     /// rebuilds from <c>ICampRepository</c>.
     /// </summary>
     Task InvalidateSettingsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Drop the entire cached <c>CampInfo</c> projection; the next read rebuilds it
+    /// from <c>ICampRepository</c>. Use when a change spans an unbounded set of camps —
+    /// e.g. a camp-role <i>definition</i> rename/reorder/(de)activation, which can shift
+    /// the cached role names/ordering of members in any camp and so has no single
+    /// camp/season id to target.
+    /// </summary>
+    Task InvalidateAllAsync(CancellationToken ct = default);
 }
