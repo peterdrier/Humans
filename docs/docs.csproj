@@ -10,6 +10,16 @@
   <PropertyGroup>
     <EnableDefaultItems>false</EnableDefaultItems>
     <IsPackable>false</IsPackable>
+    <!--
+      NoTargets has no CoreCompile, but the SDK still emits GlobalUsings.g.cs
+      (ImplicitUsings) and the TFM AssemblyAttributes.cs into obj/. dotnet build
+      never compiles them, but Roslyn MSBuildWorkspace loaders (e.g. reforge
+      surface-score) open this as a C# project, compile those generated files
+      with no framework references, and report phantom CS0234/CS0518 errors.
+      Suppress both so the project carries zero compilable source.
+    -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
