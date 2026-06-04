@@ -285,26 +285,6 @@ internal sealed partial class UserRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedUserEmailAsync(
-        string searchTerm, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(searchTerm))
-            return [];
-
-        // ILIKE treats '_' and '%' as wildcards, so raw input must be escaped
-        // to prevent unintended matches (e.g. a search for "a_b" matching
-        // "aXb"). Pass '\' as the explicit escape character.
-        var pattern = $"%{EscapeLikePattern(searchTerm.Trim())}%";
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, pattern, "\\"))
-            .Select(e => e.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task<string?> GetVerifiedUserEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default)
     {
