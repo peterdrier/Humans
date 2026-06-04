@@ -1,0 +1,133 @@
+using Humans.Application.Interfaces.Surveys;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using NodaTime;
+
+namespace Humans.Web.Controllers;
+
+/// <summary>
+/// Board/Admin survey authoring: index, builder (create/edit), open/close. Controllers parse → call
+/// the service → format; sorting and VM↔DTO mapping live here (hard rule). Send lives in Phase 3.
+/// </summary>
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
+[Route("Survey/Admin")]
+public class SurveyAdminController(
+    ISurveyService surveyService,
+    ITeamServiceRead teamService,
+    IUserServiceRead userService,
+    ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
+{
+    private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    [HttpGet("")]
+    public async Task<IActionResult> Index(CancellationToken ct)
+    {
+        var summaries = await surveyService.GetSummariesAsync(ct);
+        var ordered = summaries
+            .OrderBy(s => s.Status)
+            .ThenBy(s => s.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return View(new SurveyAdminIndexViewModel { Surveys = ordered });
+    }
+
+    [HttpGet("Create")]
+    public async Task<IActionResult> Create(CancellationToken ct)
+    {
+        var vm = new SurveyBuilderViewModel { Teams = await LoadTeamsAsync(ct) };
+        return View("Builder", vm);
+    }
+
+    [HttpGet("Edit/{id:guid}")]
+    public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+
+        var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
+        return View("Builder", vm);
+    }
+
+    [HttpPost("Save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(SurveyBuilderViewModel model, CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            model.Teams = await LoadTeamsAsync(ct);
+            return View("Builder", model);
+        }
+
+        try
+        {
+            var input = model.ToEditInput(Zone);
+            if (model.Id is null)
+            {
+                var newId = await surveyService.CreateAsync(input, actorId.Value, ct);
+                SetSuccess("Survey created.");
+                return RedirectToAction(nameof(Edit), new { id = newId });
+            }
+
+            await surveyService.UpdateAsync(model.Id.Value, input, actorId.Value, ct);
+            SetSuccess("Survey saved.");
+            return RedirectToAction(nameof(Edit), new { id = model.Id.Value });
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogInformation(ex, "Survey save rejected for {SurveyId}", model.Id);
+            ModelState.AddModelError(string.Empty, ex.Message);
+            model.Teams = await LoadTeamsAsync(ct);
+            return View("Builder", model);
+        }
+    }
+
+    [HttpPost("Open/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Open(Guid id, CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+        await RunStatusTransitionAsync(() => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    [HttpPost("Close/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Close(Guid id, CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+        await RunStatusTransitionAsync(() => surveyService.CloseAsync(id, actorId.Value, ct), "Survey closed.");
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    private async Task RunStatusTransitionAsync(Func<Task> transition, string success)
+    {
+        try
+        {
+            await transition();
+            SetSuccess(success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+        }
+    }
+
+    private async Task<IReadOnlyList<SurveyTeamOption>> LoadTeamsAsync(CancellationToken ct)
+    {
+        var teams = await teamService.GetTeamsAsync(ct);
+        return teams.Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new SurveyTeamOption(t.Id, t.Name))
+            .ToList();
+    }
+}

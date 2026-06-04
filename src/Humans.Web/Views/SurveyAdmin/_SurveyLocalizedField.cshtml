@@ -1,0 +1,22 @@
+@using Humans.Web.Extensions
+@model SurveyLocalizedFieldModel
+
+<div class="mb-2">
+    <label class="form-label small fw-semibold mb-1">@Model.Label</label>
+    @foreach (var culture in CultureCatalog.SupportedCultureCodes)
+    {
+        var name = $"{Model.NamePrefix}[{culture}]";
+        Model.Values.TryGetValue(culture, out var value);
+        <div class="input-group input-group-sm mb-1">
+            <span class="input-group-text" style="min-width:3.5rem;">@culture.ToDisplayLanguageName()</span>
+            @if (Model.Multiline)
+            {
+                <textarea name="@name" class="form-control" rows="2">@value</textarea>
+            }
+            else
+            {
+                <input type="text" name="@name" class="form-control" value="@value" />
+            }
+        </div>
+    }
+</div>
