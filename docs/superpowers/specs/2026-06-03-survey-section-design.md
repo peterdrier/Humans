@@ -38,7 +38,7 @@ This is a new **vertical section** (`Survey`), born compliant with current archi
 
 ## 3. Data model
 
-All cross-domain FKs are **FK-only**, `[Obsolete]`-marked navs (design-rules §6c); the repo never `.Include()`s them. Aggregate-local navs (Survey↔Question↔Option, Response↔Answer) are kept and `.Include()`-able.
+All cross-domain references are **bare `Guid` FK columns** — **no navigation property and no cross-section EF FK constraint** (design-rules §6c, taken literally; the clean `FeedbackReport.AgentConversationId` precedent, *not* the `[Obsolete]`-nav grandfathered debt). A new section is not born with `[Obsolete]` anything. The service resolves cross-section data via `IUserServiceRead`/`ITeamServiceRead` into DTOs/view models — never onto entities. Aggregate-local navs (Survey↔Question↔Option, Response↔Answer) are kept and `.Include()`-able.
 
 ### `Survey` (table `surveys`)
 
@@ -56,7 +56,7 @@ All cross-domain FKs are **FK-only**, `[Obsolete]`-marked navs (design-rules §6
 | `ClosesAt` | Instant? | Optional auto-close; after this, the wizard rejects new responses |
 | `AudienceKey` | string? | Key of the reused `IMailerAudience` (null = manual/none) |
 | `PublicSlug` | string? (max 80) | Set when a shareable public link is enabled; null = invite-only |
-| `CreatedByUserId` | Guid | FK → User, **FK only**, `[Obsolete]` nav |
+| `CreatedByUserId` | Guid | Creator user id — **bare `Guid` column**, no nav, no cross-section FK constraint; resolve via `IUserServiceRead` |
 | `CreatedAt` / `UpdatedAt` | Instant | |
 
 **Aggregate-local navs:** `Survey.Questions`. **Indexes:** `Status`, `PublicSlug` (unique, filtered non-null).
@@ -97,7 +97,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 |-------|------|-------|
 | `Id` | Guid | PK |
 | `SurveyId` | Guid | FK → Survey, cascade |
-| `UserId` | Guid | FK → User, **FK only**, `[Obsolete]` nav |
+| `UserId` | Guid | Invitee user id — **bare `Guid` column**, no nav, no cross-section FK constraint; resolve via `IUserServiceRead` |
 | `SentAt` | Instant? | When the invite was enqueued to the outbox |
 | `LatestEmailStatus` | `EmailOutboxStatus?` | Mirror of `CampaignGrant.LatestEmailStatus` |
 | `ReminderSentAt` | Instant? | Set when the one reminder is enqueued |
@@ -115,7 +115,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 | `Id` | Guid | PK |
 | `SurveyId` | Guid | FK → Survey, cascade |
 | `InvitationId` | Guid? | FK → SurveyInvitation (SetNull). Set when answered via an invite link; null for public/anonymous-link responses. |
-| `UserId` | Guid? | FK → User, **FK only**, `[Obsolete]` nav. **Null unless the respondent chose Identified.** |
+| `UserId` | Guid? | Respondent user id — **bare `Guid?` column**, no nav, no cross-section FK constraint. **Null unless the respondent chose Identified.** |
 | `Anonymity` | enum `ResponseAnonymity` | `Identified` / `CompletionTracked` / `Anonymous` (see §4) |
 | `Culture` | string (max 10) | Language the wizard was answered in |
 | `SubmittedAt` | Instant | |
@@ -285,7 +285,7 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 - **Repository:** `ISurveyRepository` (`Humans.Infrastructure/Repositories/Survey/SurveyRepository.cs`). Owns the SQL surface; `IDbContextFactory<HumansDbContext>` per call.
 - **Owned tables:** `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers`.
 - **Job:** `SendSurveyReminderJob` in `Humans.Infrastructure/Jobs/`, resolves `SurveyService` via DI, goes through the service interface (no repo from the job).
-- **Cross-domain navs `[Obsolete]`-marked:** `Survey.CreatedByUser`, `SurveyInvitation.User`, `SurveyResponse.User`. Repo never `.Include()`s them; the service stitches display data via cross-section reads.
+- **No cross-domain navs and no cross-section FK constraints:** Users/Teams are referenced by bare `Guid` FK columns (the `FeedbackReport.AgentConversationId` precedent). The service stitches display data via cross-section reads into DTOs. **No `[Obsolete]` members** — a new section is not born with grandfathered debt.
 - **Caching:** none in v1 (admin-authored, read-on-demand; results aggregation is a per-survey query at 500-user scale). Add a decorator only if a hot read emerges.
 - **Status:** (A) born §15-compliant.
 - **Architecture tests:** add `SurveyArchitectureTests` pinning no-EF-in-Application, single-repo table ownership, and cross-section-via-interface.

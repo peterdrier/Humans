@@ -23,6 +23,8 @@ These refine the spec where the audit found the assumed mechanism absent or unsu
 5. **`LocalizedText`.** A Survey-/Domain-owned value object wrapping `Dictionary<string,string>` (culture→text), persisted as jsonb via the `DocumentVersionConfiguration` precedent (`HasColumnType("jsonb")` + `HasConversion` + `ValueComparer`). Lives in `Humans.Domain/ValueObjects/` so entities can use it; promotion to a broader shared primitive stays a later refactor (§15.1).
 6. **`Cultures` / `PublicSlug` columns dropped.** Spec §3 listed `Survey.Cultures string[]` and `Survey.PublicSlug`. v1 is invite-only (no public path, §14) so **`PublicSlug` is omitted entirely**. "Which cultures have content" is **derived** from the `LocalizedText` dictionaries (no separate `Cultures` column to drift). Both can be added later without a destructive migration.
 7. **Membership gate.** The answering wizard controller (`SurveyController`) must be reachable by invited non-members → add `"Survey"` to `MembershipRequiredFilter.ExemptControllers` and mark the answer actions `[AllowAnonymous]` (mirrors `Guest`/`Camp`).
+9. **No `[Obsolete]` navs, no cross-section FK constraints — corrects the spec AND the `Issue`/`Feedback` cow-path.** The spec §3 (and the `Issue`/`FeedbackReport`/`Camp` code) keep `[Obsolete]`-marked cross-domain navigation properties "stitched in memory." A new section must **not** be born with `[Obsolete]` anything — that is the exact debt the hard rules flag. Survey references Users/Teams by **bare `Guid` FK columns only**: no navigation property, no cross-section EF FK constraint (the clean `FeedbackReport.AgentConversationId` precedent). The service resolves cross-section display data (names, `PreferredLanguage`) via `IUserServiceRead`/`ITeamServiceRead` and stitches it into **DTOs/ViewModels**, never onto entities. design-rules §6c says "FK only" — taken literally. This matches the **clean** sections already in the repo (`Expenses`, `Store` team-orders, `Holded`) and the rule in `memory/architecture/no-cross-section-ef-joins.md`; the `[Obsolete]`-nav style on `Issue`/`Feedback`/`Camp` is the older debt we are **not** propagating.
+
 8. **Wizard state (RECOMMENDED SIMPLIFICATION — please confirm).** Spec §5/§8 imply per-page DB persistence and token re-entry of in-progress responses. For v1 I recommend holding in-progress page answers in **server-side session** keyed by the wizard token, writing `SurveyResponse` + all `SurveyAnswer`s **atomically at final submit**. Branching is still evaluated server-side from accumulated session state. This removes in-progress DB rows and the anonymity-linkage hazards (a `CompletionTracked`/`Anonymous` response must carry **no** `InvitationId`, so it can't be resumed by lookup anyway). **Resuming a partially-completed survey is therefore out of v1.** If you want true cross-device resume, say so and I'll add per-page persistence for the `Identified` tier only.
 
 ---
@@ -215,7 +217,7 @@ public sealed class BranchCondition
 
 **Files:** the six `src/Humans.Domain/Entities/Survey*.cs`.
 
-- [ ] **Step 1 — Implement** (`namespace Humans.Domain.Entities`; NodaTime `Instant`; cross-domain navs FK-only + `[Obsolete]`):
+- [ ] **Step 1 — Implement** (`namespace Humans.Domain.Entities`; NodaTime `Instant`; cross-domain refs are bare `Guid` FK columns — **no navs, no `[Obsolete]`**):
 ```csharp
 public class Survey
 {
@@ -229,9 +231,8 @@ public class Survey
     public Instant? OpensAt { get; set; }
     public Instant? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
-    public Guid? AudienceTeamId { get; set; }                 // FK-only when AudienceType == Team
-    public Guid CreatedByUserId { get; init; }
-    [Obsolete("FK-only cross-domain nav; never Include")] public User CreatedByUser { get; set; } = null!;
+    public Guid? AudienceTeamId { get; set; }                 // bare Guid when AudienceType == Team; no nav, no cross-section FK constraint
+    public Guid CreatedByUserId { get; init; }   // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
     public ICollection<SurveyQuestion> Questions { get; set; } = new List<SurveyQuestion>();
@@ -270,8 +271,7 @@ public class SurveyInvitation
 {
     public Guid Id { get; init; }
     public Guid SurveyId { get; init; }
-    public Guid UserId { get; init; }
-    [Obsolete("FK-only cross-domain nav; never Include")] public User User { get; set; } = null!;
+    public Guid UserId { get; init; }   // bare FK: no nav, no cross-section EF FK constraint; resolve via IUserServiceRead
     public Instant? SentAt { get; set; }
     public EmailOutboxStatus? LatestEmailStatus { get; set; }
     public Instant? ReminderSentAt { get; set; }
@@ -284,8 +284,7 @@ public class SurveyResponse
     public Guid Id { get; init; }
     public Guid SurveyId { get; init; }
     public Guid? InvitationId { get; init; }                   // set ONLY for Identified
-    public Guid? UserId { get; init; }                         // set ONLY for Identified
-    [Obsolete("FK-only cross-domain nav; never Include")] public User? User { get; set; }
+    public Guid? UserId { get; init; }                         // set ONLY for Identified; bare FK, no nav, no cross-section EF FK constraint
     public ResponseAnonymity Anonymity { get; init; }
     public string Culture { get; init; } = "en";
     public Instant SubmittedAt { get; set; }
@@ -303,7 +302,7 @@ public class SurveyAnswer
     public SurveyResponse Response { get; set; } = null!;
 }
 ```
-- [ ] **Step 2 — Build** → expect success (the `[Obsolete]` navs reference `User` from `Humans.Domain.Entities`).
+- [ ] **Step 2 — Build** → expect success (entities import no cross-section types — `User`/`Team` are never referenced; only bare `Guid`s).
 - [ ] **Step 3 — Commit:** `feat(survey): add survey domain entities`
 
 ### Task 0.4: EF configurations + DbSets
@@ -347,18 +346,18 @@ public class SurveyConfiguration : IEntityTypeConfiguration<Survey>
         b.HasIndex(s => s.Status);
         b.HasMany(s => s.Questions).WithOne(q => q.Survey)
             .HasForeignKey(q => q.SurveyId).OnDelete(DeleteBehavior.Cascade);
-        // CreatedByUser: FK-only, no navigation mapping target loaded; configure scalar FK + ignore nav include.
-        b.HasOne(s => s.CreatedByUser).WithMany().HasForeignKey(s => s.CreatedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // CreatedByUserId / AudienceTeamId are bare Guid columns: NO navigation property and NO
+        // cross-section EF FK constraint (FeedbackReport.AgentConversationId precedent). The service
+        // resolves the creator's display name via IUserServiceRead only when needed.
     }
 }
 ```
-  > The `b.HasOne(...CreatedByUser...)` with an `[Obsolete]` nav follows the `CampaignGrant`/`Camp` precedent; if the analyzer requires it, add `[Grandfathered("HUM0024", ...)]`-equivalent handling per how `CampConfiguration` does it (check the exact attribute usage in `CampaignGrantConfiguration` and copy it).
+  > **No cross-section navs or FK constraints, no `[Obsolete]` anything.** Survey references Users/Teams by bare `Guid` columns only — the clean `FeedbackReport.AgentConversationId` precedent, not the `[Obsolete]`-nav grandfathered debt on `Issue`/`FeedbackReport`/`Camp`. design-rules §6c says "FK only"; we take that literally for a new section. No `HUM0024` grandfathering — there is nothing to grandfather.
 - [ ] **Step 2 — Remaining five configs** (same file-per-entity pattern; key points):
   - `SurveyQuestionConfiguration` → table `survey_questions`; `Prompt`/`HelpText`/`RatingMinLabel`/`RatingMaxLabel` via `SurveyJson.LocalizedText`; `Type` `HasConversion<string>()`; `ShowIf` jsonb (`HasColumnType("jsonb")` + `HasConversion` to/from `BranchCondition?` with `SurveyJson.Options`); `HasMany(Options).WithOne(Question).HasForeignKey(QuestionId).OnDelete(Cascade)`; index `(SurveyId, PageNumber, Order)`.
   - `SurveyQuestionOptionConfiguration` → `survey_question_options`; `Value` `HasMaxLength(100).IsRequired()`; `Label` localized jsonb.
-  - `SurveyInvitationConfiguration` → `survey_invitations`; `LatestEmailStatus` `HasConversion<string>().HasMaxLength(20)`; **unique index `(SurveyId, UserId)`**; index `(SurveyId, CompletedAt, SentAt)`; `User` FK-only Restrict (obsolete nav, as Survey).
-  - `SurveyResponseConfiguration` → `survey_responses`; `Anonymity` `HasConversion<string>()`; `Culture` `HasMaxLength(10)`; `HasMany(Answers).WithOne(Response).HasForeignKey(ResponseId).OnDelete(Cascade)`; FK to `SurveyInvitation` via `InvitationId` `OnDelete(SetNull)`; `User?` FK-only SetNull; indexes `SurveyId`, `(SurveyId, UserId)`.
+  - `SurveyInvitationConfiguration` → `survey_invitations`; `LatestEmailStatus` `HasConversion<string>().HasMaxLength(20)`; **unique index `(SurveyId, UserId)`**; index `(SurveyId, CompletedAt, SentAt)`. `UserId` is a bare `Guid` column — no nav, no cross-section FK constraint.
+  - `SurveyResponseConfiguration` → `survey_responses`; `Anonymity` `HasConversion<string>()`; `Culture` `HasMaxLength(10)`; `HasMany(Answers).WithOne(Response).HasForeignKey(ResponseId).OnDelete(Cascade)`; FK to `SurveyInvitation` via `InvitationId` `OnDelete(SetNull)` (intra-section, fine); `UserId` is a bare `Guid?` column — no nav, no cross-section FK constraint; indexes `SurveyId`, `(SurveyId, UserId)`.
   - `SurveyAnswerConfiguration` → `survey_answers`; `SelectedOptionValues` jsonb (`List<string>`, copy the `ProfileConfiguration` Allergies converter); `TextValue` `HasMaxLength(4000)`; FK to `SurveyQuestion` via `QuestionId` `OnDelete(Restrict)`; indexes `ResponseId`, `QuestionId`.
 - [ ] **Step 3 — Add DbSets** to `HumansDbContext`:
 ```csharp
@@ -397,7 +396,7 @@ public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
   `Task UpdateAsync(Survey survey, CancellationToken ct)` (full-graph upsert of questions/options),
   `Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct)`,
   plus invitation/response/results methods added in later tasks (interface is `partial` — extend per phase).
-- [ ] **Step 2 — Impl** mirrors `CampRepository`: `internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext> factory) : ISurveyRepository`, per-call `await using var ctx = await factory.CreateDbContextAsync(ct)`, `.AsNoTracking()` reads, `.Include(s => s.Questions).ThenInclude(q => q.Options)` for the full graph, tracked load+mutate+`SaveChangesAsync` for writes. **Never** `.Include` the `[Obsolete]` `CreatedByUser`/`User` navs.
+- [ ] **Step 2 — Impl** mirrors `CampRepository`: `internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext> factory) : ISurveyRepository`, per-call `await using var ctx = await factory.CreateDbContextAsync(ct)`, `.AsNoTracking()` reads, `.Include(s => s.Questions).ThenInclude(q => q.Options)` for the full graph, tracked load+mutate+`SaveChangesAsync` for writes. There are **no** cross-section navs to `.Include` — creator/respondent display data is resolved by the service via `IUserServiceRead`.
 - [ ] **Step 3 — Build** → success.
 - [ ] **Step 4 — Commit:** `feat(survey): add ISurveyRepository and SurveyRepository`
 
@@ -612,7 +611,7 @@ internal static class SurveySectionExtensions
 ### Task 6.1: Results aggregation (TDD)
 
 - [ ] **Step 1 — Failing test** on `SurveyService.GetResultsAsync(surveyId)`: per-question aggregates (choice counts/%, rating distribution, free-text list), response-rate (responses ÷ invited), and a per-respondent drill-down **limited to `Identified`** responses (others contribute to counts but expose no identity). Free-text returned **as-submitted** (no translation — deferred).
-- [ ] **Step 2 — Repository:** `GetResponsesForResultsAsync(surveyId)` (Include Answers; no `[Obsolete]` navs), `GetInvitedCountAsync`, `GetResponseCountAsync`. Stitch `Identified` respondent names via `IUserServiceRead.GetUserInfosAsync`.
+- [ ] **Step 2 — Repository:** `GetResponsesForResultsAsync(surveyId)` (Include Answers only — no cross-section navs exist), `GetInvitedCountAsync`, `GetResponseCountAsync`. Stitch `Identified` respondent names via `IUserServiceRead.GetUserInfosAsync`.
 - [ ] **Step 3 — Implement**; **Commit:** `feat(survey): results aggregation`
 
 ### Task 6.2: Results view + CSV/JSON export
