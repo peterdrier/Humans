@@ -51,9 +51,6 @@ public sealed class SurveyIntroViewModel
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 
-    /// <summary>Transparency note (Phase 7 finalises copy).</summary>
-    public string TransparencyNote { get; init; } = string.Empty;
-
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
 }
 

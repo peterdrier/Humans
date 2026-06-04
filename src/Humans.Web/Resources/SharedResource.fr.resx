@@ -5868,4 +5868,9 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Vos réponses peuvent être examinées et analysées, y compris par des outils automatisés, afin d'améliorer le collectif.</value></data>
 </root>

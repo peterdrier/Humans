@@ -27,10 +27,6 @@ public class SurveyController(
     IUserServiceRead userService,
     ILogger<SurveyController> logger) : HumansControllerBase(userService)
 {
-    /// <summary>Default transparency note placeholder — Phase 7 finalises the copy.</summary>
-    private const string TransparencyNote =
-        "Your responses may be reviewed and analysed, including by automated tooling, to improve the collective.";
-
     [HttpGet("Answer")]
     public async Task<IActionResult> Answer(string t, CancellationToken ct)
     {
@@ -85,7 +81,6 @@ public class SurveyController(
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
             HasResumableDraft = ctx.HasResumableDraft,
-            TransparencyNote = TransparencyNote,
         };
         return View("Intro", vm);
     }
@@ -172,7 +167,6 @@ public class SurveyController(
             ShowAnonymitySelector = false, // public path is always Anonymous — no tier choice.
             IsPublic = true,
             Slug = ctx.Definition.Editable.PublicSlug ?? slug,
-            TransparencyNote = TransparencyNote,
         };
         return View("Intro", vm);
     }
