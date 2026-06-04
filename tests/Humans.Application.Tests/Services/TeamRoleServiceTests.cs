@@ -17,8 +17,10 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Infrastructure.Repositories.Auth;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
@@ -45,11 +47,14 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         var userService = NewDbBackedUserService();
+        var googleOutboxService = new GoogleSyncOutboxService(
+            new GoogleSyncOutboxRepository(DbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
             .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
             .With<ISystemTeamSync>()
+            .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(teamResourceService)
             .With(userService)
             .Build();
