@@ -47,7 +47,7 @@ Go to `/Profile/Me`. You see every field you have filled in, including anything 
 
 ### Edit your profile
 
-From your profile, click Edit (or go to `/Profile/Me/Edit`). The edit page is organised into cards: general information, contributor information, and private information (legal name, emergency contact, board notes). Fill in what you want and save — changes take effect immediately.
+From your profile, click Edit (or go to `/Profile/Me/Edit`). The edit page is organised into cards: general information, contributor information, and private information (legal name, emergency contact, board notes). Fill in what you want and save — changes take effect immediately. As you type a burner name, the page warns you live if it exactly matches another human's burner name, so you can pick something that tells you apart.
 
 ### Manage your contact fields and their visibility
 

@@ -4,7 +4,9 @@
 **Mode:** diff (batch)
 **Diff anchor:** `37dc784f` → `17808b4c` (upstream/main HEAD)
 **Worktree base:** `origin/main` `6af1ed1b` — ⚠️ advanced to `da245fbca` (PR #887, Store Summary view+CSS only) mid-sweep; see *Moved base* below.
-**Entries updated:** 16 (8 mechanical + 8 editorial) · **Pruned:** 1 husk (1,437 lines) · **Errors:** 0
+**Entries updated:** 16 (8 mechanical + 8 editorial) + post-review fixes · **Pruned:** 10 husks (~19,968 lines) · **Errors:** 0
+
+> **Post-review (2026-06-05):** Peter reviewed the items below inline and directed action. Applied this PR: guide one-liner for the burner-name collision warning; refreshed design-rules §15 (dead `CachingProfileService`/`FullProfile` refs → `CachingUserService`/`UserInfo`; decorator count 1→11); corrected the Store treasury-sync + US-30.4 Phase-5 claims; a full prune of the deferred shipped-feature plans (9 more husks); plus a `Profiles.md` account-merge fan-out drift fix (`IUserMerge`) surfaced during the prune.
 
 The diff window spans: Stripe payment reconciliation + recorded-payments + open-order repricing (Store), per-day instant shift signup replacing the range picker (Shifts), the onboarding burner/legal-name gate (`NameRequiredFilter`), the live burner-name collision warning + pure search matcher (Profiles), camp members UI + `ICampServiceRead.GetCampUserInfoAsync` (Camps), `IsSensitive` leave-unchanged on non-Admin team edit (Teams), and in-memory verified-email matching for Who-Hasn't-Bought (Tickets).
 
@@ -37,18 +39,29 @@ Tickets (`sections/Tickets.md` already current; behavioral docs unchanged), gdpr
 
 ## Pruned
 
-- **`docs/superpowers/plans/2026-05-04-shift-range-signup-confirmation.md`** — deleted (1,437 lines). The browse-page range-picker + confirmation-modal flow it designed was **removed this window** (replaced by `POST /Shifts/ToggleDay`). All durable rules it touches are already captured in the living docs (overlap rule + event-tz absolute instants, 08:00–18:00 all-day window, `SignupBlockId` atomic range blocks, conflicts-as-warnings, the EE "arrive by start−1 day" grant, policy-driven signup status — all in `Shifts.md`; the cut-over itself in `shift-management.md` US-25.3). Its own `bool skipConflicts` API shape is additionally stale vs current `ShiftSignupRequestFlags.SkipConflicts`. Remaining content is implementation scaffolding for a deleted flow. No inbound doc refs.
-- **Wheat migrated:** none — every durable item was already present in the target docs (verified against `ShiftSignupService`, `Shift.AllDayWindowStart/End`, `ShiftsController.ToggleDay`).
+**10 husks deleted (~19,968 lines)** — each shipped + >30 days old (or feature removed this window), with every durable rule verified to already live in the section/feature docs (or in source). Each had its inbound refs checked.
 
-**Deferred prune candidates (budget decision, not a punt):** the larger >30-day shipped-feature plans (`2026-04-29-issues-section.md`, `2026-04-30-store-section.md`, `2026-04-26-holded-read-integration.md`, `2026-04-21-{community-calendar-slice1,in-app-guide}.md`, etc.) were not analyzed this sweep. They describe **still-live** features and likely carry ADR-level vendor/decorator rationale that needs careful per-item wheat-extraction — deferred to keep this docs PR reviewable rather than rush delicate extraction. `tech-debt-2026-04-23.md` uses no `[DONE]` markers, so the all-DONE prune condition can't be verified — left in place. The `2026-03-15-ticket-vendor-integration-design.md` spec is the rationale home a prior sweep deliberately retained — left in place.
+| Husk | Lines | Why safe |
+|---|---|---|
+| `plans/2026-05-04-shift-range-signup-confirmation.md` | 1,437 | Feature **removed this window** (per-day `ToggleDay`); rules already in `Shifts.md`/`shift-management.md`. |
+| `superpowers/plans/2026-04-29-issues-section.md` | 2,493 | Shipped; rules in `sections/Issues.md` + `features/issues/issues-system.md` (plan now even stale: missing Scanner section, Camps→Barrios). |
+| `superpowers/plans/2026-04-30-store-section.md` | 1,822 | Shipped; rules in `sections/Store.md` + `features/store/store.md`. Inbound ref at `Store.md:265` retargeted (dropped plan path, kept the design spec). |
+| `superpowers/plans/2026-05-04-ticket-transfer.md` | 2,505 | Vendor void+reissue engine **removed before ship**; manual model fully in `Tickets.md`. |
+| `superpowers/plans/2026-05-01-account-merge-fold-redesign.md` | 960 | Per-interface fan-out **superseded by `IUserMerge`**; one durable gotcha migrated (below). |
+| `superpowers/plans/2026-04-21-community-calendar-slice1.md` | 2,670 | Shipped; rules in `Calendar.md`/`community-calendar.md` (which post-date the plan). Lone ref is a dated `maintenance-log.md` line — left as a historical record (log is hand-maintained). |
+| `superpowers/plans/2026-04-21-in-app-guide.md` | 2,866 | Shipped; rules in `Guide.md`/`in-app-guide.md`. No inbound refs. |
+| `superpowers/plans/2026-04-26-holded-read-integration.md` | 3,056 | Core slug-tag scheme declared **dead-on-arrival** in a later spec (Holded strips tag separators); shipped design in `Finance.md`/`Holded.md`. |
+| `superpowers/plans/2026-04-26-admin-shell-left-nav.md` | 1,985 | Shipped; in `admin-shell.md`; the one rationale (traffic-ordered nav) lives in `AdminNavTree.cs:6-8`. |
+| `plans/2026-05-03-event-guide-route-renaming.md` | 174 | Routes shipped + pinned by an arch test; rationale in `Events.md`. |
+
+- **Wheat migrated (1):** `account-merge-fold-redesign` → `design-rules.md §12` — the merge chain-follow on append-only reads, the **cache-only** `GetMergedSourceIdsAsync` (inner throws `NotSupportedException` — `UserService.cs:1288`), and the **16-hop transitive cap** guarding circular merges (`GoogleWorkspaceSyncService.cs:295`). Everything else across the 10 husks was already present or chaff.
+- **Surfaced + fixed during prune:** `Profiles.md` ~399–410 still described the superseded 16-interface `Reassign…ToUserAsync` fan-out — corrected to the shipped `IUserMerge.ReassignAsync` fan-out (and adjacent dead `CachingProfileService`/`FullProfile` → `CachingUserService`/`UserInfo`).
+- **Intentionally retained:** `2026-04-25-freshness-sweep.md` (meta — this skill's own design history, and the skill was being edited concurrently); `tech-debt-2026-04-23.md` (no `[DONE]` markers, all-DONE condition unverifiable); `2026-03-15-ticket-vendor-integration-design.md` (the rationale home a prior sweep deliberately kept).
 
 ## Flagged for human review
 
-These are subjective/pre-existing items where **no code fact from this window is contradicted** — recorded, not edited:
+The §15 / Store-treasury / US-30.4 items originally flagged here were **fixed this PR** at Peter's direction (see the post-review note up top). Remaining items, deliberately not changed (no code fact contradicted):
 
-- `design-rules.md` §15i — the dated 2026-04-23 "Known Current Violations" snapshot still calls `CachingProfileService` the live caching decorator, but the canonical example and source are now `CachingUserService`/`TrackedCache<Guid,UserInfo>` (`CachingProfileService`/`FullProfile` no longer exist). Pre-existing snapshot staleness; the whole §15i block may want a dedicated refresh.
-- `guide/Store.md` — bank-transfer prose says transfers "are matched … and applied automatically when the next sync runs," but the treasury sync job is Phase 7 / not yet implemented. Pre-existing, outside this window's triggers.
-- `features/store/store.md` — US-30.4 (Record a Manual Payment) carries no "paused" note even though `RecordManualPaymentAsync` throws `NotSupportedException("Phase 5")`. Pre-existing.
 - `sections/Teams.md` L210 — the `IsSensitive` invariant doesn't explicitly state *who* may change it (now carried in the actors table); a maintainer may want an explicit clause.
 - `sections/Camps.md` / `features/camps/camps.md` — camp-members alphabetization and `ICampInfoInvalidator.InvalidateAllAsync` are new but contradict no existing sentence, so not added; flag if the new ordering / all-projection invalidation should be documented.
 
@@ -56,10 +69,10 @@ These are subjective/pre-existing items where **no code fact from this window is
 
 None — all prune candidates resolved this sweep (the prune subagent returned no uncertain items).
 
-## Questions (editorial scope — author-new-content judgment calls, Peter's call)
+## Questions — resolved inline (2026-06-05)
 
-- `features/store/store.md` / `guide/Store.md`: the sweep added a brief reconciliation note where load-bearing but did **not** author a full new "Stripe payment reconciliation" user story (e.g. US-30.8). Author one?
-- `guide/Profiles.md` / `profile-search-detail.md`: the new live burner-name collision warning on Edit Profile is user-facing but absent from the end-user guide (which already omits the pre-existing legal-name-match warning). Add a one-line mention?
+- Full Stripe-reconciliation user story in `store.md`? → **No** — the brief reconciliation note stands.
+- End-user-guide mention of the burner-name collision warning? → **Yes** — one-liner added to `guide/Profiles.md`.
 
 ## Moved base
 

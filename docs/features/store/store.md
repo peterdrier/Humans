@@ -78,6 +78,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 - Inserts a `StorePayment` row with `RecordedByUserId = actorUserId`, `Method` as supplied. `Stripe` method is reserved for the webhook path and rejected here.
 - Allowed in any order state (refunds frequently happen post-issuance).
 - Audit-logged with the actor.
+- *Note: not yet implemented (Phase 5) — `StoreService.RecordManualPaymentAsync` throws `NotSupportedException("Phase 5")` and there is no `/Store/Order/{id}/RecordPayment` endpoint yet. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 

@@ -52,7 +52,7 @@ While your order is open, you can fill in the billing details (name, VAT ID, add
 
 ### Pay
 
-From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. Bank transfers are matched from the org's accounts and applied automatically when the next sync runs.
+From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. Bank transfers are recorded by hand against the order by a treasurer; automatic matching from the org's accounts isn't switched on yet.
 
 ![TODO: screenshot — order detail page showing items, balance, and the Pay button]
 
