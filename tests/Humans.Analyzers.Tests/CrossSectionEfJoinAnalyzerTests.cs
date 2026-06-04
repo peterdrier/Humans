@@ -42,6 +42,14 @@ public sealed class CrossSectionEfJoinAnalyzerTests
         namespace Humans.Domain.Entities
         {
             public sealed class User { }
+            public sealed class Profile
+            {
+                public User User { get; set; } = new();
+            }
+            public sealed class UserEmail
+            {
+                public User User { get; set; } = new();
+            }
             public sealed class Team { }
             public sealed class TeamMember
             {
@@ -56,6 +64,21 @@ public sealed class CrossSectionEfJoinAnalyzerTests
                 Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.User>
             {
                 public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.User> builder) { }
+            }
+        }
+
+        namespace Humans.Infrastructure.Data.Configurations.Profiles
+        {
+            public sealed class ProfileConfiguration :
+                Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.Profile>
+            {
+                public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.Profile> builder) { }
+            }
+
+            public sealed class UserEmailConfiguration :
+                Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.UserEmail>
+            {
+                public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.UserEmail> builder) { }
             }
         }
 
@@ -163,6 +186,37 @@ public sealed class CrossSectionEfJoinAnalyzerTests
                 {
                     public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.TeamMember> builder) =>
                         builder.HasOne(member => member.Team);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0024).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_between_users_and_profiles_folded_section()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data.Configurations.Profiles
+            {
+                public sealed class ProfileUserConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.Profile>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.Profile> builder) =>
+                        builder.HasOne(profile => profile.User);
+                }
+
+                public sealed class UserEmailUserConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.UserEmail>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.UserEmail> builder) =>
+                        builder.HasOne(email => email.User);
                 }
             }
             """;
