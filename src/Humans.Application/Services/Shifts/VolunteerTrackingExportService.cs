@@ -1,4 +1,5 @@
 using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -221,7 +222,7 @@ public sealed class VolunteerTrackingExportService(
         var prefix = departmentSlug is { Length: > 0 } slug
             ? $"volunteer-tracking-{slug}-"
             : "volunteer-tracking-";
-        return $"{prefix}{req.StartDate:yyyy-MM-dd}-to-{req.EndDate:yyyy-MM-dd}.xlsx";
+        return $"{prefix}{req.StartDate.ToIsoDateString()}-to-{req.EndDate.ToIsoDateString()}.xlsx";
     }
 
     private static string SlugifyTeamName(string teamName)

@@ -907,7 +907,7 @@ public sealed class BudgetService(
 
     private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
+        return $"{monday.ToDisplayMonthDay()}–{sunday.ToDisplayMonthDay()}";
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

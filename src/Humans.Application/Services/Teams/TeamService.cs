@@ -1850,7 +1850,7 @@ public sealed class TeamService(
         {
             TeamName = GetTeamName(g.TeamId),
             g.ProjectName,
-            EntryDate = g.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            EntryDate = g.EntryDate.ToIsoDateString(),
             GrantedAt = g.CreatedAt.ToInvariantInstantString(),
         }).ToList());
 

@@ -954,7 +954,7 @@ public sealed class ShiftSignupService(
             if (targetStart < existingEnd && targetEnd > existingStart)
             {
                 var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
-                var dateStr = existingStart.InZone(tz).ToString("ddd MMM d HH:mm", null);
+                var dateStr = existingStart.InZone(tz).ToDisplayShortDateTime();
 
                 if (teamNames is null)
                 {

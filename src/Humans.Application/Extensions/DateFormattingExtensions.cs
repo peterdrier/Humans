@@ -1,5 +1,6 @@
 using System.Globalization;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Application.Extensions;
 
@@ -163,6 +164,9 @@ public static class DateFormattingExtensions
     public static string ToDisplayMonthDay(this DateTime value) =>
         value.ToString("MMM d", CultureInfo.CurrentCulture);
 
+    public static string ToDisplayMonthDay(this LocalDate value) =>
+        value.ToString("MMM d", null);
+
     public static string ToDisplayWeekdayDayMonth(this DateTime value) =>
         value.ToString("ddd d MMM", CultureInfo.CurrentCulture);
 
@@ -193,4 +197,30 @@ public static class DateFormattingExtensions
 
     public static string ToFileStampMinute(this DateTime value) =>
         value.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture);
+
+    // --- NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030) ---
+
+    /// <summary>iCal basic date-time (RFC 5545 DATE-TIME, e.g. "20260131T142500").</summary>
+    public static readonly LocalDateTimePattern IcalBasicDateTimePattern =
+        LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss");
+
+    /// <summary>iCal basic date (RFC 5545 DATE, e.g. "20260131").</summary>
+    public static readonly LocalDatePattern IcalBasicDatePattern =
+        LocalDatePattern.CreateWithInvariantCulture("yyyyMMdd");
+
+    /// <summary>24-hour time of day, "HH:mm".</summary>
+    public static readonly LocalTimePattern TimeOfDayPattern =
+        LocalTimePattern.CreateWithInvariantCulture("HH:mm");
+
+    /// <summary>Placement date-time input, "yyyy-MM-ddTHH:mm".</summary>
+    public static readonly LocalDateTimePattern PlacementDateTimePattern =
+        LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
+
+    /// <summary>Ops-notice date, "ddd MMMM d" (e.g. "Mon January 5").</summary>
+    public static readonly LocalDateTimePattern OpsNoticeDatePattern =
+        LocalDateTimePattern.CreateWithInvariantCulture("ddd MMMM d");
+
+    /// <summary>Invariant long date, "MMMM d, yyyy" (email rendering).</summary>
+    public static readonly LocalDatePattern InvariantLongDatePattern =
+        LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
 }
