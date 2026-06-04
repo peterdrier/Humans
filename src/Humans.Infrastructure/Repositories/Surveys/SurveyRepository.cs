@@ -264,6 +264,25 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        // No display ordering here — aggregation/sorting lives in the service (hard rule).
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyResponses
+            .AsNoTracking()
+            .Include(r => r.Answers)
+            .Where(r => r.SurveyId == surveyId && r.SubmittedAt != null)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .CountAsync(i => i.SurveyId == surveyId && i.Started, ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
     {

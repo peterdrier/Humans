@@ -99,4 +99,11 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Sets an invitation's <c>Started</c> flag (no timestamp). No-op if the invitation is gone.</summary>
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
+
+    // ── Results ────────────────────────────────────────────────────────────
+    /// <summary>All submitted responses (<c>SubmittedAt is not null</c>) for a survey, with their answer graph. No display ordering. Read-only.</summary>
+    Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default);
+
+    /// <summary>Count of a survey's invitations whose funnel <c>Started</c> flag is set. Read-only.</summary>
+    Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default);
 }

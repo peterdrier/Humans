@@ -705,4 +705,239 @@ public class SurveyServiceTests
         captured!.Answers.Select(a => a.QuestionId).Should().Contain(gate);
         captured.Answers.Select(a => a.QuestionId).Should().NotContain(hidden);
     }
+
+    // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
+
+    private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
+    {
+        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = type,
+        Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
+        Options = opts.Select(o => new SurveyQuestionOption { Id = Guid.NewGuid(), QuestionId = id, Order = o.Order, Value = o.Value, Label = L(o.Label) })
+            .ToList<SurveyQuestionOption>(),
+    };
+
+    private static SurveyQuestion RatingQuestion(Guid id, Guid surveyId, int order, int min, int max) => new()
+    {
+        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = SurveyQuestionType.Rating,
+        Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
+        RatingMin = min, RatingMax = max,
+    };
+
+    private static SurveyQuestion TextQuestion(Guid id, Guid surveyId, int order) => new()
+    {
+        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = SurveyQuestionType.ShortText,
+        Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
+    };
+
+    private static SurveyResponse SubmittedResponse(
+        Guid surveyId, ResponseAnonymity anonymity, SurveyInputMethod inputMethod, Instant submittedAt,
+        Guid? userId, params SurveyAnswer[] answers) => new()
+    {
+        Id = Guid.NewGuid(),
+        SurveyId = surveyId,
+        UserId = userId,
+        Anonymity = anonymity,
+        InputMethod = inputMethod,
+        SubmittedAt = submittedAt,
+        Answers = answers.ToList(),
+    };
+
+    private static SurveyAnswer ChoiceAnswer(Guid questionId, params string[] values) =>
+        new() { Id = Guid.NewGuid(), QuestionId = questionId, SelectedOptionValues = values.ToList() };
+
+    private static SurveyAnswer RatingAnswer(Guid questionId, int value) =>
+        new() { Id = Guid.NewGuid(), QuestionId = questionId, RatingValue = value };
+
+    private static SurveyAnswer TextAnswer(Guid questionId, string? text) =>
+        new() { Id = Guid.NewGuid(), QuestionId = questionId, TextValue = text };
+
+    [HumansFact]
+    public async Task GetResultsAsync_returns_null_when_survey_missing()
+    {
+        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
+
+        var result = await CreateService().GetResultsAsync(Guid.NewGuid());
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_aggregates_choice_rating_and_freetext_over_submitted_responses()
+    {
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var ratingId = Guid.NewGuid();
+        var textId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1,
+                ("yes", "Yes", 1), ("no", "No", 2), ("maybe", "Maybe", 3)),
+            RatingQuestion(ratingId, surveyId, 2, 1, 5),
+            TextQuestion(textId, surveyId, 3),
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var responses = new List<SurveyResponse>
+        {
+            // Identified, link
+            SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, now, Guid.NewGuid(),
+                ChoiceAnswer(choiceId, "yes"), RatingAnswer(ratingId, 5), TextAnswer(textId, "great")),
+            // CompletionTracked, link
+            SubmittedResponse(surveyId, ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, now, null,
+                ChoiceAnswer(choiceId, "yes"), RatingAnswer(ratingId, 3), TextAnswer(textId, "ok")),
+            // Anonymous, slug — empty/null text dropped
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                ChoiceAnswer(choiceId, "no"), RatingAnswer(ratingId, 1), TextAnswer(textId, "")),
+        };
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int> { [surveyId] = 4 });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().GetResultsAsync(surveyId);
+
+        result.Should().NotBeNull();
+        result!.ResponseCount.Should().Be(3);
+        result.InvitedCount.Should().Be(4);
+        result.ResponseRate.Should().BeApproximately(3d / 4d, 0.0001);
+
+        var choice = result.Questions.Single(q => q.QuestionId == choiceId);
+        choice.OptionCounts.Should().HaveCount(3);
+        choice.OptionCounts.Select(o => o.Value).Should().ContainInOrder("yes", "no", "maybe");
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Count.Should().Be(2);
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "no", StringComparison.Ordinal)).Count.Should().Be(1);
+        var maybe = choice.OptionCounts.Single(o => string.Equals(o.Value, "maybe", StringComparison.Ordinal));
+        maybe.Count.Should().Be(0);
+        maybe.Percent.Should().Be(0);
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Percent
+            .Should().BeApproximately(200d / 3d, 0.0001);
+
+        var rating = result.Questions.Single(q => q.QuestionId == ratingId);
+        rating.RatingAverage.Should().BeApproximately((5 + 3 + 1) / 3d, 0.0001);
+        rating.RatingDistribution.Select(b => b.Value).Should().ContainInOrder(1, 2, 3, 4, 5);
+        rating.RatingDistribution.Single(b => b.Value == 1).Count.Should().Be(1);
+        rating.RatingDistribution.Single(b => b.Value == 2).Count.Should().Be(0);
+        rating.RatingDistribution.Single(b => b.Value == 5).Count.Should().Be(1);
+
+        var text = result.Questions.Single(q => q.QuestionId == textId);
+        text.FreeTextAnswers.Should().BeEquivalentTo(new[] { "great", "ok" });
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_only_identified_responses_appear_in_drilldown_but_all_count_in_aggregates()
+    {
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2)),
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var identifiedUser = Guid.NewGuid();
+        var responses = new List<SurveyResponse>
+        {
+            SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, now, identifiedUser,
+                ChoiceAnswer(choiceId, "yes")),
+            SubmittedResponse(surveyId, ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, now, null,
+                ChoiceAnswer(choiceId, "yes")),
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                ChoiceAnswer(choiceId, "no")),
+        };
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [identifiedUser] = UserInfoWithName(identifiedUser, "Sparkle") }));
+
+        var result = await CreateService().GetResultsAsync(surveyId);
+
+        result.Should().NotBeNull();
+        result!.ResponseCount.Should().Be(3);
+        // All three counted in the aggregate (2 yes, 1 no).
+        var choice = result.Questions.Single(q => q.QuestionId == choiceId);
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Count.Should().Be(2);
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "no", StringComparison.Ordinal)).Count.Should().Be(1);
+
+        // Only the Identified response is in the drill-down, with the stitched name and resolved selected label.
+        result.IdentifiedRespondents.Should().ContainSingle();
+        var detail = result.IdentifiedRespondents[0];
+        detail.UserId.Should().Be(identifiedUser);
+        detail.Name.Should().Be("Sparkle");
+        detail.Answers.Should().ContainSingle();
+        detail.Answers[0].QuestionId.Should().Be(choiceId);
+        detail.Answers[0].SelectedLabels.Should().ContainInOrder("Yes");
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_identified_respondent_name_falls_back_to_user_id_when_unresolved()
+    {
+        var surveyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>();
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var user = Guid.NewGuid();
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)new List<SurveyResponse>
+            {
+                SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+                    _clock.GetCurrentInstant(), user),
+            });
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().GetResultsAsync(surveyId);
+
+        result!.IdentifiedRespondents.Should().ContainSingle();
+        result.IdentifiedRespondents[0].Name.Should().Be(user.ToString());
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_builds_funnel_from_started_count_public_count_and_input_method_splits()
+    {
+        var surveyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>();
+        survey.PublicStartedCount = 9;
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var responses = new List<SurveyResponse>
+        {
+            SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, now, Guid.NewGuid()),
+            SubmittedResponse(surveyId, ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, now, null),
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null),
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null),
+        };
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)responses);
+        _repo.GetStartedInvitationCountAsync(surveyId, Arg.Any<CancellationToken>()).Returns(7);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int> { [surveyId] = 10 });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().GetResultsAsync(surveyId);
+
+        result.Should().NotBeNull();
+        result!.Funnel.LinkStarted.Should().Be(7);
+        result.Funnel.LinkFinished.Should().Be(2);   // Identified + CompletionTracked via link
+        result.Funnel.SlugStarted.Should().Be(9);
+        result.Funnel.SlugFinished.Should().Be(2);   // two anonymous slug responses
+    }
 }

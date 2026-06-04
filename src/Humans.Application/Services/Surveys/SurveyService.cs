@@ -465,6 +465,146 @@ public sealed class SurveyService(
         }
     }
 
+    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null) return null;
+
+        var culture = survey.DefaultCulture;
+        var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
+        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
+
+        var invitedCount = invited.GetValueOrDefault(surveyId);
+        var responseCount = responses.Count;
+        var responseRate = invitedCount == 0 ? 0d : (double)responseCount / invitedCount;
+
+        var questions = survey.Questions
+            .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+            .Select(q => BuildQuestionAggregate(q, responses, culture))
+            .ToList();
+
+        var funnel = new SurveyFunnel(
+            LinkStarted: await repo.GetStartedInvitationCountAsync(surveyId, ct),
+            LinkFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.UserSpecificLink),
+            SlugStarted: survey.PublicStartedCount,
+            SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
+
+        var identified = await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+
+        return new SurveyResultsView(
+            surveyId,
+            survey.Title.Resolve(culture, culture),
+            survey.Status,
+            invitedCount,
+            responseCount,
+            responseRate,
+            funnel,
+            questions,
+            identified);
+    }
+
+    /// <summary>Aggregates one question across the submitted responses per its type (counts/distribution/free-text).</summary>
+    private static QuestionAggregate BuildQuestionAggregate(
+        SurveyQuestion question, IReadOnlyList<SurveyResponse> responses, string culture)
+    {
+        var prompt = question.Prompt.Resolve(culture, culture);
+        var answers = responses
+            .SelectMany(r => r.Answers)
+            .Where(a => a.QuestionId == question.Id)
+            .ToList();
+
+        switch (question.Type)
+        {
+            case SurveyQuestionType.SingleChoice:
+            case SurveyQuestionType.MultiChoice:
+            {
+                var responseCount = responses.Count;
+                var optionCounts = question.Options
+                    .OrderBy(o => o.Order)
+                    .Select(o =>
+                    {
+                        var count = answers.Count(a => a.SelectedOptionValues.Contains(o.Value, StringComparer.Ordinal));
+                        var percent = responseCount == 0 ? 0d : (double)count / responseCount * 100d;
+                        return new OptionCount(o.Value, o.Label.Resolve(culture, culture), count, percent);
+                    })
+                    .ToList();
+                return new QuestionAggregate(question.Id, prompt, question.Type, optionCounts, [], null, []);
+            }
+
+            case SurveyQuestionType.Rating:
+            {
+                var values = answers.Where(a => a.RatingValue.HasValue).Select(a => a.RatingValue!.Value).ToList();
+                var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
+                var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
+                var distribution = new List<RatingBucket>();
+                for (var v = min; v <= max; v++)
+                {
+                    distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                }
+
+                double? average = values.Count > 0 ? values.Average() : null;
+                return new QuestionAggregate(question.Id, prompt, question.Type, [], distribution, average, []);
+            }
+
+            case SurveyQuestionType.ShortText:
+            case SurveyQuestionType.LongText:
+            default:
+            {
+                var texts = answers
+                    .Where(a => !string.IsNullOrEmpty(a.TextValue))
+                    .Select(a => a.TextValue!)
+                    .ToList();
+                return new QuestionAggregate(question.Id, prompt, question.Type, [], [], null, texts);
+            }
+        }
+    }
+
+    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserServiceRead</c>. Other tiers never appear (no identity exposure).</summary>
+    private async Task<IReadOnlyList<RespondentDetail>> BuildIdentifiedRespondentsAsync(
+        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture, CancellationToken ct)
+    {
+        var identified = responses
+            .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
+            .ToList();
+        if (identified.Count == 0) return [];
+
+        var userIds = identified.Select(r => r.UserId!.Value).Distinct().ToList();
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+
+        var optionLabels = survey.Questions.ToDictionary(
+            q => q.Id,
+            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+        var prompts = survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
+
+        return identified
+            .Select(r =>
+            {
+                var userId = r.UserId!.Value;
+                var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
+                var answers = r.Answers
+                    .Select(a => new RespondentAnswer(
+                        a.QuestionId,
+                        prompts.GetValueOrDefault(a.QuestionId, string.Empty),
+                        ResolveSelectedLabels(a, optionLabels),
+                        a.TextValue,
+                        a.RatingValue))
+                    .ToList();
+                return new RespondentDetail(userId, name, r.SubmittedAt, answers);
+            })
+            .ToList();
+    }
+
+    /// <summary>Maps an answer's selected option values to their resolved labels (falls back to the raw value when unknown).</summary>
+    private static IReadOnlyList<string> ResolveSelectedLabels(
+        SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
+    {
+        if (answer.SelectedOptionValues.Count == 0) return [];
+        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
+        return answer.SelectedOptionValues
+            .Select(v => labels is not null && labels.TryGetValue(v, out var label) ? label : v)
+            .ToList();
+    }
+
     /// <summary>Keeps only the answers to questions visible under full branching against the submitted option values.</summary>
     private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
     {

@@ -89,6 +89,15 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     /// audit-logged (privacy).
     /// </summary>
     Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default);
+
+    // ── Results ────────────────────────────────────────────────────────────
+    /// <summary>
+    /// The admin results read model: participation funnel, per-question aggregates over submitted
+    /// responses, and the Identified-only respondent drill-down. Null if the survey does not exist.
+    /// CompletionTracked/Anonymous responses feed the aggregates but never the drill-down (no identity
+    /// exposure). Prompts/labels are resolved in the survey's default culture.
+    /// </summary>
+    Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -202,3 +211,55 @@ public sealed record SurveyAnswerInput(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue);
+
+// ── Results DTOs (co-located) ───────────────────────────────────────────────
+
+/// <summary>
+/// The admin results read model. <see cref="ResponseRate"/> is <see cref="ResponseCount"/> ÷
+/// <see cref="InvitedCount"/> (0 when no one was invited). All prompts/labels are resolved in the
+/// survey's default culture.
+/// </summary>
+public sealed record SurveyResultsView(
+    Guid SurveyId,
+    string Title,
+    SurveyStatus Status,
+    int InvitedCount,
+    int ResponseCount,
+    double ResponseRate,
+    SurveyFunnel Funnel,
+    IReadOnlyList<QuestionAggregate> Questions,
+    IReadOnlyList<RespondentDetail> IdentifiedRespondents);
+
+/// <summary>
+/// Participation funnel split by entry path: the user-specific link path (per-invitation
+/// <c>Started</c> flag vs submitted link responses) and the public slug path (the survey's
+/// <c>PublicStartedCount</c> vs submitted slug responses).
+/// </summary>
+public sealed record SurveyFunnel(int LinkStarted, int LinkFinished, int SlugStarted, int SlugFinished);
+
+/// <summary>
+/// One question's aggregate over submitted responses. The populated collection depends on the
+/// question type: <see cref="OptionCounts"/> for choice questions, <see cref="RatingDistribution"/>
+/// plus <see cref="RatingAverage"/> for rating questions, <see cref="FreeTextAnswers"/> for text
+/// questions. The others are empty/null.
+/// </summary>
+public sealed record QuestionAggregate(
+    Guid QuestionId,
+    string Prompt,
+    SurveyQuestionType Type,
+    IReadOnlyList<OptionCount> OptionCounts,
+    IReadOnlyList<RatingBucket> RatingDistribution,
+    double? RatingAverage,
+    IReadOnlyList<string> FreeTextAnswers);
+
+/// <summary>One choice option's tally. <see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
+public sealed record OptionCount(string Value, string Label, int Count, double Percent);
+
+/// <summary>One rating value's tally; empty buckets are included across the question's range.</summary>
+public sealed record RatingBucket(int Value, int Count);
+
+/// <summary>One Identified respondent's drill-down row: stitched display name + their answers.</summary>
+public sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers);
+
+/// <summary>One answer in an Identified respondent's drill-down, with choice labels resolved in the default culture.</summary>
+public sealed record RespondentAnswer(Guid QuestionId, string Prompt, IReadOnlyList<string> SelectedLabels, string? TextValue, int? RatingValue);
