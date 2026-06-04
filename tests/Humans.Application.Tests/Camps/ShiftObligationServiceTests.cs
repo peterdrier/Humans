@@ -177,6 +177,8 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         detail.Should().NotBeNull();
         detail!.BarrioName.Should().Be("Yellow Camp");
         var func = detail.Functions.Single(f => f.ShiftObligationId == powerId);
+        // Heading is the resolved display name ("Power"), never the internal CampRoleSlug ("power").
+        func.Name.Should().Be("Power");
         func.Done.Should().Be(4); // 1 + 3
         func.SignedUp.Select(s => s.Name).Should().ContainInOrder("Bob", "Alice"); // count desc
         func.SignedUp.Should().NotContain(s => s.Name == "Ned");

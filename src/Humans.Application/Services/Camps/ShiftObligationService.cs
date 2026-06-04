@@ -164,8 +164,12 @@ public sealed class ShiftObligationService : IShiftObligationService
             var done = signedUp.Sum(m => m.Count);
             var required = RequiredFor(overrideLookup, campSeasonId, function);
 
+            // Reuse the matrix column's resolved display name so the detail heading
+            // shows "Power" / the rota's real name, never the internal CampRoleSlug.
+            var (functionName, _) = await ResolveColumnTargetAsync(function, ct);
+
             functionRows.Add(new ObligationDetailFunction(
-                function.Id, function.CampRoleSlug, done, required, signedUp, notYet));
+                function.Id, functionName, done, required, signedUp, notYet));
         }
 
         return new BarrioObligationDetail(campSeasonId, seasonInfo.Name, functionRows);
