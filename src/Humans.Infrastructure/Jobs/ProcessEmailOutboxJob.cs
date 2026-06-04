@@ -29,6 +29,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessEmailOutboxJob(
     IEmailOutboxRepository outboxRepo,
+    IEmailOutboxService emailOutboxService,
     ICampaignService campaignService,
     IEmailTransport transport,
     IHumansMetrics metrics,
@@ -46,7 +47,7 @@ public class ProcessEmailOutboxJob(
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         // 1. Check global pause flag
-        if (await outboxRepo.GetSendingPausedAsync(cancellationToken))
+        if (await emailOutboxService.IsEmailPausedAsync(cancellationToken))
         {
             logger.LogInformation("Email sending is paused, skipping outbox processing");
             return;

@@ -149,15 +149,4 @@ public interface IEmailOutboxRepository : IRepository
     // Pause flag — IsEmailSendingPaused row in system_settings
     // ==========================================================================
 
-    /// <summary>
-    /// Returns whether the <c>IsEmailSendingPaused</c> flag is set to "true"
-    /// (case-insensitive). Absent rows read as <c>false</c>.
-    /// </summary>
-    Task<bool> GetSendingPausedAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Sets the <c>IsEmailSendingPaused</c> flag, upserting the row if it
-    /// does not already exist.
-    /// </summary>
-    Task SetSendingPausedAsync(bool paused, CancellationToken ct = default);
 }

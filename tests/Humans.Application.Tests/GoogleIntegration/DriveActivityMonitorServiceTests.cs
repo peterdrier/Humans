@@ -2,8 +2,9 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.SystemSettings;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,7 +20,7 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// <see cref="DriveActivityMonitorService"/>. The service is a dispatcher
 /// over four collaborators — <see cref="IGoogleDriveActivityClient"/>,
 /// <see cref="ITeamResourceService"/>,
-/// <see cref="IDriveActivityMonitorRepository"/>, and
+/// <see cref="ISystemSettingsService"/>, and
 /// <see cref="IAuditLogService"/> — so tests substitute all four and pin down:
 /// self-initiated changes get filtered, anomaly descriptions are built
 /// correctly and emitted through <see cref="IAuditLogService"/>,
@@ -29,7 +30,7 @@ public class DriveActivityMonitorServiceTests
 {
     private readonly IGoogleDriveActivityClient _client;
     private readonly ITeamResourceService _teamResources;
-    private readonly IDriveActivityMonitorRepository _repository;
+    private readonly ISystemSettingsService _systemSettings;
     private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly FakeClock _clock;
@@ -43,7 +44,7 @@ public class DriveActivityMonitorServiceTests
     {
         _client = Substitute.For<IGoogleDriveActivityClient>();
         _teamResources = Substitute.For<ITeamResourceService>();
-        _repository = Substitute.For<IDriveActivityMonitorRepository>();
+        _systemSettings = Substitute.For<ISystemSettingsService>();
         _userService = Substitute.For<IUserServiceRead>();
         _auditLog = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
@@ -54,7 +55,7 @@ public class DriveActivityMonitorServiceTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
 
         _service = new DriveActivityMonitorService(
-            _client, _teamResources, _repository, _userService, _auditLog, _clock,
+            _client, _teamResources, _systemSettings, _userService, _auditLog, _clock,
             NullLogger<DriveActivityMonitorService>.Instance);
     }
 
@@ -68,7 +69,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, CancellationToken.None);
-        await _repository.DidNotReceiveWithAnyArgs().AdvanceLastRunMarkerAsync(null, CancellationToken.None);
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -94,8 +95,9 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         // Marker still advances because no failures occurred.
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            _clock.GetCurrentInstant(),
+        await _systemSettings.Received(1).SetValueAsync(
+            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         // No anomalies → no audit entries emitted.
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
@@ -117,8 +119,9 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            _clock.GetCurrentInstant(),
+        await _systemSettings.Received(1).SetValueAsync(
+            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
@@ -273,8 +276,9 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(1);
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            _clock.GetCurrentInstant(),
+        await _systemSettings.Received(1).SetValueAsync(
+            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
@@ -343,9 +347,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         // Partial failure → marker not advanced, but the anomaly is still audited.
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            null,
-            Arg.Any<CancellationToken>());
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
         await _auditLog.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
@@ -367,8 +369,9 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(0);
         // 404 is expected and does NOT count as a failure — marker advances.
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            _clock.GetCurrentInstant(),
+        await _systemSettings.Received(1).SetValueAsync(
+            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
@@ -390,9 +393,7 @@ public class DriveActivityMonitorServiceTests
         var count = await _service.CheckForAnomalousActivityAsync();
 
         count.Should().Be(0);
-        await _repository.Received(1).AdvanceLastRunMarkerAsync(
-            null,
-            Arg.Any<CancellationToken>());
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -402,7 +403,10 @@ public class DriveActivityMonitorServiceTests
     {
         var resource = BuildResource("First-Drive");
         SeedResources(resource);
-        _repository.GetLastRunTimestampAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
+        _systemSettings.GetValueAsync(
+                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+                Arg.Any<CancellationToken>())
+            .Returns((string?)null);
 
         SeedActivity(resource.GoogleId /* no events */);
 
@@ -415,6 +419,51 @@ public class DriveActivityMonitorServiceTests
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_UsesStoredLookback_WhenMarkerParses()
+    {
+        var resource = BuildResource("Stored-Drive");
+        var marker = Instant.FromUtc(2026, 4, 21, 8, 30);
+        SeedResources(resource);
+        _systemSettings.GetValueAsync(
+                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+                Arg.Any<CancellationToken>())
+            .Returns(MarkerValue(marker));
+
+        SeedActivity(resource.GoogleId /* no events */);
+
+        await _service.CheckForAnomalousActivityAsync();
+
+        _client.Received(1).QueryActivityAsync(
+            resource.GoogleId,
+            MarkerValue(marker),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CheckForAnomalousActivityAsync_UsesLookbackDefault_WhenMarkerDoesNotParse()
+    {
+        var resource = BuildResource("Bad-Marker-Drive");
+        SeedResources(resource);
+        _systemSettings.GetValueAsync(
+                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+                Arg.Any<CancellationToken>())
+            .Returns("not-an-instant");
+
+        SeedActivity(resource.GoogleId /* no events */);
+
+        await _service.CheckForAnomalousActivityAsync();
+
+        var expectedLookback = _clock.GetCurrentInstant().Minus(Duration.FromHours(24));
+        _client.Received(1).QueryActivityAsync(
+            resource.GoogleId,
+            MarkerValue(expectedLookback),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static string MarkerValue(Instant instant) =>
+        NodaTime.Text.InstantPattern.General.Format(instant);
 
     private void SeedResources(params GoogleResourceSnapshot[] resources)
     {
