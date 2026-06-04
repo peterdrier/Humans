@@ -24,9 +24,17 @@
                     <div class="mb-4">@Model.Intro</div>
                 }
 
-                <form asp-controller="Survey" asp-action="Start" method="post">
+                @{
+                    // The public-slug path posts to PublicStart with the slug; the invited path posts to
+                    // Start with the token. The form body (language picker, anonymity, transparency) is shared.
+                    var formAction = Model.IsPublic ? "PublicStart" : "Start";
+                }
+                <form asp-controller="Survey" asp-action="@formAction" asp-route-slug="@(Model.IsPublic ? Model.Slug : null)" method="post">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="Token" value="@Model.Token" />
+                    @if (!Model.IsPublic)
+                    {
+                        <input type="hidden" name="Token" value="@Model.Token" />
+                    }
 
                     <div class="mb-3">
                         <label for="Culture" class="form-label">Language</label>
@@ -45,7 +53,7 @@
                         </select>
                     </div>
 
-                    @if (Model.AllowAnonymous)
+                    @if (Model.ShowAnonymitySelector)
                     {
                         <fieldset class="mb-3">
                             <legend class="form-label">How would you like to respond?</legend>
@@ -79,7 +87,7 @@
                             </p>
                         </fieldset>
                     }
-                    else
+                    else if (!Model.IsPublic)
                     {
                         <input type="hidden" name="Anonymity" value="@nameof(ResponseAnonymity.Identified)" />
                     }

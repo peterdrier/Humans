@@ -61,6 +61,12 @@ public partial interface ISurveyRepository : IRepository
     /// <summary>A single invitation by id, or null if it does not exist. Read-only.</summary>
     Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default);
 
+    /// <summary>The id of the survey owning <paramref name="slug"/> (already normalised), or null if none. Read-only.</summary>
+    Task<Guid?> GetIdByPublicSlugAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>Increments a survey's <c>PublicStartedCount</c> by one. No-op if the survey does not exist.</summary>
+    Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
+
     /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 

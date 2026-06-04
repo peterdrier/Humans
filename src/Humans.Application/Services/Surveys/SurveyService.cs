@@ -301,6 +301,23 @@ public sealed class SurveyService(
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
         => repo.MarkInvitationStartedAsync(invitationId, ct);
 
+    public async Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default)
+    {
+        var normalized = NormalizeSlug(slug);
+        if (normalized is null) return null;
+
+        var surveyId = await repo.GetIdByPublicSlugAsync(normalized, ct);
+        if (surveyId is null) return null;
+
+        var definition = await GetForEditAsync(surveyId.Value, ct);
+        if (definition is null) return null;
+
+        return new SurveyPublicContext(surveyId.Value, definition);
+    }
+
+    public Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
+        => repo.IncrementPublicStartedAsync(surveyId, ct);
+
     public Task SaveDraftAnswersAsync(Guid draftResponseId, IReadOnlyList<SurveyAnswerInput> answers, CancellationToken ct = default)
         => repo.SaveDraftAnswersAsync(draftResponseId, MapAnswers(draftResponseId, answers), submittedAt: null, ct);
 
@@ -518,6 +535,23 @@ public sealed class SurveyService(
         }
     }
 
+    /// <summary>
+    /// Slugs that would shadow the literal-segment routes under <c>/Survey</c> (the answering wizard
+    /// and the admin area). Authoring rejects these so a public link can never collide with a real action.
+    /// </summary>
+    private static readonly IReadOnlySet<string> ReservedSlugs =
+        new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
+
+    /// <summary>Trims/lower-cases the slug (null when blank) and rejects reserved words.</summary>
     private static string? NormalizeSlug(string? slug)
-        => string.IsNullOrWhiteSpace(slug) ? null : slug.Trim().ToLowerInvariant();
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var normalized = slug.Trim().ToLowerInvariant();
+        if (ReservedSlugs.Contains(normalized))
+        {
+            throw new InvalidOperationException($"Slug '{normalized}' is reserved.");
+        }
+
+        return normalized;
+    }
 }

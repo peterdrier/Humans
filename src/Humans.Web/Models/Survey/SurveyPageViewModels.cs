@@ -13,6 +13,12 @@ public sealed class SurveyPageViewModel
 {
     public string Token { get; init; } = string.Empty;
 
+    /// <summary>True on the public-slug path: the form posts to <c>Public/Page</c> with <see cref="Slug"/> instead of <c>Answer/Page</c> with the token.</summary>
+    public bool IsPublic { get; init; }
+
+    /// <summary>The public slug (only set when <see cref="IsPublic"/>); drives the post route on the public path.</summary>
+    public string Slug { get; init; } = string.Empty;
+
     /// <summary>The survey's raw page number this view renders (posted back so the server re-validates the right page).</summary>
     public int Page { get; init; }
 

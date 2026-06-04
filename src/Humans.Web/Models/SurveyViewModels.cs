@@ -36,6 +36,18 @@ public sealed class SurveyIntroViewModel
     /// <summary>When true, the three-tier anonymity selector is shown; otherwise only Identified applies.</summary>
     public bool AllowAnonymous { get; init; }
 
+    /// <summary>
+    /// When true the anonymity-tier radios are rendered (invited path with <see cref="AllowAnonymous"/>);
+    /// the public-slug path sets this false — that path is always Anonymous, so only the language picker shows.
+    /// </summary>
+    public bool ShowAnonymitySelector { get; init; }
+
+    /// <summary>True on the public-slug path: the intro form posts to <c>Public/Start</c> with <see cref="Slug"/> instead of <c>Answer/Start</c> with the token.</summary>
+    public bool IsPublic { get; init; }
+
+    /// <summary>The public slug (only set when <see cref="IsPublic"/>); drives the start route on the public path.</summary>
+    public string Slug { get; init; } = string.Empty;
+
     /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
     public bool HasResumableDraft { get; init; }
 

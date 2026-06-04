@@ -62,6 +62,15 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Resolves a public slug into the anonymous answering context (survey id + reused definition), or
+    /// null when no survey owns that slug or the slug is blank. The slug is normalised before lookup.
+    /// </summary>
+    Task<SurveyPublicContext?> ResolvePublicContextAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>Increments the survey's public-path <c>Started</c> funnel counter (slug path has no per-person anchor). No-op if the survey is gone.</summary>
+    Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
+
+    /// <summary>
     /// Replaces the answers on an in-progress Identified draft (per-page autosave). The draft's
     /// <c>SubmittedAt</c> stays null. Branching is not re-applied here — final submit is authoritative.
     /// </summary>
@@ -148,6 +157,13 @@ public sealed record SurveyAnswerContext(
     SurveyDetail Definition,
     IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
     bool HasResumableDraft);
+
+/// <summary>
+/// A survey resolved from its public slug for the anonymous answering path: the survey id plus the
+/// reused editable definition (<see cref="SurveyDetail"/>). No invitation/identity — the slug path is
+/// always <see cref="ResponseAnonymity.Anonymous"/>.
+/// </summary>
+public sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
 public sealed record SurveyDraftAnswer(

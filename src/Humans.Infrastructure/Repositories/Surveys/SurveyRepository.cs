@@ -154,6 +154,25 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
             .FirstOrDefaultAsync(i => i.Id == invitationId, ct);
     }
 
+    public async Task<Guid?> GetIdByPublicSlugAsync(string slug, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Surveys
+            .AsNoTracking()
+            .Where(s => s.PublicSlug == slug)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == surveyId, ct);
+        if (survey is null) return;
+        survey.PublicStartedCount++;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
     {
         // No display ordering here — answer order is reconstructed by question (caller/wizard).

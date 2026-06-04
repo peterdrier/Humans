@@ -78,6 +78,47 @@ public class SurveyServiceTests
         await _audit.Received(1).LogAsync(AuditAction.SurveyCreated, "Survey", id, Arg.Any<string>(), actor);
     }
 
+    private static SurveyEditInput InputWithSlug(string? slug) =>
+        new(L("Title"), L("Intro"), L("Thanks"), "en", true, null, null, null, null, slug, []);
+
+    [HumansTheory]
+    [InlineData("admin")]
+    [InlineData("Admin")]
+    [InlineData("ANSWER")]
+    [InlineData(" answer ")]
+    public async Task CreateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
+    {
+        var act = async () => await CreateService().CreateAsync(InputWithSlug(slug), Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("admin")]
+    [InlineData("Admin")]
+    [InlineData("ANSWER")]
+    public async Task UpdateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
+    {
+        var act = async () => await CreateService().UpdateAsync(Guid.NewGuid(), InputWithSlug(slug), Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it()
+    {
+        Survey? captured = null;
+        _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<Survey>());
+
+        await CreateService().CreateAsync(InputWithSlug(" Summer-Feedback "), Guid.NewGuid());
+
+        captured.Should().NotBeNull();
+        captured!.PublicSlug.Should().Be("summer-feedback");
+    }
+
     [HumansFact]
     public async Task UpdateAsync_rejects_forward_reference_and_does_not_persist()
     {
@@ -352,6 +393,54 @@ public class SurveyServiceTests
         var ctx = await CreateService().ResolveAnswerContextAsync("orphan");
 
         ctx.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
+    {
+        _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
+
+        var ctx = await CreateService().ResolvePublicContextAsync("MISSING");
+
+        ctx.Should().BeNull();
+        // Lookup uses the normalised (lower-cased/trimmed) slug.
+        await _repo.Received(1).GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_returns_null_for_blank_slug()
+    {
+        var ctx = await CreateService().ResolvePublicContextAsync("   ");
+
+        ctx.Should().BeNull();
+        await _repo.DidNotReceive().GetIdByPublicSlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_returns_context_for_known_slug()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "feedback";
+        _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var ctx = await CreateService().ResolvePublicContextAsync(" Feedback ");
+
+        ctx.Should().NotBeNull();
+        ctx!.SurveyId.Should().Be(survey.Id);
+        ctx.Definition.Id.Should().Be(survey.Id);
+        ctx.Definition.Status.Should().Be(SurveyStatus.Open);
+    }
+
+    [HumansFact]
+    public async Task IncrementPublicStartedAsync_delegates_to_repo_once()
+    {
+        var surveyId = Guid.NewGuid();
+
+        await CreateService().IncrementPublicStartedAsync(surveyId);
+
+        await _repo.Received(1).IncrementPublicStartedAsync(surveyId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
