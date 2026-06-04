@@ -42,6 +42,7 @@
                             <div class="mb-3">
                                 @{
                                     var descId = $"role-desc-{role.DefinitionId:N}";
+                                    var addId = $"role-add-{role.DefinitionId:N}";
                                 }
                                 <h6 class="mb-1">
                                     @role.Name
@@ -62,6 +63,14 @@
                                             <i class="fa-solid fa-circle-info"></i>
                                         </button>
                                     }
+                                    @if (Model.RolesPanel.CanManage && role.EmptySlotCount > 0)
+                                    {
+                                        <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-success"
+                                                data-bs-toggle="collapse" data-bs-target="#@addId"
+                                                aria-expanded="false" aria-controls="@addId" title="Add to role">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    }
                                 </h6>
                                 @if (!string.IsNullOrWhiteSpace(role.Description))
                                 {
@@ -75,8 +84,8 @@
                                     <div class="d-flex flex-wrap gap-2 mb-2">
                                         @foreach (var slot in role.FilledSlots)
                                         {
-                                            <div class="d-inline-flex align-items-center gap-2 border rounded-pill px-2 py-1">
-                                                <vc:human user-id="@slot.UserId" layout="AvatarName" size="32" />
+                                            <div class="d-inline-flex align-items-center gap-2 border rounded-pill px-3 py-2">
+                                                <vc:human user-id="@slot.UserId" layout="AvatarName" size="48" />
                                                 @if (Model.RolesPanel.CanManage)
                                                 {
                                                     <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
@@ -94,12 +103,6 @@
                                 @if (Model.RolesPanel.CanManage && role.EmptySlotCount > 0)
                                 {
                                     var alreadyInRole = role.FilledSlots.Select(s => s.UserId).ToList();
-                                    var addId = $"role-add-{role.DefinitionId:N}";
-                                    <button type="button" class="btn btn-sm btn-outline-primary"
-                                            data-bs-toggle="collapse" data-bs-target="#@addId"
-                                            aria-expanded="false" aria-controls="@addId">
-                                        <i class="fa-solid fa-plus me-1"></i> Add to role
-                                    </button>
                                     <div class="collapse mt-2" id="@addId">
                                         <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2" style="max-width: 22rem;">
                                             @Html.AntiForgeryToken()
