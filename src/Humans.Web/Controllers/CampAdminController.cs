@@ -682,11 +682,23 @@ public class CampAdminController(
     }
 
     [HttpGet("ShiftObligations/Functions")]
-    public async Task<IActionResult> ShiftObligationFunctions(CancellationToken ct)
+    public async Task<IActionResult> ShiftObligationFunctions(Guid? editId, CancellationToken ct)
     {
         var functions = await shiftObligationService.GetFunctionsAsync(ct);
         var roleDefs = await campRoleService.ListDefinitionsAsync(includeDeactivated: false, ct);
-        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions, roleDefs));
+
+        // Pre-fill the form from the row the admin asked to edit (reusing the list
+        // fetch above — no GetById on the service). Unknown editId falls through to
+        // a blank create form with a warning.
+        ShiftObligationConfigInfo? editTarget = null;
+        if (editId is { } id)
+        {
+            editTarget = functions.FirstOrDefault(f => f.Id == id);
+            if (editTarget is null)
+                SetInfo("That function no longer exists — showing a blank create form.");
+        }
+
+        return View("ShiftObligationFunctions", BuildFunctionsViewModel(functions, roleDefs, editTarget));
     }
 
     [HttpPost("ShiftObligations/Functions")]
@@ -731,8 +743,29 @@ public class CampAdminController(
 
     private static ShiftObligationFunctionsViewModel BuildFunctionsViewModel(
         IReadOnlyList<ShiftObligationConfigInfo> functions,
-        IReadOnlyList<CampRoleDefinitionInfo> roleDefs) =>
-        new()
+        IReadOnlyList<CampRoleDefinitionInfo> roleDefs,
+        ShiftObligationConfigInfo? editTarget = null)
+    {
+        var slugOptions = roleDefs
+            .Where(d => !string.IsNullOrWhiteSpace(d.Slug))
+            .GroupBy(d => d.Slug, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(d => new CampRoleSlugOptionViewModel(d.Slug, d.Name))
+            .ToList();
+
+        // Preserve a stored slug that isn't in the role-definition catalogue (e.g. a
+        // legacy free-text "power") by prepending it as an explicit option, so editing
+        // doesn't silently reset it to "none".
+        if (editTarget is not null
+            && !string.IsNullOrWhiteSpace(editTarget.CampRoleSlug)
+            && !slugOptions.Any(o => string.Equals(o.Slug, editTarget.CampRoleSlug, StringComparison.OrdinalIgnoreCase)))
+        {
+            slugOptions.Insert(0, new CampRoleSlugOptionViewModel(
+                editTarget.CampRoleSlug, "(not a defined role)"));
+        }
+
+        return new ShiftObligationFunctionsViewModel
         {
             Functions = functions
                 .OrderBy(f => f.SortOrder)
@@ -741,12 +774,25 @@ public class CampAdminController(
                     f.Id, f.TargetType, f.TargetId, f.TargetName, f.CampRoleSlug,
                     f.Applicability, f.DefaultRequiredShiftCount, f.IsActive, f.SortOrder))
                 .ToList(),
-            CampRoleSlugOptions = roleDefs
-                .Where(d => !string.IsNullOrWhiteSpace(d.Slug))
-                .GroupBy(d => d.Slug, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First())
-                .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(d => new CampRoleSlugOptionViewModel(d.Slug, d.Name))
-                .ToList(),
+            CampRoleSlugOptions = slugOptions,
+            EditTargetName = editTarget is null
+                ? null
+                : (string.IsNullOrWhiteSpace(editTarget.TargetName)
+                    ? editTarget.TargetId.ToString()
+                    : editTarget.TargetName),
+            Form = editTarget is null
+                ? new ShiftObligationFunctionFormViewModel()
+                : new ShiftObligationFunctionFormViewModel
+                {
+                    Id = editTarget.Id,
+                    TargetType = editTarget.TargetType,
+                    TargetId = editTarget.TargetId,
+                    CampRoleSlug = editTarget.CampRoleSlug,
+                    Applicability = editTarget.Applicability,
+                    DefaultRequiredShiftCount = editTarget.DefaultRequiredShiftCount,
+                    IsActive = editTarget.IsActive,
+                    SortOrder = editTarget.SortOrder,
+                },
         };
+    }
 }

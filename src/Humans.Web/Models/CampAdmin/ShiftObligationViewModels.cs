@@ -66,6 +66,10 @@ public sealed class ShiftObligationFunctionsViewModel
     // ICampRoleService.ListDefinitionsAsync in the controller.
     public IReadOnlyList<CampRoleSlugOptionViewModel> CampRoleSlugOptions { get; init; } =
         Array.Empty<CampRoleSlugOptionViewModel>();
+
+    // Display name of the function being edited (null in create mode). Drives the
+    // "Editing: {name}" note on the form.
+    public string? EditTargetName { get; init; }
 }
 
 public sealed record CampRoleSlugOptionViewModel(string Slug, string Name);

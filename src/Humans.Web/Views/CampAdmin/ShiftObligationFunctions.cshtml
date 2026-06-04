@@ -37,6 +37,7 @@
                         <th class="text-end">Default required</th>
                         <th class="text-end">Sort</th>
                         <th>Active</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,6 +60,12 @@
                                     <span class="badge bg-secondary">Inactive</span>
                                 }
                             </td>
+                            <td class="text-end">
+                                <a asp-action="ShiftObligationFunctions" asp-route-editId="@f.Id"
+                                   fragment="function-form" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-pen me-1"></i>Edit
+                                </a>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -67,12 +74,19 @@
     }
 </div>
 
-<div class="card mb-4">
+<div class="card mb-4" id="function-form">
     <div class="card-header"><i class="fa-solid fa-plus me-2"></i>Add / edit function</div>
     <div class="card-body">
+        @if (Model.Form.Id is not null)
+        {
+            <div class="alert alert-info py-2 small">
+                <i class="fa-solid fa-pen me-1"></i>Editing: <strong>@Model.EditTargetName</strong>.
+                Save to update it, or <a asp-action="ShiftObligationFunctions">start a new function</a>.
+            </div>
+        }
         <p class="text-muted small">
-            To edit an existing function, paste its Id (from the audit log) into the optional Id field;
-            leave it blank to create a new one. Each (target type, target) pair may be used once.
+            Use the <strong>Edit</strong> button on a function above to change it, or leave the Id blank
+            to create a new one. Each (target type, target) pair may be used once.
         </p>
         <form asp-action="ShiftObligationFunctions" method="post" class="row g-3">
             @Html.AntiForgeryToken()
@@ -80,6 +94,7 @@
                 <label class="form-label">Function Id (optional — edit)</label>
                 <input type="text" name="Id" class="form-control form-control-sm"
                        pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$"
+                       value="@(Model.Form.Id?.ToString())"
                        placeholder="Leave blank to create" />
             </div>
             <div class="col-md-3">
@@ -87,7 +102,7 @@
                 <select name="TargetType" class="form-select form-select-sm">
                     @foreach (var t in Enum.GetValues<ShiftObligationTargetType>())
                     {
-                        <option value="@t">@t</option>
+                        <option value="@t" selected="@(t == Model.Form.TargetType)">@t</option>
                     }
                 </select>
             </div>
@@ -96,13 +111,14 @@
                 <select name="Applicability" class="form-select form-select-sm">
                     @foreach (var a in Enum.GetValues<ObligationApplicability>())
                     {
-                        <option value="@a">@a</option>
+                        <option value="@a" selected="@(a == Model.Form.Applicability)">@a</option>
                     }
                 </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Target Id (Team or Rota GUID)</label>
                 <input type="text" name="TargetId" class="form-control form-control-sm" required
+                       value="@(Model.Form.TargetId == Guid.Empty ? "" : Model.Form.TargetId.ToString())"
                        pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$" />
             </div>
             <div class="col-md-3">
@@ -124,16 +140,16 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Default required shifts</label>
-                <input type="number" name="DefaultRequiredShiftCount" min="0" value="0" class="form-control form-control-sm" required />
+                <input type="number" name="DefaultRequiredShiftCount" min="0" value="@Model.Form.DefaultRequiredShiftCount" class="form-control form-control-sm" required />
             </div>
             <div class="col-md-3">
                 <label class="form-label">Sort order</label>
-                <input type="number" name="SortOrder" value="0" class="form-control form-control-sm" required />
+                <input type="number" name="SortOrder" value="@Model.Form.SortOrder" class="form-control form-control-sm" required />
                 <div class="form-text">Order of this function's column in the matrix (lowest first).</div>
             </div>
             <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check">
-                    <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="isActive" checked />
+                    <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="isActive" checked="@Model.Form.IsActive" />
                     <label class="form-check-label" for="isActive">Active</label>
                 </div>
             </div>
