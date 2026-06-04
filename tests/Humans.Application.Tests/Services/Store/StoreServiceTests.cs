@@ -259,6 +259,71 @@ public class StoreServiceTests
         result.Lines[0].ProductName.Should().Be("Tent");
     }
 
+    [HumansFact]
+    public async Task GetOrderAsync_open_order_line_reflects_current_catalog_price()
+    {
+        // Line was added at €50/21%; the catalog price has since dropped to €40/10%.
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var orderId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = StoreOrderState.Open,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 1,
+                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        repriced.Id = product.Id;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct> { repriced });
+
+        var result = await _service.GetOrderAsync(orderId);
+
+        result!.Lines[0].EffectiveUnitPrice.Should().Be(40m);
+        result.Lines[0].EffectiveVatRate.Should().Be(10m);
+        result.BalanceEur.Should().Be(44m); // 40 + 10% VAT
+    }
+
+    [HumansFact]
+    public async Task GetOrderAsync_issued_order_line_keeps_snapshot_price()
+    {
+        // After invoicing, later catalog price changes must not move the order.
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var orderId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = StoreOrderState.InvoiceIssued,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 1,
+                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        repriced.Id = product.Id;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct> { repriced });
+
+        var result = await _service.GetOrderAsync(orderId);
+
+        result!.Lines[0].EffectiveUnitPrice.Should().Be(50m); // snapshot, not current 40
+        result.BalanceEur.Should().Be(60.50m);
+    }
+
     // ==========================================================================
     // Write paths (Task 2.4)
     // ==========================================================================
@@ -668,6 +733,29 @@ public class StoreServiceTests
             AuditAction.StoreProductUpdated, nameof(StoreProduct), existing.Id,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_audit_describes_price_before_and_after()
+    {
+        var existing = MakeProduct(name: "Tent", price: 10m, vat: 21m, deposit: null);
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        string? auditDescription = null;
+        await _audit.LogAsync(
+            AuditAction.StoreProductUpdated, nameof(StoreProduct), existing.Id,
+            Arg.Do<string>(d => auditDescription = d), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        var draft = new ProductDto(
+            existing.Id, existing.Year, existing.Name, existing.Description,
+            UnitPriceEur: 25m, VatRatePercent: 21m, DepositAmountEur: null,
+            existing.OrderableUntil, IsActive: true);
+
+        await _service.UpdateProductAsync(draft, Guid.NewGuid());
+
+        auditDescription.Should().NotBeNull();
+        auditDescription.Should().Contain("10.00").And.Contain("25.00"); // before → after
     }
 
     [HumansFact]

@@ -98,10 +98,10 @@
                     @if (!isTeamOrder)
                     {
                         <td class="text-end">
-                            &euro;@line.UnitPriceSnapshotInclVat.ToString("N2")
-                            <div class="text-muted small">(&euro;@line.UnitPriceSnapshot.ToString("N2") + @line.VatRateSnapshot.ToString("0.##")% VAT)</div>
+                            &euro;@line.EffectiveUnitPriceInclVat.ToString("N2")
+                            <div class="text-muted small">(&euro;@line.EffectiveUnitPrice.ToString("N2") + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
                         </td>
-                        <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
+                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
                         <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     }
                     <td class="text-end">
