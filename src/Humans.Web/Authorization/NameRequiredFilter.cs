@@ -33,16 +33,26 @@ public sealed class NameRequiredFilter(IUserServiceRead userService) : IAsyncAct
     // gate redirects to itself / locks the user out of escaping it.
     private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Account",          // Login / logout / OAuth + magic-link callbacks.
-        "OnboardingWidget", // The gate form itself (Names GET/POST) + its dispatcher.
-        "Language",         // Language switching while on the gate.
+        "Account",  // Login / logout / OAuth + magic-link callbacks.
+        "Language", // Language switching while on the gate.
     };
 
     // Allow-list (specific controller actions) — pages the gate form links to or
     // that must render even mid-gate (error pages, privacy notice).
+    //
+    // OnboardingWidget is deliberately NOT exempt wholesale — only its Names form
+    // is. The widget's later steps (Shifts/SignUp/SignUpRange/Skip and the
+    // Consents pair) do not all re-check names, and ShiftSignupService.SignUpAsync
+    // never validates HasRequiredNameFields, so a whole-controller exemption would
+    // let a nameless user POST a rota signup via OnboardingWidget/SignUp without
+    // ever naming themselves. Gating every route except Names sends a nameless
+    // user to the form first (the dispatcher, Index, gates the same way and so
+    // needs no exemption); once named, the gate passes and the wizard flow —
+    // Names → Shifts → Consents — is untouched.
     private static readonly HashSet<(string Controller, string Action)> ExemptActions =
         new()
         {
+            ("OnboardingWidget", "Names"), // The gate form itself (GET + POST).
             ("Home", "Error"),
             ("Home", "Privacy"),
         };

@@ -86,7 +86,6 @@ public class NameRequiredFilterTests
 
     [HumansTheory]
     [InlineData("OnboardingWidget", "Names")]
-    [InlineData("OnboardingWidget", "Consents")]
     [InlineData("Account", "Logout")]
     [InlineData("Account", "ExternalLoginCallback")]
     [InlineData("Home", "Error")]
@@ -103,6 +102,36 @@ public class NameRequiredFilterTests
         Assert.True(nextCalled,
             $"{controllerName}/{actionName} must be reachable so the gate cannot loop or trap the user");
         Assert.Null(ctx.Result);
+    }
+
+    // Regression for the onboarding-shift bypass (Codex review on #812): only the
+    // Names form is exempt, so every other OnboardingWidget route — the dispatcher,
+    // and the shift-signup/consent POSTs that don't all re-check names — must
+    // redirect a nameless user to the form rather than let them act. Before this,
+    // the whole controller was exempt and a nameless user could POST
+    // OnboardingWidget/SignUp to create a rota signup with a blank-name profile.
+    [HumansTheory]
+    [InlineData("OnboardingWidget", "Index")]
+    [InlineData("OnboardingWidget", "Shifts")]
+    [InlineData("OnboardingWidget", "SignUp")]
+    [InlineData("OnboardingWidget", "SignUpRange")]
+    [InlineData("OnboardingWidget", "Skip")]
+    [InlineData("OnboardingWidget", "Consents")]
+    [InlineData("OnboardingWidget", "SignConsent")]
+    public async Task OnboardingWidgetNonNameRoutes_RedirectNamelessUserToNameForm(
+        string controllerName, string actionName)
+    {
+        var users = StubUserInfo(burnerName: "");
+        var sut = new NameRequiredFilter(users);
+        var ctx = BuildContext(controllerName, actionName, authenticated: true);
+
+        var nextCalled = await RunAsync(sut, ctx);
+
+        Assert.False(nextCalled,
+            $"{controllerName}/{actionName} must gate a nameless user — only the name form is exempt");
+        var redirect = Assert.IsType<RedirectToActionResult>(ctx.Result);
+        Assert.Equal("Names", redirect.ActionName);
+        Assert.Equal("OnboardingWidget", redirect.ControllerName);
     }
 
     private static async Task<bool> RunAsync(NameRequiredFilter sut, ActionExecutingContext ctx)
