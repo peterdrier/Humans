@@ -554,7 +554,7 @@ Implemented by the section's caching decorator. External sections inject the inv
 Do not expose EF entity types from section service read APIs — the canonical
 `Info` projection is the boundary.
 
-Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`, `FullProfile`, `IFullProfileInvalidator`, `CachingProfileService`, `FullProfileWarmupHostedService`, `PersonSearchMatcher`, `UserInfoWarmupHostedService`, `TeamsWarmupHostedService`.
+Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`, `FullProfile`, `IFullProfileInvalidator`, `CachingProfileService`, `FullProfileWarmupHostedService`, `UserInfoWarmupHostedService`, `TeamsWarmupHostedService`.
 
 ### 15g. Known Deferrals
 

@@ -226,7 +226,7 @@ graph LR
     ShiftMgmt --> AdminAuth
     ShiftSign --> ShiftMgmt
     ShiftSign --> BurnSettings
-    ShiftSign --> Notif
+    ShiftSign --> NotifEmitter
     ShiftSign --> Audit
     ShiftSign --> AdminAuth
     VolTrack --> User
@@ -246,7 +246,7 @@ graph LR
     AppDec --> Role
     AppDec --> UEmail
     AppDec --> Email
-    AppDec --> Notif
+    AppDec --> NotifEmitter
     AppDec --> Metrics
     AppDec --> Audit
     MembershipCalc --> MemQuery
@@ -263,7 +263,7 @@ graph LR
     AdminLegal --> Team
     LegalSync --> User
     LegalSync --> Team
-    LegalSync --> Notif
+    LegalSync --> NotifEmitter
     Consent --> LegalSync
     Consent --> NotifInbox
     Consent --> User
@@ -302,7 +302,7 @@ graph LR
     Campaign --> User
     Campaign --> UEmail
     Campaign --> CommPref
-    Campaign --> Notif
+    Campaign --> NotifEmitter
     Campaign --> Email
 
     %% Google section
@@ -332,7 +332,7 @@ graph LR
     EmailProv --> UEmail
     EmailProv --> Team
     EmailProv --> Email
-    EmailProv --> Notif
+    EmailProv --> NotifEmitter
     EmailProv --> Audit
     GRemoval --> UEmail
     GRemoval --> User
@@ -361,12 +361,12 @@ graph LR
     Onboard --> AppDec
     Onboard --> MembershipCalc
     Onboard --> Email
-    Onboard --> Notif
+    Onboard --> NotifEmitter
     Onboard --> Metrics
     Onboard --> Audit
 
     HumanLifecycle --> User
-    HumanLifecycle --> Notif
+    HumanLifecycle --> NotifEmitter
     HumanLifecycle --> NotifInbox
     HumanLifecycle --> Audit
     HumanLifecycle --> Metrics
@@ -376,7 +376,7 @@ graph LR
     Feedback --> UEmail
     Feedback --> Team
     Feedback --> Email
-    Feedback --> Notif
+    Feedback --> NotifEmitter
     Feedback --> Audit
 
     %% Budget + Finance sections
@@ -459,7 +459,7 @@ graph LR
     Issues --> UEmail
     Issues --> Role
     Issues --> Email
-    Issues --> Notif
+    Issues --> NotifEmitter
     Issues --> Audit
     Store --> Camp
     Store --> Team
@@ -553,9 +553,8 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `ShiftManagementService` | 15 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User itself to break cycles. New eager consumers since the last sweep: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`. |
 | `IEmailService` | 12 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
 | `RoleAssignmentService` | 9 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. |
-| `NotificationService` | 10 | 0 | Cross-cutting notifications. |
 | `CampService` | 7 | 1 | Read consumers via `ICampServiceRead`; lazy-in from its own section's `CampRoleService` construction cycle. |
-| `NotificationEmitter` | 6 | 0 | Lower-level enqueue surface used by Team/Camp/CampContact/CampRole/Role/Notif. |
+| `NotificationEmitter` | 15 | 0 | Lower-level enqueue surface — the high-fan-in notification node. Injected (`INotificationEmitter`) by Team, Camp, CampContact, CampRole, Role, ShiftSign, AppDec, LegalSync, Campaign, EmailProv, Onboard, HumanLifecycle, Feedback, Issues, and `NotificationService` itself (which wraps the emitter). Only `AccountMergeService` takes the full `INotificationService` instead. |
 | `CommunicationPreferenceService` | 6 | 0 | Consent + unsubscribe gating for any outbound message. |
 | `HumansMetricsService` | 5 | 0 | Invoked from Application services that emit counter events (ConsentService, OnboardingService, HumanLifecycleService, AppDec, OutboxEmail). Scheduled for push-model inversion in #580. |
 | `ApplicationDecisionService` | 5 | 0 | Tier-application decisions; read by GovIndex, Onboard, Dash, AdminDash, NotifMeter. |
@@ -568,6 +567,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 
 Below the >= 3 threshold but tracked for narrative continuity:
 
+- `NotificationService` — 1 eager (`AccountMergeService`). The full cross-cutting notification service has only a single section-service dependent; nearly every other notifier injects the lower-level `INotificationEmitter` instead (see `NotificationEmitter` above). `NotificationService` itself wraps the emitter.
 - `CampaignService` — 2 eager (TicketQ, TicketSync). Profile dropped its dependency in #685.
 - `GoogleWorkspaceSyncService` — 2 eager (GAdmin, NotifMeter).
 - `ProfileService` (`IProfilePictureService`) — 1 eager (UserService graph anchor only). After #685 wound down, the picture-only ProfileService injects just `IUserService`. Removed entirely from `Onboard`, `AppDec`, `AcctProv`, `AcctDel`, `ExpenseReport`, `NotifMeter`.

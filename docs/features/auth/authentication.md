@@ -156,6 +156,10 @@ In addition to governance roles, `RoleAssignmentClaimsTransformation` adds an `A
 
 The app registers named authorization policies (`PolicyNames` constants in `Humans.Web.Authorization`) backed by custom `IAuthorizationHandler` implementations. These are used in views and tag helpers (`authorize-policy` attribute) alongside role-based `[Authorize(Roles = "...")]` on controllers.
 
+### Onboarding Name Gate
+
+A second global action filter, `NameRequiredFilter`, runs strictly after authentication. Any authenticated user whose profile has no real `BurnerName` (a Stub profile, or an Active profile with blank required names) is redirected to the burner + legal-name form at `OnboardingWidget/Names` before they can reach the rest of the app. It is the single gate covering OAuth/Google first sign-in, imported contacts hitting the magic-link `ExistingUser` branch, and legacy blank-`BurnerName` accounts (nobodies-collective/Humans#812). It only ever redirects — it **never blocks sign-in** — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, so the gate opens on the next request once names are saved. The `Account` and `Language` controllers, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, are exempt.
+
 See [Volunteer Status](../onboarding/volunteer-status.md) for the full onboarding pipeline and gating details.
 
 ## Security Considerations
