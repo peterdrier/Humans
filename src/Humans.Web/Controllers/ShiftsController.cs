@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -497,8 +498,8 @@ public class ShiftsController(
                     RotaName: s.Shift.Rota.Name,
                     AbsoluteStart: absStart,
                     AbsoluteEnd: absEnd,
-                    DisplayStart: localStart.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture),
-                    DisplayEnd: localEnd.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture));
+                    DisplayStart: DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay),
+                    DisplayEnd: DateFormattingExtensions.TimeOfDayPattern.Format(localEnd.TimeOfDay));
             })
             .ToList();
     }

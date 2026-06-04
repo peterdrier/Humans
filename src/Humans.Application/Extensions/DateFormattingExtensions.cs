@@ -167,6 +167,18 @@ public static class DateFormattingExtensions
     public static string ToDisplayMonthDay(this LocalDate value) =>
         value.ToString("MMM d", null);
 
+    public static string ToDisplayWeekdayDayMonth(this LocalDate value) =>
+        value.ToString("ddd d MMM", CultureInfo.CurrentCulture);
+
+    public static string ToMonthDayName(this LocalDate value) =>
+        value.ToString("MMMM d", CultureInfo.CurrentCulture);
+
+    public static string ToMonthApostropheYear(this LocalDate value) =>
+        value.ToString("MMM", CultureInfo.CurrentCulture) + "'" + value.ToString("yy", CultureInfo.CurrentCulture);
+
+    public static string ToTimeWithSeconds(this DateTimeOffset value) =>
+        value.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
+
     public static string ToDisplayWeekdayDayMonth(this DateTime value) =>
         value.ToString("ddd d MMM", CultureInfo.CurrentCulture);
 
@@ -226,4 +238,26 @@ public static class DateFormattingExtensions
     /// <summary>Invariant long date, "MMMM d, yyyy" (email rendering).</summary>
     public static readonly LocalDatePattern InvariantLongDatePattern =
         LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
+
+    // --- Invariant name-bearing date patterns for CSV/export output (stable English) ---
+
+    /// <summary>Export weekday + day + short month, invariant: "ddd d MMM" (e.g. "Mon 27 May").</summary>
+    public static readonly LocalDatePattern InvariantWeekdayDayMonthPattern =
+        LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
+
+    /// <summary>Export short weekday only, invariant: "ddd" (e.g. "Mon").</summary>
+    public static readonly LocalDatePattern InvariantWeekdayPattern =
+        LocalDatePattern.CreateWithInvariantCulture("ddd");
+
+    /// <summary>Export day + short month, invariant: "d MMM" (e.g. "30 Jun").</summary>
+    public static readonly LocalDatePattern InvariantDayMonthPattern =
+        LocalDatePattern.CreateWithInvariantCulture("d MMM");
+
+    /// <summary>Export full weekday + day + month + year, invariant: "dddd d MMMM yyyy".</summary>
+    public static readonly LocalDatePattern InvariantFullWeekdayDayMonthYearPattern =
+        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
+
+    /// <summary>Export full weekday + day + month, invariant: "dddd d MMMM".</summary>
+    public static readonly LocalDatePattern InvariantFullWeekdayDayMonthPattern =
+        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM");
 }

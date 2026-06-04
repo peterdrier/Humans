@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
+using Humans.Application.Extensions;
 using Humans.Application.Services.Cantina.Dtos;
-using NodaTime.Text;
 
 namespace Humans.Web.Cantina;
 
@@ -31,19 +31,6 @@ public static class CantinaRosterCsvWriter
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
     private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
 
-    // NodaTime pattern: short weekday + day of month + short month, invariant.
-    // Example: "Mon 27 May".
-    private static readonly LocalDatePattern DayOnSitePattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
-
-    // Short weekday name only (e.g. "Mon"); used for the per-day summary table.
-    private static readonly LocalDatePattern WeekdayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd");
-
-    // Date column in the per-day summary (e.g. "30 Jun").
-    private static readonly LocalDatePattern DayMonthPattern =
-        LocalDatePattern.CreateWithInvariantCulture("d MMM");
-
     public static byte[] Write(WeeklyRosterDto roster)
     {
         ArgumentNullException.ThrowIfNull(roster);
@@ -58,8 +45,8 @@ public static class CantinaRosterCsvWriter
                 sw.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
                     "Week of {0} – {1}",
-                    DayOnSitePattern.Format(roster.WeekStartDate.Value),
-                    DayOnSitePattern.Format(roster.WeekEndDate.Value)));
+                    DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(roster.WeekStartDate.Value),
+                    DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(roster.WeekEndDate.Value)));
             }
             else
             {
@@ -72,8 +59,8 @@ public static class CantinaRosterCsvWriter
                 string dateCol;
                 if (d.CalendarDate is { } cd)
                 {
-                    dayCol = WeekdayPattern.Format(cd);
-                    dateCol = DayMonthPattern.Format(cd);
+                    dayCol = DateFormattingExtensions.InvariantWeekdayPattern.Format(cd);
+                    dateCol = DateFormattingExtensions.InvariantDayMonthPattern.Format(cd);
                 }
                 else
                 {
@@ -102,7 +89,7 @@ public static class CantinaRosterCsvWriter
                     CultureInfo.InvariantCulture,
                     "{0},{1},{2},{3},{4},{5},{6},{7}",
                     Quote(p.BurnerName),
-                    Quote(DayOnSitePattern.Format(p.ArrivesOn)),
+                    Quote(DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(p.ArrivesOn)),
                     Quote(FormatDayList(p.NoShift)),
                     Quote(p.DietaryPreference ?? string.Empty),
                     Quote(string.Join(", ", p.Allergies)),
@@ -121,7 +108,7 @@ public static class CantinaRosterCsvWriter
             return string.Empty;
         var parts = new string[days.Count];
         for (var i = 0; i < days.Count; i++)
-            parts[i] = DayOnSitePattern.Format(days[i]);
+            parts[i] = DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(days[i]);
         return string.Join(", ", parts);
     }
 

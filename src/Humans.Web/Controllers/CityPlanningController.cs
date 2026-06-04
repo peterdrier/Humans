@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Containers;
@@ -6,7 +7,6 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using NodaTime.Text;
 
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
@@ -176,7 +176,7 @@ public class CityPlanningController(
         var (error, _) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        var pattern = LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
+        var pattern = DateFormattingExtensions.PlacementDateTimePattern;
 
         LocalDateTime? opens = null;
         if (opensAt is { Length: > 0 })

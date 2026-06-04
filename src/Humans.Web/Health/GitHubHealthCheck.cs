@@ -2,6 +2,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Octokit;
 using Humans.Application.Configuration;
+using Humans.Application.Extensions;
 
 namespace Humans.Web.Health;
 
@@ -80,7 +81,7 @@ public class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHub
         {
             logger.LogWarning(ex, "GitHub rate limit exceeded");
             return HealthCheckResult.Unhealthy(
-                $"GitHub rate limit exceeded. Resets at {ex.Reset:HH:mm:ss}",
+                $"GitHub rate limit exceeded. Resets at {ex.Reset.ToTimeWithSeconds()}",
                 ex);
         }
         catch (Exception ex)
