@@ -186,18 +186,31 @@ public sealed class ShiftObligationService : IShiftObligationService
         return result;
     }
 
-    public async Task UpsertFunctionAsync(
+    public async Task<UpsertFunctionResult> UpsertFunctionAsync(
         ShiftObligationConfigInput input, Guid actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var requiredCount = Math.Max(0, input.DefaultRequiredShiftCount);
+
+        // Pre-check the unique key (TargetType, TargetId) so a collision surfaces as a
+        // friendly result instead of the DB unique-index violation bubbling up as a 500.
+        // A function may keep its own (TargetType, TargetId) on edit, so exclude self.
+        var all = await obligationRepo.GetAllAsync(ct);
+        var duplicate = all.FirstOrDefault(f =>
+            f.TargetType == input.TargetType &&
+            f.TargetId == input.TargetId &&
+            f.Id != input.Id);
+        if (duplicate is not null)
+        {
+            return UpsertFunctionResult.DuplicateTarget;
+        }
 
         if (input.Id is { } id)
         {
             var existing = await obligationRepo.GetByIdAsync(id, ct);
             if (existing is null)
             {
-                throw new InvalidOperationException($"Shift obligation '{id}' not found.");
+                return UpsertFunctionResult.NotFound;
             }
 
             existing.TargetType = input.TargetType;
@@ -212,7 +225,7 @@ public sealed class ShiftObligationService : IShiftObligationService
             await auditLog.LogAsync(
                 AuditAction.BarrioShiftObligationConfigChanged, "ShiftObligation", existing.Id,
                 $"Updated shift-obligation function '{existing.CampRoleSlug}'.", actorUserId);
-            return;
+            return UpsertFunctionResult.Saved;
         }
 
         var created = new ShiftObligation
@@ -231,6 +244,7 @@ public sealed class ShiftObligationService : IShiftObligationService
         await auditLog.LogAsync(
             AuditAction.BarrioShiftObligationConfigChanged, "ShiftObligation", created.Id,
             $"Created shift-obligation function '{created.CampRoleSlug}'.", actorUserId);
+        return UpsertFunctionResult.Saved;
     }
 
     public async Task SetOverrideAsync(

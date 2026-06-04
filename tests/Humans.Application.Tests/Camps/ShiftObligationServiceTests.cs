@@ -340,6 +340,47 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         await _emailServiceMock.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task UpsertFunction_DuplicateTarget_ReturnsFriendlyResult_NoSecondRowInserted()
+    {
+        var teamId = Guid.NewGuid();
+        await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0);
+
+        // A second create against the same (TargetType, TargetId) collides on the unique key.
+        var input = new ShiftObligationConfigInput(
+            null, ShiftObligationTargetType.Team, teamId, "power",
+            ObligationApplicability.AllBarrios, 4, true, 1);
+
+        var result = await _sut.UpsertFunctionAsync(input, _actorUserId);
+
+        result.Should().Be(UpsertFunctionResult.DuplicateTarget);
+        var all = await _obligationRepo.GetAllAsync();
+        all.Count(f => f.TargetType == ShiftObligationTargetType.Team && f.TargetId == teamId)
+            .Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task UpsertFunction_EditKeepingOwnTarget_Saves()
+    {
+        var teamId = Guid.NewGuid();
+        var id = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0);
+
+        // Editing the same row (same target) must not trip the duplicate pre-check.
+        var input = new ShiftObligationConfigInput(
+            id, ShiftObligationTargetType.Team, teamId, "power",
+            ObligationApplicability.AllBarrios, 9, true, 2);
+
+        var result = await _sut.UpsertFunctionAsync(input, _actorUserId);
+
+        result.Should().Be(UpsertFunctionResult.Saved);
+        var saved = await _obligationRepo.GetByIdAsync(id);
+        saved!.DefaultRequiredShiftCount.Should().Be(9);
+    }
+
     // ----- helpers ----------------------------------------------------------
 
     private void SeedSeasonWithLeads(

@@ -17,7 +17,16 @@ public interface IShiftObligationService : IApplicationService
     Task<BarrioObligationDetail?> GetBarrioObligationDetailAsync(Guid campSeasonId, CancellationToken ct = default);
 
     Task<IReadOnlyList<ShiftObligationConfigInfo>> GetFunctionsAsync(CancellationToken ct = default);
-    Task UpsertFunctionAsync(ShiftObligationConfigInput input, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates or updates a function. Returns <see cref="UpsertFunctionResult.DuplicateTarget"/>
+    /// when another active/inactive function already owns the same
+    /// (<c>TargetType</c>, <c>TargetId</c>) — the unique key — so the caller can show
+    /// a friendly validation message instead of surfacing the unique-index violation
+    /// as a 500. Returns <see cref="UpsertFunctionResult.NotFound"/> when editing an
+    /// id that no longer exists.
+    /// </summary>
+    Task<UpsertFunctionResult> UpsertFunctionAsync(ShiftObligationConfigInput input, Guid actorUserId, CancellationToken ct = default);
     Task SetOverrideAsync(Guid campSeasonId, Guid shiftObligationId, int? requiredShiftCount, Guid actorUserId, CancellationToken ct = default);
 
     Task SendReminderAsync(Guid campSeasonId, Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default);
@@ -44,6 +53,13 @@ public sealed record ObligationDetailFunction(
     Guid ShiftObligationId, string Name, int Done, int Required,
     IReadOnlyList<SignedUpMember> SignedUp,                 // count desc
     IReadOnlyList<string> NotYetSignedUpNames);            // optional chase list
+
+public enum UpsertFunctionResult
+{
+    Saved = 0,
+    NotFound = 1,       // edit targeted an id that no longer exists
+    DuplicateTarget = 2 // another function already owns this (TargetType, TargetId)
+}
 
 public sealed record SignedUpMember(Guid UserId, string Name, int Count);
 public sealed record ShiftObligationConfigInfo(Guid Id, ShiftObligationTargetType TargetType, Guid TargetId, string TargetName, string CampRoleSlug, ObligationApplicability Applicability, int DefaultRequiredShiftCount, bool IsActive, int SortOrder);
