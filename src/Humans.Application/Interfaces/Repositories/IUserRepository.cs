@@ -133,6 +133,14 @@ public partial interface IUserRepository : IRepository
         Guid userId, UserState state, CancellationToken ct = default);
 
     /// <summary>
+    /// Recomputes and persists <see cref="Domain.Entities.User.State"/> from the user's current
+    /// row + profile via the single <c>UserStateClassifier</c>. Every lifecycle transition (name,
+    /// suspend, reject, deletion, merge) calls this after committing its underlying field change,
+    /// so the stored state never drifts. Overwrites unconditionally; no-op if the user is missing.
+    /// </summary>
+    Task ResyncStateAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
     /// Returns false if the user does not exist.

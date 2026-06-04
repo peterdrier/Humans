@@ -335,6 +335,7 @@ public sealed class UserService(
             profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
             await repo.AddAsync(profile, ct);
+            await repo.ResyncStateAsync(userId, ct);
             return true;
         }
         finally
@@ -411,6 +412,7 @@ public sealed class UserService(
         }
 
         await repo.UpdateAsync(profile, ct);
+        await repo.ResyncStateAsync(userId, ct);
         return new OnboardingResult(true);
     }
 
@@ -502,6 +504,7 @@ public sealed class UserService(
 
             await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
+            await repo.ResyncStateAsync(userId, ct);
 
             return new UserProfileSaveResult(
                 profile.Id,

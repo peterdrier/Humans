@@ -287,6 +287,8 @@ public class AccountProvisioningServiceTests
         public Task<bool> WriteBackUserStateIfNullAsync(
             Guid userId, UserState state, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task ResyncStateAsync(Guid userId, CancellationToken ct = default) =>
+            Task.CompletedTask;
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

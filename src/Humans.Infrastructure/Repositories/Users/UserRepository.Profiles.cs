@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -162,6 +163,16 @@ internal sealed partial class UserRepository
 
         if (profiles.Count > 0)
         {
+            var affectedIds = profiles.Select(p => p.UserId).ToList();
+            var users = await ctx.Users
+                .Where(u => affectedIds.Contains(u.Id))
+                .ToListAsync(ct);
+            var profilesByUser = profiles.ToDictionary(p => p.UserId);
+            foreach (var user in users)
+            {
+                user.State = UserStateClassifier.Classify(
+                    user, profilesByUser.GetValueOrDefault(user.Id));
+            }
             await ctx.SaveChangesAsync(ct);
         }
 

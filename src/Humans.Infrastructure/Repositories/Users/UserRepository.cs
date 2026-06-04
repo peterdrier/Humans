@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -215,6 +216,7 @@ internal sealed partial class UserRepository : IUserRepository
         user.DeletionRequestedAt = requestedAt;
         user.DeletionScheduledFor = scheduledFor;
         user.DeletionEligibleAfter = eligibleAfter;
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -229,6 +231,7 @@ internal sealed partial class UserRepository : IUserRepository
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         user.DeletionEligibleAfter = null;
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -243,6 +246,27 @@ internal sealed partial class UserRepository : IUserRepository
             .Where(u => u.Id == userId && u.State == null)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.State, state), ct);
         return rows > 0;
+    }
+
+    public async Task ResyncStateAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null) return;
+
+        await ResyncStateInContextAsync(ctx, user, ct);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    // Sets user.State from the single classifier using the profile loaded in the same context.
+    // Caller owns SaveChangesAsync so this composes with other field mutations in one round-trip.
+    private static async Task ResyncStateInContextAsync(
+        HumansDbContext ctx, User user, CancellationToken ct)
+    {
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
+        user.State = UserStateClassifier.Classify(user, profile);
     }
 
     public async Task<bool> AnonymizeForMergeAsync(
@@ -275,6 +299,7 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.ICalToken = null;
 
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -533,6 +558,7 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.ICalToken = null;
 
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return new ExpiredDeletionAnonymizationResult(
             originalEmail, originalDisplayName, preferredLanguage);
