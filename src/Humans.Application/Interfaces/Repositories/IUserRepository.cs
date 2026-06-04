@@ -124,6 +124,15 @@ public partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Lazily seeds <see cref="Domain.Entities.User.State"/> for a legacy row whose State is null,
+    /// classified once on first read. Idempotent (State IS NULL guard); no UpdatedAt/audit side
+    /// effects. Mirrors the ProfileState seed it supersedes.
+    /// </summary>
+    /// <returns>true if a row was updated; false if the row was missing or already non-null.</returns>
+    Task<bool> WriteBackUserStateIfNullAsync(
+        Guid userId, UserState state, CancellationToken ct = default);
+
+    /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
     /// Returns false if the user does not exist.

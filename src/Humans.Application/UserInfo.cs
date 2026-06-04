@@ -160,6 +160,14 @@ public sealed record UserInfo(
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
+    /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
+    /// for access; <see cref="UserState.Active"/> is the only state with full app access. Null only
+    /// for legacy rows not yet seeded; <c>UserService.GetUserInfoAsync</c> resolves and persists it
+    /// on first read, so callers observe a non-null value.
+    /// </summary>
+    public UserState? State { get; init; }
+
+    /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
     /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
     /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY
@@ -452,6 +460,9 @@ public sealed record UserInfo(
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
             Profile: profileInfo,
-            CommunicationPreferences: communicationPreferenceInfos);
+            CommunicationPreferences: communicationPreferenceInfos)
+        {
+            State = user.State,
+        };
     }
 }

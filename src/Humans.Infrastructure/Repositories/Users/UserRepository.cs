@@ -233,6 +233,18 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> WriteBackUserStateIfNullAsync(
+        Guid userId, UserState state, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // ExecuteUpdate with the State IS NULL guard: idempotent across concurrent first-touch
+        // seeds, zero impact on already-set rows, no UpdatedAt bump.
+        var rows = await ctx.Users
+            .Where(u => u.Id == userId && u.State == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.State, state), ct);
+        return rows > 0;
+    }
+
     public async Task<bool> AnonymizeForMergeAsync(
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)

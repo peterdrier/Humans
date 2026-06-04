@@ -61,10 +61,21 @@ public sealed class UserService(
         var communicationPreferences = await communicationPreferenceRepo
             .GetByUserIdReadOnlyAsync(userId, ct);
 
-        return UserInfo.Create(
+        var info = UserInfo.Create(
             user, userEmails, participations, externalLogins,
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
+
+        // First-touch seed: legacy rows hold a null State until classified once and persisted.
+        // Idempotent at the repo (State IS NULL guard); transitions keep it current thereafter.
+        if (user.State is null)
+        {
+            var seeded = UserStateClassifier.Classify(info);
+            await repo.WriteBackUserStateIfNullAsync(userId, seeded, ct);
+            return info with { State = seeded };
+        }
+
+        return info;
     }
 
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
