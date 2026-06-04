@@ -750,11 +750,6 @@ public class StoreService(
             .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
             .ToDictionary(season => season.Id);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
-        // Open orders reprice to the current catalog price so summary balances match
-        // the order page; issued orders stay on their snapshots (#816).
-        var currentPrices = products.ToDictionary(
-            p => p.Id,
-            p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
 
         var campOrders = seasonsForYear.Count == 0
             ? (IReadOnlyList<StoreOrder>)Array.Empty<StoreOrder>()
@@ -781,7 +776,7 @@ public class StoreService(
 
         foreach (var o in campOrdersInYear)
         {
-            var totals = BalanceCalculator.Compute(o, currentPrices);
+            var totals = BalanceCalculator.Compute(o);
             var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
             var sid = o.CampSeasonId!.Value;
             var campName = seasonsForYear[sid].Name;
@@ -798,7 +793,7 @@ public class StoreService(
         }
         foreach (var o in teamOrders)
         {
-            var totals = BalanceCalculator.Compute(o, currentPrices);
+            var totals = BalanceCalculator.Compute(o);
             var tid = o.TeamId!.Value;
             var teamName = teamNames.TryGetValue(tid, out var n) ? n : "(unknown team)";
             byCounterparty.Add(new OrderSummaryDto(
@@ -816,8 +811,6 @@ public class StoreService(
         // Counterparty row ordering is the view's concern
         // (memory/architecture/display-sort-in-controllers.md).
         // by-item aggregates lines from BOTH camp and team orders so suppliers see the full demand.
-        // This supplier-demand roll-up is a quantity view and intentionally sums the add-time
-        // snapshot value (not the repriced live total used for per-counterparty balances) (#816).
         var allLineProjections = campOrdersInYear
             .Concat(teamOrders)
             .SelectMany(o => o.Lines.Select(l => new
