@@ -100,6 +100,15 @@ public sealed class CachingCampService(
             .ToList();
     }
 
+    public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // PublicYear is always a warm year (warmup seeds it), so both calls below
+        // are served from the dict — no DB round-trip for the human card / Shifts view.
+        var settings = await GetSettingsAsync(cancellationToken);
+        var camps = await GetCampsForYearAsync(settings.PublicYear, cancellationToken);
+        return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
+    }
+
     // Pass-through reads
 
     public Task<CampEditData?> GetCampEditDataAsync(
