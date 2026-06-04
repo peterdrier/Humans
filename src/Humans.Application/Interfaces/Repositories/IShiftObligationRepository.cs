@@ -1,3 +1,4 @@
+using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Repositories;
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// the application service supplies the season ids it already holds from
 /// <see cref="Camps.ICampServiceRead"/>.
 /// </remarks>
+[Section("Camps")]
 public interface IShiftObligationRepository : IRepository
 {
     Task<IReadOnlyList<ShiftObligation>> GetAllAsync(CancellationToken ct = default);

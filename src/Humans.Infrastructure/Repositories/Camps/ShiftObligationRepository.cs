@@ -25,7 +25,7 @@ internal sealed class ShiftObligationRepository : IShiftObligationRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ShiftObligations
             .AsNoTracking()
-            .OrderBy(o => o.SortOrder)
+            .OrderBy(o => o.SortOrder) // arch:db-sort-ok — stable config order; service re-derives display order
             .ToListAsync(ct);
     }
 

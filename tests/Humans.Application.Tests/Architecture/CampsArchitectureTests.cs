@@ -119,6 +119,11 @@ public class CampsArchitectureTests
             // decorator (which invalidates), so writes still pass through the
             // decorator path. Read-only consumer here.
             "Humans.Application.Services.Camps.CampRoleService",
+            // Read-only consumer — resolves a camp season (GetSeasonByIdAsync) and
+            // per-season role holders (GetRoleHolderUserIdsBySlugForYearAsync) for
+            // the barrio shift-obligation matrix/detail. Never writes through the
+            // repo; obligation writes go through IShiftObligationRepository.
+            "Humans.Application.Services.Camps.ShiftObligationService",
         };
 
         var assemblies = new[]

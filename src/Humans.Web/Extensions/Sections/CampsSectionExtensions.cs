@@ -63,6 +63,12 @@ internal static class CampsSectionExtensions
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
 
+        // ShiftObligationService — no caching decorator. Scoped (not Singleton):
+        // depends on scoped cross-section reads (IShiftServiceRead, IUserService,
+        // ICampServiceRead); a Singleton would captive-capture them. The repo
+        // (Singleton) is stateless over IDbContextFactory per Camps convention.
+        services.AddScoped<IShiftObligationService, Humans.Application.Services.Camps.ShiftObligationService>();
+
         services.AddScoped<ICampContactService, CampsCampContactService>();
         services.AddScoped<CampAdminPageBuilder>();
         services.AddScoped<CampCsvExportBuilder>();
