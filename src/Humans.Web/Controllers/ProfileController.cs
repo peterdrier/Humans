@@ -1509,25 +1509,8 @@ public class ProfileController(
         return RedirectToAction(nameof(Privacy));
     }
 
-    [HttpPost("Me/Privacy/CancelDeletion")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CancelDeletion()
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
-
-        var result = await accountDeletionService.CancelDeletionAsync(user.Id);
-        if (!result.Success)
-        {
-            if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
-                SetError(localizer["Profile_NoDeletionPending"].Value);
-            return RedirectToAction(nameof(Privacy));
-        }
-
-        SetSuccess(localizer["Profile_DeletionCancelled"].Value);
-        return RedirectToAction(nameof(Privacy));
-    }
+    // CancelDeletion moved to UserController (Profile* retirement) — the cancel-deletion lever now
+    // lives with the User section; Views/Profile/Privacy.cshtml posts to User/Deletion/Cancel.
 
     [HttpGet("Me/ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
