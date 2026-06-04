@@ -12,14 +12,14 @@
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change
-  Volunteer status state machine, MembershipRequiredFilter bypass roles, ActiveMember claim, and Volunteers-team eligibility — review when team sync, claims transformation, or membership gating changes.
+  UserState access gate, MembershipRequiredFilter HasAnyRole bypass, and Volunteers-team eligibility (name + consents) — review when team sync, claims transformation, or the access gate changes.
 -->
 
 # Volunteer Status
 
 ## Business Context
 
-A human's volunteer status is determined by their presence in the **Volunteers team** — the system-managed team that all active volunteers belong to. Joining this team requires **consent check clearance** (which auto-sets `IsApproved`) and completion of all required legal document consents. The status is displayed on the dashboard and controls access to most application features.
+App access is the stored **`UserState`**: a human reaches the full application the moment `UserState == Active` — i.e. they have entered their legal name. Access does **not** derive from Volunteers-team membership. The **Volunteers team** is a system-managed Google Workspace provisioning group that named, consented volunteers belong to; `SystemTeamSyncJob` reconciles it on **name + consents** (the consent check / `IsApproved` are an audit annotation, not consulted for membership or access). Volunteer status is displayed on the dashboard.
 
 Volunteer access is the **universal baseline** for all membership tiers. Whether a human selects Volunteer, Colaborador, or Asociado tier, they all become Volunteers first. Tier applications (Colaborador/Asociado) proceed in parallel through the Board voting queue and do not block Volunteer access. See [Membership Tiers](../governance/membership-tiers.md) and [Onboarding Pipeline](../onboarding/onboarding-pipeline.md).
 
@@ -115,38 +115,35 @@ Status is computed on the dashboard based on Volunteers team presence and profil
 
 ## Volunteer Gating (MembershipRequiredFilter)
 
-Non-volunteers are restricted from accessing most of the application. A global action filter (`MembershipRequiredFilter`) enforces this by checking for the `ActiveMember` claim.
+Non-Active users are restricted from most of the application. A global action filter (`MembershipRequiredFilter`) enforces this from the stored `UserState`.
 
 ### How It Works
 
-1. `RoleAssignmentClaimsTransformation` runs on each request and checks if the user is in the Volunteers team
-2. If yes, it adds an `ActiveMember` claim to the user's identity
-3. `MembershipRequiredFilter` (registered globally) checks for this claim
-4. Users without the claim are redirected to the Home dashboard
+1. `RoleAssignmentClaimsTransformation` runs on each request and stamps the user's stored `UserState` as a claim
+2. `MembershipRequiredFilter` (registered globally) reads it: only `UserState == Active` reaches the app
+3. Non-Active users are routed by state — `Bare` → name entry, `DeletePending` → cancel-deletion, `Suspended`/`Rejected`/`Deleted`/`Merged` → the account-status page
 
-### Bypass Roles
+### Bypass
 
-These roles bypass the MembershipRequiredFilter (have system access regardless of Volunteer status):
-- **Board**
-- **Admin**
-- **ConsentCoordinator**
-- **VolunteerCoordinator**
+A single escape: anyone holding **any role** (staff of any kind — `RoleChecks.HasAnyRole`) bypasses the gate regardless of `UserState`.
 
 ### Exempt Controllers
 
-These controllers are accessible to all authenticated users regardless of volunteer status:
-- **Home** — dashboard with onboarding checklist
-- **Account** — account settings
-- **Profile** — profile creation/editing (needed during onboarding)
-- **Consent** — legal document consent (needed during onboarding)
-- **Application** — tier application status view
-- **OnboardingReview** — has its own role-based authorization
-- **Admin** — has its own Board/Admin role gate
-- **Human** — public member directory
+Only controllers a not-Active, no-role user must still reach are exempt:
+- **Account** — login/logout/OAuth
+- **OnboardingWidget** — name entry (the Bare landing)
+- **Profile** — profile creation/editing
+- **Consent** — legal document consent
+- **User** — account-status wall + cancel-deletion (the redirect targets)
+- **Language** — language switching
+- **Guest** — profileless account dashboard
+- **GovernanceApplications**, **Feedback**, **Notifications** — any logged-in user
+
+Role-gated controllers (Admin, Board, CampAdmin, OnboardingReview) reach the app via the role escape; `[AllowAnonymous]`/API-key ones (Camp, CampApi, Legal, FeedbackApi) via anonymous pass-through.
 
 ### Navigation Gating
 
-The main navigation hides Teams and Governance links for non-volunteers. These are only shown when the user has the `ActiveMember` claim or holds a bypass role.
+The main navigation hides member links (City, Events, Shifts, Budget, Governance) behind the single `AppAccess` policy — shown when `UserState == Active` OR the user holds any role.
 
 ## Volunteer Onboarding Pipeline
 
@@ -165,16 +162,13 @@ Sign Required Legal Documents (Volunteers team docs)
 [Auto] ConsentCheckStatus → Pending
     │
     ▼
-Consent Coordinator reviews → Cleared
+Consent Coordinator reviews → Cleared (sets IsApproved = true — audit annotation only)
     │
     ▼
-[Auto] IsApproved = true → Volunteers team (immediate)
-    │
-    ▼
-ActiveMember claim granted → full app access
+Name + all consents → Volunteers team (Google Workspace), reconciled by SystemTeamSyncJob
 ```
 
-Consent check clearance triggers `SyncVolunteersMembershipForUserAsync()`, which immediately adds the user to the Volunteers team if all consents are signed. There is no waiting for a scheduled job.
+Neither consent-check clearance nor consent submission triggers a per-user team sync any more — `SystemTeamSyncJob` reconciles Volunteers membership on **name + consents** (eventually consistent). App access is unaffected: it was granted at name entry (`UserState == Active`).
 
 The consent check is a Volunteer safety gate only — it does not evaluate tier applications.
 
@@ -258,18 +252,18 @@ System sync removes user from team
 
 ### Restoration Flow
 When a user signs the missing documents:
-1. `ConsentController.Submit` calls `SyncVolunteersMembershipForUserAsync`
-2. User is immediately re-added to the Volunteers team
+1. `ConsentController.Submit` writes the `ConsentRecord` (it no longer triggers a per-user team sync)
+2. `SystemTeamSyncJob` re-adds the user to the Volunteers team on its next run (name + consents)
 3. Google Drive permissions and Group memberships are restored
-4. `ActiveMember` claim is granted on next request
+4. App access is unaffected throughout — it follows `UserState == Active`, not Volunteers membership
 
 ## Related Features
 
 - [Membership Tiers](../governance/membership-tiers.md) — Tier definitions (Volunteer is baseline)
 - [Onboarding Pipeline](../onboarding/onboarding-pipeline.md) — Full onboarding flow
 - [Coordinator Roles](../shifts/coordinator-roles.md) — Consent Coordinator performs safety checks
-- [Authentication](../auth/authentication.md) — ActiveMember claim, role claims
-- [Legal Documents & Consent](../legal-and-consent/legal-documents-consent.md) — Consent completion triggers team sync
-- [Teams](../teams/teams.md) — Volunteers team is the source of truth for active status
+- [Authentication](../auth/authentication.md) — UserState access claim, role claims
+- [Legal Documents & Consent](../legal-and-consent/legal-documents-consent.md) — Consent completion contributes to Volunteers eligibility (name + consents)
+- [Teams](../teams/teams.md) — Volunteers team is a Google Workspace provisioning group (name + consents), not the access gate
 - [Background Jobs](../global/background-jobs.md) — SystemTeamSyncJob handles team membership
 - [Administration](../global/administration.md) — Admin human management

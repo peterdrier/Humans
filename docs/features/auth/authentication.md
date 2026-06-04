@@ -144,13 +144,14 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 
-### ActiveMember Claim
+### UserState Access Claim
 
-In addition to governance roles, `RoleAssignmentClaimsTransformation` adds an `ActiveMember` claim when the user is a member of the Volunteers team. This claim is the primary authorization gate for most application features.
+In addition to governance roles, `RoleAssignmentClaimsTransformation` stamps the user's stored `UserState` as a claim. `UserState == Active` — the user has entered their legal name — is the single source of truth for app access. It does **not** derive from Volunteers-team membership.
 
-- **Granted when**: User is in the Volunteers team (approved + all consents signed)
-- **Checked by**: `MembershipRequiredFilter` (global action filter) and `_Layout.cshtml` (nav visibility)
-- **Effect**: Without this claim, users can only access onboarding pages (Home, Profile, Consent, Account, Application)
+- **Granted when**: `UserState == Active` (legal name entered)
+- **Checked by**: `MembershipRequiredFilter` (global action filter, routes non-Active users by state) and the `AppAccess` policy used for `_Layout.cshtml` nav visibility
+- **Escape**: any role-holder (staff) — `RoleChecks.HasAnyRole` — reaches the app regardless of `UserState`
+- **Effect**: non-Active users are routed by state (Bare → name entry, DeletePending → cancel-deletion, Suspended/Rejected/Deleted/Merged → account-status page)
 
 ### Authorization Policies
 

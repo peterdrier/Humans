@@ -112,14 +112,11 @@ RoleAssignment
 ## Authorization Changes
 
 ### MembershipRequiredFilter
-Coordinators bypass the global membership filter, same as Board and Admin:
+Coordinators bypass the global access filter because they hold a role — the single escape is `RoleChecks.HasAnyRole` (any role-holder), so any staff role bypasses:
 ```
-Exempt users (have claims):
-- ActiveMember
-- Board
-- Admin
-- ConsentCoordinator
-- VolunteerCoordinator
+Reaches the app:
+- UserState == Active  (entered legal name), OR
+- holds any role (HasAnyRole) — Board, Admin, ConsentCoordinator, VolunteerCoordinator, …
 ```
 
 ### OnboardingReview Controller Authorization

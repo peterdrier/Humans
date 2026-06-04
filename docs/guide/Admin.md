@@ -67,8 +67,7 @@ Open `/Admin` for the dashboard. The summary tiles — humans in review, open fe
 
 Open `/Profile/Admin`. Search by name or email, filter pending volunteers with `?filter=pending`, and click through to a human's detail page. From there you can:
 
-- **Approve** a pending volunteer. Approval, combined with all required consents signed, immediately adds the human to the Volunteers team and grants the ActiveMember claim — no wait for the hourly sync.
-- **Reject** a signup. Audited, and the human is notified.
+- **Reject** a signup. Audited, and the human is notified. (There is no "approve volunteer" action — app access is automatic once the human enters their legal name (`UserState == Active`); Volunteers-team / Google Workspace provisioning follows from name + consents via the scheduled sync.)
 - **Suspend** or **Unsuspend**. Suspension requires a note; it revokes Google Workspace access on the next sync and ends current memberships. Unsuspension clears the flag and re-queues access.
 - **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **Board** and **HumanAdmin** can assign any role **except** Admin. The first Admin must be seeded directly in the database.
 

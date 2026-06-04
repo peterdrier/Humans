@@ -120,17 +120,16 @@ Sees "Pending Approval" on dashboard
 [Waits for Board] ◄─────────────────── Board approves
     │
     ▼
-IsApproved = true
+Consent check cleared → IsApproved = true   (CC audit annotation only — gates nothing)
     │
     ▼
-SyncVolunteersMembershipForUserAsync (immediate, not waiting for scheduled job)
-    │
-    ▼
-If approved + all consents signed → Enrolled in Volunteers team
-    │
-    ▼
-ActiveMember claim granted → full app access + Google Workspace
+Name + all required consents → Volunteers team (SystemTeamSyncJob) → Google Workspace
 ```
+
+> Access is decoupled from all of the above: a user has full app access the moment
+> `UserState == Active` (i.e. their legal name is entered). Volunteers-team membership
+> (above) is only a Google Workspace provisioning group, reconciled on name + consents —
+> it is not an access role, and `IsApproved` is not consulted.
 
 Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsync`. Whichever happens last causes the user to be added to the Volunteers team immediately — there is no waiting for the hourly `SystemTeamSyncJob`.
 
