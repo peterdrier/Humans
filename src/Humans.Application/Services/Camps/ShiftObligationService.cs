@@ -94,10 +94,8 @@ public sealed class ShiftObligationService : IShiftObligationService
                 var applicable = IsApplicable(function, season, offGrid);
 
                 var counts = countsByFunction[function.Id];
-                var done = activeMemberIds.Sum(id => counts.TryGetValue(id, out var n) ? n : 0);
-                var required = overrideLookup.TryGetValue((season.Id, function.Id), out var ov)
-                    ? ov
-                    : function.DefaultRequiredShiftCount;
+                var done = DoneFor(counts, activeMemberIds);
+                var required = RequiredFor(overrideLookup, season.Id, function);
                 var underMembered = applicable && activeMemberCount < required;
 
                 cells.Add(new ObligationCell(function.Id, applicable, done, required, underMembered));
@@ -164,9 +162,7 @@ public sealed class ShiftObligationService : IShiftObligationService
                 .ToList();
 
             var done = signedUp.Sum(m => m.Count);
-            var required = overrideLookup.TryGetValue((campSeasonId, function.Id), out var ov)
-                ? ov
-                : function.DefaultRequiredShiftCount;
+            var required = RequiredFor(overrideLookup, campSeasonId, function);
 
             functionRows.Add(new ObligationDetailFunction(
                 function.Id, function.CampRoleSlug, done, required, signedUp, notYet));
@@ -213,6 +209,9 @@ public sealed class ShiftObligationService : IShiftObligationService
             existing.SortOrder = input.SortOrder;
             existing.UpdatedAt = now;
             await obligationRepo.UpdateAsync(existing, ct);
+            await auditLog.LogAsync(
+                AuditAction.BarrioShiftObligationConfigChanged, "ShiftObligation", existing.Id,
+                $"Updated shift-obligation function '{existing.CampRoleSlug}'.", actorUserId);
             return;
         }
 
@@ -229,9 +228,9 @@ public sealed class ShiftObligationService : IShiftObligationService
             CreatedAt = now,
         };
         await obligationRepo.AddAsync(created, ct);
-        // NOTE(audit): no fitting AuditAction exists for obligation-config changes
-        // in this chunk. The reminder-sent action (BarrioShiftReminderSent) is
-        // added in Chunk 4; a config-change action can be added there if desired.
+        await auditLog.LogAsync(
+            AuditAction.BarrioShiftObligationConfigChanged, "ShiftObligation", created.Id,
+            $"Created shift-obligation function '{created.CampRoleSlug}'.", actorUserId);
     }
 
     public async Task SetOverrideAsync(
@@ -241,22 +240,78 @@ public sealed class ShiftObligationService : IShiftObligationService
         // Clamp negatives to 0; null clears the override.
         var clamped = requiredShiftCount is { } n ? Math.Max(0, n) : (int?)null;
         await obligationRepo.SetOverrideAsync(campSeasonId, shiftObligationId, clamped, ct);
+        var change = clamped is { } v
+            ? $"Set required-shift override to {v}."
+            : "Cleared required-shift override.";
+        await auditLog.LogAsync(
+            AuditAction.BarrioShiftObligationConfigChanged, "ShiftObligation", shiftObligationId,
+            change, actorUserId, relatedEntityId: campSeasonId, relatedEntityType: "CampSeason");
     }
 
-    public Task SendReminderAsync(
+    public async Task SendReminderAsync(
         Guid campSeasonId, Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default)
     {
-        // Chunk 4 wires emailMessageFactory + emailService + auditLog here.
-        logger.LogDebug("SendReminderAsync invoked before Chunk 4 wiring.");
-        _ = emailService;
-        _ = emailMessageFactory;
-        _ = auditLog;
-        throw new NotSupportedException("Implemented in Chunk 4 (reminder email).");
+        var function = await obligationRepo.GetByIdAsync(shiftObligationId, ct);
+        if (function is null)
+        {
+            return;
+        }
+
+        var season = await ResolveActiveSeasonAsync(campSeasonId, ct);
+        if (season is null)
+        {
+            return;
+        }
+
+        await SendReminderForBarrioAsync(function, season, actorUserId, ct);
     }
 
-    public Task<int> RemindAllNonCompliantAsync(
+    public async Task<int> RemindAllNonCompliantAsync(
         Guid shiftObligationId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Implemented in Chunk 4 (reminder email).");
+    {
+        var function = await obligationRepo.GetByIdAsync(shiftObligationId, ct);
+        if (function is null)
+        {
+            return 0;
+        }
+
+        // The function is year-agnostic; reminders fire for the current public
+        // matrix year. Resolve the active seasons the same way the matrix does,
+        // then keep only the applicable + not-met barrios.
+        var emailed = 0;
+        var seasons = await ResolveCurrentYearActiveSeasonsAsync(ct);
+        var counts = await CountsForFunctionAsync(function, ct);
+        var overrideLookup = await BuildOverrideLookupAsync(seasons, ct);
+
+        foreach (var season in seasons)
+        {
+            // Norg barrios are globally exempt — never reminded.
+            if (season.ElectricalGrid == ElectricalGrid.Norg)
+            {
+                continue;
+            }
+
+            if (!IsApplicable(function, season, offGridSink: null))
+            {
+                continue;
+            }
+
+            var activeMemberIds = ActiveMemberIds(season);
+            var done = DoneFor(counts, activeMemberIds);
+            var required = RequiredFor(overrideLookup, season.Id, function);
+            if (done >= required)
+            {
+                continue;
+            }
+
+            if (await SendReminderForBarrioAsync(function, season, actorUserId, ct))
+            {
+                emailed++;
+            }
+        }
+
+        return emailed;
+    }
 
     // ----- internals --------------------------------------------------------
 
@@ -292,18 +347,33 @@ public sealed class ShiftObligationService : IShiftObligationService
         var map = new Dictionary<Guid, IReadOnlyDictionary<Guid, int>>();
         foreach (var function in functions)
         {
-            map[function.Id] = function.TargetType switch
-            {
-                ShiftObligationTargetType.Team =>
-                    await shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(function.TargetId, ct),
-                ShiftObligationTargetType.Rota =>
-                    await shiftServiceRead.GetConfirmedSignupCountsByUserForRotaAsync(function.TargetId, ct),
-                _ => new Dictionary<Guid, int>(),
-            };
+            map[function.Id] = await CountsForFunctionAsync(function, ct);
         }
 
         return map;
     }
+
+    private async Task<IReadOnlyDictionary<Guid, int>> CountsForFunctionAsync(
+        ShiftObligation function, CancellationToken ct) =>
+        function.TargetType switch
+        {
+            ShiftObligationTargetType.Team =>
+                await shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(function.TargetId, ct),
+            ShiftObligationTargetType.Rota =>
+                await shiftServiceRead.GetConfirmedSignupCountsByUserForRotaAsync(function.TargetId, ct),
+            _ => new Dictionary<Guid, int>(),
+        };
+
+    private static int RequiredFor(
+        IReadOnlyDictionary<(Guid SeasonId, Guid FunctionId), int> overrideLookup,
+        Guid seasonId, ShiftObligation function) =>
+        overrideLookup.TryGetValue((seasonId, function.Id), out var ov)
+            ? ov
+            : function.DefaultRequiredShiftCount;
+
+    private static int DoneFor(
+        IReadOnlyDictionary<Guid, int> counts, IReadOnlyList<Guid> activeMemberIds) =>
+        activeMemberIds.Sum(id => counts.TryGetValue(id, out var n) ? n : 0);
 
     private async Task<IReadOnlyList<ObligationColumn>> BuildColumnsAsync(
         IReadOnlyList<ShiftObligation> functions, CancellationToken ct)
@@ -415,4 +485,112 @@ public sealed class ShiftObligationService : IShiftObligationService
 
     private static string NameFor(IReadOnlyDictionary<Guid, string> names, Guid id) =>
         names.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name) ? name : id.ToString();
+
+    // ----- reminder internals -----------------------------------------------
+
+    /// <summary>
+    /// Resolves a single active/full season by id using the same season-status
+    /// gate the matrix applies (<see cref="ResolveActiveSeasons"/>). Returns null
+    /// for an unknown, Pending, or Rejected season.
+    /// </summary>
+    private async Task<CampSeasonInfo?> ResolveActiveSeasonAsync(Guid campSeasonId, CancellationToken ct)
+    {
+        var season = await campRepository.GetSeasonByIdAsync(campSeasonId, ct);
+        if (season is null)
+        {
+            return null;
+        }
+
+        var camps = await campServiceRead.GetCampsForYearAsync(season.Year, ct);
+        return ResolveActiveSeasons(camps, season.Year)
+            .FirstOrDefault(s => s.Id == campSeasonId);
+    }
+
+    /// <summary>
+    /// Active/full seasons for the current public matrix year — the year the
+    /// bulk reminder operates on.
+    /// </summary>
+    private async Task<IReadOnlyList<CampSeasonInfo>> ResolveCurrentYearActiveSeasonsAsync(CancellationToken ct)
+    {
+        var settings = await campServiceRead.GetSettingsAsync(ct);
+        var camps = await campServiceRead.GetCampsForYearAsync(settings.PublicYear, ct);
+        return ResolveActiveSeasons(camps, settings.PublicYear);
+    }
+
+    /// <summary>
+    /// Sends the reminder for one (barrio, function): recipients are the season
+    /// leads unioned with the function's role-holders (by <c>CampRoleSlug</c>),
+    /// de-duplicated. One email per distinct resolvable recipient, then one
+    /// <see cref="AuditAction.BarrioShiftReminderSent"/> entry. Returns true when
+    /// at least one email was sent (so the bulk caller can count emailed barrios).
+    /// Zero recipients sends nothing and returns false.
+    /// </summary>
+    private async Task<bool> SendReminderForBarrioAsync(
+        ShiftObligation function, CampSeasonInfo season, Guid actorUserId, CancellationToken ct)
+    {
+        var recipientIds = await ResolveRecipientIdsAsync(function, season, ct);
+        if (recipientIds.Count == 0)
+        {
+            return false;
+        }
+
+        var counts = await CountsForFunctionAsync(function, ct);
+        var overrideLookup = await BuildOverrideLookupAsync([season], ct);
+        var activeMemberIds = ActiveMemberIds(season);
+        var done = DoneFor(counts, activeMemberIds);
+        var required = RequiredFor(overrideLookup, season.Id, function);
+
+        // Reuse the matrix's column target so the link + function name never diverge.
+        var (functionName, link) = await ResolveColumnTargetAsync(function, ct);
+
+        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var sent = 0;
+        foreach (var id in recipientIds)
+        {
+            if (!infos.TryGetValue(id, out var info) || string.IsNullOrWhiteSpace(info.Email))
+            {
+                continue;
+            }
+
+            var message = emailMessageFactory.BarrioShiftObligationReminder(
+                info.Email, info.BurnerName, season.Name, functionName,
+                done, required, link, info.PreferredLanguage);
+            await emailService.SendAsync(message, ct);
+            sent++;
+        }
+
+        if (sent == 0)
+        {
+            return false;
+        }
+
+        await auditLog.LogAsync(
+            AuditAction.BarrioShiftReminderSent, "ShiftObligation", function.Id,
+            $"Sent {sent} shift-obligation reminder(s) for '{function.CampRoleSlug}' to barrio '{season.Name}'.",
+            actorUserId, relatedEntityId: season.Id, relatedEntityType: "CampSeason");
+        return true;
+    }
+
+    /// <summary>
+    /// Recipients for one (barrio, function): the season's lead UserIds unioned
+    /// with the active role-holders of the function's <c>CampRoleSlug</c> for the
+    /// season's year, de-duplicated.
+    /// </summary>
+    private async Task<IReadOnlyList<Guid>> ResolveRecipientIdsAsync(
+        ShiftObligation function, CampSeasonInfo season, CancellationToken ct)
+    {
+        var holdersBySeason = await campRepository.GetRoleHolderUserIdsBySlugForYearAsync(
+            function.CampRoleSlug, season.Year, ct);
+
+        var recipients = new HashSet<Guid>(season.LeadUserIds);
+        if (holdersBySeason.TryGetValue(season.Id, out var holders))
+        {
+            foreach (var holder in holders)
+            {
+                recipients.Add(holder);
+            }
+        }
+
+        return recipients.ToList();
+    }
 }

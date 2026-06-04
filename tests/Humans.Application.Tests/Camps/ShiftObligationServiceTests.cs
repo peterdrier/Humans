@@ -25,6 +25,7 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
     private readonly IUserService _userService;
     private readonly ShiftObligationRepository _obligationRepo;
     private readonly CampRepository _campRepo;
+    private readonly IEmailService _emailServiceMock;
     private readonly Guid _actorUserId = Guid.NewGuid();
 
     public ShiftObligationServiceTests()
@@ -36,6 +37,17 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         _userService = NewDbBackedUserService();
         _obligationRepo = new ShiftObligationRepository(DbFactory);
         _campRepo = new CampRepository(DbFactory);
+        _emailServiceMock = Substitute.For<IEmailService>();
+
+        // Pass-through factory so SendAsync receives a real EmailMessage built from
+        // the recipient's resolved email — recipient resolution is what's under test.
+        var factory = Substitute.For<IEmailMessageFactory>();
+        factory.BarrioShiftObligationReminder(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(ci => new EmailMessage(
+                ci.ArgAt<string>(0), ci.ArgAt<string>(1), "subject", "body",
+                "barrio_shift_obligation_reminder", MessageCategory.VolunteerUpdates));
 
         _sut = new ShiftObligationService(
             _obligationRepo,
@@ -44,8 +56,8 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
             _shiftServiceRead,
             _teamServiceRead,
             _userService,
-            Substitute.For<IEmailService>(),
-            Substitute.For<IEmailMessageFactory>(),
+            _emailServiceMock,
+            factory,
             AuditLog,
             Clock,
             NullLogger<ShiftObligationService>.Instance);
@@ -218,7 +230,183 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
         }
     }
 
+    [HumansFact]
+    public async Task SendReminder_Recipients_LeadsUnionRoleHolder()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var lead = SeedUser("Lead").Id;
+        var holder = SeedUser("Holder").Id;
+        var both = SeedUser("LeadAndHolder").Id; // in both sets -> de-duped to one email
+        var seasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+
+        SeedSeasonWithLeads(
+            campId, seasonId, "Yellow Camp", "yellow-camp", ElectricalGrid.Yellow,
+            leadUserIds: [lead, both],
+            activeMembers: [lead, holder, both]);
+        SeedRoleHolder(seasonId, "power", holder);
+        SeedRoleHolder(seasonId, "power", both);
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        await _sut.SendReminderAsync(seasonId, functionId, _actorUserId);
+
+        // One email per distinct recipient: {lead, holder, both} = 3.
+        await _emailServiceMock.Received(3).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        // Exactly one audit entry for the send.
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.BarrioShiftReminderSent, "ShiftObligation", functionId,
+            Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendReminder_NoRoleHolder_FallsBackToLeadsOnly()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.AllBarrios, defaultRequired: 6, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var lead = SeedUser("Lead").Id;
+        var seasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        SeedSeasonWithLeads(
+            campId, seasonId, "Yellow Camp", "yellow-camp", ElectricalGrid.Yellow,
+            leadUserIds: [lead],
+            activeMembers: [lead]);
+        // No role-holder rows seeded.
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        await _sut.SendReminderAsync(seasonId, functionId, _actorUserId);
+
+        await _emailServiceMock.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RemindAllNonCompliant_OnlyNonCompliantApplicableBarrios()
+    {
+        var teamId = Guid.NewGuid();
+        var functionId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.ElectricalGridConnected, defaultRequired: 2, sortOrder: 0, roleSlug: "power");
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        // Each barrio has one lead so a reminder has a recipient.
+        var leadShort = SeedUser("LeadShort").Id;   // applicable, under target  -> reminded
+        var leadMet = SeedUser("LeadMet").Id;       // applicable, target met     -> skipped
+        var leadOff = SeedUser("LeadOff").Id;       // off-grid (OwnSupply)        -> n/a, skipped
+        var leadNorg = SeedUser("LeadNorg").Id;     // Norg, globally exempt        -> skipped
+
+        var shortId = Guid.NewGuid();
+        var metId = Guid.NewGuid();
+        var offId = Guid.NewGuid();
+        var norgId = Guid.NewGuid();
+
+        var infos = new List<CampInfo>
+        {
+            MakeCampInfoWithLeads(Guid.NewGuid(), shortId, "Short Camp", "short-camp", ElectricalGrid.Yellow, [leadShort], [leadShort]),
+            MakeCampInfoWithLeads(Guid.NewGuid(), metId, "Met Camp", "met-camp", ElectricalGrid.Yellow, [leadMet], [leadMet]),
+            MakeCampInfoWithLeads(Guid.NewGuid(), offId, "Off Camp", "off-camp", ElectricalGrid.OwnSupply, [leadOff], [leadOff]),
+            MakeCampInfoWithLeads(Guid.NewGuid(), norgId, "Norg Camp", "norg-camp", ElectricalGrid.Norg, [leadNorg], [leadNorg]),
+        };
+        await Db.SaveChangesAsync(); // persist the seeded lead users so the user read resolves their emails
+
+        _campServiceRead.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<CampInfo>)infos);
+        _campServiceRead.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [], null));
+
+        // Met Camp meets the required 2 (its lead has 2 confirmed signups); the rest are at 0.
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [leadMet] = 2 });
+
+        var emailed = await _sut.RemindAllNonCompliantAsync(functionId, _actorUserId);
+
+        emailed.Should().Be(1); // only Short Camp
+        await _emailServiceMock.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
     // ----- helpers ----------------------------------------------------------
+
+    private void SeedSeasonWithLeads(
+        Guid campId, Guid seasonId, string name, string slug, ElectricalGrid? grid,
+        IReadOnlyList<Guid> leadUserIds, IReadOnlyList<Guid> activeMembers)
+    {
+        Db.Camps.Add(new Camp { Id = campId, Slug = slug });
+        Db.CampSeasons.Add(new CampSeason
+        {
+            Id = seasonId, CampId = campId, Year = 2026, Name = name,
+            Status = CampSeasonStatus.Active, ElectricalGrid = grid,
+        });
+        foreach (var userId in activeMembers)
+        {
+            Db.CampMembers.Add(new CampMember
+            {
+                Id = Guid.NewGuid(), CampSeasonId = seasonId, UserId = userId,
+                Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
+                ConfirmedAt = Clock.GetCurrentInstant(),
+            });
+        }
+
+        var info = MakeCampInfoWithLeads(campId, seasonId, name, slug, grid, leadUserIds, activeMembers);
+        _campServiceRead.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<CampInfo>)new List<CampInfo> { info });
+    }
+
+    private void SeedRoleHolder(Guid seasonId, string roleSlug, Guid userId)
+    {
+        var defId = Guid.NewGuid();
+        Db.CampRoleDefinitions.Add(new CampRoleDefinition
+        {
+            Id = defId, Name = roleSlug, Slug = roleSlug,
+            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+        });
+        // The member must exist + be Active; SeedSeasonWithLeads already added it,
+        // but the assignment FKs CampMemberId, so look it up.
+        var member = Db.CampMembers.Local.First(m => m.CampSeasonId == seasonId && m.UserId == userId);
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(), CampSeasonId = seasonId,
+            CampRoleDefinitionId = defId, CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId,
+        });
+    }
+
+    private static CampInfo MakeCampInfoWithLeads(
+        Guid campId, Guid seasonId, string name, string slug, ElectricalGrid? grid,
+        IReadOnlyList<Guid> leadUserIds, IReadOnlyList<Guid> activeMembers)
+    {
+        var members = activeMembers
+            .Select(u => new CampSeasonMemberInfo(
+                Guid.NewGuid(), u, CampMemberStatus.Active,
+                Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 1, 0, 0), false))
+            .ToList();
+
+        var season = new CampSeasonInfo(
+            seasonId, campId, slug, 2026, null, name, "blurb", "EN", [],
+            CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
+            AdultPlayspacePolicy.No, members.Count, null, null, grid, 0, null, null)
+        {
+            Members = members,
+            LeadUserIds = leadUserIds,
+        };
+        return new CampInfo(campId, slug, "c@example.com", "+34600000000", false, 0, [season]);
+    }
+
 
     private async Task<Guid> SeedFunctionAsync(
         ShiftObligationTargetType targetType, Guid targetId,
