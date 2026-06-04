@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Configuration;
-using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -733,7 +732,8 @@ public class TeamController(
             // The IsSensitive checkbox is suppressed (authorize-policy="AdminOnly") for non-Admin
             // editors, so it posts nothing and binds to false. Pass null (leave-unchanged) unless
             // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
-            bool? isSensitive = User.IsInRole(RoleNames.Admin) ? model.IsSensitive : null;
+            var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+            bool? isSensitive = isAdmin ? model.IsSensitive : null;
             await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
             var currentUser = await GetCurrentUserInfoAsync();
             logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
