@@ -42,7 +42,6 @@
                     <tr>
                         <th class="sortable" data-sort-key="type" data-sort-type="text" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Counterparty <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable" data-sort-key="label" data-sort-type="text" role="button">Label <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable" data-sort-key="state" data-sort-type="text" role="button">State <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable text-end" data-sort-key="due" data-sort-type="number" role="button">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
                         <th class="sortable text-end" data-sort-key="paid" data-sort-type="number" role="button">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
@@ -59,7 +58,6 @@
                     <tr data-paid-status="@paidClass"
                         data-type="@row.CounterpartyType"
                         data-camp="@row.CounterpartyName"
-                        data-label="@row.Label"
                         data-state="@row.State"
                         data-due="@row.TotalDueEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         data-paid="@row.PaymentsTotalEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
@@ -70,7 +68,6 @@
                                 @row.CounterpartyName
                             </a>
                         </td>
-                        <td>@row.Label</td>
                         <td>@row.State</td>
                         <td class="text-end">@row.TotalDueEur.ToString("F2")</td>
                         <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("F2"))</td>

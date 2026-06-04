@@ -14,4 +14,13 @@ public interface ICampServiceRead
     Task<CampSeasonInfo?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSearchHit>> SearchAsync(string query, int max, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The user's camp membership for the <b>active (<c>PublicYear</c>) season only</b> —
+    /// never a stale prior-year season a camp last ran. <see cref="CampUserInfo.Season"/>
+    /// is null (and <see cref="CampUserInfo.Roles"/> empty) when the user is not an
+    /// Active member of any camp this year. Served from the cached projection; no DB hit.
+    /// Feeds the admin human card and the Shifts coordinator view.
+    /// </summary>
+    Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default);
 }

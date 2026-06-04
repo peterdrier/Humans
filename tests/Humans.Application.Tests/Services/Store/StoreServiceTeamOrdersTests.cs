@@ -439,6 +439,7 @@ public class StoreServiceTeamOrdersTests
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: balanceEur);
+            BalanceEur: balanceEur,
+            CreatedAt: default);
     }
 }

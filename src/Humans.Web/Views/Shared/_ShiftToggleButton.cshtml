@@ -1,0 +1,42 @@
+@model Humans.Web.Models.ShiftToggleButtonModel
+@using Humans.Domain.Enums
+@*
+    Instant per-day signup toggle. Single source of truth for the JS contract:
+    .js-day-toggle + data-shift-id + data-signed-up, driven by wwwroot/js/shifts.js.
+    States: available · signed up (Confirmed) · applied (Pending approval) · full · dietary-blocked.
+*@
+@{
+    var pending = Model.IsSignedUp && Model.Status == SignupStatus.Pending;
+    var disabled = (Model.IsFull && !Model.IsSignedUp) || Model.DietaryBlocked;
+    var stateClass = Model.IsSignedUp
+        ? (pending ? "btn-warning" : "btn-success")
+        : "btn-outline-success";
+    var title = Model.DietaryBlocked
+        ? Localizer["Shifts_SignupDisabledTooltip_MissingDietary"].Value
+        : null;
+}
+<button type="button"
+        class="btn btn-sm js-day-toggle @stateClass"
+        data-shift-id="@Model.ShiftId"
+        data-signed-up="@Model.IsSignedUp.ToString().ToLowerInvariant()"
+        aria-pressed="@Model.IsSignedUp.ToString().ToLowerInvariant()"
+        disabled="@(disabled ? "disabled" : null)"
+        aria-disabled="@(disabled ? "true" : null)"
+        title="@title">
+    @if (pending)
+    {
+        <i class="fa-solid fa-clock me-1" aria-hidden="true"></i>@Localizer["Shifts_Toggle_Pending"]
+    }
+    else if (Model.IsSignedUp)
+    {
+        <i class="fa-solid fa-check me-1" aria-hidden="true"></i>@Localizer["Shifts_Toggle_Remove"]
+    }
+    else if (Model.IsFull)
+    {
+        <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+    }
+    else
+    {
+        <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>@Localizer["Shifts_Toggle_SignUp"]
+    }
+</button>

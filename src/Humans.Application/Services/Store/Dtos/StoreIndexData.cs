@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Store.Dtos;
@@ -21,4 +22,5 @@ public sealed record StoreOrderPageData(
     string CounterpartyDisplayName,
     bool CanEdit,
     bool CanPay,
-    bool IsStripeConfigured);
+    bool IsStripeConfigured,
+    IReadOnlyList<AuditLogEntrySnapshot> PriceChanges);

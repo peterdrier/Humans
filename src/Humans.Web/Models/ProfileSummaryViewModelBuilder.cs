@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Models;
 
 namespace Humans.Web.Models;
@@ -24,7 +25,8 @@ public static class ProfileSummaryViewModelBuilder
 
     public static ProfileSummaryViewModel BuildWithProfile(
         UserInfo info,
-        IReadOnlyList<TeamMembership> memberships)
+        IReadOnlyList<TeamMembership> memberships,
+        CampUserInfo? camp = null)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(memberships);
@@ -56,7 +58,9 @@ public static class ProfileSummaryViewModelBuilder
                 LanguageCode = pl.LanguageCode,
                 LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
-            }).ToList()
+            }).ToList(),
+            CampName = camp?.Season?.Name,
+            CampRoles = camp?.Roles ?? []
         };
     }
 }

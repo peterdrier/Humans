@@ -152,6 +152,21 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Authenticated users see the full existing layout unchanged
 - Subteams only appear if `IsPromotedToDirectory` is true; top-level teams always appear
 
+### US-6.12: Manage Team Early Entry (Coordinator/EE Admin)
+**As a** team coordinator, Early-Entry Team Administrator, board member, or admin
+**I want to** grant festival early-entry access to people on behalf of my team
+**So that** project crews who need to arrive ahead of the gates are on the early-entry roster
+
+**Acceptance Criteria:**
+- A team must have Early Entry enabled (a flag on the team's admin settings, set by TeamsAdmin/Board/Admin) before it can grant EE
+- The Early Entry page at `/Teams/{slug}/EarlyEntry` is only reachable when the team has Early Entry enabled
+- Coordinators (and parent-department coordinators) manage EE for their own team; the cross-team Early-Entry Team Administrator role can manage EE on any enabled team
+- Grant an entry by choosing a person, an entry date, and a project name
+- Edit or remove existing grants; removing a grant that is already gone is a no-op
+- Grants are listed ordered by project name, then entry date
+- Turning Early Entry off on a team keeps existing grants (they just stop counting toward early access)
+- Each grant feeds the festival early-entry roster as "{Team name}: {Project name}"
+
 ## Workflows
 
 ### Join Request State Machine

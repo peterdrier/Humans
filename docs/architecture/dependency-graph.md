@@ -8,7 +8,7 @@ Directed graph of service-to-service dependencies, reflecting the post-§15 Part
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()`. This pattern breaks DI cycles where two services legitimately call each other. The edges are colored via Mermaid `linkStyle` so the cycle-breaking sites stand out — a healthy graph minimizes them.
 - Cross-cutting services (AuditLog, Email, Notification, RoleAssignment, HumansMetrics) are shown separately to reduce noise.
 - Intra-section edges are omitted when they don't cross a section boundary.
-- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary (e.g. `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `ITicketServiceRead`, `IConsentServiceRead`, `IGoogleSyncServiceRead`) are collapsed onto the owning service node. The label on the node still names the full service; the read interface is the cross-section consumption surface.
+- Read-split interfaces: edges into a section that read through its `I<Section>ServiceRead` boundary (e.g. `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `ITicketServiceRead`, `IConsentServiceRead`, `ICampaignServiceRead`, `IApplicationServiceRead`, `IMembershipCalculatorRead`, `IGoogleSyncServiceRead`) are collapsed onto the owning service node. The label on the node still names the full service; the read interface is the cross-section consumption surface.
 
 ## Mermaid diagram
 
@@ -271,6 +271,7 @@ graph LR
 
     %% Tickets section
     TicketQ --> Budget
+    %% TicketQ reads Campaigns via ICampaignServiceRead (campaign read-split); TicketSync still uses full ICampaignService.
     TicketQ --> Campaign
     TicketQ --> User
     TicketQ --> UEmail
@@ -480,6 +481,8 @@ graph LR
     MailerImport --> Audit
     EventSvc --> BurnSettings
     %% EarlyEntryService fans out IEnumerable<IEarlyEntryProvider> — no eager service-typed deps.
+    %% Providers registered: TeamService (camp-team EE allocation) + VolunteerTrackingExportService.
+    %% These are implemented BY existing section services, so they add no new service→service edges.
     %% AgentService + AgentAdminStatusService depend only on Agent-internal interfaces
     %% (settings/repo/dispatcher/Anthropic client) — no cross-section service edges.
 

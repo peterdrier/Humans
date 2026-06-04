@@ -176,6 +176,10 @@ public sealed class CampRoleService(
             $"Updated camp role definition '{input.Name}'.",
             actorUserId);
 
+        // Name/SortOrder are baked into the cached CampInfo role projection across
+        // every camp that assigns this definition — flush the whole projection.
+        await campInfoInvalidator.InvalidateAllAsync(ct);
+
         return UpdateCampRoleDefinitionResult.Updated(input.Name);
     }
 
@@ -202,6 +206,10 @@ public sealed class CampRoleService(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), id,
             "Deactivated camp role definition.", actorUserId);
+
+        // Deactivated definitions drop from the cached role projection (the fetch
+        // filters DeactivatedAt == null) — flush so the role disappears now.
+        await campInfoInvalidator.InvalidateAllAsync(ct);
         return true;
     }
 
@@ -219,6 +227,10 @@ public sealed class CampRoleService(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), id,
             "Reactivated camp role definition.", actorUserId);
+
+        // Reactivated definitions re-enter the cached role projection — flush so the
+        // role reappears now rather than at the next unrelated camp invalidation.
+        await campInfoInvalidator.InvalidateAllAsync(ct);
         return true;
     }
 

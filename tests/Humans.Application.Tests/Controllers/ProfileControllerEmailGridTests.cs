@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
@@ -100,6 +101,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<ITicketService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
+            Substitute.For<ICampServiceRead>(),
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,

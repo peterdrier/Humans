@@ -62,6 +62,12 @@
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
                             @Localizer["ProfileEdit_BurnerNameMatchesLegalName"]
                         </div>
+                        <div id="burnerNameCollisionWarning" class="alert alert-warning mt-2 d-none" role="alert"
+                             data-msg-one="@Localizer["ProfileEdit_BurnerNameCollisionOne"]"
+                             data-msg-many="@Localizer["ProfileEdit_BurnerNameCollisionMany"]">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <span class="burner-collision-text"></span>
+                        </div>
                         <div class="form-text">@Localizer["ProfileEdit_BurnerNameHelp"]</div>
                     </div>
 
@@ -1102,6 +1108,49 @@
             firstNameInput?.addEventListener('input', checkBurnerNameMatch);
             lastNameInput?.addEventListener('input', checkBurnerNameMatch);
             checkBurnerNameMatch();
+
+            // Burner name / other-humans collision warning (live, debounced; reads the cached person search).
+            const collisionWarning = document.getElementById('burnerNameCollisionWarning');
+            const collisionText = collisionWarning?.querySelector('.burner-collision-text');
+            let collisionTimer = null;
+            let collisionSeq = 0;
+
+            function renderCollision(count, name) {
+                if (!collisionWarning || !collisionText) return;
+                if (count < 1) { collisionWarning.classList.add('d-none'); return; }
+                const template = count === 1
+                    ? collisionWarning.dataset.msgOne
+                    : collisionWarning.dataset.msgMany;
+                collisionText.textContent = template
+                    .replace('{0}', count)
+                    .replace('{1}', name);
+                collisionWarning.classList.remove('d-none');
+            }
+
+            async function checkBurnerNameCollision() {
+                if (!burnerNameInput || !collisionWarning) return;
+                const name = burnerNameInput.value.trim();
+                if (name.length < 2) { collisionWarning.classList.add('d-none'); return; }
+
+                const seq = ++collisionSeq;
+                // Editing user is resolved server-side from the session; no id is sent.
+                const url = '/api/profiles/burner-name-count?name=' + encodeURIComponent(name);
+                try {
+                    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (seq !== collisionSeq) return; // a newer keystroke superseded this one
+                    renderCollision(data.count || 0, name);
+                } catch (e) {
+                    // Non-blocking nudge; swallow transient fetch errors.
+                }
+            }
+
+            burnerNameInput?.addEventListener('input', () => {
+                clearTimeout(collisionTimer);
+                collisionTimer = setTimeout(checkBurnerNameCollision, 350);
+            });
+            checkBurnerNameCollision();
 
             // Scroll to validation summary if present, else first inline error
             const summary = document.getElementById('validationSummary');

@@ -37,6 +37,20 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "pull/${{ github.event.pull_request.number }}/head:pr-surface-head"
 
+          # Score against the MERGE-BASE, not the base-branch tip.
+          # github.event.pull_request.base.sha is the CURRENT tip of the base
+          # branch. If the PR branch is behind main, diffing/scoring against that
+          # tip folds every commit that landed on main since the branch was cut
+          # into this PR's "delta" — inverted. A Teams PR merging to main then
+          # shows up as THIS (Camps) PR "removing" 364 of Teams surface, and a
+          # method whose signature changed on main reads as "added" here. The
+          # merge-base is where the branch diverged, so head-vs-merge-base is
+          # exactly what this PR's own commits changed — and it matches the
+          # three-dot (`base...head`) diff the report's Diff Size section already
+          # uses, making the whole report internally consistent.
+          MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" pr-surface-head)"
+          echo "SURFACE_BASE_SHA=$MERGE_BASE" >> "$GITHUB_ENV"
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -57,7 +71,7 @@ jobs:
           BASE_DIR="$(mktemp -d)"
           HEAD_DIR="$(mktemp -d)"
           rmdir "$BASE_DIR" "$HEAD_DIR"
-          git worktree add --detach "$BASE_DIR" "${{ github.event.pull_request.base.sha }}"
+          git worktree add --detach "$BASE_DIR" "$SURFACE_BASE_SHA"
           git worktree add --detach "$HEAD_DIR" pr-surface-head
 
           CONFIG_ARGS=()
@@ -100,9 +114,9 @@ jobs:
           fi
 
           python3 scripts/pr-surface-report.py \
-            --base "${{ github.event.pull_request.base.sha }}" \
+            --base "$SURFACE_BASE_SHA" \
             --head "pr-surface-head" \
-            --base-label "${{ github.event.pull_request.base.sha }}" \
+            --base-label "$SURFACE_BASE_SHA" \
             --head-label "${{ github.event.pull_request.head.sha }}" \
             "${REFORGE_ARGS[@]}" \
             --output pr-surface-report.md \

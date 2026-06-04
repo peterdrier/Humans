@@ -80,6 +80,14 @@
     </div>
 </div>
 
+@if (!isCreate)
+{
+    <div class="mt-4">
+        <vc:audit-log entity-type="StoreProduct" entity-id="@Model.Id"
+                      actions="StoreProductPriceChanged" title="Price history" limit="20" />
+    </div>
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script nonce="@Context.Items["CspNonce"]">

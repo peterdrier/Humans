@@ -1,0 +1,66 @@
+@model Humans.Web.Models.BuildStrikeRotaRowViewModel
+@{
+    var item = Model.Item;
+    var es = Model.Es;
+    var isFull = item.RemainingSlots <= 0;
+    var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
+}
+<tr class="@(isFull ? "table-secondary" : "")">
+    <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+    <td style="min-width: 120px;">
+        @{
+            var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
+            var singleFillColor = singleFillPercent >= 80 ? "bg-success" : singleFillPercent >= 40 ? "bg-warning" : "bg-danger";
+        }
+        <div class="d-flex align-items-center gap-2">
+            <div class="progress flex-grow-1" style="height: 6px;">
+                <div class="progress-bar @singleFillColor" role="progressbar" style="width: @singleFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+            </div>
+            <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
+        </div>
+    </td>
+    <td>
+        @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
+        {
+            @await Html.PartialAsync("_ShiftToggleButton", new Humans.Web.Models.ShiftToggleButtonModel
+            {
+                ShiftId = item.Shift.Id,
+                IsSignedUp = Model.IsSignedUp,
+                Status = Model.SignupStatus,
+                IsFull = item.RemainingSlots <= 0,
+                DietaryBlocked = Model.SignupsBlockedByMissingDietary
+            })
+        }
+        else
+        {
+            @if (Model.IsSignedUp)
+            {
+                <span class="badge bg-info">@Localizer["Shifts_SignedUp"]</span>
+            }
+            else if (isFull)
+            {
+                <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+            }
+            else if (understaffed)
+            {
+                <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
+            }
+        }
+    </td>
+    @if (item.Signups.Count > 0)
+    {
+        <td>
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var signup in item.Signups)
+                {
+                    <span title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                          style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@signup.UserId" layout="Avatar" size="26" css-class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
+                }
+            </div>
+        </td>
+    }
+    else
+    {
+        <td></td>
+    }
+</tr>

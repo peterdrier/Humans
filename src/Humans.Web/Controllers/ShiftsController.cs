@@ -98,38 +98,123 @@ public class ShiftsController(
         return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
     }
 
-    [HttpPost("SignUp")]
+    // AJAX per-day toggle: signs up or bails a single shift for the current user
+    // and returns the re-rendered row partial. Signup/bail outcome and the new
+    // active-signup count travel back as response headers (X-Signed-Up,
+    // X-My-Signup-Count, X-Toast-*); the name/dietary gates short-circuit to a
+    // 204 with X-Redirect so the client navigates instead of swapping a row.
+    [HttpPost("ToggleDay")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUp(Guid shiftId, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
+    public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound is not null)
+        if (currentUserNotFound is not null) return currentUserNotFound;
+
+        if (RedirectIfNameMissing(user) is not null)
+            return RedirectHeader(Url.Action(
+                nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
+
+        var es = await shiftMgmt.GetActiveAsync()
+            ?? throw new InvalidOperationException("ToggleDay requires an active event.");
+
+        // Resolve sign-up-vs-bail before any gate: the dietary requirement applies to
+        // signing up, never to removing a signup you already hold. Event-scoped read so
+        // the count below matches the page badge (which is per active event).
+        var signups = await signupService.GetByUserAsync(user.Id, es.Id);
+        var existing = signups.FirstOrDefault(s =>
+            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
+
+        if (existing is null && await ShiftNeedsDietaryFirstAsync(user, shiftId))
         {
-            return currentUserNotFound;
+            SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
+            return RedirectHeader(Url.Action(
+                "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
         }
 
-        if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
-        if (await RedirectIfDietaryMissingAsync(user, shiftId) is { } gate)
-            return gate;
-
+        // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only).
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await signupService.SignUpAsync(
-            user.Id,
-            shiftId,
-            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+        SignupResult result;
+        bool signedUp;
+        if (existing is not null)
+        {
+            result = await signupService.BailAsync(existing.Id, user.Id, "self-service toggle");
+            signedUp = false;
+        }
+        else
+        {
+            result = await signupService.SignUpAsync(
+                user.Id,
+                shiftId,
+                flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+            signedUp = result.Success;
+        }
 
-        return RedirectToBrowseWithSignupResult(
-            result,
-            successMessage: "Signed up successfully!",
-            warningPrefix: "Signed up successfully.",
-            errorFallback: "Shift signup failed.",
-            departmentId,
-            fromDate,
-            toDate,
-            period,
-            tagIds,
-            periods,
-            sort);
+        // Broad privilege — matches the browse page (Index.cshtml) so a department
+        // coordinator's row for an admin-only/hidden shift still renders instead of
+        // falling out of the browse set and 500-ing after the write already committed.
+        var canViewRestricted = privileged
+            || (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+
+        var after = await signupService.GetByUserAsync(user.Id, es.Id);
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, after, canViewRestricted, ct);
+        // Rare race (shift just closed/deleted between write and re-read): resync the
+        // whole page rather than swap a missing row.
+        if (row is null)
+            return RedirectHeader(Url.Action(nameof(Index)));
+
+        var value = row.Value;
+        var blocked = await ComputeSignupsBlockedByMissingDietaryAsync(user, ct);
+
+        Response.Headers["X-Signed-Up"] = signedUp ? "true" : "false";
+        Response.Headers["X-My-Signup-Count"] = after
+            .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToString(CultureInfo.InvariantCulture);
+
+        if (!result.Success && result.Error is not null)
+            SetToastHeader("warning", result.Error);
+        else if (result.Warning is not null)
+            SetToastHeader("warning", result.Warning);
+        else if (signedUp)
+            SetToastHeader("success", value.Status == SignupStatus.Pending
+                ? localizer["Shifts_Toast_Applied"].Value
+                : localizer["Shifts_Toast_SignedUp"].Value);
+        else
+            SetToastHeader("success", localizer["Shifts_Toast_Removed"].Value);
+
+        if (value.Item.Shift.IsAllDay)
+            return PartialView("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
+            {
+                Item = value.Item,
+                Es = es,
+                IsSignedUp = value.IsSignedUp,
+                SignupStatus = value.Status,
+                SignupsBlockedByMissingDietary = blocked,
+                Interaction = ShiftSignupInteraction.InstantToggle
+            });
+
+        return PartialView("_EventRotaRow", new EventRotaRowViewModel
+        {
+            Item = value.Item,
+            Es = es,
+            IsSignedUp = value.IsSignedUp,
+            SignupStatus = value.Status,
+            SignupsBlockedByMissingDietary = blocked,
+            Interaction = ShiftSignupInteraction.InstantToggle
+        });
+    }
+
+    // 204 + X-Redirect header; the client navigates. url may be null under unit
+    // tests (no routing), in which case only the status code is emitted.
+    private IActionResult RedirectHeader(string? url)
+    {
+        if (!string.IsNullOrEmpty(url)) Response.Headers["X-Redirect"] = url;
+        return StatusCode(204);
+    }
+
+    private void SetToastHeader(string type, string message)
+    {
+        Response.Headers["X-Toast-Type"] = type;
+        Response.Headers["X-Toast-Msg"] = Uri.EscapeDataString(message);
     }
 
     // Lockout flag shared by the dietary banner and the rota-table Sign-Up
@@ -144,120 +229,12 @@ public class ShiftsController(
         return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 
-    // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
-    // and the user hasn't recorded a DietaryPreference yet, bounce them to
-    // ProfileController.DietaryMedical with returnAction=signup so the
-    // post-save handler can replay the signup. Medical conditions are
-    // intentionally excluded from the gate (only DietaryPreference blocks).
-    private async Task<IActionResult?> RedirectIfDietaryMissingAsync(UserInfo user, Guid shiftId)
+    // True when the shift qualifies for a cantina meal and the user has no DietaryPreference yet.
+    private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
     {
         var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
-        if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
-
-        if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
-
-        SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
-        return RedirectToAction(
-            actionName: "DietaryMedical",
-            controllerName: "Profile",
-            routeValues: new { returnAction = "signup", shiftId });
-    }
-
-    // Range variant of the dietary gate. The range signup flow only targets
-    // all-day shifts, and every all-day shift qualifies for a cantina meal, so
-    // "any shift qualifies" reduces to "the cached rota view has an all-day
-    // shift in this window".
-    private async Task<IActionResult?> RedirectIfDietaryMissingForRangeAsync(
-        UserInfo user, Guid rotaId, int startDayOffset, int endDayOffset)
-    {
-        var rotaView = await shiftView.GetRotaAsync(rotaId, HttpContext.RequestAborted);
-        var rangeHasQualifyingShift = rotaView.Shifts.Any(s =>
-            s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset);
-        if (!rangeHasQualifyingShift) return null;
-
-        if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
-
-        SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
-        return RedirectToAction(
-            actionName: "DietaryMedical",
-            controllerName: "Profile",
-            routeValues: new { returnAction = "signuprange", rotaId, startDayOffset, endDayOffset });
-    }
-
-    [HttpPost("SignUpRange")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
-    {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound is not null)
-        {
-            return currentUserNotFound;
-        }
-
-        if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
-        if (await RedirectIfDietaryMissingForRangeAsync(user, rotaId, startDayOffset, endDayOffset) is { } gate)
-            return gate;
-
-        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var flags = ShiftSignupRequestFlags.SkipConflicts;
-        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-        var result = await signupService.SignUpRangeAsync(
-            user.Id,
-            rotaId,
-            startDayOffset,
-            endDayOffset,
-            flags: flags);
-
-        return RedirectToBrowseWithSignupResult(
-            result,
-            successMessage: "Signed up for date range!",
-            warningPrefix: "Signed up for date range.",
-            errorFallback: "Shift range signup failed.",
-            departmentId,
-            fromDate,
-            toDate,
-            period,
-            tagIds,
-            periods,
-            sort);
-    }
-
-    private IActionResult RedirectToBrowseWithSignupResult(
-        SignupResult result,
-        string successMessage,
-        string warningPrefix,
-        string errorFallback,
-        Guid? departmentId,
-        string? fromDate,
-        string? toDate,
-        string? period,
-        List<Guid>? tagIds,
-        List<string>? periods,
-        string? sort)
-    {
-        if (!result.Success)
-            SetError(result.Error ?? errorFallback);
-        else
-            SetSuccess(result.Warning is not null ? $"{warningPrefix} Note: {result.Warning}" : successMessage);
-
-        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
-    }
-
-    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null, List<string>? periods = null)
-    {
-        var rv = new RouteValueDictionary();
-        if (departmentId.HasValue) rv["departmentId"] = departmentId.Value;
-        if (!string.IsNullOrEmpty(fromDate)) rv["fromDate"] = fromDate;
-        if (!string.IsNullOrEmpty(toDate)) rv["toDate"] = toDate;
-        if (!string.IsNullOrEmpty(period)) rv["period"] = period;
-        if (!string.IsNullOrEmpty(sort)) rv["sort"] = sort;
-        if (tagIds is { Count: > 0 })
-            for (var i = 0; i < tagIds.Count; i++)
-                rv[$"tags[{i}]"] = tagIds[i];
-        if (periods is { Count: > 0 })
-            for (var i = 0; i < periods.Count; i++)
-                rv[$"periods[{i}]"] = periods[i];
-        return rv;
+        if (shift is null || !shift.QualifiesForCantinaMeal()) return false;
+        return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 
     [HttpPost("BailRange")]

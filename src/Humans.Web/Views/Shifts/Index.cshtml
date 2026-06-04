@@ -42,6 +42,8 @@
     }
 </style>
 <div class="container py-4">
+    @* Antiforgery token for InstantToggle AJAX (shifts.js reads this). *@
+    @Html.AntiForgeryToken()
     @* === Tabs: Browse / My Shifts === *@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
@@ -66,8 +68,11 @@
         </div>
     </div>
 
-    @* Toast alerts — bottom-right, auto-dismiss *@
-    <div class="shifts-toast-container">
+    @* Toast alerts — bottom-right, auto-dismiss. role/aria-live so AT announces
+       both server TempData alerts and the toggle toasts injected by shifts.js.
+       data-error-msg carries the localized client-side network-error string. *@
+    <div class="shifts-toast-container" role="status" aria-live="polite" aria-atomic="true"
+         data-error-msg="@Localizer["Shifts_Toggle_Error"]">
         <vc:temp-data-alerts />
     </div>
 
@@ -387,10 +392,12 @@
                         {
                             @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
                             {
+                                Interaction = ShiftSignupInteraction.InstantToggle,
                                 RotaGroup = rotaGroup,
                                 EventSettings = es,
                                 SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
                                 UserSignupShiftIds = Model.UserSignupShiftIds,
+                                UserSignupStatuses = Model.UserSignupStatuses,
                                 ShowSignups = Model.ShowSignups,
                                 FilterDepartmentId = Model.FilterDepartmentId,
                                 FilterFromDate = Model.FilterFromDate,
@@ -413,6 +420,7 @@
                             var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                             @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
                             {
+                                Interaction = ShiftSignupInteraction.InstantToggle,
                                 Shifts = timedShifts,
                                 EventSettings = es,
                                 SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -545,10 +553,12 @@
                                             {
                                                 @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
                                                 {
+                                                    Interaction = ShiftSignupInteraction.InstantToggle,
                                                     RotaGroup = rotaGroup,
                                                     EventSettings = es,
                                                     SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
                                                     UserSignupShiftIds = Model.UserSignupShiftIds,
+                                                    UserSignupStatuses = Model.UserSignupStatuses,
                                                     ShowSignups = Model.ShowSignups,
                                                     FilterDepartmentId = Model.FilterDepartmentId,
                                                     FilterFromDate = Model.FilterFromDate,
@@ -571,6 +581,7 @@
                                                 var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                                                 @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
                                                 {
+                                                    Interaction = ShiftSignupInteraction.InstantToggle,
                                                     Shifts = timedShifts,
                                                     EventSettings = es,
                                                     SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -610,3 +621,4 @@
     });
 
 </script>
+<script src="~/js/shifts.js" asp-append-version="true"></script>

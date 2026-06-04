@@ -322,7 +322,52 @@ public sealed record CampSeasonMemberInfo(
     CampMemberStatus Status,
     Instant RequestedAt,
     Instant? ConfirmedAt,
-    bool HasEarlyEntry);
+    bool HasEarlyEntry)
+{
+    /// <summary>
+    /// Names of the camp roles this member holds in the season (e.g. "Camp Lead",
+    /// "Greeter"), ordered by role sort order. Empty when the member holds none.
+    /// Projected from the same active-assignment fetch that feeds
+    /// <see cref="CampSeasonInfo.LeadUserIds"/>/<see cref="CampSeasonInfo.WorkshopLeadUserIds"/>.
+    /// </summary>
+    public IReadOnlyList<string> Roles { get; init; } = [];
+}
+
+/// <summary>
+/// A user's camp membership for the active (<c>PublicYear</c>) season: the attached
+/// <see cref="Season"/> and the named camp roles the user holds in it. <see cref="Season"/>
+/// is null (and <see cref="Roles"/> empty) when the user is not an Active member of any
+/// camp this year. Derived from the cached <see cref="CampInfo"/> projection — no DB hit.
+/// </summary>
+public sealed record CampUserInfo(
+    CampSeasonInfo? Season,
+    IReadOnlyList<string> Roles)
+{
+    /// <summary>The "not in any camp this year" result.</summary>
+    public static readonly CampUserInfo None = new(null, []);
+
+    /// <summary>
+    /// Resolves a user's membership for <paramref name="activeYear"/> from a set of camp
+    /// projections. Considers only the season whose <see cref="CampSeasonInfo.Year"/> equals
+    /// <paramref name="activeYear"/> (never a camp's latest season) and only Active membership;
+    /// takes the first match if the user is somehow active in more than one camp.
+    /// </summary>
+    public static CampUserInfo Resolve(IEnumerable<CampInfo> camps, int activeYear, Guid userId)
+    {
+        foreach (var camp in camps)
+        {
+            var season = camp.Seasons.FirstOrDefault(s => s.Year == activeYear);
+            var member = season?.Members.FirstOrDefault(
+                m => m.UserId == userId && m.Status == CampMemberStatus.Active);
+            if (member is not null)
+            {
+                return new CampUserInfo(season, member.Roles);
+            }
+        }
+
+        return None;
+    }
+}
 
 /// <summary>
 /// Result of a camp membership request action.

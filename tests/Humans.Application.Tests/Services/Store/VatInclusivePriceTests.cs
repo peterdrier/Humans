@@ -31,7 +31,7 @@ public class VatInclusivePriceTests
     [InlineData("0.50", "21", "0.61")]
     public void OrderLineDto_unit_price_incl_vat(string ex, string vat, string expected)
     {
-        Line(qty: 1, unitEx: D(ex), vat: D(vat)).UnitPriceSnapshotInclVat.Should().Be(D(expected));
+        Line(qty: 1, unitEx: D(ex), vat: D(vat)).EffectiveUnitPriceInclVat.Should().Be(D(expected));
     }
 
     [HumansFact]
@@ -41,7 +41,7 @@ public class VatInclusivePriceTests
         // authoritative line VAT is rounded once on the whole subtotal. The two intentionally
         // diverge by a cent for multi-quantity lines; this locks that documented behavior.
         var line = Line(qty: 3, unitEx: 9.99m, vat: 21m);
-        line.UnitPriceSnapshotInclVat.Should().Be(12.09m);
+        line.EffectiveUnitPriceInclVat.Should().Be(12.09m);
 
         var order = new StoreOrder
         {
@@ -53,8 +53,8 @@ public class VatInclusivePriceTests
         var authoritativeLineTotal = BalanceCalculator.Compute(order).Lines.Single().TotalEur;
 
         authoritativeLineTotal.Should().Be(36.26m);
-        (3 * line.UnitPriceSnapshotInclVat).Should().Be(36.27m);
-        (3 * line.UnitPriceSnapshotInclVat).Should().NotBe(authoritativeLineTotal,
+        (3 * line.EffectiveUnitPriceInclVat).Should().Be(36.27m);
+        (3 * line.EffectiveUnitPriceInclVat).Should().NotBe(authoritativeLineTotal,
             "per-unit incl VAT is display-only; the authoritative line total rounds VAT once on the subtotal");
     }
 

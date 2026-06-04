@@ -77,6 +77,7 @@ public class StoreService(
         // coordinated departments, or every department when a privileged reader.
         // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = await teamService.GetTeamsAsync(ct);
+        var teamOrderPrices = await LoadCurrentPricesAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
                         && (isPrivilegedReader
@@ -93,7 +94,7 @@ public class StoreService(
             {
                 var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
                 var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-                orders = [await MapOrderAsync(existing, productNames, ct)];
+                orders = [await MapOrderAsync(existing, productNames, teamOrderPrices, ct)];
             }
             counterparties.Add(new StoreCounterpartyOrders(
                 StoreOrderCounterpartyType.Team,
@@ -134,13 +135,42 @@ public class StoreService(
                 .ToList();
         }
 
+        var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
+
         return new StoreOrderPageData(
             order,
             catalog,
             order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
-            stripeService.IsStoreCheckoutConfigured);
+            stripeService.IsStoreCheckoutConfigured,
+            priceChanges);
+    }
+
+    /// <summary>
+    /// Price-change audit events (<see cref="AuditAction.StoreProductPriceChanged"/>) for the
+    /// products on this order, recorded since the order was created — the order page's
+    /// "price changes" view (#816). Reuses the existing per-entity audit query; the product
+    /// count per order is tiny.
+    /// </summary>
+    private async Task<IReadOnlyList<AuditLogEntrySnapshot>> LoadOrderPriceChangesAsync(OrderDto order, CancellationToken ct)
+    {
+        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
+        if (productIds.Count == 0)
+            return [];
+
+        var changes = new List<AuditLogEntrySnapshot>();
+        foreach (var productId in productIds)
+        {
+            var entries = await audit.GetFilteredEntriesAsync(
+                entityType: nameof(StoreProduct),
+                entityId: productId,
+                actions: [AuditAction.StoreProductPriceChanged],
+                limit: 50,
+                ct: ct);
+            changes.AddRange(entries.Where(e => e.OccurredAt >= order.CreatedAt));
+        }
+        return changes.OrderByDescending(e => e.OccurredAt).ToList();
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
@@ -191,6 +221,8 @@ public class StoreService(
         var product = await repo.GetProductByIdAsync(draft.Id, ct)
             ?? throw new InvalidOperationException($"Product {draft.Id} not found");
 
+        var oldPrice = product.UnitPriceEur;
+
         product.Year = draft.Year;
         product.Name = draft.Name.Trim();
         product.Description = draft.Description;
@@ -206,6 +238,13 @@ public class StoreService(
             AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
+
+        // Dedicated, queryable price-change event for the order-page audit view (#816).
+        if (oldPrice != draft.UnitPriceEur)
+            await audit.LogAsync(
+                AuditAction.StoreProductPriceChanged, nameof(StoreProduct), product.Id,
+                $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
+                actorUserId);
     }
 
     public async Task<StoreCatalogSaveResult> SaveProductWithResultAsync(
@@ -283,9 +322,10 @@ public class StoreService(
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         var result = new List<OrderDto>(orders.Count);
         foreach (var o in orders)
-            result.Add(await MapOrderAsync(o, productNames, ct));
+            result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
         return result;
     }
 
@@ -295,7 +335,8 @@ public class StoreService(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return await MapOrderAsync(o, productNames, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
@@ -314,7 +355,6 @@ public class StoreService(
             CampSeasonId = campSeasonId,
             TeamId = null,
             Year = season.Year,
-            Label = label,
             State = StoreOrderState.Open,
             CreatedAt = now,
             UpdatedAt = now
@@ -333,7 +373,8 @@ public class StoreService(
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
-        var balance = BalanceCalculator.Compute(order).BalanceEur;
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
             throw new InvalidOperationException(
                 $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
@@ -386,7 +427,8 @@ public class StoreService(
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return await MapOrderAsync(order, productNames, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
@@ -693,6 +735,14 @@ public class StoreService(
         }
     }
 
+    /// <summary>
+    /// Phase 5 — not yet implemented. <b>Freeze seam (#816):</b> before flipping
+    /// <see cref="StoreOrder.State"/> to <see cref="StoreOrderState.InvoiceIssued"/>, the
+    /// implementation MUST re-write each line's <c>UnitPriceSnapshot</c>,
+    /// <c>VatRateSnapshot</c>, and <c>DepositAmountSnapshot</c> from the current catalog
+    /// price, so the issued invoice captures the exact prices shown at issue time. Until
+    /// then every order stays Open and reprices live, which is the desired in-season behavior.
+    /// </summary>
     public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 
@@ -737,7 +787,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Camp,
                 sid,
                 campName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totalDue,
                 totals.PaymentsTotalEur,
@@ -753,7 +803,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Team,
                 tid,
                 teamName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
                 0m, // team orders never have payments
@@ -831,12 +881,35 @@ public class StoreService(
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive);
 
+    /// <summary>
+    /// The single event year whose catalog drives repricing of Open orders. The org runs one
+    /// event year, so this is hardcoded rather than derived from each order's <c>Year</c> — which
+    /// is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c> reprice correctly.
+    /// Bump it when a new event year starts (nobodies-collective/Humans#816).
+    /// </summary>
+    private const int CatalogYear = 2026;
+
+    /// <summary>
+    /// Loads the current catalog price components (incl. deactivated products) for
+    /// <see cref="CatalogYear"/>, keyed by product id, so Open orders reprice to the live price.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
+        CancellationToken ct)
+    {
+        var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
+        foreach (var product in await repo.GetAllProductsForYearAsync(CatalogYear, ct))
+            prices[product.Id] = new BalanceCalculator.ProductPrice(
+                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
+        return prices;
+    }
+
     private async Task<OrderDto> MapOrderAsync(
         StoreOrder o,
         IReadOnlyDictionary<Guid, string> productNames,
+        IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
         CancellationToken ct)
     {
-        var balance = BalanceCalculator.Compute(o);
+        var balance = BalanceCalculator.Compute(o, currentPrices);
         var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
         var lines = o.Lines.Select(l =>
         {
@@ -844,7 +917,7 @@ public class StoreService(
             return new OrderLineDto(
                 l.Id, l.OrderId, l.ProductId,
                 productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
-                l.Qty, l.UnitPriceSnapshot, l.VatRateSnapshot, l.DepositAmountSnapshot, l.AddedAt,
+                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
                 t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
         }).ToList();
 
@@ -861,13 +934,14 @@ public class StoreService(
             counterpartyType,
             displayName,
             o.Year,
-            o.Label,
+            null, // Label removed from the UI (#816); column retained, unused.
             o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,
             lines,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
-            balance.PaymentsTotalEur, balance.BalanceEur);
+            balance.PaymentsTotalEur, balance.BalanceEur,
+            o.CreatedAt);
     }
 
     private async Task<string> ResolveCounterpartyDisplayNameAsync(StoreOrder o, CancellationToken ct)

@@ -334,9 +334,6 @@ public class AccountProvisioningServiceTests
         public Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedUserEmailAsync(
-            string searchTerm, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<UserEmailWithUser?> FindVerifiedUserEmailWithUserAsync(
             string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();

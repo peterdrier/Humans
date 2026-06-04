@@ -123,6 +123,7 @@ public enum AuditAction
     StoreCounterpartyEdited,
     StoreProductCreated,
     StoreProductUpdated,
+    StoreProductPriceChanged,
     StoreProductDeactivated,
     StorePaymentRecorded,
     TicketTransferRequested,

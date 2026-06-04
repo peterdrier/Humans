@@ -4,6 +4,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
@@ -43,6 +44,7 @@ public class ProfileControllerPopoverTests
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ProfileController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -90,6 +92,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<ITicketService>(),
             _teamService,
             Substitute.For<ICampaignService>(),
+            _campService,
             Substitute.For<IEmailOutboxService>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
@@ -201,6 +204,47 @@ public class ProfileControllerPopoverTests
         vm.MembershipStatus.Should().Be("Active");
         vm.City.Should().Be("Madrid");
         vm.CountryCode.Should().Be("ES");
+    }
+
+    [HumansFact]
+    public async Task Popover_UserInCampWithRoles_PopulatesCampNameAndRoles()
+    {
+        var id = Guid.NewGuid();
+        var user = new User
+        {
+            Id = id,
+            DisplayName = "Camp Human",
+            Email = "camp@example.com",
+            PreferredLanguage = "en",
+        };
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = id,
+            MembershipTier = MembershipTier.Volunteer,
+            IsApproved = true,
+            IsSuspended = false,
+            State = ProfileState.Active,
+        };
+        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(user, profile, userEmails: null));
+        _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new List<Models.TeamMembership>());
+
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,
+            "Camp Funhouse", "", "", [],
+            CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
+            AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);
+        _campService.GetCampUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(new CampUserInfo(season, ["Camp Lead", "Greeter"]));
+
+        var result = await _controller.Popover(id, CancellationToken.None);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
+        vm.CampName.Should().Be("Camp Funhouse");
+        vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
     }
 
     private static UserInfo BuildUserInfo(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails) =>

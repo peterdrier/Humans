@@ -116,28 +116,11 @@ public sealed class DevPersonaSeeder(
         // creates the Profile row when missing, sets all fields, and lifts
         // the lifecycle marker out of Stub. We bypass the dev-only IsApproved
         // shortcut by setting it explicitly post-save.
-        var saveRequest = new ProfileSaveRequest(
-            BurnerName: displayName,
-            FirstName: firstName,
-            LastName: lastName,
-            City: "Barcelona",
-            CountryCode: "ES",
-            Latitude: null,
-            Longitude: null,
-            PlaceId: null,
-            Bio: $"Dev persona for testing the {displayNameSuffix} role.",
-            Pronouns: "they/them",
-            ContributionInterests: null,
-            BoardNotes: null,
-            BirthdayMonth: 6,
-            BirthdayDay: 15,
-            EmergencyContactName: null,
-            EmergencyContactPhone: null,
-            EmergencyContactRelationship: null,
-            NoPriorBurnExperience: false,
-            ProfilePictureData: null,
-            ProfilePictureContentType: null,
-            RemoveProfilePicture: false);
+        var saveRequest = BuildPersonaProfileRequest(
+            burnerName: displayName,
+            firstName: firstName,
+            lastName: lastName,
+            bio: $"Dev persona for testing the {displayNameSuffix} role.");
 
         var profileId = await profileEditorService.SaveProfileAsync(id, displayName, saveRequest);
 
@@ -279,6 +262,72 @@ public sealed class DevPersonaSeeder(
 
         logger.LogInformation("DEV: seeded profileless guest persona {Email} ({Id})", email, id);
     }
+
+    /// <summary>
+    /// Re-blanks the No-Name persona's legal first/last names (keeping whatever
+    /// BurnerName it currently has) so the onboarding name-gate re-triggers on
+    /// the next request after every dev sign-in. SaveProfileAsync auto-demotes
+    /// the profile back to Stub once the legal names go blank, so each sign-in
+    /// is a fresh run at the gate. See #812.
+    /// <para>
+    /// Re-applies the canned persona profile fields (city/pronouns/birthday);
+    /// the persona exists only to exercise the gate, so its non-name fields are
+    /// not meaningful test data.
+    /// </para>
+    /// </summary>
+    public async Task ResetLegalNamesAsync(Guid userId)
+    {
+        var info = await userService.GetUserInfoAsync(userId);
+        var burnerName = info?.Profile?.BurnerName;
+        if (string.IsNullOrWhiteSpace(burnerName))
+        {
+            logger.LogWarning(
+                "DEV: ResetLegalNamesAsync — no profile/burner for {UserId}, skipping legal-name reset",
+                userId);
+            return;
+        }
+
+        await profileEditorService.SaveProfileAsync(
+            userId,
+            burnerName,
+            BuildPersonaProfileRequest(
+                burnerName: burnerName,
+                firstName: string.Empty,
+                lastName: string.Empty,
+                bio: "Dev No-Name gate-test persona — legal names re-blanked on each sign-in."));
+
+        logger.LogInformation("DEV: reset legal names for No-Name persona {UserId}", userId);
+    }
+
+    /// <summary>
+    /// Builds the canned dev-persona profile save request. Shared by initial
+    /// seeding and the No-Name persona's per-login legal-name reset so the two
+    /// paths cannot drift.
+    /// </summary>
+    private static ProfileSaveRequest BuildPersonaProfileRequest(
+        string burnerName, string firstName, string lastName, string bio) =>
+        new(
+            BurnerName: burnerName,
+            FirstName: firstName,
+            LastName: lastName,
+            City: "Barcelona",
+            CountryCode: "ES",
+            Latitude: null,
+            Longitude: null,
+            PlaceId: null,
+            Bio: bio,
+            Pronouns: "they/them",
+            ContributionInterests: null,
+            BoardNotes: null,
+            BirthdayMonth: 6,
+            BirthdayDay: 15,
+            EmergencyContactName: null,
+            EmergencyContactPhone: null,
+            EmergencyContactRelationship: null,
+            NoPriorBurnExperience: false,
+            ProfilePictureData: null,
+            ProfilePictureContentType: null,
+            RemoveProfilePicture: false);
 
     /// <summary>
     /// Seeds a test barrio camp + season + lead for the barrio-N-lead persona.

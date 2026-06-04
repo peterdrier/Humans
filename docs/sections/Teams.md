@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Teams/**
   src/Humans.Domain/Entities/Team.cs
+  src/Humans.Domain/Entities/TeamEarlyEntryGrant.cs
   src/Humans.Domain/Entities/TeamMember.cs
   src/Humans.Domain/Entities/TeamJoinRequest.cs
   src/Humans.Domain/Entities/TeamJoinRequestStateHistory.cs
@@ -167,8 +168,12 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 | `GET /Teams/{slug}/EditPage` | `EditPage` (GET) | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/EditPage` | `EditPage` (POST) | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `GET /Teams/{slug}/Roles/SearchMembers` | `SearchMembersForRole` | `TeamAdminController` | `ResolveTeamManagementAsync` — AJAX member search |
+| `GET /Teams/{slug}/EarlyEntry` | `EarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` (`ManageEarlyEntry`) — only renders when `EarlyEntryEnabled` |
+| `POST /Teams/{slug}/EarlyEntry/Add` | `AddEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
+| `POST /Teams/{slug}/EarlyEntry/Edit` | `EditEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
+| `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 
-`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`. `CanManageResourcesAsync` checks coordinator-of-department specifically (sub-team managers cannot manage Google resources).
+`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`. `CanManageResourcesAsync` checks coordinator-of-department specifically (sub-team managers cannot manage Google resources).
 
 ## Actors & Roles
 
@@ -176,9 +181,10 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 |-------|--------------|
 | Anyone (including anonymous) | Browse the team directory and view public team pages |
 | Any active human | View team detail pages, request to join a team, leave a team, withdraw a pending request, view own memberships, browse the birthday calendar, search humans, view the roster and map |
-| Coordinator | Manage members, approve/reject join requests, manage roles, edit the team page, and manage Google resources for their department (and its sub-teams) |
+| Coordinator | Manage members, approve/reject join requests, manage roles, edit the team page, manage Google resources, and (when `EarlyEntryEnabled`) grant/edit/revoke Early Entry for their department (and its sub-teams) |
+| EETeamAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
 | Sub-team Manager | Manage members, approve/reject join requests, manage roles, manage shifts, and edit the team page for their sub-team only. Cannot manage Google resources, the parent department, or sibling sub-teams |
-| TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, sensitive flag, directory promotion), toggle the management role, and link/unlink Google resources on all teams |
+| TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, sensitive flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams |
 | Board | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams |
 | Admin | All Board capabilities. Additionally can execute Google sync actions, trigger system team sync, and view sync previews |
 
@@ -205,6 +211,10 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - The Teams directory (`/Teams`) shows only **directory-visible** teams: top-level teams (departments) always appear; sub-teams only appear if `IsPromotedToDirectory` is true. Sub-teams are always accessible from their parent team's detail page regardless of this flag.
 - `team_join_request_state_history` is append-only per §12.
 - Resource-based authorization per design-rules §11: `TeamAuthorizationHandler` + `TeamOperationRequirement`.
+- Early Entry is gated by the per-team `EarlyEntryEnabled` flag: only enabled teams contribute EE grants to the cross-section roster, expose the EE management page, and accept new grants (`AddEarlyEntryGrantAsync` rejects a disabled team). Multiple teams may enable it.
+- Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
+- `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
+- `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
 
 ## Negative Access Rules
 
@@ -221,7 +231,9 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - When a member is added to a team, Google resource sync (Drive folder permissions, Group memberships) runs inline against the Google APIs (and rolls up to the parent department's resources for sub-team adds). Per-user removals are deferred to the daily reconciliation job rather than running inline. Failed sync calls fall through to the Google sync outbox, processed by `process-google-sync-outbox`.
 - When a department coordinator role assignment changes, the Coordinators system team membership is recalculated for the affected human. Sub-team manager changes do not affect the Coordinators system team.
 - The system team sync job runs hourly (Hangfire `Cron.Hourly` recurring job `system-team-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts.
-- When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember`, `TeamJoinRequest`, and `TeamEarlyEntryGrant` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- Each Early Entry mutation writes an `AuditLogEntry` (`EarlyEntryGranted` on add, `EarlyEntryUpdated` on edit, `EarlyEntryRevoked` on remove) against the `TeamEarlyEntryGrant` and evicts the affected user's EE cache.
+- Right-to-erasure: `DeleteEarlyEntryGrantsForUserAsync` drops all of a user's EE grants; the GDPR export contributes a `TeamEarlyEntry` data slice.
 
 ## Cross-Section Dependencies
 
@@ -233,6 +245,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - **Camps:** Active camp lead assignments feed the Barrio Leads system team via `ICampRepository.GetActiveLeadUserIdsAsync` / `IsLeadAnywhereAsync`.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data stitching for nav-stripped sections.
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` from source to target during account merge fold.
+- **Early Entry:** `TeamService` implements `IEarlyEntryProvider` (registered in `TeamsSectionExtensions`); `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`. `IEarlyEntryService` fans out over all providers (Camps, Shifts, Teams) to assemble the festival EE roster.
 
 ## Architecture
 
