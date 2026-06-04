@@ -23,9 +23,9 @@ namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
 /// Stub-name gate on <see cref="ShiftsController"/> — users with no legal name
-/// on file cannot browse or sign up for shifts. The check sits in front of every
-/// browse/signup entry so deep links to /Shifts (bypassing the OnboardingWidget
-/// dispatcher) still get bounced to the onboarding flow.
+/// on file cannot browse shifts. The check sits in front of the browse entry so
+/// deep links to /Shifts (bypassing the OnboardingWidget dispatcher) still get
+/// bounced to the onboarding flow.
 /// </summary>
 public class ShiftsControllerNameGateTests
 {
@@ -112,39 +112,6 @@ public class ShiftsControllerNameGateTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _shiftMgmt.DidNotReceiveWithAnyArgs().GetActiveAsync();
-    }
-
-    [HumansFact]
-    public async Task SignUp_NamelessUser_RedirectsToOnboardingWidget_WithoutSigningUp()
-    {
-        var userId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: ""));
-
-        var result = await ctrl.SignUp(
-            shiftId: Guid.NewGuid(), departmentId: null, fromDate: null, toDate: null,
-            period: null, tagIds: null);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
-        Assert.Equal("OnboardingWidget", redirect.ControllerName);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(Guid.Empty, Guid.Empty);
-    }
-
-    [HumansFact]
-    public async Task SignUpRange_NamelessUser_RedirectsToOnboardingWidget_WithoutSigningUp()
-    {
-        var userId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: ""));
-
-        var result = await ctrl.SignUpRange(
-            rotaId: Guid.NewGuid(), startDayOffset: 0, endDayOffset: 1,
-            departmentId: null, fromDate: null, toDate: null, period: null, tagIds: null);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
-        Assert.Equal("OnboardingWidget", redirect.ControllerName);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpRangeAsync(
-            Guid.Empty, Guid.Empty, 0, 0);
     }
 
     [HumansFact]
