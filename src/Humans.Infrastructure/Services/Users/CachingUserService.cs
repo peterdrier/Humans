@@ -124,8 +124,12 @@ public sealed class CachingUserService(
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         // Exact-UserId lookup. Lets anyone paste a UserId from logs / audit
-        // trails / URLs and jump straight to that human.
-        if (Guid.TryParse(query, out var idGuid))
+        // trails / URLs and jump straight to that human. Skipped for ExactName
+        // queries: those want literal burner-name equality, not id resolution —
+        // a GUID-shaped burner name must match by name, never collide with the
+        // row whose Id happens to equal the typed text.
+        if ((fields & PersonSearchFields.ExactName) == PersonSearchFields.None
+            && Guid.TryParse(query, out var idGuid))
         {
             if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
             {

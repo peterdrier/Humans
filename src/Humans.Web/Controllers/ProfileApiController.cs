@@ -90,15 +90,20 @@ public class ProfileApiController(
     [HttpGet("burner-name-count")]
     public async Task<IActionResult> BurnerNameCount(
         [FromQuery] string? name,
-        [FromQuery] Guid editingUserId,
         CancellationToken ct = default)
     {
         if (!name.HasSearchTerm())
-            return Ok(new { count = 0 });
+            return Ok(new BurnerNameCountResult(0));
+
+        // The editing user is the authenticated session identity — never a
+        // caller-supplied id — so the self-exclusion below can't be spoofed.
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (authError is not null)
+            return authError;
 
         var matches = await _userService.SearchUsersAsync(name, PersonSearchFields.ExactName, int.MaxValue, ct);
-        var count = matches.Count(r => r.UserId != editingUserId);
-        return Ok(new { count });
+        var count = matches.Count(r => r.UserId != viewer.Id);
+        return Ok(new BurnerNameCountResult(count));
     }
 
     // Single-person lookup by userId — same shape as Search.

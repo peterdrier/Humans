@@ -64,8 +64,7 @@
                         </div>
                         <div id="burnerNameCollisionWarning" class="alert alert-warning mt-2 d-none" role="alert"
                              data-msg-one="@Localizer["ProfileEdit_BurnerNameCollisionOne"]"
-                             data-msg-many="@Localizer["ProfileEdit_BurnerNameCollisionMany"]"
-                             data-editing-user-id="@Model.UserId">
+                             data-msg-many="@Localizer["ProfileEdit_BurnerNameCollisionMany"]">
                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
                             <span class="burner-collision-text"></span>
                         </div>
@@ -1134,9 +1133,8 @@
                 if (name.length < 2) { collisionWarning.classList.add('d-none'); return; }
 
                 const seq = ++collisionSeq;
-                const editingUserId = collisionWarning.dataset.editingUserId || '';
-                const url = '/api/profiles/burner-name-count?name=' + encodeURIComponent(name) +
-                    '&editingUserId=' + encodeURIComponent(editingUserId);
+                // Editing user is resolved server-side from the session; no id is sent.
+                const url = '/api/profiles/burner-name-count?name=' + encodeURIComponent(name);
                 try {
                     const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
                     if (!resp.ok) return;

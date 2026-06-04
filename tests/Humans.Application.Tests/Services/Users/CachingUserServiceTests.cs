@@ -838,6 +838,37 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task SearchUsersAsync_ExactName_GuidQuery_DoesNotShortCircuitById()
+    {
+        // The GUID-by-id fast path serves general search; an ExactName count must
+        // match by name only and never resolve the typed text as a user id.
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
+
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.ExactName);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_ExactName_MatchesGuidShapedBurnerName()
+    {
+        // A burner name that happens to be GUID-shaped must still match by exact
+        // name — the id fast path would otherwise swallow or misroute the query.
+        var burner = Guid.NewGuid().ToString();
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: burner));
+
+        var results = await sut.SearchUsersAsync(burner, PersonSearchFields.ExactName);
+
+        results.Should().ContainSingle();
+        results[0].UserId.Should().Be(userId);
+        results[0].MatchField.Should().Be("Exact Name");
+    }
+
+    [HumansFact]
     public async Task SearchUsersAsync_AdminBit_GuidNotFound_ReturnsEmpty()
     {
         var sut = CreateSut();
