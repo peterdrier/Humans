@@ -2437,4 +2437,18 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Account status</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Your account has been suspended</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Your account has been rejected</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Your account has been deleted</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Your account has been merged</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Your account is unavailable</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contact an admin for more information:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>Reference ID:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Pending account deletion</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Your account is scheduled for deletion</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>It will be permanently deleted on {0} unless you cancel.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>It will be permanently deleted unless you cancel.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancel deletion request</value></data>
 </root>

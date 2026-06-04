@@ -1,13 +1,14 @@
 @model Humans.Web.Models.AccountStatusViewModel
+@using Humans.Domain.Enums
 @{
-    ViewData["Title"] = "Account status";
-    var statusWord = Model.State switch
+    ViewData["Title"] = Localizer["AccountStatus_Title"].Value;
+    var headingKey = Model.State switch
     {
-        Humans.Domain.Enums.UserState.Suspended => "suspended",
-        Humans.Domain.Enums.UserState.Rejected => "rejected",
-        Humans.Domain.Enums.UserState.Deleted => "deleted",
-        Humans.Domain.Enums.UserState.Merged => "merged",
-        _ => "unavailable",
+        UserState.Suspended => "AccountStatus_HeadingSuspended",
+        UserState.Rejected => "AccountStatus_HeadingRejected",
+        UserState.Deleted => "AccountStatus_HeadingDeleted",
+        UserState.Merged => "AccountStatus_HeadingMerged",
+        _ => "AccountStatus_HeadingUnavailable",
     };
 }
 
@@ -15,19 +16,19 @@
     <div class="card shadow-sm">
         <div class="card-body text-center p-5">
             <i class="fa-solid fa-circle-exclamation fa-2x text-warning mb-3"></i>
-            <h1 class="h4 mb-3">Your account has been @statusWord</h1>
+            <h1 class="h4 mb-3">@Localizer[headingKey]</h1>
             <p class="text-muted mb-2">
-                Contact an admin for more information:
-                <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>.
+                @Localizer["AccountStatus_ContactInfo"]
+                <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
             </p>
             @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
             {
                 <div class="alert alert-secondary text-start mt-3 mb-0">
-                    <strong>Reason:</strong> @Model.RejectionReason
+                    <strong>@Localizer["AccountStatus_ReasonLabel"]</strong> @Model.RejectionReason
                 </div>
             }
             <p class="text-muted small mt-4 mb-0">
-                Reference ID: <code>@Model.UserId</code>
+                @Localizer["AccountStatus_ReferenceId"] <code>@Model.UserId</code>
             </p>
         </div>
     </div>
