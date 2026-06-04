@@ -6,7 +6,14 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Store</h1>
-    <span class="badge bg-secondary fs-6">@Model.Year</span>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group" authorize-policy="StoreCatalogAdmin">
+            <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">Catalog</a>
+            <a asp-controller="StoreAdmin" asp-action="Summary" class="btn btn-sm btn-outline-secondary">Summary</a>
+            <a asp-controller="StoreAdmin" asp-action="Payments" class="btn btn-sm btn-outline-secondary">Payments</a>
+        </div>
+        <span class="badge bg-secondary fs-6">@Model.Year</span>
+    </div>
 </div>
 
 <vc:temp-data-alerts />

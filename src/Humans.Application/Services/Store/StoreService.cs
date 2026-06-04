@@ -666,6 +666,106 @@ public class StoreService(
             orderId, nameof(StoreOrder));
     }
 
+    public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
+    {
+        var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var stripeQueried = sessionsOrNull is not null;
+        var sessions = sessionsOrNull ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
+        // Resolve each distinct matched order once (Stripe-side and recorded-side) for its
+        // display label and billable check.
+        var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
+            .Concat(recorded.Select(p => p.OrderId))
+            .Distinct();
+        var orders = new Dictionary<Guid, OrderDto>();
+        foreach (var id in matchedIds)
+        {
+            var order = await GetOrderAsync(id, ct);
+            if (order is not null) orders[id] = order;
+        }
+
+        var rows = new List<StripeReconciliationRow>(sessions.Count);
+        foreach (var s in sessions)
+        {
+            OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
+            rows.Add(new StripeReconciliationRow(
+                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
+                s.OrderId, order?.CounterpartyDisplayName,
+                ClassifyStripeSession(s, order, recordedPis)));
+        }
+
+        // Orphans: recorded Stripe payments whose PI is absent from the Stripe list — but only
+        // when Stripe was actually queried. If it couldn't be read, an empty session list does
+        // NOT mean those payments are orphans, so skip the check entirely.
+        var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
+            .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
+        var orphans = stripeQueried
+            ? recorded
+                .Where(p => !stripePis.Contains(p.PaymentIntentId))
+                .Select(p => new StripeOrphanPayment(
+                    p.PaymentIntentId, p.OrderId,
+                    orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
+                    p.AmountEur, p.ReceivedAt))
+                .ToList()
+            : new List<StripeOrphanPayment>();
+
+        return new StripeReconciliationReport(
+            stripeService.IsStoreWebhookConfigured,
+            stripeService.IsStoreCheckoutConfigured,
+            stripeQueried,
+            rows,
+            orphans);
+    }
+
+    private static StripeReconciliationStatus ClassifyStripeSession(
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlySet<string> recordedPis)
+    {
+        if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
+            return StripeReconciliationStatus.Unpaid;
+        if (s.PaymentIntentId is { } pi && recordedPis.Contains(pi))
+            return StripeReconciliationStatus.Recorded;
+        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == StoreOrderCounterpartyType.Team)
+            return StripeReconciliationStatus.Unmatched;
+        return StripeReconciliationStatus.Missing;
+    }
+
+    public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
+        Guid actorUserId, CancellationToken ct = default)
+    {
+        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
+        var count = 0;
+        var total = 0m;
+        foreach (var s in sessions)
+        {
+            if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
+            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
+            if (amount <= 0 || recordedPis.Contains(pi)) continue;
+
+            // Never fabricate a payment on an unmatched or non-billable (Team) order.
+            var order = await repo.GetOrderByIdAsync(orderId, ct);
+            if (order is null || order.TeamId is not null) continue;
+
+            await RecordStripePaymentAsync(orderId, pi, amount, ct); // idempotent on PI id
+            count++;
+            total += amount;
+        }
+
+        if (count > 0)
+        {
+            await audit.LogAsync(
+                AuditAction.StorePaymentsReconciled, "Store", Guid.Empty,
+                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
+                actorUserId);
+        }
+
+        return new StripeReconciliationResult(count, total);
+    }
+
     public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
     {
         switch (evt.Kind)

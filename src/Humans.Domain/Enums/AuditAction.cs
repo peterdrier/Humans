@@ -184,4 +184,5 @@ public enum AuditAction
     EarlyEntryGranted,
     EarlyEntryUpdated,
     EarlyEntryRevoked,
+    StorePaymentsReconciled,
 }
