@@ -57,6 +57,8 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<ContainerPlacement> ContainerPlacements => Set<ContainerPlacement>();
     public DbSet<CampRoleDefinition> CampRoleDefinitions => Set<CampRoleDefinition>();
     public DbSet<CampRoleAssignment> CampRoleAssignments => Set<CampRoleAssignment>();
+    public DbSet<ShiftObligation> ShiftObligations => Set<ShiftObligation>();
+    public DbSet<CampSeasonShiftObligation> CampSeasonShiftObligations => Set<CampSeasonShiftObligation>();
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
     public DbSet<CampPolygonHistory> CampPolygonHistories => Set<CampPolygonHistory>();
     public DbSet<CityPlanningSettings> CityPlanningSettings => Set<CityPlanningSettings>();
