@@ -36,10 +36,13 @@ public static class UserStateClassifier
         return UserState.Active;
     }
 
-    /// <summary>Classify from the canonical read model — used by the first-touch seed.</summary>
+    /// <summary>Classify from the canonical read model — used by <see cref="UserInfo.Create"/> and
+    /// the first-touch seed. Reads the raw <see cref="ProfileState"/> directly (not
+    /// <see cref="UserInfo.IsSuspended"/>) because that predicate now derives FROM the stored
+    /// <see cref="UserState"/> — using it here would be circular.</summary>
     public static UserState Classify(UserInfo info) => Classify(
         hasRequiredNameFields: info.HasRequiredNameFields,
-        isSuspended: info.IsSuspended,
+        isSuspended: info.Profile?.State == ProfileState.Suspended,
         isRejected: info.Profile?.RejectedAt is not null,
         isDeletionPending: info.IsDeletionPending,
         isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
