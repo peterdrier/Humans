@@ -101,10 +101,10 @@ One row per targeted recipient. This is the unit the reminder job and completion
 | `SentAt` | Instant? | When the invite was enqueued to the outbox |
 | `LatestEmailStatus` | `EmailOutboxStatus?` | Mirror of `CampaignGrant.LatestEmailStatus` |
 | `ReminderSentAt` | Instant? | Set when the one reminder is enqueued |
-| `CompletedAt` | Instant? | Set when this invitee submits as **Identified** or **Completion-tracked** (suppresses reminder). Never set for **Fully anonymous** (§4). |
+| `Completed` | bool | Set true when this invitee submits as **Identified** or **Completion-tracked** (suppresses reminder; counts toward response rate). **No completion timestamp is stored** — a precise time would correlate with a completion-tracked/anonymous response's submit time and unmask the respondent (§4, §3 privacy note). Stays false for **Fully anonymous**. |
 | `CreatedAt` | Instant | |
 
-**Indexes:** unique `(SurveyId, UserId)`; `(SurveyId, CompletedAt, SentAt)` for the reminder sweep.
+**Indexes:** unique `(SurveyId, UserId)`; `(SurveyId, Completed, SentAt)` for the reminder sweep.
 
 > **Token, not stored:** the per-recipient link carries an ASP.NET **Data Protection** token (purpose `"survey-invitation"`) protecting the payload — the same pattern as the unsubscribe token in `GuestController`. No raw token column; the token resolves server-side to the invitation (and thus the user). See §7.1 for why this is a **keyed signature** over the user GUID, not a reversible obfuscation.
 
@@ -118,7 +118,7 @@ One row per targeted recipient. This is the unit the reminder job and completion
 | `UserId` | Guid? | Respondent user id — **bare `Guid?` column**, no nav, no cross-section FK constraint. **Null unless the respondent chose Identified.** |
 | `Anonymity` | enum `ResponseAnonymity` | `Identified` / `CompletionTracked` / `Anonymous` (see §4) |
 | `Culture` | string (max 10) | Language the wizard was answered in |
-| `SubmittedAt` | Instant | |
+| `SubmittedAt` | Instant? | **Null while an in-progress draft**; set at final submit. Only **Identified** drafts are persisted (resumable, §8); completion-tracked/anonymous are session-only until submit. |
 
 **Aggregate-local navs:** `SurveyResponse.Answers`. **Indexes:** `SurveyId`, `(SurveyId, UserId)`.
 
@@ -142,11 +142,13 @@ One row per targeted recipient. This is the unit the reminder job and completion
 - **`AllowAnonymous = false`** → survey is **invite-only and always Identified**. No public slug, no anonymity step. The wizard requires a valid invitation token (or a logged-in targeted user). `SurveyResponse.UserId` is always set.
 - **`AllowAnonymous = true`** → the wizard's **first step** presents three choices (`ResponseAnonymity`):
 
-| Choice | `Response.UserId` | `Invitation.CompletedAt` | Effect |
-|--------|-------------------|--------------------------|--------|
-| **Identified** | invitee's user id | set | Answers attributable to the person; counts as done; no reminder. |
-| **Completion-tracked** | `null` | **set** | "Mark me as done but don't attach my answers to me." Answers are anonymous; participation is recorded so they're **not chased** by the reminder and counted in the response rate. |
-| **Fully anonymous** | `null` | **not set** | No trace that *this* person answered. **Trade-off:** because completion isn't recorded, a fully-anonymous invitee **may still receive the one reminder.** This is documented to the respondent on the choice step. |
+| Choice | `Response.UserId` | `Response.InvitationId` | `Invitation.Completed` | Effect |
+|--------|----|----|----|--------|
+| **Identified** | invitee's user id | invitation id | **true** | Answers attributable; counts as done; no reminder. In-progress draft is **persisted and resumable** via the link (§8). |
+| **Completion-tracked** | `null` | `null` | **true (flag only — no time)** | "Mark me as done but don't attach my answers to me." Answers anonymous; participation recorded so they're **not chased** and counted in the response rate. **No completion time is stored** — a timestamp would correlate with this response's submit time and unmask them. Not resumable (no link) → restarts if reopened. |
+| **Fully anonymous** | `null` | `null` | **false (untouched)** | No trace that *this* person answered. **Trade-off:** because completion isn't recorded, a fully-anonymous invitee **may still receive the one reminder** (disclosed on the choice step). Not resumable → restarts. |
+
+> **Timing side-channel (why `Completed` is a bool, not a timestamp):** recording *when* a completion-tracked invitee finished would let an admin match that user-linked time against the unattributed response's `SubmittedAt` and re-identify them. So completion is stored as a boolean fact only; `SurveyInvitation` has no completion-time column (and no `UpdatedAt`), and individual response submissions are **not** audit-logged.
 
 Public (non-invited) responses via `PublicSlug` are always **Anonymous** (no invitation to attach).
 
@@ -234,7 +236,7 @@ The link must let us **identify the recipient** (recover their user GUID server-
 Optional hardening (cheap, recommended): give the token a **lifetime** tied to the survey's open window via `ITimeLimitedDataProtector`, so stale links stop resolving after `ClosesAt`.
 
 **Reminder job** (`SendSurveyReminderJob : IRecurringJob`, daily cron):
-- Selects invitations where `Survey.Status == Open`, `CompletedAt is null`, `SentAt <= now - 7d`, `ReminderSentAt is null`.
+- Selects invitations where `Survey.Status == Open`, `Completed == false`, `SentAt <= now - 7d`, `ReminderSentAt is null`.
 - Enqueues one `SurveyReminder` email; stamps `ReminderSentAt`. One reminder per invitee, ever.
 
 Both honour the existing outbox pause flag and unsubscribe/Marketing rules already enforced by the Email/Mailer stack (a survey **invite** is transactional, not marketing — but recipients still resolve through the same audience exclusions when an `IMailerAudience` is used).
@@ -245,9 +247,9 @@ Both honour the existing outbox pause flag and unsubscribe/Marketing rules alrea
 
 1. **Step 0 — intro + privacy + language.** Renders `Survey.Intro`. If `AllowAnonymous`, shows the three-choice privacy selector (§4) with the reminder trade-off note. Anonymous/public path shows a language picker.
 2. **Question pages.** One page at a time; required-visible questions validated server-side; branching evaluated on each advance.
-3. **Submit.** Writes `SurveyResponse` (+ `SurveyAnswer`s) with the chosen `Anonymity`; sets `Invitation.CompletedAt` for Identified/Completion-tracked. Renders `Survey.ThankYou`.
+3. **Submit.** Finalises the `SurveyResponse` (+ `SurveyAnswer`s) with the chosen `Anonymity` (sets `SubmittedAt`); flips `Invitation.Completed = true` for Identified/Completion-tracked (boolean only, no time). Renders `Survey.ThankYou`.
 
-**Re-entry / edit:** an invited respondent can reopen their in-progress/submitted response via the same token within the open window (Data-Protection token, no login) — matching the unsubscribe-token "scoped link" pattern. Anonymous responses are fire-and-forget (no edit link).
+**Resume (in-progress only):** an **Identified** respondent who re-clicks their invite link mid-survey resumes their persisted draft (found by `(SurveyId, UserId, SubmittedAt is null)`) — within the open window, no login, via the Data-Protection token. **Completion-tracked / Anonymous** responses carry no user/invitation link, so there is nothing to find on return → they **restart** from the beginning. Editing an already-submitted response is out of v1 (resume is for unfinished drafts only).
 
 **Admin views** (`/Survey/Admin`, `AdminOrBoard`):
 - **Index** — list of surveys with status, response count / invited count (response rate).
@@ -363,7 +365,7 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 The §15 open questions are now settled. Each resolution below is binding for v1.
 
 1. **`LocalizedText` scope** → **Survey-owned** value object. Reuse-first/YAGNI: don't build a shared Domain primitive before a second consumer (Events/Camps) exists; promotion is a clean later refactor. (§6)
-2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **OPEN (business, decide before Phase 3):** which **target predicates** a survey author can pick in v1 (e.g. all-members / a team / ticket-holders, and possibly the same cohorts the Mailer audiences define). Also open: whether a survey invite honours the marketing opt-out (it is transactional, so probably not) or its own preference category. **Deferred (tech impl):** where those predicates are computed / whether a cross-section read interface is introduced — not decided now.
+2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **Predicates (decided 2026-06-04):** v1 ships **Team** first (a team's members), then the easy cohorts — **all active members**, **ticket-holders**, **shift participants**. (These mirror cohorts the Mailer audiences already express.) **Still open:** whether a survey invite honours the marketing opt-out (it is transactional → probably not). **Deferred (tech impl):** where predicates are computed / whether a cross-section read interface is introduced — not decided now.
 3. **Fully-anonymous reminder trade-off** → **accept** the documented behaviour (a fully-anon invitee may receive the one reminder). The alternative — a privacy-leaking "answered" bit — is rejected; never-leak wins. Disclosed to the respondent on the choice step. (§4)
 4. **Public slug** → **invite-only in v1**; public-link path deferred to a fast-follow (§14). Both known consumers are invite-driven. (§4)
 5. **Branch sources** → **choice-question predicates only** in v1; rating/text branch sources are not built. (§5)
@@ -378,7 +380,9 @@ The §15 open questions are now settled. Each resolution below is binding for v1
 - Publishing with an `AudienceKey` creates one `SurveyInvitation` per resolved recipient and enqueues a localised invite email per recipient through the outbox.
 - A recipient opens the tokenised link without logging in; when `AllowAnonymous`, the first step offers Identified / Completion-tracked / Fully-anonymous and (for public/anon) a language picker.
 - Branching: a question whose `ShowIf` is unmet is skipped and, even if required, does not block submission; the server rejects answers to questions that should have been hidden.
-- An identified submission sets `Response.UserId` and `Invitation.CompletedAt`; a completion-tracked submission sets only `CompletedAt`; a fully-anonymous submission sets neither user link nor completion.
+- An identified submission sets `Response.UserId`/`InvitationId` and flips `Invitation.Completed = true`; a completion-tracked submission flips `Completed = true` with **no user link and no timestamp**; a fully-anonymous submission sets neither a user link nor `Completed`.
+- Completion is recorded as a boolean — no completion-time is persisted anywhere, so a completion-tracked response cannot be re-identified by matching its submit time against a user's completion time.
+- An Identified respondent who re-opens their invite link mid-survey resumes their draft at the first unanswered page; completion-tracked/anonymous respondents start over.
 - Seven days after send, un-completed invitations receive exactly one reminder email; completed (Identified/Completion-tracked) invitees receive none.
 - Results view shows per-question aggregates and a per-respondent drill-down limited to Identified responses; CSV **and JSON** export work (free-text served as-submitted).
 - _(Fast-follow — deferred per §14/§15.6)_ The results view (and API) can translate free-text answers into a chosen culture on read, without persisting the translation.

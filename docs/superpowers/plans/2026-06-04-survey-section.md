@@ -23,21 +23,23 @@ These refine the spec where the audit found the assumed mechanism absent or unsu
 5. **`LocalizedText`.** A Survey-/Domain-owned value object wrapping `Dictionary<string,string>` (culture→text), persisted as jsonb via the `DocumentVersionConfiguration` precedent (`HasColumnType("jsonb")` + `HasConversion` + `ValueComparer`). Lives in `Humans.Domain/ValueObjects/` so entities can use it; promotion to a broader shared primitive stays a later refactor (§15.1).
 6. **`Cultures` / `PublicSlug` columns dropped.** Spec §3 listed `Survey.Cultures string[]` and `Survey.PublicSlug`. v1 is invite-only (no public path, §14) so **`PublicSlug` is omitted entirely**. "Which cultures have content" is **derived** from the `LocalizedText` dictionaries (no separate `Cultures` column to drift). Both can be added later without a destructive migration.
 7. **Membership gate.** The answering wizard controller (`SurveyController`) must be reachable by invited non-members → add `"Survey"` to `MembershipRequiredFilter.ExemptControllers` and mark the answer actions `[AllowAnonymous]` (mirrors `Guest`/`Camp`).
+10. **Completion is a boolean, not a timestamp (privacy — Peter).** A completion-tracked response is "done but anonymous." Storing *when* the invitee completed (`Invitation.CompletedAt`) leaks: that user-linked time matches the unattributed response's `SubmittedAt` and re-identifies them. So `SurveyInvitation` records `Completed` as a **bool** with **no time column and no `UpdatedAt`**, and individual response submissions are **not** audit-logged. Identified completions are likewise just `Completed=true` (their `Response` is legitimately linked and carries `SubmittedAt` if a time is ever needed).
+
 9. **No `[Obsolete]` navs, no cross-section FK constraints — corrects the spec AND the `Issue`/`Feedback` cow-path.** The spec §3 (and the `Issue`/`FeedbackReport`/`Camp` code) keep `[Obsolete]`-marked cross-domain navigation properties "stitched in memory." A new section must **not** be born with `[Obsolete]` anything — that is the exact debt the hard rules flag. Survey references Users/Teams by **bare `Guid` FK columns only**: no navigation property, no cross-section EF FK constraint (the clean `FeedbackReport.AgentConversationId` precedent). The service resolves cross-section display data (names, `PreferredLanguage`) via `IUserServiceRead`/`ITeamServiceRead` and stitches it into **DTOs/ViewModels**, never onto entities. design-rules §6c says "FK only" — taken literally. This matches the **clean** sections already in the repo (`Expenses`, `Store` team-orders, `Holded`) and the rule in `memory/architecture/no-cross-section-ef-joins.md`; the `[Obsolete]`-nav style on `Issue`/`Feedback`/`Camp` is the older debt we are **not** propagating.
 
-8. **Wizard state (RECOMMENDED SIMPLIFICATION — please confirm).** Spec §5/§8 imply per-page DB persistence and token re-entry of in-progress responses. For v1 I recommend holding in-progress page answers in **server-side session** keyed by the wizard token, writing `SurveyResponse` + all `SurveyAnswer`s **atomically at final submit**. Branching is still evaluated server-side from accumulated session state. This removes in-progress DB rows and the anonymity-linkage hazards (a `CompletionTracked`/`Anonymous` response must carry **no** `InvitationId`, so it can't be resumed by lookup anyway). **Resuming a partially-completed survey is therefore out of v1.** If you want true cross-device resume, say so and I'll add per-page persistence for the `Identified` tier only.
+8. **Wizard state (DECIDED 2026-06-04).** **Identified** in-progress responses are **persisted** (a draft `SurveyResponse`, `SubmittedAt == null`, answers saved per page) and **resume** when the invitee re-clicks their link — found by `(SurveyId, UserId, SubmittedAt is null)`. **CompletionTracked / Anonymous** carry no user/invitation link, so they can't be located on return → held in **session** and written atomically at submit; reopening **restarts** them. Post-submit *editing* of a finished response is out of v1 (resume is for unfinished drafts only). Pairs with Deviation #10 (boolean completion).
 
 ---
 
 ## Anonymity encoding (load-bearing — used in Phase 4 & 6)
 
-| Tier | `Response.UserId` | `Response.InvitationId` | `Invitation.CompletedAt` | Notes |
-|------|------|------|------|------|
-| **Identified** | invitee id | invitation id | set | only tier that is personal data; only tier in GDPR export; only tier in per-respondent drill-down & API identity fields |
-| **CompletionTracked** | `null` | **`null`** | set | participation counted (response-rate, no reminder) but answers unlinkable |
-| **Anonymous** (invited) | `null` | **`null`** | **not set** | no trace; may still get the one reminder (disclosed on choice step) |
+| Tier | `Response.UserId` | `Response.InvitationId` | `Invitation.Completed` | Resume? | Notes |
+|------|------|------|------|------|------|
+| **Identified** | invitee id | invitation id | **true** | **yes** | only tier that is personal data; only tier in GDPR export, per-respondent drill-down & API identity fields; in-progress draft persisted |
+| **CompletionTracked** | `null` | **`null`** | **true (bool only — no time)** | no | participation counted (response-rate, no reminder) but answers unlinkable; **no completion timestamp** |
+| **Anonymous** (invited) | `null` | **`null`** | **false (untouched)** | no | no trace; may still get the one reminder (disclosed on choice step) |
 
-`InvitationId` is set **only** for `Identified`. The invitation is known from the wizard token throughout the session, so `CompletedAt` is stamped at submit for Identified/CompletionTracked **without** persisting the link on the response.
+`InvitationId`/`UserId` are set **only** for `Identified`. The invitation is known from the wizard token throughout the session, so `Invitation.Completed` is flipped at submit for Identified/CompletionTracked **without** persisting the link on the response. **`Completed` is a boolean with no timestamp** — recording *when* a completion-tracked invitee finished would correlate (user-linked) with the unattributed response's `SubmittedAt` and re-identify them. Resume works only for Identified (the only tier with a findable draft, `SubmittedAt is null`); others are session-only and restart on reopen.
 
 ---
 
@@ -192,7 +194,7 @@ public enum SurveyQuestionType { SingleChoice = 0, MultiChoice = 1, ShortText = 
 public enum ResponseAnonymity { Identified = 0, CompletionTracked = 1, Anonymous = 2 }
 public enum BranchCombine { All = 0, Any = 1 }
 public enum BranchOperator { Is = 0, IsNot = 1, Answered = 2, NotAnswered = 3 }
-public enum SurveyAudienceType { AllMembers = 0, Team = 1, TicketHolders = 2 }
+public enum SurveyAudienceType { Team = 0, AllActiveMembers = 1, TicketHolders = 2, ShiftParticipants = 3 }
 ```
 - [ ] **Step 2 — Implement `BranchCondition`** (`namespace Humans.Domain.ValueObjects`):
 ```csharp
@@ -275,7 +277,7 @@ public class SurveyInvitation
     public Instant? SentAt { get; set; }
     public EmailOutboxStatus? LatestEmailStatus { get; set; }
     public Instant? ReminderSentAt { get; set; }
-    public Instant? CompletedAt { get; set; }
+    public bool Completed { get; set; }   // flag only — NO completion timestamp (a precise time would correlate with an anon/completion-tracked response's SubmittedAt and unmask)
     public Instant CreatedAt { get; init; }
 }
 
@@ -287,7 +289,7 @@ public class SurveyResponse
     public Guid? UserId { get; init; }                         // set ONLY for Identified; bare FK, no nav, no cross-section EF FK constraint
     public ResponseAnonymity Anonymity { get; init; }
     public string Culture { get; init; } = "en";
-    public Instant SubmittedAt { get; set; }
+    public Instant? SubmittedAt { get; set; }                  // null = in-progress draft (Identified only; resumable §8); set at final submit
     public ICollection<SurveyAnswer> Answers { get; set; } = new List<SurveyAnswer>();
 }
 
@@ -356,7 +358,7 @@ public class SurveyConfiguration : IEntityTypeConfiguration<Survey>
 - [ ] **Step 2 — Remaining five configs** (same file-per-entity pattern; key points):
   - `SurveyQuestionConfiguration` → table `survey_questions`; `Prompt`/`HelpText`/`RatingMinLabel`/`RatingMaxLabel` via `SurveyJson.LocalizedText`; `Type` `HasConversion<string>()`; `ShowIf` jsonb (`HasColumnType("jsonb")` + `HasConversion` to/from `BranchCondition?` with `SurveyJson.Options`); `HasMany(Options).WithOne(Question).HasForeignKey(QuestionId).OnDelete(Cascade)`; index `(SurveyId, PageNumber, Order)`.
   - `SurveyQuestionOptionConfiguration` → `survey_question_options`; `Value` `HasMaxLength(100).IsRequired()`; `Label` localized jsonb.
-  - `SurveyInvitationConfiguration` → `survey_invitations`; `LatestEmailStatus` `HasConversion<string>().HasMaxLength(20)`; **unique index `(SurveyId, UserId)`**; index `(SurveyId, CompletedAt, SentAt)`. `UserId` is a bare `Guid` column — no nav, no cross-section FK constraint.
+  - `SurveyInvitationConfiguration` → `survey_invitations`; `LatestEmailStatus` `HasConversion<string>().HasMaxLength(20)`; **unique index `(SurveyId, UserId)`**; index `(SurveyId, Completed, SentAt)`. `Completed` is a plain `bool` — **no completion-time column, no `UpdatedAt`** (timing side-channel, §4). `UserId` is a bare `Guid` column — no nav, no cross-section FK constraint.
   - `SurveyResponseConfiguration` → `survey_responses`; `Anonymity` `HasConversion<string>()`; `Culture` `HasMaxLength(10)`; `HasMany(Answers).WithOne(Response).HasForeignKey(ResponseId).OnDelete(Cascade)`; FK to `SurveyInvitation` via `InvitationId` `OnDelete(SetNull)` (intra-section, fine); `UserId` is a bare `Guid?` column — no nav, no cross-section FK constraint; indexes `SurveyId`, `(SurveyId, UserId)`.
   - `SurveyAnswerConfiguration` → `survey_answers`; `SelectedOptionValues` jsonb (`List<string>`, copy the `ProfileConfiguration` Allergies converter); `TextValue` `HasMaxLength(4000)`; FK to `SurveyQuestion` via `QuestionId` `OnDelete(Restrict)`; indexes `ResponseId`, `QuestionId`.
 - [ ] **Step 3 — Add DbSets** to `HumansDbContext`:
@@ -537,10 +539,10 @@ internal static class SurveySectionExtensions
 
 ### Task 3.2: Audience resolution (TDD)
 
-> **Provisional predicate set — confirm before building** (Deviation #2). The `AllMembers`/`Team`/`TicketHolders` trio below is a placeholder. The **locked** part is the idempotent diff-and-send in Task 3.4; the actual v1 predicate menu (and whether invites honour marketing opt-out) is an open business decision to settle first.
+> **v1 predicate menu (decided 2026-06-04):** `Team` (ship first), `AllActiveMembers`, `TicketHolders`, `ShiftParticipants`. The **locked** part is the idempotent diff-and-send in Task 3.4. Still open: whether invites honour the marketing opt-out (transactional → likely not) — confirm before this task.
 
-- [ ] **Step 1 — Failing test** on `SurveyService.PreviewAudienceCountAsync` / internal `ResolveRecipientIdsAsync(AudienceSelection)`: `AllMembers` → `IUserServiceRead.GetAllUserInfosAsync` ids; `Team` → `ITeamServiceRead.GetTeamAsync(teamId)` member ids; `TicketHolders` → `ITicketServiceRead` holder ids. Mock the read interfaces.
-- [ ] **Step 2 — Implement** the resolver as a private method returning `IReadOnlySet<Guid>` from the injected reads (mirror `CampaignService.SendWaveAsync` team resolution). **No** `IMailerAudience` usage.
+- [ ] **Step 1 — Failing test** on `SurveyService.PreviewAudienceCountAsync` / internal `ResolveRecipientIdsAsync(AudienceSelection)`: `Team` → `ITeamServiceRead.GetTeamAsync(teamId)` member ids; `AllActiveMembers` → active-member ids from `IUserServiceRead`; `TicketHolders` → `ITicketServiceRead` holder ids; `ShiftParticipants` → the shifts read interface that `HasShiftAudience` uses (exact name confirmed at impl). Mock the read interfaces.
+- [ ] **Step 2 — Implement** the resolver as a private method returning `IReadOnlySet<Guid>` from the injected reads (mirror `CampaignService.SendWaveAsync` team resolution). **No** `IMailerAudience` usage (avoids the marketing opt-out filter).
 - [ ] **Step 3 — Commit:** `feat(survey): resolve invite audience via read interfaces`
 
 ### Task 3.3: Email templates (3-touch)
@@ -570,7 +572,7 @@ internal static class SurveySectionExtensions
 
 ### Task 4.1: Wizard entry + privacy/language step
 
-- [ ] **Step 1 — `GET /Survey/Answer?t={token}`** → `tokenProvider.Resolve(t)` → invitation → survey. If survey `Closed` or past `ClosesAt` → `Views/Survey/Closed.cshtml`. Else render `Views/Survey/Intro.cshtml`: `Survey.Intro` resolved in culture, the **transparency note** (Phase 7 copy), and — when `AllowAnonymous` — the three-choice `ResponseAnonymity` selector with the reminder-tradeoff note; language picker for the anonymous path (default from `CultureInfo.CurrentUICulture`). Store `{invitationId, anonymity, culture}` in session.
+- [ ] **Step 1 — `GET /Survey/Answer?t={token}`** → `tokenProvider.Resolve(t)` → invitation → survey. If survey `Closed` or past `ClosesAt` → `Views/Survey/Closed.cshtml`. **Resume check:** if an Identified draft exists (`(SurveyId, UserId, SubmittedAt is null)`), jump straight back into it at the first unanswered page. Otherwise render `Views/Survey/Intro.cshtml`: `Survey.Intro` resolved in culture, the **transparency note** (Phase 7 copy), and — when `AllowAnonymous` — the three-choice `ResponseAnonymity` selector with the reminder-tradeoff note; language picker for the anonymous path (default from `CultureInfo.CurrentUICulture`). On choosing **Identified**, create the draft response now; for CompletionTracked/Anonymous keep `{anonymity, culture}` in session only.
 - [ ] **Step 2 — Build.** **Commit:** `feat(survey): wizard intro and privacy step`
 
 ### Task 4.2: Question pages + server-side branching (TDD on the page-sequencing helper)
@@ -583,11 +585,11 @@ internal static class SurveySectionExtensions
 ### Task 4.3: Submit (TDD — anonymity encoding)
 
 - [ ] **Step 1 — Failing test** on `SurveyService.SubmitResponseAsync(SurveySubmission)`:
-  - `Identified` → `SurveyResponse` with `UserId`+`InvitationId` set, `Anonymity=Identified`; invitation `CompletedAt` set.
-  - `CompletionTracked` → response with `UserId=null`, `InvitationId=null`; invitation `CompletedAt` set.
-  - `Anonymous` → response with `UserId=null`, `InvitationId=null`; invitation `CompletedAt` **not** set.
+  - `Identified` → finalise draft `SurveyResponse` with `UserId`+`InvitationId` set, `Anonymity=Identified`, `SubmittedAt` set; invitation `Completed = true`.
+  - `CompletionTracked` → response with `UserId=null`, `InvitationId=null`, `SubmittedAt` set; invitation `Completed = true` (**boolean only — no timestamp written**).
+  - `Anonymous` → response with `UserId=null`, `InvitationId=null`, `SubmittedAt` set; invitation `Completed` left **false**.
   - Server **rejects** answers to questions that should have been hidden (re-evaluate full branching from the submission; drop/forbid hidden answers).
-- [ ] **Step 2 — Repository:** `AddResponseWithAnswersAndSaveAsync(response)`, `SetInvitationCompletedAsync(invitationId, at)`.
+- [ ] **Step 2 — Repository:** `AddResponseWithAnswersAndSaveAsync(response)` (or finalise the existing Identified draft), `SetInvitationCompletedAsync(invitationId)` (flips the bool — **no time argument**).
 - [ ] **Step 3 — Implement** `SubmitResponseAsync`; final branching re-evaluation; write response+answers in one save; stamp completion per tier.
 - [ ] **Step 4 — Run, expect PASS.** Render `Views/Survey/ThankYou.cshtml` (`Survey.ThankYou`). **Commit:** `feat(survey): submit response with anonymity tiers`
 
@@ -599,8 +601,8 @@ internal static class SurveySectionExtensions
 
 **Files:** `src/Humans.Infrastructure/Jobs/SendSurveyReminderJob.cs`; modify `src/Humans.Web/Extensions/RecurringJobExtensions.cs`; extend `ISurveyService` + repo with the sweep.
 
-- [ ] **Step 1 — Failing test** on `SurveyService.SendDueRemindersAsync(CancellationToken)`: selects invitations where the survey is `Open`, `CompletedAt is null`, `SentAt <= now - 7d`, `ReminderSentAt is null`; enqueues exactly one `SurveyReminder` email per invitee (localised); stamps `ReminderSentAt`. A second run sends none (idempotent).
-- [ ] **Step 2 — Repository:** `GetInvitationsDueForReminderAsync(now, threshold)` using the `(SurveyId, CompletedAt, SentAt)` index; `SetReminderSentAsync(id, at)`.
+- [ ] **Step 1 — Failing test** on `SurveyService.SendDueRemindersAsync(CancellationToken)`: selects invitations where the survey is `Open`, `Completed == false`, `SentAt <= now - 7d`, `ReminderSentAt is null`; enqueues exactly one `SurveyReminder` email per invitee (localised); stamps `ReminderSentAt`. A second run sends none (idempotent).
+- [ ] **Step 2 — Repository:** `GetInvitationsDueForReminderAsync(now, threshold)` using the `(SurveyId, Completed, SentAt)` index; `SetReminderSentAsync(id, at)`.
 - [ ] **Step 3 — Implement** the service method; then the job class `[DisableConcurrentExecution(300)] public class SendSurveyReminderJob(ISurveyService surveyService, ILogger<SendSurveyReminderJob> logger) : IRecurringJob` whose `ExecuteAsync` calls `surveyService.SendDueRemindersAsync(ct)` (job touches **no** repository).
 - [ ] **Step 4 — Register cron** in `RecurringJobExtensions.UseHumansRecurringJobs`:
   `("survey-reminder", () => RecurringJob.AddOrUpdate<SendSurveyReminderJob>("survey-reminder", j => j.ExecuteAsync(CancellationToken.None), "0 9 * * *"))`
