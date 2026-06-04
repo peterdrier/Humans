@@ -223,6 +223,16 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.StorePayments.AnyAsync(p => p.StripePaymentIntentId == paymentIntentId, ct);
     }
 
+    public async Task<IReadOnlyList<StoreRecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.StorePayments.AsNoTracking()
+            .Where(p => p.StripePaymentIntentId != null)
+            .Select(p => new StoreRecordedStripePayment(
+                p.StripePaymentIntentId!, p.OrderId, p.AmountEur, p.ReceivedAt))
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Invoices
     // ==========================================================================
