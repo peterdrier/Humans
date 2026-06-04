@@ -753,6 +753,12 @@
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
     <value>Ihr Burner Name scheint mit Ihrem bürgerlichen Namen übereinzustimmen. Erwägen Sie einen anderen Namen, um Ihre Privatsphäre zu schützen — dieser Name ist für alle Humans sichtbar.</value>
   </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Es gibt 1 weiteren Human mit dem Namen '{1}' — bitte sorgen Sie dafür, dass man erkennen kann, welcher Sie sind!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Es gibt {0} weitere Humans mit dem Namen '{1}' — bitte sorgen Sie dafür, dass man erkennen kann, welcher Sie sind!</value>
+  </data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Erforderlich für offizielle Dokumente und Unterschriften.</value>
   </data>

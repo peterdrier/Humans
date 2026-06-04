@@ -313,6 +313,8 @@
   <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve"><value>Your burner name appears to match your legal name. Consider using a different name to protect your privacy — this name is visible to all humans.</value></data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve"><value>There is 1 other human with the name '{1}' — please make sure we can tell which one is you!</value></data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve"><value>There are {0} other humans with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve"><value>Required for official documents and signing.</value></data>
   <data name="ProfileEdit_Select" xml:space="preserve"><value>Select</value></data>
   <data name="ProfileEdit_City" xml:space="preserve"><value>City</value></data>

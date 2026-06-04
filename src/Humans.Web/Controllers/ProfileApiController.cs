@@ -85,6 +85,22 @@ public class ProfileApiController(
         return Ok(response);
     }
 
+    // Exact (accent-/case-folded full-string) burner-name collision count, excluding the editing user.
+    // Drives the live edit-profile warning. Uncapped — the real number must surface, not the search cap.
+    [HttpGet("burner-name-count")]
+    public async Task<IActionResult> BurnerNameCount(
+        [FromQuery] string? name,
+        [FromQuery] Guid editingUserId,
+        CancellationToken ct = default)
+    {
+        if (!name.HasSearchTerm())
+            return Ok(new { count = 0 });
+
+        var matches = await _userService.SearchUsersAsync(name, PersonSearchFields.ExactName, int.MaxValue, ct);
+        var count = matches.Count(r => r.UserId != editingUserId);
+        return Ok(new { count });
+    }
+
     // Single-person lookup by userId — same shape as Search.
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)

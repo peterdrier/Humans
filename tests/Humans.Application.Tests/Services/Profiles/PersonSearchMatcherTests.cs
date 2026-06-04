@@ -250,4 +250,62 @@ public class PersonSearchMatcherTests
 
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.AdminAll).Should().BeNull();
     }
+
+    [HumansTheory]
+    [InlineData("jose", "José")]   // diacritic + case folded
+    [InlineData("JOSÉ", "josé")]
+    [InlineData("peter pan", "Peter Pan")]  // full multi-token string, exact
+    public void ExactName_matches_folded_full_string_equality(string query, string burnerName)
+    {
+        var human = Human(burnerName: burnerName);
+
+        var match = PersonSearchMatcher.Match(human, query, PersonSearchFields.ExactName);
+
+        match.Should().NotBeNull();
+        match!.Field.Should().Be("Exact Name");
+    }
+
+    [HumansTheory]
+    [InlineData("Peter", "Peter Pan")]   // substring of name — must NOT match
+    [InlineData("Pan", "Peter Pan")]     // token of name — must NOT match
+    [InlineData("Joseph", "Jose")]       // prefix superset — must NOT match
+    [InlineData("Jose", "Joseph")]       // prefix subset — must NOT match
+    public void ExactName_is_not_substring_or_prefix(string query, string burnerName)
+    {
+        var human = Human(burnerName: burnerName);
+
+        PersonSearchMatcher.Match(human, query, PersonSearchFields.ExactName).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void ExactName_never_matches_rejected_profile()
+    {
+        var human = Human(burnerName: "Sparkle", rejectedAt: At);
+
+        PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.ExactName).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void ExactName_alone_does_not_match_bio_legal_or_admin_buckets()
+    {
+        // ExactName must be its own bit: it confines to the resolved display name only,
+        // and never spills into Bio / Legal name / Admin email field buckets.
+        var human = Human(
+            burnerName: "Sparkle", firstName: "María", lastName: "García", displayName: "Sparkle",
+            bio: "Loves welding", city: "Berlin", interests: "kitchen crew",
+            emails: [("login@example.com", true, ContactFieldVisibility.BoardOnly)]);
+
+        PersonSearchMatcher.Match(human, "welding", PersonSearchFields.ExactName).Should().BeNull();
+        PersonSearchMatcher.Match(human, "berlin", PersonSearchFields.ExactName).Should().BeNull();
+        PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.ExactName).Should().BeNull();
+        PersonSearchMatcher.Match(human, "login@example.com", PersonSearchFields.ExactName).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void ExactName_resolves_display_name_when_burnername_blank()
+    {
+        var human = Human(burnerName: "", displayName: "Maria Garcia");
+
+        PersonSearchMatcher.Match(human, "maria garcia", PersonSearchFields.ExactName).Should().NotBeNull();
+    }
 }

@@ -753,6 +753,12 @@
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
     <value>Il Suo burner name sembra corrispondere al Suo nome legale. Consideri di usare un nome diverso per proteggere la Sua privacy — questo nome è visibile a tutti gli humans.</value>
   </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>C'è 1 altro human con il nome '{1}' — assicurati che si possa capire quale sei tu!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Ci sono {0} altri humans con il nome '{1}' — assicurati che si possa capire quale sei tu!</value>
+  </data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Richiesto per documenti ufficiali e firme.</value>
   </data>

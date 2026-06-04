@@ -23,6 +23,9 @@ public enum PersonSearchFields
     /// <summary>Legal FirstName/LastName. Controller MUST gate with admin/coordinator auth — never on public endpoints (deanonymizes burners).</summary>
     LegalName = 1 << 3,
 
+    /// <summary>Resolved display name, matched by exact accent-/case-folded full-string equality (not substring/token). Public. Used to count exact burner-name collisions.</summary>
+    ExactName = 1 << 4,
+
     /// <summary>Name + Bio — public endpoints.</summary>
     PublicAll = Name | Bio,
 

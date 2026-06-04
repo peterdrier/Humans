@@ -40,9 +40,14 @@ public static class PersonSearchMatcher
         var foldedQuery = Fold(q);
 
         var includeName = (fields & PersonSearchFields.Name) != PersonSearchFields.None;
+        var includeExactName = (fields & PersonSearchFields.ExactName) != PersonSearchFields.None;
         var includeBio = (fields & PersonSearchFields.Bio) != PersonSearchFields.None;
         var includeLegal = (fields & PersonSearchFields.LegalName) != PersonSearchFields.None;
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
+
+        // ── Exact-name bucket: resolved display name, folded full-string equality (not substring/token). Public. ──
+        if (includeExactName && string.Equals(Fold(user.BurnerName), foldedQuery, StringComparison.Ordinal))
+            return new PersonSearchMatch("Exact Name", null, null);
 
         // ── Name bucket: resolved display name (BurnerName → DisplayName fallback). Public. ──
         if (includeName && AllTokensIn(user.BurnerName, tokens))
