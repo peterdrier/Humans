@@ -150,7 +150,7 @@ public class EventsExportController(
         foreach (var occurrence in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
         {
             var local = ToLocalDateTime(occurrence, tz);
-            results.Add((local.ToIsoDateString(), local.ToDisplayTime24()));
+            results.Add((local.ToIsoDateString(), local.ToIsoTime()));
         }
         return results;
     }

@@ -240,11 +240,15 @@ public static class DateFormattingExtensions
         value.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
 
     public static string ToInvariantUtcMinuteLabel(this DateTime value) =>
-        value.ToString("uuuu-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+        value.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
 
     /// <summary>ISO-8601 UTC instant to seconds, "uuuu-MM-ddTHH:mm:ssZ" (machine/data attributes).</summary>
     public static string ToIso8601(this Instant value) =>
         InstantPattern.General.Format(value);
+
+    /// <summary>Invariant 24-hour time, "HH:mm" with a stable ":" separator (CSV/export columns).</summary>
+    public static string ToIsoTime(this DateTime value) =>
+        value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     // --- Filename / export stamps ---
 

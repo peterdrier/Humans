@@ -884,7 +884,7 @@ public class EventsController(
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
             var date = localDt.ToIsoDateString();
-            var time = localDt.ToDisplayTime24();
+            var time = localDt.ToIsoTime();
             var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
                 ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
