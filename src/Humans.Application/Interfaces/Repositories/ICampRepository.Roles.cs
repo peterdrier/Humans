@@ -136,6 +136,17 @@ public partial interface ICampRepository
     Task<IReadOnlyList<CampRoleAssignment>> GetActiveAssignmentsForYearsAsync(
         IReadOnlyCollection<int> years, CancellationToken ct = default);
 
+    /// <summary>
+    /// For the given role <paramref name="roleSlug"/> and <paramref name="year"/>,
+    /// returns each season's active role-holder UserIds keyed by
+    /// <c>CampSeasonId</c>. Joins <c>CampRoleAssignment → CampRoleDefinition
+    /// (Slug == roleSlug, not deactivated) → CampMember (Status == Active)</c>.
+    /// Seasons with no holder are absent. Used by the shift-obligation reminder
+    /// path to resolve the function-contact recipients per barrio.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetRoleHolderUserIdsBySlugForYearAsync(
+        string roleSlug, int year, CancellationToken ct = default);
+
     // Account-merge fold
 
     /// <summary>

@@ -271,8 +271,105 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     // ==========================================================================
+    // GetRoleHolderUserIdsBySlugForYearAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetRoleHolderUserIdsBySlugForYear_GroupsActiveHoldersBySeason_MatchingSlugAndYear()
+    {
+        var camp = await SeedCampAsync("power-camp");
+        var season = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync();
+
+        var def = await SeedRegularRoleDefinitionWithSlugAsync("power");
+        var holderA = Guid.NewGuid();
+        var holderB = Guid.NewGuid();
+        await SeedAssignmentAsync(season.Id, def.Id, holderA, CampMemberStatus.Active);
+        await SeedAssignmentAsync(season.Id, def.Id, holderB, CampMemberStatus.Active);
+
+        var result = await _repo.GetRoleHolderUserIdsBySlugForYearAsync("power", 2026);
+
+        result.Should().ContainKey(season.Id);
+        result[season.Id].Should().BeEquivalentTo([holderA, holderB]);
+    }
+
+    [HumansFact]
+    public async Task GetRoleHolderUserIdsBySlugForYear_ExcludesInactiveMembers_OtherSlugs_AndOtherYears()
+    {
+        var camp = await SeedCampAsync("filter-camp");
+        var season2026 = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        var season2025 = BuildSeason(camp.Id, CampSeasonStatus.Active, 2025);
+        _dbContext.CampSeasons.Add(season2026);
+        _dbContext.CampSeasons.Add(season2025);
+        await _dbContext.SaveChangesAsync();
+
+        var power = await SeedRegularRoleDefinitionWithSlugAsync("power");
+        var lnt = await SeedRegularRoleDefinitionWithSlugAsync("lnt");
+
+        var activeHolder = Guid.NewGuid();
+        await SeedAssignmentAsync(season2026.Id, power.Id, activeHolder, CampMemberStatus.Active);
+        // Inactive (Pending) member — excluded.
+        await SeedAssignmentAsync(season2026.Id, power.Id, Guid.NewGuid(), CampMemberStatus.Pending);
+        // Different slug — excluded.
+        await SeedAssignmentAsync(season2026.Id, lnt.Id, Guid.NewGuid(), CampMemberStatus.Active);
+        // Different year — excluded.
+        await SeedAssignmentAsync(season2025.Id, power.Id, Guid.NewGuid(), CampMemberStatus.Active);
+
+        var result = await _repo.GetRoleHolderUserIdsBySlugForYearAsync("power", 2026);
+
+        result.Should().ContainSingle();
+        result[season2026.Id].Should().ContainSingle().Which.Should().Be(activeHolder);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    private async Task<CampRoleDefinition> SeedRegularRoleDefinitionWithSlugAsync(string slug)
+    {
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = $"{slug}-{Guid.NewGuid():N}".Substring(0, 20),
+            Slug = slug,
+            SlotCount = 5,
+            MinimumRequired = 0,
+            SortOrder = 0,
+            SpecialRole = CampSpecialRole.None,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.CampRoleDefinitions.Add(def);
+        await _dbContext.SaveChangesAsync();
+        return def;
+    }
+
+    private async Task SeedAssignmentAsync(
+        Guid seasonId, Guid roleDefinitionId, Guid userId, CampMemberStatus status)
+    {
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            UserId = userId,
+            Status = status,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = status == CampMemberStatus.Active ? _clock.GetCurrentInstant() : null,
+        };
+        _dbContext.CampMembers.Add(member);
+
+        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            CampRoleDefinitionId = roleDefinitionId,
+            CampMemberId = member.Id,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = userId,
+        });
+        await _dbContext.SaveChangesAsync();
+    }
 
     private async Task<Camp> SeedCampAsync(string slug)
     {

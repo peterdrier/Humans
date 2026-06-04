@@ -260,6 +260,28 @@ internal sealed partial class CampRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetRoleHolderUserIdsBySlugForYearAsync(
+        string roleSlug, int year, CancellationToken ct = default)
+    {
+        var lowered = roleSlug.ToLowerInvariant();
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampRoleAssignments.AsNoTracking()
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            .Where(a => a.Definition.Slug.ToLower() == lowered
+#pragma warning restore MA0011
+                && a.Definition.DeactivatedAt == null
+                && a.CampSeason.Year == year
+                && a.CampMember.Status == CampMemberStatus.Active)
+            .Select(a => new { a.CampSeasonId, a.CampMember.UserId })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.CampSeasonId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<Guid>)g.Select(r => r.UserId).Distinct().ToList());
+    }
+
     // ==========================================================================
     // Account-merge fold
     // ==========================================================================

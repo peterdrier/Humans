@@ -21,6 +21,8 @@ internal static class CampsSectionExtensions
     {
         // Camps section — see #542 + T-06.
         services.AddSingleton<ICampRepository, CampRepository>();
+        // Owns shift_obligations + camp_season_shift_obligations; stateless over the factory.
+        services.AddSingleton<IShiftObligationRepository, ShiftObligationRepository>();
 
         // Keyed-Scoped inner + Singleton decorator.
         services.AddScoped<CampsCampService>();
