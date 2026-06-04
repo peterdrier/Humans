@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -112,7 +113,9 @@ public class TeamServiceSlugRaceTests
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
             Substitute.For<IEarlyEntryInvalidator>(),
-            new ServiceLocatorBuilder().Build(),
+            new ServiceLocatorBuilder()
+                .With<IGoogleSyncOutboxService>()
+                .Build(),
             clock,
             NullLogger<TeamService>.Instance);
     }

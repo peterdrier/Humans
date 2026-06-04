@@ -25,8 +25,10 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Infrastructure.Repositories.Auth;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
@@ -59,11 +61,14 @@ public sealed class TeamServiceTests : ServiceTestHarness
         // builder — NSubstitute can't attach an outer .Returns() to a factory that
         // itself configures substitute calls.
         var userService = NewDbBackedUserService();
+        var googleOutboxService = new GoogleSyncOutboxService(
+            new GoogleSyncOutboxRepository(DbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
             .With<IRoleAssignmentService>(_roleAssignmentService)
             .With<IEmailService>()
             .With<ISystemTeamSync>()
+            .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_teamResourceService)
             .With(userService)
             .Build();
@@ -2505,5 +2510,3 @@ public sealed class TeamServiceTests : ServiceTestHarness
         return signup;
     }
 }
-
-

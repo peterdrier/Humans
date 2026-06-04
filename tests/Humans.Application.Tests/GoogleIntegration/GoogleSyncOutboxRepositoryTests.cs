@@ -43,6 +43,33 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task AddAsync_PersistsOutboxEvent()
+    {
+        var outboxEvent = CreateEvent();
+
+        await _repository.AddAsync(outboxEvent);
+
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        stored.Id.Should().Be(outboxEvent.Id);
+        stored.DeduplicationKey.Should().Be(outboxEvent.DeduplicationKey);
+    }
+
+    [HumansFact]
+    public async Task AddRangeAsync_PersistsOutboxEvents()
+    {
+        var first = CreateEvent();
+        var second = CreateEvent();
+
+        await _repository.AddRangeAsync([first, second]);
+
+        var ids = await _seedContext.GoogleSyncOutboxEvents
+            .AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync();
+        ids.Should().BeEquivalentTo([first.Id, second.Id]);
+    }
+
+    [HumansFact]
     public async Task CountPendingAsync_CountsOnlyUnprocessed()
     {
         Seed(processedAt: null); // pending
@@ -200,6 +227,16 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         _seedContext.SaveChanges();
         return id;
     }
+
+    private static GoogleSyncOutboxEvent CreateEvent() => new()
+    {
+        Id = Guid.NewGuid(),
+        EventType = "test",
+        TeamId = Guid.NewGuid(),
+        UserId = Guid.NewGuid(),
+        OccurredAt = Instant.FromUtc(2026, 4, 22, 10, 0),
+        DeduplicationKey = Guid.NewGuid().ToString(),
+    };
 
     private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
         : IDbContextFactory<HumansDbContext>

@@ -2,8 +2,9 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.SystemSettings;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -16,7 +17,7 @@ namespace Humans.Application.Services.GoogleIntegration;
 public sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceService teamResourceService,
-    IDriveActivityMonitorRepository repository,
+    ISystemSettingsService systemSettings,
     IUserServiceRead userService,
     IAuditLogService auditLogService,
     IClock clock,
@@ -58,7 +59,7 @@ public sealed class DriveActivityMonitorService(
         // Use time-window dedup: only process events since the last successful run.
         // Falls back to 24 hours on first run or if the stored timestamp is missing.
         var now = clock.GetCurrentInstant();
-        var lookbackTime = await repository.GetLastRunTimestampAsync(cancellationToken)
+        var lookbackTime = await GetLastRunTimestampAsync(cancellationToken)
             ?? now.Minus(Duration.FromHours(24));
         var filterTime = lookbackTime.ToInvariantInstantString();
 
@@ -158,7 +159,7 @@ public sealed class DriveActivityMonitorService(
         // audit_log_entries is the AuditLog section's repository. Audit is logged
         // after the business save (per IAuditLogService) and regardless of the
         // marker outcome — anomalies must surface even on a partial-failure run.
-        await repository.AdvanceLastRunMarkerAsync(newMarker, cancellationToken);
+        await AdvanceLastRunMarkerAsync(newMarker, cancellationToken);
 
         foreach (var (resourceId, description) in anomalies)
         {
@@ -210,6 +211,41 @@ public sealed class DriveActivityMonitorService(
                 return EmptyGoogleUserInfoByProviderKey;
             }
         }
+    }
+
+    private async Task<Instant?> GetLastRunTimestampAsync(CancellationToken cancellationToken)
+    {
+        var value = await systemSettings.GetValueAsync(
+            SystemSettingKeys.DriveActivityMonitorLastRunAt,
+            cancellationToken);
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        var pattern = NodaTime.Text.InstantPattern.General;
+        var result = pattern.Parse(value);
+        if (result.Success)
+        {
+            return result.Value;
+        }
+
+        logger.LogWarning(
+            "Could not parse stored Drive activity monitor timestamp '{Value}', falling back to default lookback",
+            value);
+        return null;
+    }
+
+    private Task AdvanceLastRunMarkerAsync(
+        Instant? newLastRunAt,
+        CancellationToken cancellationToken)
+    {
+        return newLastRunAt is null
+            ? Task.CompletedTask
+            : systemSettings.SetValueAsync(
+                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+                newLastRunAt.Value.ToInvariantInstantString(),
+                cancellationToken);
     }
 
     private static bool IsInitiatedByServiceAccount(

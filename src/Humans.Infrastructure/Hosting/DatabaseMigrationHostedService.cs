@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,20 +7,13 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Infrastructure.Hosting;
 
 /// <summary>
-/// Applies pending EF migrations in StartingAsync — must complete before any other
-/// hosted service's StartAsync (cache warmup etc. read tables that don't exist yet).
+/// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup
+/// and other hosted services read tables that may not exist yet.
 /// </summary>
-[Grandfathered(
-    ruleId: "HUM0009",
-    justification: "Persistence-boundary bootstrap. The migration runner is part of HumansDbContext's wiring, not a consumer of it — it cannot route through a repository because it operates on the schema itself. Follow-up to teach the analyzer about hosted-service / design-time-factory roles in #750.",
-    since: "2026-05-17",
-    issueRef: "nobodies-collective/Humans#750")]
 internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
     : IHostedLifecycleService
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger("DatabaseMigration");
-
-    // Preserve the "DatabaseMigration" log category for existing dashboards.
 
     public async Task StartingAsync(CancellationToken cancellationToken)
     {
@@ -48,8 +40,8 @@ internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeF
             var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
             var applied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
 
-            // Warning level (not Information) so the per-boot migration breadcrumb survives
-            // production's default log filtering — makes "when did migrations run?" answerable.
+            // Warning level so the per-boot migration breadcrumb survives
+            // production's default log filtering.
             _logger.LogWarning(
                 "Database {Database}: {AppliedCount} applied migrations, {PendingCount} pending",
                 dbName, applied.Count, pending.Count);
@@ -65,7 +57,7 @@ internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeF
 
                 var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
                 _logger.LogWarning(
-                    "Database {Database}: migrations complete — {AppliedCount} total applied",
+                    "Database {Database}: migrations complete - {AppliedCount} total applied",
                     dbName, nowApplied.Count);
             }
             else
