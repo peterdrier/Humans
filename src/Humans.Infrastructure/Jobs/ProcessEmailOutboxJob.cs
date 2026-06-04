@@ -20,9 +20,11 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 /// <remarks>
 /// The outbox reads/writes go through <see cref="IEmailOutboxRepository"/> so the
-/// Email section's <c>email_outbox_messages</c> + <c>IsEmailSendingPaused</c>
-/// state is owned by a single repository per §15. Campaign grant status updates
-/// route through <see cref="ICampaignService"/> so the Campaigns section owns
+/// Email section's <c>email_outbox_messages</c> table is owned by a single
+/// repository per §15. The email pause flag (<c>IsEmailSendingPaused</c>) is
+/// checked via <see cref="IEmailOutboxService.IsEmailPausedAsync"/>, which routes
+/// to the SystemSettings section. Campaign grant status updates route through
+/// <see cref="ICampaignService"/> so the Campaigns section owns
 /// <c>campaign_grants</c> (design-rules §2c) — this job no longer touches
 /// <c>HumansDbContext</c> at all.
 /// </remarks>

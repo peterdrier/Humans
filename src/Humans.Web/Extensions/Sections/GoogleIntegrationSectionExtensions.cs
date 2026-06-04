@@ -20,7 +20,6 @@ internal static class GoogleIntegrationSectionExtensions
         services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
         services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
         services.AddScoped<IGoogleSyncOutboxService, GoogleSyncOutboxService>();
-        services.AddScoped<IDriveActivityMonitorRepository, DriveActivityMonitorRepository>();
         services.AddScoped<IDriveActivityMonitorService, GoogleDriveActivityMonitorService>();
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
         services.AddScoped<IGoogleRemovalNotificationService, GoogleRemovalNotificationService>();
