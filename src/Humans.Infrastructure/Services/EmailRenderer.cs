@@ -177,14 +177,21 @@ public class EmailRenderer(
         int requiredCount,
         string link,
         string? culture)
-        => RenderLocalized(culture, () => new EmailContent(
-            Lf("Email_BarrioShiftReminder_Subject", HtmlEncode(barrioName), HtmlEncode(functionName)),
-            Lf("Email_BarrioShiftReminder_Body",
-                HtmlEncode(barrioName),
-                HtmlEncode(functionName),
-                doneCount,
-                requiredCount,
-                link)));
+        => RenderLocalized(culture, () =>
+        {
+            // Normalize a possibly-relative link to an absolute URL (mail clients can't follow site-relative paths).
+            var fullLink = link.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? link
+                : $"{_settings.BaseUrl.TrimEnd('/')}{(link.StartsWith('/') ? "" : "/")}{link}";
+            return new EmailContent(
+                Lf("Email_BarrioShiftReminder_Subject", HtmlEncode(barrioName), HtmlEncode(functionName)),
+                Lf("Email_BarrioShiftReminder_Body",
+                    HtmlEncode(barrioName),
+                    HtmlEncode(functionName),
+                    doneCount,
+                    requiredCount,
+                    HtmlEncode(fullLink)));
+        });
 
     public EmailContent RenderCoordinatorRotaMessage(
         string recipientName,
