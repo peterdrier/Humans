@@ -14,12 +14,37 @@
         var label = document.getElementById('reminderModalLabel');
         var previewSubject = document.getElementById('reminderPreviewSubject');
         var previewBody = document.getElementById('reminderPreviewBody');
+        var bulkNote = document.getElementById('reminderBulkNote');
         var modeTemplate = document.getElementById('reminderModeTemplate');
         var modeCustom = document.getElementById('reminderModeCustom');
         var customFields = document.getElementById('reminderCustomFields');
         var customSubject = document.getElementById('reminderCustomSubject');
         var customBody = document.getElementById('reminderCustomBody');
         var previewUrl = '@Url.Action("ShiftObligationReminderPreview")';
+
+        // Cache the fetched template so toggling back from "Write my own" restores it
+        // without re-fetching.
+        var templatePreview = { subject: '', bodyHtml: '' };
+
+        function escapeHtml(s) {
+            return (s || '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Live preview of the admin's typed subject + body (matches the email: HTML-escaped,
+        // newlines as <br>, sign-up link appended as a note).
+        function renderCustomPreview() {
+            previewSubject.textContent = customSubject.value || '';
+            var bodyHtml = escapeHtml(customBody.value).replace(/\n/g, '<br>');
+            previewBody.innerHTML = bodyHtml +
+                '<p class="text-muted small mt-3 mb-0"><em>(The sign-up link is appended automatically.)</em></p>';
+        }
+
+        function renderTemplatePreview() {
+            previewSubject.textContent = templatePreview.subject || '';
+            previewBody.innerHTML = templatePreview.bodyHtml || '';
+        }
 
         function applyMode() {
             var isCustom = modeCustom.checked;
@@ -28,9 +53,13 @@
             // otherwise leave them unnamed so the server sends the template.
             customSubject.name = isCustom ? 'customSubject' : '';
             customBody.name = isCustom ? 'customBody' : '';
+            // The preview pane must reflect what will actually be sent.
+            if (isCustom) { renderCustomPreview(); } else { renderTemplatePreview(); }
         }
         modeTemplate.addEventListener('change', applyMode);
         modeCustom.addEventListener('change', applyMode);
+        customSubject.addEventListener('input', function () { if (modeCustom.checked) { renderCustomPreview(); } });
+        customBody.addEventListener('input', function () { if (modeCustom.checked) { renderCustomPreview(); } });
 
         document.querySelectorAll('.js-remind-trigger').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -51,11 +80,14 @@
                     label.textContent = 'Remind barrio — ' + name;
                     scopeNote.textContent = 'This will email the leads and role-holders of ' + name + '.';
                 }
+                // Representative-example caveat applies only to the bulk preview.
+                if (bulkNote) { bulkNote.classList.toggle('d-none', scope !== 'all'); }
 
                 // Reset to the template choice on each open.
                 modeTemplate.checked = true;
                 customSubject.value = '';
                 customBody.value = '';
+                templatePreview = { subject: '', bodyHtml: '' };
                 applyMode();
 
                 previewSubject.textContent = '';
@@ -66,11 +98,14 @@
                 fetch(qs, { headers: { 'Accept': 'application/json' } })
                     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
                     .then(function (data) {
-                        previewSubject.textContent = data.subject || '';
-                        previewBody.innerHTML = data.bodyHtml || '';
+                        templatePreview = { subject: data.subject || '', bodyHtml: data.bodyHtml || '' };
+                        // Only paint the fetched template if the admin hasn't switched to custom.
+                        if (!modeCustom.checked) { renderTemplatePreview(); }
                     })
                     .catch(function () {
-                        previewBody.innerHTML = '<span class="text-danger">Could not load the preview.</span>';
+                        if (!modeCustom.checked) {
+                            previewBody.innerHTML = '<span class="text-danger">Could not load the preview.</span>';
+                        }
                     });
 
                 modal.show();

@@ -105,7 +105,7 @@ else
                                         @if (cell.UnderMembered)
                                         {
                                             <i class="fa-solid fa-triangle-exclamation text-warning ms-1"
-                                               title="Only @row.ActiveMemberCount of ~@row.ExpectedMemberCount humans have joined in the app — fewer than the @cell.Required shifts required, so this can't be met yet."></i>
+                                               title="Only @row.ActiveMemberCount of @row.ExpectedMemberCount humans have joined this barrio in the app (fewer than the @cell.Required shifts required) — so this count is likely incomplete."></i>
                                         }
                                     </td>
                                 }
@@ -125,7 +125,7 @@ else
             <span class="badge table-danger border">&nbsp;&nbsp;</span> Not met
         </li>
         <li class="list-inline-item me-3">
-            <i class="fa-solid fa-triangle-exclamation text-warning"></i> Too few members joined to meet it
+            <i class="fa-solid fa-triangle-exclamation text-warning"></i> Few barrio members have joined in-app — count may be incomplete
         </li>
         <li class="list-inline-item">
             &mdash; Not applicable to this barrio

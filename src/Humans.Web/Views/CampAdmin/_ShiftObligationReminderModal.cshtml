@@ -41,6 +41,11 @@
                     <div class="mb-2">
                         <strong>Here is what will be sent:</strong>
                     </div>
+                    @* Shown only for the bulk "Remind all" scope: the preview's numbers are
+                       one representative example; each barrio's email uses its own counts. *@
+                    <p class="text-muted small d-none" id="reminderBulkNote">
+                        These numbers are a representative example — each barrio's email shows its own done/required counts.
+                    </p>
                     <div class="card mb-3">
                         <div class="card-header py-2">
                             <span class="text-muted small">Subject:</span>
@@ -61,7 +66,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="reminderCustomBody" class="form-label">Message</label>
-                            <textarea class="form-control" id="reminderCustomBody" rows="6"></textarea>
+                            <textarea class="form-control" id="reminderCustomBody" rows="6" maxlength="5000"></textarea>
                             <div class="form-text">The sign-up link is appended automatically so the message stays actionable.</div>
                         </div>
                     </div>
