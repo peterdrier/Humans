@@ -208,10 +208,17 @@ Free-text answers (`ShortText` / `LongText`) come back in whatever language the 
 
 > **Reuse boundary flagged for Peter (Open Q):** `IMailerAudience` lives in the Mailer section and is coupled to MailerLite group names. Cross-section reuse should go through a **read interface** (e.g. an `IAudienceResolver` / `IMailerServiceRead.ResolveAudienceAsync(key)`) rather than Survey importing Mailer internals — exact surface to be settled at implementation, consistent with the hard-rules cross-section pattern. Fallback if that proves heavy: Survey resolves cohorts directly via the same cross-section reads the audiences use (`ITicketServiceRead`, `ITeamService`, `IUserServiceRead`).
 
+**Send model — idempotent per-recipient ledger (the load-bearing business rule).** A survey is not a one-shot blast; it accumulates **invitations**, one per person. Each "send" is a **top-up**: resolve a target set, **diff it against the existing invitations**, and create + email only the net-new recipients.
+
+- Send #1 to {A, B} → invitations for A, B. Send #2 to {B, C, D} → B already has one (skipped) → only C, D are invited. End state: A, B, C, D each invited **exactly once**.
+- Each invitation carries **its own** sent / completed / reminded clock, so a later top-up never resets earlier invitees' reminder timing.
+- A send **only ever adds** — it never revokes. If the target set shrinks, already-invited people keep their invitation.
+- You can keep topping up while the survey is Open.
+
 **Send flow** (`SurveyService.SendInvitesAsync`, mirrors a Campaign wave):
-1. Resolve audience → user-id set.
-2. Create one `SurveyInvitation` per user (idempotent on `(SurveyId, UserId)`).
-3. For each, build a tokenised link (`/Survey/Answer?t={token}` — see §7.1) and enqueue a `SurveyInvitation` email via `IEmailService`, localised to `PreferredLanguage`. Stamp `SentAt` + `LatestEmailStatus`.
+1. Resolve the target set → user-id set (see the open targeting question, §15.2).
+2. Diff against existing `SurveyInvitation`s for this survey; create one per **net-new** user (idempotent on `(SurveyId, UserId)`).
+3. For each new invitation, build a tokenised link (`/Survey/Answer?t={token}` — see §7.1) and enqueue a `SurveyInvitation` email via `IEmailService`, localised to `PreferredLanguage`. Stamp `SentAt` + `LatestEmailStatus`.
 
 ### 7.1 Invite token — identify, don't authenticate, don't let randoms spoof
 
@@ -356,7 +363,7 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 The §15 open questions are now settled. Each resolution below is binding for v1.
 
 1. **`LocalizedText` scope** → **Survey-owned** value object. Reuse-first/YAGNI: don't build a shared Domain primitive before a second consumer (Events/Camps) exists; promotion is a clean later refactor. (§6)
-2. **Audience reuse surface** → cross-section via a **read interface** (`IMailerServiceRead.ResolveAudienceAsync(key)`), per the hard-rules cross-section pattern — not Survey importing Mailer internals. Exact method shape settled at implementation; the direction (read interface, not internal reach-in) is fixed. (§7)
+2. **Audience.** **Locked (business):** the send model is an **idempotent per-recipient invitation ledger** — top-up sends diff against existing invitations; nobody is double-invited; sends never revoke (§7). **OPEN (business, decide before Phase 3):** which **target predicates** a survey author can pick in v1 (e.g. all-members / a team / ticket-holders, and possibly the same cohorts the Mailer audiences define). Also open: whether a survey invite honours the marketing opt-out (it is transactional, so probably not) or its own preference category. **Deferred (tech impl):** where those predicates are computed / whether a cross-section read interface is introduced — not decided now.
 3. **Fully-anonymous reminder trade-off** → **accept** the documented behaviour (a fully-anon invitee may receive the one reminder). The alternative — a privacy-leaking "answered" bit — is rejected; never-leak wins. Disclosed to the respondent on the choice step. (§4)
 4. **Public slug** → **invite-only in v1**; public-link path deferred to a fast-follow (§14). Both known consumers are invite-driven. (§4)
 5. **Branch sources** → **choice-question predicates only** in v1; rating/text branch sources are not built. (§5)
