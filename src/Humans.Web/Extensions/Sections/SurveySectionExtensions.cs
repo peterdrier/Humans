@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Services.Surveys;
+using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Surveys;
 using Humans.Infrastructure.Services.Surveys;
 
@@ -20,6 +21,7 @@ internal static class SurveySectionExtensions
         services.AddScoped<ISurveyService>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyServiceRead>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
+        services.AddScoped<SendSurveyReminderJob>();   // recurring 7-day reminder (RecurringJobExtensions)
         return services;
     }
 }

@@ -54,6 +54,16 @@ public partial interface ISurveyRepository : IRepository
     /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
     Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
 
+    /// <summary>
+    /// Invitations due for the one-time 7-day reminder: their survey is <c>Open</c>, not yet
+    /// <c>Completed</c>, no reminder sent yet, and sent on or before <paramref name="cutoff"/>. No
+    /// display ordering. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default);
+
+    /// <summary>Stamps an invitation's <c>ReminderSentAt</c> (the one-shot reminder ledger). No-op if the invitation is gone.</summary>
+    Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default);
+
     /// <summary>Sets an invitation's <c>LatestEmailStatus</c>. No-op if the invitation does not exist.</summary>
     Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
 

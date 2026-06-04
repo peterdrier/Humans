@@ -283,6 +283,77 @@ public class SurveyServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    // ── Reminders (7-day nudge) ────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task SendDueRemindersAsync_sends_one_reminder_stamps_reminder_and_returns_count()
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var inv = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId,
+            SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { inv });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string> { [userId] = "u@example.org" });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Sparkle") }));
+
+        var count = await CreateService().SendDueRemindersAsync();
+
+        count.Should().Be(1);
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _emailMessages.Received(1).SurveyReminder("u@example.org", "Sparkle", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
+        await _repo.Received(1).SetReminderSentAsync(inv.Id, now, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.SurveyReminderSent, "Survey", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SendDueRemindersAsync_returns_zero_and_sends_nothing_when_none_due()
+    {
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation>());
+
+        var count = await CreateService().SendDueRemindersAsync();
+
+        count.Should().Be(0);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendDueRemindersAsync_skips_invitee_with_no_resolvable_email()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var inv = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId,
+            SentAt = _clock.GetCurrentInstant() - Duration.FromDays(9), LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { inv });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var count = await CreateService().SendDueRemindersAsync();
+
+        count.Should().Be(0);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task GetInviteStatusesAsync_stitches_burner_names_and_falls_back_to_user_id()
     {

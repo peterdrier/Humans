@@ -146,6 +146,30 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        // No display ordering — the service sweeps the result (hard rule). Uses the
+        // (SurveyId, Completed, SentAt) index. Joins to the survey's status (repo owns both tables).
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .Where(i => !i.Completed
+                        && i.ReminderSentAt == null
+                        && i.SentAt != null
+                        && i.SentAt <= cutoff
+                        && ctx.Surveys.Any(s => s.Id == i.SurveyId && s.Status == SurveyStatus.Open))
+            .ToListAsync(ct);
+    }
+
+    public async Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
+        if (invitation is null) return;
+        invitation.ReminderSentAt = at;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

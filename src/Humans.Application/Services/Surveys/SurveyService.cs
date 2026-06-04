@@ -228,6 +228,57 @@ public sealed class SurveyService(
         return new SendResult(invitationsCreated, emailsQueued, failed);
     }
 
+    public async Task<int> SendDueRemindersAsync(CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        var cutoff = now - Duration.FromDays(7);
+
+        var due = await repo.GetInvitationsDueForReminderAsync(cutoff, ct);
+        if (due.Count == 0) return 0;
+
+        // Resolve emails + display info for the whole due set in one cross-section call each.
+        var userIds = due.Select(i => i.UserId).Distinct().ToList();
+        var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+
+        // Title + default culture loaded once per distinct survey (few open surveys at this scale).
+        var titles = new Dictionary<Guid, (string Title, string DefaultCulture)>();
+
+        var reminded = 0;
+        foreach (var inv in due)
+        {
+            if (!emails.TryGetValue(inv.UserId, out var email))
+            {
+                logger.LogWarning(
+                    "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",
+                    inv.UserId, inv.SurveyId);
+                continue;
+            }
+
+            if (!titles.TryGetValue(inv.SurveyId, out var meta))
+            {
+                var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
+                if (survey is null) continue;
+                meta = (survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture), survey.DefaultCulture);
+                titles[inv.SurveyId] = meta;
+            }
+
+            var culture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : meta.DefaultCulture;
+            var name = user?.BurnerName ?? string.Empty;
+            var token = tokenProvider.Create(inv.Id);
+            var msg = emailMessages.SurveyReminder(email, name, meta.Title, token, culture);
+
+            await emailService.SendAsync(msg, ct);
+            await repo.SetReminderSentAsync(inv.Id, now, ct);
+            reminded++;
+        }
+
+        await auditLog.LogAsync(AuditAction.SurveyReminderSent, nameof(Survey), Guid.Empty,
+            $"Sent {reminded} survey reminder(s)", jobName: nameof(SurveyService));
+
+        return reminded;
+    }
+
     public async Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default)
     {
         var invitations = await repo.GetInvitationsAsync(surveyId, ct);
