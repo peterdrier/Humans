@@ -144,6 +144,14 @@ public class ShiftsController(
         return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 
+    // True when the shift qualifies for a cantina meal and the user has no DietaryPreference yet.
+    private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
+    {
+        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
+        if (shift is null || !shift.QualifiesForCantinaMeal()) return false;
+        return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
+    }
+
     // Dietary gate: if the shift qualifies for a cantina meal (all-day or ≥6h)
     // and the user hasn't recorded a DietaryPreference yet, bounce them to
     // ProfileController.DietaryMedical with returnAction=signup so the
@@ -151,10 +159,7 @@ public class ShiftsController(
     // intentionally excluded from the gate (only DietaryPreference blocks).
     private async Task<IActionResult?> RedirectIfDietaryMissingAsync(UserInfo user, Guid shiftId)
     {
-        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
-        if (shift is null || !shift.QualifiesForCantinaMeal()) return null;
-
-        if (!string.IsNullOrEmpty(user.Profile?.DietaryPreference)) return null;
+        if (!await ShiftNeedsDietaryFirstAsync(user, shiftId)) return null;
 
         SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
         return RedirectToAction(
