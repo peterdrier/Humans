@@ -21,7 +21,7 @@ public sealed record ShiftObligationColumnViewModel(
 
 public sealed record ShiftObligationBarrioRowViewModel(
     Guid CampSeasonId, string BarrioName, string Slug, int ActiveMemberCount,
-    IReadOnlyList<ShiftObligationCellViewModel> Cells);
+    int ExpectedMemberCount, IReadOnlyList<ShiftObligationCellViewModel> Cells);
 
 public sealed record ShiftObligationCellViewModel(
     Guid ShiftObligationId, bool Applicable, int Done, int Required, bool UnderMembered)
@@ -39,6 +39,12 @@ public sealed class ShiftObligationDetailViewModel
 {
     public required Guid CampSeasonId { get; init; }
     public required string BarrioName { get; init; }
+
+    // Humans who've joined this barrio in-app (left) vs the camp's self-reported
+    // size (right). The gap explains why shift counts (joined-only) can look small.
+    public required int ActiveMemberCount { get; init; }
+    public required int ExpectedMemberCount { get; init; }
+
     public required IReadOnlyList<ShiftObligationDetailFunctionViewModel> Functions { get; init; }
 
     // Set on the admin-scoped view so it can render reminder buttons; the

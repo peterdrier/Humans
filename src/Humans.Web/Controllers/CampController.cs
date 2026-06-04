@@ -486,6 +486,8 @@ public class CampController(
         {
             CampSeasonId = detail.CampSeasonId,
             BarrioName = detail.BarrioName,
+            ActiveMemberCount = detail.ActiveMemberCount,
+            ExpectedMemberCount = detail.ExpectedMemberCount,
             ShowActions = false,
             Functions = detail.Functions
                 .Select(f => new ShiftObligationDetailFunctionViewModel(

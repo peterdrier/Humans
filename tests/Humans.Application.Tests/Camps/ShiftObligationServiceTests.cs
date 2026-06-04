@@ -217,6 +217,39 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task Matrix_And_Detail_CarryJoinedAndExpectedMemberCounts()
+    {
+        // Self-reported size (50) is much larger than the 1 human who's actually joined
+        // in-app. The MEMBERS column surfaces both so admins stop reading "1" as broken.
+        var teamId = Guid.NewGuid();
+        var powerId = await SeedFunctionAsync(
+            ShiftObligationTargetType.Team, teamId,
+            ObligationApplicability.ElectricalGridConnected, defaultRequired: 2, sortOrder: 0);
+
+        StubColumnTargets(teamId, "power", "Power", rotaId: null, rotaName: null);
+
+        var soleMember = Guid.NewGuid();
+        var seasonId = SeedBarrioWithMembers(
+            "Big Camp", "big-camp", ElectricalGrid.Yellow,
+            expectedMemberCount: 50,
+            members: [(soleMember, CampMemberStatus.Active)]);
+        await Db.SaveChangesAsync();
+
+        _shiftServiceRead.GetConfirmedSignupCountsByUserForTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [soleMember] = 1 });
+
+        var m = await _sut.GetComplianceMatrixAsync(2026);
+        var row = m.Rows.Single(r => string.Equals(r.BarrioName, "Big Camp", StringComparison.Ordinal));
+        row.ActiveMemberCount.Should().Be(1);   // joined in-app
+        row.ExpectedMemberCount.Should().Be(50); // CampSeasonInfo.MemberCount (self-reported)
+
+        var detail = await _sut.GetBarrioObligationDetailAsync(seasonId);
+        detail.Should().NotBeNull();
+        detail!.ActiveMemberCount.Should().Be(1);
+        detail.ExpectedMemberCount.Should().Be(50);
+    }
+
+    [HumansFact]
     public async Task Matrix_PowerApplicability_IsExclusionBased_OnlyOwnSupplyUnknownAndUnsetAreOffGrid()
     {
         // Pins decision 10b: ElectricalGridConnected applicability is exclusion-based.
@@ -530,7 +563,15 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
 
     private Guid SeedBarrioWithMembers(
         string name, string slug, ElectricalGrid? grid,
-        params (Guid UserId, CampMemberStatus Status)[] members)
+        params (Guid UserId, CampMemberStatus Status)[] members) =>
+        SeedBarrioWithMembers(name, slug, grid, expectedMemberCount: null, members);
+
+    // Overload that lets a test set the camp's self-reported size (CampSeasonInfo.MemberCount,
+    // the "Expected Humans" field) distinct from the number of joined/active members.
+    private Guid SeedBarrioWithMembers(
+        string name, string slug, ElectricalGrid? grid,
+        int? expectedMemberCount,
+        (Guid UserId, CampMemberStatus Status)[] members)
     {
         var campId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -542,7 +583,7 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
                 false))
             .ToList();
 
-        var info = MakeCampInfo(name, slug, grid, memberInfos, campId, seasonId);
+        var info = MakeCampInfo(name, slug, grid, memberInfos, campId, seasonId, expectedMemberCount);
 
         // Seed the real camp/season/members so CampRepository reads agree with the
         // ICampServiceRead stub (the service may resolve names/members either way).
@@ -571,14 +612,14 @@ public sealed class ShiftObligationServiceTests : ServiceTestHarness
     private static CampInfo MakeCampInfo(
         string name, string slug, ElectricalGrid? grid,
         IReadOnlyList<CampSeasonMemberInfo> members,
-        Guid? campId = null, Guid? seasonId = null)
+        Guid? campId = null, Guid? seasonId = null, int? expectedMemberCount = null)
     {
         var cid = campId ?? Guid.NewGuid();
         var sid = seasonId ?? Guid.NewGuid();
         var season = new CampSeasonInfo(
             sid, cid, slug, 2026, null, name, "blurb", "EN", [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
-            AdultPlayspacePolicy.No, members.Count, null, null, grid, 0, null, null)
+            AdultPlayspacePolicy.No, expectedMemberCount ?? members.Count, null, null, grid, 0, null, null)
         {
             Members = members,
         };

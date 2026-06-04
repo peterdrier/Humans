@@ -2,6 +2,8 @@
 @model ShiftObligationDetailViewModel
 @{
     ViewData["Title"] = $"Shift obligations — {Model.BarrioName}";
+
+    string Shifts(int n) => n == 1 ? "1 shift" : $"{n} shifts";
 }
 
 <nav aria-label="breadcrumb">
@@ -13,7 +15,8 @@
     </ol>
 </nav>
 
-<h1 class="mb-4">Shift obligations &mdash; @Model.BarrioName</h1>
+<h1 class="mb-2">Shift obligations &mdash; @Model.BarrioName</h1>
+<p class="text-muted mb-4">@Model.ActiveMemberCount of @Model.ExpectedMemberCount humans joined in the app</p>
 
 <vc:temp-data-alerts />
 
@@ -29,7 +32,7 @@ else
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>
                     <strong>@fn.Name</strong>
-                    <span class="badge @(fn.Met ? "bg-success" : "bg-danger") ms-2">@fn.Done / @fn.Required</span>
+                    <span class="badge @(fn.Met ? "bg-success" : "bg-danger") ms-2">@fn.Done / @fn.Required shifts</span>
                 </span>
                 @if (Model.ShowActions)
                 {
@@ -64,7 +67,7 @@ else
                     <ul class="list-unstyled mb-3">
                         @foreach (var m in fn.SignedUp)
                         {
-                            <li><strong>@m.Name</strong> <span class="text-muted">&times; @m.Count</span></li>
+                            <li><strong>@m.Name</strong> <span class="text-muted">&mdash; @Shifts(m.Count)</span></li>
                         }
                     </ul>
                 }

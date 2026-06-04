@@ -579,7 +579,7 @@ public class CampAdminController(
             Rows = matrix.Rows
                 .OrderBy(r => r.BarrioName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new ShiftObligationBarrioRowViewModel(
-                    r.CampSeasonId, r.BarrioName, r.Slug, r.ActiveMemberCount,
+                    r.CampSeasonId, r.BarrioName, r.Slug, r.ActiveMemberCount, r.ExpectedMemberCount,
                     r.Cells.Select(cell => new ShiftObligationCellViewModel(
                         cell.ShiftObligationId, cell.Applicable, cell.Done, cell.Required, cell.UnderMembered))
                         .ToList()))
@@ -609,6 +609,8 @@ public class CampAdminController(
         {
             CampSeasonId = detail.CampSeasonId,
             BarrioName = detail.BarrioName,
+            ActiveMemberCount = detail.ActiveMemberCount,
+            ExpectedMemberCount = detail.ExpectedMemberCount,
             ShowActions = showActions,
             Functions = detail.Functions
                 .Select(f => new ShiftObligationDetailFunctionViewModel(

@@ -101,7 +101,7 @@ public class CampControllerTests
         StubAuthorizeManage(camp, AuthorizationResult.Success());
         var seasonId = camp.Seasons[0].Id;
         _shiftObligations.GetBarrioObligationDetailAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new BarrioObligationDetail(seasonId, "Alpha Camp", []));
+            .Returns(new BarrioObligationDetail(seasonId, "Alpha Camp", 0, 0, []));
         var controller = BuildController(leadId);
 
         var result = await controller.ShiftObligations("alpha", default);

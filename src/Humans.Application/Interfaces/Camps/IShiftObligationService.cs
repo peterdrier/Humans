@@ -41,13 +41,19 @@ public sealed record BarrioObligationMatrix(
     IReadOnlyList<OffGridBarrio> OffGridForPower);          // OwnSupply / unclassified, per grid function
 
 public sealed record ObligationColumn(Guid ShiftObligationId, string Name, string TargetUrl, ObligationApplicability Applicability);
-public sealed record BarrioRow(Guid CampSeasonId, string BarrioName, string Slug, int ActiveMemberCount, IReadOnlyList<ObligationCell> Cells);
+// ActiveMemberCount = humans who've actually joined the barrio in-app (Active CampMember rows);
+// ExpectedMemberCount = the camp's self-reported size (CampSeasonInfo.MemberCount, the
+// "Expected Humans" field). Shift counts only ever include joined (active) humans, so the
+// matrix shows joined-vs-expected to explain why a tiny joined count can sit beside a large
+// self-reported size.
+public sealed record BarrioRow(Guid CampSeasonId, string BarrioName, string Slug, int ActiveMemberCount, int ExpectedMemberCount, IReadOnlyList<ObligationCell> Cells);
 public sealed record ObligationCell(Guid ShiftObligationId, bool Applicable, int Done, int Required, bool UnderMembered);
 public sealed record ExemptBarrio(Guid CampSeasonId, string BarrioName, int ActiveMemberCount);
 public sealed record OffGridBarrio(Guid CampSeasonId, string BarrioName, string Reason); // "OwnSupply" | "Unclassified"
 
 public sealed record BarrioObligationDetail(
     Guid CampSeasonId, string BarrioName,
+    int ActiveMemberCount, int ExpectedMemberCount,
     IReadOnlyList<ObligationDetailFunction> Functions);
 public sealed record ObligationDetailFunction(
     Guid ShiftObligationId, string Name, int Done, int Required,

@@ -105,7 +105,9 @@ public sealed class ShiftObligationService : IShiftObligationService
                 cells.Add(new ObligationCell(function.Id, applicable, done, required, underMembered));
             }
 
-            rows.Add(new BarrioRow(season.Id, season.Name, season.CampSlug, activeMemberCount, cells));
+            rows.Add(new BarrioRow(
+                season.Id, season.Name, season.CampSlug,
+                activeMemberCount, season.MemberCount, cells));
         }
 
         return new BarrioObligationMatrix(year, columns, rows, exempt, offGrid);
@@ -133,7 +135,9 @@ public sealed class ShiftObligationService : IShiftObligationService
         // Norg barrios are exempt from the matrix; the detail page mirrors that.
         if (seasonInfo.ElectricalGrid == ElectricalGrid.Norg)
         {
-            return new BarrioObligationDetail(campSeasonId, seasonInfo.Name, []);
+            return new BarrioObligationDetail(
+                campSeasonId, seasonInfo.Name,
+                ActiveMemberIds(seasonInfo).Count, seasonInfo.MemberCount, []);
         }
 
         var functions = await GetActiveFunctionsOrderedAsync(ct);
@@ -176,7 +180,9 @@ public sealed class ShiftObligationService : IShiftObligationService
                 function.Id, functionName, done, required, signedUp, notYet));
         }
 
-        return new BarrioObligationDetail(campSeasonId, seasonInfo.Name, functionRows);
+        return new BarrioObligationDetail(
+            campSeasonId, seasonInfo.Name,
+            activeMemberIds.Count, seasonInfo.MemberCount, functionRows);
     }
 
     public async Task<IReadOnlyList<ShiftObligationConfigInfo>> GetFunctionsAsync(CancellationToken ct = default)

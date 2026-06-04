@@ -46,7 +46,7 @@ else
                 <thead>
                     <tr>
                         <th>Barrio</th>
-                        <th class="text-end" title="Active members in this barrio">Members</th>
+                        <th class="text-end" title="How many of this barrio's humans have joined in the app (left) vs the camp's self-reported size (right). Shift counts only include joined humans.">Members</th>
                         @foreach (var col in Model.Columns)
                         {
                             <th class="text-center">
@@ -83,7 +83,10 @@ else
                             <td>
                                 <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@row.CampSeasonId">@row.BarrioName</a>
                             </td>
-                            <td class="text-end">@row.ActiveMemberCount</td>
+                            <td class="text-end">
+                                @row.ActiveMemberCount joined
+                                <span class="text-muted small d-block">of @row.ExpectedMemberCount expected</span>
+                            </td>
                             @foreach (var col in Model.Columns)
                             {
                                 var cell = row.Cells.FirstOrDefault(c => c.ShiftObligationId == col.ShiftObligationId);
@@ -94,7 +97,7 @@ else
                                 else
                                 {
                                     var cls = cell.Met ? "table-success" : "table-danger";
-                                    <td class="text-center @cls">
+                                    <td class="text-center @cls" title="@cell.Done shifts done of @cell.Required required">
                                         <a asp-action="ShiftObligationDetail" asp-route-campSeasonId="@row.CampSeasonId"
                                            class="text-decoration-none">
                                             @cell.Done / @cell.Required
@@ -102,7 +105,7 @@ else
                                         @if (cell.UnderMembered)
                                         {
                                             <i class="fa-solid fa-triangle-exclamation text-warning ms-1"
-                                               title="Only @row.ActiveMemberCount of this barrio's humans have joined in the app — fewer than the @cell.Required shifts required, so this can't be met yet."></i>
+                                               title="Only @row.ActiveMemberCount of ~@row.ExpectedMemberCount humans have joined in the app — fewer than the @cell.Required shifts required, so this can't be met yet."></i>
                                         }
                                     </td>
                                 }
@@ -126,6 +129,9 @@ else
         </li>
         <li class="list-inline-item">
             &mdash; Not applicable to this barrio
+        </li>
+        <li class="list-inline-item">
+            Cells show shifts done / required (one human can do several shifts).
         </li>
     </ul>
 }
