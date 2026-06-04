@@ -42,6 +42,8 @@
     }
 </style>
 <div class="container py-4">
+    @* Antiforgery token for InstantToggle AJAX (shifts.js reads this). *@
+    @Html.AntiForgeryToken()
     @* === Tabs: Browse / My Shifts === *@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
@@ -387,6 +389,7 @@
                         {
                             @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
                             {
+                                Interaction = ShiftSignupInteraction.InstantToggle,
                                 RotaGroup = rotaGroup,
                                 EventSettings = es,
                                 SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -413,6 +416,7 @@
                             var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                             @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
                             {
+                                Interaction = ShiftSignupInteraction.InstantToggle,
                                 Shifts = timedShifts,
                                 EventSettings = es,
                                 SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -545,6 +549,7 @@
                                             {
                                                 @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
                                                 {
+                                                    Interaction = ShiftSignupInteraction.InstantToggle,
                                                     RotaGroup = rotaGroup,
                                                     EventSettings = es,
                                                     SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -571,6 +576,7 @@
                                                 var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                                                 @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
                                                 {
+                                                    Interaction = ShiftSignupInteraction.InstantToggle,
                                                     Shifts = timedShifts,
                                                     EventSettings = es,
                                                     SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
@@ -610,3 +616,4 @@
     });
 
 </script>
+<script src="~/js/shifts.js"></script>
