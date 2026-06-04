@@ -22,7 +22,29 @@
     <td>
         @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
         {
-            @* TODO(InstantToggle): toggle button — implemented in a later task. *@
+            var toggleDisabled = (Model.Item.RemainingSlots <= 0 && !Model.IsSignedUp) || Model.SignupsBlockedByMissingDietary;
+            var toggleTitle = Model.SignupsBlockedByMissingDietary
+                ? Localizer["Shifts_SignupDisabledTooltip_MissingDietary"].Value
+                : null;
+            <button type="button"
+                    class="btn btn-sm js-day-toggle @(Model.IsSignedUp ? "btn-success" : "btn-outline-success")"
+                    data-shift-id="@Model.Item.Shift.Id"
+                    data-signed-up="@Model.IsSignedUp.ToString().ToLowerInvariant()"
+                    disabled="@(toggleDisabled ? "disabled" : null)"
+                    title="@toggleTitle">
+                @if (Model.IsSignedUp)
+                {
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Shifts_Toggle_Remove"]
+                }
+                else if (Model.Item.RemainingSlots <= 0)
+                {
+                    <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+                }
+                else
+                {
+                    <i class="fa-solid fa-plus me-1"></i>@Localizer["Shifts_Toggle_SignUp"]
+                }
+            </button>
         }
         else
         {

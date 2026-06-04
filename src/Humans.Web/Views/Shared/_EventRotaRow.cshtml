@@ -68,45 +68,69 @@
         <td></td>
     }
     <td>
-        @if (Model.IsSignedUp)
+        @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
         {
-            var status = Model.SignupStatus;
-            <span class="badge bg-info">@status</span>
-        }
-        else if (isFull)
-        {
-            <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
-        }
-        else
-        {
-            @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
-            {
-                @* TODO(InstantToggle): toggle button — implemented in a later task. Falls through to FormPost markup for now. *@
-            }
-            @* existing FormPost markup (always rendered for now) *@
-            <form asp-controller="@Model.SignUpController" asp-action="@Model.SignUpAction" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="shiftId" value="@shift.Id" />
-                @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
-                @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
-                @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
-                @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
-                @foreach (var p in Model.FilterPeriods) { <input type="hidden" name="periods" value="@p" /> }
-                @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
-                @if (!string.IsNullOrEmpty(Model.Sort)) { <input type="hidden" name="sort" value="@Model.Sort" /> }
-                @if (Model.SignupsBlockedByMissingDietary)
+            var toggleDisabled = (Model.Item.RemainingSlots <= 0 && !Model.IsSignedUp) || Model.SignupsBlockedByMissingDietary;
+            var toggleTitle = Model.SignupsBlockedByMissingDietary
+                ? Localizer["Shifts_SignupDisabledTooltip_MissingDietary"].Value
+                : null;
+            <button type="button"
+                    class="btn btn-sm js-day-toggle @(Model.IsSignedUp ? "btn-success" : "btn-outline-success")"
+                    data-shift-id="@Model.Item.Shift.Id"
+                    data-signed-up="@Model.IsSignedUp.ToString().ToLowerInvariant()"
+                    disabled="@(toggleDisabled ? "disabled" : null)"
+                    title="@toggleTitle">
+                @if (Model.IsSignedUp)
                 {
-                    <button type="submit"
-                            class="btn btn-sm btn-success"
-                            disabled
-                            aria-disabled="true"
-                            title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">@Localizer["Shifts_SignUpButton"]</button>
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Shifts_Toggle_Remove"]
+                }
+                else if (Model.Item.RemainingSlots <= 0)
+                {
+                    <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
                 }
                 else
                 {
-                    <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
+                    <i class="fa-solid fa-plus me-1"></i>@Localizer["Shifts_Toggle_SignUp"]
                 }
-            </form>
+            </button>
+        }
+        else
+        {
+            @if (Model.IsSignedUp)
+            {
+                var status = Model.SignupStatus;
+                <span class="badge bg-info">@status</span>
+            }
+            else if (isFull)
+            {
+                <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+            }
+            else
+            {
+                <form asp-controller="@Model.SignUpController" asp-action="@Model.SignUpAction" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="shiftId" value="@shift.Id" />
+                    @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
+                    @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
+                    @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
+                    @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+                    @foreach (var p in Model.FilterPeriods) { <input type="hidden" name="periods" value="@p" /> }
+                    @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
+                    @if (!string.IsNullOrEmpty(Model.Sort)) { <input type="hidden" name="sort" value="@Model.Sort" /> }
+                    @if (Model.SignupsBlockedByMissingDietary)
+                    {
+                        <button type="submit"
+                                class="btn btn-sm btn-success"
+                                disabled
+                                aria-disabled="true"
+                                title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">@Localizer["Shifts_SignUpButton"]</button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
+                    }
+                </form>
+            }
         }
     </td>
 </tr>
