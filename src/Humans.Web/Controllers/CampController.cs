@@ -13,6 +13,7 @@ using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Web.Models.Camp;
+using Humans.Web.Models.CampAdmin;
 
 namespace Humans.Web.Controllers;
 
@@ -23,6 +24,7 @@ public class CampController(
     ICampContactService campContactService,
     ICampRoleService campRoleService,
     ICityPlanningService cityPlanningService,
+    IShiftObligationService shiftObligationService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -451,6 +453,48 @@ public class CampController(
             : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
 
         return View(viewModel);
+    }
+
+    // Barrio-lead scoped, read-only shift-obligation detail. Mirrors the
+    // /Camps/{slug}/Edit lead gate (ResolveCampManagementAsync → Lead OR
+    // CampAdmin/Admin); a lead of a different barrio is denied because the
+    // authorization runs against THIS camp. No reminder/override actions.
+    [Authorize]
+    [HttpGet("{slug}/ShiftObligations")]
+    public async Task<IActionResult> ShiftObligations(string slug, CancellationToken ct)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        var settings = await _campService.GetSettingsAsync(ct);
+        var season = camp.GetSeasonForYear(settings.PublicYear, fallbackToLatestSeason: true);
+        if (season is null)
+        {
+            return NotFound();
+        }
+
+        var detail = await shiftObligationService.GetBarrioObligationDetailAsync(season.Id, ct);
+        if (detail is null)
+        {
+            return NotFound();
+        }
+
+        var vm = new ShiftObligationDetailViewModel
+        {
+            CampSeasonId = detail.CampSeasonId,
+            BarrioName = detail.BarrioName,
+            ShowActions = false,
+            Functions = detail.Functions
+                .Select(f => new ShiftObligationDetailFunctionViewModel(
+                    f.ShiftObligationId, f.Name, f.Done, f.Required,
+                    f.SignedUp.Select(s => new ShiftObligationSignedUpMemberViewModel(s.UserId, s.Name, s.Count)).ToList(),
+                    f.NotYetSignedUpNames))
+                .ToList(),
+        };
+        return View(vm);
     }
 
     private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(

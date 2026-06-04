@@ -27,6 +27,7 @@ public class CampControllerTests
     private readonly ICampContactService _contacts = Substitute.For<ICampContactService>();
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
     private readonly ICityPlanningService _cityPlanning = Substitute.For<ICityPlanningService>();
+    private readonly IShiftObligationService _shiftObligations = Substitute.For<IShiftObligationService>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
@@ -90,6 +91,76 @@ public class CampControllerTests
         vm.Camps.Select(c => c.Id).Should().Equal(leadCamp.Id, alphabeticalFirst.Id);
     }
 
+    [HumansFact]
+    public async Task ShiftObligations_LeadOfBarrio_IsAllowed_RendersReadOnlyDetail()
+    {
+        var leadId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: leadId);
+        StubSingleCampBySlug(camp);
+        // Manage authorization succeeds for THIS camp (lead OR campadmin/admin).
+        StubAuthorizeManage(camp, AuthorizationResult.Success());
+        var seasonId = camp.Seasons[0].Id;
+        _shiftObligations.GetBarrioObligationDetailAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(new BarrioObligationDetail(seasonId, "Alpha Camp", []));
+        var controller = BuildController(leadId);
+
+        var result = await controller.ShiftObligations("alpha", default);
+
+        var vm = result.Should().BeOfType<ViewResult>().Subject
+            .Model.Should().BeOfType<Humans.Web.Models.CampAdmin.ShiftObligationDetailViewModel>().Subject;
+        vm.CampSeasonId.Should().Be(seasonId);
+        vm.ShowActions.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ShiftObligations_NonLeadNonAdmin_IsForbidden()
+    {
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
+        StubSingleCampBySlug(camp);
+        StubAuthorizeManage(camp, AuthorizationResult.Failed());
+        var controller = BuildController(Guid.NewGuid());
+
+        var result = await controller.ShiftObligations("alpha", default);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _shiftObligations.DidNotReceiveWithAnyArgs()
+            .GetBarrioObligationDetailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ShiftObligations_LeadOfDifferentBarrio_IsForbiddenForThisBarrio()
+    {
+        // The user leads some OTHER barrio; for THIS camp the Manage handler fails.
+        var otherBarrioLeadId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active); // lead is someone else
+        StubSingleCampBySlug(camp);
+        StubAuthorizeManage(camp, AuthorizationResult.Failed());
+        var controller = BuildController(otherBarrioLeadId);
+
+        var result = await controller.ShiftObligations("alpha", default);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    private void StubSingleCampBySlug(CampInfo camp)
+    {
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(camp));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CampSettingsInfo(2026, [2026], null)));
+    }
+
+    // The controller calls the AuthorizeAsync(user, resource, requirement) extension,
+    // which forwards to this interface overload taking an IEnumerable of requirements.
+    // Match on the Manage requirement against THIS camp resource.
+    private void StubAuthorizeManage(CampInfo camp, AuthorizationResult result) =>
+        _authorization.AuthorizeAsync(
+                Arg.Any<System.Security.Claims.ClaimsPrincipal>(),
+                camp,
+                Arg.Is<IEnumerable<Microsoft.AspNetCore.Authorization.IAuthorizationRequirement>>(
+                    rs => rs.Contains(Humans.Web.Authorization.Requirements.CampOperationRequirement.Manage)))
+            .Returns(result);
+
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
     {
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -105,6 +176,7 @@ public class CampControllerTests
             _contacts,
             _roles,
             _cityPlanning,
+            _shiftObligations,
             _users,
             _authorization,
             _clock,
@@ -119,6 +191,8 @@ public class CampControllerTests
             http.User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString())],
                 authenticationType: "test"));
+            _users.GetUserInfoAsync(userId.Value, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId.Value)));
         }
 
         controller.ControllerContext = new ControllerContext

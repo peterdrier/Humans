@@ -1,0 +1,55 @@
+@using Humans.Web.Models.CampAdmin
+@model ShiftObligationDetailViewModel
+@{
+    ViewData["Title"] = $"Shift obligations — {Model.BarrioName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Shift obligations</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Shift obligations &mdash; @Model.BarrioName</h1>
+
+<vc:temp-data-alerts />
+
+@if (Model.Functions.Count == 0)
+{
+    <div class="alert alert-info mb-0">Your barrio has no applicable shift obligations.</div>
+}
+else
+{
+    @foreach (var fn in Model.Functions)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>@fn.Name</strong>
+                <span class="badge @(fn.Met ? "bg-success" : "bg-danger") ms-2">@fn.Done / @fn.Required</span>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted small">Signed up (@fn.SignedUp.Count)</h6>
+                @if (fn.SignedUp.Count == 0)
+                {
+                    <p class="text-muted small">No one has signed up yet.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var m in fn.SignedUp)
+                        {
+                            <li><strong>@m.Name</strong> <span class="text-muted">&times; @m.Count</span></li>
+                        }
+                    </ul>
+                }
+
+                @if (fn.NotYetSignedUpNames.Count > 0)
+                {
+                    <h6 class="text-muted small">Not yet signed up (@fn.NotYetSignedUpNames.Count)</h6>
+                    <p class="small mb-0">@string.Join(", ", fn.NotYetSignedUpNames)</p>
+                }
+            </div>
+        </div>
+    }
+}
