@@ -470,10 +470,14 @@ public class CampController(
         }
 
         var settings = await _campService.GetSettingsAsync(ct);
-        var season = camp.GetSeasonForYear(settings.PublicYear, fallbackToLatestSeason: true);
+        // Resolve the CURRENT public-year season only — no fallback to an arbitrary
+        // past season, which would show a stale roster against current-event shift
+        // counts. Mirrors the year the admin matrix uses (CampAdminController).
+        var season = camp.GetSeasonForYear(settings.PublicYear);
         if (season is null)
         {
-            return NotFound();
+            SetInfo($"No shift obligations for {settings.PublicYear}.");
+            return RedirectToAction(nameof(Details), new { slug });
         }
 
         var detail = await shiftObligationService.GetBarrioObligationDetailAsync(season.Id, ct);

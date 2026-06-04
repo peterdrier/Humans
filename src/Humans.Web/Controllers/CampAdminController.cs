@@ -712,9 +712,10 @@ public class CampAdminController(
         var roleDefs = await campRoleService.ListDefinitionsAsync(includeDeactivated: false, ct);
 
         // Name-based Target picker option lists (admins never type a GUID). Teams
-        // by name; rotas by name with their owning team for disambiguation. Both
-        // are embedded server-side and filtered client-side — no AJAX needed at
-        // this scale.
+        // by name; rotas by name with their owning team for disambiguation.
+        // NOTE: assumes ~tens of teams/rotas; embeds the full lists server-side and
+        // filters client-side. Above that, switch to the HumanSearch AJAX pattern
+        // (Views/Shared/Components/HumanSearch).
         var teamOptions = (await teamService.GetTeamsAsync(ct)).Values
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Select(t => new TargetPickerOptionViewModel(t.Id, t.Name))
