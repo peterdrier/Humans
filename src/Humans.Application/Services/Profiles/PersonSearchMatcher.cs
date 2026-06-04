@@ -50,7 +50,7 @@ public static class PersonSearchMatcher
 
         // ── Legal name: FirstName/LastName. Admin/coordinator only — never public. ──
         if (includeLegal && AllTokensIn($"{p.FirstName} {p.LastName}", tokens))
-            return new PersonSearchMatch("Name", null, null);
+            return new PersonSearchMatch("Legal Name", null, null);
 
         // ── Bio bucket: public long-form + CV + AllActiveProfiles ContactFields + publicly-exposed emails. ──
         if (includeBio)
@@ -122,7 +122,7 @@ public static class PersonSearchMatcher
         if (string.IsNullOrEmpty(text))
             return string.Empty;
 
-        var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        var index = CultureInfo.InvariantCulture.CompareInfo.IndexOf(text, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
         if (index < 0)
             return text.Length <= contextChars * 2 ? text : text[..(contextChars * 2)] + "...";
 

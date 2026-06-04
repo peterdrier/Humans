@@ -167,7 +167,9 @@ public class PersonSearchMatcherTests
         var human = Human(burnerName: "Sparkle", firstName: "María", lastName: "García",
             displayName: "Sparkle");
 
-        PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.ManageAll).Should().NotBeNull();
+        var match = PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.ManageAll);
+        match.Should().NotBeNull();
+        match!.Field.Should().Be("Legal Name");
         PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.PublicAll).Should().BeNull();
     }
 

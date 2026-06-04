@@ -61,8 +61,9 @@ public interface IUserServiceRead
     ///
     /// <para>Auth boundary is the controller per design-rules §6: services
     /// are auth-free, so a non-admin endpoint passing
-    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
-    /// in code review, not a runtime check.</para>
+    /// <see cref="PersonSearchFields.Admin"/> or
+    /// <see cref="PersonSearchFields.LegalName"/> (which deanonymizes burners)
+    /// is a programmer error caught in code review, not a runtime check.</para>
     /// </summary>
     Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query,
