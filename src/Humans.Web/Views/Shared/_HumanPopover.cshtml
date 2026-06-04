@@ -7,6 +7,8 @@
         (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded;
     IReadOnlyList<string> visibleHiddenTeams =
         canSeeHiddenTeams ? Model.HiddenTeams : [];
+    var canSeeCamp =
+        (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
 }
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
@@ -66,6 +68,19 @@
                 @lang.LanguageName
                 <small class="opacity-75">(@lang.Proficiency)</small>
             </span>
+        }
+    </div>
+}
+@if (canSeeCamp && !string.IsNullOrEmpty(Model.CampName))
+{
+    <div class="mt-2 pt-2 border-top">
+        <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;"
+              title="Camp — current season (admin-only)">
+            <i class="fa-solid fa-campground me-1 opacity-75"></i>@Model.CampName
+        </span>
+        @foreach (var role in Model.CampRoles)
+        {
+            <span class="badge bg-info-subtle text-dark border me-1 mb-1" style="font-size: 0.7rem;">@role</span>
         }
     </div>
 }
