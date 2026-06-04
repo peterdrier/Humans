@@ -60,10 +60,7 @@ Tickets (`sections/Tickets.md` already current; behavioral docs unchanged), gdpr
 
 ## Flagged for human review
 
-The §15 / Store-treasury / US-30.4 items originally flagged here were **fixed this PR** at Peter's direction (see the post-review note up top). Remaining items, deliberately not changed (no code fact contradicted):
-
-- `sections/Teams.md` L210 — the `IsSensitive` invariant doesn't explicitly state *who* may change it (now carried in the actors table); a maintainer may want an explicit clause.
-- `sections/Camps.md` / `features/camps/camps.md` — camp-members alphabetization and `ICampInfoInvalidator.InvalidateAllAsync` are new but contradict no existing sentence, so not added; flag if the new ordering / all-projection invalidation should be documented.
+All flagged items resolved at Peter's direction (see the post-review note up top): §15 / Store-treasury / US-30.4 fixed; `sections/Teams.md` L210 — the `IsSensitive` invariant now states explicitly that only a global Admin can set/clear it (it's an auth rule, so it's documented); camp-members alphabetization — intentionally **not** documented (default sort behavior, not invariant-worthy). None outstanding.
 
 ## Proposed for review
 

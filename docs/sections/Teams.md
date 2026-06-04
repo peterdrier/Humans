@@ -207,7 +207,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - A Google Group prefix, if set, provisions a `@nobodies.team` group for the team.
 - Only departments (not sub-teams or system teams) can have public team pages.
 - A **hidden team** (`IsHidden = true`) is invisible to non-admin users: it does not appear on profile cards, team listings, public pages, birthday team names, or the "My Teams" page. Only Admin, Board, and TeamsAdmin can see and manage hidden teams. Campaigns can still target hidden teams for code distribution. The system-team sync skips the "added to team" email for hidden teams.
-- A **sensitive team** (`IsSensitive = true`) is an admin-only flag (not publicly visible). Adding or approving a member surfaces a deterrent confirmation modal in the Members admin view that shows the audit record that will be created.
+- A **sensitive team** (`IsSensitive = true`) is an admin-only flag (not publicly visible). **Only a global Admin can set or clear `IsSensitive`** via Edit Team — the checkbox is suppressed for non-Admin editors, so a non-Admin's save passes `null` (leave-unchanged) and never alters it (ref #824). Adding or approving a member surfaces a deterrent confirmation modal in the Members admin view that shows the audit record that will be created.
 - The Teams directory (`/Teams`) shows only **directory-visible** teams: top-level teams (departments) always appear; sub-teams only appear if `IsPromotedToDirectory` is true. Sub-teams are always accessible from their parent team's detail page regardless of this flag.
 - `team_join_request_state_history` is append-only per §12.
 - Resource-based authorization per design-rules §11: `TeamAuthorizationHandler` + `TeamOperationRequirement`.
