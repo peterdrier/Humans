@@ -1,5 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Surveys;
@@ -27,10 +30,15 @@ public class SurveyServiceTests
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly ITicketServiceRead _ticketService = Substitute.For<ITicketServiceRead>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
+    private readonly ISurveyInviteTokenProvider _tokenProvider = Substitute.For<ISurveyInviteTokenProvider>();
 
     private SurveyService CreateService() => new(
         _repo, _audit, _clock, NullLogger<SurveyService>.Instance,
-        _teamService, _userService, _ticketService, _shiftView);
+        _teamService, _userService, _ticketService, _shiftView,
+        _userEmailService, _emailService, _emailMessages, _tokenProvider);
 
     private static LocalizedText L(string en) => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
@@ -144,5 +152,93 @@ public class SurveyServiceTests
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id);
 
         count.Should().Be(3);
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_creates_invitations_only_for_net_new_recipients()
+    {
+        var teamId = Guid.NewGuid();
+        Guid a = Guid.NewGuid(), b = Guid.NewGuid(), c = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, a, b, c));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { a });
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>
+            {
+                [b] = "b@example.org",
+                [c] = "c@example.org",
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid());
+
+        result.InvitationsCreated.Should().Be(2);
+        result.EmailsQueued.Should().Be(2);
+        result.Failed.Should().Be(0);
+        await _repo.Received(2).AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == b), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == c), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == a), Arg.Any<CancellationToken>());
+        await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_marks_failed_when_email_send_throws()
+    {
+        var teamId = Guid.NewGuid();
+        Guid b = Guid.NewGuid(), c = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, b, c));
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>
+            {
+                [b] = "b@example.org",
+                [c] = "c@example.org",
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>()));
+        // Throw for the first SendAsync call, succeed for the second.
+        var calls = 0;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => calls++ == 0 ? throw new InvalidOperationException("boom") : Task.CompletedTask);
+
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid());
+
+        result.InvitationsCreated.Should().Be(2);
+        result.EmailsQueued.Should().Be(1);
+        result.Failed.Should().Be(1);
+        await _repo.Received(1).UpdateInvitationStatusAsync(
+            Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_throws_when_not_open()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, Guid.NewGuid());
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_throws_when_audience_null()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var act = async () => await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 }

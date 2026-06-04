@@ -44,4 +44,13 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Submitted-response count per survey id (for the admin index). Drafts (<c>SubmittedAt is null</c>) excluded. Read-only.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default);
+
+    /// <summary>User ids already invited to a survey (the idempotency ledger for the send wave). Read-only.</summary>
+    Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default);
+
+    /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
+    Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
+
+    /// <summary>Sets an invitation's <c>LatestEmailStatus</c>. No-op if the invitation does not exist.</summary>
+    Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
 }

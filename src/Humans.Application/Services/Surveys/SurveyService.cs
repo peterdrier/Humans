@@ -1,4 +1,6 @@
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Surveys;
@@ -26,7 +28,11 @@ public sealed class SurveyService(
     ITeamServiceRead teamService,
     IUserServiceRead userService,
     ITicketServiceRead ticketService,
-    IShiftView shiftView) : ISurveyService
+    IShiftView shiftView,
+    IUserEmailService userEmailService,
+    IEmailService emailService,
+    IEmailMessageFactory emailMessages,
+    ISurveyInviteTokenProvider tokenProvider) : ISurveyService
 {
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -150,6 +156,76 @@ public sealed class SurveyService(
 
         var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, ct);
         return recipients.Count;
+    }
+
+    public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var survey = await repo.GetByIdAsync(surveyId, ct)
+            ?? throw new InvalidOperationException("Survey not found.");
+        if (survey.Status != SurveyStatus.Open)
+            throw new InvalidOperationException("Invitations can only be sent for an Open survey.");
+        if (survey.AudienceType is null)
+            throw new InvalidOperationException("Survey has no audience to invite.");
+
+        var now = clock.GetCurrentInstant();
+        var target = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, ct);
+        var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
+        var netNew = target.Except(alreadyInvited).ToList();
+
+        var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
+        var users = await userService.GetUserInfosAsync(netNew, ct);
+        var title = survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture);
+
+        var invitationsCreated = 0;
+        var emailsQueued = 0;
+        var failed = 0;
+
+        foreach (var userId in netNew)
+        {
+            if (!emails.TryGetValue(userId, out var email))
+            {
+                logger.LogWarning(
+                    "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
+                    userId, surveyId);
+                continue;
+            }
+
+            var inv = new SurveyInvitation
+            {
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = userId,
+                SentAt = now,
+                LatestEmailStatus = EmailOutboxStatus.Queued,
+                CreatedAt = now,
+            };
+            await repo.AddInvitationAndSaveAsync(inv, ct);
+            invitationsCreated++;
+
+            var culture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : survey.DefaultCulture;
+            var name = user?.BurnerName ?? string.Empty;
+            var token = tokenProvider.Create(inv.Id);
+            var msg = emailMessages.SurveyInvitation(email, name, title, token, culture);
+
+            try
+            {
+                await emailService.SendAsync(msg, ct);
+                emailsQueued++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to enqueue survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
+                    userId, inv.Id, surveyId);
+                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, ct);
+                failed++;
+            }
+        }
+
+        await auditLog.LogAsync(AuditAction.SurveyInvitesSent, nameof(Survey), surveyId,
+            $"Sent {invitationsCreated} invitation(s)", actorUserId);
+
+        return new SendResult(invitationsCreated, emailsQueued, failed);
     }
 
     /// <summary>

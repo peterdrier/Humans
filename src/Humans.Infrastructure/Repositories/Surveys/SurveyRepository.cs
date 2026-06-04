@@ -108,6 +108,34 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         return rows.ToDictionary(r => r.SurveyId, r => r.Count);
     }
 
+    public async Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = await ctx.SurveyInvitations
+            .AsNoTracking()
+            .Where(i => i.SurveyId == surveyId)
+            .Select(i => i.UserId)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    public async Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.SurveyInvitations.Add(invitation);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default)
+    {
+        _ = at; // accepted for wave-call symmetry; the entity carries no email-status timestamp column.
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (invitation is null) return;
+        invitation.LatestEmailStatus = status;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
     {

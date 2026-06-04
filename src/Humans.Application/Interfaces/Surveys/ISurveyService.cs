@@ -34,6 +34,13 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     // ── Invitations ────────────────────────────────────────────────────────
     /// <summary>Resolves the survey's audience and returns its size; 0 if the survey has no audience.</summary>
     Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends the invitation wave: resolves the audience, creates invitations for net-new recipients
+    /// (idempotent — already-invited users are skipped, sends never revoke), and queues each email.
+    /// Requires the survey to be Open with an audience.
+    /// </summary>
+    Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -80,3 +87,6 @@ public sealed record OptionInput(
     int Order,
     string Value,
     LocalizedText Label);
+
+/// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
+public sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);

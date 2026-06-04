@@ -187,4 +187,6 @@ public enum AuditAction
     SurveyUpdated,
     SurveyOpened,
     SurveyClosed,
+    SurveyInvitesSent,
+    SurveyReminderSent,
 }
