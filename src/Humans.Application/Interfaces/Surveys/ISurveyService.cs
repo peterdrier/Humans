@@ -44,6 +44,19 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
 
     /// <summary>Per-invite delivery/participation status for the admin Send page, with display names stitched in. Unsorted — caller sorts.</summary>
     Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default);
+
+    // ── Answering (wizard entry) ────────────────────────────────────────────
+    /// <summary>
+    /// Resolves a tokenised invite link into the answering context (survey definition + any resumable
+    /// Identified draft), or null when the token is invalid/expired or the invitation/survey is gone.
+    /// </summary>
+    Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
+    /// invitee. Identified is the only resumable tier. Returns the draft response id.
+    /// </summary>
+    Task<Guid> StartIdentifiedDraftAsync(Guid surveyId, Guid invitationId, Guid userId, string culture, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -103,3 +116,26 @@ public sealed record SurveyInviteStatus(
     bool Started,
     Instant? SentAt,
     Instant? ReminderSentAt);
+
+// ── Answering DTOs (co-located) ─────────────────────────────────────────────
+
+/// <summary>
+/// Everything the wizard entry needs for one invited person: the survey definition (reused
+/// <see cref="SurveyDetail"/>), the invitee identity from the token's invitation, and any resumable
+/// Identified draft. <see cref="HasResumableDraft"/> is true only when an in-progress Identified
+/// response already exists for this invitee.
+/// </summary>
+public sealed record SurveyAnswerContext(
+    Guid SurveyId,
+    Guid InvitationId,
+    Guid UserId,
+    SurveyDetail Definition,
+    IReadOnlyList<SurveyDraftAnswer> DraftAnswers,
+    bool HasResumableDraft);
+
+/// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
+public sealed record SurveyDraftAnswer(
+    Guid QuestionId,
+    IReadOnlyList<string> SelectedOptionValues,
+    string? TextValue,
+    int? RatingValue);

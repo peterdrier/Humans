@@ -246,6 +246,58 @@ public sealed class SurveyService(
             i.ReminderSentAt)).ToList();
     }
 
+    public async Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default)
+    {
+        var invitationId = tokenProvider.Resolve(token);
+        if (invitationId is null) return null;
+
+        var invitation = await repo.GetInvitationByIdAsync(invitationId.Value, ct);
+        if (invitation is null) return null;
+
+        var definition = await GetForEditAsync(invitation.SurveyId, ct);
+        if (definition is null) return null;
+
+        var draft = await repo.GetDraftResponseAsync(invitation.SurveyId, invitation.UserId, ct);
+        var draftAnswers = draft is null
+            ? (IReadOnlyList<SurveyDraftAnswer>)[]
+            : draft.Answers
+                .Select(a => new SurveyDraftAnswer(a.QuestionId, a.SelectedOptionValues, a.TextValue, a.RatingValue))
+                .ToList();
+
+        return new SurveyAnswerContext(
+            invitation.SurveyId,
+            invitation.Id,
+            invitation.UserId,
+            definition,
+            draftAnswers,
+            HasResumableDraft: draft is not null);
+    }
+
+    public async Task<Guid> StartIdentifiedDraftAsync(
+        Guid surveyId, Guid invitationId, Guid userId, string culture, CancellationToken ct = default)
+    {
+        // Idempotent: one in-progress Identified draft per invitee.
+        var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
+        if (existing is not null) return existing.Id;
+
+        var response = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            InvitationId = invitationId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+            InputMethod = SurveyInputMethod.UserSpecificLink,
+            Culture = culture,
+            SubmittedAt = null,
+            Answers = [],
+        };
+
+        // No audit log for individual response activity (privacy — Deviation #10).
+        await repo.AddResponseAsync(response, ct);
+        return response.Id;
+    }
+
     /// <summary>
     /// Resolves an audience predicate into the set of recipient user ids via cross-section read
     /// interfaces. No marketing opt-out filter — surveys are System/always-send.

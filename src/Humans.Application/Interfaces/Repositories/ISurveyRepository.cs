@@ -56,4 +56,14 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Sets an invitation's <c>LatestEmailStatus</c>. No-op if the invitation does not exist.</summary>
     Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
+
+    // ── Answering (wizard entry) ────────────────────────────────────────────
+    /// <summary>A single invitation by id, or null if it does not exist. Read-only.</summary>
+    Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default);
+
+    /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
+    Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Inserts a response row and saves.</summary>
+    Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
 }

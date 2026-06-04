@@ -31,6 +31,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Legal",            // Public legal documents ([AllowAnonymous])
         "Notifications",    // Notification inbox — accessible to all authenticated users
         "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
+        "Survey",           // Tokenised survey answering ([AllowAnonymous])
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

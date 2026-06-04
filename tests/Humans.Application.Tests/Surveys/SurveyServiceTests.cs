@@ -279,4 +279,123 @@ public class SurveyServiceTests
         id, burnerName, false, "en", null, Instant.MinValue, null, null, null, null, null,
         false, null, false, null, GoogleEmailStatus.Unknown, null, null, null, null, null,
         [], [], [], null, []);
+
+    // ── Answering (wizard entry) ───────────────────────────────────────────────
+
+    private static SurveyInvitation InvitationFor(Guid surveyId, Guid userId) => new()
+    {
+        Id = Guid.NewGuid(),
+        SurveyId = surveyId,
+        UserId = userId,
+        CreatedAt = Instant.MinValue,
+    };
+
+    [HumansFact]
+    public async Task ResolveAnswerContextAsync_returns_null_for_invalid_token()
+    {
+        _tokenProvider.Resolve("bad").Returns((Guid?)null);
+
+        var ctx = await CreateService().ResolveAnswerContextAsync("bad");
+
+        ctx.Should().BeNull();
+        await _repo.DidNotReceive().GetInvitationByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResolveAnswerContextAsync_populates_context_and_flags_resumable_draft()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var invitation = InvitationFor(survey.Id, userId);
+        var questionId = Guid.NewGuid();
+        var draft = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            InvitationId = invitation.Id,
+            Anonymity = ResponseAnonymity.Identified,
+            Answers = new List<SurveyAnswer>
+            {
+                new() { Id = Guid.NewGuid(), QuestionId = questionId, SelectedOptionValues = ["yes"], TextValue = "note", RatingValue = 4 },
+            },
+        };
+
+        _tokenProvider.Resolve("good").Returns(invitation.Id);
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetDraftResponseAsync(survey.Id, userId, Arg.Any<CancellationToken>()).Returns(draft);
+
+        var ctx = await CreateService().ResolveAnswerContextAsync("good");
+
+        ctx.Should().NotBeNull();
+        ctx!.SurveyId.Should().Be(survey.Id);
+        ctx.InvitationId.Should().Be(invitation.Id);
+        ctx.UserId.Should().Be(userId);
+        ctx.HasResumableDraft.Should().BeTrue();
+        ctx.Definition.Status.Should().Be(SurveyStatus.Open);
+        ctx.DraftAnswers.Should().ContainSingle();
+        var answer = ctx.DraftAnswers[0];
+        answer.QuestionId.Should().Be(questionId);
+        answer.SelectedOptionValues.Should().ContainInOrder("yes");
+        answer.TextValue.Should().Be("note");
+        answer.RatingValue.Should().Be(4);
+    }
+
+    [HumansFact]
+    public async Task ResolveAnswerContextAsync_returns_null_when_invitation_missing()
+    {
+        var invitationId = Guid.NewGuid();
+        _tokenProvider.Resolve("orphan").Returns(invitationId);
+        _repo.GetInvitationByIdAsync(invitationId, Arg.Any<CancellationToken>()).Returns((SurveyInvitation?)null);
+
+        var ctx = await CreateService().ResolveAnswerContextAsync("orphan");
+
+        ctx.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task StartIdentifiedDraftAsync_returns_existing_draft_without_creating_a_second()
+    {
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var existing = new SurveyResponse
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = ResponseAnonymity.Identified,
+        };
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var id = await CreateService().StartIdentifiedDraftAsync(surveyId, Guid.NewGuid(), userId, "en");
+
+        id.Should().Be(existing.Id);
+        await _repo.DidNotReceive().AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task StartIdentifiedDraftAsync_creates_identified_draft_when_none_exists()
+    {
+        var surveyId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        SurveyResponse? captured = null;
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>()).Returns((SurveyResponse?)null);
+        _repo.When(r => r.AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+
+        var id = await CreateService().StartIdentifiedDraftAsync(surveyId, invitationId, userId, "es");
+
+        captured.Should().NotBeNull();
+        captured!.Id.Should().Be(id);
+        captured.SurveyId.Should().Be(surveyId);
+        captured.InvitationId.Should().Be(invitationId);
+        captured.UserId.Should().Be(userId);
+        captured.Anonymity.Should().Be(ResponseAnonymity.Identified);
+        captured.InputMethod.Should().Be(SurveyInputMethod.UserSpecificLink);
+        captured.Culture.Should().Be("es");
+        captured.SubmittedAt.Should().BeNull();
+        await _repo.Received(1).AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
 }

@@ -1,0 +1,98 @@
+@using Humans.Domain.Enums
+@model Humans.Web.Models.SurveyIntroViewModel
+
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? "Survey" : Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card mt-4">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">@(string.IsNullOrWhiteSpace(Model.Title) ? "Survey" : Model.Title)</h1>
+
+                @if (Model.HasResumableDraft)
+                {
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                        You have answers in progress — continue where you left off.
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Intro))
+                {
+                    <div class="mb-4">@Model.Intro</div>
+                }
+
+                <form asp-controller="Survey" asp-action="Start" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Token" value="@Model.Token" />
+
+                    <div class="mb-3">
+                        <label for="Culture" class="form-label">Language</label>
+                        <select id="Culture" name="Culture" class="form-select">
+                            @foreach (var code in Model.Cultures)
+                            {
+                                if (string.Equals(code, Model.Culture, StringComparison.Ordinal))
+                                {
+                                    <option value="@code" selected>@code.ToDisplayLanguageName()</option>
+                                }
+                                else
+                                {
+                                    <option value="@code">@code.ToDisplayLanguageName()</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @if (Model.AllowAnonymous)
+                    {
+                        <fieldset class="mb-3">
+                            <legend class="form-label">How would you like to respond?</legend>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonIdentified" value="@nameof(ResponseAnonymity.Identified)" checked />
+                                <label class="form-check-label" for="anonIdentified">
+                                    <strong>Identified</strong> — linked to you; you can stop and resume later.
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonCompletion" value="@nameof(ResponseAnonymity.CompletionTracked)" />
+                                <label class="form-check-label" for="anonCompletion">
+                                    <strong>Completion tracked</strong> — your answers are not linked to you,
+                                    but participation is counted.
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonAnonymous" value="@nameof(ResponseAnonymity.Anonymous)" />
+                                <label class="form-check-label" for="anonAnonymous">
+                                    <strong>Anonymous</strong> — no link to you at all.
+                                </label>
+                            </div>
+
+                            <p class="form-text mb-0">
+                                Anonymous and completion-tracked responses can't be resumed, and you may still
+                                receive one reminder. Only an identified response can be paused and continued later.
+                            </p>
+                        </fieldset>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="Anonymity" value="@nameof(ResponseAnonymity.Identified)" />
+                    }
+
+                    <div class="alert alert-secondary small" role="note">
+                        <i class="fa-solid fa-shield-halved me-1"></i>@Model.TransparencyNote
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        @(Model.HasResumableDraft ? "Continue" : "Start")
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

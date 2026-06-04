@@ -17,6 +17,48 @@ public sealed class SurveyAdminIndexViewModel
 /// <summary>A team choice for the audience picker.</summary>
 public sealed record SurveyTeamOption(Guid Id, string Name);
 
+// ── Answering wizard (entry) ────────────────────────────────────────────────
+
+/// <summary>
+/// The wizard intro/privacy step: survey title/intro resolved for display, the transparency note,
+/// a language picker, and (only when the survey allows it) the anonymity-tier selector. Carries the
+/// token through to the Start POST.
+/// </summary>
+public sealed class SurveyIntroViewModel
+{
+    public string Token { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
+    public string Intro { get; init; } = string.Empty;
+
+    /// <summary>The currently-selected language; the form posts it back so the wizard runs in it.</summary>
+    public string Culture { get; init; } = CultureCatalog.DefaultCultureCode;
+
+    /// <summary>When true, the three-tier anonymity selector is shown; otherwise only Identified applies.</summary>
+    public bool AllowAnonymous { get; init; }
+
+    /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
+    public bool HasResumableDraft { get; init; }
+
+    /// <summary>Transparency note (Phase 7 finalises copy).</summary>
+    public string TransparencyNote { get; init; } = string.Empty;
+
+    public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
+}
+
+/// <summary>Posted by the intro form to begin the wizard.</summary>
+public sealed class SurveyStartViewModel
+{
+    public string Token { get; set; } = string.Empty;
+    public ResponseAnonymity Anonymity { get; set; } = ResponseAnonymity.Identified;
+    public string Culture { get; set; } = CultureCatalog.DefaultCultureCode;
+}
+
+/// <summary>Closed / invalid-link page. <see cref="Reason"/> is a friendly explanation key.</summary>
+public sealed class SurveyClosedViewModel
+{
+    public string? Reason { get; init; }
+}
+
 /// <summary>Admin Send page: header (title/status/audience), resolved audience size, and per-invite status rows (sorted in the controller).</summary>
 public sealed class SurveySendViewModel
 {

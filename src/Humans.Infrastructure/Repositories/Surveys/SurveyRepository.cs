@@ -146,6 +146,36 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invitationId, ct);
+    }
+
+    public async Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
+    {
+        // No display ordering here — answer order is reconstructed by question (caller/wizard).
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyResponses
+            .AsNoTracking()
+            .Include(r => r.Answers)
+            .FirstOrDefaultAsync(
+                r => r.SurveyId == surveyId
+                     && r.UserId == userId
+                     && r.Anonymity == ResponseAnonymity.Identified
+                     && r.SubmittedAt == null,
+                ct);
+    }
+
+    public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.SurveyResponses.Add(response);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
     private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
     {
