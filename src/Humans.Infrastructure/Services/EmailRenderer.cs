@@ -141,9 +141,7 @@ public class EmailRenderer(
         => RenderLocalized(culture, () =>
         {
             var commentHtml = Markdig.Markdown.ToHtml(commentContent);
-            var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? issueLink
-                : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
+            var fullLink = AbsolutizeLink(issueLink);
             return new EmailContent(
                 Lf("Email_IssueComment_Subject", HtmlEncode(issueTitle)),
                 Lf("Email_IssueComment_Body", HtmlEncode(displayName), HtmlEncode(issueTitle), commentHtml, HtmlEncode(fullLink)));
@@ -180,11 +178,11 @@ public class EmailRenderer(
         => RenderLocalized(culture, () =>
         {
             // Normalize a possibly-relative link to an absolute URL (mail clients can't follow site-relative paths).
-            var fullLink = link.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? link
-                : $"{_settings.BaseUrl.TrimEnd('/')}{(link.StartsWith('/') ? "" : "/")}{link}";
+            var fullLink = AbsolutizeLink(link);
             return new EmailContent(
-                Lf("Email_BarrioShiftReminder_Subject", HtmlEncode(barrioName), HtmlEncode(functionName)),
+                // Subject is a plain-text mail header — pass names raw (no HTML encoding,
+                // which would mangle &/</' into entities). Only BODY args are HTML-encoded.
+                Lf("Email_BarrioShiftReminder_Subject", barrioName, functionName),
                 Lf("Email_BarrioShiftReminder_Body",
                     HtmlEncode(barrioName),
                     HtmlEncode(functionName),
@@ -206,9 +204,7 @@ public class EmailRenderer(
 
             // Same absolutize-link pattern as RenderBarrioShiftObligationReminder, so the
             // CTA footer link is usable from a mail client.
-            var fullLink = link.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? link
-                : $"{_settings.BaseUrl.TrimEnd('/')}{(link.StartsWith('/') ? "" : "/")}{link}";
+            var fullLink = AbsolutizeLink(link);
 
             // Subject is the admin's text verbatim (not HTML — it's an email header).
             return new EmailContent(
@@ -369,6 +365,17 @@ public class EmailRenderer(
         return System.Net.WebUtility.HtmlEncode(text);
     }
 
+    /// <summary>
+    /// Normalizes a possibly site-relative link to an absolute URL against
+    /// <see cref="EmailSettings.BaseUrl"/>. Mail clients can't follow site-relative
+    /// hrefs, so every CTA link in an email must be absolute. Already-absolute
+    /// (http/https) links are returned unchanged.
+    /// </summary>
+    private string AbsolutizeLink(string link) =>
+        link.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? link
+            : $"{_settings.BaseUrl.TrimEnd('/')}{(link.StartsWith('/') ? "" : "/")}{link}";
+
     public EmailContent RenderGoogleGroupRemovalLossOfAccess(
         string userName,
         string groupName,
@@ -493,9 +500,7 @@ public class EmailRenderer(
         var reasonHtml = string.IsNullOrWhiteSpace(reason)
             ? ""
             : $"<p><strong>Reason given:</strong> {HtmlEncode(reason)}</p>";
-        var fullUrl = reviewUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? reviewUrl
-            : $"{_settings.BaseUrl.TrimEnd('/')}{(reviewUrl.StartsWith('/') ? "" : "/")}{reviewUrl}";
+        var fullUrl = AbsolutizeLink(reviewUrl);
         return new EmailContent(
             "Ticket transfer to process",
             $"""

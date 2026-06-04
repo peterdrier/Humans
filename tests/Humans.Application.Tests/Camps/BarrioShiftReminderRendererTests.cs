@@ -23,6 +23,9 @@ public sealed class BarrioShiftReminderRendererTests
     private const string BodyTemplate =
         "<p>Short on shifts.</p><p><a href=\"{4}\">Sign up for {1} shifts</a></p>";
 
+    // Mirror of the real Subject resx: "{0}" = barrio name, "{1}" = function name.
+    private const string SubjectTemplate = "{0} owes shifts for {1}";
+
     private static EmailRenderer NewRenderer()
     {
         var localizer = Substitute.For<IStringLocalizer>();
@@ -31,6 +34,8 @@ public sealed class BarrioShiftReminderRendererTests
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer["Email_BarrioShiftReminder_Body"]
             .Returns(new LocalizedString("Email_BarrioShiftReminder_Body", BodyTemplate));
+        localizer["Email_BarrioShiftReminder_Subject"]
+            .Returns(new LocalizedString("Email_BarrioShiftReminder_Subject", SubjectTemplate));
 
         var factory = Substitute.For<IStringLocalizerFactory>();
         factory.Create(Arg.Any<string>(), Arg.Any<string>()).Returns(localizer);
@@ -59,5 +64,17 @@ public sealed class BarrioShiftReminderRendererTests
 
         content.HtmlBody.Should().Contain($"href=\"{BaseUrl}/Teams/norg-bar/Shifts\"");
         content.HtmlBody.Should().NotContain($"{BaseUrl}{BaseUrl}");
+    }
+
+    [HumansFact]
+    public void Subject_IsNotHtmlEncoded()
+    {
+        // The subject is a plain-text mail header; '&' must survive verbatim, not as "&amp;".
+        var content = NewRenderer().RenderBarrioShiftObligationReminder(
+            "Rcpt", "Drinks & Snacks", "Bar & Grill", doneCount: 1, requiredCount: 5,
+            link: "/Teams/x/Shifts", culture: null);
+
+        content.Subject.Should().Be("Drinks & Snacks owes shifts for Bar & Grill");
+        content.Subject.Should().NotContain("&amp;");
     }
 }
