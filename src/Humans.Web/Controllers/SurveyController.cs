@@ -39,10 +39,9 @@ public class SurveyController(
 
         var editable = ctx.Definition.Editable;
 
-        // Gate: survey must be Open, and within its closes-at window if one is set.
+        // Gate: survey must be Open and within its optional [opens-at, closes-at] window.
         var now = SystemClock.Instance.GetCurrentInstant();
-        if (ctx.Definition.Status != SurveyStatus.Open ||
-            (editable.ClosesAt is { } closesAt && now > closesAt))
+        if (!IsWithinAnswerWindow(ctx.Definition, now))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -152,7 +151,7 @@ public class SurveyController(
         if (!editable.AllowAnonymous) return NotFound();
 
         var now = SystemClock.Instance.GetCurrentInstant();
-        if (ctx.Definition.Status != SurveyStatus.Open || (editable.ClosesAt is { } closesAt && now > closesAt))
+        if (!IsWithinAnswerWindow(ctx.Definition, now))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -184,7 +183,7 @@ public class SurveyController(
         if (!editable.AllowAnonymous) return NotFound();
 
         var now = SystemClock.Instance.GetCurrentInstant();
-        if (ctx.Definition.Status != SurveyStatus.Open || (editable.ClosesAt is { } closesAt && now > closesAt))
+        if (!IsWithinAnswerWindow(ctx.Definition, now))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -201,6 +200,11 @@ public class SurveyController(
             Culture = resolvedCulture,
             CurrentPage = SurveyWizardFlow.FirstVisiblePage(editable.Questions, new Dictionary<Guid, AnswerState>()) ?? 0,
         };
+
+        // Mirror the invited Start action: record the public start at intro advance (not the first page
+        // POST) so the SlugStarted funnel counts visitors who click Start and abandon on the first page.
+        state.Started = true;
+        await surveyService.IncrementPublicStartedAsync(ctx.SurveyId, ct);
 
         SurveyWizardSession.SaveBySlug(HttpContext.Session, slug, state);
         return RedirectToAction("PublicPage", new { slug });
@@ -307,6 +311,20 @@ public class SurveyController(
            || string.Equals(slug, "answer", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// True when the survey can be answered right now: status Open and within its optional
+    /// [<c>OpensAt</c>, <c>ClosesAt</c>] window. Applied at every entry/page gate so a survey is never
+    /// answerable before its scheduled open time or after its close, regardless of how it was opened.
+    /// </summary>
+    private static bool IsWithinAnswerWindow(SurveyDetail definition, Instant now)
+    {
+        if (definition.Status != SurveyStatus.Open) return false;
+        var editable = definition.Editable;
+        if (editable.OpensAt is { } opensAt && now < opensAt) return false;
+        if (editable.ClosesAt is { } closesAt && now > closesAt) return false;
+        return true;
+    }
+
+    /// <summary>
     /// Shared GET page render for both entry paths. Re-gates Open/closes-at, skips a now-all-hidden page,
     /// and renders <c>Page.cshtml</c>; <paramref name="route"/> carries the token-vs-slug differences.
     /// </summary>
@@ -317,7 +335,7 @@ public class SurveyController(
 
         var editable = definition.Editable;
         var now = SystemClock.Instance.GetCurrentInstant();
-        if (definition.Status != SurveyStatus.Open || (editable.ClosesAt is { } closesAt && now > closesAt))
+        if (!IsWithinAnswerWindow(definition, now))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -353,7 +371,7 @@ public class SurveyController(
 
         var editable = definition.Editable;
         var now = SystemClock.Instance.GetCurrentInstant();
-        if (definition.Status != SurveyStatus.Open || (editable.ClosesAt is { } closesAt && now > closesAt))
+        if (!IsWithinAnswerWindow(definition, now))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
