@@ -1273,4 +1273,97 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
+
+    private ShiftManagementService BuildServiceWithRepo(
+        IShiftManagementRepository repo, ITeamServiceRead teamService) =>
+        new(
+            repo,
+            AuditLog,
+            AdminAuthorization,
+            new ServiceLocatorBuilder().With(teamService).Build(),
+            Cache,
+            Substitute.For<IShiftViewInvalidator>(),
+            Clock,
+            NullLogger<ShiftManagementService>.Instance);
+
+    // ============================================================
+    // GetConfirmedSignupCountsByUserForTeamAsync — IShiftServiceRead
+    // cross-section surface, no-active-event guard
+    // ============================================================
+
+    [HumansFact]
+    public async Task GetConfirmedSignupCountsByUserForTeam_returns_empty_dict_when_no_active_event()
+    {
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettings?)null);
+        var service = BuildServiceWithRepo(repo);
+
+        var result = await service.GetConfirmedSignupCountsByUserForTeamAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
+        await repo.DidNotReceiveWithAnyArgs()
+            .GetConfirmedSignupCountsByUserForTeamAsync(Guid.Empty, Guid.Empty, CancellationToken.None);
+    }
+
+    // ============================================================
+    // GetRotaTargetInfoAsync — rota-core/team null guards + slug stitch
+    // (IShiftServiceRead cross-section surface for Camps obligations)
+    // ============================================================
+
+    [HumansFact]
+    public async Task GetRotaTargetInfo_returns_null_when_rota_core_missing()
+    {
+        var rotaId = Guid.NewGuid();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetRotaTargetCoreAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(((Guid, string, Guid)?)null);
+        var service = BuildServiceWithRepo(repo, Substitute.For<ITeamServiceRead>());
+
+        var result = await service.GetRotaTargetInfoAsync(rotaId);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetRotaTargetInfo_returns_null_when_owning_team_missing()
+    {
+        var rotaId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetRotaTargetCoreAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns((rotaId, "Gate Rota", teamId));
+
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        var service = BuildServiceWithRepo(repo, teamService);
+
+        var result = await service.GetRotaTargetInfoAsync(rotaId);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetRotaTargetInfo_stitches_team_slug_onto_rota_core()
+    {
+        var rotaId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetRotaTargetCoreAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns((rotaId, "Gate Rota", teamId));
+
+        var teamService = Substitute.For<ITeamServiceRead>();
+        teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                teamId, "Gate Team", null, "gate-team",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
+                CreatedAt: TestNow, Members: []));
+        var service = BuildServiceWithRepo(repo, teamService);
+
+        var result = await service.GetRotaTargetInfoAsync(rotaId);
+
+        result.Should().Be(new RotaTargetInfo(rotaId, "Gate Rota", teamId, "gate-team"));
+    }
 }
