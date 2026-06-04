@@ -33,8 +33,6 @@ else
                     <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
                           method="post" class="d-flex gap-2 align-items-center mb-0">
                         @Html.AntiForgeryToken()
-                        <input type="text" name="label" class="form-control form-control-sm"
-                               placeholder="Label (optional)" maxlength="100" />
                         <button type="submit" class="btn btn-sm btn-primary">Start order</button>
                     </form>
                 }
@@ -53,7 +51,6 @@ else
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
-                                <th>Label</th>
                                 <th>State</th>
                                 @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
                                 {
@@ -72,7 +69,6 @@ else
                             @foreach (var order in cp.Orders)
                             {
                                 <tr>
-                                    <td>@(string.IsNullOrWhiteSpace(order.Label) ? "(no label)" : order.Label)</td>
                                     <td><span class="badge bg-secondary">@order.State</span></td>
                                     @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
                                     {

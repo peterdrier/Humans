@@ -10,7 +10,9 @@ public class StoreOrderConfiguration : IEntityTypeConfiguration<StoreOrder>
     {
         b.ToTable("store_orders");
         b.HasKey(x => x.Id);
+#pragma warning disable CS0618 // Label is [Obsolete] (#816); the column stays mapped so no migration is needed.
         b.Property(x => x.Label).HasMaxLength(100);
+#pragma warning restore CS0618
         b.Property(x => x.CounterpartyName).HasMaxLength(200);
         b.Property(x => x.CounterpartyVatId).HasMaxLength(50);
         b.Property(x => x.CounterpartyAddress).HasMaxLength(500);

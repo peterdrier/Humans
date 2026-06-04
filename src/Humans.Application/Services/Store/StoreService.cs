@@ -352,7 +352,6 @@ public class StoreService(
             CampSeasonId = campSeasonId,
             TeamId = null,
             Year = season.Year,
-            Label = label,
             State = StoreOrderState.Open,
             CreatedAt = now,
             UpdatedAt = now
@@ -785,7 +784,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Camp,
                 sid,
                 campName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totalDue,
                 totals.PaymentsTotalEur,
@@ -801,7 +800,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Team,
                 tid,
                 teamName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
                 0m, // team orders never have payments
@@ -932,7 +931,7 @@ public class StoreService(
             counterpartyType,
             displayName,
             o.Year,
-            o.Label,
+            null, // Label removed from the UI (#816); column retained, unused.
             o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,

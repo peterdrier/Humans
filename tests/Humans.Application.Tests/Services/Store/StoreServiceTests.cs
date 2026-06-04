@@ -345,7 +345,6 @@ public class StoreServiceTests
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(orderId);
         captured.CampSeasonId.Should().Be(campSeasonId);
-        captured.Label.Should().Be("First order");
         captured.State.Should().Be(StoreOrderState.Open);
         captured.CreatedAt.Should().Be(_clock.GetCurrentInstant());
         captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());

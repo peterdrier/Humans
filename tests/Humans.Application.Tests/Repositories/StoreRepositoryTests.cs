@@ -79,7 +79,6 @@ public sealed class StoreRepositoryTests
         {
             Id = orderId,
             CampSeasonId = Guid.NewGuid(),
-            Label = "Lead's first order",
             CreatedAt = Instant.FromUtc(2026, 3, 1, 12, 0),
             UpdatedAt = Instant.FromUtc(2026, 3, 1, 12, 0)
         };
@@ -89,7 +88,6 @@ public sealed class StoreRepositoryTests
         var fetched = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId);
         fetched.Should().NotBeNull();
         fetched.Id.Should().Be(orderId);
-        fetched.Label.Should().Be("Lead's first order");
         fetched.Lines.Should().BeEmpty();
         fetched.Payments.Should().BeEmpty();
     }
