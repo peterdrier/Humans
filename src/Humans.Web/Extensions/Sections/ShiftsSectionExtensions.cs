@@ -30,6 +30,8 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftsShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+        // Cross-section read surface (Camps shift obligations). Management service has no caching decorator — plain scoped delegation.
+        services.AddScoped<IShiftServiceRead>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
 

@@ -113,8 +113,179 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     }
 
     // ─────────────────────────────────────────────────────────
+    // Confirmed signup counts by user (cross-section read surface)
+    // ─────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetConfirmedSignupCountsByUserForTeamAsync_GroupsConfirmedAcrossRotas_ExcludesPendingAndOtherTeams()
+    {
+        var (es, teamId) = await SeedActiveEventWithTeamAsync();
+        var rotaA = await SeedRotaInAsync(es.Id, teamId, "A");
+        var rotaB = await SeedRotaInAsync(es.Id, teamId, "B");
+        var shiftA = NewShift(rotaA, dayOffset: 0);
+        var shiftB = NewShift(rotaB, dayOffset: 0);
+
+        // Other team, same event — must be excluded.
+        var otherTeamId = await SeedTeamAsync("other");
+        var rotaOther = await SeedRotaInAsync(es.Id, otherTeamId, "O");
+        var shiftOther = NewShift(rotaOther, dayOffset: 0);
+
+        await _dbContext.Shifts.AddRangeAsync(shiftA, shiftB, shiftOther);
+        await _dbContext.SaveChangesAsync();
+
+        var user1 = Guid.NewGuid();
+        var user2 = Guid.NewGuid();
+        var user3 = Guid.NewGuid();
+
+        await SeedSignupsAsync(
+            (user1, shiftA, SignupStatus.Confirmed),   // counts
+            (user1, shiftB, SignupStatus.Confirmed),   // counts -> user1 = 2 across rotas
+            (user2, shiftA, SignupStatus.Confirmed),   // counts -> user2 = 1
+            (user2, shiftA, SignupStatus.Pending),     // excluded (pending)
+            (user3, shiftOther, SignupStatus.Confirmed)); // excluded (other team)
+
+        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, es.Id);
+
+        counts.Should().HaveCount(2);
+        counts[user1].Should().Be(2);
+        counts[user2].Should().Be(1);
+        counts.Should().NotContainKey(user3);
+    }
+
+    [HumansFact]
+    public async Task GetConfirmedSignupCountsByUserForTeamAsync_ScopesToGivenEvent_ExcludesOtherEvents()
+    {
+        var (es, teamId) = await SeedActiveEventWithTeamAsync();
+        var rota = await SeedRotaInAsync(es.Id, teamId, "R");
+        var shift = NewShift(rota, dayOffset: 0);
+
+        // Same team owns a rota in a different (prior) event — must be excluded.
+        var otherEvent = NewEvent(isActive: false);
+        _dbContext.EventSettings.Add(otherEvent);
+        await _dbContext.SaveChangesAsync();
+        var otherRota = await SeedRotaInAsync(otherEvent.Id, teamId, "Old");
+        var otherShift = NewShift(otherRota, dayOffset: 0);
+
+        await _dbContext.Shifts.AddRangeAsync(shift, otherShift);
+        await _dbContext.SaveChangesAsync();
+
+        var user1 = Guid.NewGuid();
+        await SeedSignupsAsync(
+            (user1, shift, SignupStatus.Confirmed),       // counts (active event)
+            (user1, otherShift, SignupStatus.Confirmed)); // excluded (other event)
+
+        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, es.Id);
+
+        counts.Should().ContainKey(user1).WhoseValue.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetConfirmedSignupCountsByUserForRotaAsync_ScopesToSingleRota_ExcludesSiblingRotas()
+    {
+        var (es, teamId) = await SeedActiveEventWithTeamAsync();
+        var rotaA = await SeedRotaInAsync(es.Id, teamId, "A");
+        var rotaB = await SeedRotaInAsync(es.Id, teamId, "B");
+        var shiftA = NewShift(rotaA, dayOffset: 0);
+        var shiftB = NewShift(rotaB, dayOffset: 0);
+        await _dbContext.Shifts.AddRangeAsync(shiftA, shiftB);
+        await _dbContext.SaveChangesAsync();
+
+        var user1 = Guid.NewGuid();
+        var user2 = Guid.NewGuid();
+
+        await SeedSignupsAsync(
+            (user1, shiftA, SignupStatus.Confirmed),  // counts for rotaA
+            (user1, shiftB, SignupStatus.Confirmed),  // sibling rota, excluded
+            (user2, shiftA, SignupStatus.Pending),    // pending, excluded
+            (user2, shiftB, SignupStatus.Confirmed)); // sibling rota, excluded
+
+        var counts = await _repo.GetConfirmedSignupCountsByUserForRotaAsync(rotaA.Id);
+
+        counts.Should().HaveCount(1);
+        counts[user1].Should().Be(1);
+        counts.Should().NotContainKey(user2);
+    }
+
+    [HumansFact]
+    public async Task GetRotaTargetCoreAsync_ReturnsIdNameTeam_OrNull()
+    {
+        var (es, teamId) = await SeedActiveEventWithTeamAsync();
+        var rota = await SeedRotaInAsync(es.Id, teamId, "Gate");
+
+        var core = await _repo.GetRotaTargetCoreAsync(rota.Id);
+
+        core.Should().NotBeNull();
+        core!.Value.RotaId.Should().Be(rota.Id);
+        core.Value.RotaName.Should().Be("Gate");
+        core.Value.TeamId.Should().Be(teamId);
+
+        (await _repo.GetRotaTargetCoreAsync(Guid.NewGuid())).Should().BeNull();
+    }
+
+    // ─────────────────────────────────────────────────────────
     // helpers
     // ─────────────────────────────────────────────────────────
+
+    private async Task<(EventSettings es, Guid teamId)> SeedActiveEventWithTeamAsync()
+    {
+        var es = NewEvent(isActive: true);
+        _dbContext.EventSettings.Add(es);
+        await _dbContext.SaveChangesAsync();
+        var teamId = await SeedTeamAsync("dept");
+        return (es, teamId);
+    }
+
+    private async Task<Guid> SeedTeamAsync(string slug)
+    {
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = slug,
+            Slug = slug,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Teams.Add(team);
+        await _dbContext.SaveChangesAsync();
+        return team.Id;
+    }
+
+    private async Task<Rota> SeedRotaInAsync(Guid eventSettingsId, Guid teamId, string name)
+    {
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = eventSettingsId,
+            TeamId = teamId,
+            Name = name,
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Rotas.Add(rota);
+        await _dbContext.SaveChangesAsync();
+        return rota;
+    }
+
+    private async Task SeedSignupsAsync(params (Guid userId, Shift shift, SignupStatus status)[] rows)
+    {
+        foreach (var (userId, shift, status) in rows)
+        {
+            _dbContext.ShiftSignups.Add(new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftId = shift.Id,
+                Status = status,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+        }
+        await _dbContext.SaveChangesAsync();
+    }
 
     private EventSettings NewEvent(bool isActive) => new()
     {

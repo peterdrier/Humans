@@ -426,6 +426,46 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToListAsync(ct);
     }
 
+    public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
+        Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
+        => ConfirmedSignupCountsByUserAsync(
+            su => su.Shift.Rota.TeamId == teamId && su.Shift.Rota.EventSettingsId == eventSettingsId,
+            ct);
+
+    public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(
+        Guid rotaId, CancellationToken ct = default)
+        => ConfirmedSignupCountsByUserAsync(su => su.Shift.RotaId == rotaId, ct);
+
+    // Single ShiftSignups access site shared by the team- and rota-scoped
+    // confirmed-count reads (keeps the grandfathered HUM0025 surface flat).
+    private async Task<IReadOnlyDictionary<Guid, int>> ConfirmedSignupCountsByUserAsync(
+        System.Linq.Expressions.Expression<Func<ShiftSignup, bool>> scope,
+        CancellationToken ct)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ShiftSignups
+            .AsNoTracking()
+            .Where(su => su.Status == SignupStatus.Confirmed)
+            .Where(scope)
+            .GroupBy(su => su.UserId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+    }
+
+    public async Task<(Guid RotaId, string RotaName, Guid TeamId)?> GetRotaTargetCoreAsync(
+        Guid rotaId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var row = await ctx.Rotas
+            .AsNoTracking()
+            .Where(r => r.Id == rotaId)
+            .Select(r => new { r.Id, r.Name, r.TeamId })
+            .FirstOrDefaultAsync(ct);
+
+        return row is null ? null : (row.Id, row.Name, row.TeamId);
+    }
+
     public async Task<int> GetStalePendingSignupCountAsync(
         IReadOnlyCollection<Guid> shiftIds,
         Instant staleThreshold,

@@ -177,6 +177,32 @@ public partial interface IShiftManagementRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Confirmed-signup counts grouped by user id, across every rota the team
+    /// owns in <paramref name="eventSettingsId"/>. The service resolves the
+    /// active event id via <see cref="GetActiveEventSettingsAsync"/> and passes
+    /// it in (no second EventSettings read site). Backs the Shifts cross-section
+    /// read surface.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
+        Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Confirmed-signup counts grouped by user id, scoped to a single rota. A
+    /// rota belongs to exactly one event, so no event filter is applied.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(
+        Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Core rota target fields (id, name, owning team id) for a rota, or null if
+    /// it does not exist. The owning team's slug is resolved at the service
+    /// layer via <c>ITeamServiceRead</c> — the stripped <c>Rota.Team</c> nav is
+    /// never queried here.
+    /// </summary>
+    Task<(Guid RotaId, string RotaName, Guid TeamId)?> GetRotaTargetCoreAsync(
+        Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Count of pending signups on any of the given shifts whose
     /// <see cref="ShiftSignup.CreatedAt"/> is before <paramref name="staleThreshold"/>.
     /// </summary>

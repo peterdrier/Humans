@@ -33,7 +33,8 @@ public sealed class ShiftManagementService(
     IMemoryCache cache,
     IShiftViewInvalidator viewInvalidator,
     IClock clock,
-    ILogger<ShiftManagementService> logger) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+    ILogger<ShiftManagementService> logger)
+    : IShiftManagementService, IShiftServiceRead, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -135,6 +136,31 @@ public sealed class ShiftManagementService(
 
     public Task<EventSettings?> GetActiveAsync() =>
         repo.GetActiveEventSettingsAsync();
+
+    // ── IShiftServiceRead — cross-section read surface (Camps shift obligations) ──
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
+        Guid teamId, CancellationToken ct = default)
+    {
+        var active = await repo.GetActiveEventSettingsAsync(ct);
+        if (active is null) return new Dictionary<Guid, int>();
+        return await repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, active.Id, ct);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(
+        Guid rotaId, CancellationToken ct = default)
+        => repo.GetConfirmedSignupCountsByUserForRotaAsync(rotaId, ct);
+
+    public async Task<RotaTargetInfo?> GetRotaTargetInfoAsync(Guid rotaId, CancellationToken ct = default)
+    {
+        var core = await repo.GetRotaTargetCoreAsync(rotaId, ct);
+        if (core is null) return null;
+
+        var team = await TeamService.GetTeamAsync(core.Value.TeamId, ct);
+        if (team is null) return null;
+
+        return new RotaTargetInfo(core.Value.RotaId, core.Value.RotaName, core.Value.TeamId, team.Slug);
+    }
 
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
         repo.GetEventSettingsByIdAsync(id);
