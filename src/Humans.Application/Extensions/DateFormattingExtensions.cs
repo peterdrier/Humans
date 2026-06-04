@@ -184,6 +184,9 @@ public static class DateFormattingExtensions
     public static string ToInvariantLongDate(this DateTime value) =>
         value.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
 
+    public static string ToInvariantDayMonthYear(this LocalDate value) =>
+        value.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+
     public static string ToIsoDateTimeString(this DateTime value) =>
         value.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
 
