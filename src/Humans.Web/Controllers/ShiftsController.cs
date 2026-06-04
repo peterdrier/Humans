@@ -132,6 +132,97 @@ public class ShiftsController(
             sort);
     }
 
+    // AJAX per-day toggle: signs up or bails a single shift for the current user
+    // and returns the re-rendered row partial. Signup/bail outcome and the new
+    // active-signup count travel back as response headers (X-Signed-Up,
+    // X-My-Signup-Count, X-Toast-*); the name/dietary gates short-circuit to a
+    // 204 with X-Redirect so the client navigates instead of swapping a row.
+    [HttpPost("ToggleDay")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
+    {
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        if (currentUserNotFound is not null) return currentUserNotFound;
+
+        if (RedirectIfNameMissing(user) is not null)
+            return RedirectHeader(Url.Action(
+                nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
+
+        if (await ShiftNeedsDietaryFirstAsync(user, shiftId))
+            return RedirectHeader(Url.Action(
+                "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
+
+        var signups = await signupService.GetByUserAsync(user.Id);
+        var existing = signups.FirstOrDefault(s =>
+            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
+
+        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+        SignupResult result;
+        bool signedUp;
+        if (existing is not null)
+        {
+            result = await signupService.BailAsync(existing.Id, user.Id, "self-service toggle");
+            signedUp = false;
+        }
+        else
+        {
+            result = await signupService.SignUpAsync(
+                user.Id,
+                shiftId,
+                flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+            signedUp = result.Success;
+        }
+
+        var after = await signupService.GetByUserAsync(user.Id);
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, after, privileged, ct);
+        var blocked = await ComputeSignupsBlockedByMissingDietaryAsync(user, ct);
+        var es = await shiftMgmt.GetActiveAsync()
+            ?? throw new InvalidOperationException("ToggleDay requires an active event.");
+
+        Response.Headers["X-Signed-Up"] = signedUp ? "true" : "false";
+        Response.Headers["X-My-Signup-Count"] = after
+            .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToString(CultureInfo.InvariantCulture);
+        if (!result.Success && result.Error is not null)
+            SetToastHeader("warning", result.Error);
+        else if (result.Warning is not null)
+            SetToastHeader("warning", result.Warning);
+
+        if (row.Item.Shift.IsAllDay)
+            return PartialView("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
+            {
+                Item = row.Item,
+                Es = es,
+                IsSignedUp = row.IsSignedUp,
+                SignupsBlockedByMissingDietary = blocked,
+                Interaction = ShiftSignupInteraction.InstantToggle
+            });
+
+        return PartialView("_EventRotaRow", new EventRotaRowViewModel
+        {
+            Item = row.Item,
+            Es = es,
+            IsSignedUp = row.IsSignedUp,
+            SignupStatus = row.Status,
+            SignupsBlockedByMissingDietary = blocked,
+            Interaction = ShiftSignupInteraction.InstantToggle
+        });
+    }
+
+    // 204 + X-Redirect header; the client navigates. url may be null under unit
+    // tests (no routing), in which case only the status code is emitted.
+    private IActionResult RedirectHeader(string? url)
+    {
+        if (!string.IsNullOrEmpty(url)) Response.Headers["X-Redirect"] = url;
+        return StatusCode(204);
+    }
+
+    private void SetToastHeader(string type, string message)
+    {
+        Response.Headers["X-Toast-Type"] = type;
+        Response.Headers["X-Toast-Msg"] = Uri.EscapeDataString(message);
+    }
+
     // Lockout flag shared by the dietary banner and the rota-table Sign-Up
     // buttons: true when the user has a qualifying cantina signup but no
     // recorded DietaryPreference. Computed once per request on the top-level
