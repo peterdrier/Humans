@@ -54,6 +54,9 @@ public interface IEmailMessageFactory
     /// <summary>Facilitated volunteer-to-volunteer message (FacilitatedMessages); reply-to is the sender when contact info is shared.</summary>
     EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null);
 
+    /// <summary>Barrio shift-obligation reminder to a lead / role-holder (VolunteerUpdates).</summary>
+    EmailMessage BarrioShiftObligationReminder(string recipientEmail, string recipientName, string barrioName, string functionName, int doneCount, int requiredCount, string link, string? culture = null);
+
     /// <summary>Coordinator "email a rota" message to one signup (VolunteerUpdates); reply-to is the coordinator.</summary>
     EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request);
 

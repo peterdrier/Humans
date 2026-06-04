@@ -169,6 +169,23 @@ public class EmailRenderer(
                 Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
         });
 
+    public EmailContent RenderBarrioShiftObligationReminder(
+        string recipientName,
+        string barrioName,
+        string functionName,
+        int doneCount,
+        int requiredCount,
+        string link,
+        string? culture)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_BarrioShiftReminder_Subject", HtmlEncode(barrioName), HtmlEncode(functionName)),
+            Lf("Email_BarrioShiftReminder_Body",
+                HtmlEncode(barrioName),
+                HtmlEncode(functionName),
+                doneCount,
+                requiredCount,
+                link)));
+
     public EmailContent RenderCoordinatorRotaMessage(
         string recipientName,
         string senderName,

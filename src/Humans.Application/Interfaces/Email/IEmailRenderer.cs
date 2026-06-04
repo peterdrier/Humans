@@ -131,6 +131,21 @@ public interface IEmailRenderer
         string? culture = null);
 
     /// <summary>
+    /// Barrio shift-obligation reminder — sent to a barrio's leads and the
+    /// function's role-holders when the barrio is short on confirmed signups
+    /// for a function. Body states the done/required progress and links to the
+    /// function's sign-up page.
+    /// </summary>
+    EmailContent RenderBarrioShiftObligationReminder(
+        string recipientName,
+        string barrioName,
+        string functionName,
+        int doneCount,
+        int requiredCount,
+        string link,
+        string? culture);
+
+    /// <summary>
     /// Magic link login email for an existing user.
     /// </summary>
     EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null);

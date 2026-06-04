@@ -125,6 +125,15 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     }
 
     /// <inheritdoc />
+    public EmailMessage BarrioShiftObligationReminder(string recipientEmail, string recipientName, string barrioName, string functionName, int doneCount, int requiredCount, string link, string? culture = null)
+    {
+        var content = renderer.RenderBarrioShiftObligationReminder(
+            recipientName, barrioName, functionName, doneCount, requiredCount, link, culture);
+        return new EmailMessage(recipientEmail, recipientName, content.Subject, content.HtmlBody,
+            "barrio_shift_obligation_reminder", MessageCategory.VolunteerUpdates);
+    }
+
+    /// <inheritdoc />
     public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

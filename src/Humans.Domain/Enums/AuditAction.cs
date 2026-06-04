@@ -183,4 +183,7 @@ public enum AuditAction
     EarlyEntryGranted,
     EarlyEntryUpdated,
     EarlyEntryRevoked,
+    // Barrio shift-obligation reminders + config edits (Camps section).
+    BarrioShiftReminderSent,
+    BarrioShiftObligationConfigChanged,
 }
