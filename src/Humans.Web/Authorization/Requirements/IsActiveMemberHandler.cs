@@ -13,8 +13,7 @@ public class IsActiveMemberHandler : AuthorizationHandler<IsActiveMemberRequirem
     {
         var user = context.User;
 
-        if (user.HasClaim(RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue) ||
+        if (RoleAssignmentClaimsTransformation.IsActive(user) ||
             RoleChecks.IsTeamsAdminBoardOrAdmin(user))
         {
             context.Succeed(requirement);

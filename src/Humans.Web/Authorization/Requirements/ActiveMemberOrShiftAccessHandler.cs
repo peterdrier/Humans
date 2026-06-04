@@ -14,8 +14,7 @@ public class ActiveMemberOrShiftAccessHandler : AuthorizationHandler<ActiveMembe
     {
         var user = context.User;
 
-        if (user.HasClaim(RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue) ||
+        if (RoleAssignmentClaimsTransformation.IsActive(user) ||
             RoleChecks.IsTeamsAdminBoardOrAdmin(user) ||
             ShiftRoleChecks.CanAccessDashboard(user))
         {

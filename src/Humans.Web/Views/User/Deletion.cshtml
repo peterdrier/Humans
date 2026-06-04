@@ -1,0 +1,29 @@
+@model Humans.Web.Models.PendingDeletionViewModel
+@{
+    ViewData["Title"] = "Pending account deletion";
+}
+
+<div class="container py-5" style="max-width: 640px;">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-5">
+            <i class="fa-solid fa-trash-can fa-2x text-danger mb-3"></i>
+            <h1 class="h4 mb-3">Your account is scheduled for deletion</h1>
+            @if (Model.ScheduledFor is { } scheduledFor)
+            {
+                <p class="text-muted">
+                    It will be permanently deleted on <strong>@scheduledFor.ToString("D")</strong>
+                    unless you cancel.
+                </p>
+            }
+            else
+            {
+                <p class="text-muted">It will be permanently deleted unless you cancel.</p>
+            }
+            <form asp-action="CancelDeletion" method="post" class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Cancel deletion request
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

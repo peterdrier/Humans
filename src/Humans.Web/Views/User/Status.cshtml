@@ -1,0 +1,34 @@
+@model Humans.Web.Models.AccountStatusViewModel
+@{
+    ViewData["Title"] = "Account status";
+    var statusWord = Model.State switch
+    {
+        Humans.Domain.Enums.UserState.Suspended => "suspended",
+        Humans.Domain.Enums.UserState.Rejected => "rejected",
+        Humans.Domain.Enums.UserState.Deleted => "deleted",
+        Humans.Domain.Enums.UserState.Merged => "merged",
+        _ => "unavailable",
+    };
+}
+
+<div class="container py-5" style="max-width: 640px;">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-5">
+            <i class="fa-solid fa-circle-exclamation fa-2x text-warning mb-3"></i>
+            <h1 class="h4 mb-3">Your account has been @statusWord</h1>
+            <p class="text-muted mb-2">
+                Contact an admin for more information:
+                <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>.
+            </p>
+            @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
+            {
+                <div class="alert alert-secondary text-start mt-3 mb-0">
+                    <strong>Reason:</strong> @Model.RejectionReason
+                </div>
+            }
+            <p class="text-muted small mt-4 mb-0">
+                Reference ID: <code>@Model.UserId</code>
+            </p>
+        </div>
+    </div>
+</div>

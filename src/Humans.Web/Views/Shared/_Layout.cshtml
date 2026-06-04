@@ -71,9 +71,8 @@
                 <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
                     @{
                         var isAuthenticated = User.Identity?.IsAuthenticated == true;
-                        var hasProfile = User.HasClaim(
-                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
-                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
+                        // Name-only access: top-nav membership cues key off Active state.
+                        var hasProfile = Humans.Web.Authorization.RoleAssignmentClaimsTransformation.IsActive(User);
                     }
                     <ul class="navbar-nav flex-grow-1">
                         @if (isAuthenticated)
