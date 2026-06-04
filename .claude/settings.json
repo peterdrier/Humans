@@ -21,6 +21,12 @@
             "command": "bash .claude/razor-lint-hook.sh || true",
             "timeout": 15,
             "statusMessage": "Linting Razor views..."
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/block-data-migration-hook.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for data migration commit..."
           }
         ]
       },
