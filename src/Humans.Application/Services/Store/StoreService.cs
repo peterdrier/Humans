@@ -77,7 +77,7 @@ public class StoreService(
         // coordinated departments, or every department when a privileged reader.
         // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = await teamService.GetTeamsAsync(ct);
-        var teamOrderPrices = await LoadCurrentPricesAsync([year], ct);
+        var teamOrderPrices = await LoadCurrentPricesAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
                         && (isPrivilegedReader
@@ -319,7 +319,7 @@ public class StoreService(
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(orders.Select(o => o.Year), ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         var result = new List<OrderDto>(orders.Count);
         foreach (var o in orders)
             result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
@@ -332,7 +332,7 @@ public class StoreService(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync([o.Year], ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
@@ -371,7 +371,7 @@ public class StoreService(
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
-        var currentPrices = await LoadCurrentPricesAsync([order.Year], ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
             throw new InvalidOperationException(
@@ -425,7 +425,7 @@ public class StoreService(
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync([order.Year], ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
@@ -880,22 +880,24 @@ public class StoreService(
             p.DepositAmountEur, p.OrderableUntil, p.IsActive);
 
     /// <summary>
-    /// Loads the current catalog price components (incl. deactivated products) for the
-    /// given event years, keyed by product id, so Open orders can be repriced to the live
-    /// price. Bulk callers pass every order's year so each year's catalog loads once
-    /// (nobodies-collective/Humans#816).
+    /// The single event year whose catalog drives repricing of Open orders. The org runs one
+    /// event year, so this is hardcoded rather than derived from each order's <c>Year</c> — which
+    /// is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c> reprice correctly.
+    /// Bump it when a new event year starts (nobodies-collective/Humans#816).
+    /// </summary>
+    private const int CatalogYear = 2026;
+
+    /// <summary>
+    /// Loads the current catalog price components (incl. deactivated products) for
+    /// <see cref="CatalogYear"/>, keyed by product id, so Open orders reprice to the live price.
     /// </summary>
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        IEnumerable<int> years,
         CancellationToken ct)
     {
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
-        foreach (var year in years.Where(y => y > 0).Distinct())
-        {
-            foreach (var product in await repo.GetAllProductsForYearAsync(year, ct))
-                prices[product.Id] = new BalanceCalculator.ProductPrice(
-                    product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
-        }
+        foreach (var product in await repo.GetAllProductsForYearAsync(CatalogYear, ct))
+            prices[product.Id] = new BalanceCalculator.ProductPrice(
+                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
         return prices;
     }
 
