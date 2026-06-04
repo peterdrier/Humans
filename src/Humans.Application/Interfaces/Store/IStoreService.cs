@@ -78,6 +78,21 @@ public interface IStoreService : IApplicationService
     /// </summary>
     Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default);
 
+    /// <summary>
+    /// Builds the Stripe payment reconciliation report for the Store admin screen: webhook/checkout
+    /// health, every Store Checkout Session matched to its order with a reconciliation status, and
+    /// recorded Stripe payments orphaned from Stripe. Read-only — records nothing.
+    /// </summary>
+    Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Records every paid, order-matched, not-yet-recorded Stripe Checkout Session via the idempotent
+    /// <see cref="RecordStripePaymentAsync"/> path, pulling amounts from Stripe (never the caller).
+    /// Skips unmatched and Team-owned orders. Writes one <c>StorePaymentsReconciled</c> audit entry.
+    /// Safe to re-run. Returns how many were recorded and their total.
+    /// </summary>
+    Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(Guid actorUserId, CancellationToken ct = default);
+
     // Invoice issuance (FinanceAdmin) — implemented in Phase 5
     Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default);
 

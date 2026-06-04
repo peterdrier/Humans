@@ -753,6 +753,12 @@
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
     <value>El teu burner name sembla coincidir amb el teu nom legal. Considera fer servir un nom diferent per protegir la teva privacitat — aquest nom és visible per a tots els humans.</value>
   </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Hi ha 1 human més amb el nom '{1}' — assegura't que puguem distingir quin ets tu!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Hi ha {0} humans més amb el nom '{1}' — assegura't que puguem distingir quin ets tu!</value>
+  </data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Necessari per a documents oficials i signatures.</value>
   </data>
@@ -4363,6 +4369,27 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>Inscriure's</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Apuntar-m'hi</value>
+  </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Sol·licitat — pendent</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>T'has apuntat.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Sol·licitat — t'avisarem.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Tret.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Alguna cosa ha fallat. Torna-ho a provar.</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Estàs apuntat — toca per treure't</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>L'exploració de torns encara no està oberta. Torna més tard!</value>
   </data>
@@ -4386,13 +4413,6 @@
   </data>
   <data name="Shifts_Bail" xml:space="preserve">
     <value>Cancel·lar</value>
-  </data>
-  <data name="Shifts_BailConfirm" xml:space="preserve">
-    <value>Segur que vols cancel·lar?</value>
-  </data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve">
-    <value>Cancel·lar tots els {0} dies?</value>
-    <comment>{0} = number of days</comment>
   </data>
   <data name="Shifts_WithdrawButton" xml:space="preserve">
     <value>Retirar</value>

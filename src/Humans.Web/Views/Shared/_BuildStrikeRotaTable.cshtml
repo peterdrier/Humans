@@ -1,10 +1,43 @@
 @model Humans.Web.Models.BuildStrikeRotaTableViewModel
-@{
+@if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
+{
+    var allDayShifts = Model.RotaGroup.Shifts
+        .Where(s => s.Shift.IsAllDay)
+        .OrderBy(s => s.Shift.DayOffset)
+        .ToList();
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>@Localizer["Shifts_Date"]</th>
+                    <th>@Localizer["Shifts_Filled"]</th>
+                    <th>@Localizer["Common_Status"]</th>
+                    <th>@Localizer["Shifts_SignedUp"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in allDayShifts)
+                {
+                    @await Html.PartialAsync("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
+                    {
+                        Item = item,
+                        Es = Model.EventSettings,
+                        IsSignedUp = Model.UserSignupShiftIds.Contains(item.Shift.Id),
+                        SignupStatus = Model.UserSignupStatuses.GetValueOrDefault(item.Shift.Id),
+                        SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
+                        Interaction = Model.Interaction
+                    })
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
     var rotaGroup = Model.RotaGroup;
     var es = Model.EventSettings;
     var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
     var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
-}
 @if (availableShifts.Count > 0)
 {
     <form asp-controller="@Model.SignUpRangeController" asp-action="@Model.SignUpRangeAction" method="post" class="row g-2 align-items-end mb-3">
@@ -246,7 +279,6 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
         @Localizer["Shifts_SlotsFull"]
     </div>
 }
-@{
     var dateRanges = new List<List<ShiftDisplayItem>>();
     List<ShiftDisplayItem>? currentRange = null;
     foreach (var s in allDayShifts)
@@ -261,7 +293,6 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
             currentRange.Add(s);
         }
     }
-}
 <div class="table-responsive">
     <table class="table table-sm">
         <thead>
@@ -441,3 +472,4 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
         </tbody>
     </table>
 </div>
+}

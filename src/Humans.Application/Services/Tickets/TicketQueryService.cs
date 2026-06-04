@@ -553,11 +553,16 @@ public sealed class TicketQueryService(
             .ToList();
 
         // Search the full verified-email set so admins can find secondary-address purchases.
+        // Matched in-memory against the verified emails already carried on each loaded
+        // UserInfo — no extra DB round-trip.
         HashSet<Guid>? emailMatchUserIds = null;
         if (HasSearchTerm(search, 1))
         {
-            var matches = await userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
-            emailMatchUserIds = matches.ToHashSet();
+            var term = search!.Trim();
+            emailMatchUserIds = allUsers
+                .Where(u => u.UserEmails.Any(e => e.IsVerified && ContainsIgnoreCase(e.Email, term)))
+                .Select(u => u.Id)
+                .ToHashSet();
         }
 
         var filtered = FilterWhoHasntBoughtRows(

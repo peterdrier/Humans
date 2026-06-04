@@ -435,10 +435,12 @@ public class StoreServiceTeamOrdersTests
             CounterpartyEmail: null,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: balanceEur,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: balanceEur);
+            BalanceEur: balanceEur,
+            CreatedAt: default);
     }
 }

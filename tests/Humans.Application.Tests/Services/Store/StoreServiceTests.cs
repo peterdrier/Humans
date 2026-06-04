@@ -109,11 +109,13 @@ public class StoreServiceTests
             CounterpartyEmail: null,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: 25m,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: 25m);
+            BalanceEur: 25m,
+            CreatedAt: default);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([
                 MakeProduct(name: "Tent"),
@@ -128,6 +130,37 @@ public class StoreServiceTests
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
         result.IsStripeConfigured.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetOrderPageDataAsync_surfaces_price_changes_since_order_started()
+    {
+        var productId = Guid.NewGuid();
+        var orderStart = Instant.FromUtc(2026, 3, 1, 0, 0);
+        var line = new OrderLineDto(Guid.NewGuid(), Guid.NewGuid(), productId, "Ice", 1,
+            2.34m, 21m, null, orderStart, 2.34m, 0.49m, 0m, 2.83m);
+        var order = new OrderDto(
+            Id: Guid.NewGuid(), CampSeasonId: Guid.NewGuid(), TeamId: null,
+            CounterpartyType: StoreOrderCounterpartyType.Camp, CounterpartyDisplayName: "Camp",
+            Year: 2026, Label: null, State: StoreOrderState.Open,
+            CounterpartyName: null, CounterpartyVatId: null, CounterpartyAddress: null,
+            CounterpartyCountryCode: null, CounterpartyEmail: null, IssuedInvoiceId: null,
+            Lines: [line], Payments: [], LinesSubtotalEur: 2.34m, VatTotalEur: 0.49m, DepositTotalEur: 0m,
+            PaymentsTotalEur: 0m, BalanceEur: 2.83m, CreatedAt: orderStart);
+
+        _audit.GetFilteredEntriesAsync(nameof(StoreProduct), productId, null,
+                Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<AuditLogEntrySnapshot>
+            {
+                PriceChangeEntry(productId, orderStart.Minus(Duration.FromDays(5)), "before this order existed"),
+                PriceChangeEntry(productId, orderStart.Plus(Duration.FromDays(2)), "Price for Ice changed from 1.23 to 2.34"),
+            });
+
+        var pageData = await _service.GetOrderPageDataAsync(order, canEdit: false, canPayAuthorized: false);
+
+        // Only the change after the order started is shown.
+        pageData.PriceChanges.Should().ContainSingle()
+            .Which.Description.Should().Be("Price for Ice changed from 1.23 to 2.34");
     }
 
     [HumansFact]
@@ -259,6 +292,71 @@ public class StoreServiceTests
         result.Lines[0].ProductName.Should().Be("Tent");
     }
 
+    [HumansFact]
+    public async Task GetOrderAsync_open_order_line_reflects_current_catalog_price()
+    {
+        // Line was added at €50/21%; the catalog price has since dropped to €40/10%.
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var orderId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = StoreOrderState.Open,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 1,
+                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        repriced.Id = product.Id;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct> { repriced });
+
+        var result = await _service.GetOrderAsync(orderId);
+
+        result!.Lines[0].EffectiveUnitPrice.Should().Be(40m);
+        result.Lines[0].EffectiveVatRate.Should().Be(10m);
+        result.BalanceEur.Should().Be(44m); // 40 + 10% VAT
+    }
+
+    [HumansFact]
+    public async Task GetOrderAsync_issued_order_line_keeps_snapshot_price()
+    {
+        // After invoicing, later catalog price changes must not move the order.
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var orderId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = StoreOrderState.InvoiceIssued,
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), OrderId = orderId, ProductId = product.Id, Qty = 1,
+                        UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
+            }
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        repriced.Id = product.Id;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new List<StoreProduct> { repriced });
+
+        var result = await _service.GetOrderAsync(orderId);
+
+        result!.Lines[0].EffectiveUnitPrice.Should().Be(50m); // snapshot, not current 40
+        result.BalanceEur.Should().Be(60.50m);
+    }
+
     // ==========================================================================
     // Write paths (Task 2.4)
     // ==========================================================================
@@ -280,7 +378,6 @@ public class StoreServiceTests
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(orderId);
         captured.CampSeasonId.Should().Be(campSeasonId);
-        captured.Label.Should().Be("First order");
         captured.State.Should().Be(StoreOrderState.Open);
         captured.CreatedAt.Should().Be(_clock.GetCurrentInstant());
         captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -671,6 +768,47 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateProductAsync_logs_price_changed_event_with_from_to()
+    {
+        var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        string? priceDescription = null;
+        await _audit.LogAsync(
+            AuditAction.StoreProductPriceChanged, nameof(StoreProduct), existing.Id,
+            Arg.Do<string>(d => priceDescription = d), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        var draft = new ProductDto(
+            existing.Id, existing.Year, "Ice", existing.Description,
+            UnitPriceEur: 2.34m, VatRatePercent: 21m, DepositAmountEur: null,
+            existing.OrderableUntil, IsActive: true);
+
+        await _service.UpdateProductAsync(draft, Guid.NewGuid());
+
+        priceDescription.Should().Be("Price for Ice changed from 1.23 to 2.34");
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_no_price_event_when_price_unchanged()
+    {
+        var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        // Name/VAT/deposit change but price stays the same — no price-change event.
+        var draft = new ProductDto(
+            existing.Id, existing.Year, "Ice Cold", existing.Description,
+            UnitPriceEur: 1.23m, VatRatePercent: 30m, DepositAmountEur: 5m,
+            existing.OrderableUntil, IsActive: true);
+
+        await _service.UpdateProductAsync(draft, Guid.NewGuid());
+
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.StoreProductPriceChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task UpdateProductAsync_throws_when_product_missing()
     {
         _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -975,6 +1113,10 @@ public class StoreServiceTests
     // Helpers
     // ==========================================================================
 
+    private static AuditLogEntrySnapshot PriceChangeEntry(Guid productId, Instant occurredAt, string description) =>
+        new(Guid.NewGuid(), AuditAction.StoreProductPriceChanged, nameof(StoreProduct), productId,
+            description, occurredAt, null, null, null, null, null, null, null, null, null);
+
     private static StoreProduct MakeProduct(
         string name = "Test product",
         decimal price = 10m,
@@ -1057,10 +1199,12 @@ public class StoreServiceTests
             CounterpartyEmail: email,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: balanceEur,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: balanceEur);
+            BalanceEur: balanceEur,
+            CreatedAt: default);
     }
 }

@@ -164,6 +164,9 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             Arg.Any<string>(),
             _actorUserId,
             null, null);
+
+        // Name/SortOrder are cached in the CampInfo role projection across all camps.
+        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -208,6 +211,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+
+        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -231,6 +236,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+
+        await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

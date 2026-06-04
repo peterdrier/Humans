@@ -33,6 +33,7 @@ public class StoreOrder
     /// </summary>
     public int Year { get; set; }
 
+    [Obsolete("Order labels were removed from the UI (#816). The column is retained but unused — do not reference.")]
     public string? Label { get; set; }
     public StoreOrderState State { get; set; } = StoreOrderState.Open;
 

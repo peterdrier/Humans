@@ -569,10 +569,6 @@ public sealed class UserEmailService(
             .ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
-    public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
-        string searchTerm, CancellationToken cancellationToken = default)
-        => repository.SearchUserIdsByVerifiedUserEmailAsync(searchTerm, cancellationToken);
-
     public Task<Guid?> GetOtherUserIdHavingEmailAsync(
         string email, Guid excludeUserId, CancellationToken cancellationToken = default)
         => repository.GetOtherUserIdHavingUserEmailAsync(email, excludeUserId, cancellationToken);

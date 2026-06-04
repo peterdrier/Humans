@@ -100,6 +100,15 @@ public sealed class CachingCampService(
             .ToList();
     }
 
+    public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // PublicYear is always a warm year (warmup seeds it), so both calls below
+        // are served from the dict — no DB round-trip for the human card / Shifts view.
+        var settings = await GetSettingsAsync(cancellationToken);
+        var camps = await GetCampsForYearAsync(settings.PublicYear, cancellationToken);
+        return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
+    }
+
     // Pass-through reads
 
     public Task<CampEditData?> GetCampEditDataAsync(
@@ -416,6 +425,13 @@ public sealed class CachingCampService(
     /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSeasonAsync" />
     public Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default) =>
         InvalidateBySeasonAsync(campSeasonId, ct);
+
+    /// <inheritdoc cref="ICampInfoInvalidator.InvalidateAllAsync" />
+    public Task InvalidateAllAsync(CancellationToken ct = default)
+    {
+        RefreshAll();
+        return Task.CompletedTask;
+    }
 
     private Task InvalidateCampAsync(
         Guid campId,

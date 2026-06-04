@@ -77,6 +77,7 @@ public class StoreService(
         // coordinated departments, or every department when a privileged reader.
         // Order is the controller / view's concern (memory/architecture/display-sort-in-controllers.md).
         var teams = await teamService.GetTeamsAsync(ct);
+        var teamOrderPrices = await LoadCurrentPricesAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
                         && (isPrivilegedReader
@@ -93,7 +94,7 @@ public class StoreService(
             {
                 var productIds = existing.Lines.Select(l => l.ProductId).Distinct().ToList();
                 var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-                orders = [await MapOrderAsync(existing, productNames, ct)];
+                orders = [await MapOrderAsync(existing, productNames, teamOrderPrices, ct)];
             }
             counterparties.Add(new StoreCounterpartyOrders(
                 StoreOrderCounterpartyType.Team,
@@ -134,13 +135,42 @@ public class StoreService(
                 .ToList();
         }
 
+        var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
+
         return new StoreOrderPageData(
             order,
             catalog,
             order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
-            stripeService.IsStoreCheckoutConfigured);
+            stripeService.IsStoreCheckoutConfigured,
+            priceChanges);
+    }
+
+    /// <summary>
+    /// Price-change audit events (<see cref="AuditAction.StoreProductPriceChanged"/>) for the
+    /// products on this order, recorded since the order was created — the order page's
+    /// "price changes" view (#816). Reuses the existing per-entity audit query; the product
+    /// count per order is tiny.
+    /// </summary>
+    private async Task<IReadOnlyList<AuditLogEntrySnapshot>> LoadOrderPriceChangesAsync(OrderDto order, CancellationToken ct)
+    {
+        var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
+        if (productIds.Count == 0)
+            return [];
+
+        var changes = new List<AuditLogEntrySnapshot>();
+        foreach (var productId in productIds)
+        {
+            var entries = await audit.GetFilteredEntriesAsync(
+                entityType: nameof(StoreProduct),
+                entityId: productId,
+                actions: [AuditAction.StoreProductPriceChanged],
+                limit: 50,
+                ct: ct);
+            changes.AddRange(entries.Where(e => e.OccurredAt >= order.CreatedAt));
+        }
+        return changes.OrderByDescending(e => e.OccurredAt).ToList();
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
@@ -191,6 +221,8 @@ public class StoreService(
         var product = await repo.GetProductByIdAsync(draft.Id, ct)
             ?? throw new InvalidOperationException($"Product {draft.Id} not found");
 
+        var oldPrice = product.UnitPriceEur;
+
         product.Year = draft.Year;
         product.Name = draft.Name.Trim();
         product.Description = draft.Description;
@@ -206,6 +238,13 @@ public class StoreService(
             AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
+
+        // Dedicated, queryable price-change event for the order-page audit view (#816).
+        if (oldPrice != draft.UnitPriceEur)
+            await audit.LogAsync(
+                AuditAction.StoreProductPriceChanged, nameof(StoreProduct), product.Id,
+                $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
+                actorUserId);
     }
 
     public async Task<StoreCatalogSaveResult> SaveProductWithResultAsync(
@@ -283,9 +322,10 @@ public class StoreService(
         var orders = await repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
         var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
         var result = new List<OrderDto>(orders.Count);
         foreach (var o in orders)
-            result.Add(await MapOrderAsync(o, productNames, ct));
+            result.Add(await MapOrderAsync(o, productNames, currentPrices, ct));
         return result;
     }
 
@@ -295,7 +335,8 @@ public class StoreService(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return await MapOrderAsync(o, productNames, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
     public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
@@ -314,7 +355,6 @@ public class StoreService(
             CampSeasonId = campSeasonId,
             TeamId = null,
             Year = season.Year,
-            Label = label,
             State = StoreOrderState.Open,
             CreatedAt = now,
             UpdatedAt = now
@@ -333,7 +373,8 @@ public class StoreService(
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
-        var balance = BalanceCalculator.Compute(order).BalanceEur;
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
             throw new InvalidOperationException(
                 $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
@@ -386,7 +427,8 @@ public class StoreService(
         if (order is null) return null;
         var productIds = order.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await repo.GetProductNamesByIdsAsync(productIds, ct);
-        return await MapOrderAsync(order, productNames, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
     public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
@@ -624,6 +666,106 @@ public class StoreService(
             orderId, nameof(StoreOrder));
     }
 
+    public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
+    {
+        var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var stripeQueried = sessionsOrNull is not null;
+        var sessions = sessionsOrNull ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
+        // Resolve each distinct matched order once (Stripe-side and recorded-side) for its
+        // display label and billable check.
+        var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
+            .Concat(recorded.Select(p => p.OrderId))
+            .Distinct();
+        var orders = new Dictionary<Guid, OrderDto>();
+        foreach (var id in matchedIds)
+        {
+            var order = await GetOrderAsync(id, ct);
+            if (order is not null) orders[id] = order;
+        }
+
+        var rows = new List<StripeReconciliationRow>(sessions.Count);
+        foreach (var s in sessions)
+        {
+            OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
+            rows.Add(new StripeReconciliationRow(
+                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
+                s.OrderId, order?.CounterpartyDisplayName,
+                ClassifyStripeSession(s, order, recordedPis)));
+        }
+
+        // Orphans: recorded Stripe payments whose PI is absent from the Stripe list — but only
+        // when Stripe was actually queried. If it couldn't be read, an empty session list does
+        // NOT mean those payments are orphans, so skip the check entirely.
+        var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
+            .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
+        var orphans = stripeQueried
+            ? recorded
+                .Where(p => !stripePis.Contains(p.PaymentIntentId))
+                .Select(p => new StripeOrphanPayment(
+                    p.PaymentIntentId, p.OrderId,
+                    orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
+                    p.AmountEur, p.ReceivedAt))
+                .ToList()
+            : new List<StripeOrphanPayment>();
+
+        return new StripeReconciliationReport(
+            stripeService.IsStoreWebhookConfigured,
+            stripeService.IsStoreCheckoutConfigured,
+            stripeQueried,
+            rows,
+            orphans);
+    }
+
+    private static StripeReconciliationStatus ClassifyStripeSession(
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlySet<string> recordedPis)
+    {
+        if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
+            return StripeReconciliationStatus.Unpaid;
+        if (s.PaymentIntentId is { } pi && recordedPis.Contains(pi))
+            return StripeReconciliationStatus.Recorded;
+        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == StoreOrderCounterpartyType.Team)
+            return StripeReconciliationStatus.Unmatched;
+        return StripeReconciliationStatus.Missing;
+    }
+
+    public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
+        Guid actorUserId, CancellationToken ct = default)
+    {
+        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
+        var count = 0;
+        var total = 0m;
+        foreach (var s in sessions)
+        {
+            if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
+            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
+            if (amount <= 0 || recordedPis.Contains(pi)) continue;
+
+            // Never fabricate a payment on an unmatched or non-billable (Team) order.
+            var order = await repo.GetOrderByIdAsync(orderId, ct);
+            if (order is null || order.TeamId is not null) continue;
+
+            await RecordStripePaymentAsync(orderId, pi, amount, ct); // idempotent on PI id
+            count++;
+            total += amount;
+        }
+
+        if (count > 0)
+        {
+            await audit.LogAsync(
+                AuditAction.StorePaymentsReconciled, "Store", Guid.Empty,
+                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
+                actorUserId);
+        }
+
+        return new StripeReconciliationResult(count, total);
+    }
+
     public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
     {
         switch (evt.Kind)
@@ -693,6 +835,14 @@ public class StoreService(
         }
     }
 
+    /// <summary>
+    /// Phase 5 — not yet implemented. <b>Freeze seam (#816):</b> before flipping
+    /// <see cref="StoreOrder.State"/> to <see cref="StoreOrderState.InvoiceIssued"/>, the
+    /// implementation MUST re-write each line's <c>UnitPriceSnapshot</c>,
+    /// <c>VatRateSnapshot</c>, and <c>DepositAmountSnapshot</c> from the current catalog
+    /// price, so the issued invoice captures the exact prices shown at issue time. Until
+    /// then every order stays Open and reprices live, which is the desired in-season behavior.
+    /// </summary>
     public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 
@@ -737,7 +887,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Camp,
                 sid,
                 campName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totalDue,
                 totals.PaymentsTotalEur,
@@ -753,7 +903,7 @@ public class StoreService(
                 StoreOrderCounterpartyType.Team,
                 tid,
                 teamName,
-                o.Label,
+                null, // Label removed from the UI (#816); column retained, unused.
                 o.State,
                 totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur,
                 0m, // team orders never have payments
@@ -831,12 +981,35 @@ public class StoreService(
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive);
 
+    /// <summary>
+    /// The single event year whose catalog drives repricing of Open orders. The org runs one
+    /// event year, so this is hardcoded rather than derived from each order's <c>Year</c> — which
+    /// is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c> reprice correctly.
+    /// Bump it when a new event year starts (nobodies-collective/Humans#816).
+    /// </summary>
+    private const int CatalogYear = 2026;
+
+    /// <summary>
+    /// Loads the current catalog price components (incl. deactivated products) for
+    /// <see cref="CatalogYear"/>, keyed by product id, so Open orders reprice to the live price.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
+        CancellationToken ct)
+    {
+        var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
+        foreach (var product in await repo.GetAllProductsForYearAsync(CatalogYear, ct))
+            prices[product.Id] = new BalanceCalculator.ProductPrice(
+                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
+        return prices;
+    }
+
     private async Task<OrderDto> MapOrderAsync(
         StoreOrder o,
         IReadOnlyDictionary<Guid, string> productNames,
+        IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> currentPrices,
         CancellationToken ct)
     {
-        var balance = BalanceCalculator.Compute(o);
+        var balance = BalanceCalculator.Compute(o, currentPrices);
         var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
         var lines = o.Lines.Select(l =>
         {
@@ -844,9 +1017,14 @@ public class StoreService(
             return new OrderLineDto(
                 l.Id, l.OrderId, l.ProductId,
                 productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
-                l.Qty, l.UnitPriceSnapshot, l.VatRateSnapshot, l.DepositAmountSnapshot, l.AddedAt,
+                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
                 t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
         }).ToList();
+
+        var payments = o.Payments
+            .Select(p => new OrderPaymentDto(
+                p.AmountEur, p.Method, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+            .ToList();
 
         var counterpartyType = o.TeamId is not null
             ? StoreOrderCounterpartyType.Team
@@ -861,13 +1039,15 @@ public class StoreService(
             counterpartyType,
             displayName,
             o.Year,
-            o.Label,
+            null, // Label removed from the UI (#816); column retained, unused.
             o.State,
             o.CounterpartyName, o.CounterpartyVatId, o.CounterpartyAddress, o.CounterpartyCountryCode, o.CounterpartyEmail,
             o.IssuedInvoiceId,
             lines,
+            payments,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
-            balance.PaymentsTotalEur, balance.BalanceEur);
+            balance.PaymentsTotalEur, balance.BalanceEur,
+            o.CreatedAt);
     }
 
     private async Task<string> ResolveCounterpartyDisplayNameAsync(StoreOrder o, CancellationToken ct)

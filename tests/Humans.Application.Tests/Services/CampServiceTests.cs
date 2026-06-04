@@ -1388,6 +1388,73 @@ public sealed class CampServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // GetCampUserInfoAsync / CampUserInfo.Resolve
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetCampUserInfoAsync_ActiveMemberWithRole_ReturnsActiveSeasonAndNamedRole()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var season = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        var regularDef = await SeedRegularDefinitionAsync();
+        var userId = Guid.NewGuid();
+        await SeedRoleAssignmentAsync(season.Id, regularDef.Id, userId);
+
+        var info = await _service.GetCampUserInfoAsync(userId);
+
+        info.Season.Should().NotBeNull();
+        info.Season!.CampId.Should().Be(camp.Id);
+        info.Season.Year.Should().Be(2026);
+        info.Roles.Should().ContainSingle().Which.Should().Be(regularDef.Name);
+    }
+
+    [HumansFact]
+    public async Task GetCampUserInfoAsync_NonMember_ReturnsNone()
+    {
+        await SeedSettingsAsync();
+        await CreateTestCamp();
+
+        var info = await _service.GetCampUserInfoAsync(Guid.NewGuid());
+
+        info.Season.Should().BeNull();
+        info.Roles.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void Resolve_ActiveMemberInActiveYear_ReturnsSeasonAndRolesInOrder()
+    {
+        var userId = Guid.NewGuid();
+        var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Active, ["Camp Lead", "Greeter"]) };
+
+        var info = CampUserInfo.Resolve(camps, activeYear: 2026, userId);
+
+        info.Season.Should().NotBeNull();
+        info.Season!.Year.Should().Be(2026);
+        info.Roles.Should().Equal("Camp Lead", "Greeter");
+    }
+
+    [HumansFact]
+    public void Resolve_MemberOnlyInPriorYearSeason_ReturnsNone()
+    {
+        // The user's camp last ran in 2025; active year is 2026. Must NOT surface
+        // the stale prior-year season just because it's the camp's latest.
+        var userId = Guid.NewGuid();
+        var camps = new[] { MakeCampWithMember(2025, userId, CampMemberStatus.Active, ["Camp Lead"]) };
+
+        CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
+    }
+
+    [HumansFact]
+    public void Resolve_PendingMemberInActiveYear_ReturnsNone()
+    {
+        var userId = Guid.NewGuid();
+        var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Pending, []) };
+
+        CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
@@ -1430,6 +1497,27 @@ public sealed class CampServiceTests : ServiceTestHarness
             EeSlotCount: 0,
             EeGrantedCount: 0,
             JoinedMemberCount: 0);
+
+    private static CampInfo MakeCampWithMember(
+        int year, Guid userId, CampMemberStatus status, IReadOnlyList<string> roles)
+    {
+        var campId = Guid.NewGuid();
+        var requestedAt = Instant.FromUtc(year, 3, 1, 0, 0);
+        var season = MakeCampSeasonInfo(campId, year, CampSeasonStatus.Active) with
+        {
+            Members =
+            [
+                new CampSeasonMemberInfo(
+                    Guid.NewGuid(), userId, status, requestedAt, requestedAt, HasEarlyEntry: false)
+                {
+                    Roles = roles
+                }
+            ]
+        };
+        return new CampInfo(
+            campId, "resolve-camp", "camp@example.com", "+34600000010",
+            IsSwissCamp: false, TimesAtNowhere: 1, [season]);
+    }
 
     private async Task<Camp> CreateTestCamp()
     {

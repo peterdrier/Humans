@@ -88,9 +88,11 @@ public class StoreOrderAuthorizationHandlerTests
             CounterpartyEmail: null,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: 0m,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,
             PaymentsTotalEur: 0m,
-            BalanceEur: 0m);
+            BalanceEur: 0m,
+            CreatedAt: default);
 }

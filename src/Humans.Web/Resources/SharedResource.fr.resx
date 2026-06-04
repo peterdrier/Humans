@@ -753,6 +753,12 @@
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
     <value>Votre burner name semble correspondre à votre nom légal. Envisagez d'utiliser un nom différent pour protéger votre vie privée — ce nom est visible par tous les humans.</value>
   </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Il y a 1 autre human portant le nom '{1}' — assurez-vous que l'on puisse savoir lequel est vous !</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Il y a {0} autres humans portant le nom '{1}' — assurez-vous que l'on puisse savoir lequel est vous !</value>
+  </data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Requis pour les documents officiels et les signatures.</value>
   </data>
@@ -4363,6 +4369,27 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>S'inscrire</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>M'inscrire</value>
+  </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Demande envoyée — en attente</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>Tu es inscrit·e.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Demande envoyée — on te tient au courant.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Retiré·e.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Une erreur s'est produite. Réessaie.</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Tu es inscrit·e — touche pour te retirer</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>La navigation des quarts n'est pas encore ouverte. Revenez plus tard !</value>
   </data>
@@ -4386,13 +4413,6 @@
   </data>
   <data name="Shifts_Bail" xml:space="preserve">
     <value>Se retirer</value>
-  </data>
-  <data name="Shifts_BailConfirm" xml:space="preserve">
-    <value>Êtes-vous sûr de vouloir vous retirer ?</value>
-  </data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve">
-    <value>Se retirer des {0} jours ?</value>
-    <comment>{0} = number of days</comment>
   </data>
   <data name="Shifts_WithdrawButton" xml:space="preserve">
     <value>Retirer</value>

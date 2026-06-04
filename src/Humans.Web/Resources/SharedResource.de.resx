@@ -753,6 +753,12 @@
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve">
     <value>Ihr Burner Name scheint mit Ihrem bürgerlichen Namen übereinzustimmen. Erwägen Sie einen anderen Namen, um Ihre Privatsphäre zu schützen — dieser Name ist für alle Humans sichtbar.</value>
   </data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve">
+    <value>Es gibt 1 weiteren Human mit dem Namen '{1}' — bitte sorgen Sie dafür, dass man erkennen kann, welcher Sie sind!</value>
+  </data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve">
+    <value>Es gibt {0} weitere Humans mit dem Namen '{1}' — bitte sorgen Sie dafür, dass man erkennen kann, welcher Sie sind!</value>
+  </data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Erforderlich für offizielle Dokumente und Unterschriften.</value>
   </data>
@@ -4363,6 +4369,27 @@
   <data name="Shifts_SignUpButton" xml:space="preserve">
     <value>Anmelden</value>
   </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Eintragen</value>
+  </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Beworben — ausstehend</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>Du bist eingetragen.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Beworben — wir melden uns.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Entfernt.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Du bist dabei — zum Entfernen tippen</value>
+  </data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve">
     <value>Schichten-Übersicht ist noch nicht geöffnet. Schau später wieder!</value>
   </data>
@@ -4386,13 +4413,6 @@
   </data>
   <data name="Shifts_Bail" xml:space="preserve">
     <value>Absagen</value>
-  </data>
-  <data name="Shifts_BailConfirm" xml:space="preserve">
-    <value>Bist du sicher, dass du absagen möchtest?</value>
-  </data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve">
-    <value>Von allen {0} Tagen absagen?</value>
-    <comment>{0} = number of days</comment>
   </data>
   <data name="Shifts_WithdrawButton" xml:space="preserve">
     <value>Zurückziehen</value>

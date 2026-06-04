@@ -10,12 +10,12 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">Store</a></li>
         <li class="breadcrumb-item">@Model.CounterpartyDisplayName</li>
-        <li class="breadcrumb-item active">@(string.IsNullOrWhiteSpace(order.Label) ? "Order" : order.Label)</li>
+        <li class="breadcrumb-item active">Order</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(order.Label) ? "Store order" : order.Label)</h1>
+    <h1 class="mb-0">Store order</h1>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
         <span class="badge bg-secondary fs-6">@order.State</span>
@@ -36,33 +36,41 @@
 
 @if (!isTeamOrder)
 {
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Lines subtotal</h6>
                     <h4 class="card-title mb-0">&euro;@order.LinesSubtotalEur.ToString("N2")</h4>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">VAT</h6>
                     <h4 class="card-title mb-0">&euro;@order.VatTotalEur.ToString("N2")</h4>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Deposits</h6>
                     <h4 class="card-title mb-0">&euro;@order.DepositTotalEur.ToString("N2")</h4>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center bg-light">
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total payments</h6>
+                    <h4 class="card-title mb-0 text-success">&euro;@order.PaymentsTotalEur.ToString("N2")</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center bg-light h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Balance owed</h6>
                     <h4 class="card-title mb-0 fw-bold">&euro;@order.BalanceEur.ToString("N2")</h4>
@@ -98,10 +106,10 @@
                     @if (!isTeamOrder)
                     {
                         <td class="text-end">
-                            &euro;@line.UnitPriceSnapshotInclVat.ToString("N2")
-                            <div class="text-muted small">(&euro;@line.UnitPriceSnapshot.ToString("N2") + @line.VatRateSnapshot.ToString("0.##")% VAT)</div>
+                            &euro;@line.EffectiveUnitPriceInclVat.ToString("N2")
+                            <div class="text-muted small">(&euro;@line.EffectiveUnitPrice.ToString("N2") + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
                         </td>
-                        <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
+                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
                         <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     }
                     <td class="text-end">
@@ -123,6 +131,30 @@
 else
 {
     <div class="alert alert-secondary">No lines on this order yet.</div>
+}
+
+@if (Model.PriceChanges.Any())
+{
+    <h2 class="h4 mb-3">Price changes since this order started</h2>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Event</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var change in Model.PriceChanges)
+            {
+                <tr>
+                    <td>@change.OccurredAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td><span class="badge bg-warning text-dark">Price changed</span></td>
+                    <td>@change.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 
 @if (Model.CanEdit)
@@ -150,48 +182,51 @@ else
 
 @if (!isTeamOrder)
 {
-    <h2 class="h4 mb-3">Counterparty (for invoice)</h2>
-    @if (Model.CanEdit)
+    <h2 class="h4 mb-3">Payments</h2>
+    @if (order.Payments.Any())
     {
-        <form asp-action="UpdateCounterparty" asp-route-id="@order.Id" method="post" class="row g-3 mb-4">
-            @Html.AntiForgeryToken()
-            <div class="col-md-6">
-                <label class="form-label">Name</label>
-                <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">VAT / NIF / CIF</label>
-                <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
-            </div>
-            <div class="col-md-12">
-                <label class="form-label">Address</label>
-                <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Country</label>
-                <input type="text" name="CountryCode" class="form-control" maxlength="2" value="@order.CounterpartyCountryCode" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Email</label>
-                <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
-            </div>
-            <div class="col-md-12">
-                <button type="submit" class="btn btn-primary">Save counterparty</button>
-            </div>
-        </form>
+        <table class="table table-sm mb-3">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Reference</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var payment in order.Payments.OrderBy(p => p.ReceivedAt))
+                {
+                    <tr>
+                        <td>@payment.ReceivedAt.ToAuditMinuteTimestamp() UTC</td>
+                        <td><span class="badge bg-secondary">@payment.Method</span></td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(payment.StripePaymentIntentId ?? payment.ExternalRef))
+                            {
+                                <code>@(payment.StripePaymentIntentId ?? payment.ExternalRef)</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted">&mdash;</span>
+                            }
+                        </td>
+                        <td class="text-end @(payment.AmountEur < 0 ? "text-danger" : "")">&euro;@payment.AmountEur.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="3" class="text-end">Total payments</td>
+                    <td class="text-end">&euro;@order.PaymentsTotalEur.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
     }
     else
     {
-        <dl class="row">
-            <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
-            <dt class="col-sm-3">VAT / NIF / CIF</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
-            <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
-            <dt class="col-sm-3">Country</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
-            <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
-        </dl>
+        <p class="text-muted">No payments recorded yet.</p>
     }
 
-    <h2 class="h4 mb-3">Payments</h2>
     @if (order.BalanceEur > 0 && Model.CanPay)
     {
         if (Model.IsStripeConfigured)
@@ -224,6 +259,55 @@ else
     {
         <p class="text-muted">Payments are recorded by the finance team.</p>
     }
+
+    <h2 class="h4 mb-3 mt-4">
+        <button class="btn btn-link p-0 text-reset text-decoration-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#counterpartyCollapse"
+                aria-expanded="false" aria-controls="counterpartyCollapse">
+            <i class="fa-solid fa-chevron-down me-1 small"></i> Counterparty (for invoice)
+        </button>
+    </h2>
+    <div class="collapse" id="counterpartyCollapse">
+        @if (Model.CanEdit)
+        {
+            <form asp-action="UpdateCounterparty" asp-route-id="@order.Id" method="post" class="row g-3 mb-4">
+                @Html.AntiForgeryToken()
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">VAT / NIF / CIF</label>
+                    <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Address</label>
+                    <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Country</label>
+                    <input type="text" name="CountryCode" class="form-control" maxlength="2" value="@order.CounterpartyCountryCode" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary">Save counterparty</button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <dl class="row">
+                <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
+                <dt class="col-sm-3">VAT / NIF / CIF</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
+                <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
+                <dt class="col-sm-3">Country</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
+                <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
+            </dl>
+        }
+    </div>
 }
 else
 {

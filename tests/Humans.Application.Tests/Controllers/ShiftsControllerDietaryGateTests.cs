@@ -26,17 +26,11 @@ using NSubstitute;
 namespace Humans.Application.Tests.Controllers;
 
 /// <summary>
-/// Coverage for ShiftsController.SignUp's dietary-info gate. Before delegating
-/// to ShiftSignupService.SignUpAsync, the controller checks whether the target
-/// shift qualifies for a cantina meal (all-day or ≥6h) and the user's
-/// DietaryPreference is empty. If both true, the user is redirected to the
-/// DietaryMedical form with returnAction=signup&amp;shiftId so the form-completion
-/// handler can replay the signup.
-///
-/// The privileged-actor case is load-bearing: privileged signup approvers can
-/// bypass capacity validation but MUST still pass through the dietary gate when
-/// signing themselves up — otherwise admins doing self-signup on long shifts
-/// would skip the very nudge the feature exists to deliver.
+/// Coverage for the dietary-blocked flag surfaced on My Shifts. Mine() calls
+/// ComputeSignupsBlockedByMissingDietaryAsync, which sets
+/// MyShiftsViewModel.SignupsBlockedByMissingDietary true only when the user has a
+/// qualifying cantina signup (all-day or ≥6h) AND an empty DietaryPreference. The
+/// rota-table Sign-Up buttons read this flag to nudge the user to the dietary form.
 /// </summary>
 public class ShiftsControllerDietaryGateTests
 {
@@ -124,136 +118,6 @@ public class ShiftsControllerDietaryGateTests
                 volunteerHistory: [],
                 communicationPreferences: []));
 
-    [HumansFact]
-    public async Task SignUp_DietaryEmpty_QualifyingShift_RedirectsToDietaryMedical()
-    {
-        var shiftId = Guid.NewGuid();
-        _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        SetDietary(null);
-
-        var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
-
-        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.ActionName.Should().Be("DietaryMedical");
-        redirect.ControllerName.Should().Be("Profile");
-        redirect.RouteValues!["returnAction"].Should().Be("signup");
-        redirect.RouteValues["shiftId"].Should().Be(shiftId);
-        await _signupService.DidNotReceive()
-            .SignUpAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<ShiftSignupRequestFlags>());
-    }
-
-    [HumansFact]
-    public async Task SignUp_DietaryEmpty_NonQualifyingShift_ProceedsToSignup()
-    {
-        var shiftId = Guid.NewGuid();
-        _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: false));
-        SetDietary(null);
-        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
-
-        var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
-
-        await _signupService.Received(1)
-            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
-        result.Should().BeOfType<RedirectToActionResult>()
-              .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
-    }
-
-    [HumansFact]
-    public async Task SignUp_DietaryFilled_QualifyingShift_ProceedsToSignup()
-    {
-        var shiftId = Guid.NewGuid();
-        _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        SetDietary("Vegan");
-        _signupService.SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
-
-        var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
-
-        await _signupService.Received(1)
-            .SignUpAsync(_user.Id, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
-        result.Should().BeOfType<RedirectToActionResult>()
-              .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
-    }
-
-    [HumansFact]
-    public async Task SignUp_DietaryEmpty_QualifyingShift_PrivilegedActor_StillRedirects()
-    {
-        // The actor IS the user being signed up in ShiftsController.SignUp.
-        // Privileged-actor only relaxes signup validation; it does not bypass the
-        // dietary gate.
-        var shiftId = Guid.NewGuid();
-        _identity.AddClaim(new Claim(ClaimTypes.Role, RoleNames.Admin));
-
-        _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(BuildShift(shiftId, qualifiesForCantina: true));
-        SetDietary(null);
-
-        var result = await _controller.SignUp(shiftId, null, null, null, null, null, null, null);
-
-        result.Should().BeOfType<RedirectToActionResult>()
-              .Which.ActionName.Should().Be("DietaryMedical");
-        await _signupService.DidNotReceive()
-            .SignUpAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<Guid>(),
-                Arg.Any<Guid?>(),
-                Arg.Any<ShiftSignupRequestFlags>());
-    }
-
-    [HumansFact]
-    public async Task SignUpRange_DietaryEmpty_RangeHasQualifyingShift_RedirectsToDietaryMedical()
-    {
-        var rotaId = Guid.NewGuid();
-        SetRotaView(rotaId, BuildShift(Guid.NewGuid(), qualifiesForCantina: true));
-        SetDietary(null);
-
-        var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
-
-        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.ActionName.Should().Be("DietaryMedical");
-        redirect.ControllerName.Should().Be("Profile");
-        redirect.RouteValues!["returnAction"].Should().Be("signuprange");
-        redirect.RouteValues["rotaId"].Should().Be(rotaId);
-        redirect.RouteValues["startDayOffset"].Should().Be(0);
-        redirect.RouteValues["endDayOffset"].Should().Be(2);
-        await _signupService.DidNotReceive().SignUpRangeAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<int>(),
-            Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
-    }
-
-    [HumansFact]
-    public async Task SignUpRange_DietaryEmpty_RangeEmpty_ProceedsToSignup()
-    {
-        var rotaId = Guid.NewGuid();
-        SetRotaView(rotaId);
-        SetDietary(null);
-        _signupService.SignUpRangeAsync(
-                _user.Id,
-                rotaId,
-                0,
-                2,
-                Arg.Any<Guid?>(),
-                Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
-
-        var result = await _controller.SignUpRange(rotaId, 0, 2, null, null, null, null, null, null, null);
-
-        await _signupService.Received(1)
-            .SignUpRangeAsync(
-                _user.Id,
-                rotaId,
-                0,
-                2,
-                Arg.Any<Guid?>(),
-                Arg.Any<ShiftSignupRequestFlags>());
-        result.Should().BeOfType<RedirectToActionResult>()
-              .Which.ActionName.Should().Be(nameof(ShiftsController.Index));
-    }
-
     // ---- Lockout-flag computation on the top-level VM (Task 6.2) ----
     // ComputeSignupsBlockedByMissingDietaryAsync sets the flag the rota-table
     // Sign-Up buttons read. Mine() is the simplest action to drive: it tolerates
@@ -302,13 +166,4 @@ public class ShiftsControllerDietaryGateTests
         return result.Should().BeOfType<ViewResult>()
                      .Which.Model.Should().BeOfType<Humans.Web.Models.MyShiftsViewModel>().Subject;
     }
-
-    private void SetRotaView(Guid rotaId, params Shift[] shifts) =>
-        _shiftView.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
-            .Returns(new ShiftRotaView(rotaId, new Rota { Id = rotaId }, shifts, [], []));
-
-    // All-day shifts qualify; this is the simplest knob to flip the
-    // QualifiesForCantinaMeal() check without fabricating Duration values.
-    private static Shift BuildShift(Guid id, bool qualifiesForCantina) =>
-        new() { Id = id, IsAllDay = qualifiesForCantina };
 }

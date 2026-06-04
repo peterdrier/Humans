@@ -107,8 +107,7 @@
                                 <form asp-action="BailRange" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="signupBlockId" value="@block.Key" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            data-confirm="@string.Format(Localizer["Shifts_BailRangeConfirm"].Value, block.Count())">@Localizer["Shifts_Bail"]</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
                                 </form>
                             </div>
                         }
@@ -136,8 +135,7 @@
                                                 <form asp-action="Bail" method="post" class="d-inline">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                            data-confirm="@Localizer["Shifts_BailConfirm"].Value">@Localizer["Shifts_Bail"]</button>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
                                                 </form>
                                             </td>
                                         </tr>

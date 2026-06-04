@@ -24,6 +24,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Shifts;
@@ -70,6 +71,7 @@ public class ProfileController(
     ITicketServiceRead ticketQueryService,
     ITeamServiceRead teamService,
     ICampaignService campaignService,
+    ICampServiceRead campService,
     IEmailOutboxServiceRead emailOutboxService,
     IClock clock,
     IAuthorizationService authorizationService,
@@ -1931,7 +1933,9 @@ public class ProfileController(
             .Where(x => x.Membership is not null)
             .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
             .ToList();
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships);
+        // Camp + roles for the active season; rendered admin-only in the view.
+        var camp = await campService.GetCampUserInfoAsync(id, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, camp);
 
         return PartialView("_HumanPopover", vm);
     }

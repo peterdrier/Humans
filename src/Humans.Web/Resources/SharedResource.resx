@@ -313,6 +313,8 @@
   <data name="ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
   <data name="ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve"><value>Your burner name appears to match your legal name. Consider using a different name to protect your privacy — this name is visible to all humans.</value></data>
+  <data name="ProfileEdit_BurnerNameCollisionOne" xml:space="preserve"><value>There is 1 other human with the name '{1}' — please make sure we can tell which one is you!</value></data>
+  <data name="ProfileEdit_BurnerNameCollisionMany" xml:space="preserve"><value>There are {0} other humans with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="ProfileEdit_LegalNameHelp" xml:space="preserve"><value>Required for official documents and signing.</value></data>
   <data name="ProfileEdit_Select" xml:space="preserve"><value>Select</value></data>
   <data name="ProfileEdit_City" xml:space="preserve"><value>City</value></data>
@@ -1811,6 +1813,13 @@
   <data name="Shifts_ShiftSingular" xml:space="preserve"><value>shift</value></data>
   <data name="Shifts_ShiftPlural" xml:space="preserve"><value>shifts</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Sign Up</value></data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve"><value>Sign up</value></data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve"><value>Applied — pending</value></data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve"><value>You're signed up.</value></data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve"><value>Applied — we'll let you know.</value></data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve"><value>Removed.</value></data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve"><value>You're on — tap to remove</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Shift browsing is not yet open. Check back later!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No active event is configured. An admin needs to set up event settings first.</value></data>
   <data name="Shifts_ConfigureEvent" xml:space="preserve"><value>Configure Event Settings</value></data>
@@ -1819,8 +1828,6 @@
   <data name="Shifts_PendingApproval" xml:space="preserve"><value>Pending Approval</value></data>
   <data name="Shifts_Past" xml:space="preserve"><value>Past</value></data>
   <data name="Shifts_Bail" xml:space="preserve"><value>Bail</value></data>
-  <data name="Shifts_BailConfirm" xml:space="preserve"><value>Are you sure you want to bail?</value></data>
-  <data name="Shifts_BailRangeConfirm" xml:space="preserve"><value>Bail from all {0} days?</value><comment>{0} = number of days</comment></data>
   <data name="Shifts_WithdrawButton" xml:space="preserve"><value>Withdraw</value></data>
   <data name="Shifts_NoSignups" xml:space="preserve"><value>No shift signups yet.</value></data>
   <data name="Shifts_BrowseAvailable" xml:space="preserve"><value>Browse available shifts</value></data>
