@@ -183,4 +183,8 @@ public enum AuditAction
     EarlyEntryGranted,
     EarlyEntryUpdated,
     EarlyEntryRevoked,
+    SurveyCreated,
+    SurveyUpdated,
+    SurveyOpened,
+    SurveyClosed,
 }

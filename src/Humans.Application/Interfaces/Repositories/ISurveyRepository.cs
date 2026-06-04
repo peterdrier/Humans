@@ -1,6 +1,7 @@
 using Humans.Domain.Attributes;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -34,4 +35,13 @@ public partial interface ISurveyRepository : IRepository
 
     /// <summary>Current status of a survey, or null if it does not exist. Read-only.</summary>
     Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Sets a survey's status and stamps <c>UpdatedAt</c>. No-op if the survey does not exist.</summary>
+    Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default);
+
+    /// <summary>Invitation count per survey id (for the admin index). Surveys with no invitations are absent. Read-only.</summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default);
+
+    /// <summary>Submitted-response count per survey id (for the admin index). Drafts (<c>SubmittedAt is null</c>) excluded. Read-only.</summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default);
 }

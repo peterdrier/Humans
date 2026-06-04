@@ -3,6 +3,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Surveys;
 
@@ -50,7 +51,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         existing.ThankYou = survey.ThankYou;
         existing.DefaultCulture = survey.DefaultCulture;
         existing.AllowAnonymous = survey.AllowAnonymous;
-        existing.Status = survey.Status;
+        // Status is owned by Open/Close (SetStatusAsync) — authoring updates never change it.
         existing.OpensAt = survey.OpensAt;
         existing.ClosesAt = survey.ClosesAt;
         existing.AudienceType = survey.AudienceType;
@@ -71,6 +72,39 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
             .Where(s => s.Id == id)
             .Select(s => (SurveyStatus?)s.Status)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (survey is null) return;
+        survey.Status = status;
+        survey.UpdatedAt = updatedAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.SurveyInvitations
+            .AsNoTracking()
+            .GroupBy(i => i.SurveyId)
+            .Select(g => new { SurveyId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.SurveyId, r => r.Count);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.SurveyResponses
+            .AsNoTracking()
+            .Where(r => r.SubmittedAt != null)
+            .GroupBy(r => r.SurveyId)
+            .Select(g => new { SurveyId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.SurveyId, r => r.Count);
     }
 
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
