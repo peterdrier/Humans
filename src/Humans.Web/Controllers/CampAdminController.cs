@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Web.Authorization;

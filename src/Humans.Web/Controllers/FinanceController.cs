@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
