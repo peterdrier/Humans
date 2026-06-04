@@ -85,7 +85,7 @@
                                         @foreach (var slot in role.FilledSlots)
                                         {
                                             <div class="d-inline-flex align-items-center gap-2 border rounded-pill px-3 py-2">
-                                                <vc:human user-id="@slot.UserId" layout="AvatarName" size="48" />
+                                                <vc:human user-id="@slot.UserId" layout="AvatarName" size="56" />
                                                 @if (Model.RolesPanel.CanManage)
                                                 {
                                                     <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
