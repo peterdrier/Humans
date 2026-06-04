@@ -260,7 +260,7 @@ Print the PR URL.
 After the PR is open and **before** teardown, present **every item that needs Peter's judgment INLINE in the chat** — as a terse, numbered, actionable list, one line each: every "Flagged for human review" judgment call, every open "Question", every uncertain prune-wheat item. This is the delivery of the review; the report is only the record. Peter reviews **here, now, inline** — he does not read the report, so a sweep that ends with unresolved items sitting in the report has failed.
 
 - Phrase each as a decision he can answer in a word or two (e.g. "1. Refresh the stale §15i snapshot, or leave it frozen?"). Inline prose, never the `AskUserQuestion` tool (project rule). Don't pad with paragraph-long options.
-- Wait for his answers. Apply the resulting edits to the PR branch in the worktree, push to update the PR, and update the report's Flagged / Questions / Proposed sections to record each resolution.
+- Wait for his answers. Apply the resulting edits to the PR branch in the worktree, then **`git add` the touched files and make a new `git commit`** (the Phase 7 commit already happened — uncommitted working-tree edits will not push), update the report's Flagged / Questions / Proposed sections to record each resolution, and `git push` to update the PR. A bare `git push` without that follow-up commit sends nothing.
 - Only purely-informational notes that need **no** decision may remain solely in the report.
 - **Do not run Phase 8 (teardown) or declare the sweep done until every surfaced item is resolved or Peter explicitly defers it.** "I'll note it in the report for you to review" is the exact failure this phase exists to prevent.
 
