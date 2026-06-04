@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -503,23 +504,36 @@ public class AuthorizationPolicyTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ActiveMemberOrShiftAccess_AllowsActiveMember()
+    public async Task ActiveMemberOrShiftAccess_AllowsActiveStateUser()
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue);
+            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            UserState.Active.ToString());
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ActiveMemberOrShiftAccess);
         result.Succeeded.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task IsActiveMember_AllowsActiveMemberClaim()
+    public async Task IsActiveMember_AllowsActiveStateUser()
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue);
+            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            UserState.Active.ToString());
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.IsActiveMember);
         result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(UserState.Bare))]
+    [InlineData(nameof(UserState.Suspended))]
+    [InlineData(nameof(UserState.Rejected))]
+    public async Task IsActiveMember_DeniesNonActiveStateUser(string state)
+    {
+        var user = CreateUserWithClaim(
+            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            state);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.IsActiveMember);
+        result.Succeeded.Should().BeFalse();
     }
 
     [HumansTheory]

@@ -240,12 +240,18 @@ internal sealed partial class UserRepository : IUserRepository
         Guid userId, UserState state, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // ExecuteUpdate with the State IS NULL guard: idempotent across concurrent first-touch
-        // seeds, zero impact on already-set rows, no UpdatedAt bump.
-        var rows = await ctx.Users
-            .Where(u => u.Id == userId && u.State == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.State, state), ct);
-        return rows > 0;
+        // Load-mutate-save rather than ExecuteUpdateAsync so unit tests on the EF InMemory
+        // provider still see the update (EmailOutboxRepository does the same). The State IS NULL
+        // guard stays in code: already-seeded rows are left untouched, so the seed is idempotent.
+        // User is an IdentityUser with no UpdatedAt, so there is nothing to bump; at ~500-user
+        // single-server scale the first-touch race is immaterial (no concurrency tokens).
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null || user.State is not null)
+            return false;
+
+        user.State = state;
+        await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task ResyncStateAsync(Guid userId, CancellationToken ct = default)
