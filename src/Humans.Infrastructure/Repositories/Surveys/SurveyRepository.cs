@@ -119,6 +119,16 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         return ids.ToHashSet();
     }
 
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        // No display ordering here — the controller sorts the Send status list (hard rule).
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.SurveyInvitations
+            .AsNoTracking()
+            .Where(i => i.SurveyId == surveyId)
+            .ToListAsync(ct);
+    }
+
     public async Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

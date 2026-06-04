@@ -228,6 +228,24 @@ public sealed class SurveyService(
         return new SendResult(invitationsCreated, emailsQueued, failed);
     }
 
+    public async Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default)
+    {
+        var invitations = await repo.GetInvitationsAsync(surveyId, ct);
+        if (invitations.Count == 0) return [];
+
+        var userIds = invitations.Select(i => i.UserId).Distinct().ToList();
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+
+        return invitations.Select(i => new SurveyInviteStatus(
+            i.UserId,
+            users.TryGetValue(i.UserId, out var user) ? user.BurnerName : i.UserId.ToString(),
+            i.LatestEmailStatus,
+            i.Completed,
+            i.Started,
+            i.SentAt,
+            i.ReminderSentAt)).ToList();
+    }
+
     /// <summary>
     /// Resolves an audience predicate into the set of recipient user ids via cross-section read
     /// interfaces. No marketing opt-out filter — surveys are System/always-send.

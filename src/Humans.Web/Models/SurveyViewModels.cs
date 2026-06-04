@@ -17,6 +17,19 @@ public sealed class SurveyAdminIndexViewModel
 /// <summary>A team choice for the audience picker.</summary>
 public sealed record SurveyTeamOption(Guid Id, string Name);
 
+/// <summary>Admin Send page: header (title/status/audience), resolved audience size, and per-invite status rows (sorted in the controller).</summary>
+public sealed class SurveySendViewModel
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public SurveyStatus Status { get; init; }
+    public SurveyAudienceType? AudienceType { get; init; }
+    public int PreviewCount { get; init; }
+    public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
+
+    public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null;
+}
+
 /// <summary>
 /// Renders one input per supported culture for a localized field. <paramref name="NamePrefix"/> is the
 /// bound name without the culture key (e.g. <c>Title</c> or <c>Questions[k].Prompt</c>); the partial

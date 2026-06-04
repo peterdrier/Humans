@@ -241,4 +241,42 @@ public class SurveyServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [HumansFact]
+    public async Task GetInviteStatusesAsync_stitches_burner_names_and_falls_back_to_user_id()
+    {
+        var surveyId = Guid.NewGuid();
+        Guid known = Guid.NewGuid(), unknown = Guid.NewGuid();
+        var knownInvite = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(), SurveyId = surveyId, UserId = known,
+            SentAt = _clock.GetCurrentInstant(), LatestEmailStatus = EmailOutboxStatus.Sent,
+            Started = true, Completed = true,
+        };
+        var unknownInvite = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(), SurveyId = surveyId, UserId = unknown,
+            SentAt = _clock.GetCurrentInstant(), LatestEmailStatus = EmailOutboxStatus.Queued,
+        };
+        _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { knownInvite, unknownInvite });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [known] = UserInfoWithName(known, "Sparkle") }));
+
+        var rows = await CreateService().GetInviteStatusesAsync(surveyId);
+
+        rows.Should().HaveCount(2);
+        var knownRow = rows.Single(r => r.UserId == known);
+        knownRow.Name.Should().Be("Sparkle");
+        knownRow.EmailStatus.Should().Be(EmailOutboxStatus.Sent);
+        knownRow.Started.Should().BeTrue();
+        knownRow.Completed.Should().BeTrue();
+        rows.Single(r => r.UserId == unknown).Name.Should().Be(unknown.ToString());
+    }
+
+    private static UserInfo UserInfoWithName(Guid id, string burnerName) => new(
+        id, burnerName, false, "en", null, Instant.MinValue, null, null, null, null, null,
+        false, null, false, null, GoogleEmailStatus.Unknown, null, null, null, null, null,
+        [], [], [], null, []);
 }

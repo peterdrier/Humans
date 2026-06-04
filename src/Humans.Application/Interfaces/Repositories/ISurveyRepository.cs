@@ -48,6 +48,9 @@ public partial interface ISurveyRepository : IRepository
     /// <summary>User ids already invited to a survey (the idempotency ledger for the send wave). Read-only.</summary>
     Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default);
 
+    /// <summary>All invitations for a survey (for the admin Send status list). No display ordering — caller sorts. Read-only.</summary>
+    Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
+
     /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
     Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
 

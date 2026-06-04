@@ -41,6 +41,9 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
     /// Requires the survey to be Open with an audience.
     /// </summary>
     Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Per-invite delivery/participation status for the admin Send page, with display names stitched in. Unsorted — caller sorts.</summary>
+    Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default);
 }
 
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
@@ -90,3 +93,13 @@ public sealed record OptionInput(
 
 /// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
 public sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);
+
+/// <summary>One invitee's row on the admin Send page: display name + latest email status + funnel flags.</summary>
+public sealed record SurveyInviteStatus(
+    Guid UserId,
+    string Name,
+    EmailOutboxStatus? EmailStatus,
+    bool Completed,
+    bool Started,
+    Instant? SentAt,
+    Instant? ReminderSentAt);

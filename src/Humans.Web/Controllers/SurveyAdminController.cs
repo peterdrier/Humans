@@ -108,6 +108,47 @@ public class SurveyAdminController(
         return RedirectToAction(nameof(Edit), new { id });
     }
 
+    [HttpGet("Send/{id:guid}")]
+    public async Task<IActionResult> Send(Guid id, CancellationToken ct)
+    {
+        var detail = await surveyService.GetForEditAsync(id, ct);
+        if (detail is null) return NotFound();
+
+        var previewCount = await surveyService.PreviewAudienceCountAsync(id, ct);
+        var statuses = await surveyService.GetInviteStatusesAsync(id, ct);
+
+        var vm = new SurveySendViewModel
+        {
+            Id = detail.Id,
+            Title = detail.Editable.Title.Resolve(detail.Editable.DefaultCulture, detail.Editable.DefaultCulture),
+            Status = detail.Status,
+            AudienceType = detail.Editable.AudienceType,
+            PreviewCount = previewCount,
+            Invitations = statuses.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+        };
+        return View(vm);
+    }
+
+    [HttpPost("Send/{id:guid}")]
+    [ActionName(nameof(Send))]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendInvites(Guid id, CancellationToken ct)
+    {
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Forbid();
+
+        try
+        {
+            var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
+            SetSuccess($"Sent {result.InvitationsCreated} new invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Send), new { id });
+    }
+
     private async Task RunStatusTransitionAsync(Func<Task> transition, string success)
     {
         try

@@ -1,0 +1,110 @@
+@using Humans.Application.Interfaces.Surveys
+@using Humans.Domain.Enums
+@using NodaTime
+@using NodaTime.Text
+@model Humans.Web.Models.SurveySendViewModel
+
+@{
+    ViewData["Title"] = "Send survey";
+
+    var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var instantPattern = ZonedDateTimePattern.CreateWithInvariantCulture("dd MMM yyyy HH:mm", DateTimeZoneProviders.Tzdb);
+
+    string FormatInstant(Instant? instant) =>
+        instant is null ? "—" : instantPattern.Format(instant.Value.InZone(zone));
+
+    static string StatusBadge(SurveyStatus s) => s switch
+    {
+        SurveyStatus.Open => "bg-success",
+        SurveyStatus.Closed => "bg-secondary",
+        _ => "bg-warning text-dark",
+    };
+
+    static string EmailBadge(EmailOutboxStatus? s) => s switch
+    {
+        EmailOutboxStatus.Sent => "bg-success",
+        EmailOutboxStatus.Failed => "bg-danger",
+        EmailOutboxStatus.Queued => "bg-info text-dark",
+        _ => "bg-light text-dark",
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">Surveys</a></li>
+        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Send</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
+    <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-3">
+    <div class="card-body">
+        @if (Model.AudienceType is null)
+        {
+            <p class="text-muted mb-0">No audience is set. Choose an audience in the <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">builder</a> before sending.</p>
+        }
+        else
+        {
+            <p class="mb-2">Audience: <strong>@Model.AudienceType</strong>, ~@Model.PreviewCount recipient(s).</p>
+        }
+
+        @if (Model.Status != SurveyStatus.Open)
+        {
+            <p class="text-muted mb-0">The survey must be <strong>Open</strong> to send invitations. Open it from the <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">builder</a> first.</p>
+        }
+        else if (Model.CanSend)
+        {
+            <form asp-controller="SurveyAdmin" asp-action="Send" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary" data-confirm="Send invitations to the current audience? Already-invited people are skipped.">Send invitations</button>
+            </form>
+        }
+    </div>
+</div>
+
+<h2 class="h5">Invitations</h2>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Sent</th>
+                    <th>Email status</th>
+                    <th>Reminder</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Invitations.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">No invitations sent yet.</td></tr>
+                }
+                @foreach (var inv in Model.Invitations)
+                {
+                    <tr>
+                        <td>@inv.Name</td>
+                        <td>@FormatInstant(inv.SentAt)</td>
+                        <td><span class="badge @EmailBadge(inv.EmailStatus)">@(inv.EmailStatus?.ToString() ?? "—")</span></td>
+                        <td>@FormatInstant(inv.ReminderSentAt)</td>
+                        <td>@(inv.Started ? "Yes" : "—")</td>
+                        <td>@(inv.Completed ? "Yes" : "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">Back to builder</a>
+</div>
