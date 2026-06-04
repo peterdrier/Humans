@@ -619,6 +619,17 @@ public enum ShiftSignupsViewMode
     Admin
 }
 
+/// <summary>
+/// How a shift table renders its signup affordance.
+/// FormPost = legacy range form + per-shift POST (OnboardingWidget wizard).
+/// InstantToggle = per-day AJAX toggle button (the /Shifts browse page).
+/// </summary>
+public enum ShiftSignupInteraction
+{
+    FormPost,
+    InstantToggle
+}
+
 public class ShiftSignupsViewModel
 {
     public List<MySignupItem> Upcoming { get; set; } = [];
@@ -676,6 +687,9 @@ public class BuildStrikeRotaTableViewModel
     /// inline rota table posts back into the widget flow.</summary>
     public string SignUpRangeController { get; set; } = "Shifts";
     public string SignUpRangeAction { get; set; } = "SignUpRange";
+
+    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
 public class EventRotaTableViewModel
@@ -705,6 +719,9 @@ public class EventRotaTableViewModel
     /// inline rota table posts back into the widget flow.</summary>
     public string SignUpController { get; set; } = "Shifts";
     public string SignUpAction { get; set; } = "SignUp";
+
+    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
 // === No-Show History ===
@@ -716,4 +733,38 @@ public class NoShowHistoryItem
     public string ShiftDateLabel { get; set; } = string.Empty;
     public string? MarkedByName { get; set; }
     public string? MarkedAtLabel { get; set; }
+}
+
+// === Rota Row View Models ===
+
+/// <summary>One Build/Strike all-day day-row. Action cell varies by Interaction.</summary>
+public class BuildStrikeRotaRowViewModel
+{
+    public ShiftDisplayItem Item { get; set; } = null!;
+    public EventSettings Es { get; set; } = null!;
+    public bool IsSignedUp { get; set; }
+    public bool SignupsBlockedByMissingDietary { get; set; }
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+}
+
+/// <summary>One timed Event-shift row. Action cell varies by Interaction; FormPost reuses the per-row signup form.</summary>
+public class EventRotaRowViewModel
+{
+    public ShiftDisplayItem Item { get; set; } = null!;
+    public EventSettings Es { get; set; } = null!;
+    public bool IsSignedUp { get; set; }
+    public SignupStatus? SignupStatus { get; set; }
+    public bool SignupsBlockedByMissingDietary { get; set; }
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+
+    // FormPost-only: where the per-row signup form posts, plus filter context for the PRG redirect.
+    public string SignUpController { get; set; } = "Shifts";
+    public string SignUpAction { get; set; } = "SignUp";
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public IReadOnlyList<string> FilterPeriods { get; set; } = [];
+    public IReadOnlyList<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
 }
