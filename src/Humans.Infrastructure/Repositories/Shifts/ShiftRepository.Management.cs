@@ -427,11 +427,16 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .ToListAsync(ct);
     }
 
-    public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
-        => ConfirmedSignupCountsByUserAsync(
-            su => su.Shift.Rota.TeamId == teamId && su.Shift.Rota.EventSettingsId == eventSettingsId,
+    public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+            return Task.FromResult<IReadOnlyDictionary<Guid, int>>(new Dictionary<Guid, int>());
+
+        return ConfirmedSignupCountsByUserAsync(
+            su => teamIds.Contains(su.Shift.Rota.TeamId) && su.Shift.Rota.EventSettingsId == eventSettingsId,
             ct);
+    }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(
         Guid rotaId, CancellationToken ct = default)

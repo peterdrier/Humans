@@ -144,7 +144,14 @@ public sealed class ShiftManagementService(
     {
         var active = await repo.GetActiveEventSettingsAsync(ct);
         if (active is null) return new Dictionary<Guid, int>();
-        return await repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, active.Id, ct);
+
+        // Span the SAME team-set the volunteer sign-up link expands a department to
+        // (team + its non-promoted sub-teams). The obligation link is
+        // /Shifts?departmentId={teamId}, resolved by ResolveDepartmentTeamIdsAsync in the
+        // browse path — so a signup made on a non-promoted sub-team's rota counts toward the
+        // parent's obligation, matching what the link reaches. (Flat team → just {teamId}.)
+        var teamIds = await ResolveDepartmentTeamIdsAsync(teamId) ?? new HashSet<Guid> { teamId };
+        return await repo.GetConfirmedSignupCountsByUserForTeamsAsync(teamIds, active.Id, ct);
     }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForRotaAsync(

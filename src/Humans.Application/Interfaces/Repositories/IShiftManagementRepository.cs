@@ -177,14 +177,16 @@ public partial interface IShiftManagementRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Confirmed-signup counts grouped by user id, across every rota the team
-    /// owns in <paramref name="eventSettingsId"/>. The service resolves the
-    /// active event id via <see cref="GetActiveEventSettingsAsync"/> and passes
-    /// it in (no second EventSettings read site). Backs the Shifts cross-section
-    /// read surface.
+    /// Confirmed-signup counts grouped by user id, across every rota owned by any
+    /// team in <paramref name="teamIds"/> in <paramref name="eventSettingsId"/>.
+    /// The service passes the SAME team-id set the volunteer browse expands a
+    /// department to (team + non-promoted sub-teams), so the obligation count
+    /// matches what the sign-up link reaches. The service resolves the active
+    /// event id via <see cref="GetActiveEventSettingsAsync"/> and passes it in (no
+    /// second EventSettings read site). Backs the Shifts cross-section read surface.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamAsync(
-        Guid teamId, Guid eventSettingsId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByUserForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Confirmed-signup counts grouped by user id, scoped to a single rota. A

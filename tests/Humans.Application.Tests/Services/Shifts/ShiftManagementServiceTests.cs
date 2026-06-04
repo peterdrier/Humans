@@ -1383,7 +1383,57 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         result.Should().BeEmpty();
         await repo.DidNotReceiveWithAnyArgs()
-            .GetConfirmedSignupCountsByUserForTeamAsync(Guid.Empty, Guid.Empty, CancellationToken.None);
+            .GetConfirmedSignupCountsByUserForTeamsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Guid.Empty, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task GetConfirmedSignupCountsByUserForTeam_CountsNonPromotedSubTeamRotaSignups()
+    {
+        // The obligation count must span the SAME team-set the sign-up link expands a
+        // department to (team + non-promoted sub-teams). A confirmed signup on a
+        // NON-PROMOTED sub-team's rota must count toward the parent team's obligation,
+        // because /Shifts?departmentId={parent} reaches that rota.
+        var (es, parentRota) = SeedRotaScenario(RotaPeriod.Event);
+        var parentTeamId = parentRota.TeamId;
+
+        var subTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Sober Camp",
+            Slug = "sober-camp",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = parentTeamId,
+            IsPromotedToDirectory = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        Db.Teams.Add(subTeam);
+
+        var subRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = subTeam.Id,
+            Name = "Sober Camp Rota",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+            EventSettings = es
+        };
+        Db.Rotas.Add(subRota);
+
+        var subShift = SeedShift(subRota, dayOffset: 1);
+        var user = SeedUser("Sober Volunteer");
+        SeedSignup(subShift, user, SignupStatus.Confirmed);
+        await Db.SaveChangesAsync();
+
+        // Querying the PARENT team's obligation count picks up the sub-team's signup.
+        var result = await _service.GetConfirmedSignupCountsByUserForTeamAsync(parentTeamId);
+
+        result.Should().ContainKey(user.Id).WhoseValue.Should().Be(1);
     }
 
     // ============================================================

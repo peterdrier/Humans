@@ -117,7 +117,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     // ─────────────────────────────────────────────────────────
 
     [HumansFact]
-    public async Task GetConfirmedSignupCountsByUserForTeamAsync_GroupsConfirmedAcrossRotas_ExcludesPendingAndOtherTeams()
+    public async Task GetConfirmedSignupCountsByUserForTeamsAsync_GroupsConfirmedAcrossRotas_ExcludesPendingAndOtherTeams()
     {
         var (es, teamId) = await SeedActiveEventWithTeamAsync();
         var rotaA = await SeedRotaInAsync(es.Id, teamId, "A");
@@ -144,7 +144,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             (user2, shiftA, SignupStatus.Pending),     // excluded (pending)
             (user3, shiftOther, SignupStatus.Confirmed)); // excluded (other team)
 
-        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, es.Id);
+        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamsAsync([teamId], es.Id);
 
         counts.Should().HaveCount(2);
         counts[user1].Should().Be(2);
@@ -153,7 +153,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetConfirmedSignupCountsByUserForTeamAsync_ScopesToGivenEvent_ExcludesOtherEvents()
+    public async Task GetConfirmedSignupCountsByUserForTeamsAsync_ScopesToGivenEvent_ExcludesOtherEvents()
     {
         var (es, teamId) = await SeedActiveEventWithTeamAsync();
         var rota = await SeedRotaInAsync(es.Id, teamId, "R");
@@ -174,7 +174,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             (user1, shift, SignupStatus.Confirmed),       // counts (active event)
             (user1, otherShift, SignupStatus.Confirmed)); // excluded (other event)
 
-        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamAsync(teamId, es.Id);
+        var counts = await _repo.GetConfirmedSignupCountsByUserForTeamsAsync([teamId], es.Id);
 
         counts.Should().ContainKey(user1).WhoseValue.Should().Be(1);
     }
