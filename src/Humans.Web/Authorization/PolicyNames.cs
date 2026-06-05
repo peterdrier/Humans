@@ -55,6 +55,15 @@ public static class PolicyNames
     public const string BoardOnly = nameof(BoardOnly);
 
     /// <summary>
+    /// Read-only Barrios compliance matrix: CampAdmin OR Admin OR a coordinator /
+    /// management role-holder on any team or sub-team. Broader than
+    /// <see cref="CampAdminOrAdmin"/> (which gates the camp-management surface) so
+    /// team coordinators can also see role staffing across barrios. Composite
+    /// policy requiring a custom authorization handler.
+    /// </summary>
+    public const string CampComplianceAccess = nameof(CampComplianceAccess);
+
+    /// <summary>
     /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,
     /// TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, NoInfoAdmin,
     /// VolunteerCoordinator, or ConsentCoordinator. Gates the admin-shell entry

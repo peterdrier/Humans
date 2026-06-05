@@ -535,22 +535,4 @@ public class CampAdminController(
         }
         return RedirectToAction(nameof(Index));
     }
-
-    [HttpGet("Compliance")]
-    public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
-    {
-        var settings = await campService.GetSettingsAsync(ct);
-        var resolvedYear = year ?? settings.PublicYear;
-        var report = await campRoleService.GetComplianceReportAsync(resolvedYear, ct);
-
-        var vm = new CampRoleComplianceViewModel
-        {
-            Year = report.Year,
-            Camps = report.Camps.Select(c => new CampRoleComplianceCampRowViewModel(
-                c.CampId, c.CampName, c.CampSlug, c.CampSeasonId,
-                c.Roles.Select(r => new CampRoleComplianceRoleRowViewModel(r.DefinitionName, r.MinimumRequired, r.Filled, r.IsMet)).ToList(),
-                c.IsCompliant)).ToList(),
-        };
-        return View(vm);
-    }
 }

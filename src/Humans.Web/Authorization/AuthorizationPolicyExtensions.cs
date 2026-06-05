@@ -23,6 +23,7 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, ContainerAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
@@ -75,6 +76,12 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.CampAdmin, RoleNames.Admin));
+
+            // CampAdmin/Admin OR any team coordinator — the OR (including the
+            // team-coordinator lookup) lives in CampComplianceAccessHandler so the
+            // policy is a single requirement (policy requirements AND together).
+            options.AddPolicy(PolicyNames.CampComplianceAccess, policy =>
+                policy.AddRequirements(new CampComplianceAccessRequirement()));
 
             options.AddPolicy(PolicyNames.TicketAdminBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.TicketAdmin, RoleNames.Admin, RoleNames.Board));

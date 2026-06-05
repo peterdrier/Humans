@@ -382,31 +382,6 @@ public sealed class CampRoleService(
         return deleted;
     }
 
-    public async Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
-    {
-        var requiredDefs = (await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
-            .Where(d => d.MinimumRequired > 0)
-            .ToList();
-
-        var camps = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
-        var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
-        var countLookup = counts.ToLookup(c => c.CampSeasonId);
-
-        var rows = camps.Select(c =>
-        {
-            var roles = requiredDefs.Select(def =>
-            {
-                var filled = countLookup[c.CampSeasonId].FirstOrDefault(r => r.DefinitionId == def.Id).Count;
-                return new CampRoleComplianceRoleRow(def.Id, def.Name, def.MinimumRequired, filled, filled >= def.MinimumRequired);
-            }).ToList();
-
-            var allMet = roles.All(r => r.IsMet);
-            return new CampRoleComplianceCampRow(c.CampId, c.CampName, c.CampSlug, c.CampSeasonId, roles, allMet);
-        }).ToList();
-
-        return new CampRoleComplianceReport(year, rows);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default)
     {
