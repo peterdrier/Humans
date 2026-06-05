@@ -58,6 +58,9 @@ export async function liveLoginAndSave(context: BrowserContext, slug: string): P
 async function loginAs(page: Page, slug: string): Promise<void> {
   const state = JSON.parse(fs.readFileSync(authFile(slug), 'utf-8'));
   await page.context().addCookies(state.cookies);
+  // Land on the authenticated home, matching the old /dev/login flow's redirect,
+  // so callers that don't navigate themselves (e.g. login.spec) still see the nav.
+  await page.goto('/');
 }
 
 export const loginAsVolunteer = (page: Page) => loginAs(page, 'volunteer');
