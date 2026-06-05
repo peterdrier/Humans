@@ -8,7 +8,7 @@
     // in a web request, so CurrentCulture is the user's); the surrounding
     // labels are still resx-localized.
     private static string FormatLong(LocalDate? d) =>
-        d.HasValue ? d.Value.ToDisplayWeekdayDate() : "";
+        d.HasValue ? d.Value.ToDate() : "";
 
     // Short abbreviations for column headers so the matrix stays narrow.
     // Full name in the title= attribute keeps the header accessible.

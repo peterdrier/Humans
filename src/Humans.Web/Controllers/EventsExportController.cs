@@ -129,7 +129,7 @@ public class EventsExportController(
             .OrderBy(g => g.Key)
             .Select(g => new PrintGuideDayGroup
             {
-                DayLabel = LocalDate.FromDateTime(g.Key).ToDisplayWeekdayDayMonth(),
+                DayLabel = LocalDate.FromDateTime(g.Key).ToWeekdayDayMonth(),
                 Entries = g.OrderBy(e => e.StartAt).ToList()
             })
             .ToList();

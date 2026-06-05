@@ -223,7 +223,7 @@ public class CampAdminController(
     }
 
     private static string EeStartDateSuccessMessage(LocalDate? date) =>
-        date.HasValue ? $"EE start date set to {date.Value.ToDisplayDate()}." : "EE start date cleared.";
+        date.HasValue ? $"EE start date set to {date.Value.ToDate()}." : "EE start date cleared.";
 
     private static (bool Ok, LocalDate? Value, string? Error) TryParseEeStartDate(string? input)
     {

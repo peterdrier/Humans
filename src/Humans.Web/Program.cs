@@ -467,7 +467,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
-// Wire IHttpContextAccessor so Instant.ToDisplay*() picks up session timezone.
+// Wire IHttpContextAccessor so the ambient Instant display formatters pick up session timezone.
 DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
 
 // Post-Build so the parameterless enricher activator can read ambient HttpContext per log emission.

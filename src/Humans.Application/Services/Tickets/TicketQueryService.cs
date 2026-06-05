@@ -319,7 +319,7 @@ public sealed class TicketQueryService(
                 var sunday = monday.PlusDays(6);
                 return new WeeklySalesAggregate
                 {
-                    WeekLabel = $"{monday.ToDisplayMonthDay()} – {sunday.ToDisplayMonthDay()}",
+                    WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
                     OrderCount = g.Count(),

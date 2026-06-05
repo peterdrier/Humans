@@ -167,7 +167,7 @@ else
                 <option value="">Choose a product…</option>
                 @foreach (var product in Model.Catalog)
                 {
-                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceInclVatEur.ToString("N2") incl. VAT (deadline @product.OrderableUntil.ToDisplayDate())</option>
+                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceInclVatEur.ToString("N2") incl. VAT (deadline @product.OrderableUntil.ToDate())</option>
                 }
             </select>
         </div>

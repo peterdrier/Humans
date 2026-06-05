@@ -58,7 +58,7 @@
                         var date = Model.GateOpeningDate.PlusDays(d);
                         <th class="text-center" style="font-size: 0.7rem;">
                             <div>@date.Day</div>
-                            <div class="text-muted">@date.ToDisplayMonthAbbrev()</div>
+                            <div class="text-muted">@date.ToMonthAbbrev()</div>
                         </th>
                     }
                 </tr>
@@ -90,7 +90,7 @@
                                 @if (row.BarrioSetupStartDate.HasValue)
                                 {
                                     <span class="badge bg-primary ms-1">
-                                        <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
+                                        <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDate()
                                     </span>
                                 }
                             </div>
@@ -105,12 +105,12 @@
                                         data-bs-toggle="popover"
                                         data-bs-trigger="manual"
                                         aria-describedby="@cellId"
-                                        title="@displayName · @date.ToDisplayDate()"
+                                        title="@displayName · @date.ToDate()"
                                         aria-label="@CellAria(cell.State)">
                                     <span class="visually-hidden">@CellAria(cell.State)</span>
                                 </button>
                                 <div class="vt-popover-content d-none">
-                                    <div class="fw-semibold mb-1">@date.ToDisplayDate()</div>
+                                    <div class="fw-semibold mb-1">@date.ToDate()</div>
                                     @if (IsAvailable(cell.State))
                                     {
                                         <div class="mb-2">

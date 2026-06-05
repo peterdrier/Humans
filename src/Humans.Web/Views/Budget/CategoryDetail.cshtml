@@ -166,7 +166,7 @@
                             </td>
                             <td>@(item.ResponsibleTeamName ?? "\u2014")</td>
                             <td class="text-muted">@(item.Notes ?? "")</td>
-                            <td>@item.ExpectedDate?.ToDisplayDate()</td>
+                            <td>@item.ExpectedDate?.ToDate()</td>
                             @if (Model.CanEdit)
                             {
                                 <td class="text-end">
@@ -361,7 +361,7 @@
                                     <span class="badge bg-success">VAT Credit</span>
                                 }
                             </td>
-                            <td>@vat.SettlementDate.ToDisplayDate()</td>
+                            <td>@vat.SettlementDate.ToDate()</td>
                         </tr>
                     }
                 </tbody>

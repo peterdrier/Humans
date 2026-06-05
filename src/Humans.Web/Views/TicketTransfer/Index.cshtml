@@ -103,7 +103,7 @@
                         <div><strong>@r.OriginalAttendeeName</strong> → @r.ReceiverLegalName
                             <span class="text-muted">(@r.ReceiverEmail)</span></div>
                         <small class="text-muted">
-                            Requested @r.RequestedAt.ToDisplayDateTime()@(string.IsNullOrWhiteSpace(r.AdminNotes) ? "" : $" · {r.AdminNotes}")
+                            Requested @r.RequestedAt.ToDateTime()@(string.IsNullOrWhiteSpace(r.AdminNotes) ? "" : $" · {r.AdminNotes}")
                         </small>
                     </div>
                     <div class="d-flex align-items-center gap-2">

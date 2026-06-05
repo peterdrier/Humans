@@ -30,7 +30,7 @@
         {
             <div>
                 Order <strong>@Model.OrderVendorId</strong>
-                purchased on <strong>@Model.OrderPurchasedAt.ToDisplayDate()</strong>
+                purchased on <strong>@Model.OrderPurchasedAt.ToDate()</strong>
                 @if (ticketPosition is not null)
                 {
                     <text>, @ticketPosition</text>
@@ -86,7 +86,7 @@
 
 <dl class="row">
     <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@row.SenderReason</dd>
-    <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@row.RequestedAt.ToDisplayDateTime()</dd>
+    <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@row.RequestedAt.ToDateTime()</dd>
     @if (!string.IsNullOrEmpty(row.AdminNotes))
     {
         <dt class="col-sm-3">Admin notes</dt><dd class="col-sm-9">@row.AdminNotes</dd>

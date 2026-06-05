@@ -8,9 +8,9 @@
     // renders in a web request, so CurrentCulture is the user's); the
     // surrounding labels are still resx-localized.
     private static string FormatDay(LocalDate? d) =>
-        d.HasValue ? d.Value.ToDisplayWeekdayDayMonth() : "";
+        d.HasValue ? d.Value.ToWeekdayDayMonth() : "";
 
-    private static string FormatDay(LocalDate d) => d.ToDisplayWeekdayDayMonth();
+    private static string FormatDay(LocalDate d) => d.ToWeekdayDayMonth();
 }
 
 @{

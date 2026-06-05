@@ -1240,7 +1240,7 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
 
     private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToDisplayMonthDay()}–{sunday.ToDisplayMonthDay()}";
+        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 
     private static void RemoveProjectedItems(HumansDbContext ctx, BudgetCategory category)

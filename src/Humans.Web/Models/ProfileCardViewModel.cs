@@ -66,7 +66,7 @@ public class ProfileCardViewModel
             try
             {
                 var date = new LocalDate(4, BirthdayMonth.Value, BirthdayDay.Value);
-                return date.ToDisplayMonthDay();
+                return date.ToWeekdayDayMonth();
             }
             catch (ArgumentOutOfRangeException)
             {

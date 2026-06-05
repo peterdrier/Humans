@@ -274,7 +274,7 @@
                                 <strong>@year:</strong>
                                 @if (lockDate.HasValue)
                                 {
-                                    @lockDate.Value.ToDisplayDate()
+                                    @lockDate.Value.ToDate()
                                 }
                                 else
                                 {
@@ -333,7 +333,7 @@
             EE start date:
             @if (Model.EeStartDate.HasValue)
             {
-                <strong>@Model.EeStartDate.Value.ToDisplayDate()</strong>
+                <strong>@Model.EeStartDate.Value.ToDate()</strong>
             }
             else
             {

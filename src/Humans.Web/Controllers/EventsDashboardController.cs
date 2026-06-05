@@ -67,7 +67,7 @@ public class EventsDashboardController(IEventService guide, ICampServiceRead cam
                 .OrderBy(kv => kv.Key)
                 .Select(kv => new DayCoverageRow
                 {
-                    DayLabel = gateOpeningDate.Value.PlusDays(kv.Key).ToDisplayWeekdayDayMonth(),
+                    DayLabel = gateOpeningDate.Value.PlusDays(kv.Key).ToWeekdayDayMonth(),
                     ApprovedCount = kv.Value
                 }).ToList();
         }

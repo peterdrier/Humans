@@ -388,8 +388,8 @@ public class EventsController(
                 DurationMinutes = e.DurationMinutes,
                 DayOffset = dayOffset,
                 DayLabel = gateOpeningDate != null
-                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToDisplayWeekdayDayMonth()
-                    : localStart.ToDisplayWeekdayDayMonth(),
+                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
+                    : localStart.ToWeekdayDayMonth(),
                 StartInstant = e.StartAt,
                 HasConflict = false
             };
@@ -510,7 +510,7 @@ public class EventsController(
                 eventDays.Add(new EventDayOptionViewModel
                 {
                     DayOffset = offset,
-                    Label = date.ToDisplayWeekdayDayMonth()
+                    Label = date.ToWeekdayDayMonth()
                 });
             }
         }
@@ -534,8 +534,8 @@ public class EventsController(
                 {
                     DayOffset = g.Key,
                     DayLabel = gateOpeningDate != null
-                        ? gateOpeningDate.Value.PlusDays(g.Key).ToDisplayWeekdayDayMonth()
-                        : g.First().StartAt.ToDisplayWeekdayDayMonth(),
+                        ? gateOpeningDate.Value.PlusDays(g.Key).ToWeekdayDayMonth()
+                        : g.First().StartAt.ToWeekdayDayMonth(),
                     Items = g.OrderBy(i => i.StartAt).ToList()
                 }).ToList()
         };
@@ -602,7 +602,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToDisplayWeekdayDayMonth(),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }
@@ -1031,7 +1031,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToDisplayWeekdayDayMonth(),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }

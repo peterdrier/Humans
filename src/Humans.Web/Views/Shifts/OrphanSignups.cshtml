@@ -76,7 +76,7 @@
                     <tr>
                         <td><vc:human user-id="@row.UserId" /></td>
                         <td>@row.RotaName</td>
-                        <td>@row.ShiftDate.ToDisplayWeekdayDayMonth()</td>
+                        <td>@row.ShiftDate.ToWeekdayDayMonth()</td>
                         <td>
                             <span class="badge @(row.Status switch
                             {

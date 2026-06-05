@@ -105,6 +105,6 @@ public sealed class TicketingBudgetService(
 
     private static string FormatWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToDisplayMonthDay()}–{sunday.ToDisplayMonthDay()}";
+        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 }

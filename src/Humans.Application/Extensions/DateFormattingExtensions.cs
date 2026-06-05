@@ -41,73 +41,51 @@ public static class DateFormattingExtensions
     }
 
     // 1 — time (24h)
-    public static string ToDisplayTime(this DateTime value) => value.ToString("HH:mm", CultureInfo.CurrentCulture);
-    public static string? ToDisplayTime(this DateTime? value) => value?.ToDisplayTime();
-    public static string ToDisplayTime(this LocalTime value) => value.ToString("HH:mm", CultureInfo.CurrentCulture);
-    public static string ToDisplayTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToDisplayTime();
+    public static string ToTime(this DateTime value) => value.ToString("HH:mm", CultureInfo.CurrentCulture);
+    public static string? ToTime(this DateTime? value) => value?.ToTime();
+    public static string ToTime(this LocalTime value) => value.ToString("HH:mm", CultureInfo.CurrentCulture);
+    public static string ToTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToTime();
 
-    // 2 — month + day
-    public static string ToDisplayMonthDay(this DateTime value) => value.ToString(DisplayDatePattern(false, false), CultureInfo.CurrentCulture);
-    public static string? ToDisplayMonthDay(this DateTime? value) => value?.ToDisplayMonthDay();
-    public static string ToDisplayMonthDay(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayMonthDay();
-    public static string? ToDisplayMonthDay(this LocalDate? value) => value?.ToDisplayMonthDay();
-
-    // 3 — month + day + time ("Jun 5 @ 12:34")
-    public static string ToDisplayMonthDayTime(this DateTime value) =>
+    // 2 — month + day + time ("Jun 5 @ 12:34")
+    public static string ToMonthDayTime(this DateTime value) =>
         value.ToString(DisplayDatePattern(false, false) + " '@' HH:mm", CultureInfo.CurrentCulture);
-    public static string? ToDisplayMonthDayTime(this DateTime? value) => value?.ToDisplayMonthDayTime();
-    public static string ToDisplayMonthDayTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToDisplayMonthDayTime();
+    public static string? ToMonthDayTime(this DateTime? value) => value?.ToMonthDayTime();
+    public static string ToMonthDayTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToMonthDayTime();
 
-    // 4 — weekday + month + day
-    public static string ToDisplayWeekdayDayMonth(this DateTime value) => value.ToString(DisplayDatePattern(true, false), CultureInfo.CurrentCulture);
-    public static string? ToDisplayWeekdayDayMonth(this DateTime? value) => value?.ToDisplayWeekdayDayMonth();
-    public static string ToDisplayWeekdayDayMonth(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayWeekdayDayMonth();
-    public static string? ToDisplayWeekdayDayMonth(this LocalDate? value) => value?.ToDisplayWeekdayDayMonth();
+    // 3 — weekday + month + day
+    public static string ToWeekdayDayMonth(this DateTime value) => value.ToString(DisplayDatePattern(true, false), CultureInfo.CurrentCulture);
+    public static string? ToWeekdayDayMonth(this DateTime? value) => value?.ToWeekdayDayMonth();
+    public static string ToWeekdayDayMonth(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToWeekdayDayMonth();
+    public static string? ToWeekdayDayMonth(this LocalDate? value) => value?.ToWeekdayDayMonth();
 
-    // 5 — weekday + month + day + time
-    public static string ToDisplayWeekdayDayMonthTime(this DateTime value) =>
-        value.ToString(DisplayDatePattern(true, false) + " HH:mm", CultureInfo.CurrentCulture);
-    public static string? ToDisplayWeekdayDayMonthTime(this DateTime? value) => value?.ToDisplayWeekdayDayMonthTime();
-    public static string ToDisplayWeekdayDayMonthTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
+    // 4 — date (with year)
+    public static string ToDate(this DateTime value) => value.ToString(DisplayDatePattern(false, true), CultureInfo.CurrentCulture);
+    public static string? ToDate(this DateTime? value) => value?.ToDate();
+    public static string ToDate(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDate();
+    public static string? ToDate(this LocalDate? value) => value?.ToDate();
 
-    // 6 — date (with year)
-    public static string ToDisplayDate(this DateTime value) => value.ToString(DisplayDatePattern(false, true), CultureInfo.CurrentCulture);
-    public static string? ToDisplayDate(this DateTime? value) => value?.ToDisplayDate();
-    public static string ToDisplayDate(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayDate();
-    public static string? ToDisplayDate(this LocalDate? value) => value?.ToDisplayDate();
-
-    // 6b — weekday + date (with year)
-    public static string ToDisplayWeekdayDate(this DateTime value) => value.ToString(DisplayDatePattern(true, true), CultureInfo.CurrentCulture);
-    public static string? ToDisplayWeekdayDate(this DateTime? value) => value?.ToDisplayWeekdayDate();
-    public static string ToDisplayWeekdayDate(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayWeekdayDate();
-    public static string? ToDisplayWeekdayDate(this LocalDate? value) => value?.ToDisplayWeekdayDate();
-
-    // 7 — date + time (with year)
-    public static string ToDisplayDateTime(this DateTime value) => value.ToString(DisplayDatePattern(false, true) + " HH:mm", CultureInfo.CurrentCulture);
-    public static string? ToDisplayDateTime(this DateTime? value) => value?.ToDisplayDateTime();
-    public static string ToDisplayDateTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToDisplayDateTime();
+    // 5 — date + time (with year)
+    public static string ToDateTime(this DateTime value) => value.ToString(DisplayDatePattern(false, true) + " HH:mm", CultureInfo.CurrentCulture);
+    public static string? ToDateTime(this DateTime? value) => value?.ToDateTime();
+    public static string ToDateTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToDateTime();
 
     // Explicit-timezone Instant overloads — render in a SPECIFIED zone (e.g. an event's), not the viewer's session.
-    public static string ToDisplayTime(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayTime();
-    public static string ToDisplayMonthDay(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).Date.ToDisplayMonthDay();
-    public static string ToDisplayMonthDayTime(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayMonthDayTime();
-    public static string ToDisplayWeekdayDayMonth(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).Date.ToDisplayWeekdayDayMonth();
-    public static string ToDisplayWeekdayDayMonthTime(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
-    public static string ToDisplayDate(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).Date.ToDisplayDate();
-    public static string ToDisplayDateTime(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayDateTime();
+    public static string ToTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToTime();
+    public static string ToMonthDayTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToMonthDayTime();
+    public static string ToWeekdayDayMonth(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).Date.ToWeekdayDayMonth();
+    public static string ToDate(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).Date.ToDate();
+    public static string ToDateTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToDateTime();
 
-    // niche keepers (distinct shapes outside the 7)
-    public static string ToDisplayMonthYear(this DateTime value) => value.ToString("MMM yyyy", CultureInfo.CurrentCulture);
-    public static string? ToDisplayMonthYear(this DateTime? value) => value?.ToDisplayMonthYear();
-    public static string ToDisplayMonthAbbrev(this LocalDate value) => value.ToString("MMM", CultureInfo.CurrentCulture);
-    public static string ToDisplayMonthName(this DateTime value) => value.ToString("MMMM", CultureInfo.CurrentCulture);
+    // niche keepers (distinct shapes outside the 5)
+    public static string ToMonthYear(this DateTime value) => value.ToString("MMM yyyy", CultureInfo.CurrentCulture);
+    public static string? ToMonthYear(this DateTime? value) => value?.ToMonthYear();
+    public static string ToMonthAbbrev(this LocalDate value) => value.ToString("MMM", CultureInfo.CurrentCulture);
+    public static string ToMonthName(this DateTime value) => value.ToString("MMMM", CultureInfo.CurrentCulture);
     public static string ToTimeWithSeconds(this DateTimeOffset value) => value.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
 
     // --- Audit timestamps ---

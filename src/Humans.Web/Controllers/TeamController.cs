@@ -320,7 +320,7 @@ public class TeamController(
             }
         }
 
-        var monthName = new DateTime(2000, currentMonth, 1).ToDisplayMonthName();
+        var monthName = new DateTime(2000, currentMonth, 1).ToMonthName();
 
         var viewModel = new BirthdayCalendarViewModel
         {

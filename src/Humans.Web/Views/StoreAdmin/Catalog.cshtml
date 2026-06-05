@@ -52,7 +52,7 @@ else
                             <td class="text-end">
                                 @(p.DepositAmountEur is { } d ? d.ToString("0.00") + " €" : "—")
                             </td>
-                            <td>@p.OrderableUntil.ToDisplayDate()</td>
+                            <td>@p.OrderableUntil.ToDate()</td>
                             <td>
                                 @if (p.IsActive)
                                 {
