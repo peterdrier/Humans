@@ -110,7 +110,7 @@ public sealed class ShiftSignupService(
         if (autoConfirm && shift.IsEarlyEntry)
             earlyEntryInvalidator.InvalidateUser(userId);
 
-        var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate();
+        var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayWeekdayDayMonth();
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
@@ -293,7 +293,7 @@ public sealed class ShiftSignupService(
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
-            $"shift '{shift.Rota.Name}' on {es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()}",
+            $"shift '{shift.Rota.Name}' on {es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayWeekdayDayMonth()}",
             enrollerUserId,
             userId, nameof(User));
 
@@ -416,7 +416,7 @@ public sealed class ShiftSignupService(
         {
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayShiftDate()} (range)",
+                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayWeekdayDayMonth()} (range)",
                 enrollerUserId,
                 userId, nameof(User));
         }
@@ -547,7 +547,7 @@ public sealed class ShiftSignupService(
                 .Select(s => s.DayOffset)
                 .ToList();
             var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayWeekdayDayMonth()));
             skipMessages.Add($"Already signed up for day(s): {dayList}.");
 
             shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
@@ -576,7 +576,7 @@ public sealed class ShiftSignupService(
         if (conflictingDays.Count > 0)
         {
             var dayList = string.Join(", ", conflictingDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayWeekdayDayMonth()));
 
             if (!skipConflicts)
                 return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
@@ -611,7 +611,7 @@ public sealed class ShiftSignupService(
         if (fullDays.Count > 0)
         {
             var dayList = string.Join(", ", fullDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
+                es.GateOpeningDate.PlusDays(offset).ToDisplayWeekdayDayMonth()));
             var capacityWarning = $"Day(s) {dayList} are at capacity.";
             warning = warning is null ? capacityWarning : $"{warning} {capacityWarning}";
         }
@@ -633,7 +633,7 @@ public sealed class ShiftSignupService(
             if (fullEeDays.Count > 0)
             {
                 var eeDayList = string.Join(", ", fullEeDays.Select(offset =>
-                    es.GateOpeningDate.PlusDays(offset).ToDisplayShiftDate()));
+                    es.GateOpeningDate.PlusDays(offset).ToDisplayWeekdayDayMonth()));
                 var eeWarning = $"Early entry capacity reached for day(s): {eeDayList}.";
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
             }
@@ -684,7 +684,7 @@ public sealed class ShiftSignupService(
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupCreated,
                 nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayShiftDate()} (range, {statusSuffix})",
+                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToDisplayWeekdayDayMonth()} (range, {statusSuffix})",
                 userId,
                 userId, nameof(User));
         }
@@ -954,7 +954,7 @@ public sealed class ShiftSignupService(
             if (targetStart < existingEnd && targetEnd > existingStart)
             {
                 var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
-                var dateStr = existingStart.InZone(tz).ToDisplayShortDateTime();
+                var dateStr = existingStart.InZone(tz).ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
 
                 if (teamNames is null)
                 {
@@ -1044,7 +1044,7 @@ public sealed class ShiftSignupService(
 
             var es = rota.EventSettings;
             var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
-            var enrichedDescription = $"{changeDescription} ({rotaName}, {shiftDate.ToDisplayShiftDate()})";
+            var enrichedDescription = $"{changeDescription} ({rotaName}, {shiftDate.ToDisplayWeekdayDayMonth()})";
 
             var team = await TeamService.GetTeamAsync(teamId);
             var coordinatorIds = team?.Members

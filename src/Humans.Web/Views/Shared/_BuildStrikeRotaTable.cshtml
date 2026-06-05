@@ -56,9 +56,9 @@ else
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
-                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
-                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToDisplayShiftDate()">
-                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayWeekdayDayMonth()"
+                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToDisplayWeekdayDayMonth()">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayWeekdayDayMonth()
                     </option>
                 }
             </select>
@@ -69,9 +69,9 @@ else
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
-                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayWeekdayDayMonth()"
                             selected="@(s == availableShifts.Last() ? "selected" : null)">
-                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayWeekdayDayMonth()
                     </option>
                 }
             </select>
@@ -112,7 +112,7 @@ else
                     kv => new {
                         absStart = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteStart),
                         absEnd = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteEnd),
-                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayShiftDate()
+                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayWeekdayDayMonth()
                     })))
         </script>
         <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
@@ -315,7 +315,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                     <tr class="@(allRangeFull ? "table-secondary" : "") shift-range-header" role="button" data-range="@rangeKey" style="cursor: pointer;">
                         <td>
                             <i class="fa-solid fa-chevron-right fa-xs me-1 range-icon"></i>
-                            @rangeStart.ToDisplayShiftDate()–@rangeEnd.ToDisplayShiftDate()
+                            @rangeStart.ToDisplayWeekdayDayMonth()–@rangeEnd.ToDisplayWeekdayDayMonth()
                             <small class="text-muted">(@range.Count @Localizer["Shifts_Days"])</small>
                         </td>
                         <td style="min-width: 120px;">
@@ -355,7 +355,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                         var isFull = item.RemainingSlots <= 0;
                         var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                         <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
-                            <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                            <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayWeekdayDayMonth()</td>
                             <td style="min-width: 120px;">
                                 @{
                                     var dayFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
@@ -415,7 +415,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                     var isFull = item.RemainingSlots <= 0;
                     var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                     <tr class="@(isFull ? "table-secondary" : "")">
-                        <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                        <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayWeekdayDayMonth()</td>
                         <td style="min-width: 120px;">
                             @{
                                 var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;

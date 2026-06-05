@@ -1505,7 +1505,7 @@ public class ProfileController(
 
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             localizer["Profile_DeletionRequested"].Value,
-            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDisplayLongDate() ?? ""));
+            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDisplayDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -1907,9 +1907,9 @@ public class ProfileController(
             {
                 ShiftLabel = s.ShiftLabel,
                 DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
-                ShiftDateLabel = zoned.ToDisplayShortDateTime(),
+                ShiftDateLabel = zoned.ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime(),
                 MarkedByName = reviewer?.BurnerName,
-                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
+                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDateTimeUnspecified().ToDisplayMonthDayTime()
             };
         }).ToList());
     }

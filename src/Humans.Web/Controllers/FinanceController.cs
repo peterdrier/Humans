@@ -753,7 +753,7 @@ public class FinanceController(
                 var monday = g.Key;
                 var sunday = monday.PlusDays(6);
                 return new CashFlowPeriodGroup(
-                    $"{monday.ToDateTimeUnspecified().ToDisplayDayMonth()} - {sunday.ToDisplayDate()}",
+                    $"{monday.ToDateTimeUnspecified().ToDisplayMonthDay()} - {sunday.ToDisplayDate()}",
                     monday,
                     sunday,
                     g.ToList());

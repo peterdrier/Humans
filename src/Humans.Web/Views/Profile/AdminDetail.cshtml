@@ -61,7 +61,7 @@
                         <small class="text-muted">
                             @if (Model.RejectedAt.HasValue)
                             {
-                                @Model.RejectedAt.Value.ToDisplayLongDateTime()
+                                @Model.RejectedAt.Value.ToDisplayDateTime()
                             }
                             @if (!string.IsNullOrEmpty(Model.RejectedByName))
                             {
@@ -118,13 +118,13 @@
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
 
                     <dt class="col-sm-3">@Localizer["Admin_Joined"]</dt>
-                    <dd class="col-sm-9">@Model.CreatedAt.ToDisplayLongDateTime()</dd>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToDisplayDateTime()</dd>
 
                     <dt class="col-sm-3">@Localizer["Admin_LastLogin"]</dt>
                     <dd class="col-sm-9">
                         @if (Model.LastLoginAt.HasValue)
                         {
-                            @Model.LastLoginAt.Value.ToDisplayLongDateTime()
+                            @Model.LastLoginAt.Value.ToDisplayDateTime()
                         }
                         else
                         {

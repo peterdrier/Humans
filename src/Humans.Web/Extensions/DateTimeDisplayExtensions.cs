@@ -60,72 +60,35 @@ public static class DateTimeDisplayExtensions
     }
 
 
-    public static string ToDisplayDate(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayDate();
+    public static string ToDisplayTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayTime();
+    public static string? ToDisplayTime(this Instant? value) => value?.ToDisplayTime();
 
-    public static string? ToDisplayDate(this Instant? value) =>
-        value?.ToDisplayDate();
-
-    public static string ToDisplayDateShort(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayDayMonth();
-
-    public static string? ToDisplayDateShort(this Instant? value) =>
-        value?.ToDisplayDateShort();
-
-    public static string ToDisplayLongDate(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayLongDate();
-
-    public static string? ToDisplayLongDate(this Instant? value) =>
-        value?.ToDisplayLongDate();
-
-    public static string ToDisplayLongDateTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayLongDateTime();
-
-    public static string? ToDisplayLongDateTime(this Instant? value) =>
-        value?.ToDisplayLongDateTime();
-
-    public static string ToDisplayDateTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayDateTime();
-
-    public static string? ToDisplayDateTime(this Instant? value) =>
-        value?.ToDisplayDateTime();
-
-    public static string ToDisplayCompactDate(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayCompactDate();
-
-    public static string? ToDisplayCompactDate(this Instant? value) =>
-        value?.ToDisplayCompactDate();
-
-    public static string ToDisplayCompactDateTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayCompactDateTime();
-
-    public static string? ToDisplayCompactDateTime(this Instant? value) =>
-        value?.ToDisplayCompactDateTime();
-
-    public static string ToDisplayCompactDayTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayCompactDayTime();
-
-    public static string ToAuditTimestamp(this Instant value) =>
-        value.ToDateTimeUtc().ToAuditTimestamp();
-
-    public static string? ToAuditTimestamp(this Instant? value) =>
-        value?.ToAuditTimestamp();
-
-    public static string ToAuditMinuteTimestamp(this Instant value) =>
-        value.ToDateTimeUtc().ToAuditMinuteTimestamp();
-
-    public static string? ToAuditMinuteTimestamp(this Instant? value) =>
-        value?.ToAuditMinuteTimestamp();
-
-    public static string ToDisplayWeekdayDate(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).Date.ToDisplayWeekdayDate();
-
-    public static string ToDisplayWeekdayDateTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayWeekdayDateTime();
-
-    public static string ToDisplayWeekdayDayMonthTime(this Instant value) =>
-        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
+    public static string ToDisplayMonthDay(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).Date.ToDisplayMonthDay();
+    public static string? ToDisplayMonthDay(this Instant? value) => value?.ToDisplayMonthDay();
 
     public static string ToDisplayMonthDayTime(this Instant value) =>
         value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayMonthDayTime();
+    public static string? ToDisplayMonthDayTime(this Instant? value) => value?.ToDisplayMonthDayTime();
+
+    public static string ToDisplayWeekdayDayMonth(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).Date.ToDisplayWeekdayDayMonth();
+    public static string? ToDisplayWeekdayDayMonth(this Instant? value) => value?.ToDisplayWeekdayDayMonth();
+
+    public static string ToDisplayWeekdayDayMonthTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayWeekdayDayMonthTime();
+    public static string? ToDisplayWeekdayDayMonthTime(this Instant? value) => value?.ToDisplayWeekdayDayMonthTime();
+
+    public static string ToDisplayDate(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).Date.ToDisplayDate();
+    public static string? ToDisplayDate(this Instant? value) => value?.ToDisplayDate();
+
+    public static string ToDisplayDateTime(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayDateTime();
+    public static string? ToDisplayDateTime(this Instant? value) => value?.ToDisplayDateTime();
+
+    public static string ToDisplayMonthYear(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayMonthYear();
+    public static string? ToDisplayMonthYear(this Instant? value) => value?.ToDisplayMonthYear();
 }

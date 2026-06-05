@@ -31,14 +31,14 @@
     <dl class="row">
         <dt class="col-sm-3">First start</dt>
         <dd class="col-sm-9">
-            @firstLocal.ToDisplayWeekdayDateTime()
+            @firstLocal.ToDisplayWeekdayDayMonthTime()
             <small class="text-muted">(@Model.ViewerTimezoneLabel)</small>
         </dd>
 
         @if (endLocal is { } el)
         {
             <dt class="col-sm-3">End</dt>
-            <dd class="col-sm-9">@el.ToDisplayWeekdayDateTime()</dd>
+            <dd class="col-sm-9">@el.ToDisplayWeekdayDayMonthTime()</dd>
         }
 
         @if (Model.Event.IsAllDay)

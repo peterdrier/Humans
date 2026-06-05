@@ -256,7 +256,7 @@ public class ProfileViewModel
             if (parsed is null)
                 return null;
 
-            return parsed.Value.ToMonthDayName();
+            return parsed.Value.ToDisplayMonthDay();
         }
     }
 
@@ -507,7 +507,7 @@ public class VolunteerHistoryEntryViewModel
     {
         get
         {
-            return Date.ToMonthApostropheYear();
+            return Date.AtMidnight().ToDateTimeUnspecified().ToDisplayMonthYear();
         }
     }
 }

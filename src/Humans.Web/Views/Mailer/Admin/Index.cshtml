@@ -11,7 +11,7 @@
             @if (Model.CacheFetchedAt is { } fetched)
             {
                 <i class="fa-regular fa-clock me-1"></i>
-                <text>Cached @fetched.ToDisplayCompactDateTime()</text>
+                <text>Cached @fetched.ToDisplayDateTime()</text>
             }
             else
             {

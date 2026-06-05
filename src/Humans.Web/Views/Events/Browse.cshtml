@@ -129,7 +129,7 @@ else
                         </form>
                     </div>
                     <div class="mt-1 small text-muted">
-                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToDisplayTime24() — @item.StartAt.AddMinutes(item.DurationMinutes).ToDisplayTime24()
+                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToDisplayTime() — @item.StartAt.AddMinutes(item.DurationMinutes).ToDisplayTime()
                         (@FormatDuration(item.DurationMinutes))
                         @if (item.CampName != null)
                         {

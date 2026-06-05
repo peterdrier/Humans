@@ -36,7 +36,7 @@
 <tr class="@(isFull ? "table-secondary" : "")">
     <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}")</td>
     <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayWeekdayDayMonth()</td>
     <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
     <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
     <td style="min-width: 130px;">

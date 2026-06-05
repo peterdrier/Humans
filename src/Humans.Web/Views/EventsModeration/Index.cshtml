@@ -113,7 +113,7 @@ else
                                     }
 
                                     <dt class="col-sm-3">Date / Time</dt>
-                                    <dd class="col-sm-9">@evt.StartAt.ToDisplayWeekdayDateTime() (@evt.DurationMinutes min)</dd>
+                                    <dd class="col-sm-9">@evt.StartAt.ToDisplayWeekdayDayMonthTime() (@evt.DurationMinutes min)</dd>
 
                                     @if (!string.IsNullOrEmpty(evt.LocationNote))
                                     {
