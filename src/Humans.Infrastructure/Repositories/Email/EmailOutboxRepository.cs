@@ -1,6 +1,4 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -17,7 +15,6 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
 /// registered as Singleton while <c>HumansDbContext</c> stays Scoped.
 /// </summary>
-[Grandfathered("HUM0025", justification: "Per-key SystemSettings access shared with DriveActivityMonitorRepository (disjoint keys); split the table or route through an owning service.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "SystemSettings")]
 internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory) : IEmailOutboxRepository
 {
     // ==========================================================================
@@ -215,34 +212,4 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> f
     // Pause flag — IsEmailSendingPaused row in system_settings
     // ==========================================================================
 
-    public async Task<bool> GetSendingPausedAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var setting = await ctx.SystemSettings
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, ct);
-        return string.Equals(setting?.Value, "true", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public async Task SetSendingPausedAsync(bool paused, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var setting = await ctx.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, ct);
-        if (setting is null)
-        {
-            setting = new SystemSetting
-            {
-                Key = SystemSettingKeys.IsEmailSendingPaused,
-                Value = paused ? "true" : "false",
-            };
-            ctx.SystemSettings.Add(setting);
-        }
-        else
-        {
-            setting.Value = paused ? "true" : "false";
-        }
-
-        await ctx.SaveChangesAsync(ct);
-    }
 }

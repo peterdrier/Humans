@@ -167,8 +167,7 @@ Selected routes:
 |---|---|
 | `GET /Shifts` | Browse shifts (department/date/period/tag filters) |
 | `GET /Shifts/Mine` | Volunteer's own signups |
-| `POST /Shifts/SignUp` | Single shift signup |
-| `POST /Shifts/SignUpRange` | Date-range signup (build/strike) |
+| `POST /Shifts/ToggleDay` | Per-day instant signup/bail on the browse page (AJAX, returns the re-rendered row) |
 | `POST /Shifts/Bail` | Single bail |
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |

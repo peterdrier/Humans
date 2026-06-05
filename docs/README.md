@@ -45,6 +45,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Notification Inbox](features/notifications/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
 | [Onboarding Pipeline](features/onboarding/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
 | [Volunteer Status](features/onboarding/volunteer-status.md) | Volunteer status determined by presence in the system-managed Volunteers team requiring consent check clearance and legal document consents |
+| [Burner-Name Collision Warning](features/profiles/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
 | [Communication Preferences](features/profiles/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
 | [Feature 29: Contact Accounts](features/profiles/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
 | [Contact Fields with Granular Visibility](features/profiles/contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
@@ -69,6 +70,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Event Participation Tracking](features/tickets/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
 | [Ticket Transfer](features/tickets/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, vendor-voided and reissued under the receiver after admin approval |
 | [Ticket Vendor Integration](features/tickets/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
+| [User Search Overhaul](features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
 
 ## Section Invariants
 

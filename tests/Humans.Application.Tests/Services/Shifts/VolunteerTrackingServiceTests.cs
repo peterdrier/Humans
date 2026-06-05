@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -301,7 +300,7 @@ public class VolunteerTrackingServiceTests
         {
             new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
         };
-        var trackingRepo = new FakeVolunteerTrackingRepository(signups, [], []);
+        var trackingRepo = new FakeVolunteerTrackingRepository([], []);
         var sut = BuildSut(es, signups: signups, trackingRepo: trackingRepo);
         var setupDate = es.GateOpeningDate.PlusDays(-3);
 
@@ -336,7 +335,7 @@ public class VolunteerTrackingServiceTests
             SetAt = TestNow,
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [bs], []);
+            [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         await sut.ClearCampSetupAsync(userId, coordinatorId);
@@ -418,7 +417,7 @@ public class VolunteerTrackingServiceTests
         var userId = Guid.NewGuid();
         var coordId = Guid.NewGuid();
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [], []);
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId);
@@ -439,7 +438,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [], []);
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid());
@@ -455,7 +454,7 @@ public class VolunteerTrackingServiceTests
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [], []);
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid());
@@ -487,7 +486,7 @@ public class VolunteerTrackingServiceTests
             BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),  // span = -3..-1
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [bs], []);
+            [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // -2 is INSIDE the camp-setup span. The service does NOT reject.
@@ -512,7 +511,7 @@ public class VolunteerTrackingServiceTests
             ],
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [bs], []);
+            [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(
@@ -527,7 +526,7 @@ public class VolunteerTrackingServiceTests
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [], []);
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(
@@ -649,7 +648,7 @@ public class VolunteerTrackingServiceTests
                 new(-6, "soon", Guid.NewGuid(), TestNow) // inside new span
             ],
         };
-        var trackingRepo = new FakeVolunteerTrackingRepository(signups, [bs], []);
+        var trackingRepo = new FakeVolunteerTrackingRepository([bs], []);
         var sut = BuildSut(es, signups: signups, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // New camp-setup at -7 → span covers -7, -6, -5, ..., -1.
@@ -677,7 +676,7 @@ public class VolunteerTrackingServiceTests
             ],
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            [], [bs], []);
+            [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.SetCampSetupAsync(
@@ -727,6 +726,8 @@ public class VolunteerTrackingServiceTests
         var shiftMgmt = Substitute.For<IShiftManagementRepository>();
         shiftMgmt.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(activeEvent);
+        shiftMgmt.GetEligibleBuildSignupsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(signups ?? []);
 
         var userService = Substitute.For<IUserServiceRead>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -755,7 +756,6 @@ public class VolunteerTrackingServiceTests
             });
 
         trackingRepo ??= new FakeVolunteerTrackingRepository(
-            signups ?? [],
             buildStatuses ?? [],
             availabilities ?? []);
 
@@ -784,7 +784,6 @@ public class VolunteerTrackingServiceTests
     // ----------------------------------------------------------------------
 
     private sealed class FakeVolunteerTrackingRepository(
-        IReadOnlyList<EligibleBuildSignup> signups,
         IReadOnlyList<VolunteerBuildStatus> buildStatuses,
         IReadOnlyList<GeneralAvailability> availabilities) : IVolunteerTrackingRepository
     {
@@ -927,17 +926,5 @@ public class VolunteerTrackingServiceTests
             var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
             return Task.FromResult(removed);
         }
-
-        public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
-            Guid eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult(signups);
-
-        public Task<IReadOnlyList<ConfirmedShiftRow>> GetConfirmedShiftsInRangeAsync(
-            Guid eventSettingsId,
-            LocalDate startDate,
-            LocalDate endDate,
-            Guid? departmentId,
-            CancellationToken ct)
-            => Task.FromResult<IReadOnlyList<ConfirmedShiftRow>>([]);
     }
 }

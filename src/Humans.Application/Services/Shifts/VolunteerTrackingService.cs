@@ -81,7 +81,7 @@ public sealed class VolunteerTrackingService(
         var today = clock.GetCurrentInstant().InZone(zone).Date;
         var todayOffset = OffsetOf(es, today);
 
-        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var users = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var statusMap = users
             .SelectMany(
@@ -267,7 +267,7 @@ public sealed class VolunteerTrackingService(
             return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", null);
         }
 
-        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         int? firstSignup = signups
             .Where(s => s.UserId == targetUserId)
             .Select(s => (int?)s.DayOffset)
@@ -319,7 +319,7 @@ public sealed class VolunteerTrackingService(
             return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
         }
 
-        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
@@ -365,7 +365,7 @@ public sealed class VolunteerTrackingService(
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
         var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
 
-        var signups = await trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var daySignups = signups
             .Where(s => s.UserId == userId)
             .GroupBy(s => s.DayOffset)

@@ -40,7 +40,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The runtime guard at `StoreService.AddLineAsync` rejects new lines once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable; admins can extend or shorten it freely.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `StoreService.AddLineAsync` rejects new lines against them with a clear error.
 - The active year is derived via `IShiftManagementService.GetActiveAsync()` (see Cross-Section Dependencies in `docs/sections/Store.md`).
-- Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id.
+- Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)
 
@@ -48,9 +48,9 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 
 **Acceptance Criteria:**
 - `/Store` shows the lead's camp seasons for the active year (resolved via `ICampServiceRead.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
-- "Create order" creates a new `StoreOrder` in `Open` state attached to the camp season; multiple orders per season are allowed and disambiguated by an optional `Label`.
+- "Create order" creates a new `StoreOrder` in `Open` state attached to the camp season; multiple orders per season are allowed. (The order `Label` was removed from the UI in #816 — the column is retained but unused.)
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
-- Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time — later catalog edits never mutate existing lines (`docs/sections/Store.md`).
+- Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`docs/sections/Store.md`).
 - `AddLineAsync` rejects with a clear message if (a) the order is not `Open`, (b) the product is deactivated, or (c) `LocalDate.FromDateTime(today, eventTimeZone)` is past the product's `OrderableUntil` deadline.
 - Remove-line form posts to `/Store/Order/{id}/RemoveLine` and is gated identically to AddLine on order state.
 - Counterparty fields (name, VAT id, address, country code, email) are editable while the order is `Open`; `FinanceAdmin` can edit them in any state.
@@ -78,6 +78,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 - Inserts a `StorePayment` row with `RecordedByUserId = actorUserId`, `Method` as supplied. `Stripe` method is reserved for the webhook path and rejected here.
 - Allowed in any order state (refunds frequently happen post-issuance).
 - Audit-logged with the actor.
+- *Note: not yet implemented (Phase 5) — `StoreService.RecordManualPaymentAsync` throws `NotSupportedException("Phase 5")` and there is no `/Store/Order/{id}/RecordPayment` endpoint yet. (The implemented `/Store/Admin/Payments` Stripe reconciliation screen is US-30.3-adjacent and separate from this per-order manual path.)*
 
 ### US-30.5: Issue the Consolidated Factura (Treasurer)
 
@@ -108,7 +109,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 - `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog` and `/Store/Admin/Orders`); volunteers receive 403/redirect.
 - Year selector at the top defaults to the active event year via `IShiftManagementService.GetActiveAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
 - Three projections render in this order, each as its own card:
-  - **By-camp** — one row per order with Camp / Label / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid.
+  - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid.
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year.
   - **Cross-tab** — camps × products matrix with qty cells (blank for 0), row totals, column totals, grand total. Both axes alphabetical. Column totals are consistent with by-item totals.
 - Service surface: `IStoreService.GetStoreSummaryAsync(int year, CancellationToken)` returns a `StoreSummaryDto` composing the three projections. Replaces the earlier `GetAllOrderSummariesAsync` stub (no production callers existed).

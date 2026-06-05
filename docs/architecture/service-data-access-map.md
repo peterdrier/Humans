@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-03
+**Generated:** 2026-06-04
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -197,11 +197,18 @@ but written here directly via `IUserRepository`. Tracked under the §15
 Cross-section calls via `IUserService`, `ITeamService`,
 `IRoleAssignmentService`, `IAuditLogService`, `IUserInfoInvalidator`.
 
-### AdminHumanListAssembler / EmailProblemsService / PersonSearchFields
+### AdminHumanListAssembler / EmailProblemsService / PersonSearchFields / PersonSearchMatcher
 
 Read-only DTO assemblers — no repository, no cache. Fan out over
 `IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
 `ITeamService`.
+
+`PersonSearchMatcher` is a pure static matcher (no DI, no repository, no
+cache) over the cached `UserInfo` read-model. It is consumed by
+`CachingUserService` (the person-search entry point on `IUserServiceRead`)
+so the search runs entirely in-memory against the unified User+Profile
+projection — no extra DB read. `PersonSearchFields` is the accompanying
+scope-flag enum that doubles as the field-level authorization model.
 
 ---
 
@@ -1291,10 +1298,19 @@ Repository: `ITicketRepository`.
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
-`IBudgetService`, `ICampaignService`, `IUserService`, `IUserEmailService`,
-`ITeamServiceRead` (read-split surface), `IShiftManagementService`.
-Implements `IUserDataContributor` (the GDPR contributor is the inner, one
-per section).
+`IBudgetService`, `ICampaignServiceRead` (read-split surface — migrated
+from the full `ICampaignService` this sweep), `IUserService`,
+`IUserEmailService`, `ITeamServiceRead` (read-split surface),
+`IShiftManagementService`, plus `IClock`. Implements `IUserDataContributor`
+(the GDPR contributor is the inner, one per section).
+
+`ComputeUserTicketCountAsync` matches a user's tickets by fetching the
+user's verified emails (`IUserEmailService.GetVerifiedEmailsForUserAsync`)
+and the valid attendee emails (`ITicketRepository.GetValidAttendeeEmailsAsync`),
+then intersecting them **in-memory** for case-consistent comparison — no
+extra repository round-trip. The prior
+`IUserEmailService.SearchUserIdsByVerifiedEmailAsync` reverse-lookup has
+been **removed**.
 
 > **Change since prior sweep:** `TicketRepository` no longer reads
 > `UserEmails` directly (PR #802) — the prior `GetAllUserEmailLookupEntriesAsync`
@@ -1443,10 +1459,12 @@ Repository: `ICampaignRepository`.
 | CampaignCodes | R/W |
 | CampaignGrants | R/W |
 
-Cross-section calls via `ITeamService`, `IUserEmailService`,
-`IUserService`, `INotificationService`, `ICommunicationPreferenceService`,
-`IEmailService`, `ITicketVendorService`. Implements `IUserDataContributor`,
-`IUserMerge`. No `IMemoryCache`.
+Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
+`IUserServiceRead` (both migrated to the read-split surfaces),
+`INotificationEmitter`, `ICommunicationPreferenceService`, `IEmailService`,
+`IEmailMessageFactory`, `ITicketVendorService`, plus `IClock`. Implements
+`ICampaignService` (which extends `ICampaignServiceRead`),
+`IUserDataContributor`, `IUserMerge`. No `IMemoryCache`.
 
 ---
 
@@ -1706,8 +1724,19 @@ Repository: `IStoreRepository`.
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface, #816),
-`IShiftManagementService`, `IStripeService` (Infrastructure). No
-`IMemoryCache`.
+`IShiftManagementService`, `IStripeService` (Infrastructure), plus
+`IClock`. No `IMemoryCache`.
+
+`StoreService` gained a Stripe **reconciliation** surface
+(`GetStripeReconciliationAsync` pairs live Stripe Checkout sessions against
+recorded `StorePayments` and classifies each Recorded / Unmatched / Missing /
+Unpaid; `RecordMissingStripePaymentsAsync` back-fills the missing
+`StorePayments` rows and writes a `StorePaymentsReconciled` audit entry) and
+**repricing** logic — Open orders reprice live against the single active
+event-year catalog (`StoreProducts`), so legacy `Year = 0` orders still
+reprice correctly. Both surfaces read/write only Store-owned tables through
+`IStoreRepository`; reconciliation reads live Stripe sessions via
+`IStripeService`.
 
 ### BalanceCalculator
 
@@ -1897,7 +1926,8 @@ cross-section violations.
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
    `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
-   `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`, and
+   `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`,
+   `ICampaignServiceRead` (consumed by `TicketQueryService`), and
    the Governance pair `IApplicationServiceRead` / `IMembershipCalculatorRead`
    (PR #851). Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain

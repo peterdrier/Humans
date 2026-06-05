@@ -37,13 +37,13 @@ public sealed class VolunteerTrackingExportServiceTests
             ActorPlayaName: "TestActor",
             GeneratedAtUtc: TestNow);
 
-    private static (IVolunteerTrackingRepository repo, IShiftManagementService shiftMgmt, IUserService users)
+    private static (IShiftManagementRepository repo, IShiftManagementService shiftMgmt, IUserService users)
         BuildMocks(
             IReadOnlyList<ConfirmedShiftRow> shifts,
             IReadOnlyList<(Guid TeamId, string TeamName)>? departments = null,
             IReadOnlyDictionary<Guid, string>? playaNames = null)
     {
-        var repo = Substitute.For<IVolunteerTrackingRepository>();
+        var repo = Substitute.For<IShiftManagementRepository>();
         repo.GetConfirmedShiftsInRangeAsync(
             Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(shifts);
@@ -186,7 +186,7 @@ public sealed class VolunteerTrackingExportServiceTests
         // Bob worked TeamA on Day3, TeamB on Day4. Filtered to TeamA: row appears,
         // Day3 colored, Day4 empty, arrival = Day2 (day before TeamA's first shift).
         var teamAOnly = new[] { ShiftRow(Bob, TeamA, Day1.PlusDays(2), 9, 17) };
-        var repo = Substitute.For<IVolunteerTrackingRepository>();
+        var repo = Substitute.For<IShiftManagementRepository>();
         repo.GetConfirmedShiftsInRangeAsync(EventId, Day1, Day7, TeamA, Arg.Any<CancellationToken>())
             .Returns(teamAOnly);
         var shiftMgmt = Substitute.For<IShiftManagementService>();

@@ -184,9 +184,9 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 | Coordinator | Manage members, approve/reject join requests, manage roles, edit the team page, manage Google resources, and (when `EarlyEntryEnabled`) grant/edit/revoke Early Entry for their department (and its sub-teams) |
 | EETeamAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
 | Sub-team Manager | Manage members, approve/reject join requests, manage roles, manage shifts, and edit the team page for their sub-team only. Cannot manage Google resources, the parent department, or sibling sub-teams |
-| TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, sensitive flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams |
+| TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams. **Cannot** change the sensitive flag via Edit Team (Admin-only — a non-Admin's save leaves `IsSensitive` unchanged) |
 | Board | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams |
-| Admin | All Board capabilities. Additionally can execute Google sync actions, trigger system team sync, and view sync previews |
+| Admin | All Board capabilities. Additionally can change the sensitive flag (`IsSensitive`) via Edit Team, execute Google sync actions, trigger system team sync, and view sync previews |
 
 ## Invariants
 
@@ -207,7 +207,7 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - A Google Group prefix, if set, provisions a `@nobodies.team` group for the team.
 - Only departments (not sub-teams or system teams) can have public team pages.
 - A **hidden team** (`IsHidden = true`) is invisible to non-admin users: it does not appear on profile cards, team listings, public pages, birthday team names, or the "My Teams" page. Only Admin, Board, and TeamsAdmin can see and manage hidden teams. Campaigns can still target hidden teams for code distribution. The system-team sync skips the "added to team" email for hidden teams.
-- A **sensitive team** (`IsSensitive = true`) is an admin-only flag (not publicly visible). Adding or approving a member surfaces a deterrent confirmation modal in the Members admin view that shows the audit record that will be created.
+- A **sensitive team** (`IsSensitive = true`) is an admin-only flag (not publicly visible). **Only a global Admin can set or clear `IsSensitive`** via Edit Team — the checkbox is suppressed for non-Admin editors, so a non-Admin's save passes `null` (leave-unchanged) and never alters it (ref #824). Adding or approving a member surfaces a deterrent confirmation modal in the Members admin view that shows the audit record that will be created.
 - The Teams directory (`/Teams`) shows only **directory-visible** teams: top-level teams (departments) always appear; sub-teams only appear if `IsPromotedToDirectory` is true. Sub-teams are always accessible from their parent team's detail page regardless of this flag.
 - `team_join_request_state_history` is append-only per §12.
 - Resource-based authorization per design-rules §11: `TeamAuthorizationHandler` + `TeamOperationRequirement`.

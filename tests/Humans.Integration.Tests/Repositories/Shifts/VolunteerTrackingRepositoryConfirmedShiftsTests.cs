@@ -13,7 +13,7 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>
 /// Integration tests for
-/// <see cref="IVolunteerTrackingRepository.GetConfirmedShiftsInRangeAsync"/>.
+/// <see cref="IShiftManagementRepository.GetConfirmedShiftsInRangeAsync"/>.
 /// Mirrors the existing <c>VolunteerTrackingRepositoryTests</c> style: container-
 /// backed factory via <see cref="IClassFixture{T}"/>, scope per test, real
 /// PostgreSQL. Seeding helpers are inlined here (rather than shared) because the
@@ -34,7 +34,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var repo = scope.ServiceProvider.GetRequiredService<IVolunteerTrackingRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var (eventId, _, _, _) = await SeedFixtureAsync(db);
 
@@ -54,7 +54,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var repo = scope.ServiceProvider.GetRequiredService<IVolunteerTrackingRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var (eventId, _, _, _) = await SeedFixtureAsync(db);
 
@@ -74,7 +74,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var repo = scope.ServiceProvider.GetRequiredService<IVolunteerTrackingRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var (eventId, teamAId, teamBId, _) = await SeedFixtureAsync(db);
 
@@ -93,7 +93,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var repo = scope.ServiceProvider.GetRequiredService<IVolunteerTrackingRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var (eventId, _, _, _) = await SeedFixtureAsync(db);
 

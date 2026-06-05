@@ -15,7 +15,10 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Services.Email;
+using Humans.Application.Services.SystemSettings;
 using Humans.Infrastructure.Repositories.Email;
+using Humans.Infrastructure.Repositories.SystemSettings;
 using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Application.Tests.Jobs;
@@ -31,6 +34,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
+    private readonly SystemSettingsRepository _systemSettingsRepository;
+    private readonly SystemSettingsService _systemSettingsService;
+    private readonly EmailOutboxService _outboxService;
     private readonly ProcessEmailOutboxJob _job;
 
     public ProcessEmailOutboxJobTests()
@@ -48,8 +54,12 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
+        _systemSettingsRepository = new SystemSettingsRepository(new TestDbContextFactory(_options));
+        _systemSettingsService = new SystemSettingsService(_systemSettingsRepository);
+        _outboxService = new EmailOutboxService(_repo, _systemSettingsService, _clock);
 
-        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _meters, _clock, _settings, logger);
+        _job = new ProcessEmailOutboxJob(
+            _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings, logger);
     }
 
     public void Dispose()
@@ -117,7 +127,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = new ProcessEmailOutboxJob(
-            _repo, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
+            _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
         await job.ExecuteAsync();
