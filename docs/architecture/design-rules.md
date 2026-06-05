@@ -270,7 +270,8 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Scanner** | none (phase 1 is presentational) | none |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
-| **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages`; owns `system_settings` key `email_outbox_paused` |
+| **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
+| **System Settings** | `SystemSettingsService` | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
 | **Mailer** | `MailerImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Issues** | `IssuesService` | `issues`, `issue_comments` |
@@ -279,7 +280,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
 | **Event Guide** | `EventGuideService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
 
-**`system_settings` is per-key ownership.** Each key belongs to its consuming section's repository — there is no single cross-cutting owner. Currently-tracked keys: `email_outbox_paused` (Email), `DriveActivityMonitor:LastRunAt` (Google Integration).
+**`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 
 **Admin is not a section.** The `/Admin/*` controllers are a nav holder for admin-only actions that live in other sections (outbox pause in Email, suspend/merge/purge in Profiles, sync settings in Google Integration, role assignments in Auth, legal-doc management in Legal & Consent). Services referenced from `AdminController` belong to their owning section, not to Admin.
 

@@ -46,6 +46,7 @@ graph LR
     classDef events fill:#2dd4bf,color:#000
     classDef earlyentry fill:#fb923c,color:#fff
     classDef agent fill:#e879f9,color:#000
+    classDef systemsettings fill:#71717a,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -115,6 +116,7 @@ graph LR
     SyncSet[SyncSettingsService]:::google
     DriveMon[DriveActivityMonitorService]:::google
     GRemoval[GoogleRemovalNotificationService]:::google
+    GSyncOutbox[GoogleSyncOutboxService]:::google
 
     Onboard[OnboardingService]:::onboarding
     HumanLifecycle[HumanLifecycleService]:::onboarding
@@ -156,6 +158,7 @@ graph LR
     EventSvc[EventService]:::events
     EarlyEntry[EarlyEntryService]:::earlyentry
     Agent[AgentService]:::agent
+    SysSettings[SystemSettingsService]:::systemsettings
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -339,6 +342,7 @@ graph LR
     GRemoval --> Email
     DriveMon --> TRes
     DriveMon --> User
+    DriveMon --> SysSettings
     DriveMon --> Audit
 
     %% AuditLog read+render side
@@ -350,9 +354,9 @@ graph LR
     AuditViewer --> User
     AuditViewer --> Team
     AuditViewer --> TRes
-    %% DriveActivityMonitorRepository writes ctx.AuditLogEntries directly — tracked §6 violation,
-    %% pending GoogleIntegration /section-align to route through IAuditLogService.LogAsync.
-    DriveMon -. "pending: writes ctx.AuditLogEntries directly (see OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt)" .-> Audit
+    %% #889: DriveActivityMonitorRepository deleted; DriveActivityMonitorService now logs
+    %% anomalies via IAuditLogService.LogAsync (eager DriveMon --> Audit edge above) and reads/writes
+    %% its last-run marker through ISystemSettingsService — the prior direct-ctx-write violation is resolved.
 
     %% Onboarding section
     %% #568: Profile↔Onboarding cycle gone; Onboard → Prof not needed since
@@ -485,6 +489,11 @@ graph LR
     %% These are implemented BY existing section services, so they add no new service→service edges.
     %% AgentService + AgentAdminStatusService depend only on Agent-internal interfaces
     %% (settings/repo/dispatcher/Anthropic client) — no cross-section service edges.
+    %% #889: SystemSettingsService (own section) and GoogleSyncOutboxService (GoogleIntegration)
+    %% are thin repo-only adapters over ISystemSettingsRepository / IGoogleSyncOutboxRepository —
+    %% no outbound service→service edges. SysSettings is read/written by EmailOutboxService
+    %% (pause flag) and DriveActivityMonitorService (last-run marker); GSyncOutbox is the
+    %% transactional-outbox owner written by TeamService on membership/role changes (lazy edge below).
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) —
@@ -495,6 +504,7 @@ graph LR
     Team -. "lazy" .-> TRes
     Team -. "lazy" .-> Role
     Team -. "lazy" .-> Email
+    Team -. "lazy" .-> GSyncOutbox
     TRes -. "lazy" .-> Role
     Camp -. "lazy" .-> CampRole
     Consent -. "lazy" .-> MembershipCalc
@@ -513,11 +523,11 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count (including the DriveMon → Audit "pending" dashed arrow that
-    %% Mermaid counts as a link): 262 eager-or-pending links, indices 0..261.
-    %% (One fewer than the prior sweep: ShiftSign → MembershipCalc was removed.)
-    %% The 16 lazy edges are indices 262..277.
-    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 262 eager links, indices 0..261. (Same count as the prior sweep:
+    %% the DriveMon "pending" dashed direct-audit-write edge was removed — resolved by #889
+    %% deleting the drive-monitor repo — and the new eager DriveMon → SysSettings edge took its slot.)
+    %% The 17 lazy edges are indices 262..278 (added Team → GSyncOutbox per #889 outbox writes).
+    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -536,6 +546,7 @@ Other notable one-way lazy edges (not cycles):
 - **UserEmail → Tickets** (`ITicketServiceRead`) — UserEmailService lazy-resolves the tickets read interface for the email delete-guard (nobodies-collective/Humans#758), to detect ticket-linked addresses. TicketQueryService eagerly injects `IUserEmailService`, so this closes a cycle that must stay lazy on the UserEmail side.
 - **UserEmail → AccountMerge** — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting; AccountMergeService injects `IUserEmailRepository` (not the service) to avoid creating a reverse eager edge.
 - **CampService → CampRoleService** — CampService holds `Lazy<ICampRoleService>` (intra-section) to break the Camp↔CampRole construction cycle; CampRoleService eagerly injects the narrow `ICampRoleCampAccess` port (implemented by CampService / CachingCampService), not the full `ICampService` — the `CampRole --> Camp` edge in the diagram reflects this port.
+- **Team → GoogleSyncOutbox** (#889) — TeamService lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue transactional-outbox Google-sync events on membership/role changes. One-way; `GoogleSyncOutboxService` is a repo-only adapter that calls back into nothing.
 - **ShiftManagement → Role / User**, **Team → Role / Email**, **TeamResource → Role**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph (notably through `ISystemTeamSync`, the job interface omitted from this service-only graph).
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
@@ -547,7 +558,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | Service | Eager dependents | Lazy dependents | Notes |
 |---------|-----------------:|----------------:|-------|
 | `UserService` | 54 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). |
-| `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. Plus the `DriveActivityMonitorService` "pending" direct-write item (dashed). |
+| `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
 | `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
 | `UserEmailService` | 20 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
 | `ShiftManagementService` | 15 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User itself to break cycles. New eager consumers since the last sweep: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`. |
@@ -584,6 +595,11 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
 - **#791** — Holded Finance section landed: `HoldedFinanceService` (Application/Services/Finance) now owns the creditor-balance / purchase-doc sync. `ExpenseReportService` eagerly injects it; otherwise it's a leaf.
 - **#815** — Ticketing budget repository removed: `TicketingBudgetService` no longer owns tables. The old `ITicketingBudgetRepository` was dropped; the service now reads paid orders through `ITicketServiceRead.GetTicketOrdersAsync` (eager `TicketBudget → TicketQ` edge) and delegates all writes to `IBudgetService`. It is now marked `IOrchestrator` (Tickets read + Budget writes), so HUM0026 catches any future repo-injection regression.
-- New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **GeneralAvailability/RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services). None take dependencies beyond existing service interfaces.
+- **#889** — drive-monitor adapter deleted + SystemSettings centralization + Google sync outbox:
+  - `IDriveActivityMonitorRepository` / `DriveActivityMonitorRepository` were deleted. `DriveActivityMonitorService` no longer owns a repo: it logs anomalies through `IAuditLogService.LogAsync` (eager `DriveMon → Audit`) and reads/writes its last-run marker via `ISystemSettingsService` (new eager `DriveMon → SysSettings`). The prior "pending direct-write to `ctx.AuditLogEntries`" dashed annotation is gone — the violation is resolved.
+  - New **SystemSettings** section: `SystemSettingsService` is a thin adapter over `ISystemSettingsRepository` — no outbound service edges. It centralizes key/value system settings; consumed by `EmailOutboxService` (the `IsEmailSendingPaused` flag) and `DriveActivityMonitorService` (last-run marker). (`EmailOutboxService` is an Email-section admin service not otherwise in this service→service graph — its only section-service edge is to `SysSettings`.)
+  - `GoogleSyncOutboxService` (GoogleIntegration) is the transactional-outbox owner over `IGoogleSyncOutboxRepository` — no outbound service edges. `TeamService` lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue Google-sync outbox events on membership/role changes — new dashed `Team → GSyncOutbox` edge.
+- **#894** — Camps compliance role-staffing matrix: the redesign moved into `CampComplianceController` plus supporting read types (`CampDirectoryRoleSummary`) and trimmed `CampRoleService` (the old `CampRoleComplianceReport` DTO was deleted). No service→service edges changed — `CampRoleService`/`CampService` ctor dependencies are unchanged (`CampRole → Camp/User/UEmail/NotifEmitter/Audit`, `Camp -. lazy .-> CampRole`).
+- New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **GeneralAvailability/RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
 - **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.
