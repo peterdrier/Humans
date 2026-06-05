@@ -9,7 +9,7 @@ Custom (multi-character) date/time format strings may live **only** in the singl
 
 **How to apply:**
 
-- Need a date rendered? Call a named method on the home (`value.ToDisplayDate()`, `.ToDisplayWeekdayDayMonth()` for display, `.ToInvariantDate()`/`.ToIso8601()` for machine, …). For an `Instant` in a request/view, the ambient overloads in `Humans.Web.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
+- Need a date rendered? Call a named method on the home (`value.ToDate()`, `.ToWeekdayDayMonth()` for culture display, `.ToInvariantDate()`/`.ToIso8601()` for machine, …). For an `Instant` in a request/view, the ambient overloads in `Humans.Web.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
 - No method fits? **Add one to `DateFormattingExtensions`** (display → `CurrentCulture`; CSV/API/filename/JSON → `InvariantCulture`) — never inline the literal at the call site. NodaTime parse/format patterns become named `static readonly *Pattern` fields on the home.
 - The analyzer flags `.ToString("<custom>")`, interpolation `{x:<custom>}`, and `NodaTime.Text.*Pattern.Create…("…")` on `DateTime`/`DateTimeOffset`/`DateOnly`/`TimeOnly`/NodaTime value types. Single-char standard specifiers (`"d"`, `"g"`, `"o"`) are allowed; numeric formats (`"N2"`, `"0.##"`) are not in scope (not a date receiver).
 - **v1 gaps (not analyzer-enforced):** `DateTime.ParseExact` / composite `string.Format` format strings, and `.cshtml` Razor (Roslyn analyzers don't see Razor). Fix these by hand when you touch them; don't assume the analyzer caught them.

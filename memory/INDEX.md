@@ -69,7 +69,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
 - [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — methods invoked through Hangfire need a frozen serialization signature; pin the call site to a no-defaults overload and never add/reorder/change params on it (PR #663 incident — orphaned in-flight jobs after adding an optional `bool`)
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
-- [`datetime-display-formatting`](code/datetime-display-formatting.md) — which formatter to call: `ToDisplayDate`/`ToDisplayWeekdayDayMonth` (display, culture-ordered) vs `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` (machine); no inline format strings (HUM0030)
+- [`datetime-display-formatting`](code/datetime-display-formatting.md) — which formatter to call: `ToDate`/`ToWeekdayDayMonth` (display, culture-ordered) vs `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` (machine); no inline format strings (HUM0030)
 - [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask
 - [`icons-fa6-only`](code/icons-fa6-only.md) — `fa-solid fa-*`; never `bi bi-*` (Bootstrap Icons not loaded → invisible)
 - [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need `[JsonConstructor]`; polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`
