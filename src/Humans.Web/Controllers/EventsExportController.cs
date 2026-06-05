@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Text;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
@@ -71,7 +71,7 @@ public class EventsExportController(
                     e.IsRecurring ? "Yes" : "No",
                     e.PriorityRank,
                     e.Status.ToString(),
-                    ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp());
             }
         }
 
@@ -129,7 +129,7 @@ public class EventsExportController(
             .OrderBy(g => g.Key)
             .Select(g => new PrintGuideDayGroup
             {
-                DayLabel = g.Key.ToString("dddd d MMMM", CultureInfo.InvariantCulture),
+                DayLabel = LocalDate.FromDateTime(g.Key).ToWeekdayDayMonth(),
                 Entries = g.OrderBy(e => e.StartAt).ToList()
             })
             .ToList();
@@ -150,7 +150,7 @@ public class EventsExportController(
         foreach (var occurrence in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
         {
             var local = ToLocalDateTime(occurrence, tz);
-            results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
+            results.Add((local.ToInvariantDate(), local.ToInvariantTime()));
         }
         return results;
     }

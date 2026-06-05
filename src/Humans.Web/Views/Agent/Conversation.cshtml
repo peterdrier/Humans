@@ -16,9 +16,9 @@
 
 <dl class="row mb-3">
     <dt class="col-sm-3">@Localizer["Agent_HistoryStarted"]</dt>
-    <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.StartedAt.ToInvariantTimestamp() UTC</dd>
     <dt class="col-sm-3">@Localizer["Agent_HistoryLastMessage"]</dt>
-    <dd class="col-sm-9">@conv.LastMessageAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.LastMessageAt.ToInvariantTimestamp() UTC</dd>
     <dt class="col-sm-3">@Localizer["Agent_HistoryMessages"]</dt>
     <dd class="col-sm-9">@conv.MessageCount</dd>
 </dl>
@@ -114,7 +114,7 @@ else
                         }
                     }
                 </div>
-                <div class="agent-msg-time small text-muted">@msg.CreatedAt.ToAuditMinuteTimestamp() UTC</div>
+                <div class="agent-msg-time small text-muted">@msg.CreatedAt.ToInvariantTimestamp() UTC</div>
             </div>
         }
     </div>

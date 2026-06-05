@@ -104,7 +104,7 @@ else
                     {
                         var (css, label) = StatusBadge(row.Status);
                         <tr>
-                            <td>@(row.CreatedAt?.ToAuditMinuteTimestamp() ?? "—")</td>
+                            <td>@(row.CreatedAt?.ToInvariantTimestamp() ?? "—")</td>
                             <td class="text-end">@(row.AmountEur.HasValue ? $"€{row.AmountEur.Value:0.00}" : "—")</td>
                             <td><span class="badge @css">@label</span></td>
                             <td>
@@ -145,7 +145,7 @@ else
                     @foreach (var o in report.Orphans)
                     {
                         <tr>
-                            <td>@o.ReceivedAt.ToAuditMinuteTimestamp()</td>
+                            <td>@o.ReceivedAt.ToInvariantTimestamp()</td>
                             <td class="text-end">€@o.AmountEur.ToString("0.00")</td>
                             <td><a asp-controller="Store" asp-action="Order" asp-route-id="@o.OrderId">@(o.OrderLabel ?? o.OrderId.ToString())</a></td>
                             <td><code class="small">@o.PaymentIntentId</code></td>

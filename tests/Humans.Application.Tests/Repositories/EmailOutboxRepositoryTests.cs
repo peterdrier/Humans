@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -332,45 +331,6 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
 
         var remaining = await _dbContext.EmailOutboxMessages.AsNoTracking().Select(m => m.Id).ToListAsync();
         remaining.Should().BeEquivalentTo([recentSent.Id, oldFailed.Id, oldQueued.Id]);
-    }
-
-    // ==========================================================================
-    // Pause flag
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetSendingPausedAsync_ReturnsFalseWhenRowAbsent()
-    {
-        var paused = await _repo.GetSendingPausedAsync();
-        paused.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task SetSendingPausedAsync_InsertsRowWhenAbsent()
-    {
-        await _repo.SetSendingPausedAsync(true);
-
-        var paused = await _repo.GetSendingPausedAsync();
-        paused.Should().BeTrue();
-
-        var row = await _dbContext.SystemSettings.AsNoTracking()
-            .SingleAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused);
-        row.Value.Should().Be("true");
-    }
-
-    [HumansFact]
-    public async Task SetSendingPausedAsync_UpdatesExistingRow()
-    {
-        _dbContext.SystemSettings.Add(new SystemSetting { Key = SystemSettingKeys.IsEmailSendingPaused, Value = "true" });
-        await _dbContext.SaveChangesAsync();
-
-        await _repo.SetSendingPausedAsync(false);
-
-        (await _repo.GetSendingPausedAsync()).Should().BeFalse();
-
-        var count = await _dbContext.SystemSettings
-            .CountAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused);
-        count.Should().Be(1);
     }
 
     // ==========================================================================

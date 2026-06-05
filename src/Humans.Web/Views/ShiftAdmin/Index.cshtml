@@ -90,16 +90,16 @@
                                         {
                                             var firstDate = Model.EventSettings.GateOpeningDate.PlusDays(signups[0].Shift.DayOffset);
                                             var lastDate = Model.EventSettings.GateOpeningDate.PlusDays(signups[^1].Shift.DayOffset);
-                                            <span>@firstDate.ToDisplayShiftDate() – @lastDate.ToDisplayShiftDate()</span>
+                                            <span>@firstDate.ToWeekdayDayMonth() – @lastDate.ToWeekdayDayMonth()</span>
                                             <span class="badge bg-secondary ms-1">@signups.Count days</span>
                                         }
                                         else
                                         {
                                             var signupDate = Model.EventSettings.GateOpeningDate.PlusDays(first.Shift.DayOffset);
-                                            @signupDate.ToDisplayShiftDate()
+                                            @signupDate.ToWeekdayDayMonth()
                                         }
                                     </td>
-                                    <td>@first.CreatedAt.ToDisplayCompactDayTime()</td>
+                                    <td>@first.CreatedAt.ToMonthDayTime()</td>
                                     <td>
                                         @if (isRange && first.SignupBlockId.HasValue)
                                         {
@@ -383,14 +383,14 @@
                                             @{
                                                 var shiftLabel = shift.IsAllDay
                                                     ? "All day"
-                                                    : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}";
+                                                    : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToTime()}";
                                             }
                                             @shiftLabel
                                             @if (shift.AdminOnly) { <span class="badge bg-dark">Admin Only</span> }
                                         </td>
                                         @{
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                                            var shiftDateLabel = shiftDate.ToDisplayShiftDate();
+                                            var shiftDateLabel = shiftDate.ToWeekdayDayMonth();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
                                             var phaseBadge = phase switch
                                             {
@@ -408,7 +408,7 @@
                                             };
                                         }
                                         <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@shiftDateLabel</td>
-                                        <td>@shift.StartTime.ToDisplayTime()</td>
+                                        <td>@shift.StartTime.ToTime()</td>
                                         <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                         @{
                                             var confirmed = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -512,7 +512,7 @@
                                                                 @for (var d = editPeriodStart; d <= editPeriodEnd; d++)
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                                    var editLabel = editDate.ToDisplayShiftDate();
+                                                                    var editLabel = editDate.ToWeekdayDayMonth();
                                                                     <option value="@d" selected="@(d == shift.DayOffset ? "selected" : null)">@editLabel</option>
                                                                 }
                                                             </select>
@@ -530,7 +530,7 @@
                                                         {
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Start</label>
-                                                                <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
+                                                                <input type="time" name="StartTime" value="@DateFormattingExtensions.TimeOfDayPattern.Format(shift.StartTime)" class="form-control form-control-sm" />
                                                             </div>
                                                             <div class="col-md-1">
                                                                 <label class="form-label form-label-sm">Hours</label>
@@ -704,7 +704,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.ToDisplayShiftDate();
+                                        var dateLabel = date.ToWeekdayDayMonth();
                                         <option value="@d">@dateLabel</option>
                                     }
                                 </select>
@@ -715,7 +715,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.ToDisplayShiftDate();
+                                        var dateLabel = date.ToWeekdayDayMonth();
                                         <option value="@d" selected="@(d == periodRange.End ? "selected" : null)">@dateLabel</option>
                                     }
                                 </select>
@@ -746,7 +746,7 @@
                             [@for (var d = periodRange.Start; d <= periodRange.End; d++)
                             {
                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                var dateLabel = date.ToDisplayShiftDate();
+                                var dateLabel = date.ToWeekdayDayMonth();
                                 if (d > periodRange.Start) { @Html.Raw(",") }
                                 @Html.Raw($"{{\"offset\":{d},\"label\":\"{dateLabel}\"}}")
                             }]
@@ -778,7 +778,7 @@
                                             @for (var d = rvPeriodRange.Start; d <= rvPeriodRange.End; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var dateLabel = date.ToDisplayShiftDate();
+                                                var dateLabel = date.ToWeekdayDayMonth();
                                                 <option value="@d">@dateLabel</option>
                                             }
                                         </select>
@@ -789,7 +789,7 @@
                                             @for (var d = rvPeriodRange.Start; d <= rvPeriodRange.End; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var dateLabel = date.ToDisplayShiftDate();
+                                                var dateLabel = date.ToWeekdayDayMonth();
                                                 <option value="@d" selected="@(d == rvPeriodRange.End ? "selected" : null)">@dateLabel</option>
                                             }
                                         </select>
@@ -844,7 +844,7 @@
                                             @for (var d = genPeriodStart; d <= genPeriodEnd; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.ToDisplayShiftDate();
+                                                var label = date.ToWeekdayDayMonth();
                                                 <option value="@d" selected="@(d == genPeriodStart ? "selected" : null)">@label</option>
                                             }
                                         </select>
@@ -855,7 +855,7 @@
                                             @for (var d = genPeriodStart; d <= genPeriodEnd; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.ToDisplayShiftDate();
+                                                var label = date.ToWeekdayDayMonth();
                                                 <option value="@d" selected="@(d == genDefaultEnd ? "selected" : null)">@label</option>
                                             }
                                         </select>
@@ -918,7 +918,7 @@
                                         @for (var d = createPeriodStart; d <= createPeriodEnd; d++)
                                         {
                                             var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                            var label = date.ToDisplayShiftDate();
+                                            var label = date.ToWeekdayDayMonth();
                                             <option value="@d" selected="@(d == createDefaultDay ? "selected" : null)">@label</option>
                                         }
                                     </select>

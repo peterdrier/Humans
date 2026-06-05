@@ -70,11 +70,11 @@
                                 <small class="text-muted">@ra.UserEmail</small>
                             </td>
                             <td><strong>@ra.RoleName</strong></td>
-                            <td>@ra.ValidFrom.ToDisplayDate()</td>
+                            <td>@ra.ValidFrom.ToDate()</td>
                             <td>
                                 @if (ra.ValidTo.HasValue)
                                 {
-                                    @ra.ValidTo.Value.ToDisplayDate()
+                                    @ra.ValidTo.Value.ToDate()
                                 }
                                 else
                                 {

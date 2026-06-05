@@ -19,7 +19,7 @@
                 <h2>@label — @side.DisplayName</h2>
                 <p>
                     Teams: @side.TeamCount · Roles: @side.RoleAssignmentCount
-                    · Last login: @(side.LastLogin?.ToDisplayDate() ?? "—")
+                    · Last login: @(side.LastLogin?.ToDate() ?? "—")
                     · Profile complete: @(side.IsProfileComplete ? "yes" : "no")
                 </p>
 

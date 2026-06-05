@@ -1,7 +1,7 @@
-using System.Globalization;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Governance;
@@ -103,8 +103,7 @@ public class TermRenewalReminderJob(
 
                 try
                 {
-                    var expiresFormatted = application.TermExpiresAt!.Value
-                        .ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+                    var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantLongDate();
 
                     await emailService.SendAsync(emailMessages.TermRenewalReminder(
                         email,

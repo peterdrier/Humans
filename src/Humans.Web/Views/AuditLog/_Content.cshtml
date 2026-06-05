@@ -78,7 +78,7 @@ else
                     {
                         var rowClass = ev.Action.ToAuditEntryRowClass();
                         <tr class="@rowClass">
-                            <td class="text-nowrap">@ev.OccurredAt.ToAuditTimestamp()</td>
+                            <td class="text-nowrap">@ev.OccurredAt.ToInvariantTimestamp()</td>
                             <td>
                                 @if (!ev.ActorUserId.HasValue)
                                 {

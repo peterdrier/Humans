@@ -180,6 +180,11 @@ body.admin-shell .sidebar a.active .pill {
 body.admin-shell .main {
     background: var(--h-parchment);
     padding: 28px 36px 40px;
+    /* Grid item default min-width:auto lets wide content (e.g. the store
+       summary cross-tab) blow out the 1fr track and stretch every card to
+       the widest table. min-width:0 caps the track at the viewport so wide
+       tables scroll inside their own .table-responsive wrapper instead. */
+    min-width: 0;
 }
 
 /* ── Breadcrumb ───────────────────────────────────────────────────────── */

@@ -38,11 +38,11 @@
         <div class="mt-2 text-muted" style="font-size: 0.8rem;">
             @if (Model.MemberSince.HasValue)
             {
-                <span>@string.Format(Localizer["ProfileCard_Joined"].Value, Model.MemberSince.Value.ToString("MMM yyyy"))</span>
+                <span>@string.Format(Localizer["ProfileCard_Joined"].Value, Model.MemberSince.Value.ToMonthYear())</span>
             }
             @if (Model.LastLogin.HasValue)
             {
-                <span class="ms-2">@string.Format(Localizer["ProfileCard_LastLogin"].Value, Model.LastLogin.Value.ToString("d MMM yyyy"))</span>
+                <span class="ms-2">@string.Format(Localizer["ProfileCard_LastLogin"].Value, Model.LastLogin.Value.ToDate())</span>
             }
         </div>
     </div>

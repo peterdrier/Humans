@@ -37,7 +37,7 @@
                 var day = firstOfMonth.PlusDays(d - 1);
                 var dayOccs = byDate.TryGetValue(day, out var list) ? list : [];
                 <tr>
-                    <td style="width: 10rem"><strong>@day.ToString("d MMM (ddd)", System.Globalization.CultureInfo.CurrentCulture)</strong></td>
+                    <td style="width: 10rem"><strong>@day.ToWeekdayDayMonth()</strong></td>
                     <td>
                         @if (dayOccs.Count == 0)
                         {
@@ -49,7 +49,7 @@
                             {
                                 var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
                                 <div>
-                                    <span class="badge bg-light text-dark">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                    <span class="badge bg-light text-dark">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                                     <small class="text-muted">— @o.OwningTeamName</small>
                                 </div>

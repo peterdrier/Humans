@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
@@ -255,8 +256,7 @@ public class ProfileViewModel
             if (parsed is null)
                 return null;
 
-            var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMMM d");
-            return pattern.Format(parsed.Value);
+            return parsed.Value.ToWeekdayDayMonth();
         }
     }
 
@@ -507,9 +507,7 @@ public class VolunteerHistoryEntryViewModel
     {
         get
         {
-            var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMM");
-            var yearPattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yy");
-            return $"{pattern.Format(Date)}'{yearPattern.Format(Date)}";
+            return Date.AtMidnight().ToDateTimeUnspecified().ToMonthYear();
         }
     }
 }
@@ -545,7 +543,7 @@ public class VolunteerHistoryEntryEditViewModel
                 return null;
 
             // Try parsing as yyyy-MM-dd (HTML date input format)
-            var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyy-MM-dd");
+            var pattern = NodaTime.Text.LocalDatePattern.Iso;
             var parseResult = pattern.Parse(DateString);
             if (parseResult.Success)
                 return parseResult.Value;
@@ -553,7 +551,7 @@ public class VolunteerHistoryEntryEditViewModel
             // Try parsing as yyyy-MM (month input format) - use first of month
             if (DateString.Length == 7)
             {
-                var monthPattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyy-MM-dd");
+                var monthPattern = NodaTime.Text.LocalDatePattern.Iso;
                 var monthResult = monthPattern.Parse(DateString + "-01");
                 if (monthResult.Success)
                     return monthResult.Value;

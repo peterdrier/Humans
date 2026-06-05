@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -21,8 +20,6 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// share one EF change tracker.
 /// </para>
 /// </summary>
-[Grandfathered("HUM0025", justification: "EventSettings is also read by VolunteerTrackingRepository; route VolunteerTracking through a Shifts read surface.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "EventSettings")]
-[Grandfathered("HUM0025", justification: "ShiftSignups is also read by VolunteerTrackingRepository; route VolunteerTracking through a Shifts read surface.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "ShiftSignups")]
 internal sealed partial class ShiftRepository : IShiftManagementRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;

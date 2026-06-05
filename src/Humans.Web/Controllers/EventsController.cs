@@ -1,5 +1,6 @@
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
@@ -387,8 +388,8 @@ public class EventsController(
                 DurationMinutes = e.DurationMinutes,
                 DayOffset = dayOffset,
                 DayLabel = gateOpeningDate != null
-                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToString("ddd d MMM", null)
-                    : localStart.ToString("ddd d MMM", System.Globalization.CultureInfo.InvariantCulture),
+                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
+                    : localStart.ToWeekdayDayMonth(),
                 StartInstant = e.StartAt,
                 HasConflict = false
             };
@@ -509,7 +510,7 @@ public class EventsController(
                 eventDays.Add(new EventDayOptionViewModel
                 {
                     DayOffset = offset,
-                    Label = date.ToString("ddd d MMM", null)
+                    Label = date.ToWeekdayDayMonth()
                 });
             }
         }
@@ -533,8 +534,8 @@ public class EventsController(
                 {
                     DayOffset = g.Key,
                     DayLabel = gateOpeningDate != null
-                        ? gateOpeningDate.Value.PlusDays(g.Key).ToString("ddd d MMM", null)
-                        : g.First().StartAt.ToString("ddd d MMM", System.Globalization.CultureInfo.InvariantCulture),
+                        ? gateOpeningDate.Value.PlusDays(g.Key).ToWeekdayDayMonth()
+                        : g.First().StartAt.ToWeekdayDayMonth(),
                     Items = g.OrderBy(i => i.StartAt).ToList()
                 }).ToList()
         };
@@ -601,7 +602,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToString("ddd d MMM", null),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }
@@ -882,8 +883,8 @@ public class EventsController(
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
-            var date = localDt.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-            var time = localDt.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            var date = localDt.ToInvariantDate();
+            var time = localDt.ToInvariantTime();
             var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
                 ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
@@ -908,8 +909,8 @@ public class EventsController(
         if (nonWithdrawn.Count == 0)
         {
             var exampleDate = gateDate.HasValue
-                ? gateDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                ? gateDate.Value.ToInvariantDate()
+                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
             var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
             sb.AppendCsvRow(
                 string.Empty,
@@ -1030,7 +1031,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToString("ddd d MMM", null),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }

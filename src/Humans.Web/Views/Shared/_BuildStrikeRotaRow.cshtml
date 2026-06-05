@@ -6,7 +6,7 @@
     var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
 }
 <tr class="@(isFull ? "table-secondary" : "")">
-    <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+    <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToWeekdayDayMonth()</td>
     <td style="min-width: 120px;">
         @{
             var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;

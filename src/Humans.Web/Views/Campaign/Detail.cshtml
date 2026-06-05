@@ -193,11 +193,11 @@
                         <tr>
                             <td><vc:human user-id="@grant.UserId" /></td>
                             <td><code>@grant.Code</code></td>
-                            <td>@grant.AssignedAt.ToDisplayDateTime()</td>
+                            <td>@grant.AssignedAt.ToDateTime()</td>
                             <td>
                                 @if (grant.RedeemedAt.HasValue)
                                 {
-                                    <span class="text-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
+                                    <span class="text-success">@grant.RedeemedAt.Value.ToDate()</span>
                                 }
                                 else
                                 {
@@ -210,7 +210,7 @@
                                     <span class="badge @emailStatusClass">@grant.LatestEmailStatus</span>
                                     @if (grant.LatestEmailAt.HasValue)
                                     {
-                                        <small class="text-muted ms-1">@grant.LatestEmailAt.Value.ToDisplayDateTime()</small>
+                                        <small class="text-muted ms-1">@grant.LatestEmailAt.Value.ToDateTime()</small>
                                     }
                                 }
                                 else

@@ -100,7 +100,7 @@
                                 <div>
                                     <span class="badge @GetPhaseBadge(shift, es) me-1">@GetPhase(shift, es)</span>
                                     <strong>@shift.Rota.Name</strong> —
-                                    @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToDisplayShiftDate() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToDisplayShiftDate()
+                                    @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth()
                                     <small class="text-muted">(@block.Count() days)</small>
                                     <span class="ms-1">@first.DepartmentName</span>
                                 </div>
@@ -128,8 +128,8 @@
                                             <td>@item.DepartmentName</td>
                                             <td>@shift.Rota.Name</td>
                                             <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                            <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-                                            <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
+                                            <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+                                            <td>@item.AbsoluteStart.ToTime(tz!)</td>
                                             <td>@(shift.Duration.TotalHours)h</td>
                                             <td>
                                                 <form asp-action="Bail" method="post" class="d-inline">
@@ -172,8 +172,8 @@
                                         <td>@item.DepartmentName</td>
                                         <td>@shift.Rota.Name</td>
                                         <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-                                        <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
+                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+                                        <td>@item.AbsoluteStart.ToTime(tz!)</td>
                                         <td>@(shift.Duration.TotalHours)h</td>
                                         <td>
                                             <form asp-action="Bail" method="post" class="d-inline">
@@ -215,8 +215,8 @@
                                         <td>@item.DepartmentName</td>
                                         <td>@shift.Rota.Name</td>
                                         <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-                                        <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
+                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+                                        <td>@item.AbsoluteStart.ToTime(tz!)</td>
                                         <td>@(shift.Duration.TotalHours)h</td>
                                         <td><span class="badge bg-secondary">@item.Signup.Status</span></td>
                                     </tr>
@@ -260,7 +260,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge @phase.BadgeClass">@phase.Label</span>
-                                <small class="text-muted">@phaseStart.ToDisplayShiftDate() – @phaseEnd.ToDisplayShiftDate()</small>
+                                <small class="text-muted">@phaseStart.ToWeekdayDayMonth() – @phaseEnd.ToWeekdayDayMonth()</small>
                             </div>
                             <div class="avail-cal-grid">
                                 @foreach (var dayName in monFirstDays)

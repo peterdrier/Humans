@@ -166,7 +166,7 @@
                             </td>
                             <td>@(item.ResponsibleTeamName ?? "\u2014")</td>
                             <td class="text-muted">@(item.Notes ?? "")</td>
-                            <td>@item.ExpectedDate?.ToDisplayDate()</td>
+                            <td>@item.ExpectedDate?.ToDate()</td>
                             @if (Model.CanEdit)
                             {
                                 <td class="text-end">
@@ -237,7 +237,7 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label form-label-sm">Expected Date</label>
-                                            <input type="date" name="expectedDate" class="form-control form-control-sm" value="@item.ExpectedDate?.ToDateTimeUnspecified().ToString("yyyy-MM-dd")" />
+                                            <input type="date" name="expectedDate" class="form-control form-control-sm" value="@item.ExpectedDate.ToInvariantDate()" />
                                         </div>
                                         <div class="col-md-1">
                                             <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
@@ -361,7 +361,7 @@
                                     <span class="badge bg-success">VAT Credit</span>
                                 }
                             </td>
-                            <td>@vat.SettlementDate.ToDisplayDate()</td>
+                            <td>@vat.SettlementDate.ToDate()</td>
                         </tr>
                     }
                 </tbody>

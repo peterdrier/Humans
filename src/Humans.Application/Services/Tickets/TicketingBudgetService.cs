@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
@@ -104,6 +105,6 @@ public sealed class TicketingBudgetService(
 
     private static string FormatWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
+        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Application.Extensions;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Mailer;
@@ -27,7 +28,7 @@ public sealed class MailerLiteDateConverter : JsonConverter<Instant?>
     public override void Write(Utf8JsonWriter writer, Instant? value, JsonSerializerOptions _)
     {
         if (value is null) writer.WriteNullValue();
-        else writer.WriteStringValue(value.Value.ToDateTimeUtc().ToString(Format, CultureInfo.InvariantCulture));
+        else writer.WriteStringValue(value.Value.ToDateTimeUtc().ToInvariantTimestamp());
     }
 }
 
@@ -51,5 +52,5 @@ public sealed class MailerLiteRequiredDateConverter : JsonConverter<Instant>
     }
 
     public override void Write(Utf8JsonWriter writer, Instant value, JsonSerializerOptions _) =>
-        writer.WriteStringValue(value.ToDateTimeUtc().ToString(Format, CultureInfo.InvariantCulture));
+        writer.WriteStringValue(value.ToDateTimeUtc().ToInvariantTimestamp());
 }

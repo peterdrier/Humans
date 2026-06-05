@@ -73,8 +73,8 @@
                                 <tr>
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td><strong>@shift.Rota.Name</strong></td>
-                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-                                    <td>@(shift.IsAllDay ? "All day" : $"{item.AbsoluteStart.ToDisplayTime(tz)}–{item.AbsoluteEnd.ToDisplayTime(tz)}")</td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+                                    <td>@(shift.IsAllDay ? "All day" : $"{item.AbsoluteStart.ToTime(tz)}–{item.AbsoluteEnd.ToTime(tz)}")</td>
                                 </tr>
                             }
                         </tbody>
@@ -95,8 +95,8 @@
                                 <tr>
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td><strong>@shift.Rota.Name</strong></td>
-                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-                                    <td>@(shift.IsAllDay ? "All day" : $"{item.AbsoluteStart.ToDisplayTime(tz)}–{item.AbsoluteEnd.ToDisplayTime(tz)}")</td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+                                    <td>@(shift.IsAllDay ? "All day" : $"{item.AbsoluteStart.ToTime(tz)}–{item.AbsoluteEnd.ToTime(tz)}")</td>
                                 </tr>
                             }
                         </tbody>
@@ -118,7 +118,7 @@
                                 <tr class="text-muted">
                                     <td class="ps-3">@item.DepartmentName</td>
                                     <td>@shift.Rota.Name</td>
-                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
                                     <td><span class="badge @StatusBadge(item.Signup.Status)">@item.Signup.Status</span></td>
                                 </tr>
                             }

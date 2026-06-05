@@ -206,12 +206,12 @@
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Start Date</label>
                                         <input type="date" name="startDate" id="proj-startDate" class="form-control form-control-sm"
-                                               value="@(proj.StartDate?.ToString("yyyy-MM-dd", null))" />
+                                               value="@(proj.StartDate.ToInvariantDate())" />
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Event Date</label>
                                         <input type="date" name="eventDate" id="proj-eventDate" class="form-control form-control-sm"
-                                               value="@(proj.EventDate?.ToString("yyyy-MM-dd", null))" />
+                                               value="@(proj.EventDate.ToInvariantDate())" />
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Initial Sales Count</label>
@@ -440,7 +440,7 @@
                                                                     <span class="text-muted">0%</span>
                                                                 }
                                                             </td>
-                                                            <td>@item.ExpectedDate?.ToDisplayDate()</td>
+                                                            <td>@item.ExpectedDate?.ToDate()</td>
                                                             <td class="text-muted small">@(item.Notes ?? "")</td>
                                                         </tr>
                                                     }

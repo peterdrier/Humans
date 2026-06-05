@@ -1,5 +1,5 @@
 #pragma warning disable CS0618 // TeamMember.User / TeamJoinRequest.User — populated in-memory by TeamService (§6b).
-using System.Globalization;
+using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -320,7 +320,7 @@ public class TeamController(
             }
         }
 
-        var monthName = new DateTime(2000, currentMonth, 1).ToString("MMMM", CultureInfo.CurrentCulture);
+        var monthName = new DateTime(2000, currentMonth, 1).ToMonthName();
 
         var viewModel = new BirthdayCalendarViewModel
         {

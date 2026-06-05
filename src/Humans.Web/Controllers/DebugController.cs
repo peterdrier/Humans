@@ -52,6 +52,9 @@ public class DebugController(
         return View(vm);
     }
 
+    [HttpGet("FormatGallery")]
+    public IActionResult FormatGallery() => View(FormatGalleryModelBuilder.Build());
+
     private static string StatusCategory(int statusCode) => statusCode switch
     {
         >= 200 and < 300 => "Success",

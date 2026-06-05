@@ -39,7 +39,7 @@
                                     <input type="hidden" name="GrantId" value="@grant.GrantId" />
                                     <div class="col-auto">
                                         <input type="date" name="EntryDate" class="form-control form-control-sm"
-                                               value="@grant.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" required />
+                                               value="@grant.EntryDate.ToInvariantDate()" required />
                                     </div>
                                     <div class="col">
                                         <input type="text" name="ProjectName" class="form-control form-control-sm"

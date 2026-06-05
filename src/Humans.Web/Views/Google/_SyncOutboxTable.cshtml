@@ -56,7 +56,7 @@ else
                                 <small class="text-muted">-</small>
                             }
                         </td>
-                        <td class="text-nowrap">@evt.OccurredAt.ToDisplayDateTime()</td>
+                        <td class="text-nowrap">@evt.OccurredAt.ToDateTime()</td>
                         <td>
                             @if (evt.RetryCount > 0)
                             {

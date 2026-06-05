@@ -1,8 +1,8 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Email;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Application.Services.Email;
 
@@ -14,10 +14,6 @@ namespace Humans.Application.Services.Email;
 /// </summary>
 public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessageFactory
 {
-    // Invariant long-date formatter; duplicates Infrastructure.EmailDateTimeExtensions's format to avoid a back-reference into Infrastructure.
-    private static readonly LocalDatePattern InvariantLongDatePattern =
-        LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
-
     /// <inheritdoc />
     public EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null)
     {
@@ -69,7 +65,7 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     /// <inheritdoc />
     public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
     {
-        var formattedDate = InvariantLongDatePattern.Format(deletionDate.InUtc().Date);
+        var formattedDate = deletionDate.InUtc().Date.ToInvariantLongDate();
         var content = renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "deletion_requested");

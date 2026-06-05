@@ -301,8 +301,8 @@ public sealed class RoleAssignmentService(
         var shaped = assignments.Select(ra => new
         {
             ra.RoleName,
-            ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
-            ValidTo = ra.ValidTo.ToInvariantInstantString()
+            ValidFrom = ra.ValidFrom.ToIso8601(),
+            ValidTo = ra.ValidTo.ToIso8601()
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];

@@ -58,7 +58,7 @@
                 }
             </div>
             <div class="card-footer">
-                <small class="text-muted">@Localizer["TeamDetail_Created"] @Model.CreatedAt.ToDisplayLongDate()</small>
+                <small class="text-muted">@Localizer["TeamDetail_Created"] @Model.CreatedAt.ToDate()</small>
             </div>
         </div>
 
@@ -82,7 +82,7 @@
                     {
                         <hr />
                         <small class="text-muted">
-                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToString("MMMM d, yyyy")
+                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
                             @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
                             {
                                 @: &mdash; @Model.PageContentUpdatedByDisplayName

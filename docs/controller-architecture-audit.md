@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-03 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-04 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,7 +10,7 @@ Living document. Last updated: 2026-06-03 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-03) found one change versus the 2026-05-31 baseline: `TeamAdminController` gained an early-entry management surface — `EarlyEntry` (GET, `/Teams/{slug}/EarlyEntry`) plus `AddEarlyEntry` / `EditEarlyEntry` / `RemoveEarlyEntry` (POST `EarlyEntry/Add`|`Edit`|`Remove`). All four conform to the action-naming heuristics (`EarlyEntry` is the sub-resource group, not a controller-name prefix; the verbs mirror the existing `AddMember` / `RemoveMember` pattern). The same 80 controllers remain; `CampController.Index` picked up `ShowLeadPositions` handling and dropped its `INotificationService` dependency, but neither changes its action name, verb, or route. All other purposes and rename suggestions below are carried forward unchanged.
+This regeneration (2026-06-04) found four changes versus the 2026-06-03 baseline, all on the same 80 controllers: `StoreAdminController` gained a Stripe-reconciliation surface — `Payments` (GET `/Store/Admin/Payments`) and `RecordMissingPayments` (POST `/Store/Admin/Payments/RecordMissing`); `ProfileApiController` gained `BurnerNameCount` (GET `/api/profiles/burner-name-count`), the uncapped exact-collision count that drives the live edit-profile burner-name warning; `ShiftsController` gained `ToggleDay` (POST `/Shifts/ToggleDay`), the AJAX per-day sign-up/bail toggle; and `TicketTransferAdminController.RetryIssue` (POST `/Tickets/Admin/Transfers/{id}/RetryIssue`) was removed — that controller now exposes only `Index` / `Detail` / `Decide`. All three new actions conform to the action-naming heuristics (descriptive verbs/nouns, no controller-name prefix). All other purposes and rename suggestions below are carried forward unchanged.
 
 The additions captured in the 2026-05-29 sweep — now all stable in the tables below — were: `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), `DebugController` (`/Debug/ClientStats`); plus `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover`, `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay`, `TicketTransferController.Confirm` (replaced the prior `Lookup` action), `ShiftAdminController.EmailTeamRotas` (GET+POST), and `StoreController.CreateTeamOrder` / `Delete`.
 
@@ -723,6 +723,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Search | /api/profiles/search | GET | Profile autocomplete API | OK |
+| BurnerNameCount | /api/profiles/burner-name-count | GET | Uncapped exact burner-name collision count (drives live edit-profile warning) | OK |
 | GetByUserId | /api/profiles/by-userid/{userId:guid} | GET | Get a profile by user id (API) | OK |
 
 ## ProfileBackfillAdminController
@@ -867,6 +868,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Shifts | GET | Browse all shifts | OK |
+| ToggleDay | /Shifts/ToggleDay | POST | AJAX per-day sign-up/bail toggle; returns re-rendered row partial | OK |
 | SignUp | /Shifts/SignUp | POST | Sign up for a shift | OK |
 | SignUpRange | /Shifts/SignUpRange | POST | Sign up for a shift range | OK |
 | BailRange | /Shifts/BailRange | POST | Bail from a shift range | OK |
@@ -885,6 +887,8 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | Catalog | /Store/Admin/Catalog | GET | Store product catalog | OK |
 | Summary | /Store/Admin/Summary | GET | Store sales/order summary | OK |
+| Payments | /Store/Admin/Payments | GET | Stripe reconciliation report (Stripe vs Store ledger) | OK |
+| RecordMissingPayments | /Store/Admin/Payments/RecordMissing | POST | Record missing Stripe payments into the Store ledger | OK |
 | Edit | /Store/Admin/Catalog/Edit | GET | New product form | OK |
 | Edit | /Store/Admin/Catalog/Edit/{id:guid} | GET | Edit product form | OK |
 | Save | /Store/Admin/Catalog/Save | POST | Save a product | OK |
@@ -1003,7 +1007,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Index | /Tickets/Admin/Transfers | GET | Ticket transfer requests list | OK |
 | Detail | /Tickets/Admin/Transfers/Detail/{id:guid} | GET | Transfer request detail | OK |
 | Decide | /Tickets/Admin/Transfers/Decide | POST | Approve/reject a transfer | OK |
-| RetryIssue | /Tickets/Admin/Transfers/{id:guid}/RetryIssue | POST | Retry a failed ticket issue | OK |
 
 ## TicketTransferController
 

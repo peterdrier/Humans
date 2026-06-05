@@ -1,5 +1,6 @@
 using System.Text;
 using System.Xml.Linq;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using NodaTime;
@@ -20,15 +21,12 @@ public sealed class SepaPaymentFileBuilder : ISepaPaymentFileBuilder
         Instant generatedAt,
         IReadOnlyList<ExpenseReportDto> reports)
     {
-        var localDt = generatedAt.InUtc().LocalDateTime;
-        var msgId = $"EXP-{localDt:yyyyMMddHHmmss}";
+        var msgId = $"EXP-{generatedAt.ToIso8601()}";
         var nbOfTxs = reports.Count.ToString();
         var ctrlSum = reports.Sum(r => r.Total).ToString("F2",
             System.Globalization.CultureInfo.InvariantCulture);
-        var reqExctnDt = localDt.ToString("yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture);
-        var creDtTm = generatedAt.ToString("yyyy-MM-ddTHH:mm:ss",
-            System.Globalization.CultureInfo.InvariantCulture) + "Z";
+        var reqExctnDt = generatedAt.ToDateTimeUtc().ToInvariantDate();
+        var creDtTm = generatedAt.ToDateTimeUtc().ToSepaDateTime() + "Z";
 
         var doc = new XDocument(
             new XDeclaration("1.0", "utf-8", null),

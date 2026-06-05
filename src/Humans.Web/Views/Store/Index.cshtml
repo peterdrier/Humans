@@ -145,7 +145,7 @@ else
                         <div class="text-muted small">(&euro;@product.UnitPriceEur.ToString("N2") + @product.VatRatePercent.ToString("0.##")% VAT)</div>
                     </td>
                     <td class="text-end">@(product.DepositAmountEur.HasValue ? $"€{product.DepositAmountEur.Value:N2}" : "—")</td>
-                    <td>@product.OrderableUntil.ToDisplayDate()</td>
+                    <td>@product.OrderableUntil.ToDate()</td>
                 </tr>
             }
         </tbody>

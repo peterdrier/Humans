@@ -55,7 +55,7 @@
         @if (Model.EarlyEntryDate is { } ee)
         {
             <div class="ticket-stub-badge" style="background:#5b4636; color:#fff; margin-top:8px;">
-                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToString("ddd d MMM", null)
+                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToWeekdayDayMonth()
             </div>
         }
     </div>

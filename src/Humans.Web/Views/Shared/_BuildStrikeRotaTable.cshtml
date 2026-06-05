@@ -56,9 +56,9 @@ else
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
-                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
-                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToDisplayShiftDate()">
-                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()"
+                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToWeekdayDayMonth()">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()
                     </option>
                 }
             </select>
@@ -69,9 +69,9 @@ else
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
-                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()"
                             selected="@(s == availableShifts.Last() ? "selected" : null)">
-                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()
                     </option>
                 }
             </select>
@@ -97,10 +97,10 @@ else
         <script type="application/json" class="js-user-signups-data">
             @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 Model.UserActiveSignups.Select(u => new {
-                    date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    date = u.Date.ToInvariantDate(),
                     rota = u.RotaName,
-                    absStart = u.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                    absEnd = u.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                    absStart = DateFormattingExtensions.ToIso8601(u.AbsoluteStart),
+                    absEnd = DateFormattingExtensions.ToIso8601(u.AbsoluteEnd),
                     displayStart = u.DisplayStart,
                     displayEnd = u.DisplayEnd
                 })))
@@ -110,9 +110,9 @@ else
                 Model.RotaWindowsByDayOffset.ToDictionary(
                     kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     kv => new {
-                        absStart = kv.Value.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayShiftDate()
+                        absStart = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteStart),
+                        absEnd = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteEnd),
+                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToWeekdayDayMonth()
                     })))
         </script>
         <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
@@ -315,7 +315,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                     <tr class="@(allRangeFull ? "table-secondary" : "") shift-range-header" role="button" data-range="@rangeKey" style="cursor: pointer;">
                         <td>
                             <i class="fa-solid fa-chevron-right fa-xs me-1 range-icon"></i>
-                            @rangeStart.ToDisplayShiftDate()–@rangeEnd.ToDisplayShiftDate()
+                            @rangeStart.ToWeekdayDayMonth()–@rangeEnd.ToWeekdayDayMonth()
                             <small class="text-muted">(@range.Count @Localizer["Shifts_Days"])</small>
                         </td>
                         <td style="min-width: 120px;">
@@ -355,7 +355,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                         var isFull = item.RemainingSlots <= 0;
                         var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                         <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
-                            <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                            <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToWeekdayDayMonth()</td>
                             <td style="min-width: 120px;">
                                 @{
                                     var dayFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
@@ -415,7 +415,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                     var isFull = item.RemainingSlots <= 0;
                     var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                     <tr class="@(isFull ? "table-secondary" : "")">
-                        <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                        <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToWeekdayDayMonth()</td>
                         <td style="min-width: 120px;">
                             @{
                                 var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;

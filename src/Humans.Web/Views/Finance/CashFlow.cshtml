@@ -56,7 +56,7 @@
                 <tbody>
                     @foreach (var periodRow in Model.Periods)
                     {
-                        var detailId = $"period-{periodRow.PeriodStart.ToString("yyyyMMdd", null)}";
+                        var detailId = $"period-{periodRow.PeriodStart.ToInvariantDate()}";
                         <tr class="fw-semibold @(periodRow.FundsExhausted ? "table-warning" : "")" role="button" data-bs-toggle="collapse" data-bs-target="#@detailId">
                             <td>
                                 @periodRow.Label

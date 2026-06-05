@@ -39,7 +39,6 @@
     }
 
     var culture = System.Globalization.CultureInfo.CurrentCulture;
-    var invariant = System.Globalization.CultureInfo.InvariantCulture;
     var dayHeaders = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 }
 
@@ -136,14 +135,14 @@
                                 <div class="small text-truncate" title="@o.Title — @o.OwningTeamName">
                                     @if (!o.ShouldHideTimeLabel(zone))
                                     {
-                                        <span class="text-muted">@localStart.ToString("HH:mm", invariant)</span>
+                                        <span class="text-muted">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
                                     }
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                                 </div>
                             }
                             @if (moreCount > 0)
                             {
-                                var isoDay = day.ToString("yyyy-MM-dd", invariant);
+                                var isoDay = day.ToInvariantDate();
                                 <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@moreCount more</a>
                             }
                         </td>

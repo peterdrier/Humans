@@ -1,0 +1,115 @@
+@using Humans.Web.Models.CampAdmin
+@model CampComplianceViewModel
+@{
+    ViewData["Title"] = $"Barrio role compliance — {Model.Year}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="CampAdmin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Compliance</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Barrio role compliance &mdash; @Model.Year</h1>
+    <form asp-controller="CampCompliance" asp-action="Compliance" method="get" class="d-flex gap-2 align-items-center">
+        <label for="year" class="form-label mb-0 text-nowrap">Year</label>
+        <input type="number" id="year" name="year" class="form-control form-control-sm" style="max-width: 120px;" value="@Model.Year" min="2024" max="2099" required />
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-arrows-rotate me-1"></i>Show
+        </button>
+    </form>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        No active barrios for @Model.Year.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="fa-solid fa-people-group"></i>
+            <span>@Model.BarrioCount active barrio(s)</span>
+            @if (Model.NonCompliantCount > 0)
+            {
+                <span class="badge bg-warning text-dark ms-auto">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.NonCompliantCount missing required roles
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-success ms-auto">
+                    <i class="fa-solid fa-circle-check me-1"></i>All required roles filled
+                </span>
+            }
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Barrio</th>
+                        <th class="text-center text-nowrap">Size</th>
+                        @foreach (var role in Model.Roles)
+                        {
+                            <th class="text-center">
+                                @role.Name
+                                @if (role.MinimumRequired > 0)
+                                {
+                                    <span class="d-block small fw-normal text-muted">min @role.MinimumRequired</span>
+                                }
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td class="text-nowrap">
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug">@row.CampName</a>
+                                @if (row.IsBelowMinimum)
+                                {
+                                    <i class="fa-solid fa-triangle-exclamation text-warning ms-1" title="Missing one or more required roles"></i>
+                                }
+                            </td>
+                            <td class="text-center text-nowrap">
+                                @row.JoinedMemberCount<span class="text-muted">/@row.TargetMemberCount</span>
+                            </td>
+                            @foreach (var cell in row.Cells)
+                            {
+                                <td class="text-center">
+                                    <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                        @foreach (var userId in cell.AssigneeUserIds)
+                                        {
+                                            <vc:human user-id="@userId" layout="Card" size="64" link="Public" />
+                                        }
+                                        @for (var i = 0; i < cell.Shortfall; i++)
+                                        {
+                                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-warning"
+                                                  style="width: 64px; height: 64px; border: 2px dashed var(--bs-warning);"
+                                                  title="Required role unfilled">
+                                                <i class="fa-solid fa-user-plus fa-lg"></i>
+                                            </span>
+                                        }
+                                        @if (cell.AssigneeUserIds.Count == 0 && cell.MinimumRequired == 0)
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

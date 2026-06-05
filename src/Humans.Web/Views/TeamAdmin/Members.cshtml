@@ -130,7 +130,7 @@
                                     <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
                                 }
                             </td>
-                            <td>@request.RequestedAt.ToDisplayCompactDateTime()</td>
+                            <td>@request.RequestedAt.ToDateTime()</td>
                             <td>
                                 <div class="d-flex gap-1">
                                     <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@request.Id" method="post" class="d-inline">
@@ -241,7 +241,7 @@
                                     @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug })
                                 </td>
                             }
-                            <td>@member.JoinedAt.ToDisplayCompactDate()</td>
+                            <td>@member.JoinedAt.ToDate()</td>
                             @if (Model.CanManageRoles)
                             {
                                 <td>
@@ -321,7 +321,7 @@ else
                         <div class="card-body py-2">
                             <strong>This action will be recorded:</strong>
                             <em id="sensitiveAuditPreview">
-                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToString("d MMM yyyy") at @DateTime.UtcNow.ToString("HH:mm") UTC
+                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToDate() at @DateTime.UtcNow.ToTime() UTC
                             </em>
                         </div>
                     </div>

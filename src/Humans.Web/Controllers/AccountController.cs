@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -386,7 +387,7 @@ public class AccountController(
         var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var expiryInstant = clock.GetCurrentInstant() + Duration.FromMinutes(15);
         var expiryLocal = expiryInstant.InZone(madridZone);
-        ViewData["ExpiryTime"] = expiryLocal.ToString("HH:mm", null);
+        ViewData["ExpiryTime"] = DateFormattingExtensions.TimeOfDayPattern.Format(expiryLocal.TimeOfDay);
         return View("MagicLinkSent");
     }
 

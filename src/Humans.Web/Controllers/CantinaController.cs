@@ -1,4 +1,4 @@
-using System.Globalization;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Web.Authorization;
@@ -58,7 +58,7 @@ public sealed class CantinaController : Controller
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
-        var datePart = roster.WeekStartDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+        var datePart = roster.WeekStartDate.ToInvariantDate() ?? "unknown";
         var filename = $"cantina-roster-week-of-{datePart}.csv";
         _logger.LogDebug(
             "Cantina roster CSV exported for weekStartOffset={WeekStartOffset}, people={PeopleCount}",
@@ -93,7 +93,7 @@ public sealed class CantinaController : Controller
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
 
         var bytes = CantinaDailyMatrixCsvWriter.Write(matrix);
-        var datePart = matrix.CalendarDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "unknown";
+        var datePart = matrix.CalendarDate.ToInvariantDate() ?? "unknown";
         var filename = $"cantina-day-{datePart}-matrix.csv";
         _logger.LogDebug(
             "Cantina day matrix CSV exported for dayOffset={DayOffset}, people={PeopleCount}",

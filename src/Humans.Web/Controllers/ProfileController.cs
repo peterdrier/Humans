@@ -1505,7 +1505,7 @@ public class ProfileController(
 
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             localizer["Profile_DeletionRequested"].Value,
-            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDisplayLongDate() ?? ""));
+            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -1773,7 +1773,7 @@ public class ProfileController(
         var payload = BuildExportPayload(export);
         var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
+        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
         return File(bytes, "application/json", fileName);
     }
@@ -1907,9 +1907,9 @@ public class ProfileController(
             {
                 ShiftLabel = s.ShiftLabel,
                 DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
-                ShiftDateLabel = zoned.ToDisplayShortDateTime(),
+                ShiftDateLabel = zoned.ToDateTimeUnspecified().ToMonthDayTime(),
                 MarkedByName = reviewer?.BurnerName,
-                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
+                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDateTimeUnspecified().ToMonthDayTime()
             };
         }).ToList());
     }

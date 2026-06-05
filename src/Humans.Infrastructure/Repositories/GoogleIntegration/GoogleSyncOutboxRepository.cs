@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -13,11 +12,29 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// per design-rules §15b — every method creates and disposes a fresh
 /// short-lived <see cref="HumansDbContext"/>.
 /// </summary>
-[Grandfathered("HUM0025", justification: "Outbox table also written by TeamRepository for atomic team-mutation + outbox append; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "GoogleSyncOutboxEvents")]
 internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbContext> factory)
     : IGoogleSyncOutboxRepository
 {
     private const int LastErrorMaxLength = 4000;
+
+    public async Task AddAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.GoogleSyncOutboxEvents.Add(outboxEvent);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task AddRangeAsync(
+        IReadOnlyCollection<GoogleSyncOutboxEvent> outboxEvents,
+        CancellationToken ct = default)
+    {
+        if (outboxEvents.Count == 0)
+            return;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.GoogleSyncOutboxEvents.AddRange(outboxEvents);
+        await ctx.SaveChangesAsync(ct);
+    }
 
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {

@@ -10,7 +10,7 @@ internal sealed record GuestDeletionRequestFlash(bool Success, string Message)
         if (!result.Success)
             return new(false, ErrorMessageFor(result.ErrorKey));
 
-        var effective = result.EffectiveDeletionDate.ToDisplayDate();
+        var effective = result.EffectiveDeletionDate.ToDate();
         var message = result.IsHeldForTicket
             ? $"Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {effective}."
             : $"Deletion request recorded. Your account will be permanently deleted on {effective}.";

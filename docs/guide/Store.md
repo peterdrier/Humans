@@ -32,14 +32,15 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 - **Catalogue** (`/Store/Admin/Catalog`) — create and manage products (Store Admin)
 - **Add / edit a product** (`/Store/Admin/Catalog/Edit`) — product form: name, description, price, VAT, optional deposit, ordering deadline (Store Admin)
 - **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin)
+- **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin)
 
 ## Ordering for your camp (camp leads)
 
 ### Browse and start an order
 
-Go to `/Store` to see what's available for your camp this year. Prices are shown VAT-inclusive as the headline amount, with the net price and VAT rate underneath. Start a new order and add items for what you need. Each item locks in the product's price, VAT, and deposit at the moment you add it — later catalogue changes won't shift your existing items.
+Go to `/Store` to see what's available for your camp this year. Prices are shown VAT-inclusive as the headline amount, with the net price and VAT rate underneath. Start a new order and add items for what you need. While your order is still open it tracks the current catalogue price, so if a price changes the order updates to match; once an invoice is issued the prices are frozen as shown at that point. (Your order page lists any catalogue price changes that have happened since you started it.)
 
-You can have more than one order for the same camp season; give each a label to tell them apart.
+You can have more than one order for the same camp season.
 
 ### Add and remove items
 
@@ -51,7 +52,7 @@ While your order is open, you can fill in the billing details (name, VAT ID, add
 
 ### Pay
 
-From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. Bank transfers are matched from the org's accounts and applied automatically when the next sync runs.
+From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. Bank transfers are recorded by hand against the order by a treasurer; automatic matching from the org's accounts isn't switched on yet.
 
 ![TODO: screenshot — order detail page showing items, balance, and the Pay button]
 
@@ -66,6 +67,10 @@ Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store
 ### Summary report
 
 `/Store/Admin/Summary` totals up orders by camp and by product for a chosen year, including a camps-by-products grid.
+
+### Stripe payments
+
+`/Store/Admin/Payments` reconciles card payments taken through Stripe against what's recorded on orders. Card payments normally record themselves automatically, but if that automatic step isn't set up (or a payment slips through), this page lists every Stripe checkout and flags any paid one that hasn't been recorded yet. One click records all the missing ones — pulling the amount straight from Stripe, never re-typing it — and it's safe to run again any time. Payments recorded here but no longer found in Stripe are listed separately for you to look into; nothing is ever removed automatically.
 
 > **Heads up:** the Finance order-review screen (entering manual payments by hand and issuing invoices) isn't switched on yet.
 
