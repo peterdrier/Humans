@@ -108,7 +108,8 @@ public static class AdminNavTree
         ]),
         new("Design", [
             new("Color palette", "ColorPalette",  "Index", null, null, "fa-solid fa-palette", PolicyNames.AdminOnly),
-            new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly)
+            new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly),
+            new("Date formats",  "Debug",         "FormatGallery", null, null, "fa-solid fa-clock", PolicyNames.AdminOnly)
         ]),
         new("Temp", [
             new("Picture migration",          "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image",     PolicyNames.AdminOnly),

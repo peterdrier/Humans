@@ -1,0 +1,82 @@
+@model Humans.Web.Models.FormatGalleryViewModel
+@{
+    ViewData["Title"] = "Date format gallery";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Date format gallery</h1>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    Every formatter on <code>DateFormattingExtensions</code> (the single HUM0030 home), discovered by
+    reflection — so a new one can't hide from this audit. Overloads of the same method are collapsed.
+    Sample instant: <strong>@Model.SampleUtc</strong> → <strong>@Model.SampleLocal</strong>
+    (<code>@Model.SampleZone</code>). A <span class="badge bg-warning text-dark">same output</span>
+    badge means two formatters produced identical text in <em>both</em> columns below — worth a look to
+    confirm they each earn their keep.
+</div>
+
+@foreach (var bucket in new[]
+{
+    ("Localized", "output varies by culture", Model.CultureSensitive),
+    ("Culture-stable", "same in es-ES and en-US (may still differ in other locales)", Model.CultureStable),
+})
+{
+    <h2 class="h5 mt-4">@bucket.Item1 <small class="text-muted">— @bucket.Item2</small></h2>
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Formatter</th>
+                <th>Input</th>
+                <th>es-ES</th>
+                <th>en-US</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in bucket.Item3)
+            {
+                <tr>
+                    <td><code>@card.Name</code></td>
+                    <td><span class="text-muted small">@card.InputType</span></td>
+                    <td><code>@card.EsOutput</code></td>
+                    <td><code>@card.EnOutput</code></td>
+                    <td>
+                        @if (card.SameOutputAs.Count > 0)
+                        {
+                            <span class="badge bg-warning text-dark"
+                                  title="Same output as @string.Join(", ", card.SameOutputAs)">same output</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2 class="h5 mt-4">Parse / format patterns <small class="text-muted">— NodaTime <code>*Pattern</code> fields</small></h2>
+<table class="table table-sm table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Pattern</th>
+            <th>Value type</th>
+            <th>Pattern text</th>
+            <th>Sample</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var pattern in Model.Patterns)
+        {
+            <tr>
+                <td><code>@pattern.Name</code></td>
+                <td><span class="text-muted small">@pattern.ValueType</span></td>
+                <td><code>@pattern.PatternText</code></td>
+                <td><code>@pattern.SampleOutput</code></td>
+            </tr>
+        }
+    </tbody>
+</table>
