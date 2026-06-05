@@ -64,7 +64,7 @@ public sealed class SepaPaymentFileBuilderTests
 
         var doc = XDocument.Parse(xml);
         var msgId = doc.Descendants(Ns + "MsgId").First().Value;
-        msgId.Should().Be("EXP-20260510143000");
+        msgId.Should().Be("EXP-2026-05-10T14:30:00Z");
     }
 
     [HumansFact]

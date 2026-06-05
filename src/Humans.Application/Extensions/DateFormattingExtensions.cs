@@ -6,27 +6,17 @@ namespace Humans.Application.Extensions;
 
 public static class DateFormattingExtensions
 {
-    public static string ToIsoDateString(this LocalDate value) =>
+    public static string ToInvariantDate(this LocalDate value) =>
         value.ToString("yyyy-MM-dd", null);
 
-    public static string? ToIsoDateString(this LocalDate? value) =>
-        value?.ToIsoDateString();
+    public static string? ToInvariantDate(this LocalDate? value) =>
+        value?.ToInvariantDate();
 
-    public static string ToIsoDateString(this DateTime value) =>
+    public static string ToInvariantDate(this DateTime value) =>
         value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    public static string? ToIsoDateString(this DateTime? value) =>
-        value?.ToIsoDateString();
-
-    /// <summary>ISO-8601 basic date (no separators), "yyyyMMdd" — DOM-id/slug use.</summary>
-    public static string ToBasicIsoDate(this LocalDate value) =>
-        value.ToString("yyyyMMdd", null);
-
-    public static string ToInvariantInstantString(this Instant value) =>
-        value.ToString(null, CultureInfo.InvariantCulture);
-
-    public static string? ToInvariantInstantString(this Instant? value) =>
-        value?.ToInvariantInstantString();
+    public static string? ToInvariantDate(this DateTime? value) =>
+        value?.ToInvariantDate();
 
     // --- Canonical display formats — day/month ORDER and names follow the request culture ---
 
@@ -86,6 +76,12 @@ public static class DateFormattingExtensions
     public static string ToDisplayDate(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayDate();
     public static string? ToDisplayDate(this LocalDate? value) => value?.ToDisplayDate();
 
+    // 6b — weekday + date (with year)
+    public static string ToDisplayWeekdayDate(this DateTime value) => value.ToString(DisplayDatePattern(true, true), CultureInfo.CurrentCulture);
+    public static string? ToDisplayWeekdayDate(this DateTime? value) => value?.ToDisplayWeekdayDate();
+    public static string ToDisplayWeekdayDate(this LocalDate value) => value.AtMidnight().ToDateTimeUnspecified().ToDisplayWeekdayDate();
+    public static string? ToDisplayWeekdayDate(this LocalDate? value) => value?.ToDisplayWeekdayDate();
+
     // 7 — date + time (with year)
     public static string ToDisplayDateTime(this DateTime value) => value.ToString(DisplayDatePattern(false, true) + " HH:mm", CultureInfo.CurrentCulture);
     public static string? ToDisplayDateTime(this DateTime? value) => value?.ToDisplayDateTime();
@@ -116,46 +112,39 @@ public static class DateFormattingExtensions
 
     // --- Audit timestamps ---
 
-    public static string ToAuditTimestamp(this DateTime value) =>
+    public static string ToInvariantTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-    public static string ToAuditMinuteTimestamp(this DateTime value) =>
-        value.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
-
     // Audit timestamps from an Instant are always UTC (never the user's session tz).
-    public static string ToAuditTimestamp(this Instant value) => value.ToDateTimeUtc().ToAuditTimestamp();
-    public static string? ToAuditTimestamp(this Instant? value) => value?.ToAuditTimestamp();
-    public static string ToAuditMinuteTimestamp(this Instant value) => value.ToDateTimeUtc().ToAuditMinuteTimestamp();
-    public static string? ToAuditMinuteTimestamp(this Instant? value) => value?.ToAuditMinuteTimestamp();
+    public static string ToInvariantTimestamp(this Instant value) => value.ToDateTimeUtc().ToInvariantTimestamp();
+    public static string? ToInvariantTimestamp(this Instant? value) => value?.ToInvariantTimestamp();
 
     // --- Invariant / machine / interchange ---
 
-    public static string ToInvariantLongDate(this DateTime value) =>
-        value.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
-
-    public static string ToInvariantDayMonthYear(this LocalDate value) =>
+    public static string ToInvariantLongDate(this LocalDate value) =>
         value.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
 
-    public static string ToIsoDateTimeString(this DateTime value) =>
-        value.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+    public static string ToInvariantLongDate(this DateTime value) =>
+        value.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
 
-    public static string ToInvariantUtcMinuteLabel(this DateTime value) =>
-        value.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+    /// <summary>SEPA local date-time, "yyyy-MM-ddTHH:mm:ss" invariant (no trailing Z — SEPA needs none).</summary>
+    public static string ToSepaDateTime(this DateTime value) =>
+        value.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
 
     /// <summary>ISO-8601 UTC instant to seconds, "uuuu-MM-ddTHH:mm:ssZ" (machine/data attributes).</summary>
     public static string ToIso8601(this Instant value) =>
         InstantPattern.General.Format(value);
 
+    public static string? ToIso8601(this Instant? value) =>
+        value?.ToIso8601();
+
     /// <summary>Invariant 24-hour time, "HH:mm" with a stable ":" separator (CSV/export columns).</summary>
-    public static string ToIsoTime(this DateTime value) =>
+    public static string ToInvariantTime(this DateTime value) =>
         value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     // --- Filename / export stamps ---
 
-    public static string ToFileStamp(this DateTime value) =>
-        value.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-
-    public static string ToFileStampMinute(this DateTime value) =>
+    public static string ToFileTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture);
 
     // --- NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030) ---
@@ -179,30 +168,4 @@ public static class DateFormattingExtensions
     /// <summary>Ops-notice date, "ddd MMMM d" (e.g. "Mon January 5").</summary>
     public static readonly LocalDateTimePattern OpsNoticeDatePattern =
         LocalDateTimePattern.CreateWithInvariantCulture("ddd MMMM d");
-
-    /// <summary>Invariant long date, "MMMM d, yyyy" (email rendering).</summary>
-    public static readonly LocalDatePattern InvariantLongDatePattern =
-        LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
-
-    // --- Invariant name-bearing date patterns for CSV/export output (stable English) ---
-
-    /// <summary>Export weekday + day + short month, invariant: "ddd d MMM" (e.g. "Mon 27 May").</summary>
-    public static readonly LocalDatePattern InvariantWeekdayDayMonthPattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
-
-    /// <summary>Export short weekday only, invariant: "ddd" (e.g. "Mon").</summary>
-    public static readonly LocalDatePattern InvariantWeekdayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd");
-
-    /// <summary>Export day + short month, invariant: "d MMM" (e.g. "30 Jun").</summary>
-    public static readonly LocalDatePattern InvariantDayMonthPattern =
-        LocalDatePattern.CreateWithInvariantCulture("d MMM");
-
-    /// <summary>Export full weekday + day + month + year, invariant: "dddd d MMMM yyyy".</summary>
-    public static readonly LocalDatePattern InvariantFullWeekdayDayMonthYearPattern =
-        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
-
-    /// <summary>Export full weekday + day + month, invariant: "dddd d MMMM".</summary>
-    public static readonly LocalDatePattern InvariantFullWeekdayDayMonthPattern =
-        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM");
 }

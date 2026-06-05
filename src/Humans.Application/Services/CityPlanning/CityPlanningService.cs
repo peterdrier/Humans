@@ -188,7 +188,7 @@ public sealed class CityPlanningService(
             ?? throw new InvalidOperationException(
                 $"History entry {historyId} not found for CampSeason {campSeasonId}.");
 
-        var note = $"Restored from {entry.ModifiedAt.ToDateTimeUtc().ToAuditMinuteTimestamp()} UTC";
+        var note = $"Restored from {entry.ModifiedAt.ToDateTimeUtc().ToInvariantTimestamp()} UTC";
         return await SaveCampPolygonAsync(
             campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }

@@ -102,10 +102,10 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         // Block: "  - [<key>] 2026-07-01 to 2026-07-07 — Cantina build (Confirmed, 7 days)"
         // Singleton: "  - [<key>] 2026-07-15 — Setup crew (Confirmed)"
         // Key is the value the agent passes to get_shift_details(shiftId=...).
-        var startIso = entry.StartDate.ToIsoDateString();
+        var startIso = entry.StartDate.ToInvariantDate();
         if (entry.DayCount > 1)
         {
-            var endIso = entry.EndDate.ToIsoDateString();
+            var endIso = entry.EndDate.ToInvariantDate();
             return string.Create(CultureInfo.InvariantCulture,
                 $"  - [{entry.Key}] {startIso} to {endIso} — {entry.Label} ({entry.Status}, {entry.DayCount} days)");
         }

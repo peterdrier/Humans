@@ -1115,8 +1115,8 @@ public sealed class ShiftSignupService(
             ss.Status,
             ss.Enrolled,
             ss.StatusReason,
-            CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
-            ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
+            CreatedAt = ss.CreatedAt.ToIso8601(),
+            ReviewedAt = ss.ReviewedAt.ToIso8601()
         }).ToList());
 
         // Dietary + medical moved to Profile — they are exported by the Profiles
@@ -1126,15 +1126,15 @@ public sealed class ShiftSignupService(
             vep.Skills,
             vep.Quirks,
             vep.Languages,
-            CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
-            UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
+            CreatedAt = vep.CreatedAt.ToIso8601(),
+            UpdatedAt = vep.UpdatedAt.ToIso8601()
         }).ToList());
 
         var availabilitySlice = new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
         {
             EventName = eventNamesById.TryGetValue(ga.EventSettingsId, out var eventName) ? eventName : string.Empty,
             ga.AvailableDayOffsets,
-            UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
+            UpdatedAt = ga.UpdatedAt.ToIso8601()
         }).ToList());
 
         var tagPreferenceSlice = new UserDataSlice(GdprExportSections.ShiftTagPreferences, tagPreferences.Select(vtp => new

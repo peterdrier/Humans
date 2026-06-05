@@ -163,7 +163,7 @@ public sealed record AuditEvent(
     }
 
     private static string FormatDate(Instant occurredAt) =>
-        occurredAt.InUtc().Date.ToIsoDateString();
+        occurredAt.InUtc().Date.ToInvariantDate();
 }
 
 /// <summary>Structured render bundle from <see cref="AuditEvent.RenderStructured"/>.</summary>

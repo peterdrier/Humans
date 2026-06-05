@@ -142,7 +142,7 @@
                             }
                             @if (moreCount > 0)
                             {
-                                var isoDay = day.ToIsoDateString();
+                                var isoDay = day.ToInvariantDate();
                                 <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@moreCount more</a>
                             }
                         </td>

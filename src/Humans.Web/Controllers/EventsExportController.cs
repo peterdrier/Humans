@@ -71,7 +71,7 @@ public class EventsExportController(
                     e.IsRecurring ? "Yes" : "No",
                     e.PriorityRank,
                     e.Status.ToString(),
-                    ToLocalDateTime(e.SubmittedAt, tz).ToAuditMinuteTimestamp());
+                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp());
             }
         }
 
@@ -129,7 +129,7 @@ public class EventsExportController(
             .OrderBy(g => g.Key)
             .Select(g => new PrintGuideDayGroup
             {
-                DayLabel = DateFormattingExtensions.InvariantFullWeekdayDayMonthPattern.Format(LocalDate.FromDateTime(g.Key)),
+                DayLabel = LocalDate.FromDateTime(g.Key).ToDisplayWeekdayDayMonth(),
                 Entries = g.OrderBy(e => e.StartAt).ToList()
             })
             .ToList();
@@ -150,7 +150,7 @@ public class EventsExportController(
         foreach (var occurrence in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
         {
             var local = ToLocalDateTime(occurrence, tz);
-            results.Add((local.ToIsoDateString(), local.ToIsoTime()));
+            results.Add((local.ToInvariantDate(), local.ToInvariantTime()));
         }
         return results;
     }

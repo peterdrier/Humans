@@ -1828,12 +1828,12 @@ public sealed class TeamService(
         {
             TeamName = GetTeamName(tm.TeamId),
             tm.Role,
-            JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
-            LeftAt = tm.LeftAt.ToInvariantInstantString(),
+            JoinedAt = tm.JoinedAt.ToIso8601(),
+            LeftAt = tm.LeftAt.ToIso8601(),
             TeamRoles = tm.RoleAssignments.Select(tra => new
             {
                 RoleName = tra.TeamRoleDefinition.Name,
-                AssignedAt = tra.AssignedAt.ToInvariantInstantString()
+                AssignedAt = tra.AssignedAt.ToIso8601()
             })
         }).ToList());
 
@@ -1842,16 +1842,16 @@ public sealed class TeamService(
             TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
-            RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
-            ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
+            RequestedAt = tjr.RequestedAt.ToIso8601(),
+            ResolvedAt = tjr.ResolvedAt.ToIso8601()
         }).ToList());
 
         var earlyEntrySlice = new UserDataSlice(GdprExportSections.TeamEarlyEntry, eeGrants.Select(g => new
         {
             TeamName = GetTeamName(g.TeamId),
             g.ProjectName,
-            EntryDate = g.EntryDate.ToIsoDateString(),
-            GrantedAt = g.CreatedAt.ToInvariantInstantString(),
+            EntryDate = g.EntryDate.ToInvariantDate(),
+            GrantedAt = g.CreatedAt.ToIso8601(),
         }).ToList());
 
         return [membershipSlice, joinRequestSlice, earlyEntrySlice];

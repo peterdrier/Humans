@@ -545,12 +545,12 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
                 .Select(f => new
                 {
                     f.GuideEventId,
-                    CreatedAt = f.CreatedAt.ToInvariantInstantString()
+                    CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
             Preference = preference == null ? null : new
             {
                 preference.ExcludedCategorySlugs,
-                UpdatedAt = preference.UpdatedAt.ToInvariantInstantString()
+                UpdatedAt = preference.UpdatedAt.ToIso8601()
             }
         };
 

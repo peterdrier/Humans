@@ -780,7 +780,7 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
                 : o.PaymentMethod;
             return new OrderExportRow
             {
-                Date = o.PurchasedAt.InUtc().Date.ToIsoDateString(),
+                Date = o.PurchasedAt.InUtc().Date.ToInvariantDate(),
                 BuyerName = o.BuyerName,
                 BuyerEmail = o.BuyerEmail,
                 AttendeeCount = o.Attendees.Count,

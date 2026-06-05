@@ -148,7 +148,7 @@ else
             @foreach (var change in Model.PriceChanges)
             {
                 <tr>
-                    <td>@change.OccurredAt.ToDateTimeUtc().ToInvariantUtcMinuteLabel()</td>
+                    <td>@change.OccurredAt.ToDateTimeUtc().ToInvariantTimestamp()</td>
                     <td><span class="badge bg-warning text-dark">Price changed</span></td>
                     <td>@change.Description</td>
                 </tr>
@@ -198,7 +198,7 @@ else
                 @foreach (var payment in order.Payments.OrderBy(p => p.ReceivedAt))
                 {
                     <tr>
-                        <td>@payment.ReceivedAt.ToAuditMinuteTimestamp() UTC</td>
+                        <td>@payment.ReceivedAt.ToInvariantTimestamp() UTC</td>
                         <td><span class="badge bg-secondary">@payment.Method</span></td>
                         <td>
                             @if (!string.IsNullOrEmpty(payment.StripePaymentIntentId ?? payment.ExternalRef))

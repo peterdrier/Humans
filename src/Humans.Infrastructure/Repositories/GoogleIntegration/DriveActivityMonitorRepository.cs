@@ -68,7 +68,7 @@ internal sealed class DriveActivityMonitorRepository(
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var value = newLastRunAt.Value.ToInvariantInstantString();
+        var value = newLastRunAt.Value.ToIso8601();
         var setting = await ctx.SystemSettings
             .FirstOrDefaultAsync(s => s.Key == LastRunSettingKey, ct);
 

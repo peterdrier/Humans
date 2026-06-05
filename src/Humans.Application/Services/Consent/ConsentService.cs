@@ -304,7 +304,7 @@ public sealed class ConsentService(
             DocumentName = c.DocumentVersion.LegalDocument.Name,
             DocumentVersion = c.DocumentVersion.VersionNumber,
             c.ExplicitConsent,
-            ConsentedAt = c.ConsentedAt.ToInvariantInstantString(),
+            ConsentedAt = c.ConsentedAt.ToIso8601(),
             c.IpAddress,
             c.UserAgent
         }).ToList();

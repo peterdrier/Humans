@@ -28,7 +28,7 @@ public sealed class MailerLiteDateConverter : JsonConverter<Instant?>
     public override void Write(Utf8JsonWriter writer, Instant? value, JsonSerializerOptions _)
     {
         if (value is null) writer.WriteNullValue();
-        else writer.WriteStringValue(value.Value.ToDateTimeUtc().ToAuditTimestamp());
+        else writer.WriteStringValue(value.Value.ToDateTimeUtc().ToInvariantTimestamp());
     }
 }
 
@@ -52,5 +52,5 @@ public sealed class MailerLiteRequiredDateConverter : JsonConverter<Instant>
     }
 
     public override void Write(Utf8JsonWriter writer, Instant value, JsonSerializerOptions _) =>
-        writer.WriteStringValue(value.ToDateTimeUtc().ToAuditTimestamp());
+        writer.WriteStringValue(value.ToDateTimeUtc().ToInvariantTimestamp());
 }

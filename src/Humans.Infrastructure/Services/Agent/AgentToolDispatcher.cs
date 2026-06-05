@@ -206,7 +206,7 @@ public sealed class AgentToolDispatcher(
     }
 
     private static string FormatDate(LocalDate date) =>
-        date.ToIsoDateString();
+        date.ToInvariantDate();
 
     private static int ParseAuditHistoryLimit(JsonElement args)
     {

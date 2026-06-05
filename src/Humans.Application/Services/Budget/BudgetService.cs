@@ -932,7 +932,7 @@ public sealed class BudgetService(
             bal.EntityType,
             bal.FieldName,
             bal.Description,
-            OccurredAt = bal.OccurredAt.ToInvariantInstantString()
+            OccurredAt = bal.OccurredAt.ToIso8601()
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.BudgetAuditLog, shaped)];

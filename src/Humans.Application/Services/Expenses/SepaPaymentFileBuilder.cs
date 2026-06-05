@@ -21,12 +21,12 @@ public sealed class SepaPaymentFileBuilder : ISepaPaymentFileBuilder
         Instant generatedAt,
         IReadOnlyList<ExpenseReportDto> reports)
     {
-        var msgId = $"EXP-{generatedAt.ToDateTimeUtc().ToFileStamp()}";
+        var msgId = $"EXP-{generatedAt.ToIso8601()}";
         var nbOfTxs = reports.Count.ToString();
         var ctrlSum = reports.Sum(r => r.Total).ToString("F2",
             System.Globalization.CultureInfo.InvariantCulture);
-        var reqExctnDt = generatedAt.ToDateTimeUtc().ToIsoDateString();
-        var creDtTm = generatedAt.ToDateTimeUtc().ToIsoDateTimeString() + "Z";
+        var reqExctnDt = generatedAt.ToDateTimeUtc().ToInvariantDate();
+        var creDtTm = generatedAt.ToDateTimeUtc().ToSepaDateTime() + "Z";
 
         var doc = new XDocument(
             new XDeclaration("1.0", "utf-8", null),

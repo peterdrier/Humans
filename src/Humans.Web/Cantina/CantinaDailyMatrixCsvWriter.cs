@@ -125,5 +125,5 @@ public static class CantinaDailyMatrixCsvWriter
     private static string CountAsString(int n) => n.ToString(CultureInfo.InvariantCulture);
 
     private static string FormatLongDate(LocalDate? d) =>
-        d.HasValue ? DateFormattingExtensions.InvariantFullWeekdayDayMonthYearPattern.Format(d.Value) : "(no active event)";
+        d.HasValue ? d.Value.ToInvariantDate() : "(no active event)";
 }

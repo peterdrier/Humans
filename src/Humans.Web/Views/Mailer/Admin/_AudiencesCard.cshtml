@@ -22,7 +22,7 @@
                                 @row.CurrentlyInGroup currently in group
                                 @if (row.LastSyncAt is not null)
                                 {
-                                    <text> · last sync @row.LastSyncAt.Value.ToAuditTimestamp()</text>
+                                    <text> · last sync @row.LastSyncAt.Value.ToInvariantTimestamp()</text>
                                 }
                             </div>
                         </div>

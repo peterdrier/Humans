@@ -1773,7 +1773,7 @@ public class ProfileController(
         var payload = BuildExportPayload(export);
         var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
+        var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
         return File(bytes, "application/json", fileName);
     }

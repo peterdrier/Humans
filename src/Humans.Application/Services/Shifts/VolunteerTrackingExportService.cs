@@ -222,7 +222,7 @@ public sealed class VolunteerTrackingExportService(
         var prefix = departmentSlug is { Length: > 0 } slug
             ? $"volunteer-tracking-{slug}-"
             : "volunteer-tracking-";
-        return $"{prefix}{req.StartDate.ToIsoDateString()}-to-{req.EndDate.ToIsoDateString()}.xlsx";
+        return $"{prefix}{req.StartDate.ToInvariantDate()}-to-{req.EndDate.ToInvariantDate()}.xlsx";
     }
 
     private static string SlugifyTeamName(string teamName)

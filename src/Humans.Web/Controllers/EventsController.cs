@@ -883,8 +883,8 @@ public class EventsController(
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
-            var date = localDt.ToIsoDateString();
-            var time = localDt.ToIsoTime();
+            var date = localDt.ToInvariantDate();
+            var time = localDt.ToInvariantTime();
             var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
                 ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
@@ -909,8 +909,8 @@ public class EventsController(
         if (nonWithdrawn.Count == 0)
         {
             var exampleDate = gateDate.HasValue
-                ? gateDate.Value.ToIsoDateString()
-                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToIsoDateString();
+                ? gateDate.Value.ToInvariantDate()
+                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
             var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
             sb.AppendCsvRow(
                 string.Empty,

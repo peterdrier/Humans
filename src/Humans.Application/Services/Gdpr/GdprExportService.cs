@@ -64,7 +64,7 @@ public sealed class GdprExportService(
             sections.Count);
 
         return new GdprExport(
-            ExportedAt: clock.GetCurrentInstant().ToInvariantInstantString(),
+            ExportedAt: clock.GetCurrentInstant().ToIso8601(),
             Sections: sections);
     }
 }

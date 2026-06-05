@@ -103,7 +103,7 @@ public class TermRenewalReminderJob(
 
                 try
                 {
-                    var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantDayMonthYear();
+                    var expiresFormatted = application.TermExpiresAt!.Value.ToInvariantLongDate();
 
                     await emailService.SendAsync(emailMessages.TermRenewalReminder(
                         email,

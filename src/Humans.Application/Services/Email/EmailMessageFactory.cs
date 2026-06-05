@@ -65,7 +65,7 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     /// <inheritdoc />
     public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
     {
-        var formattedDate = DateFormattingExtensions.InvariantLongDatePattern.Format(deletionDate.InUtc().Date);
+        var formattedDate = deletionDate.InUtc().Date.ToInvariantLongDate();
         var content = renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
             "deletion_requested");

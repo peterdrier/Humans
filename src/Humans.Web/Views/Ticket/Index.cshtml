@@ -262,7 +262,7 @@
             <span class="text-muted">
                 @if (Model.LastSyncAt.HasValue)
                 {
-                    <text>Last synced: @Model.LastSyncAt.Value.ToAuditMinuteTimestamp() UTC</text>
+                    <text>Last synced: @Model.LastSyncAt.Value.ToInvariantTimestamp() UTC</text>
                 }
                 else
                 {

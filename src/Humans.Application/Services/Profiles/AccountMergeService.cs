@@ -256,8 +256,8 @@ public sealed class AccountMergeService(
         {
             Status = r.Status,
             Role = r.IsTarget ? "Target" : "Source",
-            CreatedAt = r.CreatedAt.ToInvariantInstantString(),
-            ResolvedAt = r.ResolvedAt.ToInvariantInstantString()
+            CreatedAt = r.CreatedAt.ToIso8601(),
+            ResolvedAt = r.ResolvedAt.ToIso8601()
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];

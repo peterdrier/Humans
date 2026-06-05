@@ -97,7 +97,7 @@ else
         <script type="application/json" class="js-user-signups-data">
             @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 Model.UserActiveSignups.Select(u => new {
-                    date = u.Date.ToIsoDateString(),
+                    date = u.Date.ToInvariantDate(),
                     rota = u.RotaName,
                     absStart = DateFormattingExtensions.ToIso8601(u.AbsoluteStart),
                     absEnd = DateFormattingExtensions.ToIso8601(u.AbsoluteEnd),

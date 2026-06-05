@@ -60,7 +60,7 @@ public sealed class DriveActivityMonitorService(
         var now = clock.GetCurrentInstant();
         var lookbackTime = await repository.GetLastRunTimestampAsync(cancellationToken)
             ?? now.Minus(Duration.FromHours(24));
-        var filterTime = lookbackTime.ToInvariantInstantString();
+        var filterTime = lookbackTime.ToIso8601();
 
         logger.LogDebug("Drive activity monitor checking events since {LookbackTime}", filterTime);
 

@@ -832,8 +832,8 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         {
             AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.ExpectedDate),
-                lineItem.ExpectedDate.ToIsoDateString(),
-                update.ExpectedDate.ToIsoDateString(),
+                lineItem.ExpectedDate.ToInvariantDate(),
+                update.ExpectedDate.ToInvariantDate(),
                 actorUserId, now);
             lineItem.ExpectedDate = update.ExpectedDate;
         }

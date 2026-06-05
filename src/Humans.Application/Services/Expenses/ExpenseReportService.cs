@@ -1223,7 +1223,7 @@ public sealed class ExpenseReportService(
                 e.EntityType,
                 e.EntityId,
                 e.Description,
-                OccurredAt = e.OccurredAt.ToInvariantInstantString()
+                OccurredAt = e.OccurredAt.ToIso8601()
             }).ToList();
 
         return

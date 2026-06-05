@@ -91,7 +91,7 @@
                         };
                         var evtUserId = CurrentUserEnricher.ExtractFromEvent(evt);
                         <tr class="@levelClass" data-level="@evt.Level">
-                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToAuditTimestamp()</td>
+                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToInvariantTimestamp()</td>
                             <td>@evt.Level</td>
                             <td>
                                 @if (evtUserId.HasValue)

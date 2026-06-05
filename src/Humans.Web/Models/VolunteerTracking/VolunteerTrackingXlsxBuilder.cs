@@ -41,7 +41,7 @@ public sealed class VolunteerTrackingXlsxBuilder
 
     private static void WriteMetadataBlock(IXLWorksheet sheet, VolunteerExportModel model)
     {
-        var generatedAt = model.GeneratedAtUtc.ToDateTimeUtc().ToInvariantUtcMinuteLabel();
+        var generatedAt = model.GeneratedAtUtc.ToDateTimeUtc().ToInvariantTimestamp();
         sheet.Cell("A1").Value = $"Volunteer tracking export — generated {generatedAt} by {model.GeneratedByName}";
         sheet.Cell("A2").Value = model.FilterSummary;
         sheet.Cell("A3").Value = model.MethodologyBlurb;

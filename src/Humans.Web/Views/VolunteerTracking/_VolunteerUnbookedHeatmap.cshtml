@@ -120,7 +120,7 @@
                                     <div class="small text-muted mb-2">
                                         <span class="badge @CellClass(cell.State)">@CellAria(cell.State)</span>
                                     </div>
-                                    <a href="/Shifts/Dashboard?startDate=@date.ToIsoDateString()&endDate=@date.ToIsoDateString()#urgencyAccordion"
+                                    <a href="/Shifts/Dashboard?startDate=@date.ToInvariantDate()&endDate=@date.ToInvariantDate()#urgencyAccordion"
                                        target="_blank" rel="noopener"
                                        class="btn btn-sm btn-outline-success w-100 mb-2">
                                         <i class="fa-solid fa-up-right-from-square me-1"></i>@Localizer["VolTrack_Popover_OpenDashboard"]
@@ -131,7 +131,7 @@
                                         <form method="post" asp-action="SetCampSetup" class="mb-2">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="UserId" value="@row.UserId" />
-                                            <input type="hidden" name="Date" value="@date.ToIsoDateString()" />
+                                            <input type="hidden" name="Date" value="@date.ToInvariantDate()" />
                                             <button type="submit" class="btn btn-sm btn-primary w-100">
                                                 <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
                                             </button>

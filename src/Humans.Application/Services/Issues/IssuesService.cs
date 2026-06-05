@@ -687,13 +687,13 @@ public sealed class IssuesService(
             i.Section,
             i.Status,
             i.PageUrl,
-            CreatedAt = i.CreatedAt.ToInvariantInstantString(),
-            ResolvedAt = i.ResolvedAt.ToInvariantInstantString(),
+            CreatedAt = i.CreatedAt.ToIso8601(),
+            ResolvedAt = i.ResolvedAt.ToIso8601(),
             Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
             {
                 c.Content,
                 IsFromUser = c.SenderUserId == userId,
-                CreatedAt = c.CreatedAt.ToInvariantInstantString()
+                CreatedAt = c.CreatedAt.ToIso8601()
             })
         }).ToList();
 

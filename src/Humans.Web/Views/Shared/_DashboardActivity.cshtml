@@ -20,7 +20,7 @@ else
                 <strong>@entry.Action</strong>
                 <p>@entry.Description</p>
             </div>
-            <span class="time">@entry.OccurredAt.ToAuditTimestamp()</span>
+            <span class="time">@entry.OccurredAt.ToInvariantTimestamp()</span>
         </div>
     }
 }

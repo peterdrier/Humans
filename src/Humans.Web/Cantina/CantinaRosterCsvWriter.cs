@@ -14,14 +14,14 @@ namespace Humans.Web.Cantina;
 /// quoting so the output stays readable when opened in a spreadsheet
 /// without parser warnings. Multi-select fields (allergies, intolerances)
 /// are joined with <c>", "</c> into a single cell. The <c>ArrivesOn</c>
-/// column is a single short calendar label (e.g. "Mon 27 May"); the
-/// <c>NoShift</c> column lists short calendar labels comma-and-space-
+/// column is a single ISO date label (e.g. "2026-05-27"); the
+/// <c>NoShift</c> column lists ISO date labels comma-and-space-
 /// separated (empty when the human has a scheduled shift every day of the week).
 ///
 /// Layout (top to bottom):
-///   1. "Week of &lt;Mon d MMM&gt; – &lt;Sun d MMM&gt;" header line
+///   1. "Week of &lt;yyyy-MM-dd&gt; – &lt;yyyy-MM-dd&gt;" header line
 ///      (skipped when no active event).
-///   2. Per-day summary table: Day,Date,On site,Unanswered (7 rows).
+///   2. Per-day summary table: Date,On site,Unanswered (7 rows).
 ///   3. Blank separator row.
 ///   4. Per-person rows: Name,ArrivesOn,NoShift,Dietary,Allergies,
 ///      AllergyOther,Intolerances,IntoleranceOther.
@@ -45,34 +45,30 @@ public static class CantinaRosterCsvWriter
                 sw.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
                     "Week of {0} – {1}",
-                    DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(roster.WeekStartDate.Value),
-                    DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(roster.WeekEndDate.Value)));
+                    roster.WeekStartDate.Value.ToInvariantDate(),
+                    roster.WeekEndDate.Value.ToInvariantDate()));
             }
             else
             {
                 sw.WriteLine("Week (no active event)");
             }
-            sw.WriteLine("Day,Date,On site,Unanswered");
+            sw.WriteLine("Date,On site,Unanswered");
             foreach (var d in roster.Days)
             {
-                string dayCol;
                 string dateCol;
                 if (d.CalendarDate is { } cd)
                 {
-                    dayCol = DateFormattingExtensions.InvariantWeekdayPattern.Format(cd);
-                    dateCol = DateFormattingExtensions.InvariantDayMonthPattern.Format(cd);
+                    dateCol = cd.ToInvariantDate();
                 }
                 else
                 {
                     // No active event — render the day-offset so coordinators
-                    // can still tell rows apart. Blank weekday column.
-                    dayCol = string.Empty;
+                    // can still tell rows apart.
                     dateCol = string.Format(CultureInfo.InvariantCulture, "Day {0}", d.DayOffset);
                 }
                 sw.WriteLine(string.Format(
                     CultureInfo.InvariantCulture,
-                    "{0},{1},{2},{3}",
-                    Quote(dayCol),
+                    "{0},{1},{2}",
                     Quote(dateCol),
                     d.TotalOnSite,
                     d.UnansweredOnDay));
@@ -89,7 +85,7 @@ public static class CantinaRosterCsvWriter
                     CultureInfo.InvariantCulture,
                     "{0},{1},{2},{3},{4},{5},{6},{7}",
                     Quote(p.BurnerName),
-                    Quote(DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(p.ArrivesOn)),
+                    Quote(p.ArrivesOn.ToInvariantDate()),
                     Quote(FormatDayList(p.NoShift)),
                     Quote(p.DietaryPreference ?? string.Empty),
                     Quote(string.Join(", ", p.Allergies)),
@@ -108,7 +104,7 @@ public static class CantinaRosterCsvWriter
             return string.Empty;
         var parts = new string[days.Count];
         for (var i = 0; i < days.Count; i++)
-            parts[i] = DateFormattingExtensions.InvariantWeekdayDayMonthPattern.Format(days[i]);
+            parts[i] = days[i].ToInvariantDate();
         return string.Join(", ", parts);
     }
 
