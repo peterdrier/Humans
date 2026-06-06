@@ -204,6 +204,9 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-        await mergeService.AcceptAsync(requestId, adminUserId);
+        // Chain-follow tests assert source→target (target survives); pick the request target.
+        var request = await mergeService.GetByIdAsync(requestId)
+            ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
+        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id);
     }
 }

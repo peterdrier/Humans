@@ -20,9 +20,17 @@ public interface IAccountMergeService : IApplicationService
     Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Accepts a merge request: migrates data from source to target, archives source account.
+    /// Accepts a merge request, routing through <see cref="MergeAsync"/>. The admin picks
+    /// which of the request's two accounts survives via <paramref name="survivorUserId"/>
+    /// (it must be the request's source or target), so a wrong-direction request can be
+    /// flipped at accept time. The other account is archived/tombstoned.
     /// </summary>
-    Task AcceptAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the request is missing, not pending, or <paramref name="survivorUserId"/>
+    /// is not one of the request's two accounts.
+    /// </exception>
+    Task AcceptAsync(Guid requestId, Guid adminUserId, Guid survivorUserId,
+        string? notes = null, CancellationToken ct = default);
 
     /// <summary>
     /// The one merge primitive. Folds <paramref name="archivedUserId"/> into

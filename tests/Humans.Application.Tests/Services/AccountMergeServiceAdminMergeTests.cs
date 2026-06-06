@@ -28,6 +28,14 @@ public class AccountMergeServiceAdminMergeTests
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
+    public AccountMergeServiceAdminMergeTests()
+    {
+        // MergeAsync's CloseRequestsForPairAsync filters GetPendingAsync in memory; default
+        // it to empty so the happy path doesn't trip on a null result.
+        _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<AccountMergeRequest>());
+    }
+
     private AccountMergeService BuildSut() =>
         new(
             _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
@@ -36,8 +44,14 @@ public class AccountMergeServiceAdminMergeTests
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
+        // A real tombstone sets both MergedToUserId and MergedAt; IsMerged keys off MergedAt.
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = sourceId, MergedToUserId = sourceTombstoned ? targetId : (Guid?)null }.ToUserInfo());
+            .Returns(new User
+            {
+                Id = sourceId,
+                MergedToUserId = sourceTombstoned ? targetId : (Guid?)null,
+                MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : (NodaTime.Instant?)null,
+            }.ToUserInfo());
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId }.ToUserInfo());
     }

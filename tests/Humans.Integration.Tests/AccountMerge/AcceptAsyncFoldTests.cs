@@ -949,6 +949,35 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     }
 
     // ==================================================================
+    // Admin-chosen survivor flips request direction — obs-1
+    // ==================================================================
+
+    [HumansFact(Timeout = 60_000)]
+    public async Task AcceptAsync_HonoursAdminChosenSurvivor_OverRequestDirection()
+    {
+        // The request is created Target=<new account>, Source=<primary>. The admin flips it,
+        // keeping the Source — the request's stored direction must be overridden.
+        var (requestId, requestTargetId, requestSourceId) =
+            await factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
+
+        var adminId = await SeedAdminUserAsync();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
+            await sut.AcceptAsync(requestId, adminId, survivorUserId: requestSourceId); // flip: keep the Source
+        }
+
+        await using var assertScope = factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestSourceId))!.MergedToUserId
+            .Should().BeNull("the admin-chosen survivor is never tombstoned");
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestTargetId))!.MergedToUserId
+            .Should().Be(requestSourceId, "the request target was archived into the chosen survivor");
+        (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId))!.Status
+            .Should().Be(AccountMergeRequestStatus.Accepted);
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
 
@@ -956,6 +985,9 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-        await mergeService.AcceptAsync(requestId, adminUserId);
+        // These fold tests assert source→target (target survives); pick the request target.
+        var request = await mergeService.GetByIdAsync(requestId)
+            ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
+        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id);
     }
 }

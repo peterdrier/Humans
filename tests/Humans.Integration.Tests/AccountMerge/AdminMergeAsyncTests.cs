@@ -125,17 +125,17 @@ public class AdminMergeAsyncTests(HumansWebApplicationFactory factory) : IClassF
 
         // ----------------------------------------------------------------
         // Post-condition 6: AuditLogEntry with AccountMergeAccepted action,
-        // EntityType == nameof(User), EntityId == sourceId, and description
-        // starting with "Admin-initiated via EmailProblems".
+        // EntityType == nameof(User), EntityId == sourceId (the archived account),
+        // and the unified MergeAsync description.
         // ----------------------------------------------------------------
         var auditRow = await db.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Action == AuditAction.AccountMergeAccepted
                 && a.EntityType == nameof(User)
                 && a.EntityId == sourceId);
-        auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the source");
-        auditRow!.Description.Should().StartWith("Admin-initiated via EmailProblems",
-            "the audit description must identify this as an admin-initiated fold");
+        auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the archived account");
+        auditRow!.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
+            "the audit description records the archived→survivor fold");
 
         // Bonus: source's team membership and role assignment moved to target.
         (await db.TeamMembers.AsNoTracking()

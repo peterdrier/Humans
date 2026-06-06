@@ -64,47 +64,27 @@ public sealed class AccountMergeService(
     }
 
     public async Task AcceptAsync(
-        Guid requestId, Guid adminUserId,
+        Guid requestId, Guid adminUserId, Guid survivorUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var request = await mergeRepository.GetByIdAsync(requestId, ct)
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
             ?? throw new InvalidOperationException("Merge request not found.");
         if (request.Status != AccountMergeRequestStatus.Pending)
             throw new InvalidOperationException("Merge request is not pending.");
+        if (survivorUserId != request.TargetUserId && survivorUserId != request.SourceUserId)
+            throw new InvalidOperationException("Survivor must be one of the request's two accounts.");
 
-        logger.LogInformation(
-            "Admin {AdminId} accepting merge request {RequestId}: folding {SourceUserId} into {TargetUserId}",
-            adminUserId, requestId, request.SourceUserId, request.TargetUserId);
+        var archivedUserId = survivorUserId == request.TargetUserId
+            ? request.SourceUserId : request.TargetUserId;
 
-        var audit = new AuditEntry(
-            AuditAction.AccountMergeAccepted,
-            nameof(AccountMergeRequest), request.Id,
-            $"Folded source {request.SourceUserId} into target {request.TargetUserId} — email: {request.Email}",
-            RelatedEntityId: request.TargetUserId,
-            RelatedEntityType: nameof(User));
+        // Only verify the request's pending email when its owner (the request target) is
+        // the survivor. If the admin flipped direction the target is being archived, so its
+        // pending email moves to the survivor via the fan-out instead of being verified here.
+        var pendingEmailToVerify = survivorUserId == request.TargetUserId
+            ? request.PendingEmailId : (Guid?)null;
 
-        await FoldAsync(request.SourceUserId, request.TargetUserId, adminUserId, audit, ct);
-
-        var now = clock.GetCurrentInstant();
-        using var scope = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions
-            {
-                IsolationLevel = IsolationLevel.ReadCommitted
-            },
-            TransactionScopeAsyncFlowOption.Enabled);
-        var verified = await userRepository.MarkUserEmailVerifiedAsync(request.PendingEmailId, now, ct);
-        if (!verified)
-            throw new InvalidOperationException(
-                $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
-
-        request.Status = AccountMergeRequestStatus.Accepted;
-        request.ResolvedAt = now;
-        request.ResolvedByUserId = adminUserId;
-        request.AdminNotes = notes;
-        await mergeRepository.UpdateAsync(request, ct);
-
-        scope.Complete();
+        // MergeAsync.CloseRequestsForPairAsync closes this request (and any siblings) as Accepted.
+        await MergeAsync(survivorUserId, archivedUserId, adminUserId, notes, pendingEmailToVerify, ct);
     }
 
     public async Task MergeAsync(
@@ -168,14 +148,6 @@ public sealed class AccountMergeService(
         }
     }
 
-    private sealed record AuditEntry(
-        AuditAction Action,
-        string EntityType,
-        Guid EntityId,
-        string Description,
-        Guid? RelatedEntityId = null,
-        string? RelatedEntityType = null);
-
     private static AccountMergeRequestSnapshot ToSnapshot(
         AccountMergeRequest request,
         IReadOnlyDictionary<Guid, UserInfo> users) =>
@@ -208,62 +180,6 @@ public sealed class AccountMergeService(
         }
         // Missing user → stub for snapshot record's non-null contract.
         return new(userId, "(unknown user)", null, null, null, null);
-    }
-
-    private async Task FoldAsync(
-        Guid sourceUserId, Guid targetUserId,
-        Guid adminUserId, AuditEntry audit,
-        CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-
-        try
-        {
-            // Ambient transaction — section services use IDbContextFactory; Npgsql enlists. AsyncFlow required for await.
-            using (var scope = new TransactionScope(
-                TransactionScopeOption.Required,
-                new TransactionOptions
-                {
-                    IsolationLevel = IsolationLevel.ReadCommitted
-                },
-                TransactionScopeAsyncFlowOption.Enabled))
-            {
-                // Fan-out: each IUserMerge re-FKs source→target. Order is irrelevant inside the transaction.
-                foreach (var merger in userMerges)
-                    await merger.ReassignAsync(sourceUserId, targetUserId, adminUserId, now, ct);
-
-                // Tombstone source User (no wipe — chain-follow reads need the redirect).
-                await userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
-
-                // Audit inside scope — rolled-back fold must not leave a ghost row.
-                await auditLogService.LogAsync(
-                    audit.Action,
-                    audit.EntityType, audit.EntityId,
-                    audit.Description,
-                    adminUserId,
-                    relatedEntityId: audit.RelatedEntityId,
-                    relatedEntityType: audit.RelatedEntityType);
-
-                scope.Complete();
-            }
-
-            // Cache invalidation AFTER commit so cache-aside readers don't repopulate from rolled-back rows.
-            // The ActiveTeams cache is cleared in the finally below (Invalidate); no separate per-user call.
-            roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
-            roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
-            roleAssignmentService.InvalidateNavBadgeCache();
-            roleAssignmentService.InvalidateRoleAssignmentCache();
-            notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
-
-            // T-04: rebuild target's UserConsentInfo against post-merge chain (§12 — source records stay at source).
-            consentCacheInvalidator.InvalidateUser(sourceUserId);
-            consentCacheInvalidator.InvalidateUser(targetUserId);
-        }
-        finally
-        {
-            // Evict ActiveTeams cache: TeamService mutates it during scope; rolled-back state would otherwise leak.
-            activeTeamsCacheInvalidator.Invalidate();
-        }
     }
 
     // Closes every pending merge request for the survivor/archived pair as Accepted.
@@ -374,40 +290,12 @@ public sealed class AccountMergeService(
     public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
         mergeRepository.AddAsync(request, ct);
 
-    public async Task AdminMergeAsync(
+    // Admin-initiated direct merge: folds source into target (target survives), routed
+    // through the one MergeAsync primitive. MergeAsync performs the same-id, missing-user,
+    // and already-tombstoned validation.
+    public Task AdminMergeAsync(
         Guid sourceUserId, Guid targetUserId,
         Guid adminUserId, string? notes = null,
-        CancellationToken ct = default)
-    {
-        if (sourceUserId == targetUserId)
-            throw new InvalidOperationException("Source and target users are the same.");
-
-        var source = await userService.GetUserInfoAsync(sourceUserId, ct)
-            ?? throw new InvalidOperationException($"Source user {sourceUserId} not found.");
-        var target = await userService.GetUserInfoAsync(targetUserId, ct)
-            ?? throw new InvalidOperationException($"Target user {targetUserId} not found.");
-
-        if (source.MergedToUserId is not null)
-            throw new InvalidOperationException(
-                $"Source user {sourceUserId} is already tombstoned (merged into {source.MergedToUserId}).");
-
-        if (target.MergedToUserId is not null)
-            throw new InvalidOperationException(
-                $"Target user {targetUserId} is already tombstoned.");
-
-        logger.LogInformation(
-            "Admin {AdminId} initiated direct merge: folding {SourceUserId} into {TargetUserId}",
-            adminUserId, sourceUserId, targetUserId);
-
-        var description = $"Admin-initiated via EmailProblems: folded source {sourceUserId} into target {targetUserId}. Notes: {notes ?? "(none)"}";
-
-        var audit = new AuditEntry(
-            AuditAction.AccountMergeAccepted,
-            nameof(User), sourceUserId,
-            description,
-            RelatedEntityId: targetUserId,
-            RelatedEntityType: nameof(User));
-
-        await FoldAsync(sourceUserId, targetUserId, adminUserId, audit, ct);
-    }
+        CancellationToken ct = default) =>
+        MergeAsync(targetUserId, sourceUserId, adminUserId, notes, pendingEmailIdToVerify: null, ct);
 }

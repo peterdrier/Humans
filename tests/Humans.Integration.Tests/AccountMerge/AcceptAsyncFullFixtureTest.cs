@@ -165,7 +165,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.AcceptAsync(requestId, adminId);
+            await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId);
         }
 
         // Assert — comprehensive post-merge state.

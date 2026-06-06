@@ -102,7 +102,14 @@ public class AdminMergeController(
 
         try
         {
-            await mergeService.AcceptAsync(id, user.Id, notes);
+            var request = await mergeService.GetByIdAsync(id);
+            if (request is null)
+            {
+                SetError("Merge request not found.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            await mergeService.AcceptAsync(id, user.Id, request.TargetUser.Id, notes);
             SetSuccess("Account merge completed. Duplicate account has been archived.");
         }
         catch (InvalidOperationException ex)
