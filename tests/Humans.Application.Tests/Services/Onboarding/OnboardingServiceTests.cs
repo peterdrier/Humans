@@ -28,7 +28,6 @@ public sealed class OnboardingServiceTests
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
 
     private OnboardingService BuildSut() =>
@@ -41,12 +40,14 @@ public sealed class OnboardingServiceTests
             _syncJob,
             _membershipCalculator,
             _auditLogService,
-            _metrics,
             NullLogger<OnboardingService>.Instance);
 
     [HumansFact]
-    public async Task ClearConsentCheckAsync_OnSuccess_UsesUserServiceMutationAndSyncsApprovedTeams()
+    public async Task ClearConsentCheckAsync_RecordsClearedAnnotation_WithoutTeamSync()
     {
+        // Name-only access switch: Clear is an audit annotation only. It records the Cleared
+        // consent-check (+ audit) and must NOT provision any team — membership is reconciled by
+        // SystemTeamSyncJob on name + consents, decoupled from CC review.
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
         const string notes = "looks good";
@@ -60,8 +61,6 @@ public sealed class OnboardingServiceTests
                     && cmd.Notes == notes),
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
-        _applicationDecisionService.GetApprovedTiersForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([MembershipTier.Colaborador, MembershipTier.Asociado]);
 
         var result = await BuildSut().ClearConsentCheckAsync(userId, reviewerId, notes);
 
@@ -72,12 +71,7 @@ public sealed class OnboardingServiceTests
             userId,
             "Consent check cleared",
             reviewerId);
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, default);
     }
 
     [HumansFact]

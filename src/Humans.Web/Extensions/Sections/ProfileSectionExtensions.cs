@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Profiles;
@@ -6,8 +5,6 @@ using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileServi
 using ProfilesContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using ProfilesUserEmailService = Humans.Application.Services.Profiles.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
-using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
-using ProfilesDuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
 using ProfilesEmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
 using ProfilesProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
@@ -26,7 +23,6 @@ internal static class ProfileSectionExtensions
     {
         // Profile section — see #504. Singleton repos so CachingUserService injects directly without scope-factory.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
-        services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
@@ -44,11 +40,6 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
 
-        services.AddScoped<ProfilesAccountMergeService>();
-        services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
-
-        services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IEmailProblemsService, ProfilesEmailProblemsService>();
         services.AddScoped<IProfileEditorService, ProfilesProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();

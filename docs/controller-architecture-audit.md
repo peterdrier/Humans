@@ -786,19 +786,19 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | SendMessage | /Profile/{id}/SendMessage | GET | Facilitated message form | OK |
 | SendMessage | /Profile/{id}/SendMessage | POST | Send facilitated message | OK |
 | Search | /Profile/Search | GET | Human search page | OK |
-| AdminList | /Profile/Admin | GET | Admin: human list with filters | OK |
-| Roles | /Profile/Admin/Roles | GET | Admin: governance role assignments list | OK |
-| AdminDetail | /Profile/{id}/Admin | GET | Admin: human detail page | OK |
-| PurgeHuman | /Profile/{id}/Admin/Purge | POST | Purge a human (non-prod) | OK |
-| RevealIban | /Profile/{id:guid}/Admin/RevealIban | POST | Reveal a human's IBAN | OK |
-| AdminOutbox | /Profile/{id}/Admin/Outbox | GET | Admin: email outbox for a human | OK |
-| SuspendHuman | /Profile/{id}/Admin/Suspend | POST | Suspend a human | OK |
-| UnsuspendHuman | /Profile/{id}/Admin/Unsuspend | POST | Unsuspend a human | OK |
-| ApproveVolunteer | /Profile/{id}/Admin/Approve | POST | Approve volunteer onboarding | OK |
-| RejectSignup | /Profile/{id}/Admin/Reject | POST | Reject a signup | OK |
-| AddRole | /Profile/{id}/Admin/Roles/Add | GET | Add role form | OK |
-| AddRole | /Profile/{id}/Admin/Roles/Add | POST | Submit role assignment | OK |
-| EndRole | /Profile/{id}/Admin/Roles/{roleId}/End | POST | End a role assignment | OK |
+| AdminList | /Users/Admin | GET | Admin: human list with UserState filters | OK |
+| Roles | /Users/Admin/Roles | GET | Admin: governance role assignments list | OK |
+| AdminDetail | /Users/Admin/{id} | GET | Admin: human detail page | OK |
+| Audience | /Users/Admin/Audience | GET | Admin: audience segmentation | OK |
+| RevealIban | /Users/Admin/{id:guid}/RevealIban | POST | Reveal a human's IBAN | OK |
+| AdminOutbox | /Users/Admin/{id}/Outbox | GET | Admin: email outbox for a human | OK |
+| SuspendHuman | /Users/Admin/{id}/Suspend | POST | Suspend a human | OK |
+| UnsuspendHuman | /Users/Admin/{id}/Unsuspend | POST | Unsuspend a human | OK |
+| RejectSignup | /Users/Admin/{id}/Reject | POST | Reject a signup | OK |
+| PurgeHuman | /Users/Admin/{id}/Purge | POST | Purge a human (non-prod) | OK |
+| AddRole | /Users/Admin/{id}/Roles/Add | GET | Add role form | OK |
+| AddRole | /Users/Admin/{id}/Roles/Add | POST | Submit role assignment | OK |
+| EndRole | /Users/Admin/{id}/Roles/{roleId}/End | POST | End a role assignment | OK |
 
 ## ProfilePictureMigrationAdminController
 
@@ -1112,14 +1112,14 @@ All other actions have names that adequately describe what the user sees or what
 
 Several of the splits proposed in the original audit have since shipped:
 
-- **HumanController has been merged into `ProfileController`** — `View`/`Popover`/`SendMessage`, the admin actions (`AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole`, `EndRole`), and even the `Search` page now live on `/Profile`. The `View` → `HumanProfile` rename was implemented as `ViewProfile`.
+- **Human administration moved to `UsersAdminController`** — `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `AddRole`, and `EndRole` now live under `/Users/Admin`. The self/profile viewing actions remain on `ProfileController`.
 - **GoogleController** absorbed all sync, workspace-account, and email-rename actions previously spread across `AdminController`, `BoardController`, `AdminEmailController`, and the team-controller `Sync*` actions. The two redundant-prefix Google audit actions later moved to `AuditLogController` (#499).
 - **EmailController** is now its own controller (`/Email`) holding the email outbox + preview that previously lived on `AdminController`.
 - **AdminDuplicateAccountsController** handles the duplicate-account workflow.
 - **CalendarController** and **CityPlanningController** / **CityPlanningApiController** are dedicated sections.
 - **GuestController** owns the profileless-account dashboard, with its own GDPR / comms-prefs actions parallel to `ProfileController`.
 - **NotificationsController** is its own section.
-- **GovernanceController.Roles moved to `ProfileController.Roles`** (`/Profile/Admin/Roles`) — the governance role-assignments admin list now lives with the human-admin surface, leaving `GovernanceController` as a single info page. (Note: this lands the admin role list on the user-profile controller; see the ProfileController split discussion below.)
+- **GovernanceController.Roles moved to `UsersAdminController.Roles`** (`/Users/Admin/Roles`) — the governance role-assignments admin list lives beside the per-human role management surface.
 
 ### Remaining misplaced actions
 
@@ -1142,7 +1142,7 @@ The profile controller has grown — it now owns own-profile, email, linked-acco
 | `Emails`, `AddEmail`, `VerifyEmail`, `SetPrimary`, `SetEmailVisibility`, `DeleteEmail`, `SetGoogle`, `ClearGoogle`, `ClearPrimary`, `Link`, `Unlink`, `UnlinkLinkedAccount` + all `Admin*Email*` actions | ProfileController | Email / linked-account management — large own sub-domain | **ProfileEmailController** (`/Profile/Me/Emails/...`) |
 | `Privacy`, `RequestDeletion`, `CancelDeletion`, `DownloadData`, `MyOutbox` | ProfileController | GDPR/data rights | **ProfilePrivacyController** (`/Profile/Me/Privacy/...`) |
 | `CommunicationPreferences`, `UpdatePreference`, `Notifications` | ProfileController | Communication prefs | Could stay or move to email controller |
-| `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole` (GET+POST), `EndRole` | ProfileController | Admin human management + role assignments — behind admin-policy overrides | **HumanAdminController** (`/Profile/Admin/...` or `/Humans/Admin/...`) |
+| `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `AddRole` (GET+POST), `EndRole` | UsersAdminController | Admin human management + role assignments — behind admin-policy overrides | Stay on **UsersAdminController** (`/Users/Admin/...`) |
 
 #### ShiftsController — admin settings mixed with user browsing
 

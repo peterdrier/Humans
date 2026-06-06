@@ -63,20 +63,9 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.TicketAdmin);
     }
 
-    public static bool BypassesMembershipRequirement(ClaimsPrincipal user)
-    {
-        return IsTeamsAdminBoardOrAdmin(user) ||
-               IsCampAdmin(user) ||
-               user.IsInRole(RoleNames.EventsAdmin) ||
-               IsHumanAdmin(user) ||
-               user.IsInRole(RoleNames.TicketAdmin) ||
-               user.IsInRole(RoleNames.NoInfoAdmin) ||
-               user.IsInRole(RoleNames.FinanceAdmin) ||
-               user.IsInRole(RoleNames.StoreAdmin) ||
-               user.IsInRole(RoleNames.ConsentCoordinator) ||
-               user.IsInRole(RoleNames.VolunteerCoordinator);
-    }
-
+    /// <summary>
+    /// Roles the current principal may assign from the human admin surface.
+    /// </summary>
     public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
     {
         if (IsAdmin(user))

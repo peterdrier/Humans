@@ -1,0 +1,160 @@
+@model Humans.Web.Models.AccountMergeQueueViewModel
+@{
+    ViewData["Title"] = "Account Merges";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Account Merges</li>
+    </ol>
+</nav>
+
+<h1>Account Merges</h1>
+
+<p class="text-muted">
+    Unified queue of accounts that need merging — both user-submitted merge requests (raised when a
+    human verifies an email belonging to another account) and detected duplicates (the same email on
+    more than one account). Pick which account survives; the other is folded in and tombstoned.
+</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="fa-solid fa-circle-check me-2"></i>No accounts need merging.
+    </div>
+}
+else
+{
+    @foreach (var row in Model.Rows)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <i class="fa-solid fa-code-merge me-2"></i>Shared email: <code class="ms-1">@row.SharedEmail</code>
+                @if (row.FromUserRequest)
+                {
+                    <span class="badge bg-warning text-dark ms-2">Merge request</span>
+                }
+                else
+                {
+                    <span class="badge bg-info text-dark ms-2">Detected duplicate</span>
+                }
+                @if (row.AlreadyMerged)
+                {
+                    <span class="badge bg-secondary ms-2">Already merged</span>
+                }
+                @if (row.RequestedAt.HasValue)
+                {
+                    <span class="text-muted ms-auto" style="font-size: 0.85rem;">Requested @row.RequestedAt.Value.ToString("g")</span>
+                }
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header"><i class="fa-solid fa-user me-1"></i>Account A</div>
+                            <div class="card-body">
+                                <partial name="_ProfileCard" model="row.AccountA" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header"><i class="fa-solid fa-user me-1"></i>Account B</div>
+                            <div class="card-body">
+                                <partial name="_ProfileCard" model="row.AccountB" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (row.AlreadyMerged)
+                {
+                    <p class="text-muted mb-2">
+                        <i class="fa-solid fa-circle-info me-1"></i>One of these accounts has already been merged.
+                    </p>
+                    @if (row.FromUserRequest)
+                    {
+                        <form asp-action="Close" asp-route-requestId="@row.RequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary"
+                                    data-confirm="Close this orphaned merge request? The accounts are already merged; no data changes.">
+                                <i class="fa-solid fa-check me-1"></i>Close request
+                            </button>
+                        </form>
+                    }
+                }
+                else
+                {
+                    var formAction = row.FromUserRequest ? "MergeRequest" : "Merge";
+                    var radioName = $"survivorUserId";
+                    var groupId = row.RequestId?.ToString() ?? $"{row.AccountA.UserId}-{row.AccountB.UserId}";
+                    <form asp-action="@formAction" asp-route-requestId="@row.RequestId" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-2">
+                            <strong>Keep which account?</strong>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="@radioName"
+                                       id="keep-a-@groupId" value="@row.AccountA.UserId" checked />
+                                <label class="form-check-label" for="keep-a-@groupId">
+                                    Keep <strong>@row.AccountA.DisplayName</strong> (Account A), archive Account B
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="@radioName"
+                                       id="keep-b-@groupId" value="@row.AccountB.UserId" />
+                                <label class="form-check-label" for="keep-b-@groupId">
+                                    Keep <strong>@row.AccountB.DisplayName</strong> (Account B), archive Account A
+                                </label>
+                            </div>
+                        </div>
+                        @if (!row.FromUserRequest)
+                        {
+                            <input type="hidden" name="archivedUserId" value="@row.AccountB.UserId" id="archived-@groupId" />
+                        }
+                        <div class="mb-2">
+                            <label for="notes-@groupId" class="form-label">Notes (optional)</label>
+                            <textarea id="notes-@groupId" name="notes" class="form-control" rows="2" placeholder="Reason for merge..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success"
+                                data-confirm="Merge these accounts? The archived account will be permanently tombstoned.">
+                            <i class="fa-solid fa-code-merge me-1"></i>Merge
+                        </button>
+                    </form>
+                    @if (row.FromUserRequest)
+                    {
+                        <form asp-action="Dismiss" asp-route-requestId="@row.RequestId" method="post" class="mt-2">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger"
+                                    data-confirm="Dismiss this merge request? The pending email will be removed and no accounts change.">
+                                <i class="fa-solid fa-xmark me-1"></i>Dismiss
+                            </button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
+    }
+}
+
+<a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+</a>
+
+<script>
+    // [data-confirm] is handled globally by site.js — no inline confirm handler here
+    // (a second one caused the confirm dialog to fire twice).
+
+    // For detection rows, the archived account is whichever radio is NOT chosen.
+    document.querySelectorAll('form input[name="survivorUserId"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var form = this.closest('form');
+            var archived = form.querySelector('input[name="archivedUserId"]');
+            if (!archived) return;
+            var radios = form.querySelectorAll('input[name="survivorUserId"]');
+            radios.forEach(function (r) {
+                if (!r.checked) archived.value = r.value;
+            });
+        });
+    });
+</script>

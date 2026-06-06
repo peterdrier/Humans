@@ -24,7 +24,7 @@
 
 ## What this section is for
 
-Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers four things: creating your account, filling out your profile, consenting to the required legal documents, and being cleared by a [Consent Coordinator](Glossary.md#consent-coordinator). Once all of that is complete, you are added to the Volunteers system team and the rest of the app opens up.
+Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers four things: creating your account, filling out your profile, consenting to the required legal documents, and being cleared by a [Consent Coordinator](Glossary.md#consent-coordinator). Entering your legal name sets `UserState == Active`, which opens the app. Completing consents and coordinator review determines Volunteers-system-team provisioning for Google Workspace.
 
 Onboarding is about Volunteer access only. Applying for **Colaborador** or **Asociado** is a separate tier application that runs in parallel through [Board](Glossary.md#board) voting — it never blocks your Volunteer access, and is covered in the Governance guide.
 
@@ -68,11 +68,11 @@ Visit `/Consent` and sign each required document. Signatures are append-only —
 
 ### 4. Wait for your Coordinator review to clear
 
-A Consent Coordinator reviews your profile and either **clears** it or **flags** it. If they flag it, onboarding is paused until a Board member or Admin manually approves you to override the flag.
+A Consent Coordinator reviews your profile and either **clears** it or **flags** it. If they flag it, Volunteers-team provisioning is paused until the status is cleared or an admin rejects the signup.
 
 ### 5. Become an active Volunteer
 
-When **both** your profile is cleared and all required documents are signed, you are automatically added to the Volunteers system team and the rest of the app opens up. The standard auto-approval path is silent — there is no welcome email; the dashboard's "Things to do" tile flips to done and the rest of the nav appears. (Only the manual Board/Admin override path — used after a flag is resolved via `ProfileController.ApproveVolunteer` — dispatches a "Welcome! You have been approved" notification.) The exception requiring manual review: if a Consent Coordinator flagged your status, a Board member or [Admin](Glossary.md#admin) acts via the **Approve** or **Reject** buttons on `/Profile/{id}/Admin` (which POST to `/Profile/{id}/Admin/Approve` or `/Profile/{id}/Admin/Reject`) — see [Profiles](Profiles.md) for that workflow.
+When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When your profile is cleared and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. If review flags your status, Board/Admin handles the review from `/OnboardingReview`; a rejected signup can also be handled from `/Users/Admin/{id}`.
 
 While you are still onboarding, you can reach your profile, consents, feedback, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
 
@@ -86,11 +86,11 @@ If you hold the **Volunteer Coordinator** role, you have read-only access to the
 
 Board members and Admins can do everything a Consent Coordinator can, plus:
 
-- **Resolve flagged profiles.** Only Board or Admin can manually approve a flagged human (the Approve button on `/Profile/{id}/Admin`).
+- **Resolve flagged profiles.** Board/Admin can clear or reject flagged reviews from `/OnboardingReview`; human admins can reject a signup from `/Users/Admin/{id}`.
 - **Vote on tier applications.** Board votes on Colaborador / Asociado applications at `/Governance/BoardVoting`; Admin can finalize a vote, set the meeting date, and override.
 - **Review the full onboarding pipeline.** See [humans](Glossary.md#human) at every stage, including those stuck waiting on documents or a coordinator.
 
-Admins and all coordinator roles bypass the membership gate entirely (`MembershipRequiredFilter` consults `RoleChecks.BypassesMembershipRequirement`), so you reach the full app regardless of your own onboarding status. Suspended Admins/Board keep their role claims so they can manage their own unsuspension, but lose the `ActiveMember` claim.
+Roles do not bypass the `UserState` access gate. Staff roles authorize staff tools after the user is `Active`; suspended, rejected, deleted, merged, and delete-pending users are routed by state before reaching role-gated pages.
 
 ## Related sections
 

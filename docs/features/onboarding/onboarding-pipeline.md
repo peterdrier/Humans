@@ -53,7 +53,8 @@ Two parallel tracks (either order):
     │
     ▼ [Both complete: Cleared + All docs signed]
     │
-    ├── ALL humans → IsApproved = true → Volunteers team → ActiveMember ✓
+    ├── ALL humans → name + consents → Volunteers team (Google Workspace) ✓
+    │       (app access itself came earlier, at name entry: UserState == Active)
     │
     └── If Colaborador/Asociado Application exists → Board Voting queue (parallel)
             │
@@ -98,11 +99,10 @@ Two parallel tracks (either order):
 **So that** there is no manual Board step for basic Volunteer access
 
 **Acceptance Criteria:**
-- Profile review clearance sets `IsApproved = true` (regardless of legal doc status)
-- `SyncVolunteersMembershipForUserAsync` checks BOTH `IsApproved` AND `HasAllRequiredConsents` independently
-- Volunteers team membership (and ActiveMember claim) granted only when both conditions are met
-- `IsApproved = true` is intentionally set before legal docs may be complete — it marks profile review approval, not full activation. The Volunteers team membership is the true activation gate.
-- Consent check is purely a Volunteer gate — independent of any tier application
+- Profile review clearance sets `IsApproved = true` — a CC **audit annotation only**; nothing acts on it for access or membership
+- App access is the stored `UserState`: full access the moment `UserState == Active` (legal name entered) — independent of approval, consents, or Volunteers membership
+- Volunteers-team membership (a Google Workspace provisioning group, not an access role) is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields` + `HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted
+- Consent check is purely an audit track — independent of any tier application
 - Board approval is only for Colaborador/Asociado (via Board voting)
 
 ### US-16.4: View Onboarding Progress
@@ -162,9 +162,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 **Actions:**
 - Coordinator reviews profile (can proceed regardless of legal document status)
 - Review queue shows legal document progress (X/Y signed) for context
-- **Clear**: ConsentCheckStatus = Cleared, IsApproved = true
-  - If all legal docs also signed → Volunteers team → ActiveMember
-  - If legal docs still pending → admission deferred until docs are signed
+- **Clear**: ConsentCheckStatus = Cleared, IsApproved = true — annotation only; no team sync, no access change. Volunteers-team admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
 - **Bulk Clear**: Coordinators can multi-select rows that have a legal name and clear them in one action. The server re-checks each selection against the live queue and only clears those that are still pending and still have a legal name; users no longer eligible (already cleared, profile rejected, legal name went blank) are silently skipped and surfaced in the flash message as "Approved X of Y selected".
 - **Flag**: ConsentCheckStatus = Flagged with notes → access blocked, can be resolved later
 
@@ -273,5 +271,5 @@ Term expires: Dec 31, 2027
 - [Coordinator Roles](../shifts/coordinator-roles.md) — Consent Coordinator role
 - [Board Voting](../governance/board-voting.md) — Tier application voting
 - [Tier Applications](../governance/asociado-applications.md) — Application entity and state machine
-- [Volunteer Status](../onboarding/volunteer-status.md) — ActiveMember claim and gating
+- [Volunteer Status](../onboarding/volunteer-status.md) — UserState and access gating
 - [Legal Documents & Consent](../legal-and-consent/legal-documents-consent.md) — Consent signing flow

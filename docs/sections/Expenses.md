@@ -118,7 +118,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/Sepa/Generate` | POST | FinanceAdminOrAdmin | Generate SEPA file (form on Review page) |
-| `/Profile/{id}/Admin/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
+| `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
 
 ## Actors & Roles
 
@@ -169,7 +169,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Users/Identity**: `IUserService.GetByIdAsync` / `GetByIdsAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
 - **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. `GetFilteredEntriesAsync` — GDPR export.
 - **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor-balance look-up for paid detection (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
-- **Admin (Profiles section)**: `/Profile/{id}/Admin/RevealIban` lives in `ProfileController` (Profiles section) and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
+- **Admin (Users section)**: `/Users/Admin/{id}/RevealIban` lives in `UsersAdminController` and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.
 
 ## Architecture
 

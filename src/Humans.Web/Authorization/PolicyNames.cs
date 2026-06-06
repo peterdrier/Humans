@@ -31,16 +31,11 @@ public static class PolicyNames
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
-    /// Active member (Volunteers team) OR has shift dashboard access roles.
-    /// Composite policy requiring a custom authorization handler.
+    /// Can use the app: <c>UserState == Active</c> (entered legal name).
+    /// The single nav-visibility gate replaces the former
+    /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).
     /// </summary>
-    public const string ActiveMemberOrShiftAccess = nameof(ActiveMemberOrShiftAccess);
-
-    /// <summary>
-    /// Active member (Volunteers team member) OR TeamsAdmin/Board/Admin.
-    /// Composite policy requiring a custom authorization handler.
-    /// </summary>
-    public const string IsActiveMember = nameof(IsActiveMember);
+    public const string AppAccess = nameof(AppAccess);
 
     /// <summary>
     /// HumanAdmin who is NOT also Admin or Board. Used for the nav "Humans" link

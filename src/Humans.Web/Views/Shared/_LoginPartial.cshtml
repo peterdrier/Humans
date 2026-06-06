@@ -47,7 +47,7 @@
                     <i class="fa-solid fa-file-contract fa-fw"></i> @Localizer["Nav_Consents"]
                 </a>
             </li>
-            <li authorize-policy="IsActiveMember">
+            <li authorize-policy="AppAccess">
                 <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
                     <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
                 </a>

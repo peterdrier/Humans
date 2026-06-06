@@ -131,7 +131,7 @@ Two controllers serve this section:
 | Import jobs (Tickets, MailerLite) | Call `IAccountProvisioningService.FindOrCreateUserByEmailAsync` to materialize contact-only User rows (no `LastLoginAt`). |
 | Authenticated human | Read own User row. Self-declare `NotAttending` for the active event year via `IUserService.DeclareNotAttendingAsync` (and undo via `UndoNotAttendingAsync`). Request account deletion. |
 | HumanAdmin, Board, Admin | Read any User's deletion / login state. Suspension itself is a Profile concern (see [Profiles.md](Profiles.md)). |
-| Admin | Trigger account merge flows (see [Profiles.md](Profiles.md) — `AccountMergeService` lives there). Outside Production only: purge a human via `ProfileController.PurgeHuman`. |
+| Admin | Trigger account merge flows on the unified **Account Merges** page (`/Users/Admin/AccountMerges`, `UsersAdminAccountMergesController`); `AccountMergeService` + `DuplicateAccountService` are Users-section services. Outside Production only: purge a human via `ProfileController.PurgeHuman`. |
 
 ## Invariants
 
@@ -191,8 +191,8 @@ Inbound (other sections → Users) — the typical direction:
 
 ## Architecture
 
-**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService` (all in `Humans.Application.Services.Users/`); `AccountDeletionService` (in `Humans.Application.Services.Users/AccountLifecycle/`); `UserEmailProviderBackfillService` (in `Humans.Application.Services.Users/` — one-shot backfill utility for Provider/IsGoogle fields on `UserEmail` rows, reads `user_emails` via `IUserEmailRepository`).
-**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`.
+**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService` (all in `Humans.Application.Services.Users/`); `AccountDeletionService` (in `Humans.Application.Services.Users/AccountLifecycle/`); `UserEmailProviderBackfillService` (in `Humans.Application.Services.Users/` — one-shot backfill utility for Provider/IsGoogle fields on `UserEmail` rows, reads `user_emails` via `IUserEmailRepository`); `AccountMergeService` + `DuplicateAccountService` (in `Humans.Application.Services.Users/` — the one ordered merge engine and the stateless duplicate detector, moved from Profiles in the account-merge consolidation; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice).
+**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`, `account_merge_requests`.
 **Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21). Account merge fold support added 2026-05-01 (User.MergedToUserId / MergedAt; Reassign + AnonymizeForMerge methods).
 
 - `UserService`, `AccountProvisioningService`, `UnsubscribeService` live in `Humans.Application.Services.Users/` and never import `Microsoft.EntityFrameworkCore`. `AccountProvisioningService` does inject `UserManager<User>` per the §2a exception (Identity owns the password hash / security stamp surface).

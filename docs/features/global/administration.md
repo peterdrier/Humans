@@ -86,83 +86,35 @@ System administrators need comprehensive tools to manage members, review applica
 - Deactivate teams
 - View member counts and pending requests
 
-## Volunteer Approval
+## UserState and Volunteers Provisioning
 
-### US-9.7: Approve Pending Volunteers
-**As a** Board member
-**I want to** approve new volunteers before they receive organizational access
-**So that** we can vet who joins the Volunteers team and gets Google Workspace resources
-
-**Acceptance Criteria:**
-- New profiles default to `IsApproved = false`
-- User sees "Pending Approval" alert on their profile page
-- Dashboard shows count of pending volunteers
-- Board can filter member list to show only pending volunteers (`/Profile/Admin?filter=pending`)
-- Board can approve a volunteer from member detail page
-- `SystemTeamSyncJob` only enrolls approved, non-suspended profiles in Volunteers team
-- Approval is logged for audit
-
-### Volunteer Approval Workflow
-```
-New User Signs In
-    │
-    ▼
-Creates Profile (IsApproved = false)
-    │
-    ▼
-Signs Required Consents (can happen before or after approval)
-    │
-    ▼
-Sees "Pending Approval" on dashboard
-    │                                    Board sees pending count
-    │                                    on Admin Dashboard
-    ▼                                         │
-[Waits for Board] ◄─────────────────── Board approves
-    │
-    ▼
-IsApproved = true
-    │
-    ▼
-SyncVolunteersMembershipForUserAsync (immediate, not waiting for scheduled job)
-    │
-    ▼
-If approved + all consents signed → Enrolled in Volunteers team
-    │
-    ▼
-ActiveMember claim granted → full app access + Google Workspace
-```
-
-Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsync`. Whichever happens last causes the user to be added to the Volunteers team immediately — there is no waiting for the hourly `SystemTeamSyncJob`.
-
-### Data Model
-- `Profile.IsApproved` (bool, default false): Must be true for `SystemTeamSyncJob` to enroll the user in Volunteers team
+Human app access is `UserState == Active`, set when the human enters their legal name. There is no manual "approve volunteer" admin action. The Volunteers system team is a Google Workspace provisioning group reconciled from name + consents by `SystemTeamSyncJob`; consent-review status remains an audit/safety workflow.
 
 ## Controller Routes
 
 ### BoardController (`/Board/`) — Board, Admin
 
-`BoardController` is now a slim dashboard-only controller. Most human management and Google sync operations have been extracted to `ProfileController` and `GoogleController`.
+`BoardController` is now a slim dashboard-only controller. Most human management and Google sync operations have been extracted to `UsersAdminController` and `GoogleController`.
 
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Board` | Index | Dashboard with stats and recent audit log |
 | `/AuditLog` | AuditLog | Global audit log (paginated, filterable) — *(moved to AuditLogController — see PR #499)* |
 
-### ProfileController (`/Profile/`) — Human management actions
+### UsersAdminController (`/Users/Admin`) — Human management actions
 
-Human management (previously on `BoardController`) is now on `ProfileController` under the `/Profile/Admin` sub-path, accessible to HumanAdmin, Board, and Admin roles.
+Human management is now on `UsersAdminController` under `/Users/Admin`, accessible to HumanAdmin, Board, and Admin roles.
 
 | Route | Action | Roles |
 |-------|--------|-------|
-| `/Profile/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
-| `/Profile/{id}/Admin` | AdminDetail | HumanAdmin, Board, Admin — member detail |
-| `/Profile/{id}/Admin/Outbox` | AdminOutbox | HumanAdmin, Board, Admin — view email outbox |
-| `/Profile/{id}/Admin/Suspend` | Suspend | POST: HumanAdmin, Board, Admin |
-| `/Profile/{id}/Admin/Unsuspend` | Unsuspend | POST: HumanAdmin, Board, Admin |
-| `/Profile/{id}/Admin/Approve` | Approve | POST: HumanAdmin, Board, Admin |
-| `/Profile/{id}/Admin/Reject` | Reject | POST: HumanAdmin, Board, Admin |
-| `/Profile/{id}/Admin/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
-| `/Profile/{id}/Admin/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
+| `/Users/Admin/{id}` | AdminDetail | HumanAdmin, Board, Admin — member detail |
+| `/Users/Admin/{id}/Outbox` | AdminOutbox | HumanAdmin, Board, Admin — view email outbox |
+| `/Users/Admin/{id}/Suspend` | Suspend | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Unsuspend` | Unsuspend | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Reject` | Reject | POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
+| `/Users/Admin/{id}/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
 
 ### GoogleController (`/Google/`) — Admin (mostly)
 
@@ -393,15 +345,15 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 
 | Role | Purpose |
 |------|---------|
-| **HumanAdmin** | View human admin pages, approve/suspend/reject humans, provision @nobodies.team accounts, manage role assignments. Does NOT include Board or Admin capabilities. |
+| **HumanAdmin** | View human admin pages, suspend/reject humans, provision @nobodies.team accounts, manage role assignments. Does NOT include Board or Admin capabilities. |
 | **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Google/Sync` but cannot execute sync actions. |
 | **CampAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
 | **TicketAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
 | **NoInfoAdmin** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
 | **FeedbackAdmin** | View all feedback reports, respond to reporters, manage feedback status, link GitHub issues. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
-| **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. Bypasses MembershipRequiredFilter. |
-| **VolunteerCoordinator** | Read-only access to onboarding review queue. Bypasses MembershipRequiredFilter. |
+| **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
+| **VolunteerCoordinator** | Read-only access to onboarding review queue. |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
 
 ### Authorization Foundation
@@ -445,7 +397,7 @@ _logger.LogInformation(
 
 | Action | Link | Badge |
 |--------|------|-------|
-| Manage Humans | `/Profile/Admin` | - |
+| Manage Humans | `/Users/Admin` | - |
 | Audit Log | `/AuditLog` | - |
 | Sync Status | `/Google/Sync` | - |
 
@@ -464,7 +416,7 @@ _logger.LogInformation(
 - **Database Connection**: Green if responsive
 - **Background Jobs**: Green if Hangfire server active
 - **Health Check URL**: `/health/ready`
-- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Coordinators, and Board teams. Useful for fixing users who were approved before the immediate sync was implemented.
+- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Coordinators, and Board teams. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
 
 ### Prometheus Metrics
 - Available at `/metrics`

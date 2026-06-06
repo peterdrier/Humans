@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -76,16 +77,6 @@ internal sealed partial class UserRepository
             .ToList();
     }
 
-    public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Select(p => p.UserId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
@@ -116,6 +107,7 @@ internal sealed partial class UserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -128,7 +120,16 @@ internal sealed partial class UserRepository
         // existing related rows when those collections are empty on the in-memory entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
+    }
+
+    private static async Task UpdateUserStateFromProfileAsync(
+        HumansDbContext ctx, Profile profile, CancellationToken ct)
+    {
+        var user = await ctx.Users.FindAsync([profile.UserId], ct);
+        if (user is not null)
+            user.State = UserStateClassifier.Classify(user, profile);
     }
 
     public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -162,6 +163,16 @@ internal sealed partial class UserRepository
 
         if (profiles.Count > 0)
         {
+            var affectedIds = profiles.Select(p => p.UserId).ToList();
+            var users = await ctx.Users
+                .Where(u => affectedIds.Contains(u.Id))
+                .ToListAsync(ct);
+            var profilesByUser = profiles.ToDictionary(p => p.UserId);
+            foreach (var user in users)
+            {
+                user.State = UserStateClassifier.Classify(
+                    user, profilesByUser.GetValueOrDefault(user.Id));
+            }
             await ctx.SaveChangesAsync(ct);
         }
 
@@ -281,7 +292,9 @@ internal sealed partial class UserRepository
         // separate ContactFieldService.ReassignToUserAsync call.
         sourceProfile.FirstName = "Merged";
         sourceProfile.LastName = "User";
-        sourceProfile.BurnerName = string.Empty;
+        // Canonical display label lives on BurnerName — set it so the tombstone shows
+        // "Merged User" via the profile, not via the legacy User.DisplayName fallback.
+        sourceProfile.BurnerName = "Merged User";
         sourceProfile.Bio = null;
         sourceProfile.City = null;
         sourceProfile.CountryCode = null;
@@ -437,4 +450,3 @@ internal sealed partial class UserRepository
         return rows > 0;
     }
 }
-

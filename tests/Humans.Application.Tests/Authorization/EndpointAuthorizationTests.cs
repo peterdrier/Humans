@@ -15,13 +15,13 @@ public class EndpointAuthorizationTests
 {
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
-        { typeof(ProfileController), "PurgeHuman", "AdminOnly" },
+        { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
         { typeof(DebugController), "Logs", "AdminOnly" },
         { typeof(DebugController), "Configuration", "AdminOnly" },
         { typeof(DebugController), "DbStats", "AdminOnly" },
         { typeof(DebugController), "CacheStats", "AdminOnly" },
         { typeof(UsersAdminController), "Audience", "AdminOnly" },
-        { typeof(AdminMergeController), null, "AdminOnly" },
+        { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
         { typeof(EmailController), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { typeof(AuditLogController), "Index", "BoardOrAdmin" },

@@ -19,7 +19,7 @@
 
 ## Business Context
 
-Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Coordinator** performs safety checks on new humans before they gain Volunteer access. The **Volunteer Coordinator** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles bypass the `MembershipRequiredFilter` (like Board and Admin) so they can access the system to perform their duties.
+Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Coordinator** performs safety checks on new humans before they gain Volunteer access. The **Volunteer Coordinator** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles authorize the onboarding-review tools after the user has passed the `UserState == Active` access gate.
 
 The consent check is purely a **Volunteer-level safety gate**. It is independent of tier applications — it does not evaluate whether someone should be a Colaborador or Asociado.
 
@@ -36,7 +36,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 
 | Capability | Board | Admin | ConsentCoordinator | VolunteerCoordinator |
 |------------|-------|-------|-------------------|---------------------|
-| Bypass MembershipRequiredFilter | Yes | Yes | Yes | Yes |
+| Requires `UserState == Active` access gate | Yes | Yes | Yes | Yes |
 | Access Admin area | Yes | Yes | No | No |
 | Access Onboarding Review queue | Yes | Yes | Yes | Yes (read-only) |
 | Clear/Flag consent checks | Yes | Yes | Yes | No |
@@ -68,7 +68,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 **Acceptance Criteria:**
 - See queue of humans with `ConsentCheckStatus = Pending`
 - View their profile (including Board-visible fields)
-- Clear: sets `ConsentCheckStatus = Cleared` → triggers auto-approve as Volunteer
+- Clear: sets `ConsentCheckStatus = Cleared`; Volunteers-team provisioning follows name + consents
 - Flag: sets `ConsentCheckStatus = Flagged` with required notes
 - Flagged humans can be cleared later or escalated
 - This check is about Volunteer safety — it does NOT evaluate tier applications
@@ -112,15 +112,7 @@ RoleAssignment
 ## Authorization Changes
 
 ### MembershipRequiredFilter
-Coordinators bypass the global membership filter, same as Board and Admin:
-```
-Exempt users (have claims):
-- ActiveMember
-- Board
-- Admin
-- ConsentCoordinator
-- VolunteerCoordinator
-```
+Coordinator roles do not bypass the global access filter. A coordinator must have `UserState == Active`; after that, the role authorizes coordinator pages such as `/OnboardingReview`.
 
 ### OnboardingReview Controller Authorization
 ```

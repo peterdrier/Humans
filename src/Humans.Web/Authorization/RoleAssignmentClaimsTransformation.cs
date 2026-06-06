@@ -1,34 +1,40 @@
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Syncs active role assignments to Identity role claims and adds membership
-/// status claims. Runs per authenticated request; cached 60s per user.
+/// Syncs active role assignments to Identity role claims and stamps the user's stored
+/// <see cref="UserState"/> as a claim, the single source of truth for app access.
+/// Runs per authenticated request; cached 60s per user.
 /// </summary>
 public class RoleAssignmentClaimsTransformation(
     IRoleAssignmentService roleAssignments,
-    ITeamServiceRead teams,
     IUserServiceRead userService,
     IMemoryCache cache) : IClaimsTransformation
 {
-    /// <summary>Active member of the Volunteers team.</summary>
-    public const string ActiveMemberClaimType = "ActiveMember";
-
-    /// <summary>User has a profile record. Lets MembershipRequiredFilter separate profileless accounts from onboarding members.</summary>
-    public const string HasProfileClaimType = "HasProfile";
+    /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
+    public const string UserStateClaimType = "UserState";
 
     public const string ActiveClaimValue = "true";
     public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
+
+    /// <summary>The stored <see cref="UserState"/> stamped on the principal, or null if absent.</summary>
+    public static UserState? GetUserState(ClaimsPrincipal principal) =>
+        Enum.TryParse<UserState>(principal.FindFirstValue(UserStateClaimType), out var state)
+            ? state
+            : null;
+
+    /// <summary>True when the principal's stored state grants full app access.</summary>
+    public static bool IsActive(ClaimsPrincipal principal) =>
+        GetUserState(principal) == UserState.Active;
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -73,32 +79,18 @@ public class RoleAssignmentClaimsTransformation(
     {
         var claims = new List<Claim>();
 
-        // Cached UserInfo read-model avoids hitting profiles on every authenticated request.
+        // Stored UserState is the single access source. GetUserInfoAsync seeds legacy null-State
+        // rows on first read, so State is populated here.
         var userInfo = await userService.GetUserInfoAsync(userId);
-        var isSuspended = userInfo?.IsSuspended ?? false;
-        var hasProfile = userInfo?.HasProfile ?? false;
+        if (userInfo?.State is { } state)
+        {
+            claims.Add(new Claim(UserStateClaimType, state.ToString()));
+        }
 
         var activeRoles = await roleAssignments.GetActiveForUserAsync(userId);
         foreach (var role in activeRoles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
-        }
-
-        if (!isSuspended)
-        {
-            // Warm CachingTeamService index; no DB round-trip; returns active memberships only.
-            var allTeams = await teams.GetTeamsAsync();
-            var volunteersTeam = allTeams.GetValueOrDefault(SystemTeamIds.Volunteers);
-            var isVolunteerMember = volunteersTeam?.Members.Any(m => m.UserId == userId) == true;
-            if (isVolunteerMember)
-            {
-                claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
-            }
-        }
-
-        if (hasProfile)
-        {
-            claims.Add(new Claim(HasProfileClaimType, ActiveClaimValue));
         }
 
         return claims;

@@ -11,34 +11,10 @@
 </p>
 
 <h2>Cross-user conflicts</h2>
-@if (Model.CrossUserConflicts.Count == 0)
-{
-    <p class="text-success">No problems found</p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr><th>Email</th><th>User A</th><th>User B</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model.CrossUserConflicts)
-            {
-                <tr>
-                    <td><code>@row.Email</code></td>
-                    <td><vc:human user-id="@row.User1Id" link="Admin" /></td>
-                    <td><vc:human user-id="@row.User2Id" link="Admin" /></td>
-                    <td>
-                        <a class="btn btn-sm btn-primary"
-                           asp-action="EmailProblemsCompare"
-                           asp-route-userId1="@row.User1Id"
-                           asp-route-userId2="@row.User2Id">Compare</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+<p class="text-muted">
+    Shared-email accounts are detected and resolved on the
+    <a asp-controller="UsersAdminAccountMerges" asp-action="Index">Account merges</a> page.
+</p>
 
 <h2>Single-user issues</h2>
 @if (Model.SingleUserIssues.Count == 0)

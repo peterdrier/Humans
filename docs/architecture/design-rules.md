@@ -406,7 +406,6 @@ await _budgetService.DeleteLineItemAsync(id);
 | `BudgetAuthorizationHandler` | `BudgetOperationRequirement` | `BudgetCategory` | Finance role + coordinator checks |
 | `CampAuthorizationHandler` | `CampOperationRequirement` | `Camp` | Lead/CampAdmin checks |
 | `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` | `string` (role name) | Who can assign which roles |
-| `IsActiveMemberHandler` | `IsActiveMemberRequirement` | — | Membership gate |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | — | Admin profile operations |
 
 ### Rules

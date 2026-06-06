@@ -3,15 +3,12 @@ using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,101 +18,70 @@ using Xunit;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Verifies that <see cref="HomeController.Index"/> defers to
-/// <see cref="IOnboardingWidgetState"/> when an authenticated user lands on /,
-/// redirecting incomplete users into the onboarding widget and only falling
-/// through to the dashboard branch once every required step is finished.
+/// Verifies <see cref="HomeController.Index"/> after the name-only access switch. The
+/// <see cref="Humans.Web.Authorization.MembershipRequiredFilter"/> now routes every non-Active user
+/// away before the action runs, so the controller no longer gates on onboarding completion: it
+/// renders the dashboard for any authenticated, resolvable user and the public landing view for
+/// anonymous visitors.
 /// </summary>
 public class HomeControllerTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IDashboardService _dashboardService = Substitute.For<IDashboardService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
 
-    public HomeControllerTests()
+    private HomeController BuildSut(ClaimsPrincipal principal)
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-    }
-
-    private HomeController BuildSut(User user, bool hasProfile = true)
-    {
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
-        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user,
-                [],
-                [],
-                [],
-                profile: null,
-                [],
-                [],
-                [],
-                [])));
-
         var ctrl = new HomeController(
             _userService,
             _dashboardService,
             _shiftMgmt,
-            _widgetState,
             _configuration,
             _configRegistry,
             NullLogger<HomeController>.Instance);
 
-        var claims = new List<Claim>
+        ctrl.ControllerContext = new ControllerContext
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            HttpContext = new DefaultHttpContext { User = principal },
         };
-        if (hasProfile)
-        {
-            claims.Add(new Claim(
-                RoleAssignmentClaimsTransformation.HasProfileClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue));
-        }
-
-        var http = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")),
-        };
-        ctrl.ControllerContext = new ControllerContext { HttpContext = http };
         return ctrl;
     }
 
-    [HumansFact]
-    public async Task Index_RedirectsToOnboardingWidget_WhenStepNotComplete()
+    private static ClaimsPrincipal Authenticated(Guid userId) =>
+        new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+
+    private void StubUserInfo(Guid userId)
     {
-        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(OnboardingWidgetStep.Names);
-        var ctrl = BuildSut(user);
-
-        var result = await ctrl.Index(CancellationToken.None);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal("Index", redirect.ActionName);
-        Assert.Equal("OnboardingWidget", redirect.ControllerName);
+        var user = new User { Id = userId, DisplayName = "Test" };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                user, [], [], [], profile: null, [], [], [], [])));
     }
 
     [HumansFact]
-    public async Task Index_RendersDashboard_WhenStepComplete()
+    public async Task Index_RendersDashboard_ForAuthenticatedUser()
     {
-        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(OnboardingWidgetStep.Complete);
-        _dashboardService
-            .GetMemberDashboardAsync(user.Id, Arg.Any<CancellationToken>())
+        var userId = Guid.NewGuid();
+        StubUserInfo(userId);
+        _dashboardService.GetMemberDashboardAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildEmptyDashboard());
-        var ctrl = BuildSut(user);
 
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await BuildSut(Authenticated(userId)).Index(CancellationToken.None);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Dashboard", view.ViewName);
+    }
+
+    [HumansFact]
+    public async Task Index_RendersLandingView_ForAnonymousVisitor()
+    {
+        var result = await BuildSut(new ClaimsPrincipal(new ClaimsIdentity()))
+            .Index(CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Null(view.ViewName);
     }
 
     private static MemberDashboardData BuildEmptyDashboard()

@@ -180,12 +180,13 @@ public class SystemTeamSyncJob(
             return;
         }
 
-        // Volunteers admission does NOT require Profile.IsApproved — Flagged + RejectedAt are the CC's kick-out levers.
+        // Name-only access switch: Volunteers admission is name + consents. The Flagged consent-check
+        // is an audit annotation that no longer gates admission; Suspended + RejectedAt remain the
+        // CC's kick-out levers. Profile.IsApproved is not consulted.
         var candidateIds = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
-            .Where(u => u.Profile is not null
+            .Where(u => u.HasRequiredNameFields
                 && !u.IsSuspended
-                && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
-                && u.Profile.RejectedAt is null)
+                && u.Profile!.RejectedAt is null)
             .Select(u => u.Id)
             .ToList();
 
@@ -376,11 +377,11 @@ public class SystemTeamSyncJob(
             return;
         }
 
-        var profile = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
 
-        // Volunteers admission does NOT require IsApproved — see SyncVolunteersTeamAsync.
-        var isEligible = profile is { RejectedAt: null, State: not ProfileState.Suspended }
-            && profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
+        // Name-only access switch: admission is name + consents — see SyncVolunteersTeamAsync.
+        var isEligible = info is { HasRequiredNameFields: true, IsSuspended: false }
+            && info.Profile!.RejectedAt is null
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
@@ -444,7 +445,7 @@ public class SystemTeamSyncJob(
         var profile = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
 
         var isEligible = hasApprovedApp
-            && profile is { IsApproved: true, State: not ProfileState.Suspended }
+            && profile is { IsApproved: true, State: not ProfileState.Suspended and not ProfileState.AdminSuspended }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();

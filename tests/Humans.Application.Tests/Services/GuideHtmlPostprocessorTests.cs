@@ -107,13 +107,13 @@ public class GuideHtmlPostprocessorTests
     [HumansFact]
     public void Rewrite_InlineCodeRouteTemplate_LeftAsIs()
     {
-        // Routes with "{id}" placeholders should NOT be linked — clicking /Profile/{id} would 404.
-        const string html = "<code>/Profile/{id}/Admin</code>";
+        // Routes with "{id}" placeholders should NOT be linked — clicking /Users/Admin/{id} would 404.
+        const string html = "<code>/Users/Admin/{id}</code>";
 
         var result = Processor.Rewrite(html, Settings, GuideFiles.All);
 
         result.Should().NotContain("<a href=");
-        result.Should().Contain("<code>/Profile/{id}/Admin</code>");
+        result.Should().Contain("<code>/Users/Admin/{id}</code>");
     }
 
     [HumansFact]

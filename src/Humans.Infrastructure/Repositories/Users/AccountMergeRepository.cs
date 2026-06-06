@@ -4,7 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
-namespace Humans.Infrastructure.Repositories.Profiles;
+namespace Humans.Infrastructure.Repositories.Users;
 
 /// <summary>
 /// EF-backed implementation of <see cref="IAccountMergeRepository"/>. The only

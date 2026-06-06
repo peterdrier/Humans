@@ -511,6 +511,44 @@ public sealed class UserRepositoryTests : IDisposable
         result.OriginalDisplayName.Should().Be("Seeded User");
     }
 
+    [HumansFact]
+    public async Task ApplyExpiredDeletionAnonymizationAsync_ScrubsLegacyIdentityEmailPii()
+    {
+        var user = await SeedUserAsync();
+        var originalEmail = user.IdentityEmailColumn;
+        originalEmail.Should().NotBeNullOrEmpty();
+
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        reloaded.IdentityEmailColumn.Should().Be($"deleted-{user.Id:N}@deleted.local",
+            "the legacy Identity email column is scrubbed to a no-PII sentinel on deletion");
+        reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
+        reloaded.UserName.Should().Be($"deleted-{user.Id:N}@deleted.local");
+    }
+
+    [HumansFact]
+    public async Task AnonymizeForMergeAsync_ScrubsLegacyIdentityEmailPii()
+    {
+        var source = await SeedUserAsync();
+        var target = await SeedUserAsync();
+        var originalEmail = source.IdentityEmailColumn;
+        originalEmail.Should().NotBeNullOrEmpty();
+        var now = _clock.GetCurrentInstant();
+
+        var result = await _repo.AnonymizeForMergeAsync(source.Id, target.Id, now, CancellationToken.None);
+
+        result.Should().BeTrue();
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id);
+        reloaded.IdentityEmailColumn.Should().Be($"merged-{source.Id:N}@merged.local",
+            "the legacy Identity email column is scrubbed to a no-PII sentinel on the merge tombstone");
+        reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
+        reloaded.UserName.Should().Be($"merged-{source.Id:N}@merged.local");
+        reloaded.MergedToUserId.Should().Be(target.Id);
+        reloaded.MergedAt.Should().Be(now);
+    }
+
     private void AddLogin(Guid userId, string loginProvider, string providerKey)
     {
         _dbContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Notifications;
@@ -8,6 +9,7 @@ using Humans.Application.Services.HumanLifecycle;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Services.HumanLifecycle;
@@ -48,6 +50,7 @@ public class HumanLifecycleServiceTests
                     cmd.Mutation == UserProfileOnboardingMutation.SetSuspension
                     && cmd.ActorUserId == adminId
                     && cmd.Suspended == true
+                    && cmd.AdminSuspension
                     && cmd.Notes == notes),
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
@@ -63,6 +66,7 @@ public class HumanLifecycleServiceTests
                 cmd.Mutation == UserProfileOnboardingMutation.SetSuspension
                 && cmd.ActorUserId == adminId
                 && cmd.Suspended == true
+                && cmd.AdminSuspension
                 && cmd.Notes == notes),
             Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
@@ -97,6 +101,7 @@ public class HumanLifecycleServiceTests
                     cmd.Mutation == UserProfileOnboardingMutation.SetSuspension
                     && cmd.ActorUserId == adminId
                     && cmd.Suspended == true
+                    && cmd.AdminSuspension
                     && cmd.Notes == null),
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
@@ -261,4 +266,71 @@ public class HumanLifecycleServiceTests
 
         result.Success.Should().BeTrue();
     }
+
+    [HumansFact]
+    public async Task RestoreConsentSuspensionAsync_ForConsentSuspendedUser_WritesUnsuspendAndAudits()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Suspended)));
+        _userService.ApplyProfileOnboardingMutationAsync(
+                userId,
+                Arg.Is<UserProfileOnboardingCommand>(cmd =>
+                    cmd.Mutation == UserProfileOnboardingMutation.SetSuspension
+                    && cmd.Suspended == false),
+                Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        var result = await BuildSut().RestoreConsentSuspensionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
+            userId,
+            Arg.Is<UserProfileOnboardingCommand>(cmd =>
+                cmd.Mutation == UserProfileOnboardingMutation.SetSuspension
+                && cmd.Suspended == false),
+            Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.MemberUnsuspended,
+            nameof(User),
+            userId,
+            "Unsuspended after completing required consents",
+            nameof(HumanLifecycleService.RestoreConsentSuspensionAsync));
+    }
+
+    [HumansFact]
+    public async Task RestoreConsentSuspensionAsync_ForAdminSuspendedUser_DoesNotUnsuspend()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.AdminSuspended)));
+
+        var result = await BuildSut().RestoreConsentSuspensionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        await _userService.DidNotReceiveWithAnyArgs().ApplyProfileOnboardingMutationAsync(
+            Guid.Empty, default!, CancellationToken.None);
+        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, default, null!, null!);
+    }
+
+    private static UserInfo MakeUserInfo(Guid id, UserState state) =>
+        UserInfo.Create(
+            user: new User
+            {
+                Id = id,
+                DisplayName = "Test User",
+                PreferredLanguage = "en",
+                State = state,
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 }

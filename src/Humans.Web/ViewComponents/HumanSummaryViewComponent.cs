@@ -64,7 +64,7 @@ public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITea
                 new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : info.ProfilePictureUrl;
 
-        var isSuspended = profile.State == ProfileState.Suspended;
+        var isSuspended = profile.State is ProfileState.Suspended or ProfileState.AdminSuspended;
 
         var vm = new ProfileSummaryViewModel
         {

@@ -13,13 +13,13 @@ public sealed record UserProfileOnboardingCommand(
     ConsentCheckStatus? ConsentCheckStatus = null,
     string? Notes = null,
     string? RejectionReason = null,
-    bool? Suspended = null);
+    bool? Suspended = null,
+    bool AdminSuspension = false);
 
 public enum UserProfileOnboardingMutation
 {
     RecordConsentCheck,
     RejectSignup,
-    ApproveVolunteer,
     SetSuspension,
     SetConsentCheckPending,
 }

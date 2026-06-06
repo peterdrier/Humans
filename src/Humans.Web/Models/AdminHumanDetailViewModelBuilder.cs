@@ -22,7 +22,8 @@ public static class AdminHumanDetailViewModelBuilder
         int outboxCount,
         Instant now,
         string? rejectedByName,
-        string? revealedIban)
+        string? revealedIban,
+        string? mergedToName = null)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
@@ -45,14 +46,15 @@ public static class AdminHumanDetailViewModelBuilder
             ProfilePictureUrl = info.ProfilePictureUrl,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
-            IsSuspended = info.IsSuspended,
-            IsApproved = profile?.IsApproved ?? false,
-            HasProfile = profile is not null,
+            State = info.State ?? UserState.Bare,
+            IsMerged = info.IsMerged,
+            MergedToUserId = info.MergedToUserId,
+            MergedAt = info.MergedAt?.ToDateTimeUtc(),
+            MergedToDisplayName = mergedToName,
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
             ConsentCheckStatus = profile?.ConsentCheckStatus,
-            IsRejected = profile?.RejectedAt is not null,
             RejectionReason = profile?.RejectionReason,
             RejectedAt = profile?.RejectedAt?.ToDateTimeUtc(),
             RejectedByName = rejectedByName,

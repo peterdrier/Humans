@@ -5059,6 +5059,10 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("State")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<bool>("SuppressScheduleChangeEmails")
                         .HasColumnType("boolean");
 

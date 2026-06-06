@@ -1,8 +1,9 @@
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Application.Interfaces.Users;
 
 /// <summary>
-/// Service for detecting and resolving duplicate user accounts
-/// where the same email address appears on multiple User records.
+/// Service for detecting duplicate user accounts where the same email address
+/// appears on multiple User records. Resolution is performed by
+/// <see cref="IAccountMergeService.MergeAsync"/> — this service is detection-only.
 /// </summary>
 public interface IDuplicateAccountService : IApplicationService
 {
@@ -16,17 +17,6 @@ public interface IDuplicateAccountService : IApplicationService
     /// Gets detailed info about a specific duplicate group for resolution.
     /// </summary>
     Task<DuplicateAccountGroup?> GetDuplicateGroupAsync(Guid userId1, Guid userId2, CancellationToken ct = default);
-
-    /// <summary>
-    /// Resolves a duplicate by archiving the source account and re-linking
-    /// its external logins to the target account.
-    /// </summary>
-    Task ResolveAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Guid adminUserId,
-        string? notes = null,
-        CancellationToken ct = default);
 }
 
 /// <summary>

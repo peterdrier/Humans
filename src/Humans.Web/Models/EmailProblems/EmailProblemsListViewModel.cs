@@ -8,9 +8,8 @@ public sealed class EmailProblemsListViewModel
 {
     public Instant ScannedAt { get; init; }
     public int TotalProblems =>
-        CrossUserConflicts.Count + SingleUserIssues.Count + SystemLevelIssues.Count + LegacyEmailRows.Count;
+        SingleUserIssues.Count + SystemLevelIssues.Count + LegacyEmailRows.Count;
 
-    public IReadOnlyList<CrossUserConflictRow> CrossUserConflicts { get; init; } = [];
     public IReadOnlyList<SingleUserIssueRow> SingleUserIssues { get; init; } = [];
     public IReadOnlyList<SystemLevelIssueRow> SystemLevelIssues { get; init; } = [];
     public IReadOnlyList<LegacyEmailRow> LegacyEmailRows { get; init; } = [];
@@ -22,7 +21,6 @@ public sealed class EmailProblemsListViewModel
         string DisplayName(Guid? id) =>
             id is Guid g && users.TryGetValue(g, out var u) ? u.BurnerName : "(unknown)";
 
-        var crossUser = new List<CrossUserConflictRow>();
         var singleUserMap = new Dictionary<Guid, List<string>>();
         var systemLevel = new List<SystemLevelIssueRow>();
         var legacyEmails = new List<LegacyEmailRow>();
@@ -31,10 +29,6 @@ public sealed class EmailProblemsListViewModel
         {
             switch (p.Kind)
             {
-                case EmailProblemKind.SharedAcrossUsers when p.UserId is Guid u1 && p.OtherUserId is Guid u2:
-                    crossUser.Add(new CrossUserConflictRow(p.Email ?? "(unknown)", u1, DisplayName(u1), u2, DisplayName(u2)));
-                    break;
-
                 case EmailProblemKind.MultipleIsPrimary or EmailProblemKind.MultipleIsGoogle
                     or EmailProblemKind.ZeroIsPrimary or EmailProblemKind.ZeroIsGoogle
                     or EmailProblemKind.Unverified
@@ -81,7 +75,6 @@ public sealed class EmailProblemsListViewModel
         return new EmailProblemsListViewModel
         {
             ScannedAt = report.ScannedAt,
-            CrossUserConflicts = crossUser,
             SingleUserIssues = singleUser,
             SystemLevelIssues = systemLevel,
             LegacyEmailRows = legacyEmails
@@ -90,11 +83,6 @@ public sealed class EmailProblemsListViewModel
         };
     }
 }
-
-public sealed record CrossUserConflictRow(
-    string Email,
-    Guid User1Id, string User1DisplayName,
-    Guid User2Id, string User2DisplayName);
 
 public sealed record SingleUserIssueRow(
     Guid UserId, string DisplayName,

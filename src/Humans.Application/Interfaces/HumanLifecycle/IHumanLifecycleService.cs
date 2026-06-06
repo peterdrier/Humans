@@ -31,4 +31,11 @@ public interface IHumanLifecycleService : IOrchestrator
     /// </summary>
     Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Restores access after a consent-suspended human completes all required
+    /// consents. Does nothing for <c>AdminSuspended</c> users.
+    /// </summary>
+    Task<OnboardingResult> RestoreConsentSuspensionAsync(
+        Guid userId, CancellationToken ct = default);
 }

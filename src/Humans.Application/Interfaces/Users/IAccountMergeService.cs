@@ -2,7 +2,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Application.Interfaces.Users;
 
 /// <summary>
 /// Service for managing account merge requests.
@@ -20,14 +20,49 @@ public interface IAccountMergeService : IApplicationService
     Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Accepts a merge request: migrates data from source to target, archives source account.
+    /// Accepts a merge request, routing through <see cref="MergeAsync"/>. The admin picks
+    /// which of the request's two accounts survives via <paramref name="survivorUserId"/>
+    /// (it must be the request's source or target), so a wrong-direction request can be
+    /// flipped at accept time. The other account is archived/tombstoned.
     /// </summary>
-    Task AcceptAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the request is missing, not pending, or <paramref name="survivorUserId"/>
+    /// is not one of the request's two accounts.
+    /// </exception>
+    Task AcceptAsync(Guid requestId, Guid adminUserId, Guid survivorUserId,
+        string? notes = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// The one merge primitive. Folds <paramref name="archivedUserId"/> into
+    /// <paramref name="survivorUserId"/> via the <c>IUserMerge</c> fan-out, settles the
+    /// optional pending email (non-fatal), then tombstones the archived account LAST —
+    /// the observable commit point and source of truth. Ordered, with no wrapping
+    /// cross-section transaction, so it is safely retryable. Best-effort closes any
+    /// pending merge requests for the pair.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if survivor==archived, either user is missing, or either is already tombstoned.
+    /// </exception>
+    Task MergeAsync(
+        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        string? notes = null, Guid? pendingEmailIdToVerify = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Rejects a merge request: removes the pending email, no changes to accounts.
     /// </summary>
     Task RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Closes a pending merge request whose two accounts are already merged — a
+    /// pre-existing orphan from before the engine self-reconciled merges. Marks the
+    /// request Accepted with NO data or email mutation (the merge already happened).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the request is missing, not pending, or neither account is merged
+    /// (resolve those via <see cref="MergeAsync"/> or <see cref="RejectAsync"/> instead).
+    /// </exception>
+    Task ReconcileMergedRequestAsync(Guid requestId, Guid adminUserId, CancellationToken ct = default);
 
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
     // Previously, UserEmailService read AccountMergeRequests via direct DbContext.
@@ -56,20 +91,6 @@ public interface IAccountMergeService : IApplicationService
     /// Creates a new merge request.
     /// </summary>
     Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default);
-
-    /// <summary>
-    /// Admin-initiated merge of two pre-existing accounts (no AccountMergeRequest).
-    /// Folds <paramref name="sourceUserId"/> into <paramref name="targetUserId"/>:
-    /// reassigns every section's user-keyed rows via <c>IUserMerge</c>, tombstones
-    /// the source, and audits. Used by /Profile/Admin/EmailProblems case 5.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if source==target, either user is missing, or the source is already tombstoned.
-    /// </exception>
-    Task AdminMergeAsync(
-        Guid sourceUserId, Guid targetUserId,
-        Guid adminUserId, string? notes = null,
-        CancellationToken ct = default);
 }
 
 public sealed record AccountMergeRequestSnapshot(

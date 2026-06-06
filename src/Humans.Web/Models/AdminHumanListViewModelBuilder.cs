@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
@@ -32,7 +33,7 @@ public static class AdminHumanListViewModelBuilder
                 BurnerName = r.DisplayName,
                 ProfilePictureUrl = r.ProfilePictureUrl,
                 AdminEmail = r.Email,
-                MembershipStatus = r.MembershipStatus,
+                MembershipStatus = StatusLabel(r.State),
                 CreatedAt = r.CreatedAt,
                 LastLoginAt = r.LastLoginAt,
                 AdminDetailUrl = adminDetailUrl(r.UserId),
@@ -65,10 +66,13 @@ public static class AdminHumanListViewModelBuilder
                 ? rows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenBy(r => r.LastLoginAt)
                 : rows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenByDescending(r => r.LastLoginAt),
             "status" => ascending
-                ? rows.OrderBy(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase)
-                : rows.OrderByDescending(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase),
+                ? rows.OrderBy(r => StatusLabel(r.State), StringComparer.OrdinalIgnoreCase)
+                : rows.OrderByDescending(r => StatusLabel(r.State), StringComparer.OrdinalIgnoreCase),
             _ => ascending
                 ? rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
                 : rows.OrderByDescending(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
         };
+
+    private static string StatusLabel(UserState state) =>
+        state == UserState.DeletePending ? "Delete Pending" : state.ToString();
 }

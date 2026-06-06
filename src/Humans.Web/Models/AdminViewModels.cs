@@ -34,9 +34,13 @@ public class AdminHumanDetailViewModel
     public string? LastName { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
-    public bool IsSuspended { get; set; }
-    public bool IsApproved { get; set; }
-    public bool HasProfile { get; set; }
+    public UserState State { get; set; }
+
+    /// <summary>This account is a merge tombstone (folded into another and locked out).</summary>
+    public bool IsMerged { get; set; }
+    public Guid? MergedToUserId { get; set; }
+    public DateTime? MergedAt { get; set; }
+    public string? MergedToDisplayName { get; set; }
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }
@@ -45,7 +49,6 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }
@@ -189,33 +192,20 @@ public class EmailPreviewItem
     public string Body { get; set; } = string.Empty;
 }
 
-public class AccountMergeListViewModel
+public class AccountMergeQueueViewModel
 {
-    public List<AccountMergeRequestViewModel> Requests { get; set; } = [];
+    public List<AccountMergeRowViewModel> Rows { get; set; } = [];
 }
 
-public class AccountMergeRequestViewModel
+public class AccountMergeRowViewModel
 {
-    public Guid Id { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string? PrimaryUserEmail { get; set; }
-    public Guid PrimaryUserId { get; set; }
-    public string? DuplicateUserEmail { get; set; }
-    public Guid DuplicateUserId { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-public class AccountMergeDetailViewModel
-{
-    public Guid Id { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public ProfileSummaryViewModel PrimaryUser { get; set; } = new();
-    public ProfileSummaryViewModel DuplicateUser { get; set; } = new();
-    public string Status { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? ResolvedAt { get; set; }
-    public string? ResolvedByName { get; set; }
-    public string? AdminNotes { get; set; }
+    public Guid? RequestId { get; set; }
+    public string SharedEmail { get; set; } = string.Empty;
+    public ProfileSummaryViewModel AccountA { get; set; } = new();
+    public ProfileSummaryViewModel AccountB { get; set; } = new();
+    public bool FromUserRequest { get; set; }
+    public bool AlreadyMerged { get; set; }
+    public DateTime? RequestedAt { get; set; }
 }
 
 /// <summary>
@@ -336,64 +326,6 @@ public class DecoratorCacheStatEntryViewModel
     public long BulkInvalidations { get; set; }
     public double HitRatePercent { get; set; }
     public bool IsWarmedUp { get; set; }
-}
-
-public class DuplicateAccountListViewModel
-{
-    public List<DuplicateAccountGroupViewModel> Groups { get; set; } = [];
-}
-
-public class DuplicateAccountGroupViewModel
-{
-    public string SharedEmail { get; set; } = string.Empty;
-    public List<DuplicateAccountItemViewModel> Accounts { get; set; } = [];
-}
-
-public class DuplicateAccountItemViewModel
-{
-    public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public string? ProfilePictureUrl { get; set; }
-    public string? MembershipTier { get; set; }
-    public string? MembershipStatus { get; set; }
-    public DateTime? LastLogin { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public int TeamCount { get; set; }
-    public int RoleAssignmentCount { get; set; }
-    public bool HasProfile { get; set; }
-    public bool IsProfileComplete { get; set; }
-    public List<string> EmailSources { get; set; } = [];
-    public List<string> Teams { get; set; } = [];
-}
-
-public class DuplicateAccountDetailViewModel
-{
-    public string SharedEmail { get; set; } = string.Empty;
-    public ProfileSummaryViewModel Account1 { get; set; } = new();
-    public ProfileSummaryViewModel Account2 { get; set; } = new();
-
-    /// <summary>Raw <c>User.Email</c> Identity column for account A (null when unset).</summary>
-    public string? Account1IdentityEmail { get; set; }
-
-    /// <summary>Raw <c>User.Email</c> Identity column for account B (null when unset).</summary>
-    public string? Account2IdentityEmail { get; set; }
-
-    /// <summary>All <c>UserEmails</c> rows for account A (full list, not just the conflicting overlap).</summary>
-    public List<DuplicateAccountEmailRowViewModel> Account1Emails { get; set; } = [];
-
-    /// <summary>All <c>UserEmails</c> rows for account B (full list, not just the conflicting overlap).</summary>
-    public List<DuplicateAccountEmailRowViewModel> Account2Emails { get; set; } = [];
-}
-
-/// <summary>One <c>UserEmail</c> row rendered on the duplicate-account detail page.</summary>
-public class DuplicateAccountEmailRowViewModel
-{
-    public string Email { get; set; } = string.Empty;
-    public bool IsPrimary { get; set; }
-    public bool IsVerified { get; set; }
-    public bool IsGoogle { get; set; }
-    public string? Provider { get; set; }
 }
 
 /// <summary>
