@@ -1,7 +1,7 @@
 # Account Merge Consolidation — Design
 
 **Date:** 2026-06-06
-**Section:** Profiles
+**Section:** Users (the merge acts on User accounts, external logins, and emails; route prefix `/Users/Admin`). The affected services currently sit under the `Application/Services/Profiles` namespace; this change does not relocate them.
 **Status:** Design approved (Peter), spec under review
 
 ## Problem
@@ -33,7 +33,7 @@ Observed symptoms and their root causes:
 
 ## Target architecture
 
-All of this lives in the **Profiles** section.
+All of this is the **Users** section.
 
 ### The merge engine — `AccountMergeService.MergeAsync(survivorId, archivedId, adminId, notes, ct)`
 
@@ -52,7 +52,9 @@ This becomes the one and only merge primitive. Ordered, each step committing ind
 - *Symptom 5:* nothing reads as "merged" until step 4; a failure in 2–3 leaves the archived account untouched and the request still actionable — retry. The fatal "pending email gone" throw is removed.
 - *Symptoms 2 + existing half-done rows:* the tombstone is the source of truth; reconciliation (below) closes any request whose archived side is already merged.
 
-### The unified surface — `/Admin/AccountMerges` (single controller)
+### The unified surface — `/Users/Admin/AccountMerges` (single controller)
+
+`UsersAdminAccountMergesController` at `[Route("Users/Admin/AccountMerges")]`, mirroring the existing `UsersAdminDebugController` convention (`/Admin/*` is a nav holder, not a section — routes are section-prefixed).
 
 Lists, cross-referenced into one work queue:
 - **Detected duplicate pairs** — `DuplicateAccountService.DetectDuplicatesAsync` (unchanged detection).
@@ -62,7 +64,7 @@ Lists, cross-referenced into one work queue:
 
 Per row: **Merge…** (admin picks survivor → `MergeAsync`) and **Dismiss** (→ `Status = Rejected`, the existing `RejectAsync` mechanism, which already no-ops gracefully when the pending email is gone).
 
-`/Admin/MergeRequests` and `/Admin/DuplicateAccounts` are retired into this one route; the admin nav collapses three entries to one. `EmailProblems` keeps its other 8 `EmailProblemKind` checks; its `SharedAcrossUsers` case links to `/Admin/AccountMerges` instead of carrying its own `EmailProblems/Merge` action.
+`/Admin/MergeRequests` and `/Admin/DuplicateAccounts` are retired into this one route; the admin nav collapses three entries to one. `EmailProblems` keeps its other 8 `EmailProblemKind` checks; its `SharedAcrossUsers` case links to `/Users/Admin/AccountMerges` instead of carrying its own `EmailProblems/Merge` action.
 
 ### Reconciliation / cleanup
 
@@ -83,7 +85,7 @@ Plus the original symptoms: (1) no forced-wrong-direction merges; (2) no orphan 
 
 - **`AccountMergeService`** — add `MergeAsync` (ordered, no wrapping scope); reframe `AcceptAsync` onto it with an admin-chosen survivor; collapse `AdminMergeAsync`; remove the fatal missing-email throw; route email-settle through `UserEmailService`; add per-pair request reconciliation.
 - **`DuplicateAccountService`** — delete `ResolveAsync`; keep `DetectDuplicatesAsync` / `GetDuplicateGroupAsync`.
-- **Web** — new `/Admin/AccountMerges` controller + view (merge queue: duplicates + requests + orphans); retire `AdminMergeController` and `AdminDuplicateAccountsController` routes; drop `EmailProblems/Merge` and link `SharedAcrossUsers` to the new page; collapse `AdminNavTree` entries 3→1.
+- **Web** — new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges` + view (merge queue: duplicates + requests + orphans); retire `AdminMergeController` and `AdminDuplicateAccountsController` routes; drop `EmailProblems/Merge` and link `SharedAcrossUsers` to the new page; collapse `AdminNavTree` entries 3→1.
 - **No new `AccountMergeRequestStatus` value. No EF data migration.** (Schema unchanged.)
 
 ## Risks / notes for the implementer
