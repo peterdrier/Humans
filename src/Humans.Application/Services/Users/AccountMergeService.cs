@@ -107,6 +107,67 @@ public sealed class AccountMergeService(
         scope.Complete();
     }
 
+    public async Task MergeAsync(
+        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        string? notes = null, Guid? pendingEmailIdToVerify = null,
+        CancellationToken ct = default)
+    {
+        if (survivorUserId == archivedUserId)
+            throw new InvalidOperationException("Survivor and archived users are the same.");
+
+        var survivor = await userService.GetUserInfoAsync(survivorUserId, ct)
+            ?? throw new InvalidOperationException($"Survivor user {survivorUserId} not found.");
+        var archived = await userService.GetUserInfoAsync(archivedUserId, ct)
+            ?? throw new InvalidOperationException($"Archived user {archivedUserId} not found.");
+        if (survivor.IsMerged)
+            throw new InvalidOperationException($"Survivor user {survivorUserId} is already tombstoned.");
+        if (archived.IsMerged)
+            throw new InvalidOperationException(
+                $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
+
+        var now = clock.GetCurrentInstant();
+
+        logger.LogInformation(
+            "Admin {AdminId} merging: folding archived {ArchivedId} into survivor {SurvivorId}",
+            adminUserId, archivedUserId, survivorUserId);
+
+        try
+        {
+            // 1. Move every section's user-keyed rows archived -> survivor.
+            //    Ordered/sequential; each commits independently; re-FK of already-moved
+            //    rows is a no-op, so the whole step is safely retryable.
+            foreach (var merger in userMerges)
+                await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
+
+            // 2. Settle the pending email (the gmail-normalized-but-not-identical case the
+            //    row-collapse missed). NON-FATAL: a missing/already-consumed pending email
+            //    is the desired end state, not an error — so the bool result is ignored.
+            if (pendingEmailIdToVerify is Guid pendingId)
+                await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
+
+            // 3. Tombstone the archived account LAST — the observable commit point and
+            //    source of truth (no wipe — chain-follow reads need the redirect).
+            await userService.AnonymizeForMergeAsync(archivedUserId, survivorUserId, now, ct);
+
+            // 4. Audit.
+            await auditLogService.LogAsync(
+                AuditAction.AccountMergeAccepted,
+                nameof(User), archivedUserId,
+                $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
+                adminUserId,
+                relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
+
+            // 5. Best-effort: close pending merge requests for this pair. If this throws,
+            //    the tombstone (step 3) already makes them self-reconcilable on the
+            //    listing page — there is no half-merge to recover from.
+            await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
+        }
+        finally
+        {
+            InvalidateMergeCaches(survivorUserId, archivedUserId);
+        }
+    }
+
     private sealed record AuditEntry(
         AuditAction Action,
         string EntityType,
@@ -203,6 +264,39 @@ public sealed class AccountMergeService(
             // Evict ActiveTeams cache: TeamService mutates it during scope; rolled-back state would otherwise leak.
             activeTeamsCacheInvalidator.Invalidate();
         }
+    }
+
+    // Closes every pending merge request for the survivor/archived pair as Accepted.
+    // The pending set is tiny at this scale, so we filter GetPendingAsync in memory
+    // rather than add a pair-scoped repository query (reuse-first).
+    private async Task CloseRequestsForPairAsync(
+        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        Instant now, string? notes, CancellationToken ct)
+    {
+        var pending = await mergeRepository.GetPendingAsync(ct);
+        var pair = new HashSet<Guid> { survivorUserId, archivedUserId };
+        foreach (var req in pending.Where(r => pair.Contains(r.SourceUserId) && pair.Contains(r.TargetUserId)))
+        {
+            req.Status = AccountMergeRequestStatus.Accepted;
+            req.ResolvedAt = now;
+            req.ResolvedByUserId = adminUserId;
+            req.AdminNotes = notes ?? "Resolved by merge.";
+            await mergeRepository.UpdateAsync(req, ct);
+        }
+    }
+
+    // Cache-aside eviction after a merge. Mirrors FoldAsync's invalidation set; runs in
+    // MergeAsync's finally so a partial/failed run still clears stale per-user reads.
+    private void InvalidateMergeCaches(Guid survivorUserId, Guid archivedUserId)
+    {
+        roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
+        roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
+        roleAssignmentService.InvalidateNavBadgeCache();
+        roleAssignmentService.InvalidateRoleAssignmentCache();
+        notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
+        consentCacheInvalidator.InvalidateUser(archivedUserId);
+        consentCacheInvalidator.InvalidateUser(survivorUserId);
+        activeTeamsCacheInvalidator.Invalidate();
     }
 
     public async Task RejectAsync(

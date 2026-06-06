@@ -25,6 +25,22 @@ public interface IAccountMergeService : IApplicationService
     Task AcceptAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
 
     /// <summary>
+    /// The one merge primitive. Folds <paramref name="archivedUserId"/> into
+    /// <paramref name="survivorUserId"/> via the <c>IUserMerge</c> fan-out, settles the
+    /// optional pending email (non-fatal), then tombstones the archived account LAST —
+    /// the observable commit point and source of truth. Ordered, with no wrapping
+    /// cross-section transaction, so it is safely retryable. Best-effort closes any
+    /// pending merge requests for the pair.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if survivor==archived, either user is missing, or either is already tombstoned.
+    /// </exception>
+    Task MergeAsync(
+        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        string? notes = null, Guid? pendingEmailIdToVerify = null,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Rejects a merge request: removes the pending email, no changes to accounts.
     /// </summary>
     Task RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
