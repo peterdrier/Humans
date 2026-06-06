@@ -9,8 +9,6 @@
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
-  src/Humans.Web/Controllers/AdminMergeController.cs
   src/Humans.Web/Views/Profile/**
 -->
 <!-- freshness:flag-on-change
@@ -31,7 +29,7 @@ Per-human personal data: profile, contact fields, emails, communication preferen
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
 - **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
 - **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes.
-- **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
+- **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Detection and resolution now live in the **Users** section; admins act on candidates from the unified **Account Merges** page (`/Users/Admin/AccountMerges`).
 - **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary or IsGoogle, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth from the `FullProfile` cache. Read-only admin surface with deep-links into the per-user `/Profile/{userId}/Admin/Emails` diagnostic for orphan/ghost remediation; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
 
@@ -337,16 +335,8 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 | Route | Purpose |
 |-------|---------|
-| `/Admin/MergeRequests` | List pending `AccountMergeRequest`s (`AdminMergeController`) |
-| `/Admin/MergeRequests/{id}` | Detail view of a single merge request |
-| `/Admin/MergeRequests/{id}/Accept` | Accept and execute the merge |
-| `/Admin/MergeRequests/{id}/Reject` | Reject the merge |
-| `/Admin/DuplicateAccounts` | List detected duplicate-account groups (`AdminDuplicateAccountsController`) |
-| `/Admin/DuplicateAccounts/Detail` | Side-by-side comparison of two candidate accounts |
-| `/Admin/DuplicateAccounts/Resolve` | Archive the duplicate and re-link logins to the survivor |
+| `/Users/Admin/AccountMerges` | Unified account-merge queue — pending merge requests **and** detected duplicate pairs (`UsersAdminAccountMergesController`, **Users** section — see [Users.md](Users.md)). Admin picks the survivor; the other account is folded in and tombstoned. Replaces the retired `/Admin/MergeRequests`, `/Admin/DuplicateAccounts`, and `/Profile/Admin/EmailProblems/{Compare,Merge}` paths. |
 | `/Profile/Admin/EmailProblems` | List UserEmail invariant violations across all accounts (`ProfileAdminController`) |
-| `/Profile/Admin/EmailProblems/Compare` | Side-by-side detail for a case-5 cross-user email collision |
-| `/Profile/Admin/EmailProblems/Merge` | POST — admin-initiated merge via `IAccountMergeService.AdminMergeAsync` |
 | `/Profile/Admin/EmailProblems/DeleteOrphanEmail` | POST — delete a single orphan UserEmail row |
 | `/Profile/Admin/EmailProblems/DeleteGhostLogins` | POST — delete every AspNetUserLogins row for a userId with no UserEmails |
 
@@ -411,9 +401,9 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 ## Architecture
 
-**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`, `EmailProblemsService`
+**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `EmailProblemsService` (account-merge + duplicate detection moved to the **Users** section — see [Users.md](Users.md))
 **Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`, `account_merge_requests`
-**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
+**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` now live in the **Users** section (`Humans.Application/Services/Users/`) following the account-merge consolidation — see [Users.md](Users.md).
 
 - Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
 - `IUserRepository` (profile/contact methods), `IUserEmailRepository`, `ICommunicationPreferenceRepository`, and `IAccountMergeRepository` are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.

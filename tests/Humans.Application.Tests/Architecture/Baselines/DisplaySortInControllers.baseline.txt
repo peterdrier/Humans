@@ -42,8 +42,8 @@ src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepositor
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Profiles/AccountMergeRepository.cs:OrderByDescending#1
+src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderBy#1
+src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.ContactFields.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.ContactFields.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:OrderByDescending#1

@@ -131,7 +131,7 @@ Two controllers serve this section:
 | Import jobs (Tickets, MailerLite) | Call `IAccountProvisioningService.FindOrCreateUserByEmailAsync` to materialize contact-only User rows (no `LastLoginAt`). |
 | Authenticated human | Read own User row. Self-declare `NotAttending` for the active event year via `IUserService.DeclareNotAttendingAsync` (and undo via `UndoNotAttendingAsync`). Request account deletion. |
 | HumanAdmin, Board, Admin | Read any User's deletion / login state. Suspension itself is a Profile concern (see [Profiles.md](Profiles.md)). |
-| Admin | Trigger account merge flows (see [Profiles.md](Profiles.md) — `AccountMergeService` lives there). Outside Production only: purge a human via `AdminController.PurgeHuman`. |
+| Admin | Trigger account merge flows on the unified **Account Merges** page (`/Users/Admin/AccountMerges`, `UsersAdminAccountMergesController`); `AccountMergeService` + `DuplicateAccountService` are Users-section services. Outside Production only: purge a human via `AdminController.PurgeHuman`. |
 
 ## Invariants
 
