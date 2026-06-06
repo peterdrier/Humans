@@ -240,14 +240,17 @@ Budget never calls into Finance.
 > **What exists (Feature 2):**
 > - `src/Humans.Domain/Entities/HoldedCreditorBalance.cs`
 > - `src/Humans.Domain/Entities/HoldedPayment.cs`
+> - `src/Humans.Application/Services/Finance/Dtos/HoldedPaymentInfo.cs` — read-only row DTO (date / amount / document type) surfaced on `HoldedCreditorStatus.Payments`
 > - `IHoldedRepository.UpsertCreditorBalancesAsync`, `GetCreditorBalanceByAccountNumAsync`, `UpsertPaymentsAsync`, `GetPaymentsByContactAsync`
 > - `IHoldedFinanceService.SyncCreditorDataAsync` — nightly cache refresh (called from `HoldedSyncJob`)
-> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum, string holdedContactId)` — Expenses→Finance read surface
+> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum, string holdedContactId)` — Expenses→Finance read surface; return type `HoldedCreditorStatus` now includes `Payments` (individual payment rows for the per-member ledger)
 > - `IHoldedClient.GetContactAsync`, `ListChartOfAccountsAsync`, `ListPaymentsAsync`, `UpsertContactAsync` — extended Holded API surface
 
 ### Feature 2 — Holded creditor-data cache
 
 `SyncCreditorDataAsync` runs nightly as part of `HoldedSyncJob`. It pulls the chartofaccounts and payments from Holded and upserts them into `holded_creditor_balances` and `holded_payments` respectively. The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum, holdedContactId)`: it checks the cached balance (balance ≥ 0 means settled) and falls back to the payments cache for the contact.
+
+`HoldedCreditorStatus` (the return type of `GetCreditorStatusAsync`) now also exposes individual `Payments` rows (`IReadOnlyList<HoldedPaymentInfo>?` — each row carries date, amount, and document type). These are mapped directly from the `holded_payments` cache and consumed read-only by the Expenses dashboard ledger (`GetHoldedTimelineAsync`). No new `IHoldedFinanceService` interface method was added; `Payments` is an optional field on the existing return record (defaults to `null` for callers that do not need it).
 
 **Org-accounting boundary (HARD):** Humans only reads Holded balances. It never writes debt-reassignment journal entries or modifies the chartofaccounts to reflect internal transfers. The `holded_creditor_balances` table is a read-through cache, not a ledger.
 
