@@ -12,6 +12,7 @@ We run a single annual general-admission event for a Spanish nonprofit. Everyone
 ## Codes & Special Programs
 
 - Nearly every special price is a code: **1 code = 1 ticket at a set price**, with an optional **"valid until" (purchase-by) date**.
+- **Direct-link redemption**: each code should also work as a single clickable redemption link (e.g. `https://<vendor>/customer/<eventName>/<code>`), so we can hand someone one URL rather than a code to enter manually.
 - Staff set up programs via the website. Each program defines: price, purchase-by date, **refundable-until date** (independent of purchase-by), and transferable yes/no. Examples:
   - Low Income — €100, non-transferable, refundable until 1 July
   - Supporter — €250, transferable, valid until 1 May
