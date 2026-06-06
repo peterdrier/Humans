@@ -23,8 +23,7 @@ public static class AdminNavTree
             new("Roles",  "Profile", "Roles",           null, null, "fa-solid fa-id-badge",         PolicyNames.HumanAdminBoardOrAdmin),
             new("Review", "OnboardingReview", "Index",   null, null, "fa-solid fa-clipboard-check",  PolicyNames.ReviewQueueAccess,
                  PillCount: PillCounts.ReviewQueue),
-            new("Merge requests",      "AdminMerge", "Index",             null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
-            new("Duplicate detection", "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
+            new("Account merges",      "UsersAdminAccountMerges", "Index", null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
             new("Email problems",      "ProfileAdmin", "EmailProblems",   null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly)
         ]),
         new("Shifts", [

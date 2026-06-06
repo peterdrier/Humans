@@ -1,7 +1,6 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Helpers;
 using NodaTime;
 
 namespace Humans.Application.Services.Profiles;
@@ -77,21 +76,6 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         }
 
         return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
-    }
-
-    public async Task<bool> UsersShareAnyEmailAsync(Guid user1Id, Guid user2Id, CancellationToken ct = default)
-    {
-        if (user1Id == user2Id) return false;
-
-        var info1 = await userService.GetUserInfoAsync(user1Id, ct);
-        var info2 = await userService.GetUserInfoAsync(user2Id, ct);
-        if (info1 is null || info2 is null) return false;
-
-        var norms1 = info1.UserEmails
-            .Select(e => EmailNormalization.NormalizeForComparison(e.Email))
-            .ToHashSet(StringComparer.Ordinal);
-        return info2.UserEmails
-            .Any(e => norms1.Contains(EmailNormalization.NormalizeForComparison(e.Email)));
     }
 
     public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
