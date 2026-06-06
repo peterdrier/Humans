@@ -53,6 +53,17 @@ public interface IAccountMergeService : IApplicationService
     /// </summary>
     Task RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Closes a pending merge request whose two accounts are already merged — a
+    /// pre-existing orphan from before the engine self-reconciled merges. Marks the
+    /// request Accepted with NO data or email mutation (the merge already happened).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the request is missing, not pending, or neither account is merged
+    /// (resolve those via <see cref="MergeAsync"/> or <see cref="RejectAsync"/> instead).
+    /// </exception>
+    Task ReconcileMergedRequestAsync(Guid requestId, Guid adminUserId, CancellationToken ct = default);
+
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
     // Previously, UserEmailService read AccountMergeRequests via direct DbContext.
     // These methods route those reads through the owning service.

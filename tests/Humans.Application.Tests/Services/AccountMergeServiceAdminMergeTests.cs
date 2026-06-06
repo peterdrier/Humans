@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
@@ -101,5 +102,59 @@ public class AccountMergeServiceAdminMergeTests
         var act = () => BuildSut().AdminMergeAsync(src, tgt, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tombstoned*");
+    }
+
+    [HumansFact]
+    public async Task ReconcileMergedRequestAsync_SetsAccepted_WhenPairAlreadyMerged()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
+        var req = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            SourceUserId = src,
+            TargetUserId = tgt,
+            Email = "dupe@example.com",
+            Status = AccountMergeRequestStatus.Pending,
+        };
+        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<AccountMergeRequest> { req });
+        // Source already tombstoned, target survives.
+        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
+        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = tgt }.ToUserInfo());
+
+        await BuildSut().ReconcileMergedRequestAsync(req.Id, admin);
+
+        req.Status.Should().Be(AccountMergeRequestStatus.Accepted);
+        req.ResolvedByUserId.Should().Be(admin);
+        await _mergeRepo.Received(1).UpdateAsync(
+            Arg.Is<AccountMergeRequest>(r => r.Id == req.Id && r.Status == AccountMergeRequestStatus.Accepted),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileMergedRequestAsync_Throws_WhenNeitherAccountMerged()
+    {
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
+        var req = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            SourceUserId = src,
+            TargetUserId = tgt,
+            Email = "dupe@example.com",
+            Status = AccountMergeRequestStatus.Pending,
+        };
+        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = src }.ToUserInfo());
+        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = tgt }.ToUserInfo());
+
+        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Neither account is merged*");
     }
 }

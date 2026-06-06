@@ -257,6 +257,33 @@ public sealed class AccountMergeService(
         await userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
     }
 
+    public async Task ReconcileMergedRequestAsync(
+        Guid requestId, Guid adminUserId, CancellationToken ct = default)
+    {
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
+            ?? throw new InvalidOperationException("Merge request not found.");
+        if (request.Status != AccountMergeRequestStatus.Pending)
+            throw new InvalidOperationException("Merge request is not pending.");
+
+        var source = await userService.GetUserInfoAsync(request.SourceUserId, ct);
+        var target = await userService.GetUserInfoAsync(request.TargetUserId, ct);
+        if (source?.IsMerged != true && target?.IsMerged != true)
+            throw new InvalidOperationException(
+                "Neither account is merged — resolve this request via Merge or Dismiss instead.");
+
+        // The merge already happened; just close the orphaned request. No data/email
+        // mutation — reuses the same close path the engine runs after a live merge.
+        await CloseRequestsForPairAsync(
+            request.TargetUserId, request.SourceUserId, adminUserId,
+            clock.GetCurrentInstant(), "Reconciled: accounts already merged.", ct);
+
+        await auditLogService.LogAsync(
+            AuditAction.AccountMergeAccepted,
+            nameof(AccountMergeRequest), request.Id,
+            $"Reconciled orphan merge request — accounts already merged (source {request.SourceUserId}, target {request.TargetUserId}).",
+            adminUserId);
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var rows = await mergeRepository.GetForUserGdprAsync(userId, ct);

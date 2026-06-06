@@ -137,6 +137,27 @@ public class UsersAdminAccountMergesController(
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("{requestId:guid}/Close")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Close(Guid requestId, CancellationToken ct)
+    {
+        var (error, admin) = await RequireCurrentUserAsync(ct);
+        if (error is not null) return error;
+
+        try
+        {
+            await mergeService.ReconcileMergedRequestAsync(requestId, admin.Id, ct);
+            SetSuccess("Orphan merge request closed; the accounts were already merged.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogError(ex, "Failed to close merge request {RequestId}", requestId);
+            SetError($"Close failed: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     private static string PairKey(Guid a, Guid b)
     {
         var sa = a.ToString();
