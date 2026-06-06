@@ -284,12 +284,17 @@ public sealed class UserService(
     {
         var updated = await repo.SetDeletionPendingAsync(
             userId, requestedAt, scheduledFor, eligibleAfter, ct);
+        if (updated)
+            InvalidateClaims(userId);
         return updated;
     }
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        return await repo.ClearDeletionAsync(userId, ct);
+        var updated = await repo.ClearDeletionAsync(userId, ct);
+        if (updated)
+            InvalidateClaims(userId);
+        return updated;
     }
 
     public async Task<bool> EnsureStubProfileAsync(

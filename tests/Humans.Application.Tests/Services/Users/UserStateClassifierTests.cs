@@ -1,6 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Services.Users;
+using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -91,7 +90,7 @@ public class UserStateClassifierTests
 
         // GDPR deletion reuses the merge tombstone columns, so MergedAt is also set — but the
         // "Deleted User" DisplayName sentinel must win and classify it as Deleted.
-        var gdprDeleted = NewUser(displayName: UserInfo.GdprAnonymizedBurnerName);
+        var gdprDeleted = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
         gdprDeleted.MergedAt = instant;
         UserStateClassifier.Classify(gdprDeleted, profile: null).Should().Be(UserState.Deleted);
     }

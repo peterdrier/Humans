@@ -1,3 +1,4 @@
+using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -209,7 +210,7 @@ public sealed record UserInfo(
     /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
     /// at creation time so the legacy name never becomes a public UserInfo field.
     /// </summary>
-    public const string GdprAnonymizedBurnerName = "Deleted User";
+    public const string GdprAnonymizedBurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
 
     /// <summary>
     /// True when the user row is a tombstone — a merge-source
@@ -473,7 +474,18 @@ public sealed record UserInfo(
         // every UserInfo carries a correct, non-null State in EVERY read path — including the
         // batch/all-users path, which never seeds. State-derived predicates below stay reliable.
         return info.State is null
-            ? info with { State = Services.Users.UserStateClassifier.Classify(info) }
+            ? info with
+            {
+                State = UserStateClassifier.Classify(
+                    hasRequiredNameFields: info.HasRequiredNameFields,
+                    isSuspended: info.Profile?.State == ProfileState.Suspended,
+                    isAdminSuspended: info.Profile?.State == ProfileState.AdminSuspended,
+                    isRejected: info.Profile?.RejectedAt is not null,
+                    isDeletionPending: info.IsDeletionPending,
+                    isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
+                    isGdprDeleted: info.IsGdprAnonymized
+                        || (info.IsTombstone && info.MergedAt is null))
+            }
             : info;
     }
 }

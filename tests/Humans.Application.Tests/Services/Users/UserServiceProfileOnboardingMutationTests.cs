@@ -395,6 +395,45 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task SetDeletionPendingAsync_WhenUpdated_InvalidatesClaims()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var now = Clock.GetCurrentInstant();
+
+        var result = await _service.SetDeletionPendingAsync(
+            userId,
+            now,
+            now.Plus(NodaTime.Duration.FromDays(30)),
+            eligibleAfter: null);
+
+        result.Should().BeTrue();
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        user.State.Should().Be(UserState.DeletePending);
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansFact]
+    public async Task ClearDeletionAsync_WhenUpdated_InvalidatesClaims()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var user = await Db.Users.FirstAsync(u => u.Id == userId);
+        var now = Clock.GetCurrentInstant();
+        user.DeletionRequestedAt = now;
+        user.DeletionScheduledFor = now.Plus(NodaTime.Duration.FromDays(30));
+        user.State = UserState.DeletePending;
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ClearDeletionAsync(userId);
+
+        result.Should().BeTrue();
+        var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        fresh.State.Should().Be(UserState.Active);
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansFact]
     public async Task ApplyProfileOnboardingMutationAsync_NoProfile_ReturnsNotFound()
     {
         var result = await _service.ApplyProfileOnboardingMutationAsync(
