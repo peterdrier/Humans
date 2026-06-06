@@ -37,6 +37,12 @@ public class AdminHumanDetailViewModel
     public bool IsSuspended { get; set; }
     public bool IsApproved { get; set; }
     public bool HasProfile { get; set; }
+
+    /// <summary>This account is a merge tombstone (folded into another and locked out).</summary>
+    public bool IsMerged { get; set; }
+    public Guid? MergedToUserId { get; set; }
+    public DateTime? MergedAt { get; set; }
+    public string? MergedToDisplayName { get; set; }
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }

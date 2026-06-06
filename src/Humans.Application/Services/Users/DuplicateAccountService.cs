@@ -17,8 +17,11 @@ public sealed class DuplicateAccountService(
         // Load all into memory — ~500 users; avoids complex SQL for gmail/googlemail equivalence.
         var allInfos = await userService.GetAllUserInfosAsync(ct);
         var users = allInfos
-            .Where(u => !string.IsNullOrEmpty(u.Email) &&
-                        !u.Email!.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase))
+            // Exclude tombstones (merge-archived, GDPR-anonymized, or legacy .local
+            // sentinels): a merged account still carries its pre-merge legacy User.Email
+            // column, so without this it re-collides with its own survivor and the
+            // already-merged pair reappears on the queue forever.
+            .Where(u => !string.IsNullOrEmpty(u.Email) && !u.IsTombstone)
             .ToList();
 
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
