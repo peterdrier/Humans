@@ -1,3 +1,4 @@
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Expenses;
@@ -106,4 +107,5 @@ public sealed record ExpenseHoldedTimeline(
     decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
     bool Paid,
     NodaTime.LocalDate? PaidOn,
-    decimal TotalPaid);
+    decimal TotalPaid,
+    IReadOnlyList<HoldedPaymentInfo> Payments);

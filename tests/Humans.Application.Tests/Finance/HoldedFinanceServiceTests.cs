@@ -336,4 +336,22 @@ public class HoldedFinanceServiceTests
         status.OwedToMember.Should().Be(0m);
         status.TotalPaid.Should().Be(60m);
     }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_surfaces_individual_payment_rows()
+    {
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001, default).ReturnsForAnyArgs(
+            new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -100m });
+        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        {
+            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1), DocumentType = "purchase" },
+            new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
+        });
+
+        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1");
+
+        status!.Payments.Should().NotBeNull();
+        status.Payments!.Should().HaveCount(2);
+        status.Payments!.Should().ContainEquivalentOf(new HoldedPaymentInfo(new LocalDate(2026, 4, 1), 100m, "purchase"));
+    }
 }

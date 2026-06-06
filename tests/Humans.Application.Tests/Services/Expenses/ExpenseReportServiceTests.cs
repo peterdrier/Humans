@@ -1247,6 +1247,28 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         timeline.OtherAmount.Should().Be(200m - report!.Total);
     }
 
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_CarriesPaymentRows()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+                LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m,
+                Payments: new List<HoldedPaymentInfo> { new(new LocalDate(2026, 4, 20), 50m, "purchase") }));
+
+        var report = await _sut.GetAsync(reportId);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!);
+
+        timeline!.Payments.Should().ContainSingle()
+            .Which.Amount.Should().Be(50m);
+    }
+
     // ─────────────────────── Travel wizard methods ────────────────────────────
 
     [HumansFact]

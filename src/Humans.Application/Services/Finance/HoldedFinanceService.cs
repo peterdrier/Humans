@@ -413,7 +413,8 @@ public sealed class HoldedFinanceService(
             Balance: balance,
             OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
             LastPaymentDate: lastPaymentDate,
-            TotalPaid: payments.Sum(p => p.Amount));
+            TotalPaid: payments.Sum(p => p.Amount),
+            Payments: payments.Select(p => new HoldedPaymentInfo(p.Date, p.Amount, p.DocumentType)).ToList());
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────────
