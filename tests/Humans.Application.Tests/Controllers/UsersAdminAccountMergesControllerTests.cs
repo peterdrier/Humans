@@ -127,4 +127,30 @@ public class UsersAdminAccountMergesControllerTests
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
     }
+
+    [HumansFact]
+    public async Task Close_CallsReconcileMergedRequestAsync_RedirectsToIndex()
+    {
+        var requestId = Guid.NewGuid();
+
+        var result = await BuildController().Close(requestId, CancellationToken.None);
+
+        await _mergeService.Received(1).ReconcileMergedRequestAsync(
+            requestId, _adminUserId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
+    }
+
+    [HumansFact]
+    public async Task Close_WhenReconcileThrowsInvalidOperation_SetsErrorAndRedirectsToIndex()
+    {
+        var requestId = Guid.NewGuid();
+        _mergeService.ReconcileMergedRequestAsync(requestId, _adminUserId, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("not merged into each other"));
+
+        var result = await BuildController().Close(requestId, CancellationToken.None);
+
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
+    }
 }

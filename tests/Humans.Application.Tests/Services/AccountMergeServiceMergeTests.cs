@@ -15,7 +15,7 @@ using Humans.Application.Services.Users;
 
 namespace Humans.Application.Tests.Services;
 
-public class AccountMergeServiceAdminMergeTests
+public class AccountMergeServiceMergeTests
 {
     private readonly IAccountMergeRepository _mergeRepo = Substitute.For<IAccountMergeRepository>();
     private readonly IUserRepository _userEmailRepo = Substitute.For<IUserRepository>();
@@ -29,7 +29,7 @@ public class AccountMergeServiceAdminMergeTests
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
-    public AccountMergeServiceAdminMergeTests()
+    public AccountMergeServiceMergeTests()
     {
         // MergeAsync's CloseRequestsForPairAsync filters GetPendingAsync in memory; default
         // it to empty so the happy path doesn't trip on a null result.
@@ -58,14 +58,15 @@ public class AccountMergeServiceAdminMergeTests
     }
 
     [HumansFact]
-    public async Task AdminMergeAsync_HappyPath_RunsFanOutAndTombstone()
+    public async Task MergeAsync_HappyPath_RunsFanOutAndTombstone()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
         var merger = Substitute.For<IUserMerge>();
         _userMerges.Add(merger);
 
-        await BuildSut().AdminMergeAsync(src, tgt, admin);
+        // survivor = tgt, archived = src.
+        await BuildSut().MergeAsync(tgt, src, admin);
 
         await merger.Received(1).ReassignAsync(src, tgt, admin,
             Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
@@ -76,30 +77,30 @@ public class AccountMergeServiceAdminMergeTests
     }
 
     [HumansFact]
-    public async Task AdminMergeAsync_SourceEqualsTarget_Throws()
+    public async Task MergeAsync_SurvivorEqualsArchived_Throws()
     {
         var id = Guid.NewGuid();
-        var act = () => BuildSut().AdminMergeAsync(id, id, Guid.NewGuid());
+        var act = () => BuildSut().MergeAsync(id, id, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [HumansFact]
-    public async Task AdminMergeAsync_SourceMissing_Throws()
+    public async Task MergeAsync_ArchivedMissing_Throws()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = tgt }, [], [], [], null, [], [], [], []));
-        // source returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
-        var act = () => BuildSut().AdminMergeAsync(src, tgt, Guid.NewGuid());
+        // archived (src) returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
+        var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [HumansFact]
-    public async Task AdminMergeAsync_SourceAlreadyTombstoned_Throws()
+    public async Task MergeAsync_ArchivedAlreadyTombstoned_Throws()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         SetupUsers(src, tgt, sourceTombstoned: true);
-        var act = () => BuildSut().AdminMergeAsync(src, tgt, Guid.NewGuid());
+        var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tombstoned*");
     }

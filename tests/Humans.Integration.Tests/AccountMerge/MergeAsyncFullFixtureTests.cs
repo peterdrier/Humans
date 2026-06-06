@@ -14,14 +14,14 @@ using Xunit;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Integration test for <see cref="IAccountMergeService.AdminMergeAsync"/>:
-/// seeds a full two-user fixture, invokes the admin-initiated fold, and
-/// asserts all six post-conditions from the EmailProblems spec (case 5).
+/// Integration test for <see cref="IAccountMergeService.MergeAsync"/>:
+/// seeds a full two-user fixture, invokes a direct admin fold (no
+/// AccountMergeRequest), and asserts all six post-conditions.
 /// </summary>
-public class AdminMergeAsyncTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
+public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
 {
     [HumansFact(Timeout = 60_000)]
-    public async Task AdminMergeAsync_FullFixture_AllPostConditionsHold()
+    public async Task MergeAsync_FullFixture_AllPostConditionsHold()
     {
         var runTag = Guid.NewGuid().ToString("N");
         var sourceEmail = $"joe-{runTag}@x.com";
@@ -58,12 +58,12 @@ public class AdminMergeAsyncTests(HumansWebApplicationFactory factory) : IClassF
             await builder.SaveAllAsync();
         }
 
-        // Act — admin-initiated merge (no AccountMergeRequest).
+        // Act — direct admin fold (no AccountMergeRequest): survivor = target, archived = source.
         var adminId = await SeedAdminUserAsync();
         await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.AdminMergeAsync(sourceId, targetId, adminId);
+            await mergeService.MergeAsync(targetId, sourceId, adminId);
         }
 
         // Assert — all six post-conditions from the EmailProblems spec case 5.
@@ -172,7 +172,7 @@ public class AdminMergeAsyncTests(HumansWebApplicationFactory factory) : IClassF
         if (!result.Succeeded)
         {
             throw new InvalidOperationException(
-                "Failed to seed admin user for AdminMergeAsyncTests: "
+                "Failed to seed admin user for MergeAsyncFullFixtureTests: "
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 

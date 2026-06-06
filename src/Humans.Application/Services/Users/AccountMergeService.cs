@@ -322,13 +322,4 @@ public sealed class AccountMergeService(
 
     public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
         mergeRepository.AddAsync(request, ct);
-
-    // Admin-initiated direct merge: folds source into target (target survives), routed
-    // through the one MergeAsync primitive. MergeAsync performs the same-id, missing-user,
-    // and already-tombstoned validation.
-    public Task AdminMergeAsync(
-        Guid sourceUserId, Guid targetUserId,
-        Guid adminUserId, string? notes = null,
-        CancellationToken ct = default) =>
-        MergeAsync(targetUserId, sourceUserId, adminUserId, notes, pendingEmailIdToVerify: null, ct);
 }

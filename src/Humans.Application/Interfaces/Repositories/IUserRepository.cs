@@ -191,10 +191,9 @@ public partial interface IUserRepository : IRepository
     /// (<c>LoginProvider</c>, <c>ProviderKey</c>) only — <c>UserId</c> is
     /// just an FK column — so two users can never share a row at the DB
     /// level, and no de-duplication is possible. Returns the count of
-    /// logins now attributed to the target. Used by
-    /// <c>AccountMergeService.AcceptAsync</c> /
-    /// <c>DuplicateAccountService.ResolveAsync</c> to re-link sign-in
-    /// credentials before archiving the source account.
+    /// logins now attributed to the target. Used by the account-merge
+    /// fan-out to re-link sign-in credentials before archiving the source
+    /// account.
     /// </summary>
     Task<int> ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);

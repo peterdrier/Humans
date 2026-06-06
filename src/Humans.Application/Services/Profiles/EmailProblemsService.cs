@@ -63,6 +63,10 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
+            // Tombstones carry a scrubbed sentinel Identity email (merged-/deleted-…@….local)
+            // with no matching UserEmail row — not a real hygiene problem. Skip them.
+            if (info.IsTombstone) continue;
+
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
@@ -95,6 +99,10 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
 
         foreach (var info in allInfos)
         {
+            // Never resurrect a tombstone: its scrubbed sentinel email must not become a
+            // verified UserEmail row.
+            if (info.IsTombstone) continue;
+
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 

@@ -91,20 +91,6 @@ public interface IAccountMergeService : IApplicationService
     /// Creates a new merge request.
     /// </summary>
     Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default);
-
-    /// <summary>
-    /// Admin-initiated merge of two pre-existing accounts (no AccountMergeRequest).
-    /// Folds <paramref name="sourceUserId"/> into <paramref name="targetUserId"/>:
-    /// reassigns every section's user-keyed rows via <c>IUserMerge</c>, tombstones
-    /// the source, and audits. Used by /Profile/Admin/EmailProblems case 5.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if source==target, either user is missing, or the source is already tombstoned.
-    /// </exception>
-    Task AdminMergeAsync(
-        Guid sourceUserId, Guid targetUserId,
-        Guid adminUserId, string? notes = null,
-        CancellationToken ct = default);
 }
 
 public sealed record AccountMergeRequestSnapshot(
