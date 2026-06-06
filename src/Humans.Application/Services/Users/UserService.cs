@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
@@ -19,6 +20,7 @@ public sealed class UserService(
     IUserRepository repo,
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
+    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IClock clock,
     ILogger<UserService> logger) : IUserService, IUserDataContributor, IUserMerge
 {
@@ -334,7 +336,7 @@ public sealed class UserService(
             profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
             await repo.AddAsync(profile, ct);
-            await repo.ResyncStateAsync(userId, ct);
+            await ResyncStateAndInvalidateClaimsAsync(userId, ct);
             return true;
         }
         finally
@@ -406,7 +408,7 @@ public sealed class UserService(
         }
 
         await repo.UpdateAsync(profile, ct);
-        await repo.ResyncStateAsync(userId, ct);
+        await ResyncStateAndInvalidateClaimsAsync(userId, ct);
         return new OnboardingResult(true);
     }
 
@@ -498,7 +500,7 @@ public sealed class UserService(
 
             await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
-            await repo.ResyncStateAsync(userId, ct);
+            await ResyncStateAndInvalidateClaimsAsync(userId, ct);
 
             return new UserProfileSaveResult(
                 profile.Id,
@@ -1201,6 +1203,15 @@ public sealed class UserService(
         await repo.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantAsync(row.UserId, ct);
         await EnsureGoogleInvariantAsync(row.UserId, ct);
+    }
+
+    // Persist users.State, then evict the user's cached claims. RoleAssignmentClaimsTransformation
+    // caches the UserState claim for 60s, so without this MembershipRequiredFilter keeps routing on
+    // the pre-transition state (e.g. Bare after a name submit) until the cache expires.
+    private async Task ResyncStateAndInvalidateClaimsAsync(Guid userId, CancellationToken ct)
+    {
+        await repo.ResyncStateAsync(userId, ct);
+        roleAssignmentClaimsInvalidator.Invalidate(userId);
     }
 
     private static void ApplyConsentCheck(

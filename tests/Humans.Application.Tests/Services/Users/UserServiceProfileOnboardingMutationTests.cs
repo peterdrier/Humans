@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -19,6 +20,8 @@ namespace Humans.Application.Tests.Services.Users;
 public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarness
 {
     private readonly UserService _service;
+    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
+        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
 
     public UserServiceProfileOnboardingMutationTests()
     {
@@ -29,6 +32,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userRepository,
             communicationPreferenceRepository,
             AdminAuthorization,
+            _claimsCacheInvalidator,
             Clock,
             NullLogger<UserService>.Instance);
     }
@@ -159,6 +163,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.ConsentCheckAt.Should().Be(Clock.GetCurrentInstant());
         profile.ConsentCheckedByUserId.Should().Be(reviewerId);
         profile.ConsentCheckNotes.Should().Be("Looks good");
+    }
+
+    [HumansFact]
+    public async Task ApplyProfileOnboardingMutationAsync_InvalidatesRoleAssignmentClaimsCache()
+    {
+        // The mutation resyncs users.State; the cached UserState claim must be evicted so
+        // MembershipRequiredFilter stops routing on the stale pre-transition state.
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        await _service.ApplyProfileOnboardingMutationAsync(
+            userId,
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.RecordConsentCheck,
+                ActorUserId: Guid.NewGuid(),
+                ConsentCheckStatus: ConsentCheckStatus.Cleared));
+
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -517,6 +539,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userRepository,
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
+            _claimsCacheInvalidator,
             Clock,
             NullLogger<UserService>.Instance);
 }

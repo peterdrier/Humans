@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -41,6 +42,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _userRepository,
             _communicationPreferenceRepository,
             AdminAuthorization,
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             Clock,
             NullLogger<UserService>.Instance);
 
@@ -406,6 +408,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         userRepository,
         _communicationPreferenceRepository,
         AdminAuthorization,
+        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
         Clock,
         NullLogger<UserService>.Instance);
 
