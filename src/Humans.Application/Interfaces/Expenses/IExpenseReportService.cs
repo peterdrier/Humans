@@ -1,3 +1,5 @@
+using Humans.Domain.Enums;
+
 namespace Humans.Application.Interfaces.Expenses;
 
 public interface IExpenseReportService : IExpenseReportServiceRead, IApplicationService
@@ -65,6 +67,16 @@ public interface IExpenseReportService : IExpenseReportServiceRead, IApplication
 
     Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        string origin, string destination, decimal km,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        PerDiemKind kind, int days, string? note,
         CancellationToken ct = default);
 
 }

@@ -7,8 +7,10 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Services.Finance.Dtos;
 using Humans.Application.Tests.Infrastructure;
+using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Expenses;
@@ -51,7 +53,8 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             _holdedClient,
             _holdedFinance,
             Clock,
-            NullLogger<ExpenseReportService>.Instance);
+            NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -615,6 +618,35 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("attachment");
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_Succeeds_WithOnlyMileageLine_NoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m);
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(id))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_Fails_WhenReceiptLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        await _sut.AddLineWithResultAsync(id, submitter, "Tent", 50m); // Receipt line, no attachment
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter);
+
+        result.Succeeded.Should().BeFalse();
     }
 
     [HumansFact]
@@ -1213,6 +1245,56 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         timeline!.RegisteredInHolded.Should().BeTrue();
         timeline.OwedToMember.Should().Be(200m);
         timeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    // ─────────────────────── Travel wizard methods ────────────────────────────
+
+    [HumansFact]
+    public async Task AddMileageLineWithResultAsync_ComputesAmount_FormatsDescription_SetsType()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null);
+
+        var result = await _sut.AddMileageLineWithResultAsync(id, userId, "Berlin", "Barcelona", 1281m);
+
+        result.Succeeded.Should().BeTrue();
+        var line = (await _sut.GetAsync(id))!.Lines.Single();
+        line.LineType.Should().Be(ExpenseLineType.Mileage);
+        line.Amount.Should().Be(333.06m); // 1281 * 0.26
+        line.Description.Should().Be("Berlin to Barcelona, 1281 km @ €0.26 = €333.06");
+        line.AttachmentId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task AddPerDiemLineWithResultAsync_Overnight_ComputesAmount_FormatsDescription_SetsType()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null);
+
+        var result = await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.Overnight, 3, "Assembly Madrid");
+
+        result.Succeeded.Should().BeTrue();
+        var line = (await _sut.GetAsync(id))!.Lines.Single();
+        line.LineType.Should().Be(ExpenseLineType.PerDiem);
+        line.Amount.Should().Be(160.02m); // 3 * 53.34
+        line.Description.Should().Be("Per diem: 3 days overnight @ €53.34 = €160.02 — Assembly Madrid");
+        line.AttachmentId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task AddPerDiemLineWithResultAsync_DayTrip_SingleDay_UsesSingularAndDayTripRate()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null);
+
+        await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.DayTrip, 1, null);
+
+        var line = (await _sut.GetAsync(id))!.Lines.Single();
+        line.Amount.Should().Be(26.67m);
+        line.Description.Should().Be("Per diem: 1 day day-trip @ €26.67 = €26.67");
     }
 
     // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────

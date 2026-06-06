@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Services.Finance.Dtos;
+using Microsoft.Extensions.Options;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -53,7 +54,8 @@ public class ExpenseReportServiceHoldedPollingTests
             _holdedClient,
             _holdedFinance,
             _clock,
-            Substitute.For<ILogger<ExpenseReportService>>());
+            Substitute.For<ILogger<ExpenseReportService>>(),
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

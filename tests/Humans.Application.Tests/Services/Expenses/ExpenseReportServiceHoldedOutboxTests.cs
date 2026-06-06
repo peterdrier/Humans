@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Tests.Infrastructure;
+using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -88,7 +89,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedClient,
             Substitute.For<IHoldedFinanceService>(),
             _clock,
-            Substitute.For<ILogger<ExpenseReportService>>());
+            Substitute.For<ILogger<ExpenseReportService>>(),
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -476,7 +478,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedClient,
             Substitute.For<IHoldedFinanceService>(),
             _clock,
-            logger);
+            logger,
+            Options.Create(new TravelReimbursementConfig()));
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 
