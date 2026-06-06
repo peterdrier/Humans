@@ -48,15 +48,15 @@ test.describe('Profile (02-profiles)', () => {
 
     await loginAsAdmin(page);
     // Find a target user from the humans list and reach their AdminDetail.
-    await page.goto('/Profile/Admin');
+    await page.goto('/Users/Admin');
     const viewLink = page.locator('table tbody a').filter({ hasText: /^View$/ }).first();
     const isVisible = await viewLink.isVisible({ timeout: 3000 }).catch(() => false);
     if (!isVisible) test.skip(true, 'No humans available to target — preview env may be empty.');
 
     const detailHref = await viewLink.getAttribute('href');
     expect(detailHref).toBeTruthy();
-    const idMatch = detailHref!.match(/\/Profile\/([0-9a-f-]+)/i);
-    expect(idMatch, 'expected /Profile/{id}/...').toBeTruthy();
+    const idMatch = detailHref!.match(/\/Users\/Admin\/([0-9a-f-]+)/i);
+    expect(idMatch, 'expected /Users/Admin/{id}').toBeTruthy();
     const targetId = idMatch![1];
 
     await page.goto(`/Profile/${targetId}/Admin/Emails`);
@@ -112,7 +112,7 @@ test.describe('Profile (02-profiles)', () => {
 
   test('US-9.2: board can view human detail with admin actions', async ({ page }) => {
     await loginAsBoard(page);
-    await page.goto('/Profile/Admin');
+    await page.goto('/Users/Admin');
 
     // Human list loads
     await expect(page.locator('h1, h2').first()).toBeVisible();

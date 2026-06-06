@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -15,10 +15,8 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
-    // Only controllers a NOT-Active, NO-role user must still reach. Role-gated controllers (Admin,
-    // Board, CampAdmin, OnboardingReview) are reached via the HasAnyRole escape below; public ones
-    // (Camp, CampApi, Legal, FeedbackApi) are reached via [AllowAnonymous]/API-key — so neither
-    // needs listing here.
+    // Only controllers a non-Active user must still reach. Public controllers use
+    // [AllowAnonymous]/API keys; role-gated app controllers are still blocked until Active.
     private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Account",          // Login/logout/OAuth
@@ -38,12 +36,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         var user = context.HttpContext.User;
 
         if (user.Identity?.IsAuthenticated != true)
-        {
-            return next();
-        }
-
-        // Single privileged escape: any role-holder (staff) bypasses the access gate.
-        if (RoleChecks.HasAnyRole(user))
         {
             return next();
         }

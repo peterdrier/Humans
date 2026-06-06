@@ -34,9 +34,7 @@ public class AdminHumanDetailViewModel
     public string? LastName { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
-    public bool IsSuspended { get; set; }
-    public bool IsApproved { get; set; }
-    public bool HasProfile { get; set; }
+    public UserState State { get; set; }
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }
@@ -45,7 +43,6 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }

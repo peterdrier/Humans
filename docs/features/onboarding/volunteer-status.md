@@ -12,7 +12,7 @@
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change
-  UserState access gate, MembershipRequiredFilter HasAnyRole bypass, and Volunteers-team eligibility (name + consents) — review when team sync, claims transformation, or the access gate changes.
+  UserState access gate and Volunteers-team eligibility (name + consents) — review when team sync, claims transformation, or the access gate changes.
 -->
 
 # Volunteer Status
@@ -61,7 +61,7 @@ The consent check is purely a **Volunteer-level safety gate** performed by a Con
 
 **Acceptance Criteria:**
 - Dashboard shows pending count (consent check pending)
-- Filter human list by pending/active/suspended
+- Filter the human list by `UserState` (bare/active/suspended/rejected/deleting/merged/deleted)
 - Audit trail records status-changing events
 
 ## Dashboard Status
@@ -125,11 +125,11 @@ Non-Active users are restricted from most of the application. A global action fi
 
 ### Bypass
 
-A single escape: anyone holding **any role** (staff of any kind — `RoleChecks.HasAnyRole`) bypasses the gate regardless of `UserState`.
+There is no role bypass. Roles authorize protected features only after `UserState == Active`; non-Active users are routed by state before role-gated controllers run.
 
 ### Exempt Controllers
 
-Only controllers a not-Active, no-role user must still reach are exempt:
+Only controllers a non-Active user must still reach are exempt:
 - **Account** — login/logout/OAuth
 - **OnboardingWidget** — name entry (the Bare landing)
 - **Profile** — profile creation/editing
@@ -139,11 +139,11 @@ Only controllers a not-Active, no-role user must still reach are exempt:
 - **Guest** — profileless account dashboard
 - **GovernanceApplications**, **Feedback**, **Notifications** — any logged-in user
 
-Role-gated controllers (Admin, Board, CampAdmin, OnboardingReview) reach the app via the role escape; `[AllowAnonymous]`/API-key ones (Camp, CampApi, Legal, FeedbackApi) via anonymous pass-through.
+Role-gated app controllers are reached only after the `UserState == Active` gate passes; `[AllowAnonymous]`/API-key controllers use anonymous pass-through.
 
 ### Navigation Gating
 
-The main navigation hides member links (City, Events, Shifts, Budget, Governance) behind the single `AppAccess` policy — shown when `UserState == Active` OR the user holds any role.
+The main navigation hides member links (City, Events, Shifts, Budget, Governance) behind the single `AppAccess` policy — shown when `UserState == Active`.
 
 ## Volunteer Onboarding Pipeline
 
@@ -181,9 +181,8 @@ Existing approved users (`IsApproved = true`) are **grandfathered in** — they 
 ### Volunteers Team Eligibility
 ```
 To be in the Volunteers team, a user must have ALL of:
-├── Profile.IsApproved = true (set automatically by consent check clearance)
-├── Profile.IsSuspended = false
-├── Profile.RejectedAt = null (not rejected)
+├── UserState == Active (legal name entered)
+├── Not suspended / rejected / deleted / merged / delete-pending
 └── All required consents for the Volunteers team signed
     └── Latest DocumentVersion where EffectiveFrom <= now for each required doc
 ```
@@ -198,14 +197,12 @@ For each team the user belongs to:
 
 ## Status Transitions
 
-### Becoming Active (Pending → Active)
+### Becoming Active (Bare -> Active)
 ```
 Triggered by:
-  - Consent Coordinator clears consent check (sets IsApproved = true)
-    AND all required Volunteers team consents are signed
-  - OR: User signs final required consent
-    AND consent check is already Cleared
-  - Whichever happens last triggers immediate Volunteers team sync
+  - User enters their legal name during onboarding
+  - Stored User.State becomes UserState.Active
+  - App access opens immediately; Volunteers-team provisioning remains name + consents
 ```
 
 ### Becoming Inactive (Active → Inactive)

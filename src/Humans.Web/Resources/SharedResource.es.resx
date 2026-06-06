@@ -1608,11 +1608,14 @@
   <data name="AdminHumans_Active" xml:space="preserve">
     <value>Activos</value>
   </data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve">
-    <value>Pendiente de aprobación</value>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
   </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Suspendidos</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Pendiente de borrado</value>
@@ -1622,9 +1625,6 @@
   </data>
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Eliminado</value>
-  </data>
-  <data name="AdminHumans_HasName" xml:space="preserve">
-    <value>Con nombre</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Miembro: {0}</value>
@@ -1957,9 +1957,6 @@
   </data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve">
     <value>Acuerdos</value>
-  </data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve">
-    <value>Aprobar human</value>
   </data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
     <value>Levantar suspensión del human</value>
@@ -5507,7 +5504,6 @@
   <data name="VolTrack_Export_Methodology" xml:space="preserve">
     <value>Filas = humanos con ≥1 turno confirmado en el rango. Color de celda = el equipo en el que trabajaron más horas ese día. Celda blanca = día anterior a su primer turno confirmado (día de llegada). Fila de totales = humanos presentes ese día (usado para conteo de comidas). Los nombres mostrados son nombres de playa.</value>
   </data>
-
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Ocultar voluntarios sin huecos</value>
     <comment>TODO: translate</comment>

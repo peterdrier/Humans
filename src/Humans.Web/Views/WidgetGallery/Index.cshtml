@@ -335,7 +335,7 @@
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Profile/{id}/Admin</code>.
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
                     </div>
                     @ParamsBlock(
                         ("user-id", "<code>Guid</code> — required"),
@@ -926,7 +926,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchResults.cshtml</span>
                     </div>
-                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Profile/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
+                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Users/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
                     @ParamsBlock(
                         ("@@model", "<code>IReadOnlyList&lt;HumanSearchResultViewModel&gt;</code> — projected match rows; admin metadata fields are nullable and self-gate")
                     )

@@ -16,7 +16,7 @@
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
 -->
 <!-- freshness:flag-on-change
-  Personal profile, contact-field visibility, email management, communication preferences, search, GDPR export/deletion, and admin profile actions (suspend/approve/reject/roles). Review when profile views, services, or entities change.
+  Personal profile, contact-field visibility, email management, communication preferences, search, GDPR export/deletion, and admin profile actions (suspend/reject/roles). Review when profile views, services, or entities change.
 -->
 
 # Profiles
@@ -96,23 +96,23 @@ Both live on `/Profile/Me/Privacy`. **Download My Data** gives you a JSON file w
 
 ### View any profile in full
 
-Go to `/Profile/{id}/Admin` (or the admin list at `/Profile/Admin`). All contact fields, emails, admin notes, emergency contact, legal name, and role history are visible regardless of per-field visibility.
+Go to `/Users/Admin/{id}` (or the admin list at `/Users/Admin`). All contact fields, emails, admin notes, emergency contact, legal name, and role history are visible regardless of per-field visibility.
 
 ### See a human's outbox
 
-From the admin detail page, open `/Profile/{id}/Admin/Outbox` to see what emails the system has sent them — useful when debugging notifications or confirming a consent reminder went out.
+From the admin detail page, open `/Users/Admin/{id}/Outbox` to see what emails the system has sent them — useful when debugging notifications or confirming a consent reminder went out.
 
 ### Suspend or unsuspend a human
 
-Use `/Profile/{id}/Admin/Suspend`. Suspended humans cannot be seen by regular humans and lose active access. Unsuspending reverses the flag.
+Use `/Users/Admin/{id}/Suspend`. Suspended humans cannot be seen by regular humans and lose active access. Unsuspending reverses the flag.
 
-### Approve or reject a new signup
+### Reject a signup
 
-New humans whose consent check is pending wait for a decision at `/Profile/{id}/Admin/Approve` or `/Profile/{id}/Admin/Reject`. Approving adds them to the Volunteers team; rejecting stops onboarding. These manual buttons are for edge cases where automatic activation didn't happen — for example, a Consent Coordinator flagged the consent status, or the human otherwise requires admin review. The normal happy-path activation is automatic; see [Onboarding](Onboarding.md).
+Use `/Users/Admin/{id}/Reject` for signups that should not proceed. Normal app access is not manually approved here: entering a legal name sets `UserState == Active`, while Volunteers-team provisioning follows name + consents through the scheduled sync.
 
 ### Manage a human's roles
 
-Use `/Profile/{id}/Admin/Roles` to assign or end [role assignments](Glossary.md#role-assignment) (Coordinator, Board, Admin, domain-specific admins). Role changes are recorded in the audit trail.
+Use `/Users/Admin/{id}/Roles/Add` to assign or end [role assignments](Glossary.md#role-assignment) (Coordinator, Board, Admin, domain-specific admins). Role changes are recorded in the audit trail.
 
 ## Related sections
 

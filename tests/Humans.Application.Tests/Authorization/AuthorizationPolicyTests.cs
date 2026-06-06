@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
@@ -174,13 +174,11 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.MedicalDataViewer, RoleNames.Board, false },
         { PolicyNames.MedicalDataViewer, RoleNames.VolunteerCoordinator, false },
 
-        // AppAccess = Active OR any role-holder. Every role passes (incl. the ones the former
-        // curated bypass excluded — CantinaAdmin, FeedbackAdmin, EETeamAdmin).
-        { PolicyNames.AppAccess, RoleNames.Admin, true },
-        { PolicyNames.AppAccess, RoleNames.NoInfoAdmin, true },
-        { PolicyNames.AppAccess, RoleNames.VolunteerCoordinator, true },
-        { PolicyNames.AppAccess, RoleNames.CampAdmin, true },
-        { PolicyNames.AppAccess, RoleNames.CantinaAdmin, true },
+        // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.`r`n        { PolicyNames.AppAccess, RoleNames.Admin, false },
+        { PolicyNames.AppAccess, RoleNames.NoInfoAdmin, false },
+        { PolicyNames.AppAccess, RoleNames.VolunteerCoordinator, false },
+        { PolicyNames.AppAccess, RoleNames.CampAdmin, false },
+        { PolicyNames.AppAccess, RoleNames.CantinaAdmin, false },
     };
 
     public static TheoryData<string> AnonymousPolicyCases =>
@@ -508,12 +506,12 @@ public class AuthorizationPolicyTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AppAccess_AllowsAnyRoleHolderEvenWhenNotActive()
+    public async Task AppAccess_DeniesRoleHolderWithoutActiveState()
     {
         // A role-holder (staff) passes regardless of UserState — even a non-bypass role like Cantina.
         var user = CreateUserWithRoles(RoleNames.CantinaAdmin);
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
-        result.Succeeded.Should().BeTrue();
+        result.Succeeded.Should().BeFalse();
     }
 
     [HumansTheory]

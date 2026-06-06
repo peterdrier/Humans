@@ -1608,11 +1608,14 @@
   <data name="AdminHumans_Active" xml:space="preserve">
     <value>Aktiv</value>
   </data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve">
-    <value>Genehmigung ausstehend</value>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
   </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Gesperrt</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Löschung ausstehend</value>
@@ -1622,9 +1625,6 @@
   </data>
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Gelöscht</value>
-  </data>
-  <data name="AdminHumans_HasName" xml:space="preserve">
-    <value>Name vorhanden</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Mitglied: {0}</value>
@@ -1957,9 +1957,6 @@
   </data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve">
     <value>Vereinbarungen</value>
-  </data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve">
-    <value>Human genehmigen</value>
   </data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
     <value>Sperre aufheben</value>

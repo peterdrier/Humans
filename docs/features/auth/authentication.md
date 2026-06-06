@@ -125,7 +125,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **Admin** | System administrator | Full platform access, manage all features, Hangfire |
 | **Board** | Board member | Vote on tier applications, view legal names, system oversight |
 
-### Coordinator Roles (operational, bypass MembershipRequiredFilter)
+### Coordinator Roles (operational)
 
 | Role | Description |
 |------|-------------|
@@ -136,7 +136,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 
 | Role | Description |
 |------|-------------|
-| **HumanAdmin** | Human management pages, approve/suspend/reject humans, provision @nobodies.team accounts |
+| **HumanAdmin** | Human management pages, suspend/reject humans, provision @nobodies.team accounts |
 | **TeamsAdmin** | System-wide team management; view sync status but not execute |
 | **CampAdmin** | Camp management and season approval |
 | **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
@@ -150,7 +150,7 @@ In addition to governance roles, `RoleAssignmentClaimsTransformation` stamps the
 
 - **Granted when**: `UserState == Active` (legal name entered)
 - **Checked by**: `MembershipRequiredFilter` (global action filter, routes non-Active users by state) and the `AppAccess` policy used for `_Layout.cshtml` nav visibility
-- **Escape**: any role-holder (staff) — `RoleChecks.HasAnyRole` — reaches the app regardless of `UserState`
+- **Escape**: none; roles do not bypass the stored `UserState` access gate
 - **Effect**: non-Active users are routed by state (Bare → name entry, DeletePending → cancel-deletion, Suspended/Rejected/Deleted/Merged → account-status page)
 
 ### Authorization Policies
@@ -164,11 +164,11 @@ See [Volunteer Status](../onboarding/volunteer-status.md) for the full onboardin
 1. **OAuth Security**: No passwords stored; relies on Google's security
 2. **Session Management**: ASP.NET Core Identity handles session tokens
 3. **Role Validation**: Temporal roles checked against current timestamp
-4. **Membership Gating**: Global action filter restricts non-volunteers to onboarding pages
+4. **Access Gating**: Global action filter routes non-Active users by `UserState`
 5. **Audit Trail**: RoleAssignment tracks who assigned roles and when
 
 ## Related Features
 
 - [Profiles](../profiles/profiles.md) - Created after authentication
-- [Volunteer Status](../onboarding/volunteer-status.md) - Computed from active roles
+- [Volunteer Status](../onboarding/volunteer-status.md) - UserState access and Volunteers-team provisioning
 - [Teams](../teams/teams.md) - Board role enables team management

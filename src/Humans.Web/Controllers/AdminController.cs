@@ -108,7 +108,7 @@ public class AdminController(
         if (user.Id == currentUser?.Id)
         {
             SetError("You cannot purge your own account.");
-            return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
+            return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
         }
 
         var displayName = user.BurnerName;
@@ -124,7 +124,7 @@ public class AdminController(
         }
 
         SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
-        return RedirectToAction(nameof(ProfileController.AdminList), "Profile");
+        return RedirectToAction(nameof(UsersAdminController.AdminList), "UsersAdmin");
     }
 
     [HttpGet("Logs")]

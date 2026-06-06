@@ -18,8 +18,7 @@ namespace Humans.Web.Tests.Authorization;
 /// <see cref="UserState"/>: only <see cref="UserState.Active"/> reaches a non-exempt controller;
 /// <see cref="UserState.Bare"/> (and unseeded null) go to the onboarding widget;
 /// <see cref="UserState.DeletePending"/> goes to the cancel-deletion screen; and the walled states
-/// go to the account-status page. Exempt controllers, privileged roles, and anonymous requests pass
-/// straight through.
+/// go to the account-status page. Exempt controllers and anonymous requests pass straight through.
 /// </summary>
 public class MembershipRequiredFilterTests
 {
@@ -82,12 +81,12 @@ public class MembershipRequiredFilterTests
     }
 
     [HumansFact]
-    public async Task Privileged_role_bypasses_state_routing()
+    public async Task Role_holder_does_not_bypass_state_routing()
     {
         var (result, nextCalled) = await RunAsync("Home", "Index", state: UserState.Bare, role: RoleNames.Admin);
 
-        Assert.True(nextCalled, "membership-bypass roles reach the app regardless of state");
-        Assert.Null(result);
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Index", "OnboardingWidget");
     }
 
     [HumansFact]

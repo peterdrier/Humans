@@ -125,10 +125,10 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
                 policy.AddRequirements(new AgentRateLimitRequirement()));
 
-            // Single nav-visibility gate: Active (entered legal name) OR any role-holder (staff).
+            // Single nav-visibility gate: only Active users see app navigation.
             options.AddPolicy(PolicyNames.AppAccess, policy =>
                 policy.RequireAssertion(ctx =>
-                    RoleAssignmentClaimsTransformation.IsActive(ctx.User) || RoleChecks.HasAnyRole(ctx.User)));
+                    RoleAssignmentClaimsTransformation.IsActive(ctx.User)));
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));

@@ -300,7 +300,7 @@ Stored as string via `HasConversion<string>()`. `IsAlwaysOn()` covers System and
 
 ## Routing
 
-All profile-related functionality lives under `/Profile`:
+Self-service profile functionality lives under `/Profile`; human administration now lives under `/Users/Admin`:
 
 | Route | Purpose |
 |-------|---------|
@@ -320,14 +320,13 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
 | `/Profile/{id}/SendMessage` | Send facilitated message |
-| `/Profile/{id}/Admin` | Admin detail view |
-| `/Profile/{id}/Admin/Outbox` | Admin view of person's outbox |
-| `/Profile/{id}/Admin/Suspend` | Suspend member |
-| `/Profile/{id}/Admin/Approve` | Approve volunteer |
-| `/Profile/{id}/Admin/Reject` | Reject signup |
-| `/Profile/{id}/Admin/Roles/*` | Role management |
-| `/Profile/Admin` | Admin list of all humans |
-| `/Profile/Admin/Roles` | System-wide role-assignment roster, filterable by role (HumanAdminBoardOrAdmin). Relocated from `/Governance/Roles` — `role_assignments` is owned by Auth, not Governance; the roster lives beside the per-human role management already in this section |
+| `/Users/Admin/{id}` | Admin detail view |
+| `/Users/Admin/{id}/Outbox` | Admin view of person's outbox |
+| `/Users/Admin/{id}/Suspend` | Suspend member |
+| `/Users/Admin/{id}/Reject` | Reject signup |
+| `/Users/Admin/{id}/Roles/*` | Role management |
+| `/Users/Admin` | Admin list of all humans |
+| `/Users/Admin/Roles` | System-wide role-assignment roster, filterable by role (HumanAdminBoardOrAdmin). Relocated from `/Governance/Roles` — `role_assignments` is owned by Auth, not Governance; the roster lives beside the per-human role management surface |
 | `/Profile/Search` | People search |
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |

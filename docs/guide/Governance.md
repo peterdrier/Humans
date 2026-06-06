@@ -35,8 +35,8 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the ne
 - `/Governance/Applications/Admin/{id}` — admin detail view of a single application (Board and Admin).
 - `/Governance/BoardVoting` — Board voting dashboard (Board and Admin).
 - `/Governance/BoardVoting/{id}` — application detail and vote form (Board and Admin); the Finalize form is rendered only for Admin.
-- `/Governance/Roles` — paginated list of all role assignments, filterable by role (Board and Admin).
-- `/Profile/{id}/Admin/Roles/Add` and `/Profile/{id}/Admin/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
+- `/Users/Admin/Roles` — paginated list of all role assignments, filterable by role (Board and Admin).
+- `/Users/Admin/{id}/Roles/Add` and `/Users/Admin/{id}/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
 
 ## As a Volunteer
 
@@ -87,7 +87,7 @@ Either way, finalization immediately **deletes all individual Board vote records
 
 ### Assign and revoke coordinator and admin roles
 
-Role assignments live on each human's detail page under the Admin area (`/Profile/{id}/Admin`). Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited. You can also browse all current and historical role assignments at `/Governance/Roles`.
+Role assignments live on each human's detail page under the Admin area (`/Users/Admin/{id}`). Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited. You can also browse all current and historical role assignments at `/Users/Admin/Roles`.
 
 - **Admin** can assign and revoke any role, including Admin itself.
 - **Board** can assign and revoke any role **except** Admin.

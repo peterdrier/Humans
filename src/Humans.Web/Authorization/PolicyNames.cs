@@ -1,4 +1,4 @@
-namespace Humans.Web.Authorization;
+﻿namespace Humans.Web.Authorization;
 
 /// <summary>
 /// Canonical authorization policy names. Each name corresponds to a registered ASP.NET Core
@@ -31,8 +31,8 @@ public static class PolicyNames
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
-    /// Can use the app: <c>UserState == Active</c> (entered legal name) OR holds any role
-    /// (<see cref="RoleChecks.HasAnyRole"/>). The single nav-visibility gate — replaces the former
+    /// Can use the app: <c>UserState == Active</c> (entered legal name).
+    /// The single nav-visibility gate replaces the former
     /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).
     /// </summary>
     public const string AppAccess = nameof(AppAccess);

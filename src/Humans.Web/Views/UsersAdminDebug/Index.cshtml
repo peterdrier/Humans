@@ -44,7 +44,7 @@
                 @foreach (var row in Model.Rows)
                 {
                     <tr>
-                        <td><a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@row.UserId"><code class="small">@row.UserId</code></a></td>
+                        <td><a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@row.UserId"><code class="small">@row.UserId</code></a></td>
                         <td class="text-center">@Tri(row.HasProfile)</td>
                         <td class="text-center">@Tri(row.HasTicket)</td>
                         <td class="text-center">@(row.MarketingOptedOut is null ? "—" : row.MarketingOptedOut.Value ? "No" : "Yes")</td>

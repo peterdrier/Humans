@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
+﻿import { test, expect, type Page, type Locator } from '@playwright/test';
 import {
   loginAsVolunteer,
   loginAsCoordinator,
@@ -28,7 +28,7 @@ import {
  * a single composite-gated `Admin` link that opens the admin shell at `/Admin`.
  * Only two top-nav items are role/policy gated:
  *
- *   Volunteer  → AppAccess (UserState == Active OR holds any role)
+ *   Volunteer  -> AppAccess (UserState == Active)
  *   Admin      → AnyAdminRole (composite: Admin, Board, HumanAdmin, TeamsAdmin,
  *                CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
  *                NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator)
@@ -37,9 +37,8 @@ import {
  *
  * Note on "Volunteer" (Shifts) visibility:
  * The single `AppAccess` gate succeeds when UserState == Active (the user entered their
- * legal name) OR the principal holds ANY role (RoleChecks.HasAnyRole). There is no
- * separate shift access. Every dev persona therefore sees "Volunteer": role personas via
- * HasAnyRole, the plain volunteer via Active.
+ * legal name). There is no separate shift access. Dev personas that see "Volunteer" do
+ * so because their seeded UserState is Active.
  */
 
 type NavItem = 'volunteer' | 'admin';
@@ -61,9 +60,8 @@ interface RoleTest {
   visible: NavItem[];
 }
 
-// "Volunteer" (Shifts) is gated by AppAccess = (UserState == Active OR HasAnyRole), so EVERY
-// authenticated dev persona sees it: the plain volunteer via Active, every role persona via
-// HasAnyRole.
+// "Volunteer" (Shifts) is gated by AppAccess = UserState.Active. The authenticated dev personas
+// expected to see it below are seeded Active.
 //
 // Admin top-nav link visibility (AnyAdminRole composite):
 //   admin, board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
@@ -150,8 +148,8 @@ const roles: RoleTest[] = [
     login: loginAsCantinaAdmin,
     visible: ['volunteer', 'admin'],
   },
-  // EETeamAdmin holds a role (passes AppAccess via HasAnyRole) but is NOT in the
-  // AnyAdminRole composite, so it does NOT see the Admin top-nav.
+  // EETeamAdmin is Active but is NOT in the AnyAdminRole composite, so it does
+  // NOT see the Admin top-nav.
   {
     name: 'eeTeamAdmin',
     login: loginAsEETeamAdmin,

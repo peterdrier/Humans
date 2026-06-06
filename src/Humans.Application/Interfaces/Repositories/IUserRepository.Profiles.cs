@@ -66,13 +66,6 @@ public partial interface IUserRepository
         GetCustomPictureRowsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the user ids of every approved, non-suspended profile. Used
-    /// by the admin dashboard to compute active-user aggregates without
-    /// loading the full Profile graph.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

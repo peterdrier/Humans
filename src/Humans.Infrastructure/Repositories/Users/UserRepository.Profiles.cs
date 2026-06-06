@@ -77,16 +77,6 @@ internal sealed partial class UserRepository
             .ToList();
     }
 
-    public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Select(p => p.UserId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
@@ -448,4 +438,3 @@ internal sealed partial class UserRepository
         return rows > 0;
     }
 }
-

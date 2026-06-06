@@ -86,7 +86,7 @@ At `/Google/Sync` (TeamsAdmin, Board, Admin can view; Admin-only to execute) the
 
 ### Manage `@nobodies.team` accounts
 
-At `/Google/Accounts`, list every workspace account, search humans by name, and link orphaned accounts. To provision a new account, open the human detail page at `/Profile/{id}/Admin` and use the **Provision Email** action on the Nobodies email badge — the app creates the Google account, sets a temporary password, sends credentials to the human's personal email, and auto-links the new address as the Google service email.
+At `/Google/Accounts`, list every workspace account, search humans by name, and link orphaned accounts. To provision a new account, open the human detail page at `/Users/Admin/{id}` and use the **Provision Email** action on the Nobodies email badge — the app creates the Google account, sets a temporary password, sends credentials to the human's personal email, and auto-links the new address as the Google service email.
 
 ### Check group settings and email mismatches
 

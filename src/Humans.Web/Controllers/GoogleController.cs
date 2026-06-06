@@ -366,7 +366,7 @@ public class GoogleController(
         if (string.IsNullOrWhiteSpace(emailPrefix))
         {
             SetError("Email prefix is required.");
-            return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
+            return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
         }
 
         var currentUser = await GetCurrentUserInfoAsync();
@@ -392,7 +392,7 @@ public class GoogleController(
             }
         }
 
-        return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
+        return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
     }
 
     // --- Workspace Accounts ---

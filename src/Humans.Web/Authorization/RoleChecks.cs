@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Humans.Domain.Constants;
 
 namespace Humans.Web.Authorization;
@@ -64,16 +64,8 @@ public static class RoleChecks
     }
 
     /// <summary>
-    /// True when the principal holds any role claim at all — i.e. is staff of any kind. The single
-    /// "privileged" escape: a role-holder reaches the app and sees the member nav regardless of
-    /// <see cref="Humans.Domain.Enums.UserState"/>. Regular volunteers hold no role, so they are
-    /// gated purely on <c>UserState == Active</c>.
+    /// Roles the current principal may assign from the human admin surface.
     /// </summary>
-    public static bool HasAnyRole(ClaimsPrincipal user)
-    {
-        return user.Claims.Any(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal));
-    }
-
     public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
     {
         if (IsAdmin(user))

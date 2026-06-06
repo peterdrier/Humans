@@ -334,7 +334,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     // Birthday/Location snapshot tests removed alongside the FullProfile delete —
     // those widgets now read directly from the UserInfo cache via CachingUserService.
 
-    // GetAdminHumanDetailAsync moved to ProfileController.AdminDetail in
+    // GetAdminHumanDetailAsync moved to UsersAdminController.AdminDetail in
     // issue nobodies-collective/Humans#685 — composition is now controller
     // concern.
 
