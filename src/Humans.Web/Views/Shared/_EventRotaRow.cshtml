@@ -34,10 +34,10 @@
     var understaffed = item.ConfirmedCount < shift.MinVolunteers;
 }
 <tr class="@(isFull ? "table-secondary" : "")">
-    <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}")</td>
+    <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToTime()}")</td>
     <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
-    <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
+    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
+    <td>@item.AbsoluteStart.ToTime(tz)</td>
     <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
     <td style="min-width: 130px;">
         @{

@@ -19,7 +19,7 @@
         <i class="fa-solid fa-clock me-1"></i>
         @if (Model.SubmissionOpenAt.HasValue && Model.SubmissionCloseAt.HasValue)
         {
-            <text>Submission window: @Model.SubmissionOpenAt.Value.ToDisplayDateTime() — @Model.SubmissionCloseAt.Value.ToDisplayDateTime()</text>
+            <text>Submission window: @Model.SubmissionOpenAt.Value.ToDateTime() — @Model.SubmissionCloseAt.Value.ToDateTime()</text>
             if (Model.TimeZoneId != null)
             {
                 <text> (@Model.TimeZoneId)</text>
@@ -94,7 +94,7 @@
                             <tr>
                                 <td>@evt.Title</td>
                                 <td>@evt.CategoryName</td>
-                                <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                <td>@evt.StartAt.ToMonthDayTime()</td>
                                 <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
                                 <td>
                                     @if (evt.CanEdit)
@@ -187,7 +187,7 @@
                                 <tr>
                                     <td>@evt.Title</td>
                                     <td>@evt.CategoryName</td>
-                                    <td>@evt.StartAt.ToString("ddd d MMM HH:mm")</td>
+                                    <td>@evt.StartAt.ToMonthDayTime()</td>
                                     <td>@evt.PriorityRank</td>
                                     <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
                                     <td>

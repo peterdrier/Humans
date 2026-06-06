@@ -92,7 +92,7 @@
             <span class="badge bg-dark" title="This team is hidden from non-admin users"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
         }
     </td>
-    <td>@Model.CreatedAt.ToDisplayCompactDate()</td>
+    <td>@Model.CreatedAt.ToDate()</td>
     <td authorize-policy="BoardOrAdmin">
         @if (!Model.IsSystemTeam)
         {

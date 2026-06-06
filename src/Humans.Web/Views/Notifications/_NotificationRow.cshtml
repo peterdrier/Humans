@@ -62,6 +62,6 @@
         if (span.TotalMinutes < 60) return string.Format(localizer["Notification_TimeAgo_Minutes"].Value, (int)span.TotalMinutes);
         if (span.TotalHours < 24) return string.Format(localizer["Notification_TimeAgo_Hours"].Value, (int)span.TotalHours);
         if (span.TotalDays < 7) return string.Format(localizer["Notification_TimeAgo_Days"].Value, (int)span.TotalDays);
-        return utcTime.ToString("MMM d");
+        return utcTime.ToWeekdayDayMonth();
     }
 }

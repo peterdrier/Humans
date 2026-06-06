@@ -44,7 +44,7 @@
             <dt class="col-sm-3">Retention</dt>
             <dd class="col-sm-9">@Model.Settings.RetentionDays days</dd>
             <dt class="col-sm-3">Settings last updated</dt>
-            <dd class="col-sm-9">@Model.Settings.UpdatedAt.ToAuditMinuteTimestamp()</dd>
+            <dd class="col-sm-9">@Model.Settings.UpdatedAt.ToInvariantTimestamp()</dd>
             <dt class="col-sm-3">Settings store warm</dt>
             <dd class="col-sm-9">
                 @if (report.SettingsStoreWarm)
@@ -278,7 +278,7 @@
         {
             <dl class="row mb-0">
                 <dt class="col-sm-3">Last run</dt>
-                <dd class="col-sm-9">@report.Retention.LastRunAt.Value.ToAuditMinuteTimestamp()</dd>
+                <dd class="col-sm-9">@report.Retention.LastRunAt.Value.ToInvariantTimestamp()</dd>
                 <dt class="col-sm-3">Last deleted count</dt>
                 <dd class="col-sm-9">@report.Retention.LastDeletedCount</dd>
             </dl>

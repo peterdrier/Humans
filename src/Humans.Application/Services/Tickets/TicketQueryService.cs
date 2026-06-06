@@ -155,7 +155,7 @@ public sealed class TicketQueryService(
 
                 dailySalesPoints.Add(new DailySales
                 {
-                    Date = date.ToIsoDateString(),
+                    Date = date.ToInvariantDate(),
                     TicketsSold = count,
                     RollingAverage = Math.Round(rollingAvg, 1),
                 });
@@ -319,7 +319,7 @@ public sealed class TicketQueryService(
                 var sunday = monday.PlusDays(6);
                 return new WeeklySalesAggregate
                 {
-                    WeekLabel = $"{monday.ToString("MMM d", null)} – {sunday.ToString("MMM d", null)}",
+                    WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
                     OrderCount = g.Count(),
@@ -791,7 +791,7 @@ public sealed class TicketQueryService(
             o.Currency,
             o.PaymentStatus,
             o.DiscountCode,
-            PurchasedAt = o.PurchasedAt.ToInvariantInstantString(),
+            PurchasedAt = o.PurchasedAt.ToIso8601(),
         }).ToList());
 
         var attendeesSlice = new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new

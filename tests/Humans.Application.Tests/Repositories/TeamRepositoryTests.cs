@@ -17,8 +17,8 @@ namespace Humans.Application.Tests.Repositories;
 /// Repository tests for the Teams section — issue #540a (§15 Part 1 —
 /// TeamService core). Covers the bundled-write paths (which have compound
 /// mutations across TeamMembers / TeamJoinRequests / TeamRoleAssignments /
-/// GoogleSyncOutboxEvents) plus the narrow read shapes the service depends
-/// on for cross-section stitching.
+/// and the narrow read shapes the service depends on for cross-section
+/// stitching.
 /// </summary>
 public sealed class TeamRepositoryTests : IDisposable
 {
@@ -116,7 +116,7 @@ public sealed class TeamRepositoryTests : IDisposable
     // ==========================================================================
 
     [HumansFact]
-    public async Task AddMemberWithOutboxAsync_PersistsBothInSameTransaction()
+    public async Task TryAddMemberAsync_PersistsMember()
     {
         var team = await SeedTeamAsync("Test");
         var user = await SeedUserAsync();
@@ -129,25 +129,14 @@ public sealed class TeamRepositoryTests : IDisposable
             Role = TeamMemberRole.Member,
             JoinedAt = _clock.GetCurrentInstant()
         };
-        var outbox = new GoogleSyncOutboxEvent
-        {
-            Id = Guid.NewGuid(),
-            TeamId = team.Id,
-            UserId = user.Id,
-            EventType = Humans.Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources,
-            OccurredAt = _clock.GetCurrentInstant(),
-            DeduplicationKey = $"{member.Id}:AddUserToTeamResources"
-        };
-
-        var ok = await _repo.AddMemberWithOutboxAsync(member, outbox);
+        var ok = await _repo.TryAddMemberAsync(member);
 
         ok.Should().BeTrue();
         (await _dbContext.TeamMembers.CountAsync()).Should().Be(1);
-        (await _dbContext.GoogleSyncOutboxEvents.CountAsync()).Should().Be(1);
     }
 
     [HumansFact]
-    public async Task MarkMemberLeftWithOutboxAsync_SetsLeftAtAndRemovesAssignments()
+    public async Task MarkMemberLeftAsync_SetsLeftAtAndRemovesAssignments()
     {
         var team = await SeedTeamAsync("Test");
         var user = await SeedUserAsync();
@@ -156,23 +145,30 @@ public sealed class TeamRepositoryTests : IDisposable
         await SeedRoleAssignmentAsync(role, member);
 
         var now = _clock.GetCurrentInstant();
-        var outbox = new GoogleSyncOutboxEvent
-        {
-            Id = Guid.NewGuid(),
-            TeamId = team.Id,
-            UserId = user.Id,
-            EventType = Humans.Domain.Constants.GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources,
-            OccurredAt = now,
-            DeduplicationKey = $"{member.Id}:RemoveUserFromTeamResources"
-        };
-
-        var removed = await _repo.MarkMemberLeftWithOutboxAsync(member.Id, now, outbox);
+        var removed = await _repo.MarkMemberLeftAsync(member.Id, now);
 
         removed.Should().HaveCount(1);
         _dbContext.ChangeTracker.Clear();
         var reloaded = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.LeftAt.Should().Be(now);
         (await _dbContext.Set<TeamRoleAssignment>().CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetActiveMembershipsForGoogleResyncAsync_ReturnsActiveMembershipIds()
+    {
+        var team = await SeedTeamAsync("Test");
+        var inactiveTeam = await SeedTeamAsync("Inactive");
+        var user = await SeedUserAsync();
+        var activeMember = await SeedActiveMemberAsync(team, user);
+        var inactiveMember = await SeedActiveMemberAsync(inactiveTeam, user);
+        inactiveMember.LeftAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var memberships = await _repo.GetActiveMembershipsForGoogleResyncAsync(user.Id);
+
+        memberships.Should().ContainSingle()
+            .Which.Should().Be((activeMember.Id, team.Id));
     }
 
     [HumansFact]

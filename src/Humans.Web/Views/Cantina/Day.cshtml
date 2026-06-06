@@ -1,18 +1,14 @@
 @using Humans.Application.Services.Cantina.Dtos
 @using Humans.Domain.Constants
 @using NodaTime
-@using NodaTime.Text
 @model DailyMatrixDto
 
 @functions {
-    // Long-form date "Tuesday 7 July 2026" in invariant culture so it reads
-    // the same regardless of the requester's browser locale (the surrounding
-    // labels are still resx-localized).
-    private static readonly LocalDatePattern LongDayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
-
+    // Long-form date "Tuesday 7 July 2026" — culture-aware (this view renders
+    // in a web request, so CurrentCulture is the user's); the surrounding
+    // labels are still resx-localized.
     private static string FormatLong(LocalDate? d) =>
-        d.HasValue ? LongDayPattern.Format(d.Value) : "";
+        d.HasValue ? d.Value.ToDate() : "";
 
     // Short abbreviations for column headers so the matrix stays narrow.
     // Full name in the title= attribute keeps the header accessible.

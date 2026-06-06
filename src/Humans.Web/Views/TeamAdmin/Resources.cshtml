@@ -141,7 +141,7 @@
                             <td>
                                 @if (resource.LastSyncedAt.HasValue)
                                 {
-                                            @resource.LastSyncedAt.Value.ToDisplayCompactDateTime()
+                                            @resource.LastSyncedAt.Value.ToDateTime()
                                 }
                                 else
                                 {

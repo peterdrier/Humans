@@ -102,7 +102,7 @@
                     <input class="form-check-input phase-check" type="checkbox" id="phase-build" value="Build" @(isBuildActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-build">
                         <span class="fw-semibold">@Localizer["Shifts_SetUp"]</span>
-                        <br /><small class="text-muted">@buildFrom.ToDisplayShiftDate() — @buildTo.ToDisplayShiftDate()</small>
+                        <br /><small class="text-muted">@buildFrom.ToWeekdayDayMonth() — @buildTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
             </div>
@@ -113,7 +113,7 @@
                     <input class="form-check-input phase-check" type="checkbox" id="phase-event" value="Event" @(isEventActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-event">
                         <span class="fw-semibold">@Localizer["Shifts_Event"]</span>
-                        <br /><small class="text-muted">@eventFrom.ToDisplayShiftDate() — @eventTo.ToDisplayShiftDate()</small>
+                        <br /><small class="text-muted">@eventFrom.ToWeekdayDayMonth() — @eventTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
             </div>
@@ -124,7 +124,7 @@
                     <input class="form-check-input phase-check" type="checkbox" id="phase-strike" value="Strike" @(isStrikeActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-strike">
                         <span class="fw-semibold">@Localizer["Shifts_Strike"]</span>
-                        <br /><small class="text-muted">@strikeFrom.ToDisplayShiftDate() — @strikeTo.ToDisplayShiftDate()</small>
+                        <br /><small class="text-muted">@strikeFrom.ToWeekdayDayMonth() — @strikeTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
             </div>

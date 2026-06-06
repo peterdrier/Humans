@@ -649,14 +649,14 @@ public sealed class ApplicationDecisionService(
             a.SignificantContribution,
             a.RoleUnderstanding,
             a.Language,
-            SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
-            ResolvedAt = a.ResolvedAt.ToInvariantInstantString(),
-            TermExpiresAt = a.TermExpiresAt.ToIsoDateString(),
-            BoardMeetingDate = a.BoardMeetingDate.ToIsoDateString(),
+            SubmittedAt = a.SubmittedAt.ToIso8601(),
+            ResolvedAt = a.ResolvedAt.ToIso8601(),
+            TermExpiresAt = a.TermExpiresAt.ToInvariantDate(),
+            BoardMeetingDate = a.BoardMeetingDate.ToInvariantDate(),
             StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
             {
                 sh.Status,
-                ChangedAt = sh.ChangedAt.ToInvariantInstantString(),
+                ChangedAt = sh.ChangedAt.ToIso8601(),
                 sh.Notes
             })
         }).ToList();

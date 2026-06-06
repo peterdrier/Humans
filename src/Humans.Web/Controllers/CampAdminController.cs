@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Web.Authorization;
@@ -222,7 +223,7 @@ public class CampAdminController(
     }
 
     private static string EeStartDateSuccessMessage(LocalDate? date) =>
-        date.HasValue ? $"EE start date set to {date.Value.ToDisplayDate()}." : "EE start date cleared.";
+        date.HasValue ? $"EE start date set to {date.Value.ToDate()}." : "EE start date cleared.";
 
     private static (bool Ok, LocalDate? Value, string? Error) TryParseEeStartDate(string? input)
     {
@@ -534,23 +535,5 @@ public class CampAdminController(
             SetError("Failed to seed system roles and migrate leads.");
         }
         return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet("Compliance")]
-    public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
-    {
-        var settings = await campService.GetSettingsAsync(ct);
-        var resolvedYear = year ?? settings.PublicYear;
-        var report = await campRoleService.GetComplianceReportAsync(resolvedYear, ct);
-
-        var vm = new CampRoleComplianceViewModel
-        {
-            Year = report.Year,
-            Camps = report.Camps.Select(c => new CampRoleComplianceCampRowViewModel(
-                c.CampId, c.CampName, c.CampSlug, c.CampSeasonId,
-                c.Roles.Select(r => new CampRoleComplianceRoleRowViewModel(r.DefinitionName, r.MinimumRequired, r.Filled, r.IsMet)).ToList(),
-                c.IsCompliant)).ToList(),
-        };
-        return View(vm);
     }
 }

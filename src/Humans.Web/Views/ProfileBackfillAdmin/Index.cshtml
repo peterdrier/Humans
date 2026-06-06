@@ -54,7 +54,7 @@
                         <tr>
                             <td>@row.Email</td>
                             <td>@row.DisplayName</td>
-                            <td>@row.CreatedAt.ToDisplayDateTime()</td>
+                            <td>@row.CreatedAt.ToDateTime()</td>
                             <td>@(row.ContactSource?.ToString() ?? "—")</td>
                         </tr>
                     }

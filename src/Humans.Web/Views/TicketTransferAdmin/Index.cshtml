@@ -68,7 +68,7 @@ else
             @foreach (var r in Model.Rows)
             {
                 <tr>
-                    <td>@r.RequestedAt.ToDisplayDateTime()</td>
+                    <td>@r.RequestedAt.ToDateTime()</td>
                     <td><vc:human user-id="@r.SenderUserId" layout="AvatarName" link="Admin" /></td>
                     <td>
                         @r.OriginalAttendeeName

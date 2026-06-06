@@ -262,7 +262,7 @@ public sealed class AuditLogService(
         {
             a.Action,
             a.EntityType,
-            OccurredAt = a.OccurredAt.ToInvariantInstantString(),
+            OccurredAt = a.OccurredAt.ToIso8601(),
             Role = a.ActorUserId == userId ? "Actor" : "Subject"
         }).ToList();
 

@@ -1,20 +1,16 @@
 @using Humans.Application.Services.Cantina.Dtos
 @using NodaTime
-@using NodaTime.Text
 @model WeeklyRosterDto
 
 @functions {
     // Compact day display "Mon 27 May" — used for header subtitle, per-day
-    // mini-table, person row "days on site" chips. Invariant culture so the
-    // string is stable across user locales; the surrounding labels are still
-    // resx-localized.
-    private static readonly LocalDatePattern ShortDayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("ddd d MMM");
-
+    // mini-table, person row "days on site" chips. Culture-aware (this view
+    // renders in a web request, so CurrentCulture is the user's); the
+    // surrounding labels are still resx-localized.
     private static string FormatDay(LocalDate? d) =>
-        d.HasValue ? ShortDayPattern.Format(d.Value) : "";
+        d.HasValue ? d.Value.ToWeekdayDayMonth() : "";
 
-    private static string FormatDay(LocalDate d) => ShortDayPattern.Format(d);
+    private static string FormatDay(LocalDate d) => d.ToWeekdayDayMonth();
 }
 
 @{

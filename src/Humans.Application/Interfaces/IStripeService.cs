@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Application.Interfaces;
 
 /// <summary>
@@ -50,6 +52,18 @@ public interface IStripeService : IApplicationService
     /// <param name="body">Raw request body as received from Stripe.</param>
     /// <param name="signature">Value of the <c>Stripe-Signature</c> header.</param>
     StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature);
+
+    /// <summary>
+    /// Lists every Checkout Session on the Store account (Stripe returns them newest-first),
+    /// each projected to <see cref="StoreCheckoutSessionData"/>. Used by Store payment
+    /// reconciliation to diff Stripe (source of truth) against recorded payments. Reads with
+    /// the existing Store key (checkout_session Write ⊇ Read).
+    /// Returns <c>null</c> when Stripe could not be queried (Store key unset or missing read
+    /// scope; logged internally) — callers must treat that as "unknown", not "no sessions",
+    /// so they don't false-flag recorded payments as orphans. An empty (non-null) list means
+    /// Stripe was queried successfully and returned no sessions.
+    /// </summary>
+    Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
 }
 
 /// <summary>Fee and payment method data extracted from a Stripe PaymentIntent's charge.</summary>
@@ -94,8 +108,12 @@ public sealed record StoreCheckoutWebhookEvent(
 /// <param name="OrderId">Round-tripped via <c>session.metadata['humans_store_order_id']</c>; null if missing or malformed.</param>
 /// <param name="PaymentIntentId">Stripe PaymentIntent id; null if Stripe didn't include one.</param>
 /// <param name="AmountEur">Total amount in EUR (already converted from minor units); null if Stripe didn't send a total.</param>
+/// <param name="PaymentStatus">Stripe <c>payment_status</c> (<c>paid</c> / <c>unpaid</c> / <c>no_payment_required</c>); null if absent. Reconciliation acts only on <c>paid</c>.</param>
+/// <param name="CreatedAt">When Stripe created the session; null if absent. Used to order the reconciliation view.</param>
 public sealed record StoreCheckoutSessionData(
     string SessionId,
     Guid? OrderId,
     string? PaymentIntentId,
-    decimal? AmountEur);
+    decimal? AmountEur,
+    string? PaymentStatus = null,
+    Instant? CreatedAt = null);

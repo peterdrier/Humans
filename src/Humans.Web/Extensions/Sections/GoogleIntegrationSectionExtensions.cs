@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using GoogleSyncSettingsService = Humans.Application.Services.GoogleIntegration.SyncSettingsService;
+using GoogleSyncOutboxService = Humans.Application.Services.GoogleIntegration.GoogleSyncOutboxService;
 using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
@@ -18,7 +19,7 @@ internal static class GoogleIntegrationSectionExtensions
         services.AddScoped<IEmailProvisioningService, GoogleEmailProvisioningService>();
         services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
         services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
-        services.AddSingleton<IDriveActivityMonitorRepository, DriveActivityMonitorRepository>();
+        services.AddScoped<IGoogleSyncOutboxService, GoogleSyncOutboxService>();
         services.AddScoped<IDriveActivityMonitorService, GoogleDriveActivityMonitorService>();
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
         services.AddScoped<IGoogleRemovalNotificationService, GoogleRemovalNotificationService>();

@@ -217,34 +217,30 @@ public interface ITeamRepository : IRepository
     Task AddMemberAsync(TeamMember member, CancellationToken ct = default);
 
     /// <summary>
-    /// Adds a member plus a single Google-sync outbox event in a single
-    /// transaction. Returns false if a unique-constraint violation indicates
-    /// the user is already an active member.
+    /// Adds a member and returns false if a unique-constraint violation
+    /// indicates the user is already an active member.
     /// </summary>
-    Task<bool> AddMemberWithOutboxAsync(
-        TeamMember member, GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default);
+    Task<bool> TryAddMemberAsync(TeamMember member, CancellationToken ct = default);
 
     /// <summary>
-    /// Approves a join request, creates a new active TeamMember, and adds the
-    /// Google-sync outbox event in a single transaction. Returns false if a
+    /// Approves a join request and creates a new active TeamMember in a single
+    /// transaction. Returns false if a
     /// unique-constraint violation indicates the user is already an active
     /// member.
     /// </summary>
     Task<bool> ApproveRequestWithMemberAsync(
         TeamJoinRequest request,
         TeamMember member,
-        GoogleSyncOutboxEvent? outboxEvent,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Leave/remove flow: remove a member's role assignments, set
-    /// <c>LeftAt</c> on the membership, and optionally enqueue a
-    /// Google-sync outbox event — all in a single transaction. Returns
-    /// the role assignments that were removed (for shift-auth invalidation
-    /// decisions in the service layer).
+    /// Leave/remove flow: remove a member's role assignments and set
+    /// <c>LeftAt</c> on the membership. Returns the role assignments that
+    /// were removed (for shift-auth invalidation decisions in the service
+    /// layer).
     /// </summary>
-    Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
-        Guid teamMemberId, Instant leftAt, GoogleSyncOutboxEvent? outboxEvent, CancellationToken ct = default);
+    Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
+        Guid teamMemberId, Instant leftAt, CancellationToken ct = default);
 
     /// <summary>
     /// Sets <see cref="TeamMember.Role"/> for the given membership (looked up
@@ -284,7 +280,6 @@ public interface ITeamRepository : IRepository
         Guid targetUserId,
         Guid actorUserId,
         TeamMember? autoAddMember,
-        GoogleSyncOutboxEvent? outboxEvent,
         bool promoteToCoordinator,
         Instant now,
         CancellationToken ct = default);
@@ -508,12 +503,11 @@ public interface ITeamRepository : IRepository
     Task<int> RevokeAllMembershipsAsync(Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Enqueue Google-sync AddUserToTeamResources events for every active
-    /// team membership of <paramref name="userId"/>. Returns the count of
-    /// events queued. Commits immediately.
+    /// Active team memberships for which the application service should
+    /// enqueue Google-sync AddUserToTeamResources events.
     /// </summary>
-    Task<int> EnqueueResyncEventsForUserAsync(
-        Guid userId, Instant now, CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid TeamMemberId, Guid TeamId)>> GetActiveMembershipsForGoogleResyncAsync(
+        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?
@@ -523,19 +517,6 @@ public interface ITeamRepository : IRepository
     /// the application service, not here.
     /// </summary>
     // (no method on this interface — see IUserService.GetUserInfoAsync)
-
-    // ==========================================================================
-    // Outbox (Google sync) — accessed from Teams writes
-    // ==========================================================================
-
-    /// <summary>
-    /// Add a single GoogleSyncOutboxEvent. Does NOT commit — caller must
-    /// <see cref="SaveChangesAsync"/> in the same unit of work so the row
-    /// lands atomically with the membership mutation that triggered it.
-    /// Used by <c>JoinTeamDirectly</c>, <c>AddMember</c>, <c>ApproveJoinRequest</c>,
-    /// <c>LeaveTeam</c>, <c>RemoveMember</c>, and <c>AssignToRole</c>.
-    /// </summary>
-    Task AddOutboxEventAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default);
 
     // ==========================================================================
     // Early-entry grants (team_early_entry_grants)

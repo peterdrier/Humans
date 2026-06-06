@@ -223,11 +223,11 @@
                                     </span>
                                 }
                             </td>
-                            <td>@account.CreationTime.ToDisplayDate()</td>
+                            <td>@account.CreationTime.ToDate()</td>
                             <td>
                                 @if (account.LastLoginTime.HasValue)
                                 {
-                                    @account.LastLoginTime.Value.ToDisplayDate()
+                                    @account.LastLoginTime.Value.ToDate()
                                 }
                                 else
                                 {

@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.SystemSettings;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -13,7 +15,10 @@ namespace Humans.Application.Services.Email;
 /// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
 /// processor job reads it through the repository directly (Singleton→Scoped).
 /// </summary>
-public sealed class EmailOutboxService(IEmailOutboxRepository repo, IClock clock) : IEmailOutboxService
+public sealed class EmailOutboxService(
+    IEmailOutboxRepository repo,
+    ISystemSettingsService systemSettings,
+    IClock clock) : IEmailOutboxService
 {
     private static readonly Duration Last24Hours = Duration.FromHours(24);
 
@@ -33,7 +38,7 @@ public sealed class EmailOutboxService(IEmailOutboxRepository repo, IClock clock
         var queuedCount = await repo.GetCountByStatusAsync(EmailOutboxStatus.Queued, cancellationToken);
         var sentLast24H = await repo.GetSentCountSinceAsync(cutoff24H, cancellationToken);
         var failedCount = await repo.GetCountByStatusAsync(EmailOutboxStatus.Failed, cancellationToken);
-        var isPaused = await repo.GetSendingPausedAsync(cancellationToken);
+        var isPaused = await IsEmailPausedAsync(cancellationToken);
         var messages = await repo.GetRecentAsync(recentMessageCount, cancellationToken);
 
         return new EmailOutboxStats(
@@ -56,11 +61,19 @@ public sealed class EmailOutboxService(IEmailOutboxRepository repo, IClock clock
         Guid userId, CancellationToken cancellationToken = default) =>
         repo.GetCountForUserAsync(userId, cancellationToken);
 
-    public Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default) =>
-        repo.GetSendingPausedAsync(cancellationToken);
+    public async Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default)
+    {
+        var value = await systemSettings.GetValueAsync(
+            SystemSettingKeys.IsEmailSendingPaused,
+            cancellationToken);
+        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
 
     public Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default) =>
-        repo.SetSendingPausedAsync(paused, cancellationToken);
+        systemSettings.SetValueAsync(
+            SystemSettingKeys.IsEmailSendingPaused,
+            paused ? "true" : "false",
+            cancellationToken);
 
     private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
         message.Id,

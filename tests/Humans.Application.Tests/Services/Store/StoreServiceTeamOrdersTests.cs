@@ -435,6 +435,7 @@ public class StoreServiceTeamOrdersTests
             CounterpartyEmail: null,
             IssuedInvoiceId: null,
             Lines: [],
+            Payments: [],
             LinesSubtotalEur: balanceEur,
             VatTotalEur: 0m,
             DepositTotalEur: 0m,

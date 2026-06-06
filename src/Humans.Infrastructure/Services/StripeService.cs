@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NodaTime;
 using Stripe;
 using Stripe.Checkout;
 
@@ -109,6 +110,17 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
             {
                 ["humans_store_order_id"] = storeOrderId.ToString(),
             },
+            // Stamp the same order-id metadata and a legible description onto the PaymentIntent
+            // itself (not only the session) so the Stripe dashboard, customer receipt, and PI
+            // search can match a payment back to its order. See the 2026-06-04 reconciliation design.
+            PaymentIntentData = new SessionPaymentIntentDataOptions
+            {
+                Description = lineItemDescription,
+                Metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["humans_store_order_id"] = storeOrderId.ToString(),
+                },
+            },
         };
 
         try
@@ -215,26 +227,62 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
             _ => StoreCheckoutEventKind.Other,
         };
 
-        StoreCheckoutSessionData? session = null;
-        if (stripeEvent.Data.Object is Session s)
-        {
-            Guid? orderId = null;
-            if (s.Metadata is not null &&
-                s.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) &&
-                Guid.TryParse(orderIdStr, out var parsed))
-            {
-                orderId = parsed;
-            }
-
-            decimal? amountEur = s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null;
-
-            session = new StoreCheckoutSessionData(
-                SessionId: s.Id,
-                OrderId: orderId,
-                PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
-                AmountEur: amountEur);
-        }
+        StoreCheckoutSessionData? session = stripeEvent.Data.Object is Session s ? MapSession(s) : null;
 
         return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);
+    }
+
+    public async Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(
+        CancellationToken ct = default)
+    {
+        if (!_settings.IsStoreCheckoutConfigured)
+        {
+            logger.LogWarning("Store Checkout Session list requested while STRIPE_STORE_KEY is unset; Stripe not queried.");
+            return null;
+        }
+
+        var client = new StripeClient(_settings.StoreKey);
+        var sessions = new SessionService(client);
+        var results = new List<StoreCheckoutSessionData>();
+        try
+        {
+            await foreach (var s in sessions.ListAutoPagingAsync(new SessionListOptions { Limit = 100 }, cancellationToken: ct))
+            {
+                results.Add(MapSession(s));
+            }
+        }
+        catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
+        {
+            logger.LogWarning(
+                "Stripe permission_error listing Store Checkout Sessions: the Store key is missing checkout_session:read scope. {Message}",
+                ex.Message);
+            return null;
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Projects a Stripe SDK <see cref="Session"/> to the connector DTO. Shared by the
+    /// webhook-parse and reconciliation-list paths so both read the order-id metadata,
+    /// amount, payment status, and creation time identically.
+    /// </summary>
+    private static StoreCheckoutSessionData MapSession(Session s)
+    {
+        Guid? orderId = null;
+        if (s.Metadata is not null &&
+            s.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) &&
+            Guid.TryParse(orderIdStr, out var parsed))
+        {
+            orderId = parsed;
+        }
+
+        return new StoreCheckoutSessionData(
+            SessionId: s.Id,
+            OrderId: orderId,
+            PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
+            AmountEur: s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null,
+            PaymentStatus: s.PaymentStatus,
+            CreatedAt: Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc)));
     }
 }

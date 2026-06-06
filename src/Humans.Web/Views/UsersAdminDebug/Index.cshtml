@@ -53,8 +53,8 @@
                         <td>@row.LegalName</td>
                         <td class="text-center">@Tri(row.HasName)</td>
                         <td class="text-center">@Tri(row.HasConsent)</td>
-                        <td>@row.CreatedAt.ToDisplayCompactDateTime()</td>
-                        <td>@(row.LastLoginAt?.ToDisplayCompactDateTime() ?? "—")</td>
+                        <td>@row.CreatedAt.ToDateTime()</td>
+                        <td>@(row.LastLoginAt?.ToDateTime() ?? "—")</td>
                     </tr>
                 }
                 </tbody>

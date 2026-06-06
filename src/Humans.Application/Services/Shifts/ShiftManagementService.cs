@@ -866,7 +866,7 @@ public sealed class ShiftManagementService(
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.ToDisplayShiftDate();
+            var dateLabel = dayDate.ToWeekdayDayMonth();
 
             var overlapping = shifts.Where(s =>
             {
@@ -1524,7 +1524,7 @@ public sealed class ShiftManagementService(
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.ToDisplayShiftDate();
+            var dateLabel = dayDate.ToWeekdayDayMonth();
 
             var overlapping = shifts.Where(s =>
             {
@@ -1584,7 +1584,7 @@ public sealed class ShiftManagementService(
             .Select(off =>
             {
                 var date = es.GateOpeningDate.PlusDays(off);
-                var label = date.ToDisplayShiftDate();
+                var label = date.ToWeekdayDayMonth();
                 var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
                 return new CoverageHeatmapDay(off, date, label, dayPeriod);
             })

@@ -6,11 +6,10 @@ using Humans.Domain.Attributes;
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Repository for the <c>email_outbox_messages</c> table plus the
-/// <c>IsEmailSendingPaused</c> row of the <c>system_settings</c> table
-/// (co-located here because the pause flag is the Email section's
-/// operational state). The only non-test file that writes to the outbox
-/// DbSet after the Email §15 migration lands.
+/// Repository for the <c>email_outbox_messages</c> table — the only
+/// non-test file that writes to the outbox DbSet. The email pause flag
+/// (<c>IsEmailSendingPaused</c>) now lives in the SystemSettings section,
+/// accessed via <c>IEmailOutboxService.IsEmailPausedAsync</c>.
 /// </summary>
 /// <remarks>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
@@ -144,20 +143,4 @@ public interface IEmailOutboxRepository : IRepository
     /// <paramref name="cutoff"/>. Returns the number of rows deleted.
     /// </summary>
     Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Pause flag — IsEmailSendingPaused row in system_settings
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns whether the <c>IsEmailSendingPaused</c> flag is set to "true"
-    /// (case-insensitive). Absent rows read as <c>false</c>.
-    /// </summary>
-    Task<bool> GetSendingPausedAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Sets the <c>IsEmailSendingPaused</c> flag, upserting the row if it
-    /// does not already exist.
-    /// </summary>
-    Task SetSendingPausedAsync(bool paused, CancellationToken ct = default);
 }

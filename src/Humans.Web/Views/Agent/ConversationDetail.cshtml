@@ -23,9 +23,9 @@
         <dd class="col-sm-9"><vc:human user-id="@conv.UserId" link="Admin" /></dd>
     }
     <dt class="col-sm-3">Started</dt>
-    <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.StartedAt.ToInvariantTimestamp() UTC</dd>
     <dt class="col-sm-3">Last message</dt>
-    <dd class="col-sm-9">@conv.LastMessageAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.LastMessageAt.ToInvariantTimestamp() UTC</dd>
     <dt class="col-sm-3">Locale</dt>
     <dd class="col-sm-9">@conv.Locale</dd>
     <dt class="col-sm-3">Message count</dt>
@@ -40,7 +40,7 @@
         <div class="card mb-2 @(msg.Role == AgentRole.User ? "border-primary" : "border-secondary")">
             <div class="card-header d-flex justify-content-between">
                 <span><strong>@msg.Role</strong></span>
-                <span class="text-muted small">@msg.CreatedAt.ToAuditTimestamp() UTC</span>
+                <span class="text-muted small">@msg.CreatedAt.ToInvariantTimestamp() UTC</span>
             </div>
             <div class="card-body">
                 @if (msg.Role == AgentRole.Assistant)

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
+using Humans.Application.Services.Store.Dtos;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Web.Models.Store;
@@ -44,6 +45,32 @@ public class StoreAdminController(
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
         return View(new StoreSummaryViewModel { Summary = summary });
+    }
+
+    [HttpGet("Payments")]
+    public async Task<IActionResult> Payments(CancellationToken ct)
+    {
+        var report = await storeService.GetStripeReconciliationAsync(ct);
+        var rows = report.Rows
+            .OrderByDescending(r => r.Status is StripeReconciliationStatus.Missing or StripeReconciliationStatus.Unmatched)
+            .ThenByDescending(r => r.CreatedAt)
+            .ToList();
+        return View(new StorePaymentsReconciliationViewModel { Report = report, Rows = rows });
+    }
+
+    [HttpPost("Payments/RecordMissing")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var result = await storeService.RecordMissingStripePaymentsAsync(user.Id, ct);
+        if (result.RecordedCount > 0)
+            SetSuccess($"Recorded {result.RecordedCount} Stripe payment(s) totalling €{result.TotalEur:0.00}.");
+        else
+            SetInfo("No missing Stripe payments to record — Stripe and the Store ledger are already reconciled.");
+        return RedirectToAction(nameof(Payments));
     }
 
     [HttpGet("Catalog/Edit")]

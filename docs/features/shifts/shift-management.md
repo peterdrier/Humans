@@ -68,8 +68,8 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)
-- Date-range signup for build/strike rotas via `SignUpRangeAsync` — creates signups for all all-day shifts in the range, linked by a shared `SignupBlockId`
-- Overlap detection prevents signing up for conflicting time slots (event shifts)
+- Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. The legacy date-range picker has been removed from `/Shifts`; date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) now lives only in the onboarding-widget shift step
+- Overlap detection prevents signing up for conflicting time slots — a toggle that would overlap an existing confirmed signup is refused with a warning toast and the day stays unsigned
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
 

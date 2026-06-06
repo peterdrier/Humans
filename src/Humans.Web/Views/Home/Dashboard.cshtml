@@ -103,7 +103,7 @@
                             <i class="fa-solid fa-clock"></i>
                         </div>
                         <div class="flex-grow-1">
-                            @Html.Raw(string.Format(Localizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDisplayDate()))
+                            @Html.Raw(string.Format(Localizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDate()))
                             <br /><small class="text-muted">@Localizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                         </div>
                         <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-warning ms-3">@Localizer["Dashboard_RenewNow"]</a>
@@ -138,7 +138,7 @@
                             <span class="badge bg-primary ms-2">@Model.MembershipTier</span>
                             @if (Model.TermExpiresAt.HasValue)
                             {
-                                <br /><small class="text-muted">@Html.Raw(string.Format(Localizer["Dashboard_TermExpires"].Value, Model.TermExpiresAt.Value.ToDisplayDate()))</small>
+                                <br /><small class="text-muted">@Html.Raw(string.Format(Localizer["Dashboard_TermExpires"].Value, Model.TermExpiresAt.Value.ToDate()))</small>
                             }
                         </div>
                     </div>

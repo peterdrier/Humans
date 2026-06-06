@@ -91,8 +91,9 @@ HUM0026 | IOrchestrator implementer injects an `I*Repository`, `HumansDbContext`
 HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error
 HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning) | Error
 HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microsoft.EntityFrameworkCore` type, or `IQueryable` in a method signature (`[Grandfathered("HUM0029")]` downgrades to Warning) | Error
+HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Application.Extensions.DateFormattingExtensions` | Error
 
-> The next free id is **HUM0030** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0031** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

@@ -18,6 +18,17 @@ public record StoreLineContext(
     LocalDate ProductOrderableUntil);
 
 /// <summary>
+/// A recorded Stripe-method <see cref="StorePayment"/> projected for reconciliation
+/// against the Stripe Checkout Session list. Returned by
+/// <see cref="IStoreRepository.GetRecordedStripePaymentsAsync"/>.
+/// </summary>
+public record StoreRecordedStripePayment(
+    string PaymentIntentId,
+    Guid OrderId,
+    decimal AmountEur,
+    Instant ReceivedAt);
+
+/// <summary>
 /// Repository for the Store section's tables: <c>store_products</c>,
 /// <c>store_orders</c>, <c>store_order_lines</c>, <c>store_payments</c>,
 /// <c>store_invoices</c>, and <c>store_treasury_sync_state</c>. The only
@@ -103,6 +114,14 @@ public interface IStoreRepository : IRepository
     // Payments
     Task AddPaymentAsync(StorePayment payment, CancellationToken ct = default);
     Task<bool> StripePaymentIntentExistsAsync(string paymentIntentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every recorded Stripe-method payment (rows with a non-null
+    /// <see cref="StorePayment.StripePaymentIntentId"/>), projected for reconciliation.
+    /// Feeds both missing-payment detection (Stripe sessions absent here) and orphan
+    /// detection (recorded here but absent from Stripe).
+    /// </summary>
+    Task<IReadOnlyList<StoreRecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default);
 
     // Invoices
     Task AddInvoiceAsync(StoreInvoice invoice, CancellationToken ct = default);

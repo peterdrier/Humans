@@ -42,7 +42,7 @@ public sealed class AgentUserSnapshotProvider(
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
-            .Select(r => (r.RoleName, r.ValidTo?.ToInvariantInstantString() ?? "—"))
+            .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
             .ToList();
 
         return new AgentUserSnapshot(

@@ -212,7 +212,7 @@
                             @foreach (var order in Model.RecentOrders)
                             {
                                 <tr>
-                                    <td>@order.PurchasedAt.ToDisplayCompactDate()</td>
+                                    <td>@order.PurchasedAt.ToDate()</td>
                                     <td>@order.BuyerName</td>
                                     <td>@order.TicketCount</td>
                                     <td>@order.Currency @order.Amount.ToString("N0")</td>
@@ -262,7 +262,7 @@
             <span class="text-muted">
                 @if (Model.LastSyncAt.HasValue)
                 {
-                    <text>Last synced: @Model.LastSyncAt.Value.ToAuditMinuteTimestamp() UTC</text>
+                    <text>Last synced: @Model.LastSyncAt.Value.ToInvariantTimestamp() UTC</text>
                 }
                 else
                 {

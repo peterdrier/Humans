@@ -22,7 +22,7 @@
         {
             <span class="badge text-bg-success mb-2" title="Checked in at the gate">
                 <i class="fa-solid fa-circle-check"></i>
-                Onsite since @Model.OnsiteSince.Value.ToDisplayDateTime()
+                Onsite since @Model.OnsiteSince.Value.ToDateTime()
             </span>
         }
 
@@ -141,11 +141,11 @@
                                 <tr>
                                     <td>@grant.CampaignTitle</td>
                                     <td><code>@grant.Code</code></td>
-                                    <td>@grant.AssignedAt.ToDisplayDate()</td>
+                                    <td>@grant.AssignedAt.ToDate()</td>
                                     <td>
                                         @if (grant.RedeemedAt.HasValue)
                                         {
-                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
+                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDate()</span>
                                         }
                                         else
                                         {

@@ -33,6 +33,11 @@ public static class AdminNavTree
             new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess),
             new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",  PolicyNames.AdminOnly)
         ]),
+        new("Barrios", [
+            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           PolicyNames.CampAdminOrAdmin),
+            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        PolicyNames.CampAdminOrAdmin),
+            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", PolicyNames.CampComplianceAccess)
+        ]),
         new("Cantina", [
             new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
         ]),
@@ -45,8 +50,9 @@ public static class AdminNavTree
             new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin)
         ]),
         new("Store", [
-            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
-            new("Store summary",  "StoreAdmin",   "Summary", null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin)
+            new("Store catalog",  "StoreAdmin",   "Catalog",  null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
+            new("Store summary",  "StoreAdmin",   "Summary",   null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin),
+            new("Store payments", "StoreAdmin",   "Payments",  null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin)
         ]),
         new("Event Guide", [
             new("Guide settings", "EventsAdmin", "Settings", null, null, "fa-solid fa-calendar-days", PolicyNames.EventsAdminOrAdmin),
@@ -107,7 +113,8 @@ public static class AdminNavTree
         ]),
         new("Design", [
             new("Color palette", "ColorPalette",  "Index", null, null, "fa-solid fa-palette", PolicyNames.AdminOnly),
-            new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly)
+            new("Components",    "WidgetGallery", "Index", null, null, "fa-solid fa-shapes",  PolicyNames.AdminOnly),
+            new("Date formats",  "Debug",         "FormatGallery", null, null, "fa-solid fa-clock", PolicyNames.AdminOnly)
         ]),
         new("Temp", [
             new("Picture migration",          "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image",     PolicyNames.AdminOnly),

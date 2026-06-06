@@ -70,12 +70,12 @@
                     <dd class="col-sm-8 fw-semibold">&euro;@r.Total.ToString("N2")</dd>
 
                     <dt class="col-sm-4">Created</dt>
-                    <dd class="col-sm-8">@r.CreatedAt.ToDisplayDateTime()</dd>
+                    <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>
 
                     @if (r.SubmittedAt.HasValue)
                     {
                         <dt class="col-sm-4">Submitted</dt>
-                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDisplayDateTime()</dd>
+                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDateTime()</dd>
                     }
                 </dl>
             </div>
@@ -181,7 +181,7 @@
                         {
                             <li class="mb-0">
                                 <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
-                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d:yyyy-MM-dd}" : "") &mdash; balance &euro;0
+                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d.ToInvariantDate()}" : "") &mdash; balance &euro;0
                             </li>
                         }
                         else

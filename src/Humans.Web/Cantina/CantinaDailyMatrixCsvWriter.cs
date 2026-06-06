@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text;
+using Humans.Application.Extensions;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Constants;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Web.Cantina;
 
@@ -35,12 +35,6 @@ public static class CantinaDailyMatrixCsvWriter
 {
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
     private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
-
-    // Long human-readable date in invariant culture so the export reads the
-    // same regardless of the requester's browser locale. Example:
-    // "Tuesday 7 July 2026".
-    private static readonly LocalDatePattern LongDayPattern =
-        LocalDatePattern.CreateWithInvariantCulture("dddd d MMMM yyyy");
 
     public static byte[] Write(DailyMatrixDto dto)
     {
@@ -131,5 +125,5 @@ public static class CantinaDailyMatrixCsvWriter
     private static string CountAsString(int n) => n.ToString(CultureInfo.InvariantCulture);
 
     private static string FormatLongDate(LocalDate? d) =>
-        d.HasValue ? LongDayPattern.Format(d.Value) : "(no active event)";
+        d.HasValue ? d.Value.ToInvariantDate() : "(no active event)";
 }

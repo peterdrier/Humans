@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Humans.Application.Constants;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -181,13 +182,13 @@ public sealed class AgentToolDispatcher(
         if (first.Shift.IsAllDay)
         {
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                $"Hours: {Shift.AllDayWindowStart:HH:mm}–{Shift.AllDayWindowEnd:HH:mm} each day (all-day shift)"));
+                $"Hours: {DateFormattingExtensions.TimeOfDayPattern.Format(Shift.AllDayWindowStart)}–{DateFormattingExtensions.TimeOfDayPattern.Format(Shift.AllDayWindowEnd)} each day (all-day shift)"));
         }
         else
         {
             var totalHours = first.Shift.Duration.TotalHours;
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                $"Hours: starts {first.Shift.StartTime:HH:mm}, lasts {totalHours:0.##} hours"));
+                $"Hours: starts {DateFormattingExtensions.TimeOfDayPattern.Format(first.Shift.StartTime)}, lasts {totalHours:0.##} hours"));
         }
 
         // Shift description (per-shift duties).
@@ -205,7 +206,7 @@ public sealed class AgentToolDispatcher(
     }
 
     private static string FormatDate(LocalDate date) =>
-        date.ToString("uuuu-MM-dd", CultureInfo.InvariantCulture);
+        date.ToInvariantDate();
 
     private static int ParseAuditHistoryLimit(JsonElement args)
     {

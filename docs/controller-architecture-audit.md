@@ -1,16 +1,16 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-03 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-05 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 80 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 81 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-03) found one change versus the 2026-05-31 baseline: `TeamAdminController` gained an early-entry management surface — `EarlyEntry` (GET, `/Teams/{slug}/EarlyEntry`) plus `AddEarlyEntry` / `EditEarlyEntry` / `RemoveEarlyEntry` (POST `EarlyEntry/Add`|`Edit`|`Remove`). All four conform to the action-naming heuristics (`EarlyEntry` is the sub-resource group, not a controller-name prefix; the verbs mirror the existing `AddMember` / `RemoveMember` pattern). The same 80 controllers remain; `CampController.Index` picked up `ShowLeadPositions` handling and dropped its `INotificationService` dependency, but neither changes its action name, verb, or route. All other purposes and rename suggestions below are carried forward unchanged.
+This regeneration (2026-06-05) found one structural change and one new diagnostic action versus the 2026-06-04 baseline. The Barrios compliance page was redesigned as a role-staffing matrix (#894) and split into a **new** `CampComplianceController` (`Compliance`, GET `/Barrios/Admin/Compliance` and `/Camps/Admin/Compliance`) so it can be gated by the broader `CampComplianceAccess` policy (CampAdmin/Admin or any team coordinator) while the camp-management actions stay CampAdmin-only — the `Compliance` action was correspondingly **removed** from `CampAdminController`. Separately, `DebugController` gained `FormatGallery` (GET `/Debug/FormatGallery`), a developer reference page for the date/time formatting home. Both new actions conform to the action-naming heuristics (descriptive verb/noun, no controller-name prefix). Every other controller's diff in this window was a mechanical date/format-string swap (`ToString("…")` → named `DateFormattingExtensions` methods per HUM0030) with no action signature, verb, or route change; all other purposes and rename suggestions below are carried forward unchanged.
 
 The additions captured in the 2026-05-29 sweep — now all stable in the tables below — were: `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), `DebugController` (`/Debug/ClientStats`); plus `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover`, `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay`, `TicketTransferController.Confirm` (replaced the prior `Lookup` action), `ShiftAdminController.EmailTeamRotas` (GET+POST), and `StoreController.CreateTeamOrder` / `Delete`.
 
@@ -178,7 +178,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | DeactivateRole | /Camps/Admin/Roles/{id:guid}/Deactivate | POST | Deactivate role | OK |
 | ReactivateRole | /Camps/Admin/Roles/{id:guid}/Reactivate | POST | Reactivate role | OK |
 | SeedSystemRoles | /Camps/Admin/SeedSystemRoles | POST | Seed system role definitions | OK |
-| Compliance | /Camps/Admin/Compliance | GET | Camp compliance overview | OK |
 
 ## CampApiController
 
@@ -186,6 +185,12 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | GetCamps | /api/camps/{year} (or /api/barrios/{year}) | GET | Public camp summaries for a year | OK |
 | GetPlacement | /api/camps/{year}/placement | GET | Camp placement summaries | OK |
+
+## CampComplianceController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Compliance | /Barrios/Admin/Compliance (or /Camps/Admin/Compliance) | GET | Read-only Barrios role-compliance matrix (per-camp role staffing vs minimums); split from CampAdmin so it can be gated by the broader `CampComplianceAccess` policy | OK |
 
 ## CampController
 
@@ -316,6 +321,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | ClientStats | /Debug/ClientStats | GET | Debug page returning client request/UA stats | OK |
+| FormatGallery | /Debug/FormatGallery | GET | Developer reference page for the date/time formatting home (`DateFormattingExtensions` output samples) | OK |
 
 ## DevLoginController
 
@@ -723,6 +729,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Search | /api/profiles/search | GET | Profile autocomplete API | OK |
+| BurnerNameCount | /api/profiles/burner-name-count | GET | Uncapped exact burner-name collision count (drives live edit-profile warning) | OK |
 | GetByUserId | /api/profiles/by-userid/{userId:guid} | GET | Get a profile by user id (API) | OK |
 
 ## ProfileBackfillAdminController
@@ -866,6 +873,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Shifts | GET | Browse all shifts | OK |
+| ToggleDay | /Shifts/ToggleDay | POST | AJAX per-day sign-up/bail toggle; returns re-rendered row partial | OK |
 | SignUp | /Shifts/SignUp | POST | Sign up for a shift | OK |
 | SignUpRange | /Shifts/SignUpRange | POST | Sign up for a shift range | OK |
 | BailRange | /Shifts/BailRange | POST | Bail from a shift range | OK |
@@ -884,6 +892,8 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | Catalog | /Store/Admin/Catalog | GET | Store product catalog | OK |
 | Summary | /Store/Admin/Summary | GET | Store sales/order summary | OK |
+| Payments | /Store/Admin/Payments | GET | Stripe reconciliation report (Stripe vs Store ledger) | OK |
+| RecordMissingPayments | /Store/Admin/Payments/RecordMissing | POST | Record missing Stripe payments into the Store ledger | OK |
 | Edit | /Store/Admin/Catalog/Edit | GET | New product form | OK |
 | Edit | /Store/Admin/Catalog/Edit/{id:guid} | GET | Edit product form | OK |
 | Save | /Store/Admin/Catalog/Save | POST | Save a product | OK |
@@ -1002,7 +1012,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Index | /Tickets/Admin/Transfers | GET | Ticket transfer requests list | OK |
 | Detail | /Tickets/Admin/Transfers/Detail/{id:guid} | GET | Transfer request detail | OK |
 | Decide | /Tickets/Admin/Transfers/Decide | POST | Approve/reject a transfer | OK |
-| RetryIssue | /Tickets/Admin/Transfers/{id:guid}/RetryIssue | POST | Retry a failed ticket issue | OK |
 
 ## TicketTransferController
 

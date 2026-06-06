@@ -1,32 +1,24 @@
 using System.Security.Claims;
-using Microsoft.Extensions.Caching.Memory;
-using NodaTime;
 using Humans.Application;
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Syncs active RoleAssignment entities to Identity role claims and stamps the user's stored
-/// <see cref="UserState"/> as a claim — the single source of truth for access. Runs per
-/// authenticated request; cached 60s per user. See HUM0014 / #750.
+/// Syncs active role assignments to Identity role claims and stamps the user's stored
+/// <see cref="UserState"/> as a claim, the single source of truth for app access.
+/// Runs per authenticated request; cached 60s per user.
 /// </summary>
-[Grandfathered(
-    "HUM0014",
-    "Auth claims transformation runs on every authenticated request and reads role_assignments via IRoleAssignmentRepository directly. Routing through IRoleAssignmentService drags in INotificationEmitter / ISystemTeamSync / IGoogleSyncService / Hangfire scheduler — wrong for the request-time auth hot path and unresolvable in the integration-test host. A thin Application-layer read-only interface is the proper home — tracked separately.",
-    "2026-05-17",
-    "nobodies-collective/Humans#750")]
 public class RoleAssignmentClaimsTransformation(
-    IRoleAssignmentRepository roleAssignments,
+    IRoleAssignmentService roleAssignments,
     IUserServiceRead userService,
-    IClock clock,
     IMemoryCache cache) : IClaimsTransformation
 {
-    /// <summary>Carries the user's stored <see cref="UserState"/> (enum name) — the access source.</summary>
+    /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
     public const string UserStateClaimType = "UserState";
 
     public const string ActiveClaimValue = "true";
@@ -58,7 +50,8 @@ public class RoleAssignmentClaimsTransformation(
         }
 
         // Skip duplicate claims on repeat calls within the same request.
-        if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal) && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
+        if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal)
+            && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
         {
             return principal;
         }
@@ -84,7 +77,6 @@ public class RoleAssignmentClaimsTransformation(
 
     private async Task<List<Claim>> LoadClaimsAsync(Guid userId)
     {
-        var now = clock.GetCurrentInstant();
         var claims = new List<Claim>();
 
         // Stored UserState is the single access source. GetUserInfoAsync seeds legacy null-State
@@ -95,10 +87,10 @@ public class RoleAssignmentClaimsTransformation(
             claims.Add(new Claim(UserStateClaimType, state.ToString()));
         }
 
-        var activeRoles = await roleAssignments.GetActiveRoleNamesAsync(userId, now);
+        var activeRoles = await roleAssignments.GetActiveForUserAsync(userId);
         foreach (var role in activeRoles)
         {
-            claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
         }
 
         return claims;

@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Enums;
@@ -66,7 +67,7 @@ public class EventsDashboardController(IEventService guide, ICampServiceRead cam
                 .OrderBy(kv => kv.Key)
                 .Select(kv => new DayCoverageRow
                 {
-                    DayLabel = gateOpeningDate.Value.PlusDays(kv.Key).ToString("ddd d MMM", null),
+                    DayLabel = gateOpeningDate.Value.PlusDays(kv.Key).ToWeekdayDayMonth(),
                     ApprovedCount = kv.Value
                 }).ToList();
         }

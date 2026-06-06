@@ -142,11 +142,11 @@
                     </div>
                     @if (Model.IsAdmin)
                     {
-                        <div class="text-muted" style="font-size: 0.75rem;">@report.ReporterName · @report.CreatedAt.ToString("MMM dd")</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">@report.ReporterName · @report.CreatedAt.ToWeekdayDayMonth()</div>
                     }
                     else
                     {
-                        <div class="text-muted" style="font-size: 0.75rem;">@report.CreatedAt.ToString("MMM dd, HH:mm")</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">@report.CreatedAt.ToMonthDayTime()</div>
                     }
                     <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 0.75rem;">
                         <span class="text-muted"><i class="fa-solid fa-comment"></i> @report.MessageCount</span>

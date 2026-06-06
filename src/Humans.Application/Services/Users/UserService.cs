@@ -933,10 +933,10 @@ public sealed class UserService(
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
-            DeletionRequestedAt = user.DeletionRequestedAt.ToInvariantInstantString(),
-            DeletionScheduledFor = user.DeletionScheduledFor.ToInvariantInstantString(),
-            CreatedAt = user.CreatedAt.ToInvariantInstantString(),
-            LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
+            DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
+            DeletionScheduledFor = user.DeletionScheduledFor.ToIso8601(),
+            CreatedAt = user.CreatedAt.ToIso8601(),
+            LastLoginAt = user.LastLoginAt.ToIso8601()
         };
 #pragma warning restore HUM_USER_DISPLAYNAME
 
@@ -947,7 +947,7 @@ public sealed class UserService(
                 ep.Year,
                 Status = ep.Status.ToString(),
                 Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToInvariantInstantString()
+                DeclaredAt = ep.DeclaredAt.ToIso8601()
             })
             .ToList();
 
@@ -992,10 +992,10 @@ public sealed class UserService(
                 profile.IsSuspended,
                 profile.NoPriorBurnExperience,
                 ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
-                ConsentCheckAt = profile.ConsentCheckAt.ToInvariantInstantString(),
+                ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),
                 profile.ConsentCheckNotes,
                 profile.RejectionReason,
-                RejectedAt = profile.RejectedAt.ToInvariantInstantString(),
+                RejectedAt = profile.RejectedAt.ToIso8601(),
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
@@ -1008,8 +1008,8 @@ public sealed class UserService(
                 profile.IntoleranceOtherText,
                 profile.MedicalConditions,
                 profile.HasCustomProfilePicture,
-                CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
-                UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
+                CreatedAt = profile.CreatedAt.ToIso8601(),
+                UpdatedAt = profile.UpdatedAt.ToIso8601()
             });
 
         var contactFieldSlice = new UserDataSlice(GdprExportSections.ContactFields, contactFields.Select(cf => new
@@ -1032,10 +1032,10 @@ public sealed class UserService(
 
         var volunteerHistorySlice = new UserDataSlice(GdprExportSections.VolunteerHistory, volunteerHistory.Select(vh => new
         {
-            Date = vh.Date.ToIsoDateString(),
+            Date = vh.Date.ToInvariantDate(),
             vh.EventName,
             vh.Description,
-            CreatedAt = vh.CreatedAt.ToInvariantInstantString()
+            CreatedAt = vh.CreatedAt.ToIso8601()
         }).ToList());
 
         var languagesSlice = new UserDataSlice(GdprExportSections.Languages, profileLanguages.Select(pl => new
@@ -1049,7 +1049,7 @@ public sealed class UserService(
             cp.Category,
             cp.OptedOut,
             cp.InboxEnabled,
-            UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
+            UpdatedAt = cp.UpdatedAt.ToIso8601(),
             cp.UpdateSource
         }).ToList());
 

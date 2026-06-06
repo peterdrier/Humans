@@ -43,6 +43,8 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.HumanAdminOrAdmin] = [RoleNames.HumanAdmin, RoleNames.Admin],
         [PolicyNames.TeamsAdminBoardOrAdmin] = [RoleNames.TeamsAdmin, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.CampAdminOrAdmin] = [RoleNames.CampAdmin, RoleNames.Admin],
+        // Admits team coordinators via CampComplianceAccessRequirement.
+        [PolicyNames.CampComplianceAccess] = [RoleNames.CampAdmin, RoleNames.Admin, TeamCoordinatorPillLabel],
         [PolicyNames.TicketAdminBoardOrAdmin] = [RoleNames.TicketAdmin, RoleNames.Admin, RoleNames.Board],
         [PolicyNames.TicketAdminOrAdmin] = [RoleNames.TicketAdmin, RoleNames.Admin],
         [PolicyNames.FeedbackAdminOrAdmin] = [RoleNames.FeedbackAdmin, RoleNames.Admin],

@@ -52,11 +52,11 @@ else
                             <div class="small text-muted mt-1">
                                 @if (result.CreatedAt.HasValue)
                                 {
-                                    <span>@Localizer["Admin_Joined"] @result.CreatedAt.Value.ToDisplayDate()</span>
+                                    <span>@Localizer["Admin_Joined"] @result.CreatedAt.Value.ToDate()</span>
                                 }
                                 @if (result.LastLoginAt.HasValue)
                                 {
-                                    <span class="ms-2">@Localizer["Admin_LastLogin"] @result.LastLoginAt.Value.ToDisplayDate()</span>
+                                    <span class="ms-2">@Localizer["Admin_LastLogin"] @result.LastLoginAt.Value.ToDate()</span>
                                 }
                             </div>
                         }

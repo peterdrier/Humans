@@ -90,7 +90,7 @@
                         <option value="">— Select day —</option>
                         @foreach (var day in Model.EventDays)
                         {
-                            <option value="@day.Date.ToString("yyyy-MM-dd")" selected="@(day.Date.Date == Model.StartDate.Date ? "selected" : null)">@day.Label</option>
+                            <option value="@day.Date.ToInvariantDate()" selected="@(day.Date.Date == Model.StartDate.Date ? "selected" : null)">@day.Label</option>
                         }
                     </select>
                     <span asp-validation-for="StartDate" class="text-danger"></span>

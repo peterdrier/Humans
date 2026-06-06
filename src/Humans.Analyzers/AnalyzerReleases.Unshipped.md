@@ -29,3 +29,4 @@ HUM0026 | Humans.Architecture   | Error    | IOrchestrator implementer injects a
 HUM0027 | Humans.Architecture   | Error    | Type implements both IApplicationService and IOrchestrator — the role axis is exclusive
 HUM0028 | Humans.Architecture   | Error    | Interface extends IInvalidator (downgrades to Warning for interfaces carrying [Grandfathered("HUM0028", ...)])
 HUM0029 | Humans.Architecture   | Error    | Cross-section read interface (I*Read) exposes EF entity, Microsoft.EntityFrameworkCore type, or System.Linq.IQueryable in a method signature (downgrades to Warning for interfaces carrying [Grandfathered("HUM0029", ...)])
+HUM0030 | Humans.Architecture   | Error    | Date/time format-string literal used outside the single sanctioned home (Humans.Application.Extensions.DateFormattingExtensions) — custom .ToString format, interpolation format clause, or NodaTime *Pattern.Create literal

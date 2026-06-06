@@ -42,7 +42,7 @@
                             <td>
                                 @await Html.PartialAsync("_RoleBadge", membership.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
                             </td>
-                            <td>@membership.JoinedAt.ToDisplayCompactDate()</td>
+                            <td>@membership.JoinedAt.ToDate()</td>
                             <td>
                                 <a asp-action="Details" asp-route-slug="@membership.TeamSlug" class="btn btn-sm btn-outline-primary">@Localizer["MyTeams_View"]</a>
                                 @if (membership.IsCoordinator)
@@ -103,7 +103,7 @@ else
                             <td>
                                 <span class="badge @request.StatusBadgeClass">@request.Status</span>
                             </td>
-                            <td>@request.RequestedAt.ToDisplayCompactDate()</td>
+                            <td>@request.RequestedAt.ToDate()</td>
                             <td>
                                 <form asp-action="WithdrawRequest" asp-route-id="@request.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()

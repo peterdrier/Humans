@@ -1,4 +1,5 @@
 using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -15,19 +16,19 @@ namespace Humans.Application.Services.Shifts;
 /// re-check on <see cref="Humans.Domain.Enums.SignupStatus"/>.
 /// </summary>
 public sealed class VolunteerTrackingExportService(
-    IVolunteerTrackingRepository repository,
+    IShiftManagementRepository shiftManagementRepository,
     IShiftManagementService shiftManagementService,
     IUserServiceRead userService)
     : IVolunteerTrackingExportService, IEarlyEntryProvider
 {
-    private readonly IVolunteerTrackingRepository _repository = repository;
+    private readonly IShiftManagementRepository _shiftManagementRepository = shiftManagementRepository;
     private readonly IShiftManagementService _shiftManagementService = shiftManagementService;
     private readonly IUserServiceRead _userService = userService;
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {
         var days = EnumerateDays(request.StartDate, request.EndDate);
-        var shifts = await _repository.GetConfirmedShiftsInRangeAsync(
+        var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
             request.EventSettingsId, request.StartDate, request.EndDate, request.DepartmentId, ct);
 
         // Resolve team names via the Teams-aware service surface (the Shifts repo
@@ -221,7 +222,7 @@ public sealed class VolunteerTrackingExportService(
         var prefix = departmentSlug is { Length: > 0 } slug
             ? $"volunteer-tracking-{slug}-"
             : "volunteer-tracking-";
-        return $"{prefix}{req.StartDate:yyyy-MM-dd}-to-{req.EndDate:yyyy-MM-dd}.xlsx";
+        return $"{prefix}{req.StartDate.ToInvariantDate()}-to-{req.EndDate.ToInvariantDate()}.xlsx";
     }
 
     private static string SlugifyTeamName(string teamName)
@@ -269,7 +270,7 @@ public sealed class VolunteerTrackingExportService(
 
         var start = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
         var end = es.GateOpeningDate.PlusDays(-1);
-        var rows = await _repository.GetConfirmedShiftsInRangeAsync(es.Id, start, end, departmentId: null, ct);
+        var rows = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(es.Id, start, end, departmentId: null, ct);
         if (rows.Count == 0) return [];
 
         var depts = await _shiftManagementService.GetDepartmentsWithRotasAsync(es.Id);

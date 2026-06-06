@@ -84,7 +84,7 @@ public static class ProfileEditViewModelBuilder
             EditableVolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryEditViewModel
             {
                 Id = cv.Id,
-                DateString = cv.Date.ToIsoDateString(),
+                DateString = cv.Date.ToInvariantDate(),
                 EventName = cv.EventName,
                 Description = cv.Description
             }).ToList(),

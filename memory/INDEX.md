@@ -14,6 +14,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`caching-transparent`](architecture/caching-transparent.md) — no `Cached*` types in domain surface; `Full<Section>` is the §15 stitched-DTO pattern
 - [`cached-reads-no-shape-variants`](architecture/cached-reads-no-shape-variants.md) — once a read serves from an in-memory cache of the canonical DTO, do NOT offer `WithEmails` / `IncludeFoo` shape variants. The cache holds one shape — variants reintroduce EF-shaped thinking into a cache-first surface (PR #625 / issue #744).
 - [`consent-record-immutable`](architecture/consent-record-immutable.md) — `consent_records` table: DB triggers block UPDATE/DELETE, INSERT only
+- [`datetime-format-single-home`](architecture/datetime-format-single-home.md) — HARD RULE. Custom date/time format strings live only in `Humans.Application.Extensions.DateFormattingExtensions`; everywhere else call (or add) a named formatter, never inline a literal. Enforced by HUM0030. Display → CurrentCulture, machine/export → Invariant.
 - [`db-enforcement-minimal`](architecture/db-enforcement-minimal.md) — service is the contract, not the DB; only audit-log immutability is doctrinal
 - [`debug-section`](architecture/debug-section.md) — Developer/diagnostics pages live in the **Debug** section at `/Debug/*` (`DebugController`, AdminOnly), not `/Admin/*`. Forward home for logs/db/cache/client stats.
 - [`decorators-talk-only-to-inner`](architecture/decorators-talk-only-to-inner.md) — HARD RULE. A caching/wrapping decorator over interface I may only depend on I (via its keyed inner registration) and the cache plumbing. No sideways repository, service, or sibling-section injections — ever.
@@ -68,7 +69,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
 - [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — methods invoked through Hangfire need a frozen serialization signature; pin the call site to a no-defaults overload and never add/reorder/change params on it (PR #663 incident — orphaned in-flight jobs after adding an optional `bool`)
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
-- [`datetime-display-formatting`](code/datetime-display-formatting.md) — use `ToDisplayDate`/`ToDisplayDateTime`/`ToAuditTimestamp`; no inline format strings
+- [`datetime-display-formatting`](code/datetime-display-formatting.md) — which formatter to call: `ToDate`/`ToWeekdayDayMonth` (display, culture-ordered) vs `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` (machine); no inline format strings (HUM0030)
 - [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask
 - [`icons-fa6-only`](code/icons-fa6-only.md) — `fa-solid fa-*`; never `bi bi-*` (Bootstrap Icons not loaded → invisible)
 - [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need `[JsonConstructor]`; polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`

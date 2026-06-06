@@ -58,12 +58,12 @@
                             <dd class="col-sm-8">@tierLabel</dd>
 
                             <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
-                            <dd class="col-sm-8">@app.SubmittedAt.ToDisplayLongDate()</dd>
+                            <dd class="col-sm-8">@app.SubmittedAt.ToDate()</dd>
 
                             @if (app.ResolvedAt.HasValue)
                             {
                                 <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
-                                <dd class="col-sm-8">@app.ResolvedAt.Value.ToDisplayLongDate()</dd>
+                                <dd class="col-sm-8">@app.ResolvedAt.Value.ToDate()</dd>
                             }
 
                             @if (app.Status == ApplicationStatus.Approved && app.ResolvedAt.HasValue)

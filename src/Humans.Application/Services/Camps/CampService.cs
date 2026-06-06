@@ -1404,8 +1404,8 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         {
             CampSlug = cl.Camp.Slug,
             cl.Role,
-            JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
-            LeftAt = cl.LeftAt.ToInvariantInstantString()
+            JoinedAt = cl.JoinedAt.ToIso8601(),
+            LeftAt = cl.LeftAt.ToIso8601()
         }).ToList();
 
         var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
@@ -1415,7 +1415,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             CampSlug = a.CampSeason.Camp.Slug,
             SeasonYear = a.CampSeason.Year,
             RoleName = a.Definition.Name,
-            AssignedAt = a.AssignedAt.ToInvariantInstantString(),
+            AssignedAt = a.AssignedAt.ToIso8601(),
             a.AssignedByUserId
         }).ToList();
 
@@ -1438,7 +1438,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             nameof(CampSettings), settings.Id,
             eeStartDate is null
                 ? "EE start date cleared."
-                : $"EE start date set to {eeStartDate.Value:yyyy-MM-dd}.",
+                : $"EE start date set to {eeStartDate.Value.ToInvariantDate()}.",
             actorUserId);
 
         // Global date change shifts EE for every camp holder at once.

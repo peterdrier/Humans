@@ -24,7 +24,7 @@
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
                     <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-sm-8">@Model.SubmittedAt.ToDisplayLongDate()</dd>
+                    <dd class="col-sm-8">@Model.SubmittedAt.ToDate()</dd>
 
                     <dt class="col-sm-4">@Localizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-8">
@@ -100,7 +100,7 @@
                                 <tr>
                                     <td><vc:human user-id="@v.BoardMemberUserId" /></td>
                                     <td><span class="badge @badgeClass">@v.Vote</span></td>
-                                <td><small>@v.VotedAt.ToDisplayDate()</small></td>
+                                <td><small>@v.VotedAt.ToDate()</small></td>
                                     <td><small class="text-muted">@v.Note</small></td>
                                 </tr>
                             }

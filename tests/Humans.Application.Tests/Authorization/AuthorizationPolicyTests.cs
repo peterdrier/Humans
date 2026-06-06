@@ -113,6 +113,14 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.CampAdminOrAdmin, RoleNames.Board, false },
         { PolicyNames.CampAdminOrAdmin, RoleNames.TeamsAdmin, false },
 
+        // Role short-circuits only; the team-coordinator path (no coordinated teams in
+        // this fixture) is covered by the dedicated facts below.
+        { PolicyNames.CampComplianceAccess, RoleNames.CampAdmin, true },
+        { PolicyNames.CampComplianceAccess, RoleNames.Admin, true },
+        { PolicyNames.CampComplianceAccess, RoleNames.Board, false },
+        { PolicyNames.CampComplianceAccess, RoleNames.TeamsAdmin, false },
+        { PolicyNames.CampComplianceAccess, RoleNames.VolunteerCoordinator, false },
+
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.TicketAdmin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Admin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Board, true },
@@ -174,7 +182,8 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.MedicalDataViewer, RoleNames.Board, false },
         { PolicyNames.MedicalDataViewer, RoleNames.VolunteerCoordinator, false },
 
-        // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.`r`n        { PolicyNames.AppAccess, RoleNames.Admin, false },
+        // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.
+        { PolicyNames.AppAccess, RoleNames.Admin, false },
         { PolicyNames.AppAccess, RoleNames.NoInfoAdmin, false },
         { PolicyNames.AppAccess, RoleNames.VolunteerCoordinator, false },
         { PolicyNames.AppAccess, RoleNames.CampAdmin, false },
@@ -495,6 +504,43 @@ public class AuthorizationPolicyTests : IDisposable
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
     }
 
+    // --- CampComplianceAccess ---
+
+    [HumansFact]
+    public async Task CampComplianceAccess_AllowsUserWithCoordinatedTeams()
+    {
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task CampComplianceAccess_DeniesUserWithNoRoleAndNoCoordinatedTeams()
+    {
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
+
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CampComplianceAccess_CampAdmin_ShortCircuitsWithoutCallingShiftService()
+    {
+        _shiftManagement.ClearReceivedCalls();
+
+        var result = await AuthorizeAsync(PolicyNames.CampComplianceAccess, RoleNames.CampAdmin);
+
+        result.Succeeded.Should().BeTrue();
+        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
+    }
+
     [HumansFact]
     public async Task AppAccess_AllowsActiveStateUserWithNoRole()
     {
@@ -508,7 +554,7 @@ public class AuthorizationPolicyTests : IDisposable
     [HumansFact]
     public async Task AppAccess_DeniesRoleHolderWithoutActiveState()
     {
-        // A role-holder (staff) passes regardless of UserState — even a non-bypass role like Cantina.
+        // Roles alone do not bypass UserState.
         var user = CreateUserWithRoles(RoleNames.CantinaAdmin);
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeFalse();

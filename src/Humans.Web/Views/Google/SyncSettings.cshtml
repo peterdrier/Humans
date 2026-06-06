@@ -50,7 +50,7 @@
                 @if (setting.UpdatedAt.HasValue)
                 {
                     <div class="card-footer text-muted small">
-                        Last updated: @setting.UpdatedAt.Value.ToDisplayGeneralDateTime()
+                        Last updated: @setting.UpdatedAt.Value.ToDateTime()
                         @if (setting.UpdatedByName != null)
                         {
                             <text> by @setting.UpdatedByName</text>

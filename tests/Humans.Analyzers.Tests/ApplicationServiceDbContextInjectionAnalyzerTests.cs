@@ -30,6 +30,19 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                 public GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef) { }
             }
         }
+
+        namespace Microsoft.EntityFrameworkCore.Design
+        {
+            public interface IDesignTimeDbContextFactory<TContext>
+            {
+                TContext CreateDbContext(string[] args);
+            }
+        }
+
+        namespace Microsoft.Extensions.Hosting
+        {
+            public interface IHostedLifecycleService { }
+        }
         """;
 
     private static bool IsHum0009(Diagnostic d) =>
@@ -83,6 +96,75 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             source);
 
         diagnostics.Where(IsHum0009).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_design_time_dbcontext_factory()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data
+            {
+                public sealed class HumansDbContextFactory :
+                    Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<Humans.Infrastructure.Data.HumansDbContext>
+                {
+                    public Humans.Infrastructure.Data.HumansDbContext CreateDbContext(string[] args) => new();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0009).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_infrastructure_hosting_lifecycle_service()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Hosting
+            {
+                public sealed class DatabaseMigrationHostedService :
+                    Microsoft.Extensions.Hosting.IHostedLifecycleService
+                {
+                    public void Run(Humans.Infrastructure.Data.HumansDbContext dbContext) { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0009).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Still_fires_on_hosted_lifecycle_service_outside_hosting_bootstrap_namespace()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                public sealed class SomeHostedJob :
+                    Microsoft.Extensions.Hosting.IHostedLifecycleService
+                {
+                    public void Run(Humans.Infrastructure.Data.HumansDbContext dbContext) { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0009).Should().ContainSingle();
     }
 
     [HumansFact]

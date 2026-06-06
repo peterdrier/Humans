@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -15,27 +15,23 @@ namespace Humans.Web.Tests.Authorization;
 
 /// <summary>
 /// Verifies that <see cref="RoleAssignmentClaimsTransformation"/> stamps the user's stored
-/// <see cref="UserState"/> (the single access source — see #750) as a claim sourced from the cached
-/// <see cref="UserInfo.State"/> read-model, and adds role claims from
-/// <see cref="IRoleAssignmentRepository"/> — never touching <c>HumansDbContext</c> directly.
+/// <see cref="UserState"/> as the access claim from cached <see cref="UserInfo.State"/>,
+/// and adds role claims from <see cref="IRoleAssignmentService"/>.
 /// </summary>
 public class RoleAssignmentClaimsTransformationTests : IDisposable
 {
-    private readonly IRoleAssignmentRepository _roleAssignments;
+    private readonly IRoleAssignmentService _roleAssignments;
     private readonly IUserServiceRead _userService;
-    private readonly IClock _clock;
     private readonly IMemoryCache _cache;
 
     public RoleAssignmentClaimsTransformationTests()
     {
-        _roleAssignments = Substitute.For<IRoleAssignmentRepository>();
+        _roleAssignments = Substitute.For<IRoleAssignmentService>();
         _roleAssignments
-            .GetActiveRoleNamesAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         _userService = Substitute.For<IUserServiceRead>();
-        _clock = Substitute.For<IClock>();
-        _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 17, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
     }
 
@@ -45,7 +41,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     }
 
     private RoleAssignmentClaimsTransformation BuildSut() =>
-        new(_roleAssignments, _userService, _clock, _cache);
+        new(_roleAssignments, _userService, _cache);
 
     private static ClaimsPrincipal BuildPrincipal(Guid userId)
     {
@@ -112,15 +108,18 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Transform_adds_role_claims_from_repository_active_role_names()
+    public async Task Transform_adds_role_claims_from_auth_service_active_roles()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Active)));
 
         _roleAssignments
-            .GetActiveRoleNamesAsync(userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(["Board", "Treasurer"]);
+            .GetActiveForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([
+                new RoleAssignmentSnapshot("Board", ValidTo: null),
+                new RoleAssignmentSnapshot("Treasurer", ValidTo: null),
+            ]);
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
 

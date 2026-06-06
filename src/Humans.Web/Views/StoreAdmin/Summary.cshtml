@@ -69,12 +69,29 @@
                             </a>
                         </td>
                         <td>@row.State</td>
-                        <td class="text-end">@row.TotalDueEur.ToString("F2")</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("F2"))</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("F2"))</td>
+                        <td class="text-end">@row.TotalDueEur.ToString("N2")</td>
+                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("N2"))</td>
+                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("N2"))</td>
                     </tr>
                 }
                 </tbody>
+                @* Totals cover camps only: teams never pay (paid/balance hardcoded to 0),
+                   so including their due would make Total due ≠ Paid + Balance. *@
+                @{
+                    var camps = s.ByCounterparty
+                        .Where(r => r.CounterpartyType != Humans.Domain.Enums.StoreOrderCounterpartyType.Team)
+                        .ToList();
+                }
+                <tfoot class="table-group-divider">
+                    <tr class="fw-semibold">
+                        <td>Total</td>
+                        <td>@camps.Count camps</td>
+                        <td></td>
+                        <td class="text-end">@camps.Sum(r => r.TotalDueEur).ToString("N2")</td>
+                        <td class="text-end">@camps.Sum(r => r.PaymentsTotalEur).ToString("N2")</td>
+                        <td class="text-end">@camps.Sum(r => r.BalanceEur).ToString("N2")</td>
+                    </tr>
+                </tfoot>
             </table>
         }
     </div>
@@ -104,7 +121,7 @@
                     <tr>
                         <td>@row.ProductName</td>
                         <td class="text-end">@row.TotalQty</td>
-                        <td class="text-end">@row.TotalRevenueEur.ToString("F2")</td>
+                        <td class="text-end">@row.TotalRevenueEur.ToString("N2")</td>
                     </tr>
                 }
                 </tbody>
@@ -132,7 +149,6 @@
                         {
                             <th class="text-end">@col.ProductName</th>
                         }
-                        <th class="text-end">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -146,7 +162,6 @@
                             var qty = cp.QtyByProduct.TryGetValue(col.ProductId, out var q) ? q : 0;
                             <td class="text-end">@(qty == 0 ? "" : qty.ToString())</td>
                         }
-                        <td class="text-end fw-semibold">@cp.TotalQty</td>
                     </tr>
                 }
                 </tbody>
@@ -157,7 +172,6 @@
                         {
                             <td class="text-end">@col.TotalQty</td>
                         }
-                        <td class="text-end">@s.CrossTab.Products.Sum(c => c.TotalQty)</td>
                     </tr>
                 </tfoot>
             </table>

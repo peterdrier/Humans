@@ -53,7 +53,7 @@
             <div class="event">
                 <div class="event-title">@entry.Title</div>
                 <div class="event-meta">
-                    @entry.StartAt.ToString("HH:mm") — @durationStr
+                    @entry.StartAt.ToTime() — @durationStr
                     &middot; @entry.CampOrVenueName
                     @if (!string.IsNullOrEmpty(entry.LocationNote))
                     {

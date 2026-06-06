@@ -1,3 +1,4 @@
+using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -54,6 +55,9 @@ public sealed class TeamService(
 
     private IUserService UserService
         => serviceProvider.GetRequiredService<IUserService>();
+
+    private IGoogleSyncOutboxService GoogleSyncOutboxService
+        => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
 
     public async Task<Team> CreateTeamAsync(
         string name,
@@ -673,9 +677,7 @@ public sealed class TeamService(
         bool success;
         try
         {
-            success = outboxEvent is null
-                ? await TryAddMemberOnlyAsync(member, cancellationToken)
-                : await repo.AddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
+            success = await TryAddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -776,9 +778,106 @@ public sealed class TeamService(
     private async Task<bool> TryAddMemberOnlyAsync(TeamMember member, CancellationToken ct)
     {
         // DB unique constraint backstops the caller's pre-check.
-        await repo.AddMemberAsync(member, ct);
+        return await repo.TryAddMemberAsync(member, ct);
+    }
+
+    private async Task<bool> TryAddMemberWithOutboxAsync(
+        TeamMember member,
+        GoogleSyncOutboxEvent? outboxEvent,
+        CancellationToken ct)
+    {
+        if (outboxEvent is null)
+            return await TryAddMemberOnlyAsync(member, ct);
+
+        using var scope = CreateTransactionScope();
+        var success = await repo.TryAddMemberAsync(member, ct);
+        if (!success)
+            return false;
+
+        await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
+        scope.Complete();
         return true;
     }
+
+    private async Task<bool> ApproveRequestWithMemberAndOutboxAsync(
+        TeamJoinRequest request,
+        TeamMember member,
+        GoogleSyncOutboxEvent? outboxEvent,
+        CancellationToken ct)
+    {
+        if (outboxEvent is null)
+            return await repo.ApproveRequestWithMemberAsync(request, member, ct);
+
+        using var scope = CreateTransactionScope();
+        var success = await repo.ApproveRequestWithMemberAsync(request, member, ct);
+        if (!success)
+            return false;
+
+        await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
+        scope.Complete();
+        return true;
+    }
+
+    private async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
+        Guid teamMemberId,
+        Instant leftAt,
+        GoogleSyncOutboxEvent? outboxEvent,
+        CancellationToken ct)
+    {
+        if (outboxEvent is null)
+            return await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+
+        using var scope = CreateTransactionScope();
+        var removedAssignments = await repo.MarkMemberLeftAsync(teamMemberId, leftAt, ct);
+        await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
+        scope.Complete();
+        return removedAssignments;
+    }
+
+    private async Task<(TeamRoleAssignment Assignment, bool AutoAddedToTeam, TeamMember Member)> AssignToRoleWithOutboxAsync(
+        Guid roleDefinitionId,
+        Guid targetUserId,
+        Guid actorUserId,
+        TeamMember? autoAddMember,
+        GoogleSyncOutboxEvent? outboxEvent,
+        bool promoteToCoordinator,
+        Instant now,
+        CancellationToken ct)
+    {
+        if (outboxEvent is null)
+        {
+            return await repo.AssignToRoleAsync(
+                roleDefinitionId,
+                targetUserId,
+                actorUserId,
+                autoAddMember,
+                promoteToCoordinator,
+                now,
+                ct);
+        }
+
+        using var scope = CreateTransactionScope();
+        var result = await repo.AssignToRoleAsync(
+            roleDefinitionId,
+            targetUserId,
+            actorUserId,
+            autoAddMember,
+            promoteToCoordinator,
+            now,
+            ct);
+
+        if (result.AutoAddedToTeam)
+            await GoogleSyncOutboxService.AddAsync(outboxEvent, ct);
+
+        scope.Complete();
+        return result;
+    }
+
+    private static TransactionScope CreateTransactionScope() =>
+        new(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled);
 
     public async Task<bool> LeaveTeamAsync(
         Guid teamId,
@@ -801,7 +900,7 @@ public sealed class TeamService(
             member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
 
         var now = clock.GetCurrentInstant();
-        var removedAssignments = await repo.MarkMemberLeftWithOutboxAsync(
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
             member.Id, now, outboxEvent, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -873,7 +972,8 @@ public sealed class TeamService(
         bool success;
         try
         {
-            success = await repo.ApproveRequestWithMemberAsync(request, member, outboxEvent, cancellationToken);
+            success = await ApproveRequestWithMemberAndOutboxAsync(
+                request, member, outboxEvent, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -1085,7 +1185,7 @@ public sealed class TeamService(
             member.Id, teamId, userId, GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources, cancellationToken);
 
         var now = clock.GetCurrentInstant();
-        var removedAssignments = await repo.MarkMemberLeftWithOutboxAsync(
+        var removedAssignments = await MarkMemberLeftWithOutboxAsync(
             member.Id, now, outboxEvent, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1165,20 +1265,17 @@ public sealed class TeamService(
                     tracked.ReviewedByUserId = pendingRequest.ReviewedByUserId;
                     tracked.ReviewNotes = pendingRequest.ReviewNotes;
                     tracked.ResolvedAt = pendingRequest.ResolvedAt;
-                    success = await repo.ApproveRequestWithMemberAsync(tracked, member, outboxEvent, cancellationToken);
+                    success = await ApproveRequestWithMemberAndOutboxAsync(
+                        tracked, member, outboxEvent, cancellationToken);
                 }
                 else
                 {
-                    success = outboxEvent is null
-                        ? await TryAddMemberOnlyAsync(member, cancellationToken)
-                        : await repo.AddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
+                    success = await TryAddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
                 }
             }
             else
             {
-                success = outboxEvent is null
-                    ? await TryAddMemberOnlyAsync(member, cancellationToken)
-                    : await repo.AddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
+                success = await TryAddMemberWithOutboxAsync(member, outboxEvent, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -1578,7 +1675,7 @@ public sealed class TeamService(
                 GoogleSyncOutboxEventTypes.AddUserToTeamResources, cancellationToken);
         }
 
-        var (assignment, autoAddedToTeam, persistedMember) = await repo.AssignToRoleAsync(
+        var (assignment, autoAddedToTeam, persistedMember) = await AssignToRoleWithOutboxAsync(
             roleDefinitionId,
             targetUserId,
             actorUserId,
@@ -1663,7 +1760,21 @@ public sealed class TeamService(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
-        var count = await repo.EnqueueResyncEventsForUserAsync(userId, now, cancellationToken);
+        var memberships = await repo.GetActiveMembershipsForGoogleResyncAsync(userId, cancellationToken);
+        var outboxEvents = memberships
+            .Select(membership => new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = membership.TeamId,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = $"{membership.TeamMemberId}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}"
+            })
+            .ToList();
+
+        await GoogleSyncOutboxService.AddRangeAsync(outboxEvents, cancellationToken);
+        var count = outboxEvents.Count;
         if (count > 0)
         {
             logger.LogInformation(
@@ -1828,12 +1939,12 @@ public sealed class TeamService(
         {
             TeamName = GetTeamName(tm.TeamId),
             tm.Role,
-            JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
-            LeftAt = tm.LeftAt.ToInvariantInstantString(),
+            JoinedAt = tm.JoinedAt.ToIso8601(),
+            LeftAt = tm.LeftAt.ToIso8601(),
             TeamRoles = tm.RoleAssignments.Select(tra => new
             {
                 RoleName = tra.TeamRoleDefinition.Name,
-                AssignedAt = tra.AssignedAt.ToInvariantInstantString()
+                AssignedAt = tra.AssignedAt.ToIso8601()
             })
         }).ToList());
 
@@ -1842,16 +1953,16 @@ public sealed class TeamService(
             TeamName = GetTeamName(tjr.TeamId),
             tjr.Status,
             tjr.Message,
-            RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
-            ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
+            RequestedAt = tjr.RequestedAt.ToIso8601(),
+            ResolvedAt = tjr.ResolvedAt.ToIso8601()
         }).ToList());
 
         var earlyEntrySlice = new UserDataSlice(GdprExportSections.TeamEarlyEntry, eeGrants.Select(g => new
         {
             TeamName = GetTeamName(g.TeamId),
             g.ProjectName,
-            EntryDate = g.EntryDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-            GrantedAt = g.CreatedAt.ToInvariantInstantString(),
+            EntryDate = g.EntryDate.ToInvariantDate(),
+            GrantedAt = g.CreatedAt.ToIso8601(),
         }).ToList());
 
         return [membershipSlice, joinRequestSlice, earlyEntrySlice];

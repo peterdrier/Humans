@@ -62,10 +62,9 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 **Application:**
 - `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method
+- `DriveActivityMonitorService` - implementation using Google Drive Activity API v2
 
 **Infrastructure:**
-- `DriveActivityMonitorService` - real implementation using Google Drive Activity API v2
-- `StubDriveActivityMonitorService` - stub for development without Google credentials
 - `DriveActivityMonitorJob` - Hangfire background job wrapper
 
 **Web:**
@@ -75,9 +74,8 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 ### Service Registration
 
-Follows the same conditional pattern as other Google services:
-- With Google credentials configured: `DriveActivityMonitorService`
-- Without credentials: `StubDriveActivityMonitorService`
+Registered unconditionally in `GoogleIntegrationSectionExtensions`:
+`services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>()`.
 
 ### NuGet Package
 

@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Text;
+using Humans.Application.Extensions;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -163,7 +163,7 @@ public sealed record AuditEvent(
     }
 
     private static string FormatDate(Instant occurredAt) =>
-        occurredAt.InUtc().Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        occurredAt.InUtc().Date.ToInvariantDate();
 }
 
 /// <summary>Structured render bundle from <see cref="AuditEvent.RenderStructured"/>.</summary>

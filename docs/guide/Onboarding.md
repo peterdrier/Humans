@@ -54,7 +54,9 @@ If your email was imported from a mailing list, your account already exists and 
 
 ### 2. Complete your profile
 
-Profile setup asks for your name, pronouns, location, bio, birthday, and any contact fields you want to share. An emergency contact is optional but recommended.
+The very first thing the app asks for is your name. However you signed in, until you've set a burner name and your legal first and last name, the app sends you to a short "let's start with your name" form before anything else opens up — you can't browse the rest of the site nameless. (This never blocks signing in; it only redirects you to the name form once you're in.) Once your name is saved, the gate lifts on your next click.
+
+After that, profile setup asks for your pronouns, location, bio, birthday, and any contact fields you want to share. An emergency contact is optional but recommended.
 
 A separate step (`/Profile/Me/ShiftInfo`) walks you through your skills, work-style preferences, and languages. Coordinators search by skill to find the right person for a role, so a thin profile is harder to place — fill these in honestly and fully even if you're not sure what you'll end up doing.
 
