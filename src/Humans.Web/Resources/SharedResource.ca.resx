@@ -1608,11 +1608,14 @@
   <data name="AdminHumans_Active" xml:space="preserve">
     <value>Actius</value>
   </data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve">
-    <value>Pendent d'aprovació</value>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
   </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Suspesos</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Pendent d'eliminació</value>
@@ -1622,9 +1625,6 @@
   </data>
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Eliminat</value>
-  </data>
-  <data name="AdminHumans_HasName" xml:space="preserve">
-    <value>Amb nom</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Membre: {0}</value>
@@ -1957,9 +1957,6 @@
   </data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve">
     <value>Acords</value>
-  </data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve">
-    <value>Aprova human</value>
   </data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
     <value>Aixecar la suspensió del human</value>
@@ -5888,5 +5885,19 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Estat del compte</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>El teu compte ha estat suspès</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>El teu compte ha estat rebutjat</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>El teu compte ha estat eliminat</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>El teu compte ha estat fusionat</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>El teu compte no està disponible</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta amb un administrador per a més informació:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motiu:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referència:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminació de compte pendent</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>El teu compte està programat per a l'eliminació</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>S'eliminarà permanentment el {0} tret que el cancel·lis.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>S'eliminarà permanentment tret que el cancel·lis.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancel·la la sol·licitud d'eliminació</value></data>
 </root>
 <!-- ReSharper restore MarkupTextTypo -->

@@ -1093,7 +1093,10 @@ public class CachingUserServiceTests
 
         await sut.ApplyProfileOnboardingMutationAsync(
             userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.ApproveVolunteer));
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.RecordConsentCheck,
+                ActorUserId: Guid.NewGuid(),
+                ConsentCheckStatus: ConsentCheckStatus.Cleared));
 
         var refreshed = await sut.GetUserInfoAsync(userId);
         refreshed!.Profile.Should().NotBeNull();

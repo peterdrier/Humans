@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
@@ -19,6 +20,7 @@ public sealed class UserService(
     IUserRepository repo,
     ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
+    IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IClock clock,
     ILogger<UserService> logger) : IUserService, IUserDataContributor, IUserMerge
 {
@@ -61,10 +63,17 @@ public sealed class UserService(
         var communicationPreferences = await communicationPreferenceRepo
             .GetByUserIdReadOnlyAsync(userId, ct);
 
-        return UserInfo.Create(
+        var info = UserInfo.Create(
             user, userEmails, participations, externalLogins,
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
+
+        // First-touch seed: legacy rows hold a null State column until persisted once. UserInfo.Create
+        // already classified it into info.State, so just persist that. Idempotent at the repo (State
+        // IS NULL guard); transitions keep it current thereafter.
+        await SeedUserStateIfNullAsync(user, info, ct);
+
+        return info;
     }
 
     public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
@@ -118,10 +127,12 @@ public sealed class UserService(
 
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
 
-            result.Add(UserInfo.Create(
+            var info = UserInfo.Create(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
-                preferences));
+                preferences);
+            await SeedUserStateIfNullAsync(user, info, ct);
+            result.Add(info);
         }
 
         return result;
@@ -273,12 +284,17 @@ public sealed class UserService(
     {
         var updated = await repo.SetDeletionPendingAsync(
             userId, requestedAt, scheduledFor, eligibleAfter, ct);
+        if (updated)
+            InvalidateClaims(userId);
         return updated;
     }
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        return await repo.ClearDeletionAsync(userId, ct);
+        var updated = await repo.ClearDeletionAsync(userId, ct);
+        if (updated)
+            InvalidateClaims(userId);
+        return updated;
     }
 
     public async Task<bool> EnsureStubProfileAsync(
@@ -324,6 +340,7 @@ public sealed class UserService(
             profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
             await repo.AddAsync(profile, ct);
+            InvalidateClaims(userId);
             return true;
         }
         finally
@@ -381,11 +398,6 @@ public sealed class UserService(
                 profile.UpdatedAt = now;
                 break;
 
-            case UserProfileOnboardingMutation.ApproveVolunteer:
-                profile.IsApproved = true;
-                profile.UpdatedAt = now;
-                break;
-
             case UserProfileOnboardingMutation.SetSuspension:
                 ApplySuspension(profile, command, now);
                 break;
@@ -400,6 +412,7 @@ public sealed class UserService(
         }
 
         await repo.UpdateAsync(profile, ct);
+        InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
 
@@ -484,13 +497,14 @@ public sealed class UserService(
             };
 
             // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
-            if (profile.State != ProfileState.Suspended)
+            if (!IsSuspendedState(profile.State))
             {
                 profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
             }
 
             await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
+            InvalidateClaims(userId);
 
             return new UserProfileSaveResult(
                 profile.Id,
@@ -1195,6 +1209,16 @@ public sealed class UserService(
         await EnsureGoogleInvariantAsync(row.UserId, ct);
     }
 
+    private async Task SeedUserStateIfNullAsync(User user, UserInfo info, CancellationToken ct)
+    {
+        if (user.State is null && info.State is { } seeded)
+            await repo.WriteBackUserStateIfNullAsync(user.Id, seeded, ct);
+    }
+
+    // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
+    // profile transitions that can change the stored state (e.g. Bare after a name submit).
+    private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
+
     private static void ApplyConsentCheck(
         Profile profile,
         UserProfileOnboardingCommand command,
@@ -1223,7 +1247,7 @@ public sealed class UserService(
         // Dual-write until IsSuspended is dropped. State is the canonical shape
         // exposed through UserInfo.
         profile.State = suspended
-            ? ProfileState.Suspended
+            ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
             : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
         if (suspended)
@@ -1236,6 +1260,9 @@ public sealed class UserService(
         !string.IsNullOrWhiteSpace(profile.BurnerName)
         && !string.IsNullOrWhiteSpace(profile.FirstName)
         && !string.IsNullOrWhiteSpace(profile.LastName);
+
+    private static bool IsSuspendedState(ProfileState? state) =>
+        state is ProfileState.Suspended or ProfileState.AdminSuspended;
 
     private static void ValidateProfileOnboardingCommand(UserProfileOnboardingCommand command)
     {

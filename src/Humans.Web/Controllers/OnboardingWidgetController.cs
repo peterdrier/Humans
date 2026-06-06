@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -29,6 +30,7 @@ public class OnboardingWidgetController(
     IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
+    IHumanLifecycleService humanLifecycle,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -154,7 +156,14 @@ public class OnboardingWidgetController(
         var rows = await consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
+        {
+            // Self-heal a consent-suspended user who is already compliant (nothing left to sign —
+            // e.g. the required set shrank after they were suspended). Without this they loop
+            // Status → Consents → Index → Home → Status forever, since the un-suspend otherwise only
+            // fires on a fresh signature. No-op for any non-Suspended user.
+            await humanLifecycle.RestoreConsentSuspensionAsync(userId, ct);
             return RedirectToAction(nameof(Index));
+        }
 
         var next = unsigned[0];
         var detail = await consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);

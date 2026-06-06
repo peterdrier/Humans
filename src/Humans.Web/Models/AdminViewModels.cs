@@ -34,9 +34,7 @@ public class AdminHumanDetailViewModel
     public string? LastName { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
-    public bool IsSuspended { get; set; }
-    public bool IsApproved { get; set; }
-    public bool HasProfile { get; set; }
+    public UserState State { get; set; }
 
     /// <summary>This account is a merge tombstone (folded into another and locked out).</summary>
     public bool IsMerged { get; set; }
@@ -51,7 +49,6 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
 
-    public bool IsRejected { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }

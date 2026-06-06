@@ -71,9 +71,8 @@
                 <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
                     @{
                         var isAuthenticated = User.Identity?.IsAuthenticated == true;
-                        var hasProfile = User.HasClaim(
-                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
-                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
+                        // Name-only access: top-nav membership cues key off Active state.
+                        var hasProfile = Humans.Web.Authorization.RoleAssignmentClaimsTransformation.IsActive(User);
                     }
                     <ul class="navbar-nav flex-grow-1">
                         @if (isAuthenticated)
@@ -94,12 +93,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Calendar" asp-action="Index">Calendar</a>
                         </li>
-                        <li class="nav-item" authorize-policy="IsActiveMember">
+                        <li class="nav-item" authorize-policy="AppAccess">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
                         @if (Configuration.GetValue<bool>("Features:Events"))
                         {
-                            <li class="nav-item dropdown" authorize-policy="IsActiveMember">
+                            <li class="nav-item dropdown" authorize-policy="AppAccess">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
@@ -128,10 +127,10 @@
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
                             </li>
                         }
-                        <li class="nav-item" authorize-policy="ActiveMemberOrShiftAccess">
+                        <li class="nav-item" authorize-policy="AppAccess">
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>
-                        <li class="nav-item" authorize-policy="IsActiveMember">
+                        <li class="nav-item" authorize-policy="AppAccess">
                             <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
                         </li>
                         <li class="nav-item" authorize-policy="AnyAdminRole">

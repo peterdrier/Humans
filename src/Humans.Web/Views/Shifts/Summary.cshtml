@@ -1,0 +1,127 @@
+@model Humans.Web.Models.ShiftSummaryViewModel
+@using Humans.Application.DTOs.Shifts
+
+@{
+    ViewData["Title"] = "Shift summary by camp";
+    Layout = "_AdminLayout";
+
+    string Hours(double h) => h.ToString("0.#");
+    const string NoCamp = "(no camp)";
+}
+
+<div class="container-fluid py-3">
+    <h1 class="h3 mb-1">Shift summary by camp</h1>
+    <p class="text-muted mb-3">
+        @if (Model.Scope == ShiftSummaryScope.Team)
+        {
+            <a asp-action="Summary">All teams</a><text> › </text><span>@Model.TeamName</span>
+        }
+        else if (Model.Scope == ShiftSummaryScope.Rota)
+        {
+            <a asp-action="Summary">All teams</a><text> › </text>
+            <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a><text> › </text><span>@Model.RotaName</span>
+        }
+        else
+        {
+            <text>All teams</text>
+        }
+        <span class="mx-1">·</span> @Model.EventName
+        <span class="mx-1">·</span> confirmed signups only
+    </p>
+
+    <div class="row g-4">
+        <div class="col-xl-6">
+            <h2 class="h5">By human</h2>
+            @if (Model.Humans.Count == 0)
+            {
+                <div class="alert alert-light border">No confirmed signups yet.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Human</th>
+                                <th>Camp</th>
+                                <th class="text-end">Hours</th>
+                                <th class="text-end">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in Model.Humans)
+                            {
+                                <tr>
+                                    <td><vc:human user-id="@h.UserId" /></td>
+                                    <td>
+                                        @if (h.CampId is null)
+                                        {
+                                            <span class="text-muted">@NoCamp</span>
+                                        }
+                                        else
+                                        {
+                                            @h.CampName
+                                        }
+                                    </td>
+                                    <td class="text-end">@Hours(h.Hours)</td>
+                                    <td class="text-end">@h.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="col-xl-6">
+            <h2 class="h5">By camp</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Camp</th>
+                            <th class="text-end">People</th>
+                            <th class="text-end">Hours</th>
+                            <th class="text-end">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Camps)
+                        {
+                            <tr class="@(c.CampId is null ? "text-muted" : null)">
+                                <td>@(c.CampName ?? NoCamp)</td>
+                                <td class="text-end">@c.People</td>
+                                <td class="text-end">@Hours(c.Hours)</td>
+                                <td class="text-end">@c.Count</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.TeamLinks.Count > 0)
+    {
+        <h2 class="h5 mt-4">Teams</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var t in Model.TeamLinks)
+            {
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryTeam" asp-route-teamSlug="@t.Slug">@t.Name</a>
+            }
+        </div>
+    }
+
+    @if (Model.RotaLinks.Count > 0)
+    {
+        <h2 class="h5 mt-4">Rotas</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var r in Model.RotaLinks)
+            {
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryRota" asp-route-teamSlug="@Model.TeamSlug" asp-route-rotaGuid="@r.RotaId">@r.Name</a>
+            }
+        </div>
+    }
+</div>

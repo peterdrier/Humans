@@ -2,32 +2,26 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Web.Tests.Authorization;
 
 /// <summary>
-/// Verifies that <see cref="RoleAssignmentClaimsTransformation"/> sources
-/// every claim it emits through the application service / repository surface
-/// — never <c>HumansDbContext</c> directly (issue #750). HasProfile /
-/// IsSuspended come from the cached <see cref="UserInfo"/> read-model (issue
-/// #741), role claims come from <see cref="IRoleAssignmentService"/>, and
-/// Volunteers-team membership comes from <see cref="ITeamService"/> (cache-
-/// backed).
+/// Verifies that <see cref="RoleAssignmentClaimsTransformation"/> stamps the user's stored
+/// <see cref="UserState"/> as the access claim from cached <see cref="UserInfo.State"/>,
+/// and adds role claims from <see cref="IRoleAssignmentService"/>.
 /// </summary>
 public class RoleAssignmentClaimsTransformationTests : IDisposable
 {
     private readonly IRoleAssignmentService _roleAssignments;
-    private readonly ITeamServiceRead _teams;
-    private readonly IUserService _userService;
+    private readonly IUserServiceRead _userService;
     private readonly IMemoryCache _cache;
 
     public RoleAssignmentClaimsTransformationTests()
@@ -37,12 +31,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
             .GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _teams = Substitute.For<ITeamServiceRead>();
-        _teams
-            .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
-
-        _userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserServiceRead>();
         _cache = new MemoryCache(new MemoryCacheOptions());
     }
 
@@ -52,7 +41,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     }
 
     private RoleAssignmentClaimsTransformation BuildSut() =>
-        new(_roleAssignments, _teams, _userService, _cache);
+        new(_roleAssignments, _userService, _cache);
 
     private static ClaimsPrincipal BuildPrincipal(Guid userId)
     {
@@ -61,150 +50,70 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
         return new ClaimsPrincipal(identity);
     }
 
-    private static IReadOnlyDictionary<Guid, TeamInfo> VolunteersTeams(Guid userId) =>
-        new Dictionary<Guid, TeamInfo>
-        {
-            [SystemTeamIds.Volunteers] = new TeamInfo(
-                Id: SystemTeamIds.Volunteers,
-                Name: "Volunteers",
-                Description: null,
-                Slug: "volunteers",
-                IsActive: true,
-                IsSystemTeam: true,
-                SystemTeamType: SystemTeamType.Volunteers,
-                RequiresApproval: false,
-                IsPublicPage: false,
-                IsHidden: false,
-                IsPromotedToDirectory: false,
-                CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-                Members: [new TeamMemberInfo(
-                    Guid.NewGuid(), userId, "Test User", null, null,
-                    TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0))]),
-        };
-
-    private static UserInfo MakeUserInfo(Guid id, bool hasProfile, bool isSuspended)
-    {
-        Profile? profile = hasProfile
-            ? new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = id,
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
-                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
-            }
-            : null;
-
-        return UserInfo.Create(
+    private static UserInfo MakeUserInfo(Guid id, UserState state) =>
+        UserInfo.Create(
             user: new User
             {
                 Id = id,
                 DisplayName = "Test User",
                 PreferredLanguage = "en",
+                State = state,
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: [],
             eventParticipations: [],
             externalLogins: [],
-            profile: profile,
+            profile: null,
             contactFields: [],
             profileLanguages: [],
             volunteerHistory: [],
             communicationPreferences: []);
-    }
 
-    [HumansFact]
-    public async Task Transform_sources_HasProfile_from_UserInfo()
+    [HumansTheory]
+    [InlineData(UserState.Active)]
+    [InlineData(UserState.Bare)]
+    [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
+    [InlineData(UserState.DeletePending)]
+    [InlineData(UserState.Rejected)]
+    public async Task Transform_stamps_UserState_claim_matching_stored_state(UserState state)
     {
         var userId = Guid.NewGuid();
-
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: false)));
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, state)));
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
 
-        principal.HasClaim(
-            RoleAssignmentClaimsTransformation.HasProfileClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue)
-            .Should().BeTrue("HasProfile must be sourced from UserInfo.Profile");
+        principal.HasClaim(RoleAssignmentClaimsTransformation.UserStateClaimType, state.ToString())
+            .Should().BeTrue("the stored UserState must be stamped as the access claim");
+        RoleAssignmentClaimsTransformation.GetUserState(principal).Should().Be(state);
+        RoleAssignmentClaimsTransformation.IsActive(principal)
+            .Should().Be(state == UserState.Active, "only Active grants full app access");
 
         await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Transform_omits_ActiveMember_claim_when_UserInfo_reports_suspended()
+    public async Task Transform_omits_UserState_claim_when_UserInfo_is_null()
     {
         var userId = Guid.NewGuid();
-
-        // The team service would say the user IS on the Volunteers team —
-        // but suspension wins and the claim must be omitted.
-        _teams
-            .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(VolunteersTeams(userId)));
-
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: true)));
-
-        var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
-
-        principal.HasClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue)
-            .Should().BeFalse("suspended users lose the ActiveMember claim");
-    }
-
-    [HumansFact]
-    public async Task Transform_omits_HasProfile_claim_when_UserInfo_has_no_profile()
-    {
-        var userId = Guid.NewGuid();
-
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: false, isSuspended: false)));
-
-        var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
-
-        principal.HasClaim(
-            RoleAssignmentClaimsTransformation.HasProfileClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue)
-            .Should().BeFalse("profileless UserInfo should not emit HasProfile");
-    }
-
-    [HumansFact]
-    public async Task Transform_treats_null_UserInfo_as_no_profile_and_not_suspended()
-    {
-        var userId = Guid.NewGuid();
-
-        _teams
-            .GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(VolunteersTeams(userId)));
-
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
         var principal = await BuildSut().TransformAsync(BuildPrincipal(userId));
 
-        principal.HasClaim(
-            RoleAssignmentClaimsTransformation.HasProfileClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue)
-            .Should().BeFalse("null UserInfo means no profile");
-
-        principal.HasClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue)
-            .Should().BeTrue("null UserInfo is not suspended; volunteer team membership still grants ActiveMember");
+        RoleAssignmentClaimsTransformation.GetUserState(principal)
+            .Should().BeNull("a null read-model leaves the principal without a UserState claim");
+        RoleAssignmentClaimsTransformation.IsActive(principal).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task Transform_adds_role_claims_from_auth_service_active_roles()
     {
         var userId = Guid.NewGuid();
-
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, hasProfile: true, isSuspended: false)));
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.Active)));
 
         _roleAssignments
             .GetActiveForUserAsync(userId, Arg.Any<CancellationToken>())

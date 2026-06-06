@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -42,6 +43,7 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
@@ -70,7 +72,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _humanLifecycle, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -293,8 +295,12 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_AllSigned_RedirectsThroughIndexDispatcher()
+    public async Task Consents_Get_AllSigned_LiftsConsentSuspension_AndRedirectsThroughIndex()
     {
+        // A consent-suspended user who is already compliant (no unsigned docs) must be un-suspended
+        // here — otherwise MembershipRequiredFilter loops them Status → Consents → Index → Home →
+        // Status forever, since the un-suspend otherwise only fires on a fresh signature.
+        // RestoreConsentSuspensionAsync is a no-op for any non-Suspended user.
         var userId = Guid.NewGuid();
         IReadOnlyList<RequiredConsentRow> rows = new List<RequiredConsentRow>
         {
@@ -309,5 +315,6 @@ public class OnboardingWidgetControllerConsentsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+        await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
     }
 }

@@ -12,7 +12,7 @@
     </div>
 </div>
 
-@* Mirrors public /Profile/Search; preserves filter+sort *@
+@* Mirrors public /Profile/Search; preserves filter+sort. *@
 <form method="get" class="mb-4">
     <input type="hidden" name="sort" value="@Model.SortBy" />
     <input type="hidden" name="dir" value="@Model.SortDir" />
@@ -42,18 +42,17 @@
                class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Active"]
             </a>
-            @* Has Name = HasRequiredNameFields; the meaningful "active" signal now that every account has a profile. *@
-            <a asp-action="AdminList" asp-route-filter="hasname" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "hasname" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_HasName"]
-            </a>
-            <a asp-action="AdminList" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_PendingApproval"]
+            <a asp-action="AdminList" asp-route-filter="bare" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "bare" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Bare"]
             </a>
             <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Suspended"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="rejected" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "rejected" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Rejected"]
             </a>
             <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "deleting" ? "btn-primary" : "btn-outline-primary")">

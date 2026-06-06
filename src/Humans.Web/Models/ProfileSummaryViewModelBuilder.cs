@@ -12,7 +12,7 @@ public static class ProfileSummaryViewModelBuilder
 
         // Email is intentionally NOT populated here — the popover surfaces this
         // model to any authenticated user, so exposing email (verified or not)
-        // is a GDPR PII leak. Admins who need email use /Profile/{id}/Admin.
+        // is a GDPR PII leak. Admins who need email use /Users/Admin/{id}.
         return new ProfileSummaryViewModel
         {
             UserId = info.Id,

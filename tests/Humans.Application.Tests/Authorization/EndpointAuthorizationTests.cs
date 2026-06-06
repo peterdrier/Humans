@@ -15,7 +15,7 @@ public class EndpointAuthorizationTests
 {
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
-        { typeof(ProfileController), "PurgeHuman", "AdminOnly" },
+        { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
         { typeof(DebugController), "Logs", "AdminOnly" },
         { typeof(DebugController), "Configuration", "AdminOnly" },
         { typeof(DebugController), "DbStats", "AdminOnly" },

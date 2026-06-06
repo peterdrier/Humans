@@ -1,13 +1,11 @@
 using Humans.Application.DTOs;
-using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Profiles;
 
 // Stateless helper for the admin humans-list endpoint. Caller pre-filters via searchUserIds (null when no search).
-// Every status bucket and the cross-cutting "missing name" filter are derived purely from UserInfo flat predicates.
-// The page intentionally has no Active/Missing-Consents split (consents were dropped from this view), so it no
-// longer depends on IMembershipCalculator/PartitionUsersAsync — the Board dashboard still owns the consent-aware
-// partition.
+// Status buckets are derived from the canonical UserState enum; consent-aware membership partitions
+// belong to the Board dashboard.
 public static class AdminHumanListAssembler
 {
     public static IReadOnlyList<AdminHumanRow> Assemble(
@@ -39,41 +37,23 @@ public static class AdminHumanListAssembler
                 u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),
-                u.HasProfile,
-                u.IsApproved,
-                StatusLabel(u));
+                StateOf(u));
         }).ToList();
     }
 
-    // Mutually-exclusive status label, in precedence order. Tombstones first (terminal: a merged/deleted row
-    // must not also read as Suspended/Pending), then the lifecycle states. Genuine no-profile or rejected rows
-    // get an empty label (no badge) — they surface via the "missing name" filter, not a status bucket.
-    internal static string StatusLabel(UserInfo u) =>
-        u.IsMerged ? MembershipStatusLabels.Merged :
-        u.IsTombstone ? MembershipStatusLabels.Deleted :
-        u.IsDeletionPending ? MembershipStatusLabels.PendingDeletion :
-        u.IsSuspended ? MembershipStatusLabels.Suspended :
-        !u.HasProfile ? string.Empty :
-        !u.IsActive ? string.Empty :
-        !u.IsApproved ? MembershipStatusLabels.PendingApproval :
-        MembershipStatusLabels.Active;
+    private static UserState StateOf(UserInfo u) => u.State ?? UserState.Bare;
 
-    // Status filters reuse StatusLabel so the filter and the badge can never drift. "hasname" is the one
-    // cross-cutting filter — orthogonal to status; with every account now carrying a profile it is the
-    // meaningful "active" signal (a named, usable account), which is why the UI sits it next to Active.
     private static Func<UserInfo, bool>? FilterPredicate(string? statusFilter) =>
         statusFilter?.ToLowerInvariant() switch
         {
-            "active" => u => HasStatus(u, MembershipStatusLabels.Active),
-            "pending" => u => HasStatus(u, MembershipStatusLabels.PendingApproval),
-            "suspended" => u => HasStatus(u, MembershipStatusLabels.Suspended),
-            "deleting" => u => HasStatus(u, MembershipStatusLabels.PendingDeletion),
-            "merged" => u => HasStatus(u, MembershipStatusLabels.Merged),
-            "deleted" => u => HasStatus(u, MembershipStatusLabels.Deleted),
-            "hasname" => u => u.HasRequiredNameFields,
+            "bare" => u => StateOf(u) == UserState.Bare,
+            "active" => u => StateOf(u) == UserState.Active,
+            "suspended" => u => StateOf(u) is UserState.Suspended or UserState.AdminSuspended,
+            "adminsuspended" => u => StateOf(u) == UserState.AdminSuspended,
+            "rejected" => u => StateOf(u) == UserState.Rejected,
+            "deleting" or "deletepending" => u => StateOf(u) == UserState.DeletePending,
+            "merged" => u => StateOf(u) == UserState.Merged,
+            "deleted" => u => StateOf(u) == UserState.Deleted,
             _ => null,
         };
-
-    private static bool HasStatus(UserInfo u, string label) =>
-        string.Equals(StatusLabel(u), label, StringComparison.Ordinal);
 }

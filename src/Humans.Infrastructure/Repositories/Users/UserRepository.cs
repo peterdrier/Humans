@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -215,6 +216,7 @@ internal sealed partial class UserRepository : IUserRepository
         user.DeletionRequestedAt = requestedAt;
         user.DeletionScheduledFor = scheduledFor;
         user.DeletionEligibleAfter = eligibleAfter;
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -229,8 +231,38 @@ internal sealed partial class UserRepository : IUserRepository
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         user.DeletionEligibleAfter = null;
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<bool> WriteBackUserStateIfNullAsync(
+        Guid userId, UserState state, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Load-mutate-save rather than ExecuteUpdateAsync so unit tests on the EF InMemory
+        // provider still see the update (EmailOutboxRepository does the same). The State IS NULL
+        // guard stays in code: already-seeded rows are left untouched, so the seed is idempotent.
+        // User is an IdentityUser with no UpdatedAt, so there is nothing to bump; at ~500-user
+        // single-server scale the first-touch race is immaterial (no concurrency tokens).
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null || user.State is not null)
+            return false;
+
+        user.State = state;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    // Sets user.State from the single classifier using the profile loaded in the same context.
+    // Caller owns SaveChangesAsync so this composes with other field mutations in one round-trip.
+    private static async Task ResyncStateInContextAsync(
+        HumansDbContext ctx, User user, CancellationToken ct)
+    {
+        var profile = await ctx.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == user.Id, ct);
+        user.State = UserStateClassifier.Classify(user, profile);
     }
 
     public async Task<bool> AnonymizeForMergeAsync(
@@ -277,6 +309,7 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.ICalToken = null;
 
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -548,6 +581,7 @@ internal sealed partial class UserRepository : IUserRepository
 
         user.ICalToken = null;
 
+        await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return new ExpiredDeletionAnonymizationResult(
             originalEmail, originalDisplayName, preferredLanguage);

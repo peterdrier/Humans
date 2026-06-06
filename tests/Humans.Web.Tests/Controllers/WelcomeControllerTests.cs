@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -34,14 +35,14 @@ public class WelcomeControllerTests
     }
 
     [HumansFact]
-    public void Welcome_ActiveMember_RedirectsToShifts()
+    public void Welcome_ActiveState_RedirectsToShifts()
     {
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
             new Claim(
-                RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue),
+                RoleAssignmentClaimsTransformation.UserStateClaimType,
+                UserState.Active.ToString()),
         };
         var ctrl = BuildSut(new ClaimsPrincipal(new ClaimsIdentity(claims, "test")));
 
@@ -54,10 +55,13 @@ public class WelcomeControllerTests
     [HumansFact]
     public void Welcome_AuthenticatedNonActive_RedirectsToOnboardingWidget()
     {
-        // Authenticated but missing the ActiveMember claim — should go to the widget.
+        // Authenticated but no Active UserState claim (e.g. Bare) — should go to the widget.
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new Claim(
+                RoleAssignmentClaimsTransformation.UserStateClaimType,
+                UserState.Bare.ToString()),
         };
         var ctrl = BuildSut(new ClaimsPrincipal(new ClaimsIdentity(claims, "test")));
 

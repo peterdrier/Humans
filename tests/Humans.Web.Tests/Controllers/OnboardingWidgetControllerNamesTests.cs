@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -27,6 +28,7 @@ public class OnboardingWidgetControllerNamesTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
@@ -45,7 +47,7 @@ public class OnboardingWidgetControllerNamesTests
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _humanLifecycle, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
@@ -65,7 +67,7 @@ public class OnboardingWidgetControllerNamesTests
         // this guards.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
-            _userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+            _userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _humanLifecycle, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

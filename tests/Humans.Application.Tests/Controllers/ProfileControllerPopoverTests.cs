@@ -79,8 +79,6 @@ public class ProfileControllerPopoverTests
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IOnboardingService>(),
-            Substitute.For<IHumanLifecycleService>(),
-            Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
             Substitute.For<IShiftView>(),
@@ -94,10 +92,8 @@ public class ProfileControllerPopoverTests
             Substitute.For<ICampaignService>(),
             _campService,
             Substitute.For<IEmailOutboxService>(),
-            Substitute.For<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
-            Substitute.For<IConsentServiceRead>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculatorRead>(),
@@ -134,7 +130,7 @@ public class ProfileControllerPopoverTests
     {
         // The popover is reachable by any authenticated user. Surfacing email
         // (verified or not) for the imported-no-profile path is a GDPR PII leak.
-        // Admins who need email use /Profile/{id}/Admin.
+        // Admins who need email use /Users/Admin/{id}.
         var id = Guid.NewGuid();
         var user = new User
         {

@@ -1608,11 +1608,14 @@
   <data name="AdminHumans_Active" xml:space="preserve">
     <value>Aktiv</value>
   </data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve">
-    <value>Genehmigung ausstehend</value>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
   </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Gesperrt</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Löschung ausstehend</value>
@@ -1622,9 +1625,6 @@
   </data>
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Gelöscht</value>
-  </data>
-  <data name="AdminHumans_HasName" xml:space="preserve">
-    <value>Name vorhanden</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Mitglied: {0}</value>
@@ -1957,9 +1957,6 @@
   </data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve">
     <value>Vereinbarungen</value>
-  </data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve">
-    <value>Human genehmigen</value>
   </data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
     <value>Sperre aufheben</value>
@@ -5888,4 +5885,18 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Kontostatus</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Dein Konto wurde gesperrt</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Dein Konto wurde abgelehnt</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Dein Konto wurde gelöscht</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Dein Konto wurde zusammengeführt</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Dein Konto ist nicht verfügbar</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Kontaktiere einen Administrator für weitere Informationen:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Grund:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>Referenz-ID:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Ausstehende Kontolöschung</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Dein Konto ist zur Löschung vorgemerkt</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Es wird am {0} endgültig gelöscht, sofern du nicht abbrichst.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Es wird endgültig gelöscht, sofern du nicht abbrichst.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Löschanforderung abbrechen</value></data>
 </root>

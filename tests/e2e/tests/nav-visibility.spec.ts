@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
+﻿import { test, expect, type Page, type Locator } from '@playwright/test';
 import {
   loginAsVolunteer,
   loginAsCoordinator,
@@ -13,6 +13,11 @@ import {
   loginAsTeamsAdmin,
   loginAsTicketAdmin,
   loginAsVolunteerCoordinator,
+  loginAsEventsAdmin,
+  loginAsStoreAdmin,
+  loginAsCantinaAdmin,
+  loginAsEETeamAdmin,
+  loginAsBarrioLead,
 } from '../helpers/auth';
 
 /**
@@ -23,7 +28,7 @@ import {
  * a single composite-gated `Admin` link that opens the admin shell at `/Admin`.
  * Only two top-nav items are role/policy gated:
  *
- *   Volunteer  → ActiveMemberOrShiftAccess
+ *   Volunteer  -> AppAccess (UserState == Active)
  *   Admin      → AnyAdminRole (composite: Admin, Board, HumanAdmin, TeamsAdmin,
  *                CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
  *                NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator)
@@ -31,12 +36,9 @@ import {
  * Sidebar coverage for items inside `/Admin` lives in admin-shell.spec.ts.
  *
  * Note on "Volunteer" (Shifts) visibility:
- * ActiveMemberOrShiftAccess succeeds via ActiveMember claim (Volunteers team
- * membership) OR via role checks (Admin/Board/TeamsAdmin/NoInfoAdmin/VolunteerCoordinator).
- * Dev personas may not have Volunteers team membership if seeded before the current
- * DevLoginController code, so we only assert "Volunteer" for roles that guarantee it
- * via role checks. The volunteer/coordinator personas always have it since they're
- * always seeded into the Volunteers team.
+ * The single `AppAccess` gate succeeds when UserState == Active (the user entered their
+ * legal name). There is no separate shift access. Dev personas that see "Volunteer" do
+ * so because their seeded UserState is Active.
  */
 
 type NavItem = 'volunteer' | 'admin';
@@ -58,18 +60,13 @@ interface RoleTest {
   visible: NavItem[];
 }
 
-// Volunteer (Shifts) visibility by role path:
-//   ActiveMember claim: volunteer, coordinator (always seeded into Volunteers team)
-//   IsTeamsAdminBoardOrAdmin: admin, board, teamsAdmin
-//   ShiftRoleChecks.CanAccessDashboard: admin, noInfoAdmin, volunteerCoordinator
+// "Volunteer" (Shifts) is gated by AppAccess = UserState.Active. The authenticated dev personas
+// expected to see it below are seeded Active.
 //
 // Admin top-nav link visibility (AnyAdminRole composite):
 //   admin, board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
 //   financeAdmin, noInfoAdmin, volunteerCoordinator, consentCoordinator
 //   (StoreAdmin is in the policy but no dev login helper exists for it.)
-//
-// Roles without a role-based "Volunteer" path only see it if they happen to have
-// ActiveMember claim — environment-dependent, so we omit it from those expectations.
 const roles: RoleTest[] = [
   {
     name: 'volunteer',
@@ -94,7 +91,7 @@ const roles: RoleTest[] = [
   {
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'teamsAdmin',
@@ -104,22 +101,22 @@ const roles: RoleTest[] = [
   {
     name: 'ticketAdmin',
     login: loginAsTicketAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'campAdmin',
     login: loginAsCampAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'consentCoordinator',
     login: loginAsConsentCoordinator,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'feedbackAdmin',
     login: loginAsFeedbackAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'noInfoAdmin',
@@ -129,12 +126,40 @@ const roles: RoleTest[] = [
   {
     name: 'financeAdmin',
     login: loginAsFinanceAdmin,
-    visible: ['admin'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'volunteerCoordinator',
     login: loginAsVolunteerCoordinator,
     visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'eventsAdmin',
+    login: loginAsEventsAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'storeAdmin',
+    login: loginAsStoreAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  {
+    name: 'cantinaAdmin',
+    login: loginAsCantinaAdmin,
+    visible: ['volunteer', 'admin'],
+  },
+  // EETeamAdmin is Active but is NOT in the AnyAdminRole composite, so it does
+  // NOT see the Admin top-nav.
+  {
+    name: 'eeTeamAdmin',
+    login: loginAsEETeamAdmin,
+    visible: ['volunteer'],
+  },
+  // Camp lead: no governance role; access via UserState.Active. Sees Volunteer, not Admin.
+  {
+    name: 'barrioLead',
+    login: loginAsBarrioLead,
+    visible: ['volunteer'],
   },
 ];
 

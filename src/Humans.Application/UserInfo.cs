@@ -1,3 +1,4 @@
+using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -160,6 +161,14 @@ public sealed record UserInfo(
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
+    /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
+    /// for access; <see cref="UserState.Active"/> is the only state with full app access. Null only
+    /// for legacy rows not yet seeded; <c>UserService.GetUserInfoAsync</c> resolves and persists it
+    /// on first read, so callers observe a non-null value.
+    /// </summary>
+    public UserState? State { get; init; }
+
+    /// <summary>
     /// Canonical profile picture URL. Custom upload served from the file share via
     /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
     /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY
@@ -201,7 +210,7 @@ public sealed record UserInfo(
     /// to mark GDPR-deleted users. Read into <see cref="IsGdprAnonymized"/>
     /// at creation time so the legacy name never becomes a public UserInfo field.
     /// </summary>
-    public const string GdprAnonymizedBurnerName = "Deleted User";
+    public const string GdprAnonymizedBurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
 
     /// <summary>
     /// True when the user row is a tombstone — a merge-source
@@ -271,17 +280,20 @@ public sealed record UserInfo(
         .Select(p => p.CheckedInAt)
         .FirstOrDefault();
 
-    /// <summary>Stub profile: no profile row, explicit Stub state, or legacy null State. Callers writing consents must block on this.</summary>
-    public bool IsStub =>
-        Profile is null || Profile.State is null or ProfileState.Stub;
+    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row,
+    /// stub-state profile, or blank required names. Callers writing consents must block on this.
+    /// Derives from the stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
+    public bool IsStub => State == UserState.Bare;
 
-    /// <summary>Has profile and not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/> (separate Consent Coordinator gate).</summary>
+    /// <summary>Has a profile and is not rejected. Does NOT require <see cref="ProfileInfo.IsApproved"/>
+    /// (separate Consent Coordinator gate). Reads rejection off the stored <see cref="State"/>.</summary>
     public bool IsActive =>
-        Profile is not null && Profile.RejectedAt is null;
+        Profile is not null && State != UserState.Rejected;
 
-    /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md.</summary>
+    /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
+    /// stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
     public bool IsSuspended =>
-        Profile?.State == ProfileState.Suspended;
+        State is UserState.Suspended or UserState.AdminSuspended;
 
     /// <summary>Canonical "approved by Consent Coordinator" predicate — see memory/architecture/derived-predicates-on-userinfo.md.</summary>
     public bool IsApproved => Profile?.IsApproved ?? false;
@@ -426,7 +438,7 @@ public sealed record UserInfo(
             legacyDisplayName, GdprAnonymizedBurnerName, StringComparison.Ordinal);
 #pragma warning restore HUM_USER_DISPLAYNAME
 
-        return new UserInfo(
+        var info = new UserInfo(
             Id: user.Id,
             BurnerName: burnerName,
             IsGdprAnonymized: isGdprAnonymized,
@@ -452,6 +464,28 @@ public sealed record UserInfo(
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
             Profile: profileInfo,
-            CommunicationPreferences: communicationPreferenceInfos);
+            CommunicationPreferences: communicationPreferenceInfos)
+        {
+            State = user.State,
+        };
+
+        // The stored users.State column is the access source, but legacy rows hold null until the
+        // first-touch seed persists them (UserService.GetUserInfoAsync). Classify on the fly here so
+        // every UserInfo carries a correct, non-null State in EVERY read path — including the
+        // batch/all-users path, which never seeds. State-derived predicates below stay reliable.
+        return info.State is null
+            ? info with
+            {
+                State = UserStateClassifier.Classify(
+                    hasRequiredNameFields: info.HasRequiredNameFields,
+                    isSuspended: info.Profile?.State == ProfileState.Suspended,
+                    isAdminSuspended: info.Profile?.State == ProfileState.AdminSuspended,
+                    isRejected: info.Profile?.RejectedAt is not null,
+                    isDeletionPending: info.IsDeletionPending,
+                    isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
+                    isGdprDeleted: info.IsGdprAnonymized
+                        || (info.IsTombstone && info.MergedAt is null))
+            }
+            : info;
     }
 }

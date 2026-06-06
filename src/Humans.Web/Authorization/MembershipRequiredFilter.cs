@@ -2,35 +2,33 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Humans.Domain.Enums;
 
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Global filter restricting most of the app to active Volunteers team members; non-members redirect to Home/Guest dashboard.
+/// Global filter routing authenticated users by their stored <see cref="UserState"/>:
+/// only <see cref="UserState.Active"/> reaches the app. <see cref="UserState.Bare"/> → name entry;
+/// <see cref="UserState.DeletePending"/> → the cancel-deletion screen; Suspended/AdminSuspended/
+/// Rejected/Deleted/Merged → the account-status wall. Exempt controllers are public/self-gated pages, the onboarding
+/// surface, and the redirect targets themselves (so non-Active users can reach their landing).
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
-    // Onboarding flow + public pages exempt from active-membership gate.
+    // Only controllers a non-Active user must still reach. Public controllers use
+    // [AllowAnonymous]/API keys; role-gated app controllers are still blocked until Active.
     private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Home",        // Public landing + dashboard (shows onboarding status)
-        "Account",     // Login/logout/OAuth
-        "GovernanceApplications", // Submit membership application
-        "Consent",     // Sign required legal documents
-        "Profile",     // Set up profile during onboarding
-        "Admin",       // Has its own Roles = "Admin" gate
-        "Board",       // Has its own Roles = "Board,Admin" gate
+        "Account",          // Login/logout/OAuth
+        "OnboardingWidget", // Guided onboarding (name entry) — the Bare landing target
+        "Profile",          // Profile setup (onboarding surface)
+        "Consent",          // Sign required legal documents (onboarding surface)
+        "User",             // Account-status wall + cancel-deletion landing (redirect targets)
         "Language",         // Language switching
-        "OnboardingReview", // Has its own coordinator/Board role gate
-        "Camp",             // Public camps pages ([AllowAnonymous])
-        "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
-        "CampApi",          // Public API ([AllowAnonymous])
-        "Feedback",         // Feedback submission — accessible to all authenticated users
-        "FeedbackApi",      // API key auth, no membership required
         "Guest",            // Profileless account dashboard
-        "Legal",            // Public legal documents ([AllowAnonymous])
-        "Notifications",    // Notification inbox — accessible to all authenticated users
-        "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
+        "GovernanceApplications", // Tier application submission — any logged-in user
+        "Feedback",         // Feedback submission — any logged-in user
+        "Notifications",    // Notification inbox — any logged-in user
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -42,11 +40,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (RoleChecks.BypassesMembershipRequirement(user))
-        {
-            return next();
-        }
-
         if (context.ActionDescriptor is ControllerActionDescriptor cad &&
             (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
              cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))
@@ -54,33 +47,29 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (context.Controller is Controller controller)
-        {
-            var controllerName = controller.ControllerContext.ActionDescriptor.ControllerName;
-            if (ExemptControllers.Contains(controllerName))
-            {
-                return next();
-            }
-        }
-
-        // ActiveMember claim is set by RoleAssignmentClaimsTransformation.
-        var isActiveMember = user.HasClaim(c =>
-            string.Equals(c.Type, RoleAssignmentClaimsTransformation.ActiveMemberClaimType, StringComparison.Ordinal) &&
-            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
-
-        if (isActiveMember)
+        if (context.Controller is Controller controller &&
+            ExemptControllers.Contains(controller.ControllerContext.ActionDescriptor.ControllerName))
         {
             return next();
         }
 
-        // Profileless → Guest; onboarding (has profile) → Home.
-        var hasProfile = user.HasClaim(c =>
-            string.Equals(c.Type, RoleAssignmentClaimsTransformation.HasProfileClaimType, StringComparison.Ordinal) &&
-            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
+        // Access is the stored UserState (stamped on the principal by
+        // RoleAssignmentClaimsTransformation). Only Active reaches the app.
+        var state = RoleAssignmentClaimsTransformation.GetUserState(user);
+        if (state == UserState.Active)
+        {
+            return next();
+        }
 
-        context.Result = hasProfile
-            ? new RedirectToActionResult("Index", "Home", null)
-            : new RedirectToActionResult("Index", "Guest", null);
+        context.Result = state switch
+        {
+            UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
+            UserState.Suspended or UserState.AdminSuspended
+                or UserState.Rejected or UserState.Deleted or UserState.Merged
+                => new RedirectToActionResult("Status", "User", null),
+            // Bare or null (not yet named / unseeded) → name entry.
+            _ => new RedirectToActionResult("Index", "OnboardingWidget", null),
+        };
         return Task.CompletedTask;
     }
 }

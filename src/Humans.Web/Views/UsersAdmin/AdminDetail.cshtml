@@ -8,6 +8,8 @@
     var campaignGrants = Model.CampaignGrants;
     var outboxCount = Model.OutboxCount;
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+    var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
+    var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }
 
 <nav aria-label="breadcrumb">
@@ -56,22 +58,11 @@
                     <div class="col-md-10">
                         <h4>@Model.DisplayName</h4>
                         <p class="text-muted mb-1">@Model.Email</p>
-                        @if (Model.IsSuspended)
-                        {
-                            <span class="badge bg-danger">@Localizer["AdminHuman_Suspended"]</span>
-                        }
-                        else if (Model.HasProfile && !Model.IsApproved)
-                        {
-                            <span class="badge bg-warning">@Localizer["AdminHuman_PendingApproval"]</span>
-                        }
-                        else if (Model.HasProfile && Model.IsApproved)
-                        {
-                            <span class="badge bg-success">@Localizer["AdminHuman_Approved"]</span>
-                        }
+                        <span class="badge @stateBadgeClass">@stateLabel</span>
                     </div>
                 </div>
 
-                @if (Model.IsRejected)
+                @if (Model.State == UserState.Rejected)
                 {
                     <div class="alert alert-danger mt-3 mb-0">
                         <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
@@ -368,7 +359,7 @@
                 @* AdminEmails is self-or-Admin only; AdminDetail reaches further — gate to avoid 403 *@
                 @if (isAdmin)
                 {
-                    <a asp-action="AdminEmails" asp-route-id="@Model.UserId"
+                    <a asp-controller="Profile" asp-action="AdminEmails" asp-route-id="@Model.UserId"
                        class="btn btn-sm btn-outline-secondary">
                         @Localizer["AdminDetail_ManageEmails"]
                     </a>
@@ -446,15 +437,7 @@
         <div class="card">
             <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
             <div class="card-body">
-                @if (Model.HasProfile && !Model.IsApproved && !Model.IsSuspended)
-                {
-                    <form asp-action="ApproveVolunteer" asp-route-id="@Model.UserId" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-success w-100 mb-2">@Localizer["AdminHuman_ApproveVolunteer"]</button>
-                    </form>
-                    <hr />
-                }
-                @if (Model.IsSuspended)
+                @if (Model.State is UserState.Suspended or UserState.AdminSuspended)
                 {
                     <form asp-action="UnsuspendHuman" asp-route-id="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()
@@ -473,7 +456,7 @@
                         <button type="submit" class="btn btn-danger w-100">@Localizer["AdminHuman_SuspendMember"]</button>
                     </form>
                 }
-                @if (Model.HasProfile && !Model.IsRejected)
+                @if (Model.State is not UserState.Rejected and not UserState.Deleted and not UserState.Merged)
                 {
                     <hr />
                     <form asp-action="RejectSignup" asp-route-id="@Model.UserId" method="post"

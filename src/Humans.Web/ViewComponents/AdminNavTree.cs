@@ -19,8 +19,8 @@ public static class AdminNavTree
             new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.TicketAdminBoardOrAdmin)
         ]),
         new("Members", [
-            new("Humans", "Profile", "AdminList",       null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),
-            new("Roles",  "Profile", "Roles",           null, null, "fa-solid fa-id-badge",         PolicyNames.HumanAdminBoardOrAdmin),
+            new("Humans", "UsersAdmin", "AdminList",    null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),
+            new("Roles",  "UsersAdmin", "Roles",        null, null, "fa-solid fa-id-badge",         PolicyNames.HumanAdminBoardOrAdmin),
             new("Review", "OnboardingReview", "Index",   null, null, "fa-solid fa-clipboard-check",  PolicyNames.ReviewQueueAccess,
                  PillCount: PillCounts.ReviewQueue),
             new("Account merges",      "UsersAdminAccountMerges", "Index", null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
@@ -28,6 +28,7 @@ public static class AdminNavTree
         ]),
         new("Shifts", [
             new("Dashboard", "ShiftDashboard", "Index",  null, null, "fa-solid fa-gauge",            PolicyNames.ShiftDepartmentManager),
+            new("Summary by camp", "Shifts", "Summary", null, null, "fa-solid fa-campground",        PolicyNames.ShiftDepartmentManager),
             new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
             new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess),
             new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",  PolicyNames.AdminOnly)
@@ -41,8 +42,8 @@ public static class AdminNavTree
             new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
         ]),
         new("Expenses", [
-            new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.IsActiveMember),
-            new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.IsActiveMember),
+            new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.AppAccess),
+            new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.AppAccess),
             new("Expense Review",    "Expenses", "Review",      null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin)
         ]),
         new("Finance", [
