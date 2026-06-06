@@ -1,7 +1,7 @@
 # Shift Summary by Camp — design / handoff
 
 **Date:** 2026-06-06
-**Status:** Ready for implementation — Peter-approved shape (one open auth question, below)
+**Status:** Ready for implementation — Peter-approved shape
 **Supersedes:** the obligation-engine approach in **PR #872** (Barrio Shift Obligations).
 **Section:** Shifts (read-only view; one new in-section read). **No EF schema change.**
 
@@ -59,6 +59,17 @@ non-promoted sub-teams — the same set the sign-up link shows). Table 1 lists o
 a confirmed signup in that team-set; Table 2 still left-joins the **full** active-camp roster,
 so a camp with nobody on that team appears as a `0` row.
 
+### `GET /Shifts/Summary/{teamSlug}/{rotaGuid}` — rota-scoped (e.g. `/Shifts/Summary/power/{rotaId}`)
+
+The same two tables, scoped to a **single rota** — the deepest drill-down (global → team →
+rota). `{rotaGuid}` is validated to belong to `{teamSlug}` (404 otherwise; the slug keeps the
+URL hierarchy honest and gives the breadcrumb a parent). Table 1 lists humans with a confirmed
+signup **on that rota**; Table 2 left-joins the full roster, so the `0` rows now read as "this
+camp has nobody on *this rota*" — the coordinator's per-rota chase list, by camp.
+
+The three routes are one view at three scopes — **same service method, same view partial**,
+differing only by the filter passed to the in-section read (none / team-set / rota).
+
 ---
 
 ## 3. Locked decisions
@@ -72,7 +83,8 @@ so a camp with nobody on that team appears as a `0` row.
 | Required / threshold / pass-fail colouring | **None** — pure visibility |
 | Global page scope | **All teams** in the active event |
 | Team page scope | **Team-set** = team + non-promoted sub-teams (matches the sign-up link) |
-| Roster (Table 2 rows) | **All active camp seasons** for the current public year — absent camps = `0` rows |
+| Rota page scope | **Single rota** (`{rotaGuid}`), validated to belong to `{teamSlug}` |
+| Roster (Table 2 rows) | **All active camp seasons** for the current public year — absent camps = `0` rows (at every scope) |
 
 ---
 
@@ -96,15 +108,16 @@ coupling to the preferred direction (Shifts → Camps).
 
 ```
 Controller (ShiftsController)              parse route, authorize, sort/format, render
-   │  2 actions: Summary(), Summary(teamSlug)
+   │  3 actions: Summary(), Summary(teamSlug), Summary(teamSlug, rotaGuid)
    ▼
 Service  (IShiftManagementService or a     resolve active event; get aggregated hours/count
-   │      small ShiftSummaryService)        from own repo; resolve names (IUserServiceRead);
-   │                                         resolve each human's camp + roster
-   │                                         (ICampServiceRead); build flat + pivot rows
+   │      small ShiftSummaryService)        from own repo for the requested scope; resolve
+   │                                         names (IUserServiceRead); resolve each human's
+   │                                         camp + roster (ICampServiceRead); build flat +
+   │                                         pivot rows
    ▼
 Repository (ShiftRepository)               NEW read: confirmed-signup (UserId, TeamId, Duration)
-   │                                         for the active event, optional team-set filter
+   │                                         for the active event; optional team-set OR rota filter
    ▼
 DbContext                                  reads shift_signups ⋈ shifts ⋈ rotas (all Shifts-owned)
 ```
@@ -135,10 +148,20 @@ DbContext                                  reads shift_signups ⋈ shifts ⋈ ro
 
 ## 7. Authorization
 
-| Route | Policy |
+**All three routes share one gate:** `PolicyNames.VolunteerManager` **OR** Admin **OR** "is a
+coordinator of any team" (`GetCoordinatorTeamIdsAsync(user.Id).Count > 0` — the existing
+`isPrivileged` check already used in `ShiftsController`).
+
+Rationale: the global page exposes the superset (all teams × all camps), so once it's open to
+any coordinator, gating the narrower team/rota pages more tightly buys nothing. One coherent
+rule across all three. This is internal volunteer-participation data among trusted
+coordinators — not sensitive beyond what the shift system already shows.
+
+| Route | Gate |
 |---|---|
-| `GET /Shifts/Summary/{teamSlug}` | that team's coordinator (`IsDeptCoordinatorAsync(user.Id, teamId)`) **OR** `PolicyNames.VolunteerManager` / Admin |
-| `GET /Shifts/Summary` (global) | **OPEN — see §10** |
+| `GET /Shifts/Summary` | VolunteerManager / Admin / any-team coordinator |
+| `GET /Shifts/Summary/{teamSlug}` | same |
+| `GET /Shifts/Summary/{teamSlug}/{rotaGuid}` | same (+ rota-belongs-to-team validation → 404) |
 
 ---
 
@@ -165,24 +188,25 @@ over-engineer (CLAUDE.md scale guidance).
 ## 10. Build sequence
 
 1. **Repo** — `ShiftRepository`: new read returning confirmed-signup `(UserId, TeamId,
-   Duration)` (or pre-aggregated `(UserId, TeamId, Hours, Count)`) for the active event, with
-   an optional team-set filter. Tests: confirmed-only filter, team-set scoping, empty event.
-2. **Service** — `BuildSummaryAsync(string? teamSlug)` → flat rows + pivot rows
-   (roster left-join, campless bucket). Unit tests: campless human appears in both tables;
-   absent camp → `0` pivot row; team-set scoping; hours = Σ duration; count = # signups.
-3. **Controller** — `ShiftsController`: `Summary()` + `Summary(teamSlug)`; authorize per §7;
-   sorting/formatting (default Table 2 by Hours desc, `(no camp)` last).
-4. **Views** — two tables per page; from the global page, link each team to its
-   `/Shifts/Summary/{slug}` page.
+   Duration)` (or pre-aggregated `(UserId, TeamId, Hours, Count)`) for the active event,
+   accepting an optional scope filter (none / team-set / single rota). Tests: confirmed-only
+   filter, team-set scoping, single-rota scoping, empty event.
+2. **Service** — `BuildSummaryAsync(SummaryScope scope)` (`scope` = Global | Team(slug) |
+   Rota(slug, rotaId)) → flat rows + pivot rows (roster left-join, campless bucket). Unit
+   tests: campless human appears in both tables; absent camp → `0` pivot row; team-set scoping;
+   single-rota scoping; rota-not-in-team → not-found; hours = Σ duration; count = # signups.
+3. **Controller** — `ShiftsController`: `Summary()`, `Summary(teamSlug)`,
+   `Summary(teamSlug, rotaGuid)`; authorize per §7; sorting/formatting (default Table 2 by
+   Hours desc, `(no camp)` last).
+4. **Views** — two tables per page (one shared partial); link global → each team's page, and
+   the team page → each of its rotas' pages (breadcrumb global ▸ team ▸ rota).
 5. **Architecture test** — Summary stays Shifts-owned: no new cross-section interface;
    Camps reached only via `ICampServiceRead`; no Camps/Teams/Users repository injected.
 
 ---
 
-## 11. Open question for Peter (1)
+## 11. Resolved
 
-**Global `/Shifts/Summary` audience:** `PolicyNames.VolunteerManager` + Admin only (treat the
-all-camps engagement picture as oversight scope)? Or also visible to **any** department
-coordinator (so a Power coordinator can see the whole-event camp breakdown, not just Power)?
-The team page (§7) is unambiguous — that team's coordinator + managers. Only the global page's
-breadth is undecided.
+- **Global audience** — open to any-team coordinator + VolunteerManager + Admin (§7). No
+  open questions remain.
+- **Rota drill-down** — added as the third scope (§2): `/Shifts/Summary/{teamSlug}/{rotaGuid}`.
