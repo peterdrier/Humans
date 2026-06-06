@@ -14,6 +14,7 @@
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/CampAdminController.cs
   src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Controllers/CampComplianceController.cs
   src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs
   src/Humans.Web/Authorization/Requirements/CampOperationRequirement.cs
 -->
@@ -162,7 +163,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 
 ## Routing
 
-Three controllers serve this section. The MVC URL surface is dual-routed under `/Camps/*` (English) and `/Barrios/*` (Spanish); the API surface is dual-routed under `/api/camps/*` and `/api/barrios/*`. The dual-route alias is governed by an invariant below — no other section may add aliases.
+Four controllers serve this section. The MVC URL surface is dual-routed under `/Camps/*` (English) and `/Barrios/*` (Spanish); the API surface is dual-routed under `/api/camps/*` and `/api/barrios/*`. The dual-route alias is governed by an invariant below — no other section may add aliases.
 
 | Route | Controller | Purpose |
 |-------|------------|---------|
@@ -182,7 +183,7 @@ Three controllers serve this section. The MVC URL surface is dual-routed under `
 | `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + season management |
 | `/Camps/Admin/Roles/*` | `CampAdminController` | `CampRoleDefinition` CRUD |
 | `/Camps/Admin/Roles/{slug}` | `CampAdminController.RolesDrillDown` | Cross-camp roster for one role definition (issue nobodies-collective/Humans#740): per-camp-season assignees with name + Google email and a `mailto:` to the derived group email; year-picker drop-down. CampAdmin only. |
-| `/Camps/Admin/Compliance` | `CampAdminController` | Per-season role compliance report |
+| `/Camps/Admin/Compliance` | `CampComplianceController` | Read-only role-staffing matrix: rows = active barrios (Active/Full) for the year, columns = active role definitions, cells = assignee avatars + a dashed placeholder per unfilled required slot. Gated by `CampComplianceAccess` (CampAdmin/Admin **or** any team/sub-team coordinator), broader than the CampAdmin-only management surface. |
 | `/Camps/Admin/Export` | `CampAdminController` | CSV export |
 | `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetPublicYear,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
@@ -200,7 +201,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 | Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
 | Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. |
-| CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the required-role compliance report. |
+| CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
+| Team/sub-team coordinator | View the read-only role-staffing compliance matrix at `/Camps/Admin/Compliance` (via `CampComplianceAccess`) — no camp-management authority. |
 | Admin | Delete camps |
 
 ## Invariants

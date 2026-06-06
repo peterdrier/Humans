@@ -54,7 +54,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
-| SystemSetting | per-key ownership | Each key belongs to its consuming section's repository. See [SystemSetting below](#systemsetting-per-key-ownership). |
+| SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
 
@@ -124,13 +124,13 @@ CampaignGrant (Campaigns)
 
 **Aggregate-local FKs** (FKs whose source and target live in the same section) are documented inside the section's own doc and kept as nav properties — they are not part of the cross-section graph.
 
-## SystemSetting (per-key ownership)
+## SystemSetting (System Settings section)
 
-`system_settings` is a cross-cutting key/value table, but **each key is owned by the consuming section's repository**. There is no single cross-cutting owner. Sections that need runtime-flag state add the key here and expose reads/writes through their own service surface; no other section touches the key.
+`system_settings` is a cross-cutting key/value table owned by the **System Settings section** (`SystemSettingsRepository`), exposed across sections via `ISystemSettingsService`. Consuming sections that need runtime-flag state add a key here and read/write it through `ISystemSettingsService` rather than touching the table directly.
 
-| Key | Owning section | Purpose |
-|-----|----------------|---------|
-| `email_outbox_paused` | [Email](../sections/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
+| Key | Consuming section | Purpose |
+|-----|-------------------|---------|
+| `IsEmailSendingPaused` | [Email](../sections/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
 | `DriveActivityMonitor:LastRunAt` | [Google Integration](../sections/GoogleIntegration.md) | Last-run timestamp for drive-activity monitor |
 
 | Property | Type | Purpose |

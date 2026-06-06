@@ -13,7 +13,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0021`, `HUM0024`–`HUM0029`; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0030`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0021`, `HUM0024`–`HUM0030`; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0031`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 
@@ -89,6 +89,11 @@ assertion families that are plausible analyzer candidates:
   existing violators carrying `[Grandfathered("HUM0024", ...)]` to downgrade
   to warning. Those warnings represent debt to migrate to bare FK columns and
   service-level stitching; delete the attribute once the join is gone.
+  `HUM0024` folds `Users` / `Profile` / `Profiles` into one logical section
+  (`Humans`), so a join between a Users entity and a Profiles entity does not
+  flag — they are the same person-section per §2c of `design-rules.md`. This
+  fold retired 5 `[Grandfathered("HUM0024")]` markers on the Profiles/Users
+  EF configs.
 
 ### HUM0007 — `IsConcurrencyToken` / `[ConcurrencyCheck]` / `[Timestamp]` forbidden
 
@@ -296,7 +301,7 @@ analyzer or a test. Listed once so the next sweep doesn't churn on them.
 - [`memory/architecture/burnername-is-the-display-name.md`](../../memory/architecture/burnername-is-the-display-name.md) — "use `<vc:human>` or `FullProfile.DisplayName`, not `User.DisplayName`". The call-site shape is clean (`PropertyReference` on `User.DisplayName`), but the legitimate fallback paths are everywhere in legacy code; would need a baseline framework + per-section sweep before turning into an analyzer. Tracked as a future Tier-2 candidate, not in scope today.
 - All `memory/process/*` atoms — git workflow, PR rules, issue triage, release notes — none of these touch source code mechanically.
 - [`memory/code/no-extensions-for-owned-classes.md`](../../memory/code/no-extensions-for-owned-classes.md) — "no extensions on types we own". The "we own this type" predicate is doable (assembly + namespace check), but the rule is directional and legitimate carve-outs (BCL helpers re-exposed as project-local extensions) are common enough to need judgment.
-- [`memory/code/datetime-display-formatting.md`](../../memory/code/datetime-display-formatting.md) / `time-parsing-standardization` / `culture-and-language` / `csv-and-pagination-helpers` — "use shared helpers". Detecting *the absence* of a helper call (in favor of inline `ToString("d MMM yyyy")` etc.) is shaped for analyzer enforcement, but each has enough legitimate one-off cases that they're better surfaced via review than build-break. Reconsider per-rule if any drift back into the codebase.
+- The date/time-format-string half of [`memory/code/datetime-display-formatting.md`](../../memory/code/datetime-display-formatting.md) **shipped** as `HUM0030` (custom `.ToString` format, interpolation format clause, NodaTime `*Pattern.Create` literal — all forbidden outside the single home `Humans.Application.Extensions.DateFormattingExtensions`; catalogued in [`code-analysis.md`](code-analysis.md), backed by [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md)). Still review-only (not analyzer-enforced): `time-parsing-standardization` / `culture-and-language` / `csv-and-pagination-helpers` "use shared helpers", and the HUM0030 v1 gaps (`ParseExact` / composite `string.Format` strings and `.cshtml` Razor, which Roslyn analyzers don't see). Reconsider per-rule if any drift back into the codebase.
 
 ---
 

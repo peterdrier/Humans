@@ -2,7 +2,7 @@
 
 Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers (including the Events Guide section, which now uses `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]`) use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-06-04 (full re-scan via `/freshness-sweep`; adds `ProfileApiController.BurnerNameCount`, `ShiftsController.ToggleDay`, the `StoreAdminController` Payments/reconcile actions, and the global `NameRequiredFilter` action filter). Previously refreshed 2026-06-03 (the new `RoleNames.EETeamAdmin` cross-team role, the `TeamOperationRequirement.ManageEarlyEntry` resource operation + `TeamAdminController` EarlyEntry actions, and the build-hash tooltip re-gated to `AdminOnly` / FullAdmin in commit 3c6a878e). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-06-05 (via `/freshness-sweep`; adds the `CampComplianceAccess` policy + `CampComplianceAccessHandler` and the new `CampComplianceController` for the read-only Barrios compliance matrix, split out of `CampAdminController` so it can be gated more broadly than CampAdmin-only — #894; `RoleAssignmentClaimsTransformation` was re-sourced from `IRoleAssignmentRepository` to `IRoleAssignmentService` in #889, an internal sourcing change with no inventory impact). Previously refreshed 2026-06-04 (full re-scan via `/freshness-sweep`; adds `ProfileApiController.BurnerNameCount`, `ShiftsController.ToggleDay`, the `StoreAdminController` Payments/reconcile actions, and the global `NameRequiredFilter` action filter). Previously refreshed 2026-06-03 (the new `RoleNames.EETeamAdmin` cross-team role, the `TeamOperationRequirement.ManageEarlyEntry` resource operation + `TeamAdminController` EarlyEntry actions, and the build-hash tooltip re-gated to `AdminOnly` / FullAdmin in commit 3c6a878e). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -224,6 +224,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `CampController` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` via `HumansCampControllerBase` | Resource-based (see §6) |
 | `CampAdminController` | Class | `CampAdmin, Admin` | `PolicyNames.CampAdminOrAdmin` |
 | `CampAdminController.Delete` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `CampComplianceController` | Class | `CampAdmin, Admin` OR any team/sub-team coordinator (custom handler) | `PolicyNames.CampComplianceAccess` (read-only Barrios compliance matrix at `/Barrios/Admin/Compliance`; split from `CampAdminController` so coordinators can view role staffing — #894) |
 | `CampApiController` | Class | `AllowAnonymous` (with `BarriosPublic` CORS) | — |
 | `ContainerController` | Class | `[Authorize]` (authenticated) | — |
 | `ContainerController` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` | Resource-based (see §6) |
@@ -602,6 +603,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `HumanAdminOrAdmin` | HumanAdmin, Admin | `PolicyNames.HumanAdminOrAdmin` |
 | `TeamsAdminBoardOrAdmin` | TeamsAdmin, Board, Admin | `PolicyNames.TeamsAdminBoardOrAdmin`, `RoleChecks.IsTeamsAdminBoardOrAdmin` |
 | `CampAdminOrAdmin` | CampAdmin, Admin | `PolicyNames.CampAdminOrAdmin`, `RoleChecks.IsCampAdmin` |
+| `CampComplianceAccess` | CampAdmin, Admin OR any team/sub-team coordinator | `PolicyNames.CampComplianceAccess` (composite — `CampComplianceAccessHandler`) |
 | `TicketAdminBoardOrAdmin` | TicketAdmin, Admin, Board | `PolicyNames.TicketAdminBoardOrAdmin`, `RoleChecks.CanAccessTickets` |
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `FeedbackAdminOrAdmin` | FeedbackAdmin, Admin | `PolicyNames.FeedbackAdminOrAdmin`, `RoleChecks.IsFeedbackAdmin` |
@@ -625,6 +627,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 ### Notes on Policy Design
 
 - `ShiftDashboardAccess` and `ShiftDepartmentManager` are intentionally distinct: dashboard access is role-list-based, department manager additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
+- `CampComplianceAccess` is deliberately broader than `CampAdminOrAdmin`: it short-circuits for CampAdmin/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftManagementService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management surface in `CampAdminController` stays CampAdmin-only.
 - `ActiveMemberOrShiftAccess` and `IsActiveMember` are composite policies that check the `ActiveMember` claim OR fall back to role-based access. They use custom `IAuthorizationRequirement` + handler rather than a simple `RequireRole`.
 - `HumanAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has HumanAdmin but not the broader Board/Admin access.
 - `MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether medical fields are visible within pages the user already has access to.
@@ -659,6 +662,7 @@ Composite (non-resource) handlers registered alongside the above:
 | `IsActiveMemberHandler` | `IsActiveMemberRequirement` | `src/Humans.Web/Authorization/Requirements/IsActiveMemberHandler.cs` |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | `src/Humans.Web/Authorization/Requirements/HumanAdminOnlyHandler.cs` |
 | `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | `src/Humans.Web/Authorization/Requirements/IsAnyTeamManagerOrCoordinatorHandler.cs` |
+| `CampComplianceAccessHandler` | `CampComplianceAccessRequirement` | `src/Humans.Web/Authorization/Requirements/CampComplianceAccessHandler.cs` (short-circuits for CampAdmin/Admin; else admits any team/sub-team coordinator via `IShiftManagementService.GetCoordinatorTeamIdsAsync`) |
 
 ### `IAuthorizationService.AuthorizeAsync` Call Sites
 
@@ -676,14 +680,14 @@ Composite (non-resource) handlers registered alongside the above:
 | `src/Humans.Web/Controllers/BudgetController.cs` | 122 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 234 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Humans.Web/Controllers/ContainerController.cs` | 24 | `AuthorizeAsync(User, target, requirement)` (private helper) |
-| `src/Humans.Web/Controllers/ExpensesController.cs` | 136, 472, 518, 541, 589, 613, 700 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
+| `src/Humans.Web/Controllers/ExpensesController.cs` | 137, 473, 519, 542, 590, 614, 701 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
 | `src/Humans.Web/Controllers/StoreController.cs` | 51, 73, 76, 77, 78, 93, 127, 145, 174, 200, 222, 247 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` for Create at 127/145 — camp + team orders) |
 | `src/Humans.Web/Controllers/IssuesController.cs` | 195, 265, 311, 338, 365, 390 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
 | `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 274, 299, 337 | `AuthorizeAsync(User, ...)` (resource-based) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 678, 711, 756, 798, 835, 872, 909, 929, 973, 1048, 1064, 1090, 1123, 1149, 1175, 1351, 1377, 1421 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 1837 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2352 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 2405 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 680, 713, 758, 800, 837, 874, 911, 931, 975, 1050, 1066, 1092, 1125, 1151, 1177, 1353, 1379, 1423 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 1839 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2356 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2409 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
 | `src/Humans.Web/Controllers/AgentController.cs` | 48 | `AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` |
 | `src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
 | `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 31 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
