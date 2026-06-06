@@ -201,8 +201,8 @@ public sealed class AccountMergeService(
         }
     }
 
-    // Cache-aside eviction after a merge. Mirrors FoldAsync's invalidation set; runs in
-    // MergeAsync's finally so a partial/failed run still clears stale per-user reads.
+    // Cache-aside eviction after a merge. Runs in MergeAsync's finally so a partial/failed
+    // run still clears stale per-user reads.
     private void InvalidateMergeCaches(Guid survivorUserId, Guid archivedUserId)
     {
         roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
