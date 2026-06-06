@@ -124,21 +124,12 @@ public partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Lazily seeds <see cref="Domain.Entities.User.State"/> for a legacy row whose State is null,
-    /// classified once on first read. Idempotent (State IS NULL guard); no UpdatedAt/audit side
-    /// effects. Mirrors the ProfileState seed it supersedes.
+    /// Temporary backfill hook: lazily seeds <see cref="Domain.Entities.User.State"/> for a legacy
+    /// row whose State is null. Idempotent (State IS NULL guard); no UpdatedAt/audit side effects.
     /// </summary>
     /// <returns>true if a row was updated; false if the row was missing or already non-null.</returns>
     Task<bool> WriteBackUserStateIfNullAsync(
         Guid userId, UserState state, CancellationToken ct = default);
-
-    /// <summary>
-    /// Recomputes and persists <see cref="Domain.Entities.User.State"/> from the user's current
-    /// row + profile via the single <c>UserStateClassifier</c>. Every lifecycle transition (name,
-    /// suspend, reject, deletion, merge) calls this after committing its underlying field change,
-    /// so the stored state never drifts. Overwrites unconditionally; no-op if the user is missing.
-    /// </summary>
-    Task ResyncStateAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,

@@ -79,14 +79,15 @@ public partial interface IUserRepository
     Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists a new profile.
+    /// Persists a new profile and updates the owning user's stored <see cref="UserState"/>.
     /// </summary>
     Task AddAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to an existing profile. The provided entity is attached
     /// to a fresh context and saved. Use after mutating an entity obtained from
-    /// <see cref="GetByUserIdAsync"/>.
+    /// <see cref="GetByUserIdAsync"/>. Also updates the owning user's stored
+    /// <see cref="UserState"/>.
     /// </summary>
     Task UpdateAsync(Profile profile, CancellationToken ct = default);
 

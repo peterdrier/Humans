@@ -336,7 +336,7 @@ public sealed class UserService(
             profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
             await repo.AddAsync(profile, ct);
-            await ResyncStateAndInvalidateClaimsAsync(userId, ct);
+            InvalidateClaims(userId);
             return true;
         }
         finally
@@ -408,7 +408,7 @@ public sealed class UserService(
         }
 
         await repo.UpdateAsync(profile, ct);
-        await ResyncStateAndInvalidateClaimsAsync(userId, ct);
+        InvalidateClaims(userId);
         return new OnboardingResult(true);
     }
 
@@ -500,7 +500,7 @@ public sealed class UserService(
 
             await repo.UpdateAsync(profile, ct);
             await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
-            await ResyncStateAndInvalidateClaimsAsync(userId, ct);
+            InvalidateClaims(userId);
 
             return new UserProfileSaveResult(
                 profile.Id,
@@ -1205,14 +1205,9 @@ public sealed class UserService(
         await EnsureGoogleInvariantAsync(row.UserId, ct);
     }
 
-    // Persist users.State, then evict the user's cached claims. RoleAssignmentClaimsTransformation
-    // caches the UserState claim for 60s, so without this MembershipRequiredFilter keeps routing on
-    // the pre-transition state (e.g. Bare after a name submit) until the cache expires.
-    private async Task ResyncStateAndInvalidateClaimsAsync(Guid userId, CancellationToken ct)
-    {
-        await repo.ResyncStateAsync(userId, ct);
-        roleAssignmentClaimsInvalidator.Invalidate(userId);
-    }
+    // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
+    // profile transitions that can change the stored state (e.g. Bare after a name submit).
+    private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
 
     private static void ApplyConsentCheck(
         Profile profile,

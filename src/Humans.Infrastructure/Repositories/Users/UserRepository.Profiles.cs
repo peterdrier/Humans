@@ -107,6 +107,7 @@ internal sealed partial class UserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -119,7 +120,16 @@ internal sealed partial class UserRepository
         // existing related rows when those collections are empty on the in-memory entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
+        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
+    }
+
+    private static async Task UpdateUserStateFromProfileAsync(
+        HumansDbContext ctx, Profile profile, CancellationToken ct)
+    {
+        var user = await ctx.Users.FindAsync([profile.UserId], ct);
+        if (user is not null)
+            user.State = UserStateClassifier.Classify(user, profile);
     }
 
     public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>

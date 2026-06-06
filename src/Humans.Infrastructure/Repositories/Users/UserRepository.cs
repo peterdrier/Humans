@@ -254,16 +254,6 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task ResyncStateAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null) return;
-
-        await ResyncStateInContextAsync(ctx, user, ct);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     // Sets user.State from the single classifier using the profile loaded in the same context.
     // Caller owns SaveChangesAsync so this composes with other field mutations in one round-trip.
     private static async Task ResyncStateInContextAsync(
