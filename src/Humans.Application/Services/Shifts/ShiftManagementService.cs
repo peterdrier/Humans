@@ -4,6 +4,7 @@ using Humans.Application.Enums;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -56,6 +57,7 @@ public sealed class ShiftManagementService(
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketServiceRead TicketQueryService => serviceProvider.GetRequiredService<ITicketServiceRead>();
     private IUserServiceRead UserService => serviceProvider.GetRequiredService<IUserServiceRead>();
+    private ICampServiceRead CampService => serviceProvider.GetRequiredService<ICampServiceRead>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds,
@@ -289,6 +291,179 @@ public sealed class ShiftManagementService(
         var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View);
         return rotas
             .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<ShiftSummary?> BuildSummaryAsync(
+        EventSettings activeEvent,
+        string? teamSlug = null,
+        Guid? rotaId = null,
+        CancellationToken ct = default)
+    {
+        // ── Resolve scope + validate (null → controller returns 404) ──────────
+        ShiftSummaryScope scope;
+        IReadOnlyCollection<Guid>? filterTeamIds = null;
+        Guid? filterRotaId = null;
+        TeamInfo? team = null;
+        Rota? rota = null;
+
+        if (teamSlug is null)
+        {
+            scope = ShiftSummaryScope.Global;
+        }
+        else
+        {
+            team = await TeamService.GetTeamBySlugAsync(teamSlug, ct);
+            if (team is null) return null;
+
+            var teamSet = await ResolveDepartmentTeamIdsAsync(team.Id) ?? [team.Id];
+
+            if (rotaId is null)
+            {
+                scope = ShiftSummaryScope.Team;
+                filterTeamIds = teamSet;
+            }
+            else
+            {
+                rota = await GetRotaByIdAsync(rotaId.Value);
+                if (rota is null
+                    || rota.EventSettingsId != activeEvent.Id
+                    || !teamSet.Contains(rota.TeamId))
+                {
+                    return null;
+                }
+
+                scope = ShiftSummaryScope.Rota;
+                filterRotaId = rotaId;
+            }
+        }
+
+        // ── Confirmed per-user totals for the scope (Shifts-owned read) ───────
+        var totals = await repo.GetConfirmedUserShiftTotalsAsync(
+            activeEvent.Id, filterTeamIds, filterRotaId, ct);
+
+        // ── Stitch display names (Users) + each human's camp (Camps) ──────────
+        // Both are cache-served reads through the cross-section read interfaces;
+        // no shift data leaves the section.
+        var userIds = totals.Select(t => t.UserId).ToList();
+        var userInfos = await UserService.GetUserInfosAsync(userIds, ct);
+
+        var campByUser = new Dictionary<Guid, CampSeasonInfo?>();
+        foreach (var userId in userIds)
+            campByUser[userId] = (await CampService.GetCampUserInfoAsync(userId, ct)).Season;
+
+        // ── Table 1: one flat row per human with ≥1 confirmed signup in scope ─
+        var humans = totals
+            .Select(t =>
+            {
+                var camp = campByUser[t.UserId];
+                var name = userInfos.TryGetValue(t.UserId, out var ui) ? ui.BurnerName : string.Empty;
+                return new ShiftSummaryHumanRow(
+                    t.UserId, name, camp?.CampId, camp?.Name, t.Hours, t.Count);
+            })
+            .ToList();
+
+        // ── Table 2: by-camp pivot, active-camp roster left-joined ────────────
+        var camps = await BuildCampPivotAsync(humans, ct);
+
+        // ── Drill-down navigation (global → teams, team → rotas) ──────────────
+        IReadOnlyList<ShiftSummaryTeamLink> teamLinks = scope == ShiftSummaryScope.Global
+            ? await BuildDepartmentLinksAsync(activeEvent.Id, ct)
+            : [];
+        IReadOnlyList<ShiftSummaryRotaLink> rotaLinks = scope == ShiftSummaryScope.Team
+            ? (await repo.GetRotasAsync(activeEvent.Id, filterTeamIds!, RotaReadShape.None, ct))
+                .Select(r => new ShiftSummaryRotaLink(r.Id, r.Name)).ToList()
+            : [];
+
+        return new ShiftSummary(
+            scope, team?.Name, team?.Slug, rota?.Name, rota?.Id,
+            humans, camps, teamLinks, rotaLinks);
+    }
+
+    // Builds the by-camp pivot: aggregate the flat rows by camp, then left-join
+    // the active-camp roster for the current public year so camps with nobody in
+    // scope surface as zero rows. Humans with no active camp form the campless
+    // bucket (CampId null). Any camp with scoped humans the roster didn't cover is
+    // still emitted so no hours silently vanish.
+    private async Task<IReadOnlyList<ShiftSummaryCampRow>> BuildCampPivotAsync(
+        IReadOnlyList<ShiftSummaryHumanRow> humans, CancellationToken ct)
+    {
+        var byCamp = humans
+            .Where(h => h.CampId is not null)
+            .GroupBy(h => h.CampId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    People: g.Count(),
+                    Hours: g.Sum(h => h.Hours),
+                    Count: g.Sum(h => h.Count),
+                    Name: g.Select(h => h.CampName).FirstOrDefault(n => n is not null)));
+
+        var publicYear = (await CampService.GetSettingsAsync(ct)).PublicYear;
+        var roster = await CampService.GetCampsForYearAsync(publicYear, ct);
+
+        var rows = new List<ShiftSummaryCampRow>();
+        var seen = new HashSet<Guid>();
+
+        foreach (var camp in roster)
+        {
+            var season = camp.GetSeasonForYear(publicYear);
+            if (season is not { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
+                continue;
+
+            seen.Add(camp.Id);
+            rows.Add(byCamp.TryGetValue(camp.Id, out var hit)
+                ? new ShiftSummaryCampRow(camp.Id, season.Name, hit.People, hit.Hours, hit.Count)
+                : new ShiftSummaryCampRow(camp.Id, season.Name, 0, 0, 0));
+        }
+
+        // Camps with scoped humans that the roster didn't cover — so no hours
+        // silently vanish from the pivot.
+        foreach (var (campId, a) in byCamp)
+            if (!seen.Contains(campId))
+                rows.Add(new ShiftSummaryCampRow(campId, a.Name, a.People, a.Hours, a.Count));
+
+        // Campless bucket: humans signed up with no active camp this year.
+        var campless = humans.Where(h => h.CampId is null).ToList();
+        if (campless.Count > 0)
+            rows.Add(new ShiftSummaryCampRow(
+                null, null, campless.Count, campless.Sum(h => h.Hours), campless.Sum(h => h.Count)));
+
+        return rows;
+    }
+
+    // Resolves the set of department pages to link from the global summary: every
+    // team that owns a rota in the event, rolled up to its department (a
+    // non-promoted sub-team folds into its parent; top-level / promoted teams are
+    // their own department) — the inverse of ResolveDepartmentTeamIdsAsync.
+    private async Task<IReadOnlyList<ShiftSummaryTeamLink>> BuildDepartmentLinksAsync(
+        Guid eventSettingsId, CancellationToken ct)
+    {
+        var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        if (teamIdsWithRotas.Count == 0) return [];
+
+        var teams = await TeamService.GetTeamsAsync(ct);
+
+        var departmentIds = new HashSet<Guid>();
+        foreach (var teamId in teamIdsWithRotas)
+        {
+            if (!teams.TryGetValue(teamId, out var team)) continue;
+
+            if (team.ParentTeamId is { } parentId
+                && !team.IsPromotedToDirectory
+                && teams.ContainsKey(parentId))
+            {
+                departmentIds.Add(parentId);
+            }
+            else
+            {
+                departmentIds.Add(teamId);
+            }
+        }
+
+        return departmentIds
+            .Select(id => teams[id])
+            .Select(t => new ShiftSummaryTeamLink(t.Id, t.Name, t.Slug))
             .ToList();
     }
 

@@ -97,6 +97,34 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
 
+    // === Shift Summary by Camp ===
+
+    /// <summary>
+    /// Builds the Shift Summary view data for one scope within
+    /// <paramref name="activeEvent"/>: a flat per-human table (one row per human
+    /// with ≥1 confirmed signup in scope) and a by-camp pivot table (the active-
+    /// camp roster for the current public year left-joined with the confirmed
+    /// totals, so camps with nobody in scope appear as zero rows; humans with no
+    /// active camp form the campless bucket), plus drill-down links.
+    /// <para>
+    /// Scope is implied by the arguments: no <paramref name="teamSlug"/> → global
+    /// (all teams in the event); <paramref name="teamSlug"/> → that team's
+    /// team-set (the team plus its non-promoted sub-teams);
+    /// <paramref name="teamSlug"/> + <paramref name="rotaId"/> → a single rota.
+    /// </para>
+    /// Camp labels and roster come from <c>ICampServiceRead</c>; display names
+    /// from <c>IUserServiceRead</c> — no new cross-section interface. Returns
+    /// null when <paramref name="teamSlug"/> matches no team, or
+    /// <paramref name="rotaId"/> does not belong to the team-set within the event
+    /// (the controller maps null to 404). Rows are unsorted; the controller
+    /// orders for display.
+    /// </summary>
+    Task<ShiftSummary?> BuildSummaryAsync(
+        EventSettings activeEvent,
+        string? teamSlug = null,
+        Guid? rotaId = null,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Volunteer-visible rotas in the active event whose <c>Name</c>
     /// contains <paramref name="query"/> (case-insensitive). The owning
