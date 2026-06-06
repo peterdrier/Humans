@@ -101,6 +101,7 @@ public class ExpenseReportServiceGdprTests
                 ExpenseReportId = Guid.NewGuid(),
                 Description = "Flight ticket",
                 Amount = 100m,
+                LineType = ExpenseLineType.Receipt,
                 SortOrder = 1,
                 AttachmentId = null,
                 Attachment = null,

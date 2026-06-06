@@ -1204,6 +1204,7 @@ public sealed class ExpenseReportService(
                     l.Id,
                     l.Description,
                     l.Amount,
+                    l.LineType,
                     l.SortOrder,
                     Attachment = l.Attachment is null
                         ? null

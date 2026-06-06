@@ -1,3 +1,5 @@
+using Humans.Domain.Enums;
+
 namespace Humans.Application.Services.Expenses.Dtos;
 
 public sealed record ExpenseLineDto
@@ -6,6 +8,7 @@ public sealed record ExpenseLineDto
     public required Guid ExpenseReportId { get; init; }
     public required string Description { get; init; }
     public required decimal Amount { get; init; }
+    public required ExpenseLineType LineType { get; init; }
     public Guid? AttachmentId { get; init; }
     public ExpenseAttachmentDto? Attachment { get; init; }
     public required int SortOrder { get; init; }
