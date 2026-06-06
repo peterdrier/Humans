@@ -13,8 +13,7 @@ namespace Humans.Web.Controllers;
 public class AdminDuplicateAccountsController(
     IUserServiceRead userService,
     IDuplicateAccountService duplicateService,
-    ITeamServiceRead teamService,
-    ILogger<AdminDuplicateAccountsController> logger) : HumansControllerBase(userService)
+    ITeamServiceRead teamService) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
 
@@ -81,27 +80,6 @@ public class AdminDuplicateAccountsController(
         };
 
         return View(viewModel);
-    }
-
-    [HttpPost("Resolve")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Resolve(Guid sourceUserId, Guid targetUserId, string? notes)
-    {
-        var (error, user) = await RequireCurrentUserAsync();
-        if (error is not null) return error;
-
-        try
-        {
-            await duplicateService.ResolveAsync(sourceUserId, targetUserId, user.Id, notes);
-            SetSuccess("Duplicate account resolved. The empty account has been archived and logins re-linked.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to resolve duplicate: source {SourceId}, target {TargetId}", sourceUserId, targetUserId);
-            SetError($"Failed to resolve duplicate: {ex.Message}");
-        }
-
-        return RedirectToAction(nameof(Index));
     }
 
     private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(

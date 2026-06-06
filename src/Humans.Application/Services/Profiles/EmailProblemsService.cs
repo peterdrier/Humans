@@ -44,39 +44,8 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
             }
         }
 
-        // Cross-user duplicates: build normalized-email -> userIds map, flag pairs.
-        var normToUsers = new Dictionary<string, List<(Guid UserId, string Raw)>>(StringComparer.Ordinal);
-        foreach (var p in profiled)
-        {
-            foreach (var email in p.UserEmails)
-            {
-                var norm = EmailNormalization.NormalizeForComparison(email.Email);
-                if (!normToUsers.TryGetValue(norm, out var list))
-                {
-                    list = [];
-                    normToUsers[norm] = list;
-                }
-                list.Add((p.Id, email.Email));
-            }
-        }
-
-        foreach (var kvp in normToUsers)
-        {
-            var distinctUsers = kvp.Value.Select(t => t.UserId).Distinct().ToList();
-            if (distinctUsers.Count <= 1) continue;
-
-            for (var i = 0; i < distinctUsers.Count; i++)
-            {
-                for (var j = i + 1; j < distinctUsers.Count; j++)
-                {
-                    var rawA = kvp.Value.First(t => t.UserId == distinctUsers[i]).Raw;
-                    problems.Add(new EmailProblem(
-                        EmailProblemKind.SharedAcrossUsers,
-                        distinctUsers[i], distinctUsers[j],
-                        null, rawA, null));
-                }
-            }
-        }
+        // Cross-user duplicate detection lives on the Account merges page now
+        // (DuplicateAccountService.DetectDuplicatesAsync) — not in this scan.
 
         var orphans = await userEmailService.GetOrphanUserEmailsAsync(ct);
         foreach (var o in orphans)
