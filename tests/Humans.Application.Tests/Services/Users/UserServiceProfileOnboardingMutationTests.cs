@@ -20,17 +20,23 @@ namespace Humans.Application.Tests.Services.Users;
 public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarness
 {
     private readonly UserService _service;
+    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
+        Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
 
     public UserServiceProfileOnboardingMutationTests()
     {
         var userRepository = new UserRepository(DbFactory, Clock);
-        var communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
+        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
+                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
+        _communicationPreferenceRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
 
         _service = new UserService(
             userRepository,
-            communicationPreferenceRepository,
+            _communicationPreferenceRepository,
             AdminAuthorization,
             _claimsCacheInvalidator,
             Clock,
@@ -116,6 +122,31 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var result = await _service.GetUsersWithLoginsButNoEmailsAsync();
 
         result.Should().Equal([userWithoutEmail.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetAllUserInfosAsync_SeedsNullUserStateOnFirstBulkLoad()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        Db.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = "Loaded",
+            FirstName = "First",
+            LastName = "Last",
+            State = ProfileState.Active,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        });
+        await Db.SaveChangesAsync();
+
+        var infos = await _service.GetAllUserInfosAsync();
+
+        infos.Single(u => u.Id == userId).State.Should().Be(UserState.Active);
+        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        reloaded.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]

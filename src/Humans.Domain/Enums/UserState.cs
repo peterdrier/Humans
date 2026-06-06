@@ -5,7 +5,7 @@ namespace Humans.Domain.Enums;
 /// Stored as a nullable string column on <c>users</c> (<see cref="Entities.User.State"/>) via
 /// <c>HasConversion&lt;string&gt;()</c>. Written at each transition point; legacy rows holding
 /// <c>null</c> are classified once on first read and persisted (see
-/// <c>UserService.GetUserInfoAsync</c> + <c>IUserRepository.WriteBackStateIfNullAsync</c>),
+/// <c>UserService.GetUserInfoAsync</c> + <c>IUserRepository.WriteBackUserStateIfNullAsync</c>),
 /// mirroring the seed mechanism the superseded <see cref="ProfileState"/> used.
 ///
 /// <para><b>Access rule:</b> the full app is reachable only when state is

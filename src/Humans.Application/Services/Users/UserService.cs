@@ -71,10 +71,7 @@ public sealed class UserService(
         // First-touch seed: legacy rows hold a null State column until persisted once. UserInfo.Create
         // already classified it into info.State, so just persist that. Idempotent at the repo (State
         // IS NULL guard); transitions keep it current thereafter.
-        if (user.State is null && info.State is { } seeded)
-        {
-            await repo.WriteBackUserStateIfNullAsync(userId, seeded, ct);
-        }
+        await SeedUserStateIfNullAsync(user, info, ct);
 
         return info;
     }
@@ -130,10 +127,12 @@ public sealed class UserService(
 
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
 
-            result.Add(UserInfo.Create(
+            var info = UserInfo.Create(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
-                preferences));
+                preferences);
+            await SeedUserStateIfNullAsync(user, info, ct);
+            result.Add(info);
         }
 
         return result;
@@ -1203,6 +1202,12 @@ public sealed class UserService(
         await repo.AddUserEmailAsync(row, ct);
         await EnsurePrimaryInvariantAsync(row.UserId, ct);
         await EnsureGoogleInvariantAsync(row.UserId, ct);
+    }
+
+    private async Task SeedUserStateIfNullAsync(User user, UserInfo info, CancellationToken ct)
+    {
+        if (user.State is null && info.State is { } seeded)
+            await repo.WriteBackUserStateIfNullAsync(user.Id, seeded, ct);
     }
 
     // RoleAssignmentClaimsTransformation caches the UserState claim for 60s, so evict after
