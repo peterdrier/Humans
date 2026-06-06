@@ -511,6 +511,23 @@ public sealed class UserRepositoryTests : IDisposable
         result.OriginalDisplayName.Should().Be("Seeded User");
     }
 
+    [HumansFact]
+    public async Task ApplyExpiredDeletionAnonymizationAsync_ScrubsLegacyIdentityEmailPii()
+    {
+        var user = await SeedUserAsync();
+        var originalEmail = user.IdentityEmailColumn;
+        originalEmail.Should().NotBeNullOrEmpty();
+
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        reloaded.IdentityEmailColumn.Should().Be($"deleted-{user.Id:N}@deleted.local",
+            "the legacy Identity email column is scrubbed to a no-PII sentinel on deletion");
+        reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
+        reloaded.UserName.Should().Be($"deleted-{user.Id:N}@deleted.local");
+    }
+
     private void AddLogin(Guid userId, string loginProvider, string providerKey)
     {
         _dbContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
