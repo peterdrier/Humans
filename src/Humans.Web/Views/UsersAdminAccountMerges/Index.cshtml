@@ -144,13 +144,8 @@ else
 </a>
 
 <script>
-    document.querySelectorAll('[data-confirm]').forEach(function (button) {
-        button.addEventListener('click', function (e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
+    // [data-confirm] is handled globally by site.js — no inline confirm handler here
+    // (a second one caused the confirm dialog to fire twice).
 
     // For detection rows, the archived account is whichever radio is NOT chosen.
     document.querySelectorAll('form input[name="survivorUserId"]').forEach(function (radio) {
