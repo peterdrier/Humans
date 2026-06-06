@@ -159,13 +159,13 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - **Workflow:** an agent calls `GET /api/issues?status=Triage` to pull the current triage queue, optionally narrowed by `section=` for per-section sweeps. For each issue it can `POST /api/issues/{id}/comments` to ask a clarifying question, `PATCH /api/issues/{id}/status` to advance through the lifecycle, `PATCH /api/issues/{id}/assignee` to route the issue to a human, `PATCH /api/issues/{id}/section` to re-route, or `PATCH /api/issues/{id}/github-issue` to link a freshly-created GitHub issue.
 - **Audit:** API-initiated changes are audit-logged (`AuditAction.IssueStatusChanged`, etc.). Because the API path has no user session, the actor is recorded as `null` and the audit metadata records that the change came from the API.
 - **Local config:** `ISSUES_API_URL` / `ISSUES_API_KEY` go in `.claude/settings.local.json` (gitignored) so the agent picks them up without leaking the key into the repo.
-- **Admin visibility:** `ISSUES_API_KEY` configuration status is shown on `/Admin/Configuration`.
+- **Admin visibility:** `ISSUES_API_KEY` configuration status is shown on `/Debug/Configuration`.
 
 ## Navigation
 
 - **Top nav:** "Issues" link visible to all authenticated users; nav badge (`NavBadges` ViewComponent, queue `issues`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
 - **Floating widget:** `IssuesWidgetViewComponent` renders on every page for authenticated users.
-- **`/Admin/Configuration`:** shows whether `ISSUES_API_KEY` is configured.
+- **`/Debug/Configuration`:** shows whether `ISSUES_API_KEY` is configured.
 
 ## Related Features
 

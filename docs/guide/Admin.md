@@ -43,10 +43,10 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Google/SyncSettings` — per-service sync mode (Admin only).
-- `/Admin/Configuration`, `/Admin/Logs`, `/Admin/DbStats`, `/Admin/CacheStats`, `/Admin/DbVersion` — technical diagnostics.
-- `/Admin/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
+- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
+- `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` — duplicate detection and merge flow.
-- `/Admin/Humans/{id}/Purge` — permanent delete, disabled in production.
+- `/Profile/{id}/Admin/Purge` — permanent delete, disabled in production.
 - `/hangfire` — Hangfire dashboard, Admin only.
 
 ## As a Volunteer
@@ -88,8 +88,8 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Run technical operations (Admin only)
 
-- **Configuration** (`/Admin/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked. The feedback API key is set here and enables the in-app feedback submission flow described in [Feedback](Feedback.md).
-- **Logs** (`/Admin/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
+- **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked. The feedback API key is set here and enables the in-app feedback submission flow described in [Feedback](Feedback.md).
+- **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
 - **Hangfire dashboard** (`/hangfire`) is Admin-only for inspecting and re-queueing jobs.
@@ -100,7 +100,7 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Purge (non-production only)
 
-`/Admin/Humans/{id}/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
+`/Profile/{id}/Admin/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
 
 ## Related sections
 

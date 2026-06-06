@@ -414,17 +414,3 @@ public class AudienceSegmentationViewModel
     /// <summary>Currently selected event year filter, or null for all time.</summary>
     public int? SelectedYear { get; set; }
 }
-
-/// <summary>
-/// View model for the <c>/Admin/BackfillUserEmailProviders</c> page. The page
-/// is rendered twice — once as a confirmation form (<see cref="HasRun"/> =
-/// false) and once after the operator triggers the backfill
-/// (<see cref="HasRun"/> = true) showing the results.
-/// </summary>
-public sealed record BackfillUserEmailProvidersViewModel(
-    bool HasRun,
-    int UsersProcessed,
-    int ProviderRowsUpdated,
-    int IsGoogleRowsUpdated,
-    int AmbiguousMatchesWarned,
-    IReadOnlyList<string> Warnings);

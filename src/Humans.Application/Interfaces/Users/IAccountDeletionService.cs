@@ -54,7 +54,7 @@ public interface IAccountDeletionService : IOrchestrator
     /// keyed by <paramref name="actorId"/> (the admin running the purge) so
     /// the trail survives a subsequent right-of-access request. Returns
     /// <c>NotFound</c> if the user does not exist. Used by
-    /// <c>AdminController.PurgeHuman</c> when an operator removes a human
+    /// <c>ProfileController.PurgeHuman</c> when an operator removes a human
     /// outside the normal 30-day grace period.
     /// </summary>
     Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default);

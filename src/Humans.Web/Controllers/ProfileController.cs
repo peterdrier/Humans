@@ -8,6 +8,7 @@ using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -73,6 +74,7 @@ public class ProfileController(
     ICampaignService campaignService,
     ICampServiceRead campService,
     IEmailOutboxServiceRead emailOutboxService,
+    IWebHostEnvironment environment,
     IClock clock,
     IAuthorizationService authorizationService,
     IConsentServiceRead consentService,
@@ -2188,6 +2190,46 @@ public class ProfileController(
             revealedIban);
 
         return View("AdminDetail", viewModel);
+    }
+
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [HttpPost("{id:guid}/Admin/Purge")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PurgeHuman(Guid id, CancellationToken ct)
+    {
+        if (environment.IsProduction())
+        {
+            return NotFound();
+        }
+
+        var user = await FindUserInfoByIdAsync(id, ct);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await GetCurrentUserInfoAsync(ct);
+
+        if (user.Id == currentUser?.Id)
+        {
+            SetError("You cannot purge your own account.");
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+
+        var displayName = user.BurnerName;
+
+        logger.LogWarning(
+            "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
+            currentUser?.Id, id, displayName, environment.EnvironmentName);
+
+        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id, ct);
+        if (!result.Success)
+        {
+            return NotFound();
+        }
+
+        SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
+        return RedirectToAction(nameof(AdminList));
     }
 
     private async Task<string?> GetRejectedByNameAsync(ProfileInfo? profile, CancellationToken ct)

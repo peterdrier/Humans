@@ -16,16 +16,15 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `AdminController` | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
 | `AdminController.Index` | Action | `Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator` | `PolicyNames.AnyAdminRole` |
-| `AdminController.PurgeHuman` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.Logs` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.Maintenance` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.Configuration` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.DbVersion` | Action | `AllowAnonymous` | Override |
-| `AdminController.DbStats` / `ResetDbStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.ClearHangfireLocks` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.BackfillUserEmailProviders` / `BackfillUserEmailProvidersRun` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.CacheStats` / `ResetCacheStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AdminController.AudienceSegmentation` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `ProfileController.PurgeHuman` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.Logs` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.Maintenance` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.Configuration` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.DbVersion` | Action | `AllowAnonymous` | Override |
+| `DebugController.DbStats` / `ResetDbStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.ClearHangfireLocks` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `DebugController.CacheStats` / `ResetCacheStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `UsersAdminController.Audience` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminAgentController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminDuplicateAccountsController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminMergeController` | Class | `Admin` | `PolicyNames.AdminOnly` |

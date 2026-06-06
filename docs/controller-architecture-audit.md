@@ -53,19 +53,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Admin | GET | Admin dashboard | OK |
-| PurgeHuman | /Admin/Humans/{id}/Purge | POST | Purge a human (non-prod) | OK |
-| Logs | /Admin/Logs | GET | View in-memory logs | OK |
-| Maintenance | /Admin/Maintenance | GET | Maintenance | OK |
-| Configuration | /Admin/Configuration | GET | View configuration status | OK |
-| DbVersion | /Admin/DbVersion | GET | Database migration info (anonymous) | OK |
-| DbStats | /Admin/DbStats | GET | DB query statistics | OK |
-| ResetDbStats | /Admin/DbStats/Reset | POST | Reset DB query statistics | OK |
-| ClearHangfireLocks | /Admin/ClearHangfireLocks | POST | Clear stale Hangfire locks | OK |
-| BackfillUserEmailProviders | /Admin/BackfillUserEmailProviders | GET | Backfill user email providers | OK |
-| BackfillUserEmailProvidersRun | /Admin/BackfillUserEmailProviders | POST | Backfill user email providers run | OK |
-| CacheStats | /Admin/CacheStats | GET | Cache hit/miss/size statistics | OK |
-| ResetCacheStats | /Admin/CacheStats/Reset | POST | Reset cache statistics | OK |
-| AudienceSegmentation | /Admin/Audience | GET | Audience segmentation (profile × ticket) | OK |
 
 ## AdminDuplicateAccountsController
 
@@ -230,20 +217,20 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Admin/Campaigns | GET | List campaigns | OK |
-| Create | /Admin/Campaigns/Create | GET | Create campaign form | OK |
-| Create | /Admin/Campaigns/Create | POST | Submit new campaign | OK |
-| Edit | /Admin/Campaigns/Edit/{id} | GET | Edit campaign form | OK |
-| Edit | /Admin/Campaigns/Edit/{id} | POST | Submit campaign edits | OK |
-| Detail | /Admin/Campaigns/{id} | GET | Campaign detail page | OK |
-| ImportCodes | /Admin/Campaigns/{id}/ImportCodes | POST | Import discount codes from CSV | OK |
-| GenerateCodes | /Admin/Campaigns/{id}/GenerateCodes | POST | Generate discount codes via vendor | OK |
-| Activate | /Admin/Campaigns/{id}/Activate | POST | Activate a campaign | OK |
-| Complete | /Admin/Campaigns/{id}/Complete | POST | Mark campaign complete | OK |
-| SendWave | /Admin/Campaigns/{id}/SendWave | GET | Send wave preview page | OK |
-| SendWave | /Admin/Campaigns/{id}/SendWave | POST | Execute send wave | OK |
-| Resend | /Admin/Campaigns/Grants/{grantId}/Resend | POST | Resend code to a grant | OK |
-| RetryAllFailed | /Admin/Campaigns/{id}/RetryAllFailed | POST | Retry all failed sends | OK |
+| Index | /Campaigns/Admin | GET | List campaigns | OK |
+| Create | /Campaigns/Admin/Create | GET | Create campaign form | OK |
+| Create | /Campaigns/Admin/Create | POST | Submit new campaign | OK |
+| Edit | /Campaigns/Admin/Edit/{id} | GET | Edit campaign form | OK |
+| Edit | /Campaigns/Admin/Edit/{id} | POST | Submit campaign edits | OK |
+| Detail | /Campaigns/Admin/{id} | GET | Campaign detail page | OK |
+| ImportCodes | /Campaigns/Admin/{id}/ImportCodes | POST | Import discount codes from CSV | OK |
+| GenerateCodes | /Campaigns/Admin/{id}/GenerateCodes | POST | Generate discount codes via vendor | OK |
+| Activate | /Campaigns/Admin/{id}/Activate | POST | Activate a campaign | OK |
+| Complete | /Campaigns/Admin/{id}/Complete | POST | Mark campaign complete | OK |
+| SendWave | /Campaigns/Admin/{id}/SendWave | GET | Send wave preview page | OK |
+| SendWave | /Campaigns/Admin/{id}/SendWave | POST | Execute send wave | OK |
+| Resend | /Campaigns/Admin/Grants/{grantId}/Resend | POST | Resend code to a grant | OK |
+| RetryAllFailed | /Campaigns/Admin/{id}/RetryAllFailed | POST | Retry all failed sends | OK |
 
 ## CantinaController
 
@@ -320,6 +307,15 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
+| Logs | /Debug/Logs | GET | View in-memory logs | OK |
+| Maintenance | /Debug/Maintenance | GET | Maintenance | OK |
+| Configuration | /Debug/Configuration | GET | View configuration status | OK |
+| DbVersion | /Debug/DbVersion | GET | Database migration info (anonymous) | OK |
+| DbStats | /Debug/DbStats | GET | DB query statistics | OK |
+| ResetDbStats | /Debug/DbStats/Reset | POST | Reset DB query statistics | OK |
+| ClearHangfireLocks | /Debug/Maintenance/ClearHangfireLocks | POST | Clear stale Hangfire locks | OK |
+| CacheStats | /Debug/CacheStats | GET | Cache hit/miss statistics | OK |
+| ResetCacheStats | /Debug/CacheStats/Reset | POST | Reset cache statistics | OK |
 | ClientStats | /Debug/ClientStats | GET | Debug page returning client request/UA stats | OK |
 | FormatGallery | /Debug/FormatGallery | GET | Developer reference page for the date/time formatting home (`DateFormattingExtensions` output samples) | OK |
 
@@ -793,6 +789,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | AdminList | /Profile/Admin | GET | Admin: human list with filters | OK |
 | Roles | /Profile/Admin/Roles | GET | Admin: governance role assignments list | OK |
 | AdminDetail | /Profile/{id}/Admin | GET | Admin: human detail page | OK |
+| PurgeHuman | /Profile/{id}/Admin/Purge | POST | Purge a human (non-prod) | OK |
 | RevealIban | /Profile/{id:guid}/Admin/RevealIban | POST | Reveal a human's IBAN | OK |
 | AdminOutbox | /Profile/{id}/Admin/Outbox | GET | Admin: email outbox for a human | OK |
 | SuspendHuman | /Profile/{id}/Admin/Suspend | POST | Suspend a human | OK |
@@ -1036,6 +1033,12 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Index | /Unsubscribe/{token} | GET | Validate token; redirect to comms prefs (or legacy confirm page) | → `Landing` ? (token-specific landing rather than a list — `Index` is misleading) |
 | Confirm | /Unsubscribe/{token} | POST | Execute legacy unsubscribe | OK |
 | OneClick | /Unsubscribe/OneClick | POST | RFC 8058 one-click unsubscribe | OK |
+
+## UsersAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Audience | /Users/Admin/Audience | GET | Audience segmentation (profile × ticket) | OK |
 
 ## UsersAdminDebugController
 

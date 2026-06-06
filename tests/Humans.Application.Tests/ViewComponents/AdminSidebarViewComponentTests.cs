@@ -63,11 +63,11 @@ public class AdminSidebarViewComponentTests
     [HumansFact]
     public async Task Active_Item_Match_Requires_Both_Controller_And_Action()
     {
-        // Regression: when on /Admin/Logs, only the Logs sidebar item should be active.
-        // Previously a controller-only match made all 5 items under controller="Admin"
-        // (Logs, DbStats, CacheStats, Configuration, AudienceSegmentation) light up.
+        // Regression: when on /Debug/Logs, only the Logs sidebar item should be active.
+        // Previously a controller-only match made all diagnostics items under
+        // controller="Debug" light up.
         var auth = AlwaysAllow();
-        var sut = MakeSut(auth, "Admin", "Logs");
+        var sut = MakeSut(auth, "Debug", "Logs");
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         var allItems = model!.Groups.SelectMany(g => g.Items).ToList();

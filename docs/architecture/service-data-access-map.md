@@ -261,7 +261,7 @@ Implements `IUserService`, `IUserServiceRead`, `IUserMerge`,
 `IUserInfoInvalidator`, and the Infrastructure-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
-surface). Surfaced on `/Admin/CacheStats`.
+surface). Surfaced on `/Debug/CacheStats`.
 
 ### AccountProvisioningService (Scoped)
 
@@ -449,7 +449,7 @@ and `IUserMerge` for account merges.
 
 Implements `IRoleAssignmentService`, `IRoleAssignmentCacheInvalidator`.
 Resolves the keyed Scoped inner per-call via `IServiceScopeFactory`.
-Surfaced on `/Admin/CacheStats`.
+Surfaced on `/Debug/CacheStats`.
 
 ### MagicLinkService (Scoped)
 
@@ -547,7 +547,7 @@ so the prior design-rule violation here is **closed**.
 
 Implements `ITeamService`, `ITeamServiceRead`, `IUserMerge`. Replaces the
 previous `ActiveTeams` `IMemoryCache` entry — the `TeamInfo` dictionary is
-the canonical source. Surfaced on `/Admin/CacheStats`.
+the canonical source. Surfaced on `/Debug/CacheStats`.
 
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
 
@@ -760,7 +760,7 @@ directly — all caching lives in the decorator.
 | `CampSettingsInfo` single slot (no `IMemoryCache`) | Static | yes | yes | yes (`ICampInfoInvalidator.InvalidateSettingsAsync`) |
 
 Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
-`ICampInfoInvalidator`. Surfaced on `/Admin/CacheStats`.
+`ICampInfoInvalidator`. Surfaced on `/Debug/CacheStats`.
 
 ### CampRoleService (Scoped)
 
@@ -872,7 +872,7 @@ Cross-section calls via `ITeamService`, `IAuditLogService`,
 
 Implements `ICalendarService`, `ICalendarServiceRead`. Resolves the keyed
 Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
-names. Surfaced on `/Admin/CacheStats`.
+names. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -1033,7 +1033,7 @@ can resolve it without self-recursion.
 
 Implements `IShiftView`, `IShiftViewInvalidator`. Resolves the inner
 Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
-Both cache instances are surfaced on `/Admin/CacheStats`.
+Both cache instances are surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 
@@ -1133,7 +1133,7 @@ Implements `IEarlyEntryService`, `IEarlyEntryInvalidator`. `GetRosterAsync`
 always delegates to the inner service (admin roster needs live data);
 `GetForUserAsync` is cached per-user (including the no-EE negative result
 since most users have no EE). Resolves the keyed Scoped inner via
-`IServiceScopeFactory`. Surfaced on `/Admin/CacheStats`.
+`IServiceScopeFactory`. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -1181,7 +1181,7 @@ documents from the legal-internal repo.
 | `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via `ILegalDocumentCacheInvalidator.InvalidateAll`, fired by `LegalDocumentSaveChangesInterceptor`) |
 
 Implements `ILegalDocumentSyncService`, `ILegalDocumentCacheInvalidator`.
-Surfaced on `/Admin/CacheStats`.
+Surfaced on `/Debug/CacheStats`.
 
 ### AdminLegalDocumentService (Scoped)
 
@@ -1239,7 +1239,7 @@ lives in the decorator.
 Implements `IConsentService`, `IConsentServiceRead`,
 `IConsentCacheInvalidator`. Richer record reads (dashboards, history,
 record counts) pass through to the inner service. Surfaced on
-`/Admin/CacheStats`.
+`/Debug/CacheStats`.
 
 ---
 
@@ -1382,7 +1382,7 @@ been **removed**.
 Implements `ITicketService`, `ITicketServiceRead`, `ITicketCacheInvalidator`,
 `IHostedService` (its `StartAsync` warms the orders slice). Resolves the keyed
 Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
-instances are surfaced on `/Admin/CacheStats`.
+instances are surfaced on `/Debug/CacheStats`.
 `GetDashboardStatsAsync` is a straight pass-through to the inner (compute-only,
 no read-through cache — see `TicketDashboardStats` note in the Cache Inventory).
 
@@ -1722,7 +1722,7 @@ Implements `IEventService`, `IEventViewInvalidator`, `IHostedService`
 (`StartAsync` warms all four projections). The moderator-only
 `GetAllEventsForDashboardAsync` passes through to the inner service (needs a
 fresh pending count; the cache only holds approved events). Only the event
-projection is surfaced on `/Admin/CacheStats`.
+projection is surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -2096,7 +2096,7 @@ former HUM0025 `[Grandfathered]` markers have been retired:
    - `CachingRoleAssignmentService` → `RoleAssignmentRow` set.
    - `CachingEarlyEntryService` → `UserEarlyEntry?` per user (new — caches
      negative results too).
-   All are surfaced on `/Admin/CacheStats` via `ICacheStats` and evicted
+   All are surfaced on `/Debug/CacheStats` via `ICacheStats` and evicted
    through narrow `I*Invalidator` interfaces (or EF
    `SaveChangesInterceptor`s for Legal / User-Identity writes) — no direct
    `IMemoryCache` coupling in the Application layer.
@@ -2132,7 +2132,7 @@ former HUM0025 `[Grandfathered]` markers have been retired:
 Sourced from `src/Humans.Application/CacheKeys.cs` and
 `src/Humans.Application/Extensions/MemoryCacheExtensions.cs`. TTL/type
 classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
-`/Admin/CacheStats` page). Note: most section projections are now
+`/Debug/CacheStats` page). Note: most section projections are now
 `TrackedCache` dictionaries (not `IMemoryCache` keys) and are listed
 separately below the key table.
 

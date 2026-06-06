@@ -103,6 +103,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<ICampaignService>(),
             Substitute.For<ICampServiceRead>(),
             Substitute.For<IEmailOutboxService>(),
+            Substitute.For<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>(),
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
             Substitute.For<IConsentServiceRead>(),

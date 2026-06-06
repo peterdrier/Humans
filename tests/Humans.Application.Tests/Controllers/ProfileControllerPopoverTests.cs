@@ -94,6 +94,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<ICampaignService>(),
             _campService,
             Substitute.For<IEmailOutboxService>(),
+            Substitute.For<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
             Substitute.For<IConsentServiceRead>(),
