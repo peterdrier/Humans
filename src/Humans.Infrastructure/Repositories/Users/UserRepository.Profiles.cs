@@ -281,7 +281,9 @@ internal sealed partial class UserRepository
         // separate ContactFieldService.ReassignToUserAsync call.
         sourceProfile.FirstName = "Merged";
         sourceProfile.LastName = "User";
-        sourceProfile.BurnerName = string.Empty;
+        // Canonical display label lives on BurnerName — set it so the tombstone shows
+        // "Merged User" via the profile, not via the legacy User.DisplayName fallback.
+        sourceProfile.BurnerName = "Merged User";
         sourceProfile.Bio = null;
         sourceProfile.City = null;
         sourceProfile.CountryCode = null;

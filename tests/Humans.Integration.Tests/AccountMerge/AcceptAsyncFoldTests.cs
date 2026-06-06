@@ -216,7 +216,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         sourceProfile.Should().NotBeNull("source profile row is kept as a tombstone");
         sourceProfile!.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
-        sourceProfile.BurnerName.Should().Be(string.Empty);
+        sourceProfile.BurnerName.Should().Be("Merged User");
         sourceProfile.Bio.Should().BeNull();
 
         // Target profile is untouched.
@@ -541,6 +541,9 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         sourceUser!.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
         sourceUser.DisplayName.Should().Be("Merged User");
+        // Legacy Identity email/username PII is scrubbed to a tombstone sentinel (GDPR).
+        sourceUser.IdentityEmailColumn.Should().Be($"merged-{sourceId:N}@merged.local");
+        sourceUser.UserName.Should().Be($"merged-{sourceId:N}@merged.local");
     }
 
     [HumansFact(Timeout = 30_000)]
