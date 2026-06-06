@@ -52,7 +52,7 @@ UPDATE role_assignments SET "ValidTo" = now() WHERE "UserId" = '<user-id>' AND "
 
 ## Notes
 
-- Roles can also be assigned/revoked through the admin UI at `/Admin/Humans/<user-id>` once you have an existing admin user
+- Roles can also be assigned/revoked through the profile admin UI at `/Profile/<user-id>/Admin` once you have an existing admin user
 - The admin UI is accessible to users with `Admin` or `Board` roles
 - Only `Admin` role users can assign the `Admin` role through the UI; `Board` members can assign `Board`
 - Team Lead status is derived from `TeamMemberRole.Lead` on user-created teams (not a standalone RoleAssignment)

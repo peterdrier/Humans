@@ -19,7 +19,7 @@ namespace Humans.Infrastructure.Services.Events;
 /// flat <see cref="EventCategoryView"/> list, flat <see cref="EventVenueView"/>
 /// list, and the <see cref="EventGuideSettingsView"/> singleton. Composes
 /// <see cref="TrackedCache{TKey, TValue}"/> for diagnostics on
-/// <c>/Admin/CacheStats</c>.
+/// <c>/Debug/CacheStats</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -64,7 +64,7 @@ public sealed class CachingEventService(
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private volatile bool _isLoaded;
 
-    /// <summary>Diagnostics surface for <c>/Admin/CacheStats</c>.</summary>
+    /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats EventCacheStats => _eventCache;
 
     // ==========================================================================

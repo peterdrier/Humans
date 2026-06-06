@@ -1,3 +1,4 @@
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -167,6 +168,23 @@ public partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
         IReadOnlyCollection<Guid> shiftIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Per-user confirmed-shift totals for the active event: <c>Hours</c> is the
+    /// sum of each confirmed signup's <c>Shift.Duration</c> (in hours) and
+    /// <c>Count</c> is the number of confirmed signups. With neither
+    /// <paramref name="teamIds"/> nor <paramref name="rotaId"/> supplied the
+    /// totals span every team in the event; <paramref name="teamIds"/> narrows to
+    /// a team-set and <paramref name="rotaId"/> narrows to a single rota
+    /// (<paramref name="rotaId"/> takes precedence). Non-confirmed signups
+    /// (Pending / Refused / Bailed / Cancelled / NoShow) are excluded. Backs the
+    /// Shift Summary view (one row per user with ≥1 confirmed signup in scope).
+    /// </summary>
+    Task<IReadOnlyList<ConfirmedUserShiftTotal>> GetConfirmedUserShiftTotalsAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? teamIds = null,
+        Guid? rotaId = null,
         CancellationToken ct = default);
 
     /// <summary>

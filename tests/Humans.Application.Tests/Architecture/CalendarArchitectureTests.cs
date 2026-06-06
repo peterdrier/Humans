@@ -79,7 +79,7 @@ public class CalendarArchitectureTests
     public void CachingCalendarService_IsTrackedCache()
     {
         typeof(CachingCalendarService).Should().BeAssignableTo<ICacheStats>(
-            because: "the calendar read cache is surfaced on /Admin/CacheStats");
+            because: "the calendar read cache is surfaced on /Debug/CacheStats");
     }
 
     // ── CalendarEventInfo projection ─────────────────────────────────────────

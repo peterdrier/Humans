@@ -148,22 +148,22 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/EmailBackfillReview` | HumanAdmin, Admin | GET: Review email backfill |
 | `/Google/ApplyEmailBackfill` | Admin | POST: Apply email backfill |
 
-### AdminController (`/Admin/`) — Admin only
+### Admin dashboard and diagnostics
 
-`AdminController` is now a slim technical-operations controller.
+`AdminController` owns only the shared dashboard. Legacy technical operations now live on `DebugController`; per-human purge lives on `ProfileController`.
 
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Admin` | Index | Admin dashboard |
-| `/Admin/Humans/{id}/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production) |
-| `/Admin/Configuration` | Configuration | Configuration status page |
-| `/Admin/Logs` | Logs | View recent log entries |
-| `/Admin/DbStats` | DbStats | Database query statistics |
-| `/Admin/DbStats/Reset` | ResetDbStats | POST: Reset query statistics |
-| `/Admin/CacheStats` | CacheStats | Cache hit/miss statistics per key type |
-| `/Admin/CacheStats/Reset` | ResetCacheStats | POST: Reset cache statistics |
-| `/Admin/DbVersion` | DbVersion | Database migration version |
-| `/Admin/ClearHangfireLocks` | ClearHangfireLocks | POST: Admin-only lock cleanup |
+| `/Profile/{id}/Admin/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production) |
+| `/Debug/Configuration` | Configuration | Configuration status page |
+| `/Debug/Logs` | Logs | View recent log entries |
+| `/Debug/DbStats` | DbStats | Database query statistics |
+| `/Debug/DbStats/Reset` | ResetDbStats | POST: Reset query statistics |
+| `/Debug/CacheStats` | CacheStats | Cache hit/miss statistics per key type |
+| `/Debug/CacheStats/Reset` | ResetCacheStats | POST: Reset cache statistics |
+| `/Debug/DbVersion` | DbVersion | Database migration version |
+| `/Debug/Maintenance/ClearHangfireLocks` | ClearHangfireLocks | POST: Admin-only lock cleanup |
 
 ### AdminDuplicateAccountsController (`/Admin/DuplicateAccounts/`) — Admin only
 
@@ -406,7 +406,7 @@ _logger.LogInformation(
 | Action | Link | Badge |
 |--------|------|-------|
 | Sync Settings | `/Google/SyncSettings` | - |
-| Configuration Status | `/Admin/Configuration` | - |
+| Configuration Status | `/Debug/Configuration` | - |
 | Background Jobs | `/hangfire` | - |
 | Check Group Settings | `/Google/CheckGroupSettings` | - |
 

@@ -273,7 +273,7 @@ No new schema for inline events. The audit log is the source.
 - Drop `Humans.Application.Services.Feedback`, `Humans.Infrastructure.Repositories.Feedback`, `FeedbackController`, `FeedbackApiController`, `FeedbackWidgetViewComponent`, `FeedbackSectionExtensions`, `FeedbackViewModels`, `FeedbackReport` + `FeedbackMessage` entities, all configurations, all migrations.
 - Drop the `feedback_reports` and `feedback_messages` tables in a single migration.
 - Drop `FeedbackAdmin` role (`RoleNames.FeedbackAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, `PolicyNames.FeedbackAdminOrAdmin`, any `[Authorize(Roles=...)]` references).
-- Drop `FEEDBACK_API_KEY` env var, the `/Admin/Configuration` diagnostic for it, the localization keys (`Feedback_*`), and the nav-badge `queue = "feedback"` wiring.
+- Drop `FEEDBACK_API_KEY` env var, the `/Debug/Configuration` diagnostic for it, the localization keys (`Feedback_*`), and the nav-badge `queue = "feedback"` wiring.
 - Remove `docs/sections/Feedback.md` and `docs/features/27-feedback-system.md`. Update `MEMORY.md` references and the `/triage` skill.
 
 No data migration. No URL aliases. No backwards-compatibility shims.
@@ -292,7 +292,7 @@ No data migration. No URL aliases. No backwards-compatibility shims.
 - Section→role mapping is committed as the day-0 starting point. Adjustment is a code change in `IssueSectionRouting`; document in `docs/sections/Issues.md` once written.
 - The `/triage` Claude Code skill (`.claude/skills/triage/SKILL.md`) needs to be rewritten to point at the new API surface. Plan once cut-over is in place.
 - Consider whether non-Admin role-holders should be able to **delete** their own comments (currently no delete path is specified — comments are append-only).
-- LLM-agent submission path needs a small `/Admin/Configuration` indicator showing `ISSUES_API_KEY` set/unset, like the existing `FEEDBACK_API_KEY` row.
+- LLM-agent submission path needs a small `/Debug/Configuration` indicator showing `ISSUES_API_KEY` set/unset, like the existing `FEEDBACK_API_KEY` row.
 
 ## 16. Acceptance criteria
 

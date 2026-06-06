@@ -7,7 +7,6 @@ import {
   loginAsHumanAdmin,
   loginAsTicketAdmin,
   loginAsVolunteerCoordinator,
-  postWithCsrf,
 } from '../helpers/auth';
 
 /**
@@ -52,7 +51,7 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Governance', items: ['Voting', 'Board'] },
       { label: 'Integrations', items: ['Google', 'Email preview', 'Email outbox', 'Campaigns', 'Workspace accounts'] },
       { label: 'Agent', items: ['Agent Config', 'Agent History'] },
-      { label: 'People data', items: ['Merge requests', 'Duplicate detection', 'Audience segmentation', 'Legal documents', 'Backfill Provider/IsGoogle', 'Stub Profile Backfill'] },
+      { label: 'People data', items: ['Merge requests', 'Duplicate detection', 'Audience segmentation', 'Legal documents', 'Stub Profile Backfill'] },
       { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Cache stats', 'Configuration', 'Maintenance', 'Orphan signups', 'Hangfire', 'Health'] },
     ],
   },
@@ -153,9 +152,9 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
 });
 
 test.describe('Admin shell — breadcrumb regression (controller-only-match bug, ddfdb6c1)', () => {
-  test('breadcrumb on /Admin/Logs shows Diagnostics / Logs', async ({ page }) => {
+  test('breadcrumb on /Debug/Logs shows Diagnostics / Logs', async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/Admin/Logs');
+    await page.goto('/Debug/Logs');
 
     const crumb = page.locator('.crumb');
     await expect(crumb).toContainText('Diagnostics');
@@ -169,9 +168,9 @@ test.describe('Admin shell — breadcrumb regression (controller-only-match bug,
     await expect(activeLinks).toHaveText(/Logs/);
   });
 
-  test('breadcrumb on /Admin/DbStats shows Diagnostics / DB stats', async ({ page }) => {
+  test('breadcrumb on /Debug/DbStats shows Diagnostics / DB stats', async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/Admin/DbStats');
+    await page.goto('/Debug/DbStats');
 
     const crumb = page.locator('.crumb');
     await expect(crumb).toContainText('Diagnostics');
@@ -184,12 +183,12 @@ test.describe('Admin shell — breadcrumb regression (controller-only-match bug,
   });
 });
 
-test.describe('Admin shell — maintenance + backfill pages', () => {
-  test('/Admin/Maintenance loads with Clear Hangfire Locks form', async ({ page }) => {
+test.describe('Admin shell — maintenance page', () => {
+  test('/Debug/Maintenance loads with Clear Hangfire Locks form', async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/Admin/Maintenance');
+    await page.goto('/Debug/Maintenance');
 
-    expect(page.url()).toContain('/Admin/Maintenance');
+    expect(page.url()).toContain('/Debug/Maintenance');
     await expect(page.locator('h1', { hasText: 'Maintenance' })).toBeVisible();
 
     const form = page.locator('form[action*="ClearHangfireLocks"]');
@@ -197,22 +196,6 @@ test.describe('Admin shell — maintenance + backfill pages', () => {
     await expect(form.locator('button[type="submit"]', { hasText: 'Clear Hangfire Locks' })).toBeVisible();
   });
 
-  test('/Admin/BackfillUserEmailProviders GET loads, POST runs idempotently', async ({ page }) => {
-    await loginAsAdmin(page);
-    await page.goto('/Admin/BackfillUserEmailProviders');
-
-    expect(page.url()).toContain('/Admin/BackfillUserEmailProviders');
-    // Form is asp-action="BackfillUserEmailProvidersRun" but that POST is
-    // attribute-routed as [HttpPost("BackfillUserEmailProviders")], so the
-    // rendered action attribute resolves to /Admin/BackfillUserEmailProviders.
-    await expect(page.locator('form[action*="BackfillUserEmailProviders"]')).toBeVisible();
-    await expect(page.locator('form button[type="submit"]', { hasText: 'Run backfill' })).toBeVisible();
-
-    // Backfill is idempotent — re-running over already-backfilled rows is safe.
-    const response = await postWithCsrf(page, '/Admin/BackfillUserEmailProviders', '');
-    // Either redirected back to the page or rendered inline; both are non-error.
-    expect([200, 302]).toContain(response.status());
-  });
 });
 
 test.describe('Admin shell — chrome', () => {

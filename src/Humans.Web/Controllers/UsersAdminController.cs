@@ -3,6 +3,7 @@
 using Humans.Application;
 using Humans.Application.Authorization;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
@@ -20,6 +21,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -39,6 +41,9 @@ public sealed class UsersAdminController(
     IHumanLifecycleService humanLifecycleService,
     IOnboardingService onboardingService,
     IAuditLogService auditLogService,
+    IAdminDatabaseDiagnosticsService databaseDiagnostics,
+    IAccountDeletionService accountDeletionService,
+    IWebHostEnvironment environment,
     IClock clock,
     IAuthorizationService authorizationService,
     ILogger<UsersAdminController> logger,
@@ -301,6 +306,71 @@ public sealed class UsersAdminController(
 
         SetRoleEndedResult(result.Success, roleAssignment.RoleName, roleAssignment.UserDisplayName);
         return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
+    }
+
+    // Audience-segmentation diagnostic — relocated here from AdminController by the
+    // "legacy admin routes -> section homes" move (#901). Admin-only (stricter than the
+    // class-level Board-or-Admin gate, mirroring RevealIban).
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [HttpGet("Audience")]
+    public async Task<IActionResult> Audience(int? year, CancellationToken ct)
+    {
+        try
+        {
+            var segmentation = await databaseDiagnostics.GetAudienceSegmentationAsync(year, ct);
+
+            var model = new AudienceSegmentationViewModel
+            {
+                TotalAccounts = segmentation.TotalAccounts,
+                WithTicket = segmentation.WithTicket,
+                WithProfile = segmentation.WithProfile,
+                WithBoth = segmentation.WithBoth,
+                WithNeither = segmentation.WithNeither,
+                AvailableYears = segmentation.AvailableYears.ToList(),
+                SelectedYear = segmentation.SelectedYear,
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading audience segmentation data");
+            SetError("Failed to load audience segmentation data.");
+            return RedirectToAction(nameof(AdminController.Index), "Admin");
+        }
+    }
+
+    // Dev/QA-only destructive purge — moved here with the rest of the per-user admin surface.
+    [HttpPost("{id:guid}/Purge")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PurgeHuman(Guid id)
+    {
+        if (environment.IsProduction())
+            return NotFound();
+
+        var user = await _userService.GetUserInfoAsync(id);
+        if (user is null)
+            return NotFound();
+
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (user.Id == currentUser?.Id)
+        {
+            SetError("You cannot purge your own account.");
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+
+        var displayName = user.BurnerName;
+        logger.LogWarning(
+            "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
+            currentUser?.Id, id, displayName, environment.EnvironmentName);
+
+        var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);
+        if (!result.Success)
+            return NotFound();
+
+        SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
+        return RedirectToAction(nameof(AdminList));
     }
 
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(

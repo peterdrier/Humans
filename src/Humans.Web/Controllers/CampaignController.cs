@@ -9,7 +9,7 @@ using Humans.Application.Interfaces.Users;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-[Route("Admin/Campaigns")]
+[Route("Campaigns/Admin")]
 public class CampaignController(ICampaignService campaignService, IUserServiceRead userService)
     : HumansControllerBase(userService)
 {
