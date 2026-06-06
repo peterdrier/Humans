@@ -1,3 +1,4 @@
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -390,6 +391,40 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .Select(r => r.TeamId)
             .Distinct()
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ConfirmedUserShiftTotal>> GetConfirmedUserShiftTotalsAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid>? teamIds = null,
+        Guid? rotaId = null,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var query = ctx.ShiftSignups
+            .AsNoTracking()
+            .Where(su => su.Status == SignupStatus.Confirmed
+                      && su.Shift.Rota.EventSettingsId == eventSettingsId);
+
+        if (rotaId is { } rid)
+            query = query.Where(su => su.Shift.RotaId == rid);
+        else if (teamIds is { Count: > 0 })
+            query = query.Where(su => teamIds.Contains(su.Shift.Rota.TeamId));
+
+        // Project each confirmed signup's duration into memory and aggregate per
+        // user there: NodaTime Duration has no SQL Sum translation, and the scope
+        // is a single event (≤ a few thousand rows at Nobodies' scale).
+        var rows = await query
+            .Select(su => new { su.UserId, su.Shift.Duration })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.UserId)
+            .Select(g => new ConfirmedUserShiftTotal(
+                g.Key,
+                g.Sum(x => x.Duration.TotalHours),
+                g.Count()))
+            .ToList();
     }
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
