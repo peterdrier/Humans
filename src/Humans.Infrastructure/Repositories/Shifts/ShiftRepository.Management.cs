@@ -413,16 +413,18 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
 
         // Project each confirmed signup's duration into memory and aggregate per
         // user there: NodaTime Duration has no SQL Sum translation, and the scope
-        // is a single event (≤ a few thousand rows at Nobodies' scale).
+        // is a single event (≤ a few thousand rows at Nobodies' scale). All-day
+        // (build/strike) rows store a 24h sentinel Duration, so their effective
+        // hours are the fixed window width instead (Shift.AllDayWindowHours).
         var rows = await query
-            .Select(su => new { su.UserId, su.Shift.Duration })
+            .Select(su => new { su.UserId, su.Shift.Duration, su.Shift.IsAllDay })
             .ToListAsync(ct);
 
         return rows
             .GroupBy(r => r.UserId)
             .Select(g => new ConfirmedUserShiftTotal(
                 g.Key,
-                g.Sum(x => x.Duration.TotalHours),
+                g.Sum(x => x.IsAllDay ? Shift.AllDayWindowHours : x.Duration.TotalHours),
                 g.Count()))
             .ToList();
     }

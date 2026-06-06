@@ -104,6 +104,23 @@ public class ShiftRepositorySummaryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetConfirmedUserShiftTotalsAsync_AllDayShift_UsesWindowHoursNotStoredDuration()
+    {
+        SeedEvent(_event);
+        SeedTeam(_team1);
+        SeedRota(_rota1, _event, _team1);
+        // Build/strike all-day rows store a 24h sentinel Duration, but the effective
+        // worked hours are the 08:00–18:00 window (10h) — see Shift.IsAllDay.
+        var allDay = SeedShift(_rota1, Duration.FromHours(24), isAllDay: true);
+        _dbContext.ShiftSignups.Add(MakeSignup(_userA, allDay, SignupStatus.Confirmed));
+        await _dbContext.SaveChangesAsync();
+
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event);
+
+        totals.Single(t => t.UserId == _userA).Hours.Should().Be(Shift.AllDayWindowHours);
+    }
+
+    [HumansFact]
     public async Task GetConfirmedUserShiftTotalsAsync_EmptyEvent_ReturnsEmpty()
     {
         SeedEvent(_event);
@@ -172,7 +189,7 @@ public class ShiftRepositorySummaryTests : IDisposable
         Period = RotaPeriod.Event
     });
 
-    private Guid SeedShift(Guid rotaId, Duration duration)
+    private Guid SeedShift(Guid rotaId, Duration duration, bool isAllDay = false)
     {
         var shiftId = Guid.NewGuid();
         _dbContext.Shifts.Add(new Shift
@@ -182,6 +199,7 @@ public class ShiftRepositorySummaryTests : IDisposable
             DayOffset = 0,
             StartTime = new LocalTime(8, 0),
             Duration = duration,
+            IsAllDay = isAllDay,
             MaxVolunteers = 10
         });
         return shiftId;

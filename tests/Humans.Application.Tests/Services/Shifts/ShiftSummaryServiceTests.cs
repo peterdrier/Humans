@@ -133,7 +133,11 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
 
         byUser[_userA].Should().BeEquivalentTo(new
         {
-            Name = "Ana", CampId = (Guid?)_fuego, CampName = "Barrio Fuego", Hours = 4.0, Count = 1
+            Name = "Ana",
+            CampId = (Guid?)_fuego,
+            CampName = "Barrio Fuego",
+            Hours = 4.0,
+            Count = 1
         });
         byUser[_userB].CampId.Should().Be(_fuego);
         byUser[_userB].Hours.Should().Be(8.0);

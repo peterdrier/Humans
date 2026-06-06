@@ -103,28 +103,25 @@ public class ShiftsController(
     // One view at three scopes: global (all teams), team-set, single rota. Same
     // service method + view partial; the route just narrows the scope.
 
+    // Gated by ShiftDepartmentManager — the canonical "shift role OR coordinator
+    // of any team" policy (IsAnyTeamManagerOrCoordinatorHandler) that also gates
+    // the sibling shift dashboard. One coherent rule across all three scopes (§7):
+    // the global page exposes the superset, so the narrower pages share it.
     [HttpGet("Summary")]
+    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
     public Task<IActionResult> Summary() => RenderSummaryAsync(null, null);
 
     [HttpGet("Summary/{teamSlug}")]
+    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
     public Task<IActionResult> SummaryTeam(string teamSlug) => RenderSummaryAsync(teamSlug, null);
 
     [HttpGet("Summary/{teamSlug}/{rotaGuid:guid}")]
+    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
     public Task<IActionResult> SummaryRota(string teamSlug, Guid rotaGuid) =>
         RenderSummaryAsync(teamSlug, rotaGuid);
 
-    // Shared gate + render for all three Summary scopes. Open to any team
-    // coordinator / VolunteerManager / Admin (§7): the global page already
-    // exposes the superset, so the narrower pages share one rule.
     private async Task<IActionResult> RenderSummaryAsync(string? teamSlug, Guid? rotaId)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound is not null) return currentUserNotFound;
-
-        var isPrivileged = RoleChecks.IsVolunteerManager(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
-        if (!isPrivileged) return Forbid();
-
         var es = await shiftMgmt.GetActiveAsync();
         if (es is null) return View("NoActiveEvent");
 

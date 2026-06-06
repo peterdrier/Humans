@@ -59,25 +59,15 @@ public class ShiftsControllerSummaryTests
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _teamService);
     }
 
+    // Authorization is declarative: [Authorize(Policy = ShiftDepartmentManager)] on
+    // each Summary action (enforced by the auth middleware / the policy's own tests),
+    // so it isn't re-tested here by calling the action method directly.
+
     [HumansFact]
-    public async Task Summary_NonPrivilegedUser_ReturnsForbid()
+    public async Task Summary_NoActiveEvent_ReturnsNoActiveEventView()
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(userId).Returns(new List<Guid>());
-
-        var result = await ctrl.Summary();
-
-        result.Should().BeOfType<ForbidResult>();
-        await _shiftMgmt.DidNotReceiveWithAnyArgs().GetActiveAsync();
-    }
-
-    [HumansFact]
-    public async Task Summary_CoordinatorButNoActiveEvent_ReturnsNoActiveEventView()
-    {
-        var userId = Guid.NewGuid();
-        var ctrl = BuildSut(userId);
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(userId).Returns(new List<Guid> { Guid.NewGuid() });
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
         var result = await ctrl.Summary();
@@ -91,7 +81,6 @@ public class ShiftsControllerSummaryTests
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(userId).Returns(new List<Guid> { Guid.NewGuid() });
         _shiftMgmt.GetActiveAsync().Returns(ActiveEvent);
         _shiftMgmt.BuildSummaryAsync(ActiveEvent, "ghost", null, Arg.Any<CancellationToken>())
             .Returns((ShiftSummary?)null);
@@ -106,7 +95,6 @@ public class ShiftsControllerSummaryTests
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(userId).Returns(new List<Guid> { Guid.NewGuid() });
         _shiftMgmt.GetActiveAsync().Returns(ActiveEvent);
 
         var campX = Guid.NewGuid();
