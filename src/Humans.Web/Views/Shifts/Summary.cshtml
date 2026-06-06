@@ -3,67 +3,43 @@
 
 @{
     ViewData["Title"] = "Shift summary by camp";
+    Layout = "_AdminLayout";
 
     string Hours(double h) => h.ToString("0.#");
     const string NoCamp = "(no camp)";
 }
 
-<div class="container py-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item @(Model.Scope == ShiftSummaryScope.Global ? "active" : "")">
-                @if (Model.Scope == ShiftSummaryScope.Global)
-                {
-                    <text>All teams</text>
-                }
-                else
-                {
-                    <a asp-action="Summary">All teams</a>
-                }
-            </li>
-            @if (Model.Scope != ShiftSummaryScope.Global)
-            {
-                <li class="breadcrumb-item @(Model.Scope == ShiftSummaryScope.Team ? "active" : "")">
-                    @if (Model.Scope == ShiftSummaryScope.Team)
-                    {
-                        @Model.TeamName
-                    }
-                    else
-                    {
-                        <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a>
-                    }
-                </li>
-            }
-            @if (Model.Scope == ShiftSummaryScope.Rota)
-            {
-                <li class="breadcrumb-item active">@Model.RotaName</li>
-            }
-        </ol>
-    </nav>
-
+<div class="container-fluid py-3">
     <h1 class="h3 mb-1">Shift summary by camp</h1>
-    <p class="text-muted">
-        @Model.EventName —
-        @(Model.Scope switch
+    <p class="text-muted mb-3">
+        @if (Model.Scope == ShiftSummaryScope.Team)
         {
-            ShiftSummaryScope.Rota => Model.RotaName,
-            ShiftSummaryScope.Team => Model.TeamName,
-            _ => "all teams"
-        })
-        <span class="ms-1">· confirmed signups only</span>
+            <a asp-action="Summary">All teams</a><text> › </text><span>@Model.TeamName</span>
+        }
+        else if (Model.Scope == ShiftSummaryScope.Rota)
+        {
+            <a asp-action="Summary">All teams</a><text> › </text>
+            <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a><text> › </text><span>@Model.RotaName</span>
+        }
+        else
+        {
+            <text>All teams</text>
+        }
+        <span class="mx-1">·</span> @Model.EventName
+        <span class="mx-1">·</span> confirmed signups only
     </p>
 
     <div class="row g-4">
-        <div class="col-lg-6">
+        <div class="col-xl-6">
             <h2 class="h5">By human</h2>
             @if (Model.Humans.Count == 0)
             {
-                <p class="text-muted">No confirmed signups yet.</p>
+                <div class="alert alert-light border">No confirmed signups yet.</div>
             }
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle">
+                    <table class="table table-sm table-striped align-middle">
                         <thead>
                             <tr>
                                 <th>Human</th>
@@ -76,8 +52,17 @@
                             @foreach (var h in Model.Humans)
                             {
                                 <tr>
-                                    <td>@h.Name</td>
-                                    <td class="@(h.CampId is null ? "text-muted" : "")">@(h.CampName ?? NoCamp)</td>
+                                    <td><vc:human user-id="@h.UserId" /></td>
+                                    <td>
+                                        @if (h.CampId is null)
+                                        {
+                                            <span class="text-muted">@NoCamp</span>
+                                        }
+                                        else
+                                        {
+                                            @h.CampName
+                                        }
+                                    </td>
                                     <td class="text-end">@Hours(h.Hours)</td>
                                     <td class="text-end">@h.Count</td>
                                 </tr>
@@ -88,10 +73,10 @@
             }
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-xl-6">
             <h2 class="h5">By camp</h2>
             <div class="table-responsive">
-                <table class="table table-sm align-middle">
+                <table class="table table-sm table-striped align-middle">
                     <thead>
                         <tr>
                             <th>Camp</th>
@@ -103,7 +88,7 @@
                     <tbody>
                         @foreach (var c in Model.Camps)
                         {
-                            <tr class="@(c.CampId is null ? "text-muted" : "")">
+                            <tr class="@(c.CampId is null ? "text-muted" : null)">
                                 <td>@(c.CampName ?? NoCamp)</td>
                                 <td class="text-end">@c.People</td>
                                 <td class="text-end">@Hours(c.Hours)</td>
@@ -119,26 +104,24 @@
     @if (Model.TeamLinks.Count > 0)
     {
         <h2 class="h5 mt-4">Teams</h2>
-        <ul class="list-inline">
+        <div class="d-flex flex-wrap gap-2">
             @foreach (var t in Model.TeamLinks)
             {
-                <li class="list-inline-item me-3">
-                    <a asp-action="SummaryTeam" asp-route-teamSlug="@t.Slug">@t.Name</a>
-                </li>
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryTeam" asp-route-teamSlug="@t.Slug">@t.Name</a>
             }
-        </ul>
+        </div>
     }
 
     @if (Model.RotaLinks.Count > 0)
     {
         <h2 class="h5 mt-4">Rotas</h2>
-        <ul class="list-inline">
+        <div class="d-flex flex-wrap gap-2">
             @foreach (var r in Model.RotaLinks)
             {
-                <li class="list-inline-item me-3">
-                    <a asp-action="SummaryRota" asp-route-teamSlug="@Model.TeamSlug" asp-route-rotaGuid="@r.RotaId">@r.Name</a>
-                </li>
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryRota" asp-route-teamSlug="@Model.TeamSlug" asp-route-rotaGuid="@r.RotaId">@r.Name</a>
             }
-        </ul>
+        </div>
     }
 </div>
