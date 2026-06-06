@@ -55,6 +55,35 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         archived.MergedAt.Should().NotBeNull("the tombstone is the merge commit point");
     }
 
+    [HumansFact(Timeout = 60_000)]
+    public async Task MergeAsync_WithAlreadyGonePendingEmail_CompletesWithoutThrowing()
+    {
+        var runTag = Guid.NewGuid().ToString("N");
+        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        {
+            b.WithTargetEmail($"keep-{runTag}@example.com", verified: true, isPrimary: true);
+            b.WithSourceEmail($"dupe-{runTag}@example.com", verified: true, isPrimary: true);
+        });
+        var survivorId = targetId;
+        var archivedId = sourceId;
+
+        var adminId = await SeedAdminUserAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
+
+        // A pending-email id that no longer exists must NOT throw — a gone email is the
+        // desired end state — and the archived account MUST still be tombstoned.
+        var act = async () => await sut.MergeAsync(
+            survivorId, archivedId, adminId, pendingEmailIdToVerify: Guid.NewGuid());
+
+        await act.Should().NotThrowAsync();
+
+        await using var assertScope = factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId))!.MergedToUserId
+            .Should().Be(survivorId, "the tombstone must still be written when the pending email is gone");
+    }
+
     // ==================================================================
     // Helpers
     // ==================================================================
