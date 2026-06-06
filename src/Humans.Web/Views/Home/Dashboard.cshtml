@@ -4,7 +4,6 @@
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
 }
 
-<vc:temp-data-alerts />
 
 @* ─── Header ─── *@
 <div class="row justify-content-center mb-4">
@@ -19,7 +18,7 @@
                     @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
                     @if (Model.MembershipTier != MembershipTier.Volunteer)
                     {
-                        <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
+                        <span class="badge bg-primary ms-2 align-middle dashboard-membership-badge">@Model.MembershipTier</span>
                     }
                 </h1>
                 <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>
@@ -82,8 +81,7 @@
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-danger-bg); color: var(--h-rust); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-danger me-3">
                             <i class="fa-solid fa-clock"></i>
                         </div>
                         <div class="flex-grow-1">
@@ -98,8 +96,7 @@
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-warning-bg); color: var(--h-amber-dark); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
                             <i class="fa-solid fa-clock"></i>
                         </div>
                         <div class="flex-grow-1">
@@ -114,8 +111,7 @@
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-info me-3">
                             <i class="fa-solid fa-hourglass-half"></i>
                         </div>
                         <div>
@@ -129,8 +125,7 @@
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-success-bg); color: var(--h-sage-dark); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-success me-3">
                             <i class="fa-solid fa-circle-check"></i>
                         </div>
                         <div>
@@ -156,8 +151,7 @@
                 @if (!Model.TicketsConfigured)
                 {
                     <div class="d-flex align-items-center">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-warning-bg); color: var(--h-amber-dark); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
                         <div>
@@ -168,8 +162,7 @@
                 else if (Model.HasTicket)
                 {
                     <div class="d-flex align-items-center">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-success-bg); color: var(--h-sage-dark); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-success me-3">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
                         <div>
@@ -189,8 +182,7 @@
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
                 {
                     <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-parchment); color: var(--h-aged-ink); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-neutral me-3">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
                         <div>
@@ -208,8 +200,7 @@
                 else
                 {
                     <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
+                        <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-info me-3">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
                         <div>
@@ -253,24 +244,7 @@
 
             @if (shiftCards?.UrgentShifts.Count > 0)
             {
-                <div class="card border-0 shadow-sm mt-3">
-                    <div class="card-body">
-                        <h6 class="mb-3"><i class="fa-solid fa-fire text-danger me-1"></i>@Localizer["GetInvolved_UrgentShifts"]</h6>
-                        <ul class="list-unstyled mb-2">
-                            @foreach (var item in shiftCards.UrgentShifts)
-                            {
-                                <li class="d-flex justify-content-between align-items-center py-1">
-                                    <span>
-                                        <strong>@(item?.RotaName ?? item?.Shift?.Rota?.Name ?? Localizer["Common_Unknown"].Value)</strong>
-                                        <small class="text-muted ms-1">@(item?.DepartmentName ?? "")</small>
-                                    </span>
-                                    <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) @((item?.RemainingSlots ?? 0) == 1 ? Localizer["Dashboard_SlotsSingular"].Value : Localizer["Dashboard_SlotsPlural"].Value)</span>
-                                </li>
-                            }
-                        </ul>
-                        <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success">@Localizer["GetInvolved_BrowseAllShifts"]</a>
-                    </div>
-                </div>
+                @await Html.PartialAsync("_ShiftCards", shiftCards)
             }
         </div>
     </div>
@@ -280,47 +254,47 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
     @* ─── Guided shift discovery — no shifts yet ─── *@
     <div class="row justify-content-center mb-5">
         <div class="col-lg-8">
-            <div class="card border-0 shadow" style="background: var(--h-aged-ink); color: var(--h-parchment-light);">
+            <div class="card border-0 shadow dashboard-callout">
                 <div class="card-body text-center py-5 px-4">
-                    <h2 class="display-6 fw-bold mb-3" style="color: var(--h-parchment-light);">
+                    <h2 class="display-6 fw-bold mb-3 dashboard-callout-title">
                         <i class="fa-solid fa-hand-holding-heart me-2"></i>@Localizer["GetInvolved_Title"]
                     </h2>
-                    <p class="mb-2" style="max-width: 520px; margin: 0 auto; line-height: 1.3; color: var(--h-parchment-light);">
+                    <p class="mb-2 dashboard-callout-copy">
                         @Localizer["GetInvolved_Intro"]
                     </p>
 
                     <div class="row g-3 my-4 justify-content-center">
                         <div class="col-sm-4">
-                            <div class="rounded p-3 h-100" style="background: rgba(255,255,255,0.08);">
-                                <h6 style="color: var(--h-gold);">@Localizer["GetInvolved_Phase_Setup"]</h6>
-                                <small style="color: var(--h-parchment-dark);">@Localizer["GetInvolved_Phase_Setup_Desc"]</small>
+                            <div class="rounded p-3 h-100 dashboard-callout-phase">
+                                <h6 class="dashboard-callout-accent">@Localizer["GetInvolved_Phase_Setup"]</h6>
+                                <small class="dashboard-callout-muted">@Localizer["GetInvolved_Phase_Setup_Desc"]</small>
                             </div>
                         </div>
                         <div class="col-sm-4">
-                            <div class="rounded p-3 h-100" style="background: rgba(255,255,255,0.08);">
-                                <h6 style="color: var(--h-gold);">@Localizer["GetInvolved_Phase_Event"]</h6>
-                                <small style="color: var(--h-parchment-dark);">@Localizer["GetInvolved_Phase_Event_Desc"]</small>
+                            <div class="rounded p-3 h-100 dashboard-callout-phase">
+                                <h6 class="dashboard-callout-accent">@Localizer["GetInvolved_Phase_Event"]</h6>
+                                <small class="dashboard-callout-muted">@Localizer["GetInvolved_Phase_Event_Desc"]</small>
                             </div>
                         </div>
                         <div class="col-sm-4">
-                            <div class="rounded p-3 h-100" style="background: rgba(255,255,255,0.08);">
-                                <h6 style="color: var(--h-gold);">@Localizer["GetInvolved_Phase_Strike"]</h6>
-                                <small style="color: var(--h-parchment-dark);">@Localizer["GetInvolved_Phase_Strike_Desc"]</small>
+                            <div class="rounded p-3 h-100 dashboard-callout-phase">
+                                <h6 class="dashboard-callout-accent">@Localizer["GetInvolved_Phase_Strike"]</h6>
+                                <small class="dashboard-callout-muted">@Localizer["GetInvolved_Phase_Strike_Desc"]</small>
                             </div>
                         </div>
                     </div>
 
                     @if (shiftCards?.UrgentShifts.Count > 0)
                     {
-                        <div class="text-start mb-3" style="max-width: 520px; margin: 0 auto;">
-                            <h6 style="color: var(--h-gold);"><i class="fa-solid fa-fire me-1"></i>@Localizer["GetInvolved_UrgentShifts"]</h6>
+                        <div class="text-start mb-3 dashboard-callout-copy">
+                            <h6 class="dashboard-callout-accent"><i class="fa-solid fa-fire me-1"></i>@Localizer["GetInvolved_UrgentShifts"]</h6>
                             <ul class="list-unstyled mb-0">
                                 @foreach (var item in shiftCards.UrgentShifts)
                                 {
-                                    <li class="d-flex justify-content-between align-items-center py-1" style="color: var(--h-parchment-light);">
+                                    <li class="d-flex justify-content-between align-items-center py-1">
                                         <span>
                                             <strong>@(item?.RotaName ?? item?.Shift?.Rota?.Name ?? Localizer["Common_Unknown"].Value)</strong>
-                                            <small class="ms-1" style="color: var(--h-parchment-dark);">@(item?.DepartmentName ?? "")</small>
+                                            <small class="ms-1 dashboard-callout-muted">@(item?.DepartmentName ?? "")</small>
                                         </span>
                                         <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) @((item?.RemainingSlots ?? 0) == 1 ? Localizer["Dashboard_SlotsSingular"].Value : Localizer["Dashboard_SlotsPlural"].Value)</span>
                                     </li>
@@ -330,7 +304,7 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
                     }
 
                     <div class="d-flex justify-content-center gap-2">
-                        <a asp-controller="Shifts" asp-action="Index" class="btn btn-lg px-4" style="background: var(--h-gold); color: var(--h-aged-ink); font-weight: 600;">
+                        <a asp-controller="Shifts" asp-action="Index" class="btn btn-lg px-4 dashboard-callout-primary">
                             <i class="fa-solid fa-calendar-alt me-1"></i>@Localizer["GetInvolved_BrowseAllShifts"]
                         </a>
                         <a asp-controller="Shifts" asp-action="Mine" class="btn btn-lg btn-outline-light px-4">
@@ -351,42 +325,33 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
             <h5 class="text-muted mb-1">@Localizer["Dashboard_GetInvolved"]</h5>
             <p class="text-muted small mb-3 guest-section-sub">@Localizer["Dashboard_GetInvolvedSubtitle"]</p>
             <div class="row g-3">
-                <div class="col-sm-4">
-                    <a asp-controller="Shifts" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                        <div class="card-body text-center py-4">
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
-                                 style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
-                                <i class="fa-solid fa-calendar-alt fa-lg"></i>
-                            </div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Nav_Shifts"]</div>
-                            <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Dashboard_ShiftsDescription"]</small>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-sm-4">
-                    <a asp-controller="Team" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                        <div class="card-body text-center py-4">
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
-                                 style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
-                                <i class="fa-solid fa-people-group fa-lg"></i>
-                            </div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Nav_Teams"]</div>
-                            <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Dashboard_TeamsDescription"]</small>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-sm-4">
-                    <a asp-controller="Camp" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                        <div class="card-body text-center py-4">
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
-                                 style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
-                                <i class="fa-solid fa-campground fa-lg"></i>
-                            </div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Camp_Plural"]</div>
-                            <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Dashboard_CampsDescription"]</small>
-                        </div>
-                    </a>
-                </div>
+                @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                {
+                    Controller = "Shifts",
+                    Action = "Index",
+                    Title = Localizer["Nav_Shifts"].Value,
+                    Description = Localizer["Dashboard_ShiftsDescription"].Value,
+                    IconCssClass = "fa-solid fa-calendar-alt fa-lg",
+                    ColumnClass = "col-sm-4"
+                })
+                @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                {
+                    Controller = "Team",
+                    Action = "Index",
+                    Title = Localizer["Nav_Teams"].Value,
+                    Description = Localizer["Dashboard_TeamsDescription"].Value,
+                    IconCssClass = "fa-solid fa-people-group fa-lg",
+                    ColumnClass = "col-sm-4"
+                })
+                @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                {
+                    Controller = "Camp",
+                    Action = "Index",
+                    Title = Localizer["Camp_Plural"].Value,
+                    Description = Localizer["Dashboard_CampsDescription"].Value,
+                    IconCssClass = "fa-solid fa-campground fa-lg",
+                    ColumnClass = "col-sm-4"
+                })
             </div>
         </div>
     </div>
@@ -398,64 +363,46 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
         <h5 class="text-muted mb-1">@Localizer["Dashboard_YourStuff"]</h5>
         <p class="text-muted small mb-3 guest-section-sub">@Localizer["Dashboard_YourStuffSubtitle"]</p>
         <div class="row g-3">
-            <div class="col-md-4">
-                <a asp-controller="Profile" asp-action="Edit" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                    <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-parchment); color: var(--h-aged-ink); flex-shrink: 0;">
-                            <i class="fa-solid fa-user-pen"></i>
-                        </div>
-                        <div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Dashboard_ProfileCard"]</div>
-                            <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Dashboard_ProfileCardDescription"]</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a asp-controller="Consent" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                    <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
-                            <i class="fa-solid fa-file-signature"></i>
-                        </div>
-                        <div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Dashboard_ConsentsCard"]</div>
-                            <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Dashboard_ConsentsCardDescription"]</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a asp-controller="Profile" asp-action="Privacy" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                    <div class="card-body d-flex align-items-center py-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
-                            <i class="fa-solid fa-shield-halved"></i>
-                        </div>
-                        <div>
-                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Dashboard_PrivacyCard"]</div>
-                            <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Dashboard_PrivacyCardDescription"]</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Profile",
+                Action = "Edit",
+                Title = Localizer["Dashboard_ProfileCard"].Value,
+                Description = Localizer["Dashboard_ProfileCardDescription"].Value,
+                IconCssClass = "fa-solid fa-user-pen",
+                Compact = true
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Consent",
+                Action = "Index",
+                Title = Localizer["Dashboard_ConsentsCard"].Value,
+                Description = Localizer["Dashboard_ConsentsCardDescription"].Value,
+                IconCssClass = "fa-solid fa-file-signature",
+                IconVariant = "info",
+                Compact = true
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Profile",
+                Action = "Privacy",
+                Title = Localizer["Dashboard_PrivacyCard"].Value,
+                Description = Localizer["Dashboard_PrivacyCardDescription"].Value,
+                IconCssClass = "fa-solid fa-shield-halved",
+                IconVariant = "info",
+                Compact = true
+            })
             @if (Model.IsVolunteerMember)
             {
-                <div class="col-md-4">
-                    <a asp-controller="GovernanceApplications" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
-                        <div class="card-body d-flex align-items-center py-3">
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-                                 style="width: 40px; height: 40px; background: var(--h-parchment); color: var(--h-aged-ink); flex-shrink: 0;">
-                                <i class="fa-solid fa-landmark"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Nav_Governance"]</div>
-                                <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Dashboard_GovernanceCardDescription"]</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+                @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                {
+                    Controller = "GovernanceApplications",
+                    Action = "Index",
+                    Title = Localizer["Nav_Governance"].Value,
+                    Description = Localizer["Dashboard_GovernanceCardDescription"].Value,
+                    IconCssClass = "fa-solid fa-landmark",
+                    Compact = true
+                })
             }
         </div>
     </div>

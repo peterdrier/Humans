@@ -1,0 +1,32 @@
+@model Humans.Web.Models.RotaHeaderViewModel
+@{
+    var spacing = Model.BadgeSpacingClass;
+}
+
+@if (Model.ShowPreferenceStar)
+{
+    <i class="fa-solid fa-star text-warning @spacing" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
+}
+@if (Model.Rota.Priority == ShiftPriority.Essential)
+{
+    <span class="badge bg-danger @spacing">@Localizer["Shifts_Essential"]</span>
+}
+else if (Model.Rota.Priority == ShiftPriority.Important)
+{
+    <span class="badge bg-warning text-dark @spacing">@Localizer["Shifts_Important"]</span>
+}
+@if (Model.ShowPeriodBadge)
+{
+    <span class="badge @(Model.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) @spacing">@(Model.Rota.Period switch { RotaPeriod.Build => Localizer["Shifts_SetUp"].Value, RotaPeriod.All => Localizer["Shifts_AllPhases"].Value, _ => Model.Rota.Period.ToString() })</span>
+}
+@if (!Model.Rota.IsVisibleToVolunteers)
+{
+    <span class="badge bg-warning text-dark @spacing"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
+}
+@if (Model.ShowTags)
+{
+    @foreach (var tag in Model.Rota.Tags.OrderBy(t => t.Name, StringComparer.Ordinal))
+    {
+        <span class="badge bg-light text-dark border @spacing"><i class="fa-solid fa-tag fa-xs me-1"></i>@tag.Name</span>
+    }
+}

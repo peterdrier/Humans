@@ -3,10 +3,12 @@
     ViewData["Title"] = "Cache Statistics";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Cache Statistics</h1>
+<div class="page-head">
+    <div>
+        <h1 class="title">Cache Statistics</h1>
+        <p class="sub">@((Model.TotalHits + Model.TotalMisses).ToString("N0")) total lookups since last restart</p>
+    </div>
     <div class="d-flex align-items-center gap-3">
-        <span class="text-muted">@((Model.TotalHits + Model.TotalMisses).ToString("N0")) total lookups since last restart</span>
         <form asp-action="ResetCacheStats" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning btn-sm"
@@ -20,40 +22,23 @@
     </div>
 </div>
 
-<vc:temp-data-alerts />
 
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-success">@Model.TotalHits.ToString("N0")</h5>
-                <p class="card-text text-muted mb-0">Hits</p>
-            </div>
-        </div>
+<div class="stats">
+    <div class="stat">
+        <div class="label">Hits</div>
+        <div class="value text-success">@Model.TotalHits.ToString("N0")</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-danger">@Model.TotalMisses.ToString("N0")</h5>
-                <p class="card-text text-muted mb-0">Misses</p>
-            </div>
-        </div>
+    <div class="stat">
+        <div class="label">Misses</div>
+        <div class="value text-danger">@Model.TotalMisses.ToString("N0")</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title">@Model.OverallHitRatePercent.ToString("F1")%</h5>
-                <p class="card-text text-muted mb-0">Overall Hit Rate</p>
-            </div>
-        </div>
+    <div class="stat">
+        <div class="label">Overall Hit Rate</div>
+        <div class="value">@Model.OverallHitRatePercent.ToString("F1")<em>%</em></div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-primary">@Model.TotalActiveEntries.ToString("N0")</h5>
-                <p class="card-text text-muted mb-0">Active Entries</p>
-            </div>
-        </div>
+    <div class="stat">
+        <div class="label">Active Entries</div>
+        <div class="value text-primary">@Model.TotalActiveEntries.ToString("N0")</div>
     </div>
 </div>
 
@@ -67,16 +52,16 @@
 else
 {
     <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="cacheStatsTable">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="cacheStatsTable" data-sortable-table>
             <thead>
                 <tr>
-                    <th style="cursor:pointer;" data-sort-col="0">Key Type <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="1">Type <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="3">TTL <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="0" data-sort-type="text">Key Type <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="1" data-sort-type="text">Type <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="3" data-sort-type="text">TTL <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="4" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="5" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="6" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -121,17 +106,17 @@ else
 else
 {
     <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="decoratorCacheStatsTable">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="decoratorCacheStatsTable" data-sortable-table>
             <thead>
                 <tr>
-                    <th style="cursor:pointer;" data-sort-col="0">Name <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="1" class="text-center">Warmed <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="7" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="0" data-sort-type="text">Name <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="1" data-sort-type="number" class="text-center">Warmed <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="3" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="4" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="5" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="6" data-sort-type="number" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="7" data-sort-type="number" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -168,40 +153,4 @@ else
             </tbody>
         </table>
     </div>
-}
-
-@section Scripts {
-    <script>
-        (function () {
-            function wireTable(tableId, numericCols) {
-                const sortDir = {};
-                document.querySelectorAll('#' + tableId + ' th[data-sort-col]').forEach(th => {
-                    th.addEventListener('click', function () {
-                        const colIndex = parseInt(this.dataset.sortCol);
-                        const tbody = document.querySelector('#' + tableId + ' tbody');
-                        const rows = Array.from(tbody.querySelectorAll('tr'));
-                        const isNumeric = numericCols.includes(colIndex);
-
-                        sortDir[colIndex] = !sortDir[colIndex];
-                        const dir = sortDir[colIndex] ? 1 : -1;
-
-                        rows.sort((a, b) => {
-                            const aCell = a.cells[colIndex];
-                            const bCell = b.cells[colIndex];
-                            const aVal = (aCell.dataset.sortValue ?? aCell.textContent).trim().replace(/[,%]/g, '');
-                            const bVal = (bCell.dataset.sortValue ?? bCell.textContent).trim().replace(/[,%]/g, '');
-                            if (isNumeric) {
-                                return (parseFloat(aVal) - parseFloat(bVal)) * dir;
-                            }
-                            return aVal.localeCompare(bVal) * dir;
-                        });
-
-                        rows.forEach(row => tbody.appendChild(row));
-                    });
-                });
-            }
-            wireTable('cacheStatsTable', [2, 4, 5, 6]);
-            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5, 6, 7]);
-        })();
-    </script>
 }

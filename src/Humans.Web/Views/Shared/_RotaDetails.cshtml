@@ -1,0 +1,10 @@
+@model Humans.Web.Models.RotaHeaderViewModel
+
+@if (Model.ShowDescription && !string.IsNullOrEmpty(Model.Rota.Description))
+{
+    <div class="@Model.DescriptionCssClass">@Html.SanitizedMarkdown(Model.Rota.Description)</div>
+}
+@if (Model.ShowPracticalInfo && !string.IsNullOrEmpty(Model.Rota.PracticalInfo))
+{
+    <div class="@Model.PracticalInfoCssClass"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(Model.Rota.PracticalInfo)</div>
+}

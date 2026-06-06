@@ -756,7 +756,6 @@
                     </div>
                     @ParamsBlock()
                     <div class="wg-card-example">
-                        <vc:temp-data-alerts />
                         <div class="text-muted small">↑ empty when no TempData keys are present.</div>
                     </div>
                 </div>
@@ -769,12 +768,14 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/FeedbackWidgetViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Legacy floating "send feedback" widget. Mostly superseded by IssuesWidget.</div>
+                    <div class="wg-card-note">
+                        Legacy compatibility shim. Feedback submission now lives inside <code>HelpWidget</code>, which is the single
+                        floating page launcher.
+                    </div>
                     @ParamsBlock()
-                    @AuthLine("Authenticated only — renders empty content for unauthenticated viewers.")
-                    <div class="wg-card-example">
-                        <vc:feedback-widget />
-                        <div class="text-muted small">↑ injects a floating button in the page chrome.</div>
+                    @AuthLine("Renders empty content; keep callers on <code>HelpWidget</code> instead.")
+                    <div class="wg-card-example is-empty">
+                        Superseded by <code>&lt;vc:help-widget&gt;</code>.
                     </div>
                 </div>
 
@@ -1158,7 +1159,7 @@
                             <tr>
                                 <th>Self-gating by auth</th>
                                 <td>Possible (e.g. <code>AuthorizeViewTagHelper</code> reads <code>IHttpContextAccessor</code>); not the typical use</td>
-                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>, <code>FeedbackWidget</code>)</td>
+                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>)</td>
                                 <td>No — caller decides whether to render</td>
                             </tr>
                             <tr>
@@ -1217,7 +1218,7 @@
                     <li><strong>Don't reach for a ViewComponent when a Partial would do.</strong> ViewComponents are a "mini controller + view" — every render spins one up. If the caller already has the data, a Partial is faster, simpler, and easier to test.</li>
                     <li><strong>Don't reach for a TagHelper when you really need data.</strong> TagHelpers can do DI, but the result is a class that's secretly a controller. ViewComponents are the explicit form of that pattern.</li>
                     <li><strong>Don't put data fetching in a Partial</strong> by injecting services into the <code>.cshtml</code> via <code>@@inject</code>. That's a ViewComponent in disguise, untestable, and easy to N+1.</li>
-                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> and <code>FeedbackWidgetViewComponent</code> are the canonical examples.</li>
+                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> is the canonical floating-widget example.</li>
                     <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
             </section>

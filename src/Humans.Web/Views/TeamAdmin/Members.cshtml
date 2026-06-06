@@ -14,7 +14,6 @@
 <h1>@Localizer["TeamAdmin_ManageMembers"]</h1>
 <p class="text-muted">@Localizer["MyTeams_Team"]: @Model.TeamName @(Model.IsSystemTeam ? string.Format("({0})", Localizer["TeamAdmin_SystemTeam"].Value) : "")</p>
 
-<vc:temp-data-alerts />
 
 @if (Model.IsSystemTeam)
 {

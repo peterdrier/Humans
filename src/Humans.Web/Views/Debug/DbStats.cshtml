@@ -3,10 +3,12 @@
     ViewData["Title"] = "Database Query Statistics";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Database Query Statistics</h1>
+<div class="page-head">
+    <div>
+        <h1 class="title">Database Query Statistics</h1>
+        <p class="sub">@Model.TotalQueryCount.ToString("N0") total queries since last restart</p>
+    </div>
     <div class="d-flex align-items-center gap-3">
-        <span class="text-muted">@Model.TotalQueryCount.ToString("N0") total queries since last restart</span>
         <form asp-action="ResetDbStats" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning btn-sm"
@@ -20,7 +22,6 @@
     </div>
 </div>
 
-<vc:temp-data-alerts />
 
 @if (Model.Entries.Count == 0)
 {
@@ -31,15 +32,15 @@
 else
 {
     <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="dbStatsTable">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="dbStatsTable" data-sortable-table>
             <thead>
                 <tr>
-                    <th style="cursor:pointer;" data-sort-col="0">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="1">Table <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="0" data-sort-type="text">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="1" data-sort-type="text">Table <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="2" data-sort-type="number" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="3" data-sort-type="number" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="4" data-sort-type="number" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="5" data-sort-type="number" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -65,36 +66,4 @@ else
             </tbody>
         </table>
     </div>
-}
-
-@section Scripts {
-    <script>
-        // Simple client-side column sorting (uses data attributes instead of
-        // inline onclick handlers, which are blocked by the CSP nonce policy)
-        (function () {
-            const sortDir = {};
-            document.querySelectorAll('#dbStatsTable th[data-sort-col]').forEach(th => {
-                th.addEventListener('click', function () {
-                    const colIndex = parseInt(this.dataset.sortCol);
-                    const tbody = document.querySelector('#dbStatsTable tbody');
-                    const rows = Array.from(tbody.querySelectorAll('tr'));
-                    const isNumeric = colIndex >= 2;
-
-                    sortDir[colIndex] = !sortDir[colIndex];
-                    const dir = sortDir[colIndex] ? 1 : -1;
-
-                    rows.sort((a, b) => {
-                        const aVal = a.cells[colIndex].textContent.trim().replace(/,/g, '');
-                        const bVal = b.cells[colIndex].textContent.trim().replace(/,/g, '');
-                        if (isNumeric) {
-                            return (parseFloat(aVal) - parseFloat(bVal)) * dir;
-                        }
-                        return aVal.localeCompare(bVal) * dir;
-                    });
-
-                    rows.forEach(row => tbody.appendChild(row));
-                });
-            });
-        })();
-    </script>
 }
