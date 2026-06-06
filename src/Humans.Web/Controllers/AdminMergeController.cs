@@ -84,7 +84,7 @@ public class AdminMergeController(
             ProfilePictureUrl = user.ProfilePictureUrl,
             PreferredLanguage = user.PreferredLanguage,
             MembershipTier = profile?.MembershipTier.ToString(),
-            MembershipStatus = profile?.State == ProfileState.Suspended ? "Suspended"
+            MembershipStatus = profile?.State is ProfileState.Suspended or ProfileState.AdminSuspended ? "Suspended"
                 : profile?.IsApproved == true ? "Active" : "Pending",
             MemberSince = profile?.CreatedAt.ToDateTimeUtc(),
             LastLogin = user.LastLoginAt?.ToDateTimeUtc(),

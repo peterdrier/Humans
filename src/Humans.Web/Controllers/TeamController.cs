@@ -283,7 +283,7 @@ public class TeamController(
             currentMonth = clock.GetCurrentInstant().InZone(currentZone).Month;
 
         var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended }
+            .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended and not ProfileState.AdminSuspended }
                         && u.Profile.BirthdayMonth == currentMonth
                         && u.Profile.BirthdayDay.HasValue)
             .OrderBy(u => u.Profile!.BirthdayDay)
@@ -362,7 +362,7 @@ public class TeamController(
     public async Task<IActionResult> Map(CancellationToken ct)
     {
         var profiles = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null, State: not ProfileState.Suspended })
+            .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null, State: not ProfileState.Suspended and not ProfileState.AdminSuspended })
             .Select(u => new LocationProfileInfo(
                 u.Id,
                 u.BurnerName,

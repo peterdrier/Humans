@@ -48,7 +48,8 @@ public static class AdminHumanListAssembler
         {
             "bare" => u => StateOf(u) == UserState.Bare,
             "active" => u => StateOf(u) == UserState.Active,
-            "suspended" => u => StateOf(u) == UserState.Suspended,
+            "suspended" => u => StateOf(u) is UserState.Suspended or UserState.AdminSuspended,
+            "adminsuspended" => u => StateOf(u) == UserState.AdminSuspended,
             "rejected" => u => StateOf(u) == UserState.Rejected,
             "deleting" or "deletepending" => u => StateOf(u) == UserState.DeletePending,
             "merged" => u => StateOf(u) == UserState.Merged,

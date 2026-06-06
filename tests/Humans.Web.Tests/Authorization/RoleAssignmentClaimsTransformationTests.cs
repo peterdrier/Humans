@@ -74,6 +74,7 @@ public class RoleAssignmentClaimsTransformationTests : IDisposable
     [InlineData(UserState.Active)]
     [InlineData(UserState.Bare)]
     [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
     [InlineData(UserState.DeletePending)]
     [InlineData(UserState.Rejected)]
     public async Task Transform_stamps_UserState_claim_matching_stored_state(UserState state)

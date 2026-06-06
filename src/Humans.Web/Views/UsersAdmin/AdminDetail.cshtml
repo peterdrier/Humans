@@ -416,7 +416,7 @@
         <div class="card">
             <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
             <div class="card-body">
-                @if (Model.State == UserState.Suspended)
+                @if (Model.State is UserState.Suspended or UserState.AdminSuspended)
                 {
                     <form asp-action="UnsuspendHuman" asp-route-id="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()

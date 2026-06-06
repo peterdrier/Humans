@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
@@ -23,6 +24,7 @@ public sealed class ConsentService(
     IConsentRepository repo,
     ILegalDocumentSyncService legalDocumentSyncService,
     INotificationInboxService notificationInboxService,
+    IHumanLifecycleService humanLifecycleService,
     IUserServiceRead userService,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
@@ -177,11 +179,12 @@ public sealed class ConsentService(
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
             {
                 await notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
+            logger.LogError(ex, "Failed to complete post-consent suspension cleanup for user {UserId}", userId);
         }
 
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
@@ -310,4 +313,3 @@ public sealed class ConsentService(
         return [new UserDataSlice(GdprExportSections.Consents, shaped)];
     }
 }
-

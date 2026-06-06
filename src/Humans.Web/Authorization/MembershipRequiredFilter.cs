@@ -9,8 +9,8 @@ namespace Humans.Web.Authorization;
 /// <summary>
 /// Global filter routing authenticated users by their stored <see cref="UserState"/>:
 /// only <see cref="UserState.Active"/> reaches the app. <see cref="UserState.Bare"/> → name entry;
-/// <see cref="UserState.DeletePending"/> → the cancel-deletion screen; Suspended/Rejected/Deleted/
-/// Merged → the account-status wall. Exempt controllers are public/self-gated pages, the onboarding
+/// <see cref="UserState.DeletePending"/> → the cancel-deletion screen; Suspended/AdminSuspended/
+/// Rejected/Deleted/Merged → the account-status wall. Exempt controllers are public/self-gated pages, the onboarding
 /// surface, and the redirect targets themselves (so non-Active users can reach their landing).
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
@@ -64,7 +64,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         context.Result = state switch
         {
             UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
-            UserState.Suspended or UserState.Rejected or UserState.Deleted or UserState.Merged
+            UserState.Suspended or UserState.AdminSuspended
+                or UserState.Rejected or UserState.Deleted or UserState.Merged
                 => new RedirectToActionResult("Status", "User", null),
             // Bare or null (not yet named / unseeded) → name entry.
             _ => new RedirectToActionResult("Index", "OnboardingWidget", null),

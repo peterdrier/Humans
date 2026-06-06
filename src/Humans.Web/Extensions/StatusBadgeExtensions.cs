@@ -41,6 +41,7 @@ public static class StatusBadgeExtensions
             nameof(UserState.Active) => "bg-success",
             nameof(UserState.Bare) => "bg-warning text-dark",
             nameof(UserState.Suspended) => "bg-danger",
+            nameof(UserState.AdminSuspended) => "bg-danger",
             nameof(UserState.Rejected) => "bg-danger",
             nameof(UserState.DeletePending) or "Delete Pending" => "bg-dark",
             nameof(UserState.Merged) => "bg-secondary",

@@ -2,7 +2,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
-/// <summary>The account-status wall shown to Suspended/Rejected/Deleted/Merged users.</summary>
+/// <summary>The account-status wall shown to Suspended/AdminSuspended/Rejected/Deleted/Merged users.</summary>
 public sealed class AccountStatusViewModel
 {
     public required UserState State { get; init; }

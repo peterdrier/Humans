@@ -9,8 +9,8 @@ namespace Humans.Application.Services.Users;
 /// <see cref="User.State"/> from this classifier, and the first-touch seed for legacy rows calls
 /// it too — so no site can hard-code a state that drifts from the underlying data.
 ///
-/// <para>Precedence (most-final wins): Merged &gt; Deleted &gt; Rejected &gt; Suspended &gt;
-/// DeletePending &gt; Bare &gt; Active. Note GDPR deletion reuses the merge tombstone columns, so a
+/// <para>Precedence (most-final wins): Merged &gt; Deleted &gt; Rejected &gt;
+/// AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active. Note GDPR deletion reuses the merge tombstone columns, so a
 /// GDPR-deleted row carries <c>MergedAt</c> too — <paramref name="isMerged"/> excludes it and
 /// <paramref name="isGdprDeleted"/> wins, classifying it as <see cref="UserState.Deleted"/>.</para>
 ///
@@ -22,6 +22,7 @@ public static class UserStateClassifier
     public static UserState Classify(
         bool hasRequiredNameFields,
         bool isSuspended,
+        bool isAdminSuspended,
         bool isRejected,
         bool isDeletionPending,
         bool isMerged,
@@ -30,6 +31,7 @@ public static class UserStateClassifier
         if (isMerged) return UserState.Merged;
         if (isGdprDeleted) return UserState.Deleted;
         if (isRejected) return UserState.Rejected;
+        if (isAdminSuspended) return UserState.AdminSuspended;
         if (isSuspended) return UserState.Suspended;
         if (isDeletionPending) return UserState.DeletePending;
         if (!hasRequiredNameFields) return UserState.Bare;
@@ -43,6 +45,7 @@ public static class UserStateClassifier
     public static UserState Classify(UserInfo info) => Classify(
         hasRequiredNameFields: info.HasRequiredNameFields,
         isSuspended: info.Profile?.State == ProfileState.Suspended,
+        isAdminSuspended: info.Profile?.State == ProfileState.AdminSuspended,
         isRejected: info.Profile?.RejectedAt is not null,
         isDeletionPending: info.IsDeletionPending,
         isMerged: info.MergedAt is not null && !info.IsGdprAnonymized,
@@ -61,6 +64,7 @@ public static class UserStateClassifier
         return Classify(
             hasRequiredNameFields: hasName,
             isSuspended: profile?.State == ProfileState.Suspended,
+            isAdminSuspended: profile?.State == ProfileState.AdminSuspended,
             isRejected: profile?.RejectedAt is not null,
             isDeletionPending: user.DeletionRequestedAt.HasValue,
             isMerged: user.MergedAt is not null && !isGdprDeleted,

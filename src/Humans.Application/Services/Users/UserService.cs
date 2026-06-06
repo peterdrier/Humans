@@ -492,7 +492,7 @@ public sealed class UserService(
             };
 
             // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
-            if (profile.State != ProfileState.Suspended)
+            if (!IsSuspendedState(profile.State))
             {
                 profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
             }
@@ -1242,7 +1242,7 @@ public sealed class UserService(
         // Dual-write until IsSuspended is dropped. State is the canonical shape
         // exposed through UserInfo.
         profile.State = suspended
-            ? ProfileState.Suspended
+            ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
             : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
 
         if (suspended)
@@ -1255,6 +1255,9 @@ public sealed class UserService(
         !string.IsNullOrWhiteSpace(profile.BurnerName)
         && !string.IsNullOrWhiteSpace(profile.FirstName)
         && !string.IsNullOrWhiteSpace(profile.LastName);
+
+    private static bool IsSuspendedState(ProfileState? state) =>
+        state is ProfileState.Suspended or ProfileState.AdminSuspended;
 
     private static void ValidateProfileOnboardingCommand(UserProfileOnboardingCommand command)
     {

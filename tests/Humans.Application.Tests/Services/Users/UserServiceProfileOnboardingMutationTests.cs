@@ -333,6 +333,27 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task ApplyProfileOnboardingMutationAsync_SetAdminSuspensionTrue_SetsAdminSuspendedState()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.ApplyProfileOnboardingMutationAsync(
+            userId,
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.SetSuspension,
+                Suspended: true,
+                AdminSuspension: true,
+                Notes: "Manual hold"));
+
+        result.Success.Should().BeTrue();
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        profile.State.Should().Be(ProfileState.AdminSuspended);
+        user.State.Should().Be(UserState.AdminSuspended);
+    }
+
+    [HumansFact]
     public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionFalse_RestoresActiveWhenIdentityComplete()
     {
         var userId = Guid.NewGuid();

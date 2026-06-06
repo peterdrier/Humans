@@ -292,7 +292,7 @@ public sealed record UserInfo(
     /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
     /// stored <see cref="State"/> (the access source), not <see cref="ProfileState"/>.</summary>
     public bool IsSuspended =>
-        State == UserState.Suspended;
+        State is UserState.Suspended or UserState.AdminSuspended;
 
     /// <summary>Canonical "approved by Consent Coordinator" predicate — see memory/architecture/derived-predicates-on-userinfo.md.</summary>
     public bool IsApproved => Profile?.IsApproved ?? false;

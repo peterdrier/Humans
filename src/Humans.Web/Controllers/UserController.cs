@@ -27,7 +27,7 @@ public class UserController(
         var state = RoleAssignmentClaimsTransformation.GetUserState(User);
 
         // Only the excluded states see the wall; anyone else belongs in the app/onboarding.
-        if (state is not (UserState.Suspended or UserState.Rejected
+        if (state is not (UserState.Suspended or UserState.AdminSuspended or UserState.Rejected
             or UserState.Deleted or UserState.Merged))
         {
             return RedirectToAction("Index", "Home");

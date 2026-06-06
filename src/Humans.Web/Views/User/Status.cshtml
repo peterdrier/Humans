@@ -5,6 +5,7 @@
     var headingKey = Model.State switch
     {
         UserState.Suspended => "AccountStatus_HeadingSuspended",
+        UserState.AdminSuspended => "AccountStatus_HeadingAdminSuspended",
         UserState.Rejected => "AccountStatus_HeadingRejected",
         UserState.Deleted => "AccountStatus_HeadingDeleted",
         UserState.Merged => "AccountStatus_HeadingMerged",
@@ -17,10 +18,20 @@
         <div class="card-body text-center p-5">
             <i class="fa-solid fa-circle-exclamation fa-2x text-warning mb-3"></i>
             <h1 class="h4 mb-3">@Localizer[headingKey]</h1>
-            <p class="text-muted mb-2">
-                @Localizer["AccountStatus_ContactInfo"]
-                <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
-            </p>
+            @if (Model.State == UserState.Suspended)
+            {
+                <p class="text-muted mb-3">@Localizer["AccountStatus_ConsentSuspendedBody"]</p>
+                <a asp-controller="OnboardingWidget" asp-action="Consents" class="btn btn-primary mb-3">
+                    @Localizer["AccountStatus_ReviewConsents"]
+                </a>
+            }
+            else
+            {
+                <p class="text-muted mb-2">
+                    @Localizer["AccountStatus_ContactInfo"]
+                    <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
+                </p>
+            }
             @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
             {
                 <div class="alert alert-secondary text-start mt-3 mb-0">

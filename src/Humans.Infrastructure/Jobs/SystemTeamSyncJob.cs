@@ -445,7 +445,7 @@ public class SystemTeamSyncJob(
         var profile = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
 
         var isEligible = hasApprovedApp
-            && profile is { IsApproved: true, State: not ProfileState.Suspended }
+            && profile is { IsApproved: true, State: not ProfileState.Suspended and not ProfileState.AdminSuspended }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();

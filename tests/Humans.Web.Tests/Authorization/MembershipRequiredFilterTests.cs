@@ -60,6 +60,7 @@ public class MembershipRequiredFilterTests
 
     [HumansTheory]
     [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
     [InlineData(UserState.Rejected)]
     [InlineData(UserState.Deleted)]
     [InlineData(UserState.Merged)]

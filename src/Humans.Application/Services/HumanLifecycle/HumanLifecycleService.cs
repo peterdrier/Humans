@@ -28,7 +28,8 @@ public sealed class HumanLifecycleService(
                 UserProfileOnboardingMutation.SetSuspension,
                 ActorUserId: adminId,
                 Notes: notes,
-                Suspended: true),
+                Suspended: true,
+                AdminSuspension: true),
             ct);
         if (!result.Success)
             return result;
@@ -93,6 +94,32 @@ public sealed class HumanLifecycleService(
         {
             logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
         }
+
+        return result;
+    }
+
+    public async Task<OnboardingResult> RestoreConsentSuspensionAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        if (info?.State != UserState.Suspended)
+            return new OnboardingResult(true);
+
+        var result = await userService.ApplyProfileOnboardingMutationAsync(
+            userId,
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.SetSuspension,
+                Suspended: false),
+            ct);
+        if (!result.Success)
+            return result;
+
+        await auditLogService.LogAsync(
+            AuditAction.MemberUnsuspended,
+            nameof(User),
+            userId,
+            "Unsuspended after completing required consents",
+            nameof(RestoreConsentSuspensionAsync));
 
         return result;
     }

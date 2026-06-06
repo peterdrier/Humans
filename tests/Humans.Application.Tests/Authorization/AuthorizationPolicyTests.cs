@@ -563,6 +563,7 @@ public class AuthorizationPolicyTests : IDisposable
     [HumansTheory]
     [InlineData(nameof(UserState.Bare))]
     [InlineData(nameof(UserState.Suspended))]
+    [InlineData(nameof(UserState.AdminSuspended))]
     [InlineData(nameof(UserState.Rejected))]
     public async Task AppAccess_DeniesNonActiveStateUserWithNoRole(string state)
     {

@@ -16,18 +16,21 @@ namespace Humans.Application.Tests.Services.Users;
 public class UserStateClassifierTests
 {
     [HumansTheory]
-    // hasName, suspended, rejected, deletionPending, merged, gdprDeleted, expected
-    [InlineData(true, false, false, false, false, false, UserState.Active)]
-    [InlineData(false, false, false, false, false, false, UserState.Bare)]
-    [InlineData(false, false, false, true, false, false, UserState.DeletePending)] // DeletePending > Bare
-    [InlineData(true, true, false, true, false, false, UserState.Suspended)] // Suspended > DeletePending
-    [InlineData(true, true, true, true, false, false, UserState.Rejected)] // Rejected > Suspended
-    [InlineData(true, true, true, true, false, true, UserState.Deleted)] // Deleted > Rejected
-    [InlineData(true, true, true, true, true, false, UserState.Merged)] // Merged > all below
-    [InlineData(true, true, true, true, true, true, UserState.Merged)] // Merged is the top of the ladder
+    // hasName, suspended, adminSuspended, rejected, deletionPending, merged, gdprDeleted, expected
+    [InlineData(true, false, false, false, false, false, false, UserState.Active)]
+    [InlineData(false, false, false, false, false, false, false, UserState.Bare)]
+    [InlineData(false, false, false, false, true, false, false, UserState.DeletePending)] // DeletePending > Bare
+    [InlineData(true, true, false, false, true, false, false, UserState.Suspended)] // Suspended > DeletePending
+    [InlineData(true, false, true, false, true, false, false, UserState.AdminSuspended)] // AdminSuspended > DeletePending
+    [InlineData(true, true, true, false, true, false, false, UserState.AdminSuspended)] // AdminSuspended > Suspended
+    [InlineData(true, true, true, true, true, false, false, UserState.Rejected)] // Rejected > Suspended
+    [InlineData(true, true, true, true, true, false, true, UserState.Deleted)] // Deleted > Rejected
+    [InlineData(true, true, true, true, true, true, false, UserState.Merged)] // Merged > all below
+    [InlineData(true, true, true, true, true, true, true, UserState.Merged)] // Merged is the top of the ladder
     public void Classify_applies_precedence(
         bool hasName,
         bool suspended,
+        bool adminSuspended,
         bool rejected,
         bool deletionPending,
         bool merged,
@@ -37,6 +40,7 @@ public class UserStateClassifierTests
         UserStateClassifier.Classify(
                 hasRequiredNameFields: hasName,
                 isSuspended: suspended,
+                isAdminSuspended: adminSuspended,
                 isRejected: rejected,
                 isDeletionPending: deletionPending,
                 isMerged: merged,
@@ -61,6 +65,18 @@ public class UserStateClassifierTests
         profile.LastName = "";
 
         UserStateClassifier.Classify(user, profile).Should().Be(UserState.Bare);
+    }
+
+    [HumansTheory]
+    [InlineData(ProfileState.Suspended, UserState.Suspended)]
+    [InlineData(ProfileState.AdminSuspended, UserState.AdminSuspended)]
+    public void Classify_entity_preserves_suspension_reason(ProfileState profileState, UserState expected)
+    {
+        var user = NewUser(displayName: "Real Name");
+        var profile = NewNamedProfile(user.Id);
+        profile.State = profileState;
+
+        UserStateClassifier.Classify(user, profile).Should().Be(expected);
     }
 
     [HumansFact]

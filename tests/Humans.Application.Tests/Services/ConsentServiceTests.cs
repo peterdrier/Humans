@@ -13,6 +13,7 @@ using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Consent;
@@ -25,6 +26,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
+    private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
@@ -102,6 +104,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             consentRepository,
             _legalDocumentSyncService,
             _notificationInboxService,
+            _humanLifecycleService,
             _userService,
             serviceProvider,
             _metrics,
@@ -261,6 +264,40 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
         result.DocumentName.Should().Be("Privacy Policy");
+    }
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_WhenAllRequiredConsentsComplete_RestoresConsentSuspension()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
+
+        await _notificationInboxService.Received(1)
+            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>());
+        await _humanLifecycleService.Received(1)
+            .RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_WhenRequiredConsentsRemain_DoesNotRestoreConsentSuspension()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
+
+        await _notificationInboxService.DidNotReceiveWithAnyArgs()
+            .ResolveBySourceAsync(Guid.Empty, default, CancellationToken.None);
+        await _humanLifecycleService.DidNotReceiveWithAnyArgs()
+            .RestoreConsentSuspensionAsync(Guid.Empty, CancellationToken.None);
     }
 
     [HumansFact]
