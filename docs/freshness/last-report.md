@@ -44,6 +44,7 @@ Nine non-merge commits since the last sweep. The blast radius was dominated by o
 - **docs/architecture/conventions.md** — added a "Date/Time Formatting" convention (single home + HUM0030).
 - **docs/architecture/design-rules.md** *(orchestrator)* — §8 table-ownership map: dropped Email's stale claim to own the `system_settings` key, added a **System Settings** owner row, and rewrote the per-key-ownership note to "owned by the System Settings section, exposed via `ISystemSettingsService`"; corrected the stale key name `email_outbox_paused` → `IsEmailSendingPaused`. *(Concrete #889 drift; design-rules is the regulations doc — see "Surfaced inline".)*
 - **docs/architecture/data-model.md** *(orchestrator)* — same `system_settings` ownership correction in the ownership-table cell + the `## SystemSetting` section (heading, prose, key-table header, and key name).
+- **docs/features/google-integration/drive-activity-monitoring.md** *(Phase 7.5, at Peter's direction)* — corrected Clean-Architecture layer placement (`DriveActivityMonitorService` lives in Application, not Infrastructure), removed the dead `StubDriveActivityMonitorService` reference (no such class in source), and replaced the stale "conditional credentials" Service-Registration prose with the actual unconditional `services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>()`.
 
 ### Editorial verified no-op
 
@@ -65,7 +66,6 @@ Two age-eligible husks, both **drop_entirely** (no wheat survived migration — 
 
 ## Flagged for human review
 
-- **docs/features/google-integration/drive-activity-monitoring.md** — **pre-existing** drift (since PR #267, not #889): lines 66–68 list `DriveActivityMonitorService` / `StubDriveActivityMonitorService` under "Infrastructure", but the service lives in `Humans.Application.Services.GoogleIntegration`. The `Stub` reference may also be stale (no `StubDriveActivityMonitorService` class found in source). Not fixed in this sweep — pre-existing and outside #889's actual change; left for a scoped correction. *(See "Surfaced inline".)*
 - **DbContext bootstrap-boundary allowance** (informational) — `ApplicationServiceDbContextInjectionAnalyzer` now allows bootstrap boundaries (`HumansDbContextFactory`, `DatabaseMigrationHostedService`). Its shipped-analyzer catalogue home is `docs/architecture/code-analysis.md` (not a sweep target; already touched by #889), and `design-rules.md` already names those boundaries as legitimate — so **no target doc was contradicted**. No action needed.
 
 ## Proposed for review
@@ -74,7 +74,10 @@ None — all candidates resolved this sweep.
 
 ## Questions
 
-Surfaced inline to Peter (Phase 7.5); see PR conversation.
+Both surfaced inline to Peter (Phase 7.5) and resolved:
+
+1. **`system_settings` ownership framing** (design-rules.md §8 / data-model.md) — Peter confirmed "System Settings section" is the correct framing for the regulations doc. Edits stand as committed.
+2. **drive-activity-monitoring.md pre-existing layer drift** — Peter directed fixing it now; corrected in this PR (see Editorial above).
 
 ## Skipped (errors)
 
