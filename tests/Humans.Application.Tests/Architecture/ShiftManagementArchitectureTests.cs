@@ -1,4 +1,6 @@
+using System.Reflection;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
@@ -48,5 +50,27 @@ public class ShiftManagementArchitectureTests
             crossDomainNavs.Should().BeEmpty(
                 because: $"{entity.Name} must not expose User/Team navigation properties — resolve through ITeamService / IUserService instead (design-rules §6c)");
         }
+    }
+
+    [HumansFact]
+    public void ShiftManagementService_InjectsOnlyItsOwnRepository()
+    {
+        // The Shift Summary feature (BuildSummaryAsync) reaches Camps, Teams, and
+        // Users only through their cross-section read interfaces
+        // (ICampServiceRead / ITeamServiceRead / IUserServiceRead), resolved lazily
+        // via IServiceProvider — never a foreign section's repository, and adding
+        // no new cross-section interface. Pin that the only repository the service
+        // takes is its own IShiftManagementRepository.
+        var injectedRepositories = typeof(ShiftManagementService)
+            .GetConstructors(BindingFlags.Public | BindingFlags.Instance)
+            .SelectMany(c => c.GetParameters())
+            .Select(p => p.ParameterType)
+            .Where(t => t.IsInterface && typeof(IRepository).IsAssignableFrom(t))
+            .Select(t => t.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        injectedRepositories.Should().BeEquivalentTo([nameof(IShiftManagementRepository)],
+            because: "Summary must read other sections via I<Section>ServiceRead, never their repositories (peters-hard-rules: services call other sections only through read interfaces)");
     }
 }

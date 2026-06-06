@@ -99,6 +99,68 @@ public class ShiftsController(
         return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
     }
 
+    // ── Shift Summary by Camp (read-only) ─────────────────────────────────────
+    // One view at three scopes: global (all teams), team-set, single rota. Same
+    // service method + view partial; the route just narrows the scope.
+
+    [HttpGet("Summary")]
+    public Task<IActionResult> Summary() => RenderSummaryAsync(null, null);
+
+    [HttpGet("Summary/{teamSlug}")]
+    public Task<IActionResult> SummaryTeam(string teamSlug) => RenderSummaryAsync(teamSlug, null);
+
+    [HttpGet("Summary/{teamSlug}/{rotaGuid:guid}")]
+    public Task<IActionResult> SummaryRota(string teamSlug, Guid rotaGuid) =>
+        RenderSummaryAsync(teamSlug, rotaGuid);
+
+    // Shared gate + render for all three Summary scopes. Open to any team
+    // coordinator / VolunteerManager / Admin (§7): the global page already
+    // exposes the superset, so the narrower pages share one rule.
+    private async Task<IActionResult> RenderSummaryAsync(string? teamSlug, Guid? rotaId)
+    {
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        if (currentUserNotFound is not null) return currentUserNotFound;
+
+        var isPrivileged = RoleChecks.IsVolunteerManager(User) ||
+                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+        if (!isPrivileged) return Forbid();
+
+        var es = await shiftMgmt.GetActiveAsync();
+        if (es is null) return View("NoActiveEvent");
+
+        var summary = await shiftMgmt.BuildSummaryAsync(es, teamSlug, rotaId, HttpContext.RequestAborted);
+        if (summary is null) return NotFound();
+
+        var model = new ShiftSummaryViewModel
+        {
+            EventName = es.EventName,
+            Scope = summary.Scope,
+            TeamName = summary.TeamName,
+            TeamSlug = summary.TeamSlug,
+            RotaName = summary.RotaName,
+            RotaId = summary.RotaId,
+            // Table 1: most hours first, then name.
+            Humans = summary.Humans
+                .OrderByDescending(h => h.Hours)
+                .ThenBy(h => h.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            // Table 2: most hours first, with the campless ("no camp") row last.
+            Camps = summary.Camps
+                .OrderBy(c => c.CampId is null)
+                .ThenByDescending(c => c.Hours)
+                .ThenBy(c => c.CampName, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            TeamLinks = summary.TeamLinks
+                .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            RotaLinks = summary.RotaLinks
+                .OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+        };
+
+        return View("Summary", model);
+    }
+
     // AJAX per-day toggle: signs up or bails a single shift for the current user
     // and returns the re-rendered row partial. Signup/bail outcome and the new
     // active-signup count travel back as response headers (X-Signed-Up,
