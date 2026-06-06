@@ -26,12 +26,12 @@ A campaign bundles three things: the **codes** (imported in bulk or generated th
 
 - **My codes** — a section on your profile (`/Profile/Me`) listing every campaign grant assigned to you
 - **Unsubscribe** (`/Unsubscribe/{token}`) — public, no-login page to opt out of all future campaign emails
-- **Campaigns list** (`/Admin/Campaigns`) — every campaign with its status and code and grant counts
-- **Campaign detail** (`/Admin/Campaigns/{id}`) — stats (total codes, available, sent, failed, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete, Resend, and Retry All Failed
-- **Create campaign** (`/Admin/Campaigns/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
+- **Campaigns list** (`/Campaigns/Admin`) — every campaign with its status and code and grant counts
+- **Campaign detail** (`/Campaigns/Admin/{id}`) — stats (total codes, available, sent, failed, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete, Resend, and Retry All Failed
+- **Create campaign** (`/Campaigns/Admin/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
 - **Import codes** — CSV upload for code values, available on Draft and Active campaigns
 - **Generate codes** — vendor-issued discount codes (count, type, value), Draft campaigns only; available to TicketAdmin and Admin
-- **Send wave** (`/Admin/Campaigns/{id}/SendWave`) — targets a single team, assigns free codes to eligible humans, and queues the emails
+- **Send wave** (`/Campaigns/Admin/{id}/SendWave`) — targets a single team, assigns free codes to eligible humans, and queues the emails
 
 ## As a Volunteer
 
@@ -55,7 +55,7 @@ Full campaign management requires the **Admin** role. **TicketAdmin** can view c
 
 ### Create a campaign
 
-From `/Admin/Campaigns`, start a new campaign. Fill in the title, description, email subject, email body template (markdown, with `{{Code}}` for the code and `{{Name}}` for the human's name), and an optional Reply-To address. It begins in **Draft** — no emails can be sent yet.
+From `/Campaigns/Admin`, start a new campaign. Fill in the title, description, email subject, email body template (markdown, with `{{Code}}` for the code and `{{Name}}` for the human's name), and an optional Reply-To address. It begins in **Draft** — no emails can be sent yet.
 
 ### Load codes into a campaign
 

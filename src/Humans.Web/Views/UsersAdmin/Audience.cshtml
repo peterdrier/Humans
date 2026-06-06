@@ -5,7 +5,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
         <li class="breadcrumb-item active" aria-current="page">Audience Segmentation</li>
     </ol>
 </nav>
@@ -36,7 +36,7 @@
             </select>
             @if (Model.SelectedYear.HasValue)
             {
-                <a asp-action="AudienceSegmentation" class="btn btn-sm btn-outline-secondary">Clear</a>
+                <a asp-action="Audience" class="btn btn-sm btn-outline-secondary">Clear</a>
             }
         </form>
     </div>

@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Services.Legal;
 /// Single underlying cache keyed by document id; we also build a
 /// version-id → document-id index on warm so <see cref="GetVersionByIdAsync"/>
 /// can serve from memory without scanning. Inherits
-/// <see cref="TrackedCache{TKey, TValue}"/> so /Admin/CacheStats surfaces
+/// <see cref="TrackedCache{TKey, TValue}"/> so /Debug/CacheStats surfaces
 /// hit/miss/invalidation counters.
 /// </para>
 /// <para>

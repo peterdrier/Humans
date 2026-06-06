@@ -468,7 +468,7 @@
                 }
                 <environment exclude="Production">
                     <hr />
-                    <form asp-controller="Admin" asp-action="PurgeHuman" asp-route-id="@Model.UserId" method="post"
+                    <form asp-action="PurgeHuman" asp-route-id="@Model.UserId" method="post"
                           data-confirm="PURGE @Model.DisplayName? This severs their login — they will get a completely fresh account next time they sign in.">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-danger w-100">

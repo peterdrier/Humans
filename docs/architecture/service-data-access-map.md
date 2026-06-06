@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-04
+**Generated:** 2026-06-05
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -55,22 +55,23 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 20. [Budget](#budget)
 21. [Campaigns](#campaigns)
 22. [Email](#email)
-23. [Mailer](#mailer)
-24. [Feedback](#feedback)
-25. [Issues](#issues)
-26. [Events (Event Guide)](#events-event-guide)
-27. [Expenses](#expenses)
-28. [Finance](#finance)
-29. [Store](#store)
-30. [Agent](#agent)
-31. [Search](#search)
-32. [Dashboard](#dashboard)
-33. [Gdpr](#gdpr)
-34. [AuditLog](#auditlog)
-35. [Cross-Section Analysis](#cross-section-analysis)
-36. [Cache Inventory](#cache-inventory)
-37. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
-38. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
+23. [SystemSettings](#systemsettings)
+24. [Mailer](#mailer)
+25. [Feedback](#feedback)
+26. [Issues](#issues)
+27. [Events (Event Guide)](#events-event-guide)
+28. [Expenses](#expenses)
+29. [Finance](#finance)
+30. [Store](#store)
+31. [Agent](#agent)
+32. [Search](#search)
+33. [Dashboard](#dashboard)
+34. [Gdpr](#gdpr)
+35. [AuditLog](#auditlog)
+36. [Cross-Section Analysis](#cross-section-analysis)
+37. [Cache Inventory](#cache-inventory)
+38. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
+39. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
 
 ---
 
@@ -260,7 +261,7 @@ Implements `IUserService`, `IUserServiceRead`, `IUserMerge`,
 `IUserInfoInvalidator`, and the Infrastructure-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
-surface). Surfaced on `/Admin/CacheStats`.
+surface). Surfaced on `/Debug/CacheStats`.
 
 ### AccountProvisioningService (Scoped)
 
@@ -448,7 +449,7 @@ and `IUserMerge` for account merges.
 
 Implements `IRoleAssignmentService`, `IRoleAssignmentCacheInvalidator`.
 Resolves the keyed Scoped inner per-call via `IServiceScopeFactory`.
-Surfaced on `/Admin/CacheStats`.
+Surfaced on `/Debug/CacheStats`.
 
 ### MagicLinkService (Scoped)
 
@@ -478,9 +479,11 @@ hot reads can migrate to the cached row set incrementally).
 
 Folder: `src/Humans.Application/Services/Teams/`. Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
-`TeamRoleAssignments`, `TeamRoleDefinitions`, `TeamEarlyEntryGrants`. Also
-writes `GoogleSyncOutboxEvents` atomically on team mutations (cross-section
-bridge — Google Integration is the read owner).
+`TeamRoleAssignments`, `TeamRoleDefinitions`, `TeamEarlyEntryGrants`. On team
+mutations it also emits `GoogleSyncOutboxEvents` — but as of #889 those go
+through `IGoogleSyncOutboxService` (the Google Integration section's write
+surface) inside a `TransactionScope`, no longer through `TeamRepository`. The
+table is therefore owned wholly by Google Integration.
 
 > **Change since prior sweep:** Teams is now an `IEarlyEntryProvider`
 > (PR #860 — role-gated team early entry, cantina-style). `ITeamRepository`
@@ -512,7 +515,7 @@ Repository: `ITeamRepository`.
 | TeamRoleAssignments | R/W |
 | TeamRoleDefinitions | R |
 | TeamEarlyEntryGrants | R/W |
-| GoogleSyncOutboxEvents | W (outbox events emitted on team mutations) |
+| GoogleSyncOutboxEvents | W via `IGoogleSyncOutboxService` (not the Teams repo — #889) |
 
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
@@ -522,15 +525,19 @@ Repository: `ITeamRepository`.
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IShiftManagementService`, `IAdminAuthorizationService`,
-`IEarlyEntryInvalidator`, plus `IServiceProvider` for cycle-breaking.
-Implements `IGoogleGroupMembershipSource`, `IUserDataContributor`,
-`IUserMerge`, `IEarlyEntryProvider` (role-gated team early entry, PR #860).
+`IEarlyEntryInvalidator`, `IGoogleSyncOutboxService` (lazy-resolved via
+`IServiceProvider`, for transactional outbox appends), plus
+`IServiceProvider` for cycle-breaking. Implements
+`IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
+`IEarlyEntryProvider` (role-gated team early entry, PR #860).
 
-**Cross-section table write (design-rule violation, audited):**
-`GoogleSyncOutboxEvents` is owned by the Google Integration section but
-written directly by `ITeamRepository.AddOutboxEventAsync` so team
-mutations are atomic with their outbox event. Acceptable per the Google
-Integration section's outbox design.
+**Outbox write now goes through the owning service (#889):**
+`GoogleSyncOutboxEvents` is owned by the Google Integration section.
+`TeamService` no longer reaches into the table via `TeamRepository`; it calls
+`IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` inside a
+`TransactionScope` so the team mutation and the outbox append commit
+atomically. This is a §15-compliant cross-section call (service interface),
+so the prior design-rule violation here is **closed**.
 
 ### CachingTeamService (Singleton, Infrastructure)
 
@@ -540,7 +547,7 @@ Integration section's outbox design.
 
 Implements `ITeamService`, `ITeamServiceRead`, `IUserMerge`. Replaces the
 previous `ActiveTeams` `IMemoryCache` entry — the `TeamInfo` dictionary is
-the canonical source. Surfaced on `/Admin/CacheStats`.
+the canonical source. Surfaced on `/Debug/CacheStats`.
 
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
 
@@ -554,10 +561,22 @@ Read-only assemblers — no repository, no cache. Fan out over
 
 Folder: `src/Humans.Application/Services/GoogleIntegration/`. Owns
 `SyncServiceSettings`, `GoogleSyncOutboxEvents`, and `GoogleResources`
-(the latter via `TeamResourceService`; the outbox is appended atomically
-by `TeamRepository`, Google Integration is the read/process owner).
-`Users.GoogleEmail` / `GoogleEmailStatus` writes go through
-`IUserService` / `IUserEmailService` per §15.
+(the latter via `TeamResourceService`). `Users.GoogleEmail` /
+`GoogleEmailStatus` writes go through `IUserService` / `IUserEmailService`
+per §15.
+
+> **Change since prior sweep (#889):** `GoogleSyncOutboxEvents` is now
+> written **only** by the Google Integration section's own
+> `GoogleSyncOutboxService` / `GoogleSyncOutboxRepository`. `TeamRepository`
+> no longer writes the outbox table directly — `TeamService` now appends
+> outbox events transactionally through `IGoogleSyncOutboxService` (so the
+> team mutation and the outbox append stay atomic via a
+> `TransactionScope`). The `[Grandfathered("HUM0025", …)]` markers on
+> `TeamRepository` and `GoogleSyncOutboxRepository` for the cross-section
+> outbox write are retired. Separately, the section's
+> `DriveActivityMonitorRepository` was **deleted** — `DriveActivityMonitorService`
+> now persists its last-run marker via `ISystemSettingsService`
+> (new SystemSettings section), no longer owning a repository of its own.
 
 ### GoogleWorkspaceSyncService (Scoped)
 
@@ -617,6 +636,20 @@ Repository: `ISyncSettingsRepository`.
 
 No cross-section calls, no cache.
 
+### GoogleSyncOutboxService (Scoped)
+
+Repository: `IGoogleSyncOutboxRepository`.
+
+| Table | R/W |
+|-------|-----|
+| GoogleSyncOutboxEvents | W (`AddAsync` / `AddRangeAsync`) |
+
+Thin write surface (#889) over the outbox table so other sections append
+events through a service interface rather than reaching into the repository.
+`TeamService` calls `IGoogleSyncOutboxService.AddAsync` /
+`AddRangeAsync` inside a `TransactionScope` to keep each team mutation
+atomic with its outbox event. No cross-section calls, no cache.
+
 ### TeamResourceService (Scoped)
 
 Repository: `IGoogleResourceRepository`.
@@ -636,22 +669,29 @@ cache.
 
 ### DriveActivityMonitorService (Scoped)
 
-Repository: `IDriveActivityMonitorRepository`.
+No repository (its `IDriveActivityMonitorRepository` was deleted in #889).
 
 | Table | R/W |
 |-------|-----|
+| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISystemSettingsService`** — owned by the SystemSettings section) |
 | GoogleResources | R (via `ITeamResourceService`) |
 | Users / IdentityUserLogins | R (via `IUserServiceRead.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
-| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`) |
 
 Google `people/{id}` fallback resolution goes through the Users read-model:
 the service builds a per-run Google provider-key -> `UserInfo` index from
 `IUserServiceRead.GetAllUserInfosAsync` and uses `UserInfo.Email`. The
-repository owns only the `SystemSettings` key plumbing. Audit-log writes go
-through `IAuditLogService`.
+last-run marker (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is read
+and written through `ISystemSettingsService` — the SystemSettings section's
+repository, not its own. Audit-log writes go through `IAuditLogService`.
 
 Cross-section calls via `IGoogleDriveActivityClient`,
-`ITeamResourceService`, `IUserServiceRead`, `IAuditLogService`. No cache.
+`ITeamResourceService`, `ISystemSettingsService`, `IUserServiceRead`,
+`IAuditLogService`. No cache.
+
+**Cross-section table read/write (design-rule note):** `SystemSettings`
+is read/written through the owning SystemSettings section's
+`ISystemSettingsService` — this is the §15-compliant cross-section call
+(service interface, not a foreign repository), so it is **not** a violation.
 
 ### GoogleRemovalNotificationService (Scoped)
 
@@ -720,7 +760,7 @@ directly — all caching lives in the decorator.
 | `CampSettingsInfo` single slot (no `IMemoryCache`) | Static | yes | yes | yes (`ICampInfoInvalidator.InvalidateSettingsAsync`) |
 
 Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
-`ICampInfoInvalidator`. Surfaced on `/Admin/CacheStats`.
+`ICampInfoInvalidator`. Surfaced on `/Debug/CacheStats`.
 
 ### CampRoleService (Scoped)
 
@@ -832,7 +872,7 @@ Cross-section calls via `ITeamService`, `IAuditLogService`,
 
 Implements `ICalendarService`, `ICalendarServiceRead`. Resolves the keyed
 Scoped inner per-call; resolves `ITeamServiceRead` for occurrence team
-names. Surfaced on `/Admin/CacheStats`.
+names. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -849,10 +889,20 @@ Folder: `src/Humans.Application/Services/Shifts/`. Owns `Rotas`,
 > The two interfaces are preserved so service-layer injection patterns and
 > the management/signup split remain visible at the call site, but
 > persistence-side ownership has converged. `IGeneralAvailabilityRepository`
-> was previously folded into `IVolunteerTrackingRepository`. Some shared
-> Shifts-internal reads (`EventSettings`, `ShiftSignups` from
-> `VolunteerTrackingRepository`) carry `[Grandfathered("HUM0025", …)]` while
-> the read surfaces converge.
+> was previously folded into `IVolunteerTrackingRepository`. **PR #882
+> converged the remaining shared Shifts-internal reads:**
+> `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync` (which
+> read `ShiftSignups` + `EventSettings`) moved off `VolunteerTrackingRepository`
+> onto `ShiftRepository` (`.Signups.cs` partial, surfaced on
+> `IShiftManagementRepository`). `VolunteerTrackingService` now reads
+> eligible-build signups via `IShiftManagementRepository`, and
+> `VolunteerTrackingExportService` injects `IShiftManagementRepository`
+> (was `IVolunteerTrackingRepository`) for the confirmed-shift export.
+> `VolunteerTrackingRepository` is back to owning only its two user-oriented
+> tables (`VolunteerBuildStatuses`, `GeneralAvailability`), and the
+> `[Grandfathered("HUM0025", …)]` markers on `ShiftRepository` /
+> `VolunteerTrackingRepository` for `EventSettings` / `ShiftSignups` are
+> retired.
 
 The Application-layer `ShiftViewService` provides the inner
 implementation of `IShiftView`; it is wrapped by
@@ -919,28 +969,30 @@ No `IMemoryCache`.
 
 Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 
-| Table | R/W |
-|-------|-----|
-| EventSettings | R |
-| ShiftSignups | R |
-| VolunteerBuildStatuses | R/W |
-| Shifts | R |
-| Rotas | R |
-| GeneralAvailability | R |
-| VolunteerEventProfiles | R |
-| ShiftTags | R |
-| VolunteerTagPreferences | R |
+| Table | R/W | Repo |
+|-------|-----|------|
+| VolunteerBuildStatuses | R/W | IVolunteerTrackingRepository |
+| GeneralAvailability | R/W | IVolunteerTrackingRepository |
+| ShiftSignups | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync`, converged PR #882) |
+| EventSettings | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync` / `GetActiveEventSettingsAsync`) |
+| Shifts | R | IShiftManagementRepository |
+| Rotas | R | IShiftManagementRepository |
 
-Cross-section calls via `IUserService`, `IShiftViewInvalidator`. No
-cache. Holds the gap-detection algorithm + heatmap data assembly.
+Cross-section calls via `IUserServiceRead`, `IShiftViewInvalidator`. No
+cache. Holds the gap-detection algorithm + heatmap data assembly. Build-eligibility
+signups (`ShiftSignups` + `EventSettings`) now read through the converged
+`IShiftManagementRepository.GetEligibleBuildSignupsAsync` rather than the
+tracking repo (PR #882).
 
 ### VolunteerTrackingExportService (Scoped)
 
-Repository: `IVolunteerTrackingRepository`.
+Repository: `IShiftManagementRepository` (was `IVolunteerTrackingRepository` —
+converged PR #882).
 
 | Table | R/W |
 |-------|-----|
-| ShiftSignups | R (via repo: confirmed shifts in range) |
+| ShiftSignups | R (`GetConfirmedShiftsInRangeAsync` — confirmed shifts in range) |
+| EventSettings | R (range/zone resolution inside `GetConfirmedShiftsInRangeAsync`) |
 | Shifts | R (via repo) |
 | Rotas | R (via repo) |
 
@@ -981,7 +1033,7 @@ can resolve it without self-recursion.
 
 Implements `IShiftView`, `IShiftViewInvalidator`. Resolves the inner
 Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
-Both cache instances are surfaced on `/Admin/CacheStats`.
+Both cache instances are surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 
@@ -1081,7 +1133,7 @@ Implements `IEarlyEntryService`, `IEarlyEntryInvalidator`. `GetRosterAsync`
 always delegates to the inner service (admin roster needs live data);
 `GetForUserAsync` is cached per-user (including the no-EE negative result
 since most users have no EE). Resolves the keyed Scoped inner via
-`IServiceScopeFactory`. Surfaced on `/Admin/CacheStats`.
+`IServiceScopeFactory`. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -1129,7 +1181,7 @@ documents from the legal-internal repo.
 | `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via `ILegalDocumentCacheInvalidator.InvalidateAll`, fired by `LegalDocumentSaveChangesInterceptor`) |
 
 Implements `ILegalDocumentSyncService`, `ILegalDocumentCacheInvalidator`.
-Surfaced on `/Admin/CacheStats`.
+Surfaced on `/Debug/CacheStats`.
 
 ### AdminLegalDocumentService (Scoped)
 
@@ -1187,7 +1239,7 @@ lives in the decorator.
 Implements `IConsentService`, `IConsentServiceRead`,
 `IConsentCacheInvalidator`. Richer record reads (dashboards, history,
 record counts) pass through to the inner service. Surfaced on
-`/Admin/CacheStats`.
+`/Debug/CacheStats`.
 
 ---
 
@@ -1330,7 +1382,7 @@ been **removed**.
 Implements `ITicketService`, `ITicketServiceRead`, `ITicketCacheInvalidator`,
 `IHostedService` (its `StartAsync` warms the orders slice). Resolves the keyed
 Scoped inner per-call via `IServiceScopeFactory`. Both `TrackedCache`
-instances are surfaced on `/Admin/CacheStats`.
+instances are surfaced on `/Debug/CacheStats`.
 `GetDashboardStatsAsync` is a straight pass-through to the inner (compute-only,
 no read-through cache — see `TicketDashboardStats` note in the Cache Inventory).
 
@@ -1471,19 +1523,25 @@ Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 ## Email
 
 Folder: `src/Humans.Application/Services/Email/`. Owns
-`EmailOutboxMessages`; owns `SystemSettings` key
-`email_outbox_paused`.
+`EmailOutboxMessages`. The email-send-pause flag is no longer an
+Email-owned `SystemSettings` key — as of #889 it routes through
+`ISystemSettingsService` (key `SystemSettingKeys.IsEmailSendingPaused`).
 
 ### EmailOutboxService (Scoped)
 
-Repository: `IEmailOutboxRepository`.
+Repositories: `IEmailOutboxRepository`, plus `ISystemSettingsService` (the
+pause flag).
 
 | Table | R/W |
 |-------|-----|
-| EmailOutboxMessages | R/W |
-| SystemSettings | R/W (only key `email_outbox_paused`) |
+| EmailOutboxMessages | R/W (via `IEmailOutboxRepository`) |
+| SystemSettings | R/W (key `IsEmailSendingPaused`, **via `ISystemSettingsService`** — SystemSettings section owns the table) |
 
-No cross-section calls beyond `IClock`. No `IMemoryCache`.
+The pause flag moved off `EmailOutboxRepository` (#889): the repo no longer
+touches `SystemSettings` and its `[Grandfathered("HUM0025", …)]` marker is
+retired. `IsEmailPausedAsync` / `SetEmailPausedAsync` read/write the
+`IsEmailSendingPaused` key through `ISystemSettingsService`. Cross-section
+calls via `ISystemSettingsService`, plus `IClock`. No `IMemoryCache`.
 
 ### OutboxEmailService (Scoped)
 
@@ -1498,6 +1556,33 @@ path (the interface collapsed to one method). Cross-section calls via
 `IUserEmailService`, `IEmailBodyComposer`, `IImmediateOutboxProcessor`,
 `IHumansMetrics`, `ICommunicationPreferenceService`, plus `IClock`. No
 `IMemoryCache`.
+
+---
+
+## SystemSettings
+
+Folder: `src/Humans.Application/Services/SystemSettings/`. Owns the
+`SystemSetting` key/value table. **New section (#889)** — centralizes
+`SystemSettings` persistence behind one owning repository so consuming
+sections route through `ISystemSettingsService` instead of each touching
+the table from their own repository.
+
+### SystemSettingsService (Scoped)
+
+Repository: `ISystemSettingsRepository`.
+
+| Table | R/W |
+|-------|-----|
+| SystemSetting | R/W (`GetValueAsync` / `SetValueAsync`, by key) |
+
+Thin pass-through over the repository — no business logic, no cross-section
+calls, no cache. Consumers today: `EmailOutboxService`
+(`IsEmailSendingPaused`) and `DriveActivityMonitorService`
+(`DriveActivityMonitor:LastRunAt`). Well-known keys live in
+`SystemSettingKeys` (`Humans.Domain.Constants`). Because the table is now
+owned by a single repository, the per-key cross-section `SystemSettings`
+reads that were previously `[Grandfathered("HUM0025", …)]` on
+`EmailOutboxRepository` / `DriveActivityMonitorRepository` are retired.
 
 ---
 
@@ -1637,7 +1722,7 @@ Implements `IEventService`, `IEventViewInvalidator`, `IHostedService`
 (`StartAsync` warms all four projections). The moderator-only
 `GetAllEventsForDashboardAsync` passes through to the inner service (needs a
 fresh pending count; the cache only holds approved events). Only the event
-projection is surfaced on `/Admin/CacheStats`.
+projection is surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -1892,22 +1977,26 @@ formatters with no DI dependencies.
 After the §15 / `IUserMerge` consolidation, the
 `GoogleAdminService` / `CampRepository.GetCampLeadsAsync` /
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
-`ShiftSignupRepository` / `TicketRepository` cleanups, and the
-recent Profiles repository consolidation (PRs #810/#811: three
-Profiles repositories folded into `IUserRepository`), only a handful
-of cross-section table reads remain. Because the consolidated
-`IUserRepository` is now the single owner of every per-user table
-across the Users+Profiles section merge, the previously-tracked
-`IUserEmailRepository` violations are recategorised — they are now
-internal reads/writes of the unified User+Profile owner, not
+`ShiftSignupRepository` / `TicketRepository` cleanups, the Profiles
+repository consolidation (PRs #810/#811: three Profiles repositories
+folded into `IUserRepository`), and this sweep's #882 / #889 repository
+convergences, **no cross-section repository-level table reads remain.**
+Because the consolidated `IUserRepository` is now the single owner of every
+per-user table across the Users+Profiles section merge, the
+previously-tracked `IUserEmailRepository` violations are recategorised —
+they are now internal reads/writes of the unified User+Profile owner, not
 cross-section violations.
 
-| Table | Owning Section | Cross-Section Repo Readers (violations) |
-|-------|----------------|-----------------------------------------|
-| **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
-| **EventSettings** | Shifts | Shifts internal (`VolunteerTrackingRepository` reads it alongside `ShiftRepository`; HUM0025 grandfathered, scoped to Shifts internals) |
-| **ShiftSignups** | Shifts | Shifts internal (same — `VolunteerTrackingRepository` reads alongside `ShiftRepository`; HUM0025 grandfathered) |
-| **SystemSettings** | per-key (see Pattern #7) | shared by `EmailOutboxRepository` (Email-owned keys) and `DriveActivityMonitorRepository` (Google-owned keys); disjoint keys — HUM0025 grandfathered |
+The four previously-tracked cross-section repository reads are all now
+**resolved** — each table is owned by exactly one repository, and the
+former HUM0025 `[Grandfathered]` markers have been retired:
+
+| Table | Owning Section | Status |
+|-------|----------------|--------|
+| **GoogleSyncOutboxEvents** | Google Integration | Resolved (#889) — `TeamRepository` no longer writes it; `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
+| **EventSettings** | Shifts | Resolved (#882) — `VolunteerTrackingRepository` no longer reads it; the `GetEligibleBuildSignupsAsync` / `GetConfirmedShiftsInRangeAsync` reads converged onto `ShiftRepository`. |
+| **ShiftSignups** | Shifts | Resolved (#882) — same convergence onto `ShiftRepository`. |
+| **SystemSettings** (`SystemSetting`) | SystemSettings | Resolved (#889) — single owner `SystemSettingsRepository`; `EmailOutboxRepository` and `DriveActivityMonitorRepository` no longer touch the table (the latter was deleted). Consumers route through `ISystemSettingsService`. |
 
 ### Notable Cross-Section Patterns
 
@@ -1953,35 +2042,40 @@ cross-section violations.
    itself (post-#810/#811) for `UserInfo` projection — internal to the
    unified Users+Profiles owner, no longer a cross-section reach.
 
-5. **Teams ↔ Google outbox.** `TeamRepository` writes
-   `GoogleSyncOutboxEvents` so each team mutation is atomic with its
-   outbox event. The Google Integration section reads/processes them
-   via `IGoogleSyncOutboxRepository`. The atomicity benefit outweighs
-   the boundary cost.
+5. **Teams ↔ Google outbox now goes through the owning service (#889).**
+   `TeamService` appends `GoogleSyncOutboxEvents` via
+   `IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` inside a
+   `TransactionScope`, so each team mutation stays atomic with its outbox
+   event without `TeamRepository` reaching into the table. The Google
+   Integration section owns the table end-to-end (write surface
+   `GoogleSyncOutboxService`, read/process via `IGoogleSyncOutboxRepository`).
+   The prior cross-section repository write is closed.
 
-6. **DriveActivityMonitor user fallback uses UserInfo.**
-   `DriveActivityMonitorService` resolves Google `people/{client_id}` actors
-   through Directory first, then through a per-run Google provider-key ->
-   `UserInfo` index from `IUserServiceRead.GetAllUserInfosAsync`. The
-   repository owns only its `SystemSettings` key.
+6. **DriveActivityMonitor user fallback uses UserInfo; state via SystemSettings
+   service (#889).** `DriveActivityMonitorService` resolves Google
+   `people/{client_id}` actors through Directory first, then through a per-run
+   Google provider-key -> `UserInfo` index from
+   `IUserServiceRead.GetAllUserInfosAsync`. Its `IDriveActivityMonitorRepository`
+   was deleted; the last-run marker
+   (`SystemSettingKeys.DriveActivityMonitorLastRunAt`) is now read/written
+   through `ISystemSettingsService` — a §15-compliant cross-section service
+   call, not a foreign repository read.
 
-7. **SystemSettings has per-key ownership (no single owner service).**
-   Each key is owned by the section whose repository accesses it; this
-   is the established convention per [`data-model.md`](data-model.md)
-   ("Each key belongs to its consuming section's repository"). Two
-   repositories touch the table today and they touch disjoint keys:
+7. **SystemSettings is now owned by a single section/repository (#889).**
+   The `SystemSetting` key/value table is owned by the new SystemSettings
+   section's `SystemSettingsRepository`; consuming sections route through
+   `ISystemSettingsService` rather than touching the table from their own
+   repository. This replaces the prior per-key-ownership convention — the
+   two well-known keys now flow through the one owner:
 
-   | Key | Owning section | Read by | Written by |
-   |-----|----------------|---------|------------|
-   | `email_outbox_paused` | Email | `EmailOutboxRepository.GetSendingPausedAsync` | `EmailOutboxRepository.SetSendingPausedAsync` |
-   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorRepository.GetLastRunTimestampAsync` | `DriveActivityMonitorRepository.PersistAnomaliesAsync` |
+   | Key | Consuming section | Routed via |
+   |-----|-------------------|------------|
+   | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISystemSettingsService` |
+   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorService` → `ISystemSettingsService` |
 
-   Because `EmailOutboxRepository` only reads/writes its own
-   Email-owned key and `DriveActivityMonitorRepository` only
-   reads/writes its own Google-owned key, there is no cross-section
-   `SystemSettings` access. No `ISystemSettingsService` is needed; if a
-   third key is added, it should be owned by the section whose
-   repository reads/writes it.
+   `EmailOutboxRepository` and `DriveActivityMonitorRepository` no longer
+   touch `SystemSettings` (the latter is deleted). New keys should be added
+   to `SystemSettingKeys` and accessed through `ISystemSettingsService`.
 
 8. **Cached read-models have displaced almost all per-key `IMemoryCache`
    entries.** Singleton decorators inheriting `TrackedCache<TKey, TValue>`
@@ -2002,7 +2096,7 @@ cross-section violations.
    - `CachingRoleAssignmentService` → `RoleAssignmentRow` set.
    - `CachingEarlyEntryService` → `UserEarlyEntry?` per user (new — caches
      negative results too).
-   All are surfaced on `/Admin/CacheStats` via `ICacheStats` and evicted
+   All are surfaced on `/Debug/CacheStats` via `ICacheStats` and evicted
    through narrow `I*Invalidator` interfaces (or EF
    `SaveChangesInterceptor`s for Legal / User-Identity writes) — no direct
    `IMemoryCache` coupling in the Application layer.
@@ -2038,7 +2132,7 @@ cross-section violations.
 Sourced from `src/Humans.Application/CacheKeys.cs` and
 `src/Humans.Application/Extensions/MemoryCacheExtensions.cs`. TTL/type
 classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
-`/Admin/CacheStats` page). Note: most section projections are now
+`/Debug/CacheStats` page). Note: most section projections are now
 `TrackedCache` dictionaries (not `IMemoryCache` keys) and are listed
 separately below the key table.
 

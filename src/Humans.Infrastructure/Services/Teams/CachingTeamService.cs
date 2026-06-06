@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Services.Teams;
 /// The scoped inner service owns Teams behavior and writes; this decorator owns the
 /// process-local team read model and invalidates it after writes. Inherits
 /// <see cref="TrackedCache{TKey, TValue}"/> for hit/miss/invalidation tracking
-/// surfaced on /Admin/CacheStats — note that this service serves bulk reads
+/// surfaced on /Debug/CacheStats — note that this service serves bulk reads
 /// (<see cref="GetTeamsByIdAsync"/>) so per-key hit/miss counts are not
 /// recorded; the meaningful diagnostics here are entry count and invalidation
 /// count.

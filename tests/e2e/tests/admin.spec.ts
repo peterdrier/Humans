@@ -21,10 +21,10 @@ test.describe('Admin (09-administration)', () => {
 
   test('configuration status page loads', async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/Admin/Configuration');
+    await page.goto('/Debug/Configuration');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
-    expect(page.url()).toContain('/Admin/Configuration');
+    expect(page.url()).toContain('/Debug/Configuration');
   });
 
   test('boundary: volunteer cannot access /Admin', async ({ page }) => {

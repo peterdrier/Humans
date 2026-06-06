@@ -49,7 +49,7 @@ A "send wave" assigns ungranted codes to eligible humans and queues the email de
 
 ## Admin UI
 
-Route: `/Admin/Campaigns` — requires Admin role.
+Route: `/Campaigns/Admin` — requires Admin role.
 
 Pages:
 - Campaign list with status and code/grant counts
@@ -72,7 +72,7 @@ Humans can view their campaign codes on their profile page. The profile page sho
 
 ## Authorization
 
-- All `/Admin/Campaigns` routes: `Admin` role required
+- All `/Campaigns/Admin` routes: `Admin` role required
 - `/Unsubscribe/{token}`: public (no authentication required)
 - Profile code lookup: authenticated user, own profile only
 

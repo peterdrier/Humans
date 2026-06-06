@@ -144,7 +144,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 - **`/whats` integration:** When `HUMANS_API_URL` and `HUMANS_API_KEY` env vars are set, `/whats` checks for pending feedback and surfaces the count in its status output. Humans-project-specific; other projects skip this step.
 - **`/triage` skill:** Interactive triage of pending reports — for each report, choose to respond, create a GitHub issue (on `nobodies-collective/Humans`), mark won't fix, or skip. Issues are linked back to the feedback report via the API.
 - **Environment setup:** `FEEDBACK_API_KEY` env var on the server, `HUMANS_API_KEY`/`HUMANS_API_URL` in `.claude/settings.local.json` (gitignored).
-- **Admin visibility:** `FEEDBACK_API_KEY` status shown on `/Admin/Configuration` diagnostics page.
+- **Admin visibility:** `FEEDBACK_API_KEY` status shown on `/Debug/Configuration` diagnostics page.
 
 ## Navigation
 
