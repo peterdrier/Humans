@@ -1,7 +1,7 @@
 # Account Merge Consolidation — Design
 
 **Date:** 2026-06-06
-**Section:** Users (the merge acts on User accounts, external logins, and emails; route prefix `/Users/Admin`). The affected services currently sit under the `Application/Services/Profiles` namespace; this change does not relocate them.
+**Section:** Users. The merge acts on User accounts, external logins, and emails; route prefix `/Users/Admin`. As part of this change, `AccountMergeService` / `DuplicateAccountService` (+ their interfaces and `AccountMergeRepository`) move from the `Profiles` namespace into `Users` — see *Namespace move* under What changes.
 **Status:** Design approved (Peter), spec under review
 
 ## Problem
@@ -30,6 +30,8 @@ Observed symptoms and their root causes:
 - **Delete `DuplicateAccountService.ResolveAsync`** (the lossy hand-rolled fold). `DuplicateAccountService` becomes detection-only.
 - **Closed-request audit reading:** reuse the existing **`Rejected`** status for a manual Dismiss; auto-resolved requests become **`Accepted`** with a note. **No new enum value, no row deletion** — GDPR export and audit history stay intact.
 - **Self-reconciliation is the cleanup mechanism.** Request state is derived from the archived account's tombstone (`MergedToUserId`); a Pending request whose archived side is already merged is *moot* and is closed on sight. This is what cleans up existing half-done rows — no data migration.
+- **One detector.** "Two accounts share a normalized email" is currently computed four ways (`DuplicateAccountService.DetectDuplicatesAsync` + `GetDuplicateGroupAsync`, `EmailProblemsService.SharedAcrossUsers` + `UsersShareAnyEmailAsync`). Collapse to a single detector behind the unified page, and **drop the `SharedAcrossUsers` kind from the EmailProblems scan** — the unified page is its home; EmailProblems links there.
+- **Proportional namespace move.** `AccountMergeService`, `DuplicateAccountService`, their interfaces, and `AccountMergeRepository` (+ interface + DI registration) move `Profiles → Users`; the new controller/VMs are created in `Users` from the start. `EmailProblemsService` / `UserEmailService` stay in `Profiles`. This also removes a latent coupling — both services already use the Users-owned `IUserRepository` from a `Profiles` home. Done as a **Peter-driven ReSharper move, sequenced first** (agents do not author the rename).
 
 ## Target architecture
 
@@ -64,7 +66,7 @@ Lists, cross-referenced into one work queue:
 
 Per row: **Merge…** (admin picks survivor → `MergeAsync`) and **Dismiss** (→ `Status = Rejected`, the existing `RejectAsync` mechanism, which already no-ops gracefully when the pending email is gone).
 
-`/Admin/MergeRequests` and `/Admin/DuplicateAccounts` are retired into this one route; the admin nav collapses three entries to one. `EmailProblems` keeps its other 8 `EmailProblemKind` checks; its `SharedAcrossUsers` case links to `/Users/Admin/AccountMerges` instead of carrying its own `EmailProblems/Merge` action.
+`/Admin/MergeRequests` and `/Admin/DuplicateAccounts` are retired into this one route; the "Members" nav group collapses "Merge requests" + "Duplicate detection" into one "Account merges" entry. `EmailProblems` keeps its other 8 `EmailProblemKind` checks but **`SharedAcrossUsers` is dropped from the scan** (the unified page owns shared-email pairs); the page links to `/Users/Admin/AccountMerges` for that case, and `EmailProblems/Merge` + `EmailProblemsCompare` are removed.
 
 ### Reconciliation / cleanup
 
@@ -83,10 +85,25 @@ Plus the original symptoms: (1) no forced-wrong-direction merges; (2) no orphan 
 
 ## What changes
 
-- **`AccountMergeService`** — add `MergeAsync` (ordered, no wrapping scope); reframe `AcceptAsync` onto it with an admin-chosen survivor; collapse `AdminMergeAsync`; remove the fatal missing-email throw; route email-settle through `UserEmailService`; add per-pair request reconciliation.
-- **`DuplicateAccountService`** — delete `ResolveAsync`; keep `DetectDuplicatesAsync` / `GetDuplicateGroupAsync`.
-- **Web** — new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges` + view (merge queue: duplicates + requests + orphans); retire `AdminMergeController` and `AdminDuplicateAccountsController` routes; drop `EmailProblems/Merge` and link `SharedAcrossUsers` to the new page; collapse `AdminNavTree` entries 3→1.
-- **No new `AccountMergeRequestStatus` value. No EF data migration.** (Schema unchanged.)
+### Namespace move (Peter-driven ReSharper, sequenced first)
+
+`AccountMergeService`, `DuplicateAccountService`, `IAccountMergeService`, `IDuplicateAccountService`, `IAccountMergeRepository`, `AccountMergeRepository` → `Users` namespace/folders; the `AddSingleton<IAccountMergeRepository, …>` registration moves from `ProfileSectionExtensions` to `UsersSectionExtensions`. Because a service's repository must share its section, the repository moves with the service (leaving it in `Profiles` would be a Users-service → Profiles-repo violation). The new controller/VMs are authored directly in `Users`.
+
+### Engine & services
+
+- **`AccountMergeService`** — add `MergeAsync(survivor, archived, …)` (ordered, no wrapping scope); reframe `AcceptAsync` onto it with an admin-chosen survivor; collapse `AdminMergeAsync` into it; remove the fatal missing-email throw; route email-settle through `UserEmailService`; add per-pair request reconciliation. Net surface shrinks (three merge entrypoints → one).
+- **`DuplicateAccountService`** — **delete `ResolveAsync`** (lossy hand-rolled fold) and shed the deps it leaves dead (`userRepository`, `auditLogService`, `userInfoInvalidator`, `clock`); keep detection (`DetectDuplicatesAsync`, `GetDuplicateGroupAsync`) — feed the one shared detector.
+- **`EmailProblemsService`** — drop `SharedAcrossUsers` from `ScanAsync` and remove `UsersShareAnyEmailAsync`; the duplicate-pair concept now has one owner.
+
+### Web
+
+- **New** `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges` + view: one work queue of detected duplicates + user requests + half-done/orphan rows, each with **Merge…** (pick survivor) and **Dismiss**.
+- **Retire** `AdminMergeController` + `AdminDuplicateAccountsController` (controllers, views, routes).
+- **Trim** `ProfileAdminController` — remove `Merge`, `EmailProblemsCompare`, `ResolveAndValidateMergePairAsync`, and the views/deps they used; `EmailProblems` links to the new page for shared-email pairs.
+- **Remove dead view models** — `AccountMerge{List,Request,Detail}` + `DuplicateAccount{List,Group,Item,Detail,EmailRow}` → one unified VM set. **Reuse** the shared `ProfileSummaryViewModel` for account cards (used in 11 places — do not fork it).
+- **Nav** — "Members" group collapses "Merge requests" + "Duplicate detection" → one "Account merges" entry; "Email problems" stays.
+
+**No new `AccountMergeRequestStatus` value. No EF data migration.** (Schema unchanged.)
 
 ## Risks / notes for the implementer
 
@@ -94,4 +111,11 @@ Plus the original symptoms: (1) no forced-wrong-direction merges; (2) no orphan 
 - **Interim split state** between steps 2 and 4 (some data under survivor, archived not yet tombstoned) is acceptable at ~500-user / single-server scale and self-heals on retry. The never-block-sign-in rule is preserved (archived account isn't tombstoned until the end; logins already point at survivor once step 2 runs).
 - **Email-settle ownership.** Confirm the email verify/remove goes through `UserEmailService` rather than `AccountMergeService` reaching `IUserRepository` directly, to keep the merge orchestrator off another owner's repository surface.
 - **Removing the fold's `TransactionScope`** is a behavioral change to the *existing* accepted-merge path, not just new code — call it out in the PR.
-- Detection logic is duplicated between `DuplicateAccountService.DetectDuplicatesAsync` and `EmailProblemsService` (`SharedAcrossUsers`). De-duplicating that is desirable but **out of scope** here unless trivial; note it, don't force it.
+- **Sequencing.** The namespace move runs **first** (Peter, ReSharper) so new code lands in `Users` and agents never author the rename; engine + surface work follows. The plan must make this an explicit gate, not a mid-stream step.
+- **Route references.** Retiring two controllers means updating inbound links and any tests/e2e that hit `/Admin/MergeRequests` or `/Admin/DuplicateAccounts`.
+- **Section invariant docs.** Moving the services to `Users` may require touching `docs/sections/` for Users/Profiles — verify against the section invariant docs.
+
+## Out of scope / follow-up
+
+- **Full Users-vs-Profiles boundary reckoning** (option b) — moving `EmailProblemsService` / `UserEmailService` and drawing the real section line. Separate, larger; file an issue if wanted.
+- **The other `EmailProblems` hygiene kinds** (ghost logins, legacy identity, orphan emails, multiple/zero primary/Google) are User-account hygiene that arguably wants a `/Users/Admin` home too, but they're unrelated to merging.
