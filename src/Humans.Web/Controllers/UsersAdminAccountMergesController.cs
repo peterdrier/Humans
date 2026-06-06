@@ -34,7 +34,11 @@ public class UsersAdminAccountMergesController(
             .ToList();
         var infos = await _userService.GetUserInfosAsync(involvedIds, ct);
 
-        bool IsMerged(Guid id) => infos.TryGetValue(id, out var info) && info.IsMerged;
+        // "Already merged" gates the Close action, which only applies when THIS pair
+        // merged into each other — not when one side merged into an unrelated account.
+        bool MergedIntoEachOther(Guid a, Guid b) =>
+            (infos.TryGetValue(a, out var ia) && ia.MergedToUserId == b) ||
+            (infos.TryGetValue(b, out var ib) && ib.MergedToUserId == a);
 
         var rows = new List<AccountMergeRowViewModel>();
 
@@ -48,7 +52,7 @@ public class UsersAdminAccountMergesController(
                 AccountB = Card(r.SourceUser),
                 FromUserRequest = true,
                 RequestedAt = r.CreatedAt.ToDateTimeUtc(),
-                AlreadyMerged = IsMerged(r.TargetUser.Id) || IsMerged(r.SourceUser.Id)
+                AlreadyMerged = MergedIntoEachOther(r.TargetUser.Id, r.SourceUser.Id)
             });
         }
 
@@ -67,7 +71,7 @@ public class UsersAdminAccountMergesController(
                 AccountB = Card(a1),
                 FromUserRequest = false,
                 RequestedAt = null,
-                AlreadyMerged = IsMerged(a0.UserId) || IsMerged(a1.UserId)
+                AlreadyMerged = MergedIntoEachOther(a0.UserId, a1.UserId)
             });
         }
 

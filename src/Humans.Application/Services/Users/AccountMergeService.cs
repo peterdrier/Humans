@@ -267,9 +267,15 @@ public sealed class AccountMergeService(
 
         var source = await userService.GetUserInfoAsync(request.SourceUserId, ct);
         var target = await userService.GetUserInfoAsync(request.TargetUserId, ct);
-        if (source?.IsMerged != true && target?.IsMerged != true)
+        // Only close when this pair actually merged INTO EACH OTHER (one tombstoned into
+        // the other). A side merged into some unrelated third account is a different
+        // conflict — closing here would silently drop the still-unresolved pending email.
+        var mergedIntoEachOther =
+            source?.MergedToUserId == request.TargetUserId ||
+            target?.MergedToUserId == request.SourceUserId;
+        if (!mergedIntoEachOther)
             throw new InvalidOperationException(
-                "Neither account is merged — resolve this request via Merge or Dismiss instead.");
+                "These two accounts are not merged into each other — resolve this request via Merge or Dismiss instead.");
 
         // The merge already happened; just close the orphaned request. No data/email
         // mutation — reuses the same close path the engine runs after a live merge.

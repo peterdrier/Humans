@@ -155,6 +155,33 @@ public class AccountMergeServiceAdminMergeTests
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Neither account is merged*");
+            .WithMessage("*not merged into each other*");
+    }
+
+    [HumansFact]
+    public async Task ReconcileMergedRequestAsync_Throws_WhenOneAccountMergedIntoThirdParty()
+    {
+        // Codex P2: source merged into an UNRELATED third account, target still active.
+        // The A<->B request must NOT be closeable — that conflict is still unresolved.
+        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var third = Guid.NewGuid();
+        var req = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            SourceUserId = src,
+            TargetUserId = tgt,
+            Email = "dupe@example.com",
+            Status = AccountMergeRequestStatus.Pending,
+        };
+        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _userService.GetUserInfoAsync(src, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
+        _userService.GetUserInfoAsync(tgt, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = tgt }.ToUserInfo());
+
+        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not merged into each other*");
+        await _mergeRepo.DidNotReceive().UpdateAsync(Arg.Any<AccountMergeRequest>(), Arg.Any<CancellationToken>());
     }
 }
