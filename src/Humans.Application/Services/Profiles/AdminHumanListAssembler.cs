@@ -1,4 +1,4 @@
-﻿using Humans.Application.DTOs;
+using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Profiles;

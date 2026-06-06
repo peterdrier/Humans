@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Humans.Domain.Constants;
 
 namespace Humans.Web.Authorization;

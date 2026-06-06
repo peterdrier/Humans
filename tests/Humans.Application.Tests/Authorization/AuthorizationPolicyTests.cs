@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
