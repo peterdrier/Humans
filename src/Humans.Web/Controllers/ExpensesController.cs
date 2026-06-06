@@ -48,12 +48,58 @@ public sealed class ExpensesController(
                 .ToDictionary(x => x.Id, x => x.Display)
                 ?? new Dictionary<Guid, string>();
 
+            ExpenseIouSummary? iou = null;
+            var ledger = new List<ExpenseLedgerRow>();
+
+            var pushedReport = reports
+                .Where(rep => !string.IsNullOrEmpty(rep.HoldedContactId))
+                .OrderByDescending(rep => rep.CreatedAt)
+                .FirstOrDefault();
+
+            if (pushedReport is not null)
+            {
+                var tl = await expenseReadService.GetHoldedTimelineAsync(pushedReport);
+                if (tl is not null && (tl.OwedToMember > 0 || tl.TotalPaid > 0 || tl.Payments.Count > 0))
+                {
+                    iou = new ExpenseIouSummary
+                    {
+                        OwedToMember = tl.OwedToMember,
+                        TotalPaid = tl.TotalPaid,
+                        OtherAmount = tl.OtherAmount,
+                        LastPaymentDate = tl.PaidOn
+                    };
+
+                    // Org's reporting zone (Spain). Reports are claims once submitted; drafts/withdrawn are excluded.
+                    var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+                    ledger.AddRange(reports
+                        .Where(rep => rep.Status is not ExpenseReportStatus.Draft and not ExpenseReportStatus.Withdrawn)
+                        .Select(rep => new ExpenseLedgerRow(
+                            Date: (rep.SubmittedAt ?? rep.CreatedAt).InZone(zone).Date,
+                            IsPayment: false,
+                            Label: categoryNames.TryGetValue(rep.BudgetCategoryId, out var cat) ? cat : "Expense report",
+                            Amount: rep.Total,
+                            ReportId: rep.Id,
+                            Status: rep.Status)));
+                    ledger.AddRange(tl.Payments
+                        .Select(p => new ExpenseLedgerRow(
+                            Date: p.Date,
+                            IsPayment: true,
+                            Label: "Payment received",
+                            Amount: p.Amount,
+                            ReportId: null,
+                            Status: null)));
+                    ledger = ledger.OrderByDescending(row => row.Date).ThenByDescending(row => row.IsPayment).ToList();
+                }
+            }
+
             var model = new ExpensesIndexViewModel
             {
                 Reports = reports,
                 HasActiveYear = activeYear is not null,
                 HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
                 CategoryNames = categoryNames,
+                Iou = iou,
+                Ledger = ledger,
             };
             return View(model);
         }
