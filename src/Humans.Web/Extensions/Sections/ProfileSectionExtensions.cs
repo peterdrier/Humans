@@ -6,8 +6,8 @@ using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileServi
 using ProfilesContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using ProfilesUserEmailService = Humans.Application.Services.Profiles.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
-using ProfilesAccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
-using ProfilesDuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
+using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
+using ProfilesDuplicateAccountService = Humans.Application.Services.Users.DuplicateAccountService;
 using ProfilesEmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
 using ProfilesProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
@@ -15,6 +15,7 @@ using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Web.Extensions.Sections;
 

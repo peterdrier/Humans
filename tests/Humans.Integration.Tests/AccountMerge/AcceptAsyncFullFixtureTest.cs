@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

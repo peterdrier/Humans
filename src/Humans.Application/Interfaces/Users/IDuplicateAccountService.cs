@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Application.Interfaces.Users;
 
 /// <summary>
 /// Service for detecting and resolving duplicate user accounts

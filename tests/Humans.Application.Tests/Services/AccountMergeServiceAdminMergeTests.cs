@@ -6,11 +6,11 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Services.Users;
 
 namespace Humans.Application.Tests.Services;
 

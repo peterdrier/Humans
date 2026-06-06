@@ -10,10 +10,9 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-namespace Humans.Application.Services.Profiles;
+namespace Humans.Application.Services.Users;
 
 // AcceptAsync fans out IUserMerge across sections to re-FK source→target, then tombstones source via AnonymizeForMergeAsync.
 public sealed class AccountMergeService(

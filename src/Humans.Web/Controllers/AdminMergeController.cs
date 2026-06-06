@@ -5,7 +5,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 

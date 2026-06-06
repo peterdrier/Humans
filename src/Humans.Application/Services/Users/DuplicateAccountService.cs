@@ -8,10 +8,9 @@ using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-namespace Humans.Application.Services.Profiles;
+namespace Humans.Application.Services.Users;
 
 // Detects/resolves duplicate accounts (same email across multiple User records).
 public sealed class DuplicateAccountService(

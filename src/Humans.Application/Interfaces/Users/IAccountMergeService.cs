@@ -2,7 +2,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Application.Interfaces.Users;
 
 /// <summary>
 /// Service for managing account merge requests.
