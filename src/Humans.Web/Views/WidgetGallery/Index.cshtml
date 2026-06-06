@@ -491,6 +491,33 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">_DashboardActionCard.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_DashboardActionCard.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Reusable dashboard/guest action card. Caller supplies the route, text, icon, visual variant, and compact/full layout mode.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>DashboardActionCardViewModel</code> -- Controller, Action, Title, Description, IconCssClass, IconVariant, ColumnClass, Compact, IsPost, ConfirmMessage")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                        {
+                            Controller = "Profile",
+                            Action = "Index",
+                            Title = "Edit profile",
+                            Description = "Open the profile settings surface.",
+                            IconCssClass = "fa-solid fa-user-pen",
+                            IconVariant = "primary",
+                            ColumnClass = string.Empty,
+                            Compact = true,
+                        })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -638,6 +665,66 @@
                         {
                             <text>(No rota in the active event — visit <a href="/Admin/Events">/Admin/Events</a> and create a rota under any department to see this populated.)</text>
                         }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_RotaBadges.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaBadges.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Priority, period, visibility, preference, and tag badges shared by rota headers and the public shifts browser.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowPreferenceStar, ShowPeriodBadge, ShowTags, BadgeSpacingClass")
+                    )
+                    <div class="wg-card-example">
+                        @{
+                            var widgetGalleryBadgeRota = new Rota
+                            {
+                                Name = "Gate Support",
+                                Priority = ShiftPriority.Essential,
+                                Period = RotaPeriod.Build,
+                                IsVisibleToVolunteers = false,
+                            };
+                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Outdoor" });
+                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Radio" });
+                        }
+                        @await Html.PartialAsync("_RotaBadges", new RotaHeaderViewModel
+                        {
+                            Rota = widgetGalleryBadgeRota,
+                            ShowPreferenceStar = true,
+                            BadgeSpacingClass = "me-1",
+                        })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_RotaDetails.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaDetails.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Optional rota description and practical-info markdown block shared by rota headers and the public shifts browser.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowDescription, ShowPracticalInfo, DescriptionCssClass, PracticalInfoCssClass")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
+                        {
+                            Rota = new Rota
+                            {
+                                Name = "Gate Support",
+                                Description = "Welcome volunteers, check wristbands, and keep arrivals moving.",
+                                PracticalInfo = "Meet at the gate desk. Bring water and a charged phone.",
+                            },
+                            DescriptionCssClass = "text-muted small mb-2",
+                            PracticalInfoCssClass = "text-muted small mb-0",
+                        })
                     </div>
                 </div>
 
