@@ -262,6 +262,60 @@ public sealed class ExpensesController(
         return RedirectToAction(nameof(Edit), new { id });
     }
 
+    [HttpPost("{id:guid}/Lines/AddMileage")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddMileage(Guid id, AddMileageInputModel input)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+        if (report.SubmitterUserId != user.Id) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid mileage data.");
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        var result = await service.AddMileageLineWithResultAsync(
+            id, user.Id, input.Origin, input.Destination, input.Km);
+        if (!result.Succeeded)
+            SetError($"Failed to add mileage line: {result.ErrorMessage}");
+        else
+            SetSuccess("Mileage line added.");
+
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    [HttpPost("{id:guid}/Lines/AddPerDiem")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddPerDiem(Guid id, AddPerDiemInputModel input)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+        if (report.SubmitterUserId != user.Id) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            SetError("Invalid per-diem data.");
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
+        var result = await service.AddPerDiemLineWithResultAsync(
+            id, user.Id, input.Kind, input.Days, input.Note);
+        if (!result.Succeeded)
+            SetError($"Failed to add per-diem line: {result.ErrorMessage}");
+        else
+            SetSuccess("Per-diem line added.");
+
+        return RedirectToAction(nameof(Edit), new { id });
+    }
+
     [HttpPost("{id:guid}/Lines/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLine(Guid id, EditLineInputModel input)

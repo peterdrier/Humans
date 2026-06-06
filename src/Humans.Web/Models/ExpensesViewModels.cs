@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
@@ -65,6 +66,30 @@ public sealed class AddLineInputModel
 
     [Required, Range(0.01, 1_000_000)]
     public decimal Amount { get; set; }
+}
+
+public sealed class AddMileageInputModel
+{
+    [Required, StringLength(200)]
+    public string Origin { get; set; } = "";
+
+    [Required, StringLength(200)]
+    public string Destination { get; set; } = "";
+
+    [Required, Range(0.1, 100_000)]
+    public decimal Km { get; set; }
+}
+
+public sealed class AddPerDiemInputModel
+{
+    [Required]
+    public PerDiemKind Kind { get; set; }
+
+    [Required, Range(1, 366)]
+    public int Days { get; set; }
+
+    [StringLength(200)]
+    public string? Note { get; set; }
 }
 
 public sealed class EditLineInputModel
