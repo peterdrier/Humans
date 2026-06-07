@@ -14,7 +14,7 @@ namespace Humans.Web.Authorization.Requirements;
 ///   own team's early entry de facto)
 /// - Everyone else: deny
 /// </summary>
-public class TeamAuthorizationHandler(ITeamService teamService)
+public class TeamAuthorizationHandler(ITeamServiceRead teamService)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
     protected override async Task HandleRequirementAsync(
@@ -39,7 +39,8 @@ public class TeamAuthorizationHandler(ITeamService teamService)
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await teamService.IsUserCoordinatorOfTeamAsync(resource.Id, userId))
+        var teamsById = await teamService.GetTeamsAsync();
+        if (TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, resource.Id, userId))
         {
             context.Succeed(requirement);
         }

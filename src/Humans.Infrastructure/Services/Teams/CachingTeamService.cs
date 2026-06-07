@@ -180,7 +180,7 @@ public sealed class CachingTeamService(
 
         var currentUserId = userId.Value;
         var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
-        var isCurrentUserCoordinator = IsUserCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
+        var isCurrentUserCoordinator = TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
@@ -395,7 +395,7 @@ public sealed class CachingTeamService(
             // team (matches CanUserApproveRequestsForTeamAsync's recursive
             // parent walk via IsUserCoordinatorOfActiveTeam).
             var canManage =
-                (isBoardMember || IsUserCoordinatorOfActiveTeam(teamsById, team.Id, userId))
+                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;
 
             var pendingCount = 0;
@@ -565,7 +565,7 @@ public sealed class CachingTeamService(
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return IsUserCoordinatorOfActiveTeam(teamsById, teamId, userId);
+        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(
@@ -992,29 +992,6 @@ public sealed class CachingTeamService(
                 set.Add(team.Id);
             }
         }
-    }
-
-    private bool IsUserCoordinatorOfActiveTeam(
-        IReadOnlyDictionary<Guid, TeamInfo> teams,
-        Guid teamId,
-        Guid userId)
-    {
-        if (!teams.TryGetValue(teamId, out var team) || !team.IsActive)
-        {
-            logger.LogDebug("Coordinator check: team {TeamId} not found in team cache for user {UserId}", teamId, userId);
-            return false;
-        }
-
-        if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
-            return true;
-
-        // Mirror GetUserCoordinatorTeamIdsAsync: the "by management role assignment"
-        // path was filtered to non-system teams.
-        if (!team.IsSystemTeam && team.ManagementRoleHolderUserIds?.Contains(userId) == true)
-            return true;
-
-        return team.ParentTeamId.HasValue
-            && IsUserCoordinatorOfActiveTeam(teams, team.ParentTeamId.Value, userId);
     }
 
     private static TeamInfo BuildTeamInfo(
