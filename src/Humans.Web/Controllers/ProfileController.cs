@@ -25,15 +25,12 @@ using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Models;
@@ -58,8 +55,6 @@ public class ProfileController(
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
     IOnboardingService onboardingService,
-    IHumanLifecycleService humanLifecycleService,
-    IRoleAssignmentService roleAssignmentService,
     IShiftSignupService shiftSignupService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
@@ -75,7 +70,6 @@ public class ProfileController(
     IEmailOutboxServiceRead emailOutboxService,
     IClock clock,
     IAuthorizationService authorizationService,
-    IConsentServiceRead consentService,
     IApplicationDecisionService applicationDecisionService,
     IAccountDeletionService accountDeletionService,
     IMembershipCalculatorRead membershipCalculator,
@@ -108,42 +102,6 @@ public class ProfileController(
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
-
-    // Admin humans list: bit-flag PersonSearchFields filter + UserInfo-derived status/filter + projection.
-    private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct)
-    {
-        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var notificationEmails =
-            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
-
-        IReadOnlySet<Guid>? searchUserIds = null;
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            // Admin auth gated by [Authorize] above; limit ~== "every match" at ~500-user scale.
-            var searchResults = await _userService.SearchUsersAsync(
-                search, PersonSearchFields.AdminAll, limit: 500, ct);
-
-            // Matcher covers UserEmail rows only — union User.Email match for parity.
-            var byEmail = allUsers
-                .Where(u =>
-                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .Select(u => u.Id);
-
-            searchUserIds = searchResults
-                .Select(r => r.UserId)
-                .Concat(byEmail)
-                .ToHashSet();
-        }
-
-        return AdminHumanListAssembler.Assemble(
-            allUsers,
-            notificationEmails,
-            searchUserIds,
-            statusFilter);
-    }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
 
@@ -1509,25 +1467,8 @@ public class ProfileController(
         return RedirectToAction(nameof(Privacy));
     }
 
-    [HttpPost("Me/Privacy/CancelDeletion")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CancelDeletion()
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user is null)
-            return NotFound();
-
-        var result = await accountDeletionService.CancelDeletionAsync(user.Id);
-        if (!result.Success)
-        {
-            if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
-                SetError(localizer["Profile_NoDeletionPending"].Value);
-            return RedirectToAction(nameof(Privacy));
-        }
-
-        SetSuccess(localizer["Profile_DeletionCancelled"].Value);
-        return RedirectToAction(nameof(Privacy));
-    }
+    // CancelDeletion moved to UserController (Profile* retirement) — the cancel-deletion lever now
+    // lives with the User section; Views/Profile/Privacy.cshtml posts to User/Deletion/Cancel.
 
     [HttpGet("Me/ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
@@ -2094,346 +2035,6 @@ public class ProfileController(
         return View(viewModel);
     }
 
-    // ─── Admin: All Humans List ──────────────────────────────────────
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpGet("Admin")]
-    public async Task<IActionResult> AdminList(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1, CancellationToken ct = default)
-    {
-        var allRows = await BuildAdminHumansAsync(search, filter, ct);
-        var viewModel = AdminHumanListViewModelBuilder.Build(
-            allRows,
-            search,
-            filter,
-            sort,
-            dir,
-            page,
-            id => Url.Action(nameof(AdminDetail), "Profile", new { id }));
-
-        return View("AdminList", viewModel);
-    }
-
-    // ─── Admin: Role Assignment Roster ───────────────────────────────
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpGet("Admin/Roles")]
-    public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
-    {
-        var pageSize = 50;
-        var now = clock.GetCurrentInstant();
-
-        var (assignments, totalCount) = await roleAssignmentService.GetFilteredAsync(
-            role, activeOnly: !showInactive, page, pageSize, now);
-
-        var viewModel = new AdminRoleAssignmentListViewModel
-        {
-            RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
-            {
-                Id = ra.Id,
-                UserId = ra.UserId,
-                UserEmail = ra.UserEmail ?? string.Empty,
-                RoleName = ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
-                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
-                Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByDisplayName,
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
-            RoleFilter = role,
-            ShowInactive = showInactive,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
-
-        return View("~/Views/Shared/Roles.cshtml", viewModel);
-    }
-
-    // ─── Admin: Per-Person Detail ────────────────────────────────────
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpGet("{id:guid}/Admin")]
-    public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
-    {
-        // Per-section composition (see #685) — Profile reads its own row; cross-section data fetched here.
-        var info = await _userService.GetUserInfoAsync(id, ct);
-        if (info is null)
-            return NotFound();
-
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(id, ct);
-        var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
-        var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
-        var roleAssignments = await roleAssignmentService.GetByUserIdAsync(id, ct);
-        var roleCreatorNamesByUserId = (await _userService.GetUserInfosAsync(
-                roleAssignments.Select(ra => ra.CreatedByUserId).Distinct().ToList(), ct))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
-        var campaignGrants = await campaignService.GetAllGrantsForUserAsync(id, ct);
-        var outboxCount = await emailOutboxService.GetMessageCountForUserAsync(id, ct);
-        var revealedIban = TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string value
-            ? value
-            : null;
-
-        var viewModel = AdminHumanDetailViewModelBuilder.Build(
-            info,
-            applications,
-            userEmails,
-            consentCount,
-            roleAssignments,
-            roleCreatorNamesByUserId,
-            campaignGrants,
-            outboxCount,
-            clock.GetCurrentInstant(),
-            await GetRejectedByNameAsync(info.Profile, ct),
-            revealedIban);
-
-        return View("AdminDetail", viewModel);
-    }
-
-    private async Task<string?> GetRejectedByNameAsync(ProfileInfo? profile, CancellationToken ct)
-    {
-        if (profile?.RejectedByUserId is null)
-            return null;
-
-        var rejectedByInfo = await _userService.GetUserInfoAsync(profile.RejectedByUserId.Value, ct);
-        return rejectedByInfo?.BurnerName;
-    }
-
-    // Reveals unmasked IBAN once (TempData) + audit. Admin-only.
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [HttpPost("{id:guid}/Admin/RevealIban")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
-    {
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null) return Forbid();
-        return await RevealIbanCoreAsync(id, actor.Id, ct);
-    }
-
-    private async Task<IActionResult> RevealIbanCoreAsync(Guid id, Guid actorId, CancellationToken ct)
-    {
-        var info = await _userService.GetUserInfoAsync(id, ct);
-        var iban = info?.Profile?.Iban;
-        if (iban is null)
-        {
-            SetError("No IBAN on record for this user.");
-            return RedirectToAction(nameof(AdminDetail), new { id });
-        }
-        await auditLogService.LogAsync(
-            AuditAction.IbanReveal, "User", id,
-            $"Admin revealed IBAN for user {id}", actorId);
-        TempData["RevealedIban"] = iban;
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpGet("{id:guid}/Admin/Outbox")]
-    public async Task<IActionResult> AdminOutbox(Guid id, CancellationToken ct)
-    {
-        var messages = await emailOutboxService.GetMessagesForUserAsync(id, ct);
-
-        ViewBag.HumanId = id;
-        return View("Outbox", messages);
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Suspend")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var result = await humanLifecycleService.SuspendAsync(id, currentUser.Id, notes);
-        if (!result.Success)
-            return NotFound();
-
-        SetSuccess(localizer["Admin_MemberSuspended"].Value);
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Unsuspend")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UnsuspendHuman(Guid id)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var result = await humanLifecycleService.UnsuspendAsync(id, currentUser.Id);
-        if (!result.Success)
-            return NotFound();
-
-        SetSuccess(localizer["Admin_MemberUnsuspended"].Value);
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Approve")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApproveVolunteer(Guid id)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var result = await onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
-        if (!result.Success)
-            return NotFound();
-
-        SetSuccess(localizer["Admin_VolunteerApproved"].Value);
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Reject")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RejectSignup(Guid id, string? reason)
-    {
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-            return Unauthorized();
-
-        var result = await onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
-        if (!result.Success)
-        {
-            if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                SetError("This human has already been rejected.");
-            else
-                return NotFound();
-            return RedirectToAction(nameof(AdminDetail), new { id });
-        }
-
-        SetSuccess("Signup rejected.");
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpGet("{id:guid}/Admin/Roles/Add")]
-    public async Task<IActionResult> AddRole(Guid id)
-    {
-        var info = await _userService.GetUserInfoAsync(id);
-        if (info is null)
-        {
-            return NotFound();
-        }
-
-        var viewModel = new CreateRoleAssignmentViewModel
-        {
-            UserId = id,
-            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
-        };
-
-        return View(viewModel);
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Roles/Add")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
-    {
-        var info = await _userService.GetUserInfoAsync(id);
-        if (info is null)
-        {
-            return NotFound();
-        }
-
-        if (string.IsNullOrWhiteSpace(model.RoleName))
-        {
-            ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            PopulateRoleAssignmentForm(model, id);
-            return View(model);
-        }
-
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-        {
-            return Unauthorized();
-        }
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, model.RoleName, RoleAssignmentOperationRequirement.Manage);
-        if (!authResult.Succeeded)
-        {
-            logger.LogWarning(
-                "Authorization denied for role assignment: principal {Principal} attempted to assign role {Role} to user {UserId}",
-                User.Identity?.Name, model.RoleName, id);
-            return Forbid();
-        }
-
-        var result = await roleAssignmentService.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, model.Notes);
-
-        SetRoleAssignmentResult(model.RoleName, result.Success);
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId)
-    {
-        model.UserId = userId;
-        model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
-    }
-
-    private void SetRoleAssignmentResult(string roleName, bool success)
-    {
-        if (success)
-        {
-            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, roleName));
-            return;
-        }
-
-        SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, roleName));
-    }
-
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    [HttpPost("{id:guid}/Admin/Roles/{roleId:guid}/End")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
-    {
-        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId);
-
-        if (roleAssignment is null)
-        {
-            // NotFound, not Unauthorized — prevents role-assignment enumeration.
-            return NotFound();
-        }
-
-        var currentUser = await GetCurrentUserInfoAsync();
-        if (currentUser is null)
-        {
-            return Unauthorized();
-        }
-
-        var authResult = await authorizationService.AuthorizeAsync(
-            User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage);
-        if (!authResult.Succeeded)
-        {
-            logger.LogWarning(
-                "Authorization denied for ending role: principal {Principal} attempted to end role {Role} for user {UserId}",
-                User.Identity?.Name, roleAssignment.RoleName, roleAssignment.UserId);
-            return NotFound();
-        }
-
-        var result = await roleAssignmentService.EndRoleAsync(
-            roleId, currentUser.Id, notes);
-
-        SetRoleEndedResult(result.Success, roleAssignment.RoleName, roleAssignment.UserDisplayName);
-        return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
-    }
-
-
-    private void SetRoleEndedResult(bool success, string roleName, string userDisplayName)
-    {
-        if (success)
-        {
-            SetSuccess(string.Format(localizer["Admin_RoleEnded"].Value, roleName, userDisplayName));
-            return;
-        }
-
-        SetError(localizer["Admin_RoleNotActive"].Value);
-    }
     // ─── Helpers ─────────────────────────────────────────────────────
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>

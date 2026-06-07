@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -165,7 +165,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.AcceptAsync(requestId, adminId);
+            await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId);
         }
 
         // Assert — comprehensive post-merge state.

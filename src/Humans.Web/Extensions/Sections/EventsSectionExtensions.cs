@@ -45,7 +45,7 @@ internal static class EventsSectionExtensions
         services.AddSingleton<IEventViewInvalidator>(sp =>
             sp.GetRequiredService<CachingEventService>());
 
-        // Surface Events cache diagnostics on /Admin/CacheStats.
+        // Surface Events cache diagnostics on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);
 
         // CachingEventService is itself the IHostedService — its StartAsync

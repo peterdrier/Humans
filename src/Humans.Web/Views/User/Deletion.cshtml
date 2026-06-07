@@ -1,0 +1,28 @@
+@model Humans.Web.Models.PendingDeletionViewModel
+@{
+    ViewData["Title"] = Localizer["AccountDeletion_Title"].Value;
+}
+
+<div class="container py-5" style="max-width: 640px;">
+    <div class="card shadow-sm">
+        <div class="card-body text-center p-5">
+            <i class="fa-solid fa-trash-can fa-2x text-danger mb-3"></i>
+            <h1 class="h4 mb-3">@Localizer["AccountDeletion_Heading"]</h1>
+            @if (Model.ScheduledFor is { } scheduledFor)
+            {
+                <p class="text-muted">
+                    @string.Format(Localizer["AccountDeletion_ScheduledFor"].Value, scheduledFor.ToString("D"))
+                </p>
+            }
+            else
+            {
+                <p class="text-muted">@Localizer["AccountDeletion_Unscheduled"]</p>
+            }
+            <form asp-action="CancelDeletion" method="post" class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate-left me-1"></i> @Localizer["AccountDeletion_CancelButton"]
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

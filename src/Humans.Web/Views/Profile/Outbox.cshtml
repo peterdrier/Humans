@@ -12,7 +12,7 @@
             <h1>@ViewData["Title"]</h1>
             @if (isAdminView)
             {
-                <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@humanId.Value" class="btn btn-outline-secondary btn-sm">
+                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@humanId.Value" class="btn btn-outline-secondary btn-sm">
                     <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
                 </a>
             }
@@ -24,7 +24,6 @@
             }
         </div>
 
-        <vc:temp-data-alerts />
 
         <p class="text-muted">
             @(isAdminView ? "Emails the system has sent to this human." : "Emails the system has sent to you (within the last 150 days).")

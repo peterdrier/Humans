@@ -169,7 +169,7 @@ builder.Services.AddAuthentication()
 
                 var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                // Warning + client IP so /Admin/Logs traces user-reported sign-in issues — see #483.
+                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues — see #483.
                 if (isAccessDenied)
                 {
                     logger.LogWarning(

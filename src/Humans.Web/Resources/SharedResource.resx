@@ -648,12 +648,12 @@
   <data name="AdminHumans_Title" xml:space="preserve"><value>Humans</value></data>
   <data name="AdminHumans_AllStatuses" xml:space="preserve"><value>All</value></data>
   <data name="AdminHumans_Active" xml:space="preserve"><value>Active</value></data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve"><value>Pending Approval</value></data>
+  <data name="AdminHumans_Bare" xml:space="preserve"><value>Bare</value></data>
   <data name="AdminHumans_Suspended" xml:space="preserve"><value>Suspended</value></data>
+  <data name="AdminHumans_Rejected" xml:space="preserve"><value>Rejected</value></data>
   <data name="AdminHumans_Deleting" xml:space="preserve"><value>Pending Deletion</value></data>
   <data name="AdminHumans_Merged" xml:space="preserve"><value>Merged</value></data>
   <data name="AdminHumans_Deleted" xml:space="preserve"><value>Deleted</value></data>
-  <data name="AdminHumans_HasName" xml:space="preserve"><value>Has Name</value></data>
   <data name="AdminHumanDetail_Title" xml:space="preserve"><value>Member: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminApplications_Title" xml:space="preserve"><value>Asociado Applications</value></data>
   <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Review Application</value></data>
@@ -791,7 +791,6 @@
   <data name="AdminHuman_Statistics" xml:space="preserve"><value>Statistics</value></data>
   <data name="AdminHuman_ApplicationCount" xml:space="preserve"><value>Applications</value></data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve"><value>Agreements</value></data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve"><value>Approve Human</value></data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve"><value>Unsuspend Human</value></data>
   <data name="AdminHuman_SuspendConfirm" xml:space="preserve"><value>Are you sure you want to suspend this human?</value></data>
   <data name="AdminHuman_SuspendReasonPlaceholder" xml:space="preserve"><value>Reason for suspension (optional)</value></data>
@@ -1100,10 +1099,8 @@
   <data name="Dashboard_TermExpired" xml:space="preserve"><value>Your membership term has expired. Submit a renewal application to restore your tier.</value></data>
   <data name="Dashboard_RenewNow" xml:space="preserve"><value>Renew Now</value></data>
   <data name="Email_TermRenewalReminder_Subject" xml:space="preserve"><value>Your {0} Membership Term Is Expiring Soon</value><comment>{0} = tier name</comment></data>
-
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
   <data name="Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Your team has the following resources:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
-
   <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
 &lt;p&gt;A new membership application has been submitted.&lt;/p&gt;
 &lt;ul&gt;
@@ -1111,7 +1108,6 @@
     &lt;li&gt;&lt;strong&gt;Application ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
-
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We're delighted to inform you that your {1} application has been approved. Welcome to Humans!&lt;/p&gt;
@@ -1123,21 +1119,18 @@
 &lt;/ul&gt;
 &lt;p&gt;If you have any questions, don't hesitate to reach out.&lt;/p&gt;
 &lt;p&gt;Welcome aboard!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = base URL</comment></data>
-
   <data name="Email_ApplicationRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Application Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your {1} application at this time.&lt;/p&gt;
 {2}
 &lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment></data>
-
   <data name="Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your signup at this time.&lt;/p&gt;
 {1}
 &lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
-
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Legal Document Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have updated the following required documents:&lt;/p&gt;
@@ -1148,7 +1141,6 @@
 &lt;p&gt;&lt;a href="{2}/Consent"&gt;Review and Accept&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;If you have any questions about the changes, please contact us.&lt;/p&gt;
 &lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment></data>
-
   <data name="Email_ReConsentReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Consent Reminder&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;This is a reminder that you have &lt;strong&gt;{1} days&lt;/strong&gt; remaining to review and accept the following updated documents:&lt;/p&gt;
@@ -1158,7 +1150,6 @@
 &lt;p&gt;If you do not accept these documents before the deadline, your access may be temporarily suspended.&lt;/p&gt;
 &lt;p&gt;&lt;a href="{3}/Consent"&gt;Review Documents Now&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment></data>
-
   <data name="Email_Welcome_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Welcome to the Humans portal!&lt;/p&gt;
@@ -1170,7 +1161,6 @@
 &lt;/ul&gt;
 &lt;p&gt;If you have any questions, feel free to reach out to us.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = base URL</comment></data>
-
   <data name="Email_AccessSuspended_Body" xml:space="preserve"><value>&lt;h2&gt;Access Suspended&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Your access has been temporarily suspended.&lt;/p&gt;
@@ -1181,7 +1171,6 @@
 &lt;/ul&gt;
 &lt;p&gt;If you believe this is an error or have questions, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment></data>
-
   <data name="Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;Email Verification&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account.&lt;/p&gt;
@@ -1190,7 +1179,6 @@
 &lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
 &lt;p&gt;If you did not request this change, you can safely ignore this email.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
-
   <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Account Merge Verification&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account. This email address is currently linked to another account.&lt;/p&gt;
@@ -1200,7 +1188,6 @@
 &lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
 &lt;p&gt;If you did not request this, you can safely ignore this email. No changes will be made.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
-
   <data name="Email_AccountDeletionRequested_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deletion Request Received&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have received your request to delete your account. Your account and all associated data will be permanently deleted on &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
@@ -1208,20 +1195,17 @@
 &lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;After deletion, this action cannot be undone and all your data will be permanently removed.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
-
   <data name="Email_AccountDeleted_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deleted&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
-
   <data name="Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome to {1}!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;You have been added to the &lt;strong&gt;{1}&lt;/strong&gt; team.&lt;/p&gt;
 {2}
 &lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
-
   <data name="Email_TermRenewalReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Membership Term Renewal&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Your &lt;strong&gt;{1}&lt;/strong&gt; term is expiring on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
@@ -1281,7 +1265,6 @@
   <data name="SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
   <data name="SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
   <data name="SendMessage_Button" xml:space="preserve"><value>Send {0} a message</value><comment>{0} = display name</comment></data>
-
   <data name="Search_Title" xml:space="preserve"><value>Search Humans</value></data>
   <data name="Search_Placeholder" xml:space="preserve"><value>Search by name, city, interests, bio...</value></data>
   <data name="Search_NoResults" xml:space="preserve"><value>No humans found matching your search.</value></data>
@@ -1665,7 +1648,6 @@
   <data name="Feedback_ResolvedBy" xml:space="preserve"><value>by {0}</value><comment>{0} = name</comment></data>
   <data name="Feedback_NoTeam" xml:space="preserve"><value>No team</value></data>
   <data name="Feedback_ScreenshotLink" xml:space="preserve"><value>Screenshot</value></data>
-
   <data name="Unsub_Title" xml:space="preserve"><value>Unsubscribe from Emails</value></data>
   <data name="Unsub_Heading" xml:space="preserve"><value>Unsubscribe from {0} emails?</value><comment>{0} = category name</comment></data>
   <data name="Unsub_Greeting" xml:space="preserve"><value>Hi {0},</value><comment>{0} = display name</comment></data>
@@ -1680,7 +1662,6 @@
   <data name="Unsub_ExpiredHeading" xml:space="preserve"><value>This unsubscribe link has expired</value></data>
   <data name="Unsub_ExpiredMessage" xml:space="preserve"><value>Please use the link from a more recent email, or</value></data>
   <data name="Unsub_ExpiredSignIn" xml:space="preserve"><value>sign in to manage your communication preferences</value></data>
-
   <data name="CommPrefs_Title" xml:space="preserve"><value>Communication Preferences</value></data>
   <data name="CommPrefs_Description" xml:space="preserve"><value>Choose which communications you receive and how.</value></data>
   <data name="CommPrefs_Category" xml:space="preserve"><value>Category</value></data>
@@ -1694,7 +1675,6 @@
   <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Unsubscribed. You can re-enable any category below.</value></data>
   <data name="CommPrefs_UpdateSource" xml:space="preserve"><value>Source</value></data>
   <data name="CommPrefs_UpdatedAt" xml:space="preserve"><value>Updated</value></data>
-
   <data name="Emails_Header_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notifications</value></data>
@@ -1720,7 +1700,6 @@
   <data name="Emails_AutoSelected" xml:space="preserve"><value>Auto-selected</value></data>
   <data name="Emails_GoogleRejectedBadge" xml:space="preserve"><value>Rejected</value></data>
   <data name="Emails_UseThis" xml:space="preserve"><value>Use this</value></data>
-
   <data name="ShiftInfo_Title" xml:space="preserve"><value>Shift Preferences</value></data>
   <data name="ShiftInfo_StepOf" xml:space="preserve"><value>Step {0} of {1}</value><comment>{0} = current step, {1} = total steps</comment></data>
   <data name="ShiftInfo_SkillsTitle" xml:space="preserve"><value>What are you good at?</value></data>
@@ -1734,7 +1713,6 @@
   <data name="ShiftInfo_OtherPrefs" xml:space="preserve"><value>Other preferences</value></data>
   <data name="ShiftInfo_OtherLanguages" xml:space="preserve"><value>What other languages do you speak?</value></data>
   <data name="ShiftInfo_Continue" xml:space="preserve"><value>Continue</value></data>
-
   <data name="Shifts_Title" xml:space="preserve"><value>Shifts</value></data>
   <data name="Shifts_BrowseTitle" xml:space="preserve"><value>Browse Volunteer Options</value></data>
   <data name="Shifts_Department" xml:space="preserve"><value>Department</value></data>
@@ -1771,8 +1749,8 @@
   <data name="Shifts_Filled" xml:space="preserve"><value>Filled</value></data>
   <data name="Shifts_Days" xml:space="preserve"><value>days</value></data>
   <data name="Shifts_Total" xml:space="preserve"><value>total</value></data>
-    <data name="Shifts_SignedUpAllDays" xml:space="preserve"><value>Signed up (all {0} days)</value><comment>{0} = count</comment></data>
-    <data name="Shifts_SignedUpPartial" xml:space="preserve"><value>Signed up ({0} of {1})</value><comment>{0} = count</comment></data>
+  <data name="Shifts_SignedUpAllDays" xml:space="preserve"><value>Signed up (all {0} days)</value><comment>{0} = count</comment></data>
+  <data name="Shifts_SignedUpPartial" xml:space="preserve"><value>Signed up ({0} of {1})</value><comment>{0} = count</comment></data>
   <data name="Shifts_Full" xml:space="preserve"><value>Full</value></data>
   <data name="Shifts_NeedsHelp" xml:space="preserve"><value>Needs help</value></data>
   <data name="Shifts_DayNeedsHelp" xml:space="preserve"><value>{0} day needs help</value><comment>{0} = number of days</comment></data>
@@ -1836,7 +1814,6 @@
   <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — already signed up for {1} ({2}–{3})</value></data>
   <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>You're already signed up on a few of these days, so we'll only add the ones that are free.</value></data>
   <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Looks like you already have a shift booked on every day in this range, so we can't add any of these.</value></data>
-
   <data name="ShiftDash_Title" xml:space="preserve"><value>Shift Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} shifts</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Date" xml:space="preserve"><value>Date</value></data>
@@ -1855,16 +1832,13 @@
   <data name="ShiftDash_NoHumansFound" xml:space="preserve"><value>No humans found.</value></data>
   <data name="ShiftDash_SearchFailed" xml:space="preserve"><value>Search failed.</value></data>
   <data name="ShiftDash_ScheduleConflict" xml:space="preserve"><value>Schedule conflict</value></data>
-
   <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
   <data name="Nav_Staff" xml:space="preserve"><value>Staff</value></data>
-
   <data name="ProfileCard_Suspended" xml:space="preserve"><value>Suspended</value></data>
   <data name="ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>
   <data name="ProfileCard_Joined" xml:space="preserve"><value>Joined {0}</value><comment>{0} = date</comment></data>
   <data name="ProfileCard_LastLogin" xml:space="preserve"><value>Last login {0}</value><comment>{0} = date</comment></data>
-
   <data name="ShiftsSummary_Title" xml:space="preserve"><value>Shifts</value></data>
   <data name="ShiftsSummary_SlotsFilled" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} = filled, {1} = total</comment></data>
   <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve"><value>{0} humans signed up</value><comment>{0} = count</comment></data>
@@ -1872,9 +1846,7 @@
   <data name="ShiftsSummary_NoShifts" xml:space="preserve"><value>No shifts configured yet.</value></data>
   <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve"><value>Includes shifts from {0} sub-team(s)</value><comment>{0} = count</comment></data>
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve"><value>Manage Shifts</value></data>
-
   <data name="Medical_Badge" xml:space="preserve"><value>Medical</value></data>
-
   <data name="Privacy_Lead" xml:space="preserve"><value>Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</value></data>
   <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Data Controller</value></data>
   <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association registered in Andalucia.</value></data>
@@ -1935,8 +1907,6 @@
   <data name="Privacy_ContactTitle" xml:space="preserve"><value>Contact &amp; Complaints</value></data>
   <data name="Privacy_ContactBody" xml:space="preserve"><value>For questions or concerns about this policy, contact our Data Protection Officer at {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>If you are not satisfied with our response, you have the right to lodge a complaint with the Spanish Data Protection Agency (AEPD) at {0}.</value><comment>{0} = AEPD URL</comment></data>
-
-
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Slots filled</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticket holders</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans who have paid</value></data>
@@ -1948,20 +1918,17 @@
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pending &gt; 3 days</value></data>
   <data name="Common_NotAvailable" xml:space="preserve"><value>N/A</value></data>
   <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve"><value>ticket data not yet shared</value></data>
-
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Showing:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>All</value></data>
   <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Set-up</value></data>
   <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Strike</value></data>
-
   <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve"><value>Set-up phase:</value></data>
   <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve"><value>All set-up</value></data>
   <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve"><value>First crew</value></data>
   <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve"><value>Set-up week</value></data>
   <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve"><value>Pre-event week</value></data>
   <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve"><value>Finishing weekend</value></data>
-
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departments</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest slot fill % first</value></data>
   <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Countdown to feet on the ground</value></data>
@@ -1995,7 +1962,6 @@
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Slots remaining</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Period</value></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Direct</value></data>
-
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Coordinator activity</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>teams with pending signups, oldest login first</value></data>
   <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Team</value></data>
@@ -2007,7 +1973,6 @@
   <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve"><value>{0} h ago</value><comment>{0} = hours</comment></data>
   <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve"><value>{0} d ago</value><comment>{0} = days</comment></data>
   <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve"><value>{0} direct</value><comment>{0} = pending count at this team level only</comment></data>
-
   <data name="ShiftDash_Trends_Title" xml:space="preserve"><value>Trends</value></data>
   <data name="ShiftDash_Trends_Window_7d" xml:space="preserve"><value>7d</value></data>
   <data name="ShiftDash_Trends_Window_30d" xml:space="preserve"><value>30d</value></data>
@@ -2153,7 +2118,6 @@
   <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignee updated.</value></data>
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Section updated.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Linked to GitHub.</value></data>
-
   <data name="Welcome_Title" xml:space="preserve"><value>Welcome</value></data>
   <data name="Welcome_Heading" xml:space="preserve"><value>You're in.</value></data>
   <data name="Welcome_Subtitle" xml:space="preserve"><value>Your ticket for Elsewhere 2026 is confirmed.</value></data>
@@ -2172,7 +2136,6 @@
 &lt;p&gt;This was an automatic action based on your current team and role assignments at Nobodies. You will no longer receive messages sent to this group.&lt;/p&gt;
 &lt;p&gt;If you believe this was done in error, please contact your team coordinator.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = group display name, {2} = group email</comment></data>
-
   <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Your access to {0} has been removed</value><comment>{0} = folder name</comment></data>
   <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Drive access removed&lt;/h2&gt;
 &lt;p&gt;Hi {0},&lt;/p&gt;
@@ -2180,7 +2143,6 @@
 &lt;p&gt;This was an automatic action based on your current team and role assignments at Nobodies.&lt;/p&gt;
 &lt;p&gt;If you believe this was done in error, please contact your team coordinator.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = folder name</comment></data>
-
   <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve"><value>{0} no longer has Nobodies group access</value><comment>{0} = removed email</comment></data>
   <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve"><value>&lt;h2&gt;Secondary email tidied up&lt;/h2&gt;
 &lt;p&gt;Hi {0},&lt;/p&gt;
@@ -2206,13 +2168,11 @@
   <data name="VolTrack_NoActiveEvent" xml:space="preserve"><value>No active event.</value></data>
   <data name="VolTrack_AllClear" xml:space="preserve"><value>Everyone is on track.</value></data>
   <data name="VolTrack_UnknownUser" xml:space="preserve"><value>(unknown)</value></data>
-
   <data name="VolTrack_AsOfToday" xml:space="preserve"><value>As of {0}</value><comment>{0} = today's date</comment></data>
   <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>Volunteers tracked</value></data>
   <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>With gaps</value></data>
   <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>On camp set-up today</value></data>
   <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>Declared but unbooked</value></data>
-
   <data name="VolTrack_Export_Title" xml:space="preserve"><value>Export volunteer grid</value></data>
   <data name="VolTrack_Export_Department" xml:space="preserve"><value>Department</value></data>
   <data name="VolTrack_Export_AllDepartments" xml:space="preserve"><value>All departments</value></data>
@@ -2222,14 +2182,12 @@
   <data name="VolTrack_Export_To" xml:space="preserve"><value>To</value></data>
   <data name="VolTrack_Export_Download" xml:space="preserve"><value>Download XLSX</value></data>
   <data name="VolTrack_Export_Methodology" xml:space="preserve"><value>Rows = humans with ≥1 confirmed shift in range. Cell color = the team they worked most hours that day. White cell = day before their first confirmed shift (arrival day). Totals row = humans on-site that day (used for meal counts). Names shown are playa names.</value></data>
-
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve"><value>Hide volunteers with no gaps</value></data>
   <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Hide volunteers with a camp set-up date</value></data>
   <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve"><value>Hide declared-but-unbooked section</value></data>
   <data name="VolTrack_Filter_Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="VolTrack_Filter_Active" xml:space="preserve"><value>Filters active</value></data>
   <data name="VolTrack_Filter_Clear" xml:space="preserve"><value>Clear filters</value></data>
-
   <data name="VolTrack_Main_Title" xml:space="preserve"><value>Schedule gaps</value></data>
   <data name="VolTrack_Main_Subtitle" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
   <data name="VolTrack_Main_Empty" xml:space="preserve"><value>No volunteers with build-period signups.</value></data>
@@ -2238,7 +2196,6 @@
   <data name="VolTrack_Col_Volunteer" xml:space="preserve"><value>Volunteer</value></data>
   <data name="VolTrack_GapBadge" xml:space="preserve"><value>{0} gaps</value><comment>{0} = count</comment></data>
   <data name="VolTrack_CampSetupTooltip" xml:space="preserve"><value>On camp set-up since {0}</value><comment>{0} = date</comment></data>
-
   <data name="VolTrack_Unbooked_Heading" xml:space="preserve"><value>Declared participating, not booked yet</value></data>
   <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve"><value>Volunteers who said they're attending and have availability filled in but haven't signed up for any shifts.</value></data>
   <data name="VolTrack_Unbooked_Title" xml:space="preserve"><value>Available but unbooked</value></data>
@@ -2248,7 +2205,6 @@
   <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve"><value>Available days inside build period</value></data>
   <data name="VolTrack_UnbookedBadge" xml:space="preserve"><value>{0} unbooked</value><comment>{0} = count</comment></data>
   <data name="VolTrack_UnbookedTooltip" xml:space="preserve"><value>Available days that aren't booked</value></data>
-
   <data name="VolTrack_State_DayOff" xml:space="preserve"><value>Day off</value></data>
   <data name="VolTrack_Legend_DayOff" xml:space="preserve"><value>Day off (acknowledged)</value></data>
   <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve"><value>Mark day off</value></data>
@@ -2271,7 +2227,6 @@
   <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve"><value>Available, not booked</value></data>
   <data name="VolTrack_State_AvailableExpected" xml:space="preserve"><value>Available (future)</value></data>
   <data name="VolTrack_State_NotAvailable" xml:space="preserve"><value>Not available</value></data>
-
   <data name="VolTrack_Popover_Rotas" xml:space="preserve"><value>Rotas:</value></data>
   <data name="VolTrack_Popover_Available" xml:space="preserve"><value>Volunteer marked available</value></data>
   <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve"><value>Mark went to camp set-up from this day</value></data>
@@ -2280,7 +2235,6 @@
   <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve"><value>Find shifts to voluntell</value></data>
   <data name="VolTrack_Scroll_Left" xml:space="preserve"><value>Scroll left</value></data>
   <data name="VolTrack_Scroll_Right" xml:space="preserve"><value>Scroll right</value></data>
-
   <data name="VolTrack_Legend_Title" xml:space="preserve"><value>Legend</value></data>
   <data name="VolTrack_Legend_Confirmed" xml:space="preserve"><value>Confirmed signup</value></data>
   <data name="VolTrack_Legend_Pending" xml:space="preserve"><value>Pending signup</value></data>
@@ -2288,8 +2242,6 @@
   <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve"><value>Available, no signup yet</value></data>
   <data name="VolTrack_Legend_CampSetup" xml:space="preserve"><value>On camp set-up</value></data>
   <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve"><value>Outside their active window</value></data>
-
-
   <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve"><value>Camp set-up date saved.</value></data>
   <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared.</value></data>
   <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve"><value>Availability updated.</value></data>
@@ -2297,17 +2249,14 @@
   <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve"><value>Mark available</value></data>
   <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve"><value>Unmark available</value></data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve"><value>Build availability &amp; tracking</value></data>
-
   <data name="VolTrack_Err_BadRequest" xml:space="preserve"><value>Invalid request.</value></data>
   <data name="VolTrack_Err_BadDate" xml:space="preserve"><value>Invalid date format.</value></data>
   <data name="VolTrack_Err_Unknown" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
   <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve"><value>Set-up date must be inside the build period (before gate-open day).</value></data>
   <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve"><value>Set-up date must be on or after the volunteer's first build signup.</value></data>
-
   <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve"><value>Volunteer Tracking</value></data>
   <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve"><value>Identify gaps, mark camp set-up dates, surface declared-but-unbooked volunteers.</value></data>
   <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve"><value>Open</value></data>
-
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value></data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value></data>
   <!-- Coordinator Rota Message ("Email a rota") -->
@@ -2338,7 +2287,6 @@
   <data name="EmailTeamRotas_MessageLabel" xml:space="preserve"><value>Your message</value></data>
   <data name="EmailTeamRotas_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list across the team's upcoming rotas.</value></data>
   <data name="EmailTeamRotas_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
-
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Missing Consents</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Incomplete Signup</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Import my Google photo</value></data>
@@ -2437,4 +2385,21 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Account status</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Your account has been suspended</value></data>
+  <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Your account has been suspended by an administrator</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Your account has been rejected</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Your account has been deleted</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Your account has been merged</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Your account is unavailable</value></data>
+  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Your access is suspended until you complete the required legal consents.</value></data>
+  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Review required consents</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contact an admin for more information:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>Reference ID:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Pending account deletion</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Your account is scheduled for deletion</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>It will be permanently deleted on {0} unless you cancel.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>It will be permanently deleted unless you cancel.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancel deletion request</value></data>
 </root>

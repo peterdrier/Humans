@@ -102,7 +102,7 @@ public class AuditLogController(
         var displayName = info?.BurnerName ?? user.BurnerName;
         return GoogleSyncAuditView(
             $"Google Sync Audit: {displayName}",
-            Url.Action(nameof(ProfileController.AdminDetail), "Profile", new { id }),
+            Url.Action(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id }),
             "Back to Human Detail",
             events);
     }

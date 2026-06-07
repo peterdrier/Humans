@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -19,16 +20,25 @@ namespace Humans.Application.Tests.Services.Users;
 public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarness
 {
     private readonly UserService _service;
+    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
+        Substitute.For<ICommunicationPreferenceRepository>();
+    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsCacheInvalidator =
+        Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
 
     public UserServiceProfileOnboardingMutationTests()
     {
         var userRepository = new UserRepository(DbFactory, Clock);
-        var communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
+        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
+                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
+        _communicationPreferenceRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
 
         _service = new UserService(
             userRepository,
-            communicationPreferenceRepository,
+            _communicationPreferenceRepository,
             AdminAuthorization,
+            _claimsCacheInvalidator,
             Clock,
             NullLogger<UserService>.Instance);
     }
@@ -115,6 +125,31 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task GetAllUserInfosAsync_SeedsNullUserStateOnFirstBulkLoad()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        Db.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = "Loaded",
+            FirstName = "First",
+            LastName = "Last",
+            State = ProfileState.Active,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
+        });
+        await Db.SaveChangesAsync();
+
+        var infos = await _service.GetAllUserInfosAsync();
+
+        infos.Single(u => u.Id == userId).State.Should().Be(UserState.Active);
+        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        reloaded.State.Should().Be(UserState.Active);
+    }
+
+    [HumansFact]
     public async Task PurgeOwnDataAsync_RemovesUserEmailsThroughUserRepository()
     {
         var user = SeedUser(Guid.NewGuid(), "Purge Me");
@@ -159,6 +194,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.ConsentCheckAt.Should().Be(Clock.GetCurrentInstant());
         profile.ConsentCheckedByUserId.Should().Be(reviewerId);
         profile.ConsentCheckNotes.Should().Be("Looks good");
+    }
+
+    [HumansFact]
+    public async Task ApplyProfileOnboardingMutationAsync_InvalidatesRoleAssignmentClaimsCache()
+    {
+        // The mutation resyncs users.State; the cached UserState claim must be evicted so
+        // MembershipRequiredFilter stops routing on the stale pre-transition state.
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        await _service.ApplyProfileOnboardingMutationAsync(
+            userId,
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.RecordConsentCheck,
+                ActorUserId: Guid.NewGuid(),
+                ConsentCheckStatus: ConsentCheckStatus.Cleared));
+
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -258,22 +311,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_ApproveVolunteer_FlipsIsApprovedTrue()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-
-        var result = await _service.ApplyProfileOnboardingMutationAsync(
-            userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.ApproveVolunteer));
-
-        result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.IsApproved.Should().BeTrue();
-        profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
     public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedAndState()
     {
         var userId = Guid.NewGuid();
@@ -293,6 +330,27 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
         profile.State.Should().Be(ProfileState.Suspended);
         profile.AdminNotes.Should().Be("Disruptive");
+    }
+
+    [HumansFact]
+    public async Task ApplyProfileOnboardingMutationAsync_SetAdminSuspensionTrue_SetsAdminSuspendedState()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.ApplyProfileOnboardingMutationAsync(
+            userId,
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.SetSuspension,
+                Suspended: true,
+                AdminSuspension: true,
+                Notes: "Manual hold"));
+
+        result.Success.Should().BeTrue();
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        profile.State.Should().Be(ProfileState.AdminSuspended);
+        user.State.Should().Be(UserState.AdminSuspended);
     }
 
     [HumansFact]
@@ -337,11 +395,52 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task SetDeletionPendingAsync_WhenUpdated_InvalidatesClaims()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var now = Clock.GetCurrentInstant();
+
+        var result = await _service.SetDeletionPendingAsync(
+            userId,
+            now,
+            now.Plus(NodaTime.Duration.FromDays(30)),
+            eligibleAfter: null);
+
+        result.Should().BeTrue();
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        user.State.Should().Be(UserState.DeletePending);
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansFact]
+    public async Task ClearDeletionAsync_WhenUpdated_InvalidatesClaims()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var user = await Db.Users.FirstAsync(u => u.Id == userId);
+        var now = Clock.GetCurrentInstant();
+        user.DeletionRequestedAt = now;
+        user.DeletionScheduledFor = now.Plus(NodaTime.Duration.FromDays(30));
+        user.State = UserState.DeletePending;
+        await Db.SaveChangesAsync();
+
+        var result = await _service.ClearDeletionAsync(userId);
+
+        result.Should().BeTrue();
+        var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        fresh.State.Should().Be(UserState.Active);
+        _claimsCacheInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansFact]
     public async Task ApplyProfileOnboardingMutationAsync_NoProfile_ReturnsNotFound()
     {
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             Guid.NewGuid(),
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.ApproveVolunteer));
+            new UserProfileOnboardingCommand(
+                UserProfileOnboardingMutation.RejectSignup,
+                ActorUserId: Guid.NewGuid()));
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -531,6 +630,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userRepository,
             Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
+            _claimsCacheInvalidator,
             Clock,
             NullLogger<UserService>.Instance);
 }

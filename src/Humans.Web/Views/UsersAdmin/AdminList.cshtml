@@ -1,0 +1,102 @@
+@model Humans.Web.Models.AdminHumanListViewModel
+@{
+    ViewData["Title"] = Localizer["AdminHumans_Title"].Value;
+    Layout = "_AdminLayout";
+    string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Localizer["AdminHumans_Title"]</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+    </div>
+</div>
+
+@* Mirrors public /Profile/Search; preserves filter+sort. *@
+<form method="get" class="mb-4">
+    <input type="hidden" name="sort" value="@Model.SortBy" />
+    <input type="hidden" name="dir" value="@Model.SortDir" />
+    <input type="hidden" name="filter" value="@Model.StatusFilter" />
+    <div class="input-group" style="max-width: 600px;">
+        <input type="text" name="search" class="form-control"
+               placeholder="@Localizer["Admin_SearchPlaceholder"]"
+               value="@Model.SearchTerm" autofocus />
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-search"></i>
+        </button>
+        @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || Model.SortBy != "name" || Model.SortDir != "asc")
+        {
+            <a asp-action="AdminList" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+        }
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+        <div class="btn-group flex-wrap" role="group">
+            <a asp-action="AdminList" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_AllStatuses"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="active" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Active"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="bare" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "bare" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Bare"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Suspended"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="rejected" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "rejected" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Rejected"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "deleting" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Deleting"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="merged" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "merged" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Merged"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="deleted" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "deleted" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Deleted"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3 small">
+    <span class="text-muted">@Localizer["Admin_SortBy"]:</span>
+    <a asp-action="AdminList" asp-route-sort="name" asp-route-dir="@ToggleDir("name")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
+        @Localizer["Teams_Member"]@(Model.SortBy == "name" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+    </a>
+    <span class="text-muted">|</span>
+    <a asp-action="AdminList" asp-route-sort="joined" asp-route-dir="@ToggleDir("joined")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
+        @Localizer["Admin_Joined"]@(Model.SortBy == "joined" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+    </a>
+    <span class="text-muted">|</span>
+    <a asp-action="AdminList" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
+        @Localizer["Admin_LastLogin"]@(Model.SortBy == "login" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+    </a>
+    <span class="text-muted">|</span>
+    <a asp-action="AdminList" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
+        @Localizer["Common_Status"]@(Model.SortBy == "status" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+    </a>
+</div>
+
+@if (Model.Humans.Count == 0)
+{
+    <div class="alert alert-info">@Localizer["Admin_NoMembersFound"]</div>
+}
+else
+{
+    @await Html.PartialAsync("_HumanSearchResults", (IReadOnlyList<HumanSearchResultViewModel>)Model.Humans)
+}
+
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "AdminList") { NavCssClass = "mt-4" }; }
+<partial name="_Pager" model="pagerModel" />

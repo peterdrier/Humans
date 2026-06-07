@@ -183,10 +183,10 @@ Create ConsentRecord
   - Content Hash (SHA-256 of Spanish/canonical)
   - ExplicitConsent = true
     |
-Trigger SyncVolunteersMembershipForUserAsync
-  - Checks if user now has all required consents + is approved
-  - If eligible, immediately adds to Volunteers team
-  - Grants ActiveMember claim → full app access
+ConsentRecord written (append-only) — that's it
+  - SubmitConsentAsync no longer triggers a per-user team sync (name-only access switch)
+  - Volunteers team is reconciled by SystemTeamSyncJob on name + consents (eventually consistent)
+  - App access is independent: granted when UserState == Active (legal name entered)
 ```
 
 ## Document Sync Process

@@ -70,7 +70,7 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Codes and sales reports
 
-`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Admin/Campaigns/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
+`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaigns/Admin/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
 
 `/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items.
 

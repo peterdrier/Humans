@@ -10,12 +10,12 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
     expect(page.url()).toContain('/Board');
   });
 
-  test('US-9.2: humans list loads at /Profile/Admin', async ({ page }) => {
+  test('US-9.2: humans list loads at /Users/Admin', async ({ page }) => {
     await loginAsBoard(page);
-    await page.goto('/Profile/Admin');
+    await page.goto('/Users/Admin');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
-    expect(page.url()).toContain('/Profile/Admin');
+    expect(page.url()).toContain('/Users/Admin');
   });
 
   test('US-18.1: voting dashboard loads', async ({ page }) => {

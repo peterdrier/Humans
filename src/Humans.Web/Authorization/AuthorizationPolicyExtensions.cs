@@ -15,8 +15,6 @@ public static class AuthorizationPolicyExtensions
 {
     public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
     {
-        services.AddSingleton<IAuthorizationHandler, ActiveMemberOrShiftAccessHandler>();
-        services.AddSingleton<IAuthorizationHandler, IsActiveMemberHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Scoped: depend on scoped services.
@@ -134,11 +132,10 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
                 policy.AddRequirements(new AgentRateLimitRequirement()));
 
-            options.AddPolicy(PolicyNames.ActiveMemberOrShiftAccess, policy =>
-                policy.AddRequirements(new ActiveMemberOrShiftAccessRequirement()));
-
-            options.AddPolicy(PolicyNames.IsActiveMember, policy =>
-                policy.AddRequirements(new IsActiveMemberRequirement()));
+            // Single nav-visibility gate: only Active users see app navigation.
+            options.AddPolicy(PolicyNames.AppAccess, policy =>
+                policy.RequireAssertion(ctx =>
+                    RoleAssignmentClaimsTransformation.IsActive(ctx.User)));
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));

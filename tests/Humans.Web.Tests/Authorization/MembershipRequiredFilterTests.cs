@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
+using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -12,34 +14,100 @@ using Xunit;
 namespace Humans.Web.Tests.Authorization;
 
 /// <summary>
-/// Verifies that <see cref="MembershipRequiredFilter"/> exempts onboarding-flow
-/// controllers so users mid-onboarding (no profile or no consents yet) can still
-/// reach the widget pages without being bounced through a redirect loop.
+/// Verifies <see cref="MembershipRequiredFilter"/> routes authenticated users by their stored
+/// <see cref="UserState"/>: only <see cref="UserState.Active"/> reaches a non-exempt controller;
+/// <see cref="UserState.Bare"/> (and unseeded null) go to the onboarding widget;
+/// <see cref="UserState.DeletePending"/> goes to the cancel-deletion screen; and the walled states
+/// go to the account-status page. Exempt controllers and anonymous requests pass straight through.
 /// </summary>
 public class MembershipRequiredFilterTests
 {
     [HumansFact]
-    public async Task OnboardingWidget_IsExempt_ForProfilelessAuthenticatedUser()
+    public async Task Active_user_reaches_a_non_exempt_controller()
     {
-        var sut = new MembershipRequiredFilter();
-        var ctx = BuildExecutingContext("OnboardingWidget", "Names", authenticated: true, hasProfile: false);
-        var nextCalled = false;
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: UserState.Active);
 
-        await sut.OnActionExecutionAsync(ctx, () =>
-        {
-            nextCalled = true;
-            return Task.FromResult<ActionExecutedContext>(null!);
-        });
-
-        Assert.True(nextCalled, "Filter should let OnboardingWidget through, not short-circuit");
-        Assert.Null(ctx.Result);
+        Assert.True(nextCalled, "Active users must reach the app");
+        Assert.Null(result);
     }
 
     [HumansFact]
-    public async Task OnboardingWidget_IsExempt_ForProfiledNonActiveMember()
+    public async Task Bare_user_routed_to_onboarding_widget()
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: UserState.Bare);
+
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Index", "OnboardingWidget");
+    }
+
+    [HumansFact]
+    public async Task Unseeded_null_state_routed_to_onboarding_widget()
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: null);
+
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Index", "OnboardingWidget");
+    }
+
+    [HumansFact]
+    public async Task DeletePending_user_routed_to_cancel_deletion_screen()
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: UserState.DeletePending);
+
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Deletion", "User");
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Suspended)]
+    [InlineData(UserState.AdminSuspended)]
+    [InlineData(UserState.Rejected)]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task Walled_states_routed_to_account_status_page(UserState state)
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: state);
+
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Status", "User");
+    }
+
+    [HumansFact]
+    public async Task Exempt_onboarding_controller_passes_through_for_non_active_user()
+    {
+        var (result, nextCalled) = await RunAsync("OnboardingWidget", "Names", state: UserState.Bare);
+
+        Assert.True(nextCalled, "the onboarding surface is the Bare landing target and must not redirect");
+        Assert.Null(result);
+    }
+
+    [HumansFact]
+    public async Task Role_holder_does_not_bypass_state_routing()
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: UserState.Bare, role: RoleNames.Admin);
+
+        Assert.False(nextCalled);
+        AssertRedirect(result, "Index", "OnboardingWidget");
+    }
+
+    [HumansFact]
+    public async Task Anonymous_request_passes_through()
+    {
+        var (result, nextCalled) = await RunAsync("Home", "Index", state: null, authenticated: false);
+
+        Assert.True(nextCalled);
+        Assert.Null(result);
+    }
+
+    private static async Task<(IActionResult? Result, bool NextCalled)> RunAsync(
+        string controllerName,
+        string actionName,
+        UserState? state,
+        bool authenticated = true,
+        string? role = null)
     {
         var sut = new MembershipRequiredFilter();
-        var ctx = BuildExecutingContext("OnboardingWidget", "Consents", authenticated: true, hasProfile: true);
+        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role);
         var nextCalled = false;
 
         await sut.OnActionExecutionAsync(ctx, () =>
@@ -48,31 +116,41 @@ public class MembershipRequiredFilterTests
             return Task.FromResult<ActionExecutedContext>(null!);
         });
 
-        Assert.True(nextCalled);
-        Assert.Null(ctx.Result);
+        return (ctx.Result, nextCalled);
+    }
+
+    private static void AssertRedirect(IActionResult? result, string action, string controller)
+    {
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(action, redirect.ActionName);
+        Assert.Equal(controller, redirect.ControllerName);
     }
 
     private static ActionExecutingContext BuildExecutingContext(
         string controllerName,
         string actionName,
         bool authenticated,
-        bool hasProfile)
+        UserState? state,
+        string? role)
     {
-        var identity = authenticated
-            ? new ClaimsIdentity(
-                new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                }.Concat(hasProfile
-                    ? new[]
-                    {
-                        new Claim(
-                            RoleAssignmentClaimsTransformation.HasProfileClaimType,
-                            RoleAssignmentClaimsTransformation.ActiveClaimValue),
-                    }
-                    : Array.Empty<Claim>()),
-                authenticationType: "test")
-            : new ClaimsIdentity();
+        ClaimsIdentity identity;
+        if (authenticated)
+        {
+            var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
+            if (state is { } s)
+            {
+                claims.Add(new Claim(RoleAssignmentClaimsTransformation.UserStateClaimType, s.ToString()));
+            }
+            if (role is not null)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+            identity = new ClaimsIdentity(claims, authenticationType: "test");
+        }
+        else
+        {
+            identity = new ClaimsIdentity();
+        }
 
         var http = new DefaultHttpContext
         {

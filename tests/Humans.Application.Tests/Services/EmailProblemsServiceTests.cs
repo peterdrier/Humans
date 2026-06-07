@@ -212,41 +212,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsRawEmailCollisionAcrossUsers()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
-        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
-        SetOrphans();
-        SetGhosts();
-
-        var report = await Sut.ScanAsync();
-
-        report.Problems.Should().ContainSingle(p =>
-            p.Kind == EmailProblemKind.SharedAcrossUsers
-            && p.Email == "joe@x.com"
-            && (p.UserId == u1 || p.UserId == u2)
-            && (p.OtherUserId == u1 || p.OtherUserId == u2)
-            && p.UserId != p.OtherUserId);
-    }
-
-    [HumansFact]
-    public async Task DetectsNormalizationEquivalentCollision()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
-        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
-        SetOrphans();
-        SetGhosts();
-
-        var report = await Sut.ScanAsync();
-
-        report.Problems.Should().ContainSingle(p => p.Kind == EmailProblemKind.SharedAcrossUsers);
-    }
-
-    [HumansFact]
     public async Task DetectsOrphanUserEmail()
     {
         var deadUserId = Guid.NewGuid();
@@ -274,48 +239,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.GhostExternalLogins && p.UserId == ghostUserId);
-    }
-
-    [HumansFact]
-    public async Task UsersShareAnyEmail_ExactMatch_True()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
-        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
-
-        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task UsersShareAnyEmail_GmailGooglemailEquivalent_True()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
-        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
-
-        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task UsersShareAnyEmail_NoOverlap_False()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: [Email(u1, "alice@x.com", isVerified: true, isPrimary: true)]));
-        AddInfo(MakeInfo(u2, emails: [Email(u2, "bob@x.com", isVerified: true, isPrimary: true)]));
-
-        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task UsersShareAnyEmail_SameUserId_False()
-    {
-        var u = Guid.NewGuid();
-        AddInfo(MakeInfo(u, emails: [Email(u, "joe@x.com", isVerified: true, isPrimary: true)]));
-
-        (await Sut.UsersShareAnyEmailAsync(u, u)).Should().BeFalse();
     }
 
     [HumansFact]

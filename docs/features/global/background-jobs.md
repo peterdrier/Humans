@@ -170,19 +170,15 @@ See [Profiles — Account Deletion](02-profiles.md#account-deletion-right-to-era
 
 **Schedule**: Hourly (**CURRENTLY DISABLED** for scheduled runs — modifies Google permissions). Can be triggered manually from Admin dashboard via "Sync System Teams" button.
 
-**Inline Triggers**: In addition to the scheduled job, single-user sync is triggered immediately by:
-- `ProfileController.ApproveVolunteer` — after a Consent Coordinator clears the consent check (audit annotation; admission may already have happened via consent submit)
-- `ConsentController.Submit` — after recording a consent (this is the path that admits a new human to Volunteers)
-
-Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a single user without affecting other members.
+**Inline Triggers**: After the name-only access switch, the consent-write and CC-clear paths no longer fire a per-user Volunteers sync — admission is reconciled by the scheduled `SyncVolunteersTeamAsync` pass (eventually consistent), and access never depended on Volunteers membership. `SyncVolunteersMembershipForUserAsync(userId)` (single-user, no effect on other members) remains available and is still triggered by per-user lifecycle events (e.g. role/lead changes via the other system-team paths).
 
 **Process**:
 ```
 1. SyncVolunteersTeamAsync()
-   - Eligible: Has a profile, !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null, with all required Volunteers-team consents
+   - Eligible: HasRequiredNameFields (legal name entered), !IsSuspended, RejectedAt is null, with all required Volunteers-team consents — i.e. NAME + CONSENTS
    - Add: New eligible users
-   - Remove: Users who lost eligibility (suspended, flagged, rejected, or consent lapsed)
-   - (Profile.IsApproved is the CC audit annotation; not consulted)
+   - Remove: Users who lost eligibility (suspended, rejected, or consent lapsed)
+   - (Profile.ConsentCheckStatus and Profile.IsApproved are CC audit annotations; not consulted)
 
 2. SyncCoordinatorsTeamAsync()
    - Eligible: Users who are Coordinator of any user-created team + Coordinators-team consents
@@ -202,7 +198,7 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 **System Teams**:
 | Team | Eligibility Criteria |
 |------|---------------------|
-| Volunteers | HasProfile AND !IsSuspended AND ConsentCheckStatus != Flagged AND RejectedAt is null AND HasAllRequiredConsentsForTeam(Volunteers) |
+| Volunteers | HasRequiredNameFields AND !IsSuspended AND RejectedAt is null AND HasAllRequiredConsentsForTeam(Volunteers) — name + consents (ConsentCheckStatus/IsApproved not consulted) |
 | Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 

@@ -19,6 +19,7 @@ Judge whether the change is architecturally worth keeping. Do not infer or rewar
 Look for:
 - score gaming through generic action/mode dispatchers
 - score gaming through parameter DTOs, input bags, options bags, or command wrappers that only hide a long signature
+- score gaming through thin methods added to DTO/request/command records, such as `ApplyTo`, `ToDto`, `RenderWith`, `BuildSummary`, `SaveAsync`, or service-delegating wrappers, when they only assign fields, format existing fields, construct another DTO, or forward calls
 - score gaming through new helper/static classes that only move methods out of a service without deleting a concept
 - one method doing several unrelated jobs
 - hidden complexity moved from public methods into large private methods
@@ -48,6 +49,7 @@ State-engine distinction:
 Parameter-object distinction:
 - Reject or rework changes whose primary benefit is replacing many method parameters with `new Input(...)`/`new Options(...)` at each call site.
 - Accept a new input/command object only when it carries cohesive domain meaning, validation/invariants, reuse across related flows, or materially improves call-site clarity.
+- Accept behavior on an existing request/command only when the type owns a real invariant, validation rule, state transition, normalization rule, or domain policy. Reject behavior that merely moves field assignment, string formatting, DTO construction, or service delegation out of another class.
 - Treat public service-interface input types with mostly internal/private state as a smell; boundary objects should have readable semantics appropriate to their consumers.
 
 Read-model consolidation checks:
@@ -61,6 +63,7 @@ Read-model consolidation checks:
 Before verdict, answer these internally:
 - What concept was deleted?
 - What new concept was added?
+- Would this patch still be worth keeping if Reforge showed no improvement?
 - Could the removed behavior have been derived from the canonical read model instead?
 - Did the patch reduce DB/repository/full-service read paths?
 - Did it preserve cache invalidation and cold-key behavior?

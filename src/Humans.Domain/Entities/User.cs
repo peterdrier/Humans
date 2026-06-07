@@ -129,4 +129,10 @@ public class User : IdentityUser<Guid>
 
     /// <summary>When the merge tombstone was applied; null while live.</summary>
     public Instant? MergedAt { get; set; }
+
+    /// <summary>
+    /// Lifecycle state and the single source of truth for access — see <see cref="UserState"/>.
+    /// Written at each transition; nullable only during lazy first-touch seeding of legacy rows.
+    /// </summary>
+    public UserState? State { get; set; }
 }

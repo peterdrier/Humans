@@ -335,7 +335,7 @@
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Profile/{id}/Admin</code>.
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Users/Admin/{id}</code>.
                     </div>
                     @ParamsBlock(
                         ("user-id", "<code>Guid</code> — required"),
@@ -485,6 +485,33 @@
                         <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-001", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
                         <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-002", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
                         <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", "TKT-DEMO-003", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null, null))" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_DashboardActionCard.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_DashboardActionCard.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Reusable dashboard/guest action card. Caller supplies the route, text, icon, visual variant, and compact/full layout mode.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>DashboardActionCardViewModel</code> -- Controller, Action, Title, Description, IconCssClass, IconVariant, ColumnClass, Compact, IsPost, ConfirmMessage")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+                        {
+                            Controller = "Profile",
+                            Action = "Index",
+                            Title = "Edit profile",
+                            Description = "Open the profile settings surface.",
+                            IconCssClass = "fa-solid fa-user-pen",
+                            IconVariant = "primary",
+                            ColumnClass = string.Empty,
+                            Compact = true,
+                        })
                     </div>
                 </div>
 
@@ -644,6 +671,66 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">_RotaBadges.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaBadges.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Priority, period, visibility, preference, and tag badges shared by rota headers and the public shifts browser.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowPreferenceStar, ShowPeriodBadge, ShowTags, BadgeSpacingClass")
+                    )
+                    <div class="wg-card-example">
+                        @{
+                            var widgetGalleryBadgeRota = new Rota
+                            {
+                                Name = "Gate Support",
+                                Priority = ShiftPriority.Essential,
+                                Period = RotaPeriod.Build,
+                                IsVisibleToVolunteers = false,
+                            };
+                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Outdoor" });
+                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Radio" });
+                        }
+                        @await Html.PartialAsync("_RotaBadges", new RotaHeaderViewModel
+                        {
+                            Rota = widgetGalleryBadgeRota,
+                            ShowPreferenceStar = true,
+                            BadgeSpacingClass = "me-1",
+                        })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_RotaDetails.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_RotaDetails.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Optional rota description and practical-info markdown block shared by rota headers and the public shifts browser.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowDescription, ShowPracticalInfo, DescriptionCssClass, PracticalInfoCssClass")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
+                        {
+                            Rota = new Rota
+                            {
+                                Name = "Gate Support",
+                                Description = "Welcome volunteers, check wristbands, and keep arrivals moving.",
+                                PracticalInfo = "Meet at the gate desk. Bring water and a charged phone.",
+                            },
+                            DescriptionCssClass = "text-muted small mb-2",
+                            PracticalInfoCssClass = "text-muted small mb-0",
+                        })
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_EventRotaTable.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -756,7 +843,6 @@
                     </div>
                     @ParamsBlock()
                     <div class="wg-card-example">
-                        <vc:temp-data-alerts />
                         <div class="text-muted small">↑ empty when no TempData keys are present.</div>
                     </div>
                 </div>
@@ -769,12 +855,14 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/FeedbackWidgetViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Legacy floating "send feedback" widget. Mostly superseded by IssuesWidget.</div>
+                    <div class="wg-card-note">
+                        Legacy compatibility shim. Feedback submission now lives inside <code>HelpWidget</code>, which is the single
+                        floating page launcher.
+                    </div>
                     @ParamsBlock()
-                    @AuthLine("Authenticated only — renders empty content for unauthenticated viewers.")
-                    <div class="wg-card-example">
-                        <vc:feedback-widget />
-                        <div class="text-muted small">↑ injects a floating button in the page chrome.</div>
+                    @AuthLine("Renders empty content; keep callers on <code>HelpWidget</code> instead.")
+                    <div class="wg-card-example is-empty">
+                        Superseded by <code>&lt;vc:help-widget&gt;</code>.
                     </div>
                 </div>
 
@@ -926,7 +1014,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchResults.cshtml</span>
                     </div>
-                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Profile/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
+                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Users/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
                     @ParamsBlock(
                         ("@@model", "<code>IReadOnlyList&lt;HumanSearchResultViewModel&gt;</code> — projected match rows; admin metadata fields are nullable and self-gate")
                     )
@@ -1158,7 +1246,7 @@
                             <tr>
                                 <th>Self-gating by auth</th>
                                 <td>Possible (e.g. <code>AuthorizeViewTagHelper</code> reads <code>IHttpContextAccessor</code>); not the typical use</td>
-                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>, <code>FeedbackWidget</code>)</td>
+                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>)</td>
                                 <td>No — caller decides whether to render</td>
                             </tr>
                             <tr>
@@ -1217,7 +1305,7 @@
                     <li><strong>Don't reach for a ViewComponent when a Partial would do.</strong> ViewComponents are a "mini controller + view" — every render spins one up. If the caller already has the data, a Partial is faster, simpler, and easier to test.</li>
                     <li><strong>Don't reach for a TagHelper when you really need data.</strong> TagHelpers can do DI, but the result is a class that's secretly a controller. ViewComponents are the explicit form of that pattern.</li>
                     <li><strong>Don't put data fetching in a Partial</strong> by injecting services into the <code>.cshtml</code> via <code>@@inject</code>. That's a ViewComponent in disguise, untestable, and easy to N+1.</li>
-                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> and <code>FeedbackWidgetViewComponent</code> are the canonical examples.</li>
+                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> is the canonical floating-widget example.</li>
                     <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
             </section>

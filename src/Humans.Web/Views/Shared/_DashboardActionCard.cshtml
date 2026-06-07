@@ -1,0 +1,49 @@
+@model Humans.Web.Models.DashboardActionCardViewModel
+@{
+    var bodyClass = Model.Compact
+        ? "card-body d-flex align-items-center py-3"
+        : "card-body text-center py-4";
+    var iconClass = Model.Compact
+        ? $"dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-{Model.IconVariant} me-3"
+        : $"dashboard-action-icon dashboard-action-icon-lg dashboard-action-icon-{Model.IconVariant} mb-2";
+    var titleClass = "fw-semibold dashboard-action-title";
+    var descriptionClass = Model.Compact
+        ? "text-muted d-block dashboard-action-description"
+        : "text-muted d-block mt-1 dashboard-action-description";
+}
+
+<div class="@Model.ColumnClass">
+    @if (Model.IsPost)
+    {
+        <form action="@Url.Action(Model.Action, Model.Controller)" method="post"
+              data-confirm="@Model.ConfirmMessage"
+              class="h-100">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="card border-0 shadow-sm text-decoration-none h-100 w-100 text-start guest-explore-card dashboard-action-card dashboard-action-button">
+                <div class="@bodyClass">
+                    <div class="@iconClass">
+                        <i class="@Model.IconCssClass"></i>
+                    </div>
+                    <div>
+                        <div class="@titleClass">@Model.Title</div>
+                        <small class="@descriptionClass">@Model.Description</small>
+                    </div>
+                </div>
+            </button>
+        </form>
+    }
+    else
+    {
+        <a href="@Url.Action(Model.Action, Model.Controller)" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card dashboard-action-card">
+            <div class="@bodyClass">
+                <div class="@iconClass">
+                    <i class="@Model.IconCssClass"></i>
+                </div>
+                <div>
+                    <div class="@titleClass">@Model.Title</div>
+                    <small class="@descriptionClass">@Model.Description</small>
+                </div>
+            </div>
+        </a>
+    }
+</div>

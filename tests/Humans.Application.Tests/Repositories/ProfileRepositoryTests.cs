@@ -31,6 +31,38 @@ public sealed class UserRepositoryProfileTests : IDisposable
         _dbContext.Dispose();
     }
 
+    [HumansFact]
+    public async Task AddAsync_UpdatesUserStateFromNewProfile()
+    {
+        var user = await SeedUserAsync(UserState.Bare);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+
+        await _repo.AddAsync(profile, CancellationToken.None);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        reloaded.State.Should().Be(UserState.Active);
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_UpdatesUserStateFromChangedProfile()
+    {
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id);
+        detached.FirstName = "";
+        detached.State = ProfileState.Stub;
+        detached.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _repo.UpdateAsync(detached, CancellationToken.None);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        reloaded.State.Should().Be(UserState.Bare);
+    }
+
     [HumansFact(Timeout = 10000)]
     public async Task ReconcileCVEntriesAsync_AddsUpdatesAndRemovesEntries()
     {
@@ -181,13 +213,30 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 
-    private Profile NewProfile(string burnerName, string firstName, string lastName, ProfileState state)
+    private async Task<User> SeedUserAsync(UserState? state = null)
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"user-{Guid.NewGuid():N}@example.com",
+            Email = $"user-{Guid.NewGuid():N}@example.com",
+            DisplayName = "Seeded User",
+            CreatedAt = _clock.GetCurrentInstant(),
+            State = state,
+        };
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
+        return user;
+    }
+
+    private Profile NewProfile(
+        Guid userId, string burnerName, string firstName, string lastName, ProfileState state)
     {
         var now = _clock.GetCurrentInstant();
         return new Profile
         {
             Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
+            UserId = userId,
             BurnerName = burnerName,
             FirstName = firstName,
             LastName = lastName,

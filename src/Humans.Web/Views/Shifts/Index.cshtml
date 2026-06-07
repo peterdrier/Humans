@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = Localizer["Shifts_Title"].Value;
+    ViewData["SuppressLayoutTempDataAlerts"] = true;
     // This view is only rendered for the active event; controller guards against null.
     var es = Model.EventSettings!;
     var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
@@ -334,6 +335,13 @@
             var fillColor = fillPercent >= 80 ? "bg-success" : fillPercent >= 40 ? "bg-warning" : "bg-danger";
             var hasOpenSlots = rotaGroup.Shifts.Any(s => s.RemainingSlots > 0);
             var urgRotaId = $"urg-rota-{rotaGroup.Rota.Id:N}";
+            var rotaHeader = new RotaHeaderViewModel
+            {
+                Rota = rotaGroup.Rota,
+                ShowPreferenceStar = rotaMatchesPreference,
+                ShowPeriodBadge = false,
+                ShowTags = false
+            };
 
             <div class="card mb-3 @(!hasOpenSlots ? "opacity-75" : "")">
                 <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#@urgRotaId" aria-expanded="false" aria-controls="@urgRotaId" style="cursor: pointer;">
@@ -342,23 +350,7 @@
                             <i class="fa-solid fa-chevron-right fa-xs disclosure-chevron"></i>
                             <div>
                                 <span class="fw-semibold">@rotaGroup.Rota.Name</span>
-                                @if (rotaMatchesPreference)
-                                {
-                                    <i class="fa-solid fa-star text-warning ms-1" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
-                                }
-                                @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
-                                {
-                                    <span class="badge bg-danger ms-1">@Localizer["Shifts_Essential"]</span>
-                                }
-                                else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
-                                {
-                                    <span class="badge bg-warning text-dark ms-1">@Localizer["Shifts_Important"]</span>
-                                }
-                                @* Server-filtered for non-privileged users; pill only renders for admin/coordinator. *@
-                                @if (!rotaGroup.Rota.IsVisibleToVolunteers)
-                                {
-                                    <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
-                                }
+                                @await Html.PartialAsync("_RotaBadges", rotaHeader)
                                 @if (!string.IsNullOrEmpty(rotaGroup.DepartmentName))
                                 {
                                     <br /><small class="text-muted"><i class="fa-solid fa-building me-1"></i>@rotaGroup.DepartmentName</small>
@@ -372,17 +364,21 @@
                             <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                         </div>
                     </div>
-                    @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                    @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
                     {
-                        <div class="shift-description mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                    }
+                        Rota = rotaGroup.Rota,
+                        ShowPracticalInfo = false,
+                        DescriptionCssClass = "shift-description mt-1"
+                    })
                 </div>
                 <div class="collapse" id="@urgRotaId">
                     <div class="card-body pt-2">
-                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
+                        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
                         {
-                            <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
-                        }
+                            Rota = rotaGroup.Rota,
+                            ShowDescription = false,
+                            PracticalInfoCssClass = "text-muted small mb-2"
+                        })
                         @{
                             var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
                             var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
@@ -501,6 +497,14 @@
                                 var rotaFillPercent = rotaGroup.TotalSlots > 0 ? (int)Math.Round(100.0 * rotaGroup.TotalConfirmed / rotaGroup.TotalSlots) : 0;
                                 var rotaFillColor = rotaFillPercent >= 80 ? "bg-success" : rotaFillPercent >= 40 ? "bg-warning" : "bg-danger";
                                 var hasOpenSlots = rotaGroup.Shifts.Any(s => s.RemainingSlots > 0);
+                                var rotaHeader = new RotaHeaderViewModel
+                                {
+                                    Rota = rotaGroup.Rota,
+                                    ShowPreferenceStar = rotaMatchesPreference,
+                                    ShowPeriodBadge = false,
+                                    ShowTags = false,
+                                    BadgeSpacingClass = ""
+                                };
 
                                 <div class="card mb-2 @(!hasOpenSlots ? "opacity-75" : "")">
                                     <div class="card-header py-2 bg-transparent" role="button" data-bs-toggle="collapse" data-bs-target="#@rotaId" aria-expanded="false" aria-controls="@rotaId" style="cursor: pointer;">
@@ -508,22 +512,7 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="fa-solid fa-chevron-right fa-xs disclosure-chevron"></i>
                                                 <span class="fw-semibold">@rotaGroup.Rota.Name</span>
-                                                @if (rotaMatchesPreference)
-                                                {
-                                                    <i class="fa-solid fa-star text-warning" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
-                                                }
-                                                @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
-                                                {
-                                                    <span class="badge bg-danger">@Localizer["Shifts_Essential"]</span>
-                                                }
-                                                else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
-                                                {
-                                                    <span class="badge bg-warning text-dark">@Localizer["Shifts_Important"]</span>
-                                                }
-                                                @if (!rotaGroup.Rota.IsVisibleToVolunteers)
-                                                {
-                                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
-                                                }
+                                                @await Html.PartialAsync("_RotaBadges", rotaHeader)
                                                 <small class="text-muted d-none d-md-inline">@rotaGroup.Shifts.Count @(rotaGroup.Shifts.Count == 1 ? Localizer["Shifts_ShiftSingular"] : Localizer["Shifts_ShiftPlural"])</small>
                                             </div>
                                             <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
@@ -533,17 +522,21 @@
                                                 <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                                             </div>
                                         </div>
-                                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                                        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
                                         {
-                                            <div class="shift-description mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                                        }
+                                            Rota = rotaGroup.Rota,
+                                            ShowPracticalInfo = false,
+                                            DescriptionCssClass = "shift-description mt-1"
+                                        })
                                     </div>
                                     <div class="collapse" id="@rotaId">
                                         <div class="card-body pt-2">
-                                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
+                                            @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
                                             {
-                                                <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
-                                            }
+                                                Rota = rotaGroup.Rota,
+                                                ShowDescription = false,
+                                                PracticalInfoCssClass = "text-muted small mb-2"
+                                            })
                                             @{
                                                 var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
                                                 var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);

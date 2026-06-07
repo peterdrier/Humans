@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 
@@ -13,7 +12,6 @@ public class HomeController(
     IUserService userService,
     IDashboardService dashboardService,
     IShiftManagementService shiftMgmt,
-    IOnboardingWidgetState widgetState,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<HomeController> logger) : HumansControllerBase(userService)
@@ -33,21 +31,8 @@ public class HomeController(
             return View();
         }
 
-        // Route through the onboarding widget until the user has completed every required step.
-        var step = await widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
-        if (step != OnboardingWidgetStep.Complete)
-        {
-            return RedirectToAction("Index", "OnboardingWidget");
-        }
-
-        var hasProfile = User.HasClaim(
-            Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
-            Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
-        if (!hasProfile)
-        {
-            return RedirectToAction(nameof(Index), "Guest");
-        }
-
+        // Name-only access: the MembershipRequiredFilter routes non-Active users away, so any
+        // authenticated user reaching the dashboard is Active (named, not suspended/etc.).
         var data = await dashboardService.GetMemberDashboardAsync(user.Id, cancellationToken);
 
         var viewModel = new DashboardViewModel

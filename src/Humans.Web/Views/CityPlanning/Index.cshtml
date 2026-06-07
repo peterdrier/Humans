@@ -1,45 +1,27 @@
 @model Humans.Web.Models.CityPlanningIndexViewModel
 @{
     ViewData["Title"] = "City Planning";
+    ViewData["BodyClass"] = "city-map-fullscreen";
     var year = Model.Year;
     var showBarrioMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsPlacementOpen);
     var showContainerMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsContainerPlacementOpen);
-    var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
 }
 
 @section Styles {
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
-    <style>
-        :root {
-            --container-fill: var(--h-sepia);
-        }
-        .main-content { display: flex; max-width: 100vw; padding: 0; }
-        main { display: flex; flex: 1; padding: 0; }
-        #map-page { flex: 1; position: relative; overflow: hidden; }
-        #map { height: 100%; width: 100%; }
-    </style>
 }
 
-<div id="map-page">
-    <div id="map" data-year="@year"></div>
+<div id="map-page" class="city-map-page">
+    <div id="map" class="city-map-canvas" data-year="@year"></div>
 
-    <div class="position-absolute top-0 end-0 m-3 d-grid gap-3" style="z-index:10;">
+    <div class="position-absolute top-0 end-0 m-3 d-grid gap-3 city-map-controls">
+        @await Html.PartialAsync("_MeasurePanel", new CityPlanningMeasurePanelViewModel
+        {
+            AccessMatrixSection = "CityPlanningOverview"
+        })
         <div class="card shadow-sm">
             <div class="card-body py-2 px-3 d-flex flex-column gap-1">
-                <vc:access-matrix section="CityPlanningOverview" />
-                <div class="d-flex gap-1">
-                    <button type="button" id="measure-btn" class="btn btn-outline-secondary btn-sm flex-grow-1" aria-pressed="false">
-                        <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
-                    </button>
-                    <button id="clear-measurements-btn" type="button" class="btn btn-sm btn-outline-danger d-none" title="@clearMeasurementsLabel" aria-label="@clearMeasurementsLabel">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div class="card shadow-sm">
-            <div class="card-body py-2 px-3 d-flex flex-column gap-1">
-                <div class="fw-semibold text-muted text-uppercase mb-1" style="font-size:10px; letter-spacing:.05em;">@Localizer["CityPlanning_Layers"]</div>
+                <div class="fw-semibold text-muted text-uppercase mb-1 city-map-panel-label">@Localizer["CityPlanning_Layers"]</div>
                 <button id="toggle-containers" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
                     <i class="fa-solid fa-box me-1"></i> @Localizer["Container_Breadcrumb"]
                 </button>

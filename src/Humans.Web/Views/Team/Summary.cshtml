@@ -22,7 +22,6 @@
     <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="BoardOrAdmin">@Localizer["Teams_CreateTeam"]</a>
 </div>
 
-<vc:temp-data-alerts />
 
 @foreach (var group in groups)
 {

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -36,6 +37,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
@@ -61,7 +63,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _humanLifecycle, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

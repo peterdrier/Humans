@@ -84,7 +84,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
 | `GET /Profile/Me/Outbox` | authenticated | `ProfileController` — own outbox history |
-| `GET /Profile/{id}/Admin/Outbox` | `HumanAdminBoardOrAdmin` | `ProfileController` — another user's outbox history |
+| `GET /Users/Admin/{id}/Outbox` | `HumanAdminBoardOrAdmin` | `UsersAdminController` — another user's outbox history |
 
 ## Actors & Roles
 
@@ -93,7 +93,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | Any service / job | Build a fully-rendered `EmailMessage` via a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `ApplicationApproved`, `CampaignCode`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
-| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Profile/{id}/Admin/Outbox`). |
+| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`). |
 
 ## Invariants
 
@@ -106,7 +106,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 - Admin retry resets a row to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`.
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is an Application-layer abstraction so consumers stay SDK-free; the implementation (`BrandedEmailBodyComposer`) and `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) live in Infrastructure.
-- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Profile/{id}/Admin/Outbox` views.
+- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox` views.
 
 ## Negative Access Rules
 

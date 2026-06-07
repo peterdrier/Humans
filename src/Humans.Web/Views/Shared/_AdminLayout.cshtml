@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="~/css/site.css" />
     <link rel="stylesheet" href="~/css/tokens.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
     <link rel="stylesheet" href="~/css/admin-shell.css" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -65,6 +65,10 @@
                 </div>
 
                 <partial name="_AuthorizationPill" />
+                @if (ViewData["SuppressLayoutTempDataAlerts"] is not bool suppressLayoutTempDataAlerts || !suppressLayoutTempDataAlerts)
+                {
+                    <vc:temp-data-alerts />
+                }
                 @RenderBody()
             </main>
         </div>

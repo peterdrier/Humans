@@ -1,0 +1,147 @@
+@model IReadOnlyList<Serilog.Events.LogEvent>
+@using Humans.Infrastructure.Logging
+@{
+    ViewData["Title"] = "Application Logs";
+    var lifetimeCounts = ViewBag.LifetimeCounts as IReadOnlyDictionary<Serilog.Events.LogEventLevel, long>
+        ?? new Dictionary<Serilog.Events.LogEventLevel, long>();
+
+    var startedAt = ViewBag.SinkStartedAt is DateTimeOffset sa ? sa : DateTimeOffset.UtcNow;
+    var totalEvents = ViewBag.TotalEvents is long te ? te : 0L;
+    var uptime = DateTimeOffset.UtcNow - startedAt;
+    if (uptime < TimeSpan.Zero) { uptime = TimeSpan.Zero; }
+
+    static string HumanizeUptime(TimeSpan t)
+    {
+        // Skip zero-leading units, show two largest non-zero units down to seconds.
+        // Examples: "2d 4h 13m", "47m", "12s".
+        var parts = new List<string>(3);
+        if (t.Days > 0) parts.Add($"{t.Days}d");
+        if (t.Hours > 0) parts.Add($"{t.Hours}h");
+        if (t.Minutes > 0) parts.Add($"{t.Minutes}m");
+        if (parts.Count == 0) parts.Add($"{t.Seconds}s");
+        return string.Join(' ', parts);
+    }
+
+    var uptimeText = HumanizeUptime(uptime);
+    var hours = Math.Max(uptime.TotalHours, 1.0 / 3600);
+    var eventsPerHour = (long)Math.Round(totalEvents / hours);
+}
+
+<div class="container-fluid px-4">
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Application Logs</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Application Logs</h1>
+        <div class="text-muted text-end">
+            <div><small>Uptime: @uptimeText</small></div>
+            <div>Showing @Model.Count of last 1000 (in-memory buffer)</div>
+            <div><small>@eventsPerHour.ToString("#,##0") events/hour</small></div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+        @{
+            var levels = new[]
+            {
+                (Serilog.Events.LogEventLevel.Warning, "btn-warning"),
+                (Serilog.Events.LogEventLevel.Error, "btn-danger"),
+                (Serilog.Events.LogEventLevel.Fatal, "btn-danger fw-bold"),
+            };
+        }
+        @foreach (var (level, btnClass) in levels)
+        {
+            var count = lifetimeCounts.TryGetValue(level, out var c) ? c : 0;
+            <button type="button" class="btn btn-sm log-level-toggle @btnClass" data-level="@level" aria-pressed="true">@level: @count</button>
+        }
+        <small class="text-muted align-self-center">(lifetime counts since app start — click to hide/show rows)</small>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle"></i> No log events in the buffer.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover font-monospace" style="font-size: 0.8rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 160px;">Timestamp (UTC)</th>
+                        <th style="width: 80px;">Level</th>
+                        <th style="width: 160px;">User</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var evt in Model)
+                    {
+                        var levelClass = evt.Level switch
+                        {
+                            Serilog.Events.LogEventLevel.Fatal => "table-danger fw-bold",
+                            Serilog.Events.LogEventLevel.Error => "table-danger",
+                            Serilog.Events.LogEventLevel.Warning => "table-warning",
+                            _ => ""
+                        };
+                        var evtUserId = CurrentUserEnricher.ExtractFromEvent(evt);
+                        <tr class="@levelClass" data-level="@evt.Level">
+                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToInvariantTimestamp()</td>
+                            <td>@evt.Level</td>
+                            <td>
+                                @if (evtUserId.HasValue)
+                                {
+                                    <vc:human user-id="@evtUserId.Value" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @evt.RenderMessage()
+                                @if (evt.Exception != null)
+                                {
+                                    <details class="mt-1">
+                                        <summary class="text-danger" style="cursor: pointer;">Exception</summary>
+                                        <pre class="mb-0 text-wrap" style="font-size: 0.75rem;">@evt.Exception</pre>
+                                    </details>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .log-level-toggle.log-level-off {
+            opacity: 0.45;
+            text-decoration: line-through;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.log-level-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var level = btn.getAttribute('data-level');
+                var hide = !btn.classList.contains('log-level-off');
+                btn.classList.toggle('log-level-off', hide);
+                btn.setAttribute('aria-pressed', (!hide).toString());
+                document.querySelectorAll('tbody tr[data-level="' + level + '"]').forEach(function (row) {
+                    row.classList.toggle('d-none', hide);
+                });
+            });
+        });
+    </script>
+}

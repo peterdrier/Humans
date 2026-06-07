@@ -1,7 +1,6 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Helpers;
 using NodaTime;
 
 namespace Humans.Application.Services.Profiles;
@@ -44,39 +43,8 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
             }
         }
 
-        // Cross-user duplicates: build normalized-email -> userIds map, flag pairs.
-        var normToUsers = new Dictionary<string, List<(Guid UserId, string Raw)>>(StringComparer.Ordinal);
-        foreach (var p in profiled)
-        {
-            foreach (var email in p.UserEmails)
-            {
-                var norm = EmailNormalization.NormalizeForComparison(email.Email);
-                if (!normToUsers.TryGetValue(norm, out var list))
-                {
-                    list = [];
-                    normToUsers[norm] = list;
-                }
-                list.Add((p.Id, email.Email));
-            }
-        }
-
-        foreach (var kvp in normToUsers)
-        {
-            var distinctUsers = kvp.Value.Select(t => t.UserId).Distinct().ToList();
-            if (distinctUsers.Count <= 1) continue;
-
-            for (var i = 0; i < distinctUsers.Count; i++)
-            {
-                for (var j = i + 1; j < distinctUsers.Count; j++)
-                {
-                    var rawA = kvp.Value.First(t => t.UserId == distinctUsers[i]).Raw;
-                    problems.Add(new EmailProblem(
-                        EmailProblemKind.SharedAcrossUsers,
-                        distinctUsers[i], distinctUsers[j],
-                        null, rawA, null));
-                }
-            }
-        }
+        // Cross-user duplicate detection lives on the Account merges page now
+        // (DuplicateAccountService.DetectDuplicatesAsync) — not in this scan.
 
         var orphans = await userEmailService.GetOrphanUserEmailsAsync(ct);
         foreach (var o in orphans)
@@ -95,6 +63,10 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
+            // Tombstones carry a scrubbed sentinel Identity email (merged-/deleted-…@….local)
+            // with no matching UserEmail row — not a real hygiene problem. Skip them.
+            if (info.IsTombstone) continue;
+
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
@@ -108,21 +80,6 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         }
 
         return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
-    }
-
-    public async Task<bool> UsersShareAnyEmailAsync(Guid user1Id, Guid user2Id, CancellationToken ct = default)
-    {
-        if (user1Id == user2Id) return false;
-
-        var info1 = await userService.GetUserInfoAsync(user1Id, ct);
-        var info2 = await userService.GetUserInfoAsync(user2Id, ct);
-        if (info1 is null || info2 is null) return false;
-
-        var norms1 = info1.UserEmails
-            .Select(e => EmailNormalization.NormalizeForComparison(e.Email))
-            .ToHashSet(StringComparer.Ordinal);
-        return info2.UserEmails
-            .Any(e => norms1.Contains(EmailNormalization.NormalizeForComparison(e.Email)));
     }
 
     public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
@@ -142,6 +99,10 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
 
         foreach (var info in allInfos)
         {
+            // Never resurrect a tombstone: its scrubbed sentinel email must not become a
+            // verified UserEmail row.
+            if (info.IsTombstone) continue;
+
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 

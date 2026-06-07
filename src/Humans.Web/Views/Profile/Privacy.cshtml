@@ -14,7 +14,6 @@
 
 <p class="lead">@Localizer["ProfilePrivacy_Lead"]</p>
 
-<vc:temp-data-alerts />
 
 <div class="row">
     <div class="col-md-6">
@@ -55,7 +54,7 @@
                     <p>@Localizer["ProfilePrivacy_DeletionAccessRevoked"]</p>
                     <p>@Localizer["ProfilePrivacy_DeletionCancelInfo"]</p>
                     <p class="text-muted"><small>@Localizer["ProfilePrivacy_CancelNoRestore"]</small></p>
-                    <form asp-action="CancelDeletion" method="post">
+                    <form asp-controller="User" asp-action="CancelDeletion" method="post">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-success">
                             @Localizer["ProfilePrivacy_CancelDeletion"]

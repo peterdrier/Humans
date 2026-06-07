@@ -26,7 +26,7 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// <para>
 /// The two caches are exposed via <see cref="UserCacheStats"/> /
 /// <see cref="RotaCacheStats"/> and registered as <see cref="ICacheStats"/>
-/// in DI so /Admin/CacheStats can surface their counters.
+/// in DI so /Debug/CacheStats can surface their counters.
 /// </para>
 /// </remarks>
 public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)

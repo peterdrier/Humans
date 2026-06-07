@@ -9,8 +9,6 @@
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
-  src/Humans.Web/Controllers/AdminMergeController.cs
   src/Humans.Web/Views/Profile/**
 -->
 <!-- freshness:flag-on-change
@@ -31,7 +29,7 @@ Per-human personal data: profile, contact fields, emails, communication preferen
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
 - **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
 - **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes.
-- **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
+- **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Detection and resolution now live in the **Users** section; admins act on candidates from the unified **Account Merges** page (`/Users/Admin/AccountMerges`).
 - **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary or IsGoogle, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth from the `FullProfile` cache. Read-only admin surface with deep-links into the per-user `/Profile/{userId}/Admin/Emails` diagnostic for orphan/ghost remediation; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
 
@@ -300,7 +298,7 @@ Stored as string via `HasConversion<string>()`. `IsAlwaysOn()` covers System and
 
 ## Routing
 
-All profile-related functionality lives under `/Profile`:
+Self-service profile functionality lives under `/Profile`; human administration now lives under `/Users/Admin`:
 
 | Route | Purpose |
 |-------|---------|
@@ -320,14 +318,13 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
 | `/Profile/{id}/SendMessage` | Send facilitated message |
-| `/Profile/{id}/Admin` | Admin detail view |
-| `/Profile/{id}/Admin/Outbox` | Admin view of person's outbox |
-| `/Profile/{id}/Admin/Suspend` | Suspend member |
-| `/Profile/{id}/Admin/Approve` | Approve volunteer |
-| `/Profile/{id}/Admin/Reject` | Reject signup |
-| `/Profile/{id}/Admin/Roles/*` | Role management |
-| `/Profile/Admin` | Admin list of all humans |
-| `/Profile/Admin/Roles` | System-wide role-assignment roster, filterable by role (HumanAdminBoardOrAdmin). Relocated from `/Governance/Roles` — `role_assignments` is owned by Auth, not Governance; the roster lives beside the per-human role management already in this section |
+| `/Users/Admin/{id}` | Admin detail view |
+| `/Users/Admin/{id}/Outbox` | Admin view of person's outbox |
+| `/Users/Admin/{id}/Suspend` | Suspend member |
+| `/Users/Admin/{id}/Reject` | Reject signup |
+| `/Users/Admin/{id}/Roles/*` | Role management |
+| `/Users/Admin` | Admin list of all humans |
+| `/Users/Admin/Roles` | System-wide role-assignment roster, filterable by role (HumanAdminBoardOrAdmin). Relocated from `/Governance/Roles` — `role_assignments` is owned by Auth, not Governance; the roster lives beside the per-human role management surface |
 | `/Profile/Search` | People search |
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |
@@ -337,16 +334,8 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 | Route | Purpose |
 |-------|---------|
-| `/Admin/MergeRequests` | List pending `AccountMergeRequest`s (`AdminMergeController`) |
-| `/Admin/MergeRequests/{id}` | Detail view of a single merge request |
-| `/Admin/MergeRequests/{id}/Accept` | Accept and execute the merge |
-| `/Admin/MergeRequests/{id}/Reject` | Reject the merge |
-| `/Admin/DuplicateAccounts` | List detected duplicate-account groups (`AdminDuplicateAccountsController`) |
-| `/Admin/DuplicateAccounts/Detail` | Side-by-side comparison of two candidate accounts |
-| `/Admin/DuplicateAccounts/Resolve` | Archive the duplicate and re-link logins to the survivor |
+| `/Users/Admin/AccountMerges` | Unified account-merge queue — pending merge requests **and** detected duplicate pairs (`UsersAdminAccountMergesController`, **Users** section — see [Users.md](Users.md)). Admin picks the survivor; the other account is folded in and tombstoned. Replaces the retired `/Admin/MergeRequests`, `/Admin/DuplicateAccounts`, and `/Profile/Admin/EmailProblems/{Compare,Merge}` paths. |
 | `/Profile/Admin/EmailProblems` | List UserEmail invariant violations across all accounts (`ProfileAdminController`) |
-| `/Profile/Admin/EmailProblems/Compare` | Side-by-side detail for a case-5 cross-user email collision |
-| `/Profile/Admin/EmailProblems/Merge` | POST — admin-initiated merge via `IAccountMergeService.AdminMergeAsync` |
 | `/Profile/Admin/EmailProblems/DeleteOrphanEmail` | POST — delete a single orphan UserEmail row |
 | `/Profile/Admin/EmailProblems/DeleteGhostLogins` | POST — delete every AspNetUserLogins row for a userId with no UserEmails |
 
@@ -411,12 +400,12 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 ## Architecture
 
-**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`, `EmailProblemsService`
-**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`, `account_merge_requests`
-**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
+**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `EmailProblemsService` (account-merge + duplicate detection moved to the **Users** section — see [Users.md](Users.md))
+**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`
+**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` now live in the **Users** section (`Humans.Application/Services/Users/`) following the account-merge consolidation — see [Users.md](Users.md).
 
 - Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
-- `IUserRepository` (profile/contact methods), `IUserEmailRepository`, `ICommunicationPreferenceRepository`, and `IAccountMergeRepository` are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
+- `IUserRepository` (profile/contact methods), `IUserEmailRepository`, and `ICommunicationPreferenceRepository` are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
 - **Decorator decision — caching decorator.** `CachingProfileService` is a Singleton owning `ConcurrentDictionary<Guid, FullProfile> _byUserId`. Warmup via `FullProfileWarmupHostedService`. See design-rules §15d.
 - **`FullProfile` is canonical (issue #635 §15i, 2026-05-04).** Three derived properties — `PrimaryEmail`, `AllVerifiedEmails`, `GoogleEmail` — replace the old `User.UserEmails` / `User.GetEffectiveEmail()` / `User.GoogleEmail` reader sites. `CachingProfileService` populates them from already-loaded `UserEmail` rows (no new repo lookups). `FullProfile.NotificationEmail` is kept as a get-only alias for `PrimaryEmail` for backward compat. The lifecycle marker `Profile.State` (Stub/Active/Suspended) flows through `FullProfile.State` and is lazily computed-and-written-back when the persisted value is `null` (see `CachingProfileService.ComputeProfileState`).
 - **Stub Profile invariant (issue #635 §15i).** Every newly created User materializes a `ProfileState.Stub` Profile inline at the User-creation call site (`AccountController.ExternalLoginCallback`/`CompleteSignup`, `AccountProvisioningService.FindOrCreateUserByEmailAsync`). `ProfileService.SaveProfileAsync` promotes the row to `Active` once `BurnerName`/`FirstName`/`LastName` are all populated. Legacy profile-less users (contact imports pre-§15i) are reconciled through the `/Profile/Admin/Backfill` admin tool — idempotent count-and-bulk-create page; no-op when N=0. Until the backfill is run, `GET /Profile/{id}/Popover` (issue #690) renders a sparse fallback card for these users so `<human-link>` hovers don't 404 — see the Invariants section bullet.
@@ -427,7 +416,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - **`IFullProfileInvalidator`** is aliased to the same Singleton `CachingProfileService` instance so external sections' writes (Auth, Onboarding, Teams, Google) can invalidate the cache without touching the dict.
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
 - **GDPR:** `ProfileService` and `AccountMergeService` both implement `IUserDataContributor` (design-rules §8a). `ProfileService` emits the `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`, and `CommunicationPreferences` slices; `AccountMergeService` emits the `AccountMergeRequests` slice. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
-- **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
+- **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` (and `IAccountMergeRepository` / the `account_merge_requests` table) moved to the **Users** section in the account-merge consolidation — see [Users.md](Users.md). The Profile sub-aggregates still participate in a fold as `IUserMerge` implementations (`UserEmailService` / `ContactFieldService` / `CommunicationPreferenceService`).
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Architecture/ProfileStateAndIsSuspendedTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
 
 ### Account deletion cascade

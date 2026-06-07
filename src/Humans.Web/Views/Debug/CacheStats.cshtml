@@ -1,0 +1,156 @@
+@model CacheStatsViewModel
+@{
+    ViewData["Title"] = "Cache Statistics";
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="title">Cache Statistics</h1>
+        <p class="sub">@((Model.TotalHits + Model.TotalMisses).ToString("N0")) total lookups since last restart</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <form asp-action="ResetCacheStats" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-warning btn-sm"
+                    data-confirm="Reset all cache statistics?">
+                <i class="fa-solid fa-rotate-right me-1"></i>Reset
+            </button>
+        </form>
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Admin
+        </a>
+    </div>
+</div>
+
+
+<div class="stats">
+    <div class="stat">
+        <div class="label">Hits</div>
+        <div class="value text-success">@Model.TotalHits.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Misses</div>
+        <div class="value text-danger">@Model.TotalMisses.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Overall Hit Rate</div>
+        <div class="value">@Model.OverallHitRatePercent.ToString("F1")<em>%</em></div>
+    </div>
+    <div class="stat">
+        <div class="label">Active Entries</div>
+        <div class="value text-primary">@Model.TotalActiveEntries.ToString("N0")</div>
+    </div>
+</div>
+
+<h2 class="h5 mt-4">IMemoryCache</h2>
+@if (Model.Entries.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No cache statistics recorded yet. Navigate around the app to generate data.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="cacheStatsTable" data-sortable-table>
+            <thead>
+                <tr>
+                    <th data-sort-col="0" data-sort-type="text">Key Type <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="1" data-sort-type="text">Type <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="3" data-sort-type="text">TTL <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="4" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="5" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="6" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Entries)
+                {
+                    var rateClass = entry.HitRatePercent switch
+                    {
+                        >= 80 => "table-success",
+                        >= 50 => "",
+                        _ => "table-warning"
+                    };
+                    var typeBadge = entry.Type switch
+                    {
+                        "Static" => "bg-primary",
+                        "PerUser" => "bg-info",
+                        "PerEntity" => "bg-secondary",
+                        "RateLimit" => "bg-warning text-dark",
+                        _ => "bg-light text-dark"
+                    };
+                    <tr class="@rateClass">
+                        <td>@entry.KeyType</td>
+                        <td><span class="badge @typeBadge">@entry.Type</span></td>
+                        <td class="text-end">@entry.ActiveEntries.ToString("N0")</td>
+                        <td>@entry.Ttl</td>
+                        <td class="text-end">@entry.Hits.ToString("N0")</td>
+                        <td class="text-end">@entry.Misses.ToString("N0")</td>
+                        <td class="text-end">@entry.HitRatePercent.ToString("F1")%</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h5 mt-4">Caching Decorators</h2>
+@if (Model.DecoratorEntries.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No decorator caches registered.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="decoratorCacheStatsTable" data-sortable-table>
+            <thead>
+                <tr>
+                    <th data-sort-col="0" data-sort-type="text">Name <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="1" data-sort-type="number" class="text-center">Warmed <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="3" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="4" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="5" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="6" data-sort-type="number" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th data-sort-col="7" data-sort-type="number" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.DecoratorEntries)
+                {
+                    var rateClass = (entry.Hits + entry.Misses) == 0
+                        ? ""
+                        : entry.HitRatePercent switch
+                        {
+                            >= 80 => "table-success",
+                            >= 50 => "",
+                            _ => "table-warning"
+                        };
+                    <tr class="@rateClass">
+                        <td>@entry.Name</td>
+                        <td class="text-center" data-sort-value="@(entry.IsWarmedUp ? 1 : 0)">
+                            @if (entry.IsWarmedUp)
+                            {
+                                <i class="fa-solid fa-check text-success" title="Warmed"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-xmark text-muted" title="Cold (lazy or awaiting warmup)"></i>
+                            }
+                        </td>
+                        <td class="text-end">@entry.Entries.ToString("N0")</td>
+                        <td class="text-end">@entry.Hits.ToString("N0")</td>
+                        <td class="text-end">@entry.Misses.ToString("N0")</td>
+                        <td class="text-end">@(entry.Hits + entry.Misses == 0 ? "—" : entry.HitRatePercent.ToString("F1") + "%")</td>
+                        <td class="text-end">@entry.KeyRemovals.ToString("N0")</td>
+                        <td class="text-end">@entry.BulkInvalidations.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

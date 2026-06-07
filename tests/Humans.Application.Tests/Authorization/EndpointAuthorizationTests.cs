@@ -15,12 +15,13 @@ public class EndpointAuthorizationTests
 {
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
-        { typeof(AdminController), "PurgeHuman", "AdminOnly" },
-        { typeof(AdminController), "Logs", "AdminOnly" },
-        { typeof(AdminController), "Configuration", "AdminOnly" },
-        { typeof(AdminController), "DbStats", "AdminOnly" },
-        { typeof(AdminController), "CacheStats", "AdminOnly" },
-        { typeof(AdminMergeController), null, "AdminOnly" },
+        { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
+        { typeof(DebugController), "Logs", "AdminOnly" },
+        { typeof(DebugController), "Configuration", "AdminOnly" },
+        { typeof(DebugController), "DbStats", "AdminOnly" },
+        { typeof(DebugController), "CacheStats", "AdminOnly" },
+        { typeof(UsersAdminController), "Audience", "AdminOnly" },
+        { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
         { typeof(EmailController), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { typeof(AuditLogController), "Index", "BoardOrAdmin" },
@@ -230,7 +231,7 @@ public class EndpointAuthorizationTests
             "GuestController.UpdatePreference",
             "TeamController.Index",
             "TeamController.Details",
-            "AdminController.DbVersion",
+            "DebugController.DbVersion",
             "ProfileController.VerifyEmail",
             "ProfileController.Picture",
             "ProfileController.PublicPopover",

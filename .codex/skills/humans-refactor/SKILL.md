@@ -80,8 +80,11 @@ Two failed patches in a row are a signal that the search strategy is too shallow
 - Do not move debt across sections to win points. Regressions outside the target section count against the change.
 - Public members may be removed when they are internal application surface and the call graph is updated. Preserve reflection/external contracts, Razor action routes, serialized DTO contracts, and public APIs that are intentionally consumed outside the repo.
 - Prefer the best end-state architecture over the smallest diff. Large cohesive refactors are allowed when the call graph and tests support them.
+- Do not satisfy Reforge by adding thin behavior to DTO/request/command/options/input records. Methods such as `ApplyTo`, `ToDto`, `RenderWith`, `BuildSummary`, `SaveAsync`, or service-delegating wrappers are score-gaming unless they enforce real invariants, validation, state transitions, or domain policy already owned by that type.
 
 ## Scoring
+
+Reforge is a candidate-selection and checkpoint tool, not the definition of success. A lower score is useful only after the score-blind architecture review accepts the diff.
 
 Capture baseline scores before editing:
 
@@ -106,6 +109,8 @@ Measure value as:
 - adding facts to an existing canonical `<Section>Info`/read DTO is not the same
   as creating a new DTO; it is often the preferred move when it lets callers
   derive projections/predicates without DB or service-specific reads
+
+Never keep a patch only to hit a percentage target. If the remaining ledger is only reducible through score-gaming, stop and report that safe score reduction is exhausted.
 
 ## Work Loop
 
@@ -154,11 +159,12 @@ Then repeat until stasis:
 1. Inspect Reforge top symbols/rules for the target section.
 2. Read the surrounding code and call graph before editing.
 3. Pick the highest-leverage cohesive improvement, not just the highest scoring rule.
-4. Make the change.
-5. Run targeted tests and `dotnet build Humans.slnx --disable-build-servers -v q`.
-6. Run Reforge after the change.
-7. Run the score-blind architecture-review gate.
-8. If accepted, commit and push. If rework/reject, improve or abandon before committing.
+4. Write a candidate thesis in the run notes: what concept will be deleted, which responsibility moves to its rightful owner, or which duplicated/cross-section path disappears. If the thesis is just "the score drops", reject the candidate before editing.
+5. Make the change.
+6. Run targeted tests and `dotnet build Humans.slnx --disable-build-servers -v q`.
+7. Run Reforge after the change.
+8. Run the score-blind architecture-review gate.
+9. If accepted, commit and push. If rework/reject, improve or abandon before committing.
 
 Stasis means the autonomy floor has been met and the remaining ledger is exhausted, blocked by hard limits, score-negative without architectural upside, or too speculative to change without user/product input. A run may stop early only when the user explicitly asks, the repo cannot build for reasons outside the branch, or continuing risks data/schema/contract changes the user did not authorize.
 
@@ -189,6 +195,12 @@ helper/static class, replacing parameters with a DTO bag, or reducing a score
 without deleting a concept. Acceptable read-model growth should usually add
 facts to the existing `<Section>Info`/read shard, not create another projection
 service.
+
+The reviewer must also reject request/command/DTO "behavior" whose body only
+assigns fields, formats current fields, creates a DTO from the same fields, or
+delegates to a service. Accept only when the type owns a real invariant,
+validation rule, state transition, normalization rule, or domain policy that
+callers should not duplicate.
 
 After the reviewer returns `accept`, attach the Reforge deltas and weighted value
 to the commit message. If the reviewer returns `rework` or `reject`, do not use
@@ -235,6 +247,7 @@ Push after each accepted commit. If a PR does not exist by the time the user ask
   grandfathered, not silently normalized.
 - Keep controllers thin, but allow UI-specific finite sorting/filtering/paging at the controller/view boundary.
 - Reject parameter-object refactors whose primary effect is hiding a long method signature. Accept a new input/command object only when it has cohesive domain meaning, public readable semantics appropriate to its boundary, validation/invariants, reuse across related flows, or a materially simpler call site.
+- Reject adding thin methods to existing parameter objects when the only deleted code is field assignment, string formatting, DTO construction, or direct service delegation. This is score-gaming even if Reforge reports a large improvement.
 - Treat `public` input types with mostly `internal` state as a smell on service interfaces; decorators and cross-assembly callers should not need result objects or side channels to recover data the input already contained.
 - For read-surface pruning, ask: "Could the caller express this as a LINQ query
   over `<Section>Info` or a known read shard?" If yes, add missing facts to the

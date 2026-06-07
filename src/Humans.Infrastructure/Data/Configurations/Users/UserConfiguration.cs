@@ -60,5 +60,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.MergedToUserId)
             .HasFilter("\"MergedToUserId\" IS NOT NULL");
+
+        // Lifecycle/access state. Nullable during lazy first-touch seed; enum persisted as string.
+        builder.Property(u => u.State)
+            .HasConversion<string>()
+            .HasMaxLength(50);
     }
 }

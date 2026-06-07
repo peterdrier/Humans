@@ -53,6 +53,98 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// Declarative client-side table sorting.
+// Add data-sortable-table to a table and data-sort / data-sort-col / data-sort-key
+// to header cells. Cell data-sort-value/data-value or row data-* values override text.
+(function () {
+    function textForSort(value) {
+        return (value || '').trim();
+    }
+
+    function numberForSort(value) {
+        var normalized = textForSort(value).replace(/[,%\s€]/g, '');
+        var parsed = parseFloat(normalized);
+        return isNaN(parsed) ? null : parsed;
+    }
+
+    function valueFromRow(row, columnIndex, key) {
+        if (key && row.dataset && row.dataset[key] !== undefined) {
+            return row.dataset[key];
+        }
+
+        var cell = row.cells[columnIndex];
+        if (!cell) return '';
+        return cell.dataset.sortValue || cell.dataset.value || cell.textContent || '';
+    }
+
+    function compareValues(a, b, sortType) {
+        var aNumber = numberForSort(a);
+        var bNumber = numberForSort(b);
+        var numeric = sortType === 'number' || (sortType !== 'text' && aNumber !== null && bNumber !== null);
+
+        if (numeric) {
+            return (aNumber || 0) - (bNumber || 0);
+        }
+
+        return textForSort(a).localeCompare(textForSort(b));
+    }
+
+    document.querySelectorAll('table[data-sortable-table]').forEach(function (table) {
+        var tbody = table.tBodies[0];
+        if (!tbody) return;
+
+        var headers = table.querySelectorAll('th[data-sort], th[data-sort-col], th[data-sort-key]');
+        headers.forEach(function (th) {
+            th.classList.add('sortable-table-header');
+            th.setAttribute('role', th.getAttribute('role') || 'button');
+            th.setAttribute('tabindex', th.getAttribute('tabindex') || '0');
+
+            function sort() {
+                var columnIndex = th.dataset.sortCol !== undefined
+                    ? parseInt(th.dataset.sortCol, 10)
+                    : Array.prototype.indexOf.call(th.parentElement.children, th);
+                if (isNaN(columnIndex) || columnIndex < 0) return;
+
+                var key = th.dataset.sortKey;
+                var sortType = th.dataset.sortType || 'auto';
+                var nextDirection = th.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+                var directionMultiplier = nextDirection === 'asc' ? 1 : -1;
+
+                headers.forEach(function (header) {
+                    header.removeAttribute('data-sort-dir');
+                    header.setAttribute('aria-sort', 'none');
+                    header.classList.remove('sort-asc', 'sort-desc');
+                    var indicator = header.querySelector('.sort-indicator');
+                    if (indicator) indicator.textContent = '';
+                });
+
+                th.setAttribute('data-sort-dir', nextDirection);
+                th.setAttribute('aria-sort', nextDirection === 'asc' ? 'ascending' : 'descending');
+                th.classList.add(nextDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                var activeIndicator = th.querySelector('.sort-indicator');
+                if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
+
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort(function (a, b) {
+                    var aValue = valueFromRow(a, columnIndex, key);
+                    var bValue = valueFromRow(b, columnIndex, key);
+                    return compareValues(aValue, bValue, sortType) * directionMultiplier;
+                });
+
+                rows.forEach(function (row) { tbody.appendChild(row); });
+            }
+
+            th.addEventListener('click', sort);
+            th.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    sort();
+                }
+            });
+        });
+    });
+})();
+
 // Timezone detection — send browser IANA timezone to server session (once per session)
 (function () {
     try {

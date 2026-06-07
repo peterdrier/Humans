@@ -3,9 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -20,7 +18,6 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Humans.Application.Tests.Controllers;
@@ -28,11 +25,8 @@ namespace Humans.Application.Tests.Controllers;
 public class ProfileAdminControllerTests
 {
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
-    private readonly IAccountMergeService _accountMerge = Substitute.For<IAccountMergeService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
@@ -52,13 +46,9 @@ public class ProfileAdminControllerTests
         var c = new ProfileAdminController(
             _users,
             _emailProblems,
-            _accountMerge,
             _userEmails,
             _users,
-            _audit,
-            NullLogger<ProfileAdminController>.Instance,
-            _teamService,
-            _roleAssignmentService);
+            _audit);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
@@ -108,50 +98,6 @@ public class ProfileAdminControllerTests
         result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<EmailProblemsListViewModel>();
         await _emailProblems.Received(1).ScanAsync(Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Merge_TargetEqualsUser1_CallsAdminMergeWithUser2AsSource()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(true);
-
-        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: CancellationToken.None);
-
-        await _accountMerge.Received(1).AdminMergeAsync(u2, u1, _adminUserId, null, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblems));
-    }
-
-    [HumansFact]
-    public async Task Merge_TargetNotInPair_RedirectsToCompareWithError_NoMergeCall()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var stranger = Guid.NewGuid();
-
-        var result = await BuildController().Merge(u1, u2, targetUserId: stranger, notes: null, ct: CancellationToken.None);
-
-        await _accountMerge.DidNotReceive().AdminMergeAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblemsCompare));
-    }
-
-    [HumansFact]
-    public async Task Merge_UsersDoNotShareEmail_RedirectsToList_NoMergeCall()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: CancellationToken.None);
-
-        await _accountMerge.DidNotReceive().AdminMergeAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblems));
     }
 
     [HumansFact]

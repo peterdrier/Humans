@@ -84,6 +84,12 @@ export const loginAsCityPlanning = (page: Page) => loginAs(page, 'city-planning'
  */
 export const loginAsCoordinator = (page: Page) => loginAs(page, 'coordinator');
 
+export const loginAsEventsAdmin = (page: Page) => loginAs(page, 'events-admin');
+export const loginAsStoreAdmin = (page: Page) => loginAs(page, 'store-admin');
+export const loginAsCantinaAdmin = (page: Page) => loginAs(page, 'cantina-admin');
+export const loginAsEETeamAdmin = (page: Page) => loginAs(page, 'e-e-team-admin');
+export const loginAsBarrioLead = (page: Page) => loginAs(page, 'barrio-1-lead');
+
 /**
  * Extract an antiforgery token from the current page.
  * Requires the page to already be on an authenticated page (the layout includes

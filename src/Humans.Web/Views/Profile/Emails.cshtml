@@ -75,7 +75,6 @@
             </div>
         }
 
-        <vc:temp-data-alerts />
 
         @if (!Model.IsAdminContext && Model.Emails.Any(e => e.IsPendingVerification))
         {
@@ -731,7 +730,7 @@
         <div class="mt-4">
             @if (Model.IsAdminContext)
             {
-                <a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId" class="btn btn-outline-secondary">
+                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.TargetUserId" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left me-1"></i>
                     @Localizer["EmailGrid_BackToAdminDetail"]
                 </a>

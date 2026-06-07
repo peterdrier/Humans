@@ -27,7 +27,6 @@
         </div>
     </div>
 
-    <vc:temp-data-alerts />
 
     @* Build/Strike Staffing Chart *@
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "deptStaffingChart"))
@@ -212,6 +211,14 @@
                            asp-route-rotaId="@rota.Id"
                            title="@Localizer["EmailRota_Button"]">
                             <i class="fa-solid fa-envelope"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-controller="Shifts"
+                           asp-action="SummaryRota"
+                           asp-route-teamSlug="@Model.Department.Slug"
+                           asp-route-rotaGuid="@rota.Id"
+                           title="Shift summary by camp">
+                            <i class="fa-solid fa-campground"></i>
                         </a>
                         @if (Model.AllDepartments.Count > 0)
                         {
@@ -1052,6 +1059,9 @@
                 </p>
                 <a asp-action="EmailTeamRotas" asp-route-slug="@Model.Department.Slug" class="btn btn-outline-primary">
                     Compose&hellip;
+                </a>
+                <a asp-controller="Shifts" asp-action="SummaryTeam" asp-route-teamSlug="@Model.Department.Slug" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-campground"></i> Shift summary by camp
                 </a>
             </div>
         </div>

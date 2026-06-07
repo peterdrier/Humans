@@ -213,7 +213,7 @@ public sealed class MailerAdminController(
 
     private static string FormatMailerLiteError(HttpRequestException ex) => ex.StatusCode switch
     {
-        HttpStatusCode.Unauthorized => "MailerLite rejected the API key (401). Check MAILERLITE_API_KEY on /Admin/Configuration.",
+        HttpStatusCode.Unauthorized => "MailerLite rejected the API key (401). Check MAILERLITE_API_KEY on /Debug/Configuration.",
         HttpStatusCode.Forbidden => "MailerLite API key lacks required permissions (403).",
         HttpStatusCode.TooManyRequests => "MailerLite rate limit hit (429). Try again shortly.",
         null => $"MailerLite call failed before getting a response: {ex.Message}",

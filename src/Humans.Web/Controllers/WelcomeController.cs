@@ -11,9 +11,7 @@ public class WelcomeController : Controller
     {
         if (User.Identity?.IsAuthenticated ?? false)
         {
-            var isActive = User.HasClaim(
-                Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
+            var isActive = Authorization.RoleAssignmentClaimsTransformation.IsActive(User);
 
             if (isActive)
             {

@@ -71,6 +71,16 @@ public class Shift
     public static readonly LocalTime AllDayWindowEnd = new(18, 0);
 
     /// <summary>
+    /// Width of the all-day work block in hours (<see cref="AllDayWindowEnd"/> −
+    /// <see cref="AllDayWindowStart"/>, i.e. 10h). The effective worked hours for an
+    /// all-day shift, used in place of the don't-care stored <see cref="Duration"/>
+    /// (which holds a 24h sentinel for build/strike rows). See the note on
+    /// <see cref="IsAllDay"/>.
+    /// </summary>
+    public static double AllDayWindowHours =>
+        Duration.FromTicks(AllDayWindowEnd.TickOfDay - AllDayWindowStart.TickOfDay).TotalHours;
+
+    /// <summary>
     /// Whether this is an all-day shift (build/strike). When <c>true</c>,
     /// <see cref="StartTime"/> and <see cref="Duration"/> on this row are don't-care —
     /// the absolute start/end are computed from <see cref="AllDayWindowStart"/> /

@@ -4,8 +4,8 @@
     var s = Model.Summary;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Store summary</h1>
+<div class="page-head">
+    <h1 class="title">Store summary</h1>
     <form method="get" class="d-flex gap-2 align-items-center mb-0">
         <label for="year" class="form-label mb-0">Year</label>
         <input type="number" name="year" id="year" value="@s.Year"
@@ -14,7 +14,6 @@
     </form>
 </div>
 
-<vc:temp-data-alerts />
 
 @* =====================  By counterparty  ===================== *@
 <section class="card mb-4">
@@ -37,15 +36,15 @@
         }
         else
         {
-            <table class="table table-sm mb-0" id="by-camp-table">
+            <table class="table table-sm mb-0" id="by-camp-table" data-sortable-table>
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort-key="type" data-sort-type="text" role="button">Type <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable" data-sort-key="camp" data-sort-type="text" role="button">Counterparty <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable" data-sort-key="state" data-sort-type="text" role="button">State <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable text-end" data-sort-key="due" data-sort-type="number" role="button">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable text-end" data-sort-key="paid" data-sort-type="number" role="button">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="sortable text-end" data-sort-key="balance" data-sort-type="number" role="button">Balance (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th data-sort-key="type" data-sort-type="text">Type <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th data-sort-key="camp" data-sort-type="text">Counterparty <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th data-sort-key="state" data-sort-type="text">State <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="text-end" data-sort-key="due" data-sort-type="number">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="text-end" data-sort-key="paid" data-sort-type="number">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
+                        <th class="text-end" data-sort-key="balance" data-sort-type="number">Balance (€) <span class="sort-indicator" aria-hidden="true"></span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -196,35 +195,6 @@
                 });
             }
 
-            let sortKey = null;
-            let sortDir = 1;
-            table.querySelectorAll('th.sortable').forEach(th => {
-                th.addEventListener('click', function () {
-                    const key = th.dataset.sortKey;
-                    const type = th.dataset.sortType;
-                    if (sortKey === key) {
-                        sortDir = -sortDir;
-                    } else {
-                        sortKey = key;
-                        sortDir = 1;
-                    }
-                    table.querySelectorAll('th.sortable .sort-indicator').forEach(i => { i.textContent = ''; });
-                    th.querySelector('.sort-indicator').textContent = sortDir === 1 ? ' ▲' : ' ▼';
-                    const rows = Array.from(tbody.querySelectorAll('tr'));
-                    rows.sort(function (a, b) {
-                        const av = a.dataset[key] || '';
-                        const bv = b.dataset[key] || '';
-                        let cmp;
-                        if (type === 'number') {
-                            cmp = parseFloat(av) - parseFloat(bv);
-                        } else {
-                            cmp = av.localeCompare(bv);
-                        }
-                        return cmp * sortDir;
-                    });
-                    rows.forEach(r => tbody.appendChild(r));
-                });
-            });
         })();
     </script>
 }

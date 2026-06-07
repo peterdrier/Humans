@@ -14,7 +14,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
