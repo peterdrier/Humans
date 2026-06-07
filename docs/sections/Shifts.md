@@ -33,6 +33,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](Users.md)); Shifts may surface it as a derived view but does not write to it.
+- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagementService.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy.
 
 ## Data Model
 
@@ -176,6 +177,9 @@ Selected routes:
 | `GET /Shifts/Settings` | Admin: view event settings |
 | `POST /Shifts/Settings` | Admin: update event settings |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
+| `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
+| `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
+| `GET /Shifts/Summary/{teamSlug}/{rotaGuid:guid}` | Shift Summary scoped to a single rota |
 | `GET /Teams/{slug}/Shifts` | Coordinator: rota/shift admin |
 | `POST /Teams/{slug}/Shifts/Rotas` | Create rota |
 | `POST /Teams/{slug}/Shifts/Rotas/{rotaId}` | Edit rota |

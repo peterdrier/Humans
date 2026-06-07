@@ -202,7 +202,7 @@ See [Profiles — Account Deletion](02-profiles.md#account-deletion-right-to-era
 | Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 
-**Single-User Sync**: `SyncVolunteersMembershipForUserAsync(userId)` evaluates one user against the Volunteers team criteria and adds or removes them without affecting other members. This is the mechanism that makes volunteer onboarding feel immediate rather than waiting for a scheduled job.
+**Single-User Sync**: `SyncVolunteersMembershipForUserAsync(userId)` evaluates one user against the Volunteers team criteria and adds or removes them without affecting other members. After the name-only access switch the consent-submit and CC-clear paths no longer call it, so Volunteers admission is reconciled by the scheduled `SyncVolunteersTeamAsync` pass (eventually consistent); app access never depended on Volunteers membership. The per-user method remains available for lifecycle events that route through `SyncMembershipForUserAsync`.
 
 ---
 

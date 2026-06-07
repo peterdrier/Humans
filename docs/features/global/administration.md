@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
-  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
+  src/Humans.Web/Controllers/UsersAdminController.cs
   src/Humans.Web/Controllers/BoardController.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GoogleController.cs
@@ -150,12 +150,12 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 
 ### Admin dashboard and diagnostics
 
-`AdminController` owns only the shared dashboard. Legacy technical operations now live on `DebugController`; per-human purge lives on `ProfileController`.
+`AdminController` owns only the shared dashboard. Legacy technical operations now live on `DebugController`; per-human purge lives on `UsersAdminController`.
 
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Admin` | Index | Admin dashboard |
-| `/Profile/{id}/Admin/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production) |
+| `/Users/Admin/{id}/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production); on `UsersAdminController` |
 | `/Debug/Configuration` | Configuration | Configuration status page |
 | `/Debug/Logs` | Logs | View recent log entries |
 | `/Debug/DbStats` | DbStats | Database query statistics |
@@ -165,47 +165,42 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Debug/DbVersion` | DbVersion | Database migration version |
 | `/Debug/Maintenance/ClearHangfireLocks` | ClearHangfireLocks | POST: Admin-only lock cleanup |
 
-### AdminDuplicateAccountsController (`/Admin/DuplicateAccounts/`) — Admin only
+### UsersAdminAccountMergesController (`/Users/Admin/AccountMerges/`) — Admin only
 
-Duplicate account detection and resolution (added in Controller Consolidation PR).
-
-| Route | Action | Description |
-|-------|--------|-------------|
-| `/Admin/DuplicateAccounts` | Index | List duplicate account candidates |
-| `/Admin/DuplicateAccounts/Detail?userId1=&userId2=` | Detail | Review a specific duplicate candidate |
-
-### AdminMergeController (`/Admin/MergeRequests/`) — Admin only
+The single unified account-merge surface (PR #899 consolidation). It combines duplicate-account detection (`IDuplicateAccountService`, detection-only) and user-submitted merge requests (`IAccountMergeService`) into one queue. The old separate `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` screens (and their controllers) were deleted. Both `AccountMergeService` and `DuplicateAccountService` are now Users-section services.
 
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Admin/MergeRequests` | Index | List pending merge requests |
-| `/Admin/MergeRequests/{id}` | Detail | Merge request detail |
-| `/Admin/MergeRequests/{id}/Accept` | Accept | Accept a merge request |
-| `/Admin/MergeRequests/{id}/Reject` | Reject | Reject a merge request |
+| `/Users/Admin/AccountMerges` | Index | Unified queue of pending merge requests + detected duplicate pairs |
+| `/Users/Admin/AccountMerges/Merge` | Merge | POST: Merge an ad-hoc survivor/archived pair |
+| `/Users/Admin/AccountMerges/{requestId}/Merge` | MergeRequest | POST: Accept a merge request (admin picks survivor) |
+| `/Users/Admin/AccountMerges/{requestId}/Dismiss` | Dismiss | POST: Reject a merge request, no account changes |
+| `/Users/Admin/AccountMerges/{requestId}/Close` | Close | POST: Reconcile an orphan request whose accounts already merged |
 
 ## Dashboard Metrics
 
 ### AdminDashboardViewModel
 ```csharp
-public class AdminDashboardViewModel
-{
-    public int TotalMembers { get; set; }
-    public int ActiveMembers { get; set; }
-    public int PendingVolunteers { get; set; }
-    public int PendingApplications { get; set; }
-    public int PendingConsents { get; set; }
-    public List<RecentActivityViewModel> RecentActivity { get; set; }
-}
+public sealed record AdminDashboardViewModel(
+    string GreetingFirstName,
+    int TotalUsers,
+    int ActiveProfileUsers,
+    int TicketHolders,
+    int ShiftCoveragePercent,
+    int? ShiftFilledOf,
+    int? ShiftTotalOf,
+    int OpenFeedback,
+    int OnlineNow,
+    int OnlineLastHour,
+    int OnlineLast24h,
+    IReadOnlyList<DepartmentCoverage> StaffingByDepartment,
+    IReadOnlyList<DashboardActivityRow> RecentActivity,
+    DashboardApplicationStats AppStats,
+    IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
+    UserSetMembership SetMembership);
 ```
 
-### Dashboard Cards
-| Metric | Query | Color |
-|--------|-------|-------|
-| Total Members | `Users.Count()` | Default |
-| Active Members | `Profiles.Count(p => !p.IsSuspended)` | Green |
-| Pending Volunteers | `Profiles.Count(p => !p.IsApproved && !p.IsSuspended)` | Yellow (bordered) |
-| Pending Apps | `Applications.Count(Submitted)` | Yellow |
-| Pending Consents | `Users with missing consents` | Blue |
+`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackService`, recent audit rows from `IAuditViewerService`, and application/language/set-membership stats from `IAdminDashboardService` — not from direct table queries.
 
 ## Member Management
 

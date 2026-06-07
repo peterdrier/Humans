@@ -15,7 +15,7 @@
 
 ## Overview
 
-Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()` and used by the Board dashboard and Volunteers team sync. (The Admin /Humans list no longer uses this partition — it derives its own status buckets directly from `UserInfo`; see [Shared Logic](#shared-logic).)
+Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()` and used by the Admin dashboard. (Neither the Admin /Humans list nor the Volunteers team sync uses this partition any longer — the /Humans list derives its own status buckets directly from `UserInfo`, and after the name-only access switch `SystemTeamSyncJob` computes Volunteers eligibility itself from name + consents; see [Shared Logic](#shared-logic).)
 
 ## The 6 Buckets
 
@@ -50,10 +50,11 @@ Pending Deletion → (30 days) → Deleted
 
 `IMembershipCalculator.PartitionUsersAsync(userIds)` is the single source of truth for the consent-aware partition. Consumers:
 
-- **Board dashboard** — shows count per category
-- **SystemTeamSyncJob** — Volunteers team eligibility = `partition.Active`
+- **Admin dashboard** (`AdminDashboardService`) — shows count per category
 
-The **Admin /Humans list** does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Has Name** filter (`HasRequiredNameFields`) — the meaningful "active" signal now that every account carries a profile.
+`SystemTeamSyncJob` no longer consumes this partition. After the name-only access switch, `SyncVolunteersTeamAsync` computes Volunteers eligibility directly (`HasRequiredNameFields && !IsSuspended && RejectedAt is null`, then `GetUsersWithAllRequiredConsentsForTeamAsync`), without going through `PartitionUsersAsync`.
+
+The **Admin /Humans list** also does **not** use this partition. It derives its own status buckets directly from `UserInfo` flat predicates (`AdminHumanListAssembler`) — no consent lookup, so there is no Active/Missing-Consents split. It adds the tombstone buckets **Merged** (`MergedAt`) and **Deleted** (`IsTombstone`) plus a cross-cutting **Has Name** filter (`HasRequiredNameFields`) — the meaningful "active" signal now that every account carries a profile.
 
 ## Consent Check
 

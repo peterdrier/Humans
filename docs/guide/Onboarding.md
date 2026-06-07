@@ -24,7 +24,7 @@
 
 ## What this section is for
 
-Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers four things: creating your account, filling out your profile, consenting to the required legal documents, and being cleared by a [Consent Coordinator](Glossary.md#consent-coordinator). Entering your legal name sets `UserState == Active`, which opens the app. Completing consents and coordinator review determines Volunteers-system-team provisioning for Google Workspace.
+Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers four things: creating your account, filling out your profile, consenting to the required legal documents, and being reviewed by a [Consent Coordinator](Glossary.md#consent-coordinator). Entering your legal name sets `UserState == Active`, which opens the app. Your legal name plus all required consents determine Volunteers-system-team provisioning for Google Workspace; the coordinator review is a parallel audit track and does not gate provisioning.
 
 Onboarding is about Volunteer access only. Applying for **Colaborador** or **Asociado** is a separate tier application that runs in parallel through [Board](Glossary.md#board) voting — it never blocks your Volunteer access, and is covered in the Governance guide.
 
@@ -64,15 +64,15 @@ During this one-shot setup you also see a tier selector. Leave it on **Volunteer
 
 ### 3. Sign the required legal documents
 
-Visit `/Consent` and sign each required document. Signatures are append-only — they cannot be edited or deleted. Once every required document is signed, your **Coordinator review** task on the dashboard moves to pending and a Consent Coordinator is notified. The coordinator review and the legal-document signing run in parallel: a coordinator can clear (or flag) you before you finish signing every document — but you only enter the Volunteers team once both your profile is cleared and all required documents are signed.
+Visit `/Consent` and sign each required document. Signatures are append-only — they cannot be edited or deleted. Once every required document is signed, your **Coordinator review** task on the dashboard moves to pending and a Consent Coordinator is notified. The coordinator review and the legal-document signing run in parallel: the review is an audit track and does not gate Volunteers-team admission. You enter the Volunteers team once you have entered your legal name and signed all required documents.
 
 ### 4. Wait for your Coordinator review to clear
 
-A Consent Coordinator reviews your profile and either **clears** it or **flags** it. If they flag it, Volunteers-team provisioning is paused until the status is cleared or an admin rejects the signup.
+A Consent Coordinator reviews your profile and either **clears** it or **flags** it. Both are audit annotations: a flag does not pause your Volunteers-team provisioning or your app access. Only a rejected signup (which records a rejection timestamp) removes you from the Volunteers team.
 
 ### 5. Become an active Volunteer
 
-When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When your profile is cleared and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. If review flags your status, Board/Admin handles the review from `/OnboardingReview`; a rejected signup can also be handled from `/Users/Admin/{id}`.
+When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. If review flags your status, Board/Admin handles the review from `/OnboardingReview`; a rejected signup can also be handled from `/Users/Admin/{id}`.
 
 While you are still onboarding, you can reach your profile, consents, feedback, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
 

@@ -193,6 +193,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 |-------|---------|
 | `/Shifts` | Browse all shifts (filtered by department, date range, period, tags) |
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
+| `/Shifts/Summary[/{teamSlug}[/{rotaGuid}]]` | Read-only Shift Summary by Camp — confirmed-hour/count totals per human and per camp, at global / team-set / single-rota scope (`ShiftDepartmentManager` policy) |
 | `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
 | `/Shifts/Settings` | Admin: manage EventSettings |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |

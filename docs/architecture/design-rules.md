@@ -251,8 +251,8 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
-| **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests` |
-| **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations` |
+| **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
+| **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`, `account_merge_requests` |
 | **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
@@ -282,7 +282,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 **`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 
-**Admin is not a section.** The `/Admin/*` controllers are a nav holder for admin-only actions that live in other sections (outbox pause in Email, suspend/merge/purge in Profiles, sync settings in Google Integration, role assignments in Auth, legal-doc management in Legal & Consent). Services referenced from `AdminController` belong to their owning section, not to Admin.
+**Admin is not a section.** The `/Admin/*` controllers are a nav holder for admin-only actions that live in other sections (outbox pause in Email, suspend/purge in Profiles, account merge in Users, sync settings in Google Integration, role assignments in Auth, legal-doc management in Legal & Consent). Services referenced from `AdminController` belong to their owning section, not to Admin.
 
 See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full directed dependency graph with current vs target edges and circular dependency analysis.
 
