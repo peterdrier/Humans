@@ -1,4 +1,5 @@
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -14,7 +15,24 @@ public sealed record UserProfileOnboardingCommand(
     string? Notes = null,
     string? RejectionReason = null,
     bool? Suspended = null,
-    bool AdminSuspension = false);
+    bool AdminSuspension = false)
+{
+    public void Validate(string argumentName = "command")
+    {
+        switch (Mutation)
+        {
+            case UserProfileOnboardingMutation.RecordConsentCheck
+                when ConsentCheckStatus is not Humans.Domain.Enums.ConsentCheckStatus.Cleared
+                    and not Humans.Domain.Enums.ConsentCheckStatus.Flagged:
+                throw new ArgumentException(
+                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
+                    argumentName);
+
+            case UserProfileOnboardingMutation.SetSuspension when Suspended is null:
+                throw new ArgumentException("SetSuspension requires Suspended.", argumentName);
+        }
+    }
+}
 
 public enum UserProfileOnboardingMutation
 {
@@ -50,7 +68,46 @@ public sealed record UserProfileSaveCommand(
     // medical are written separately via UserProfileDietaryMedicalCommand.
     string? DietaryPreference = null,
     List<string>? Allergies = null,
-    string? AllergyOtherText = null);
+    string? AllergyOtherText = null)
+{
+    public string? BioForSave() => Bio?.TrimEnd();
+
+    public string? ContributionInterestsForSave() => ContributionInterests?.TrimEnd();
+
+    public string? BoardNotesForSave() => BoardNotes?.TrimEnd();
+
+    public bool HasDietaryPatch() =>
+        DietaryPreference is not null || Allergies is not null || AllergyOtherText is not null;
+
+    public string? DietaryPreferenceForSave() =>
+        string.IsNullOrWhiteSpace(DietaryPreference) ? null : DietaryPreference;
+
+    public IReadOnlyList<string> AllergiesForSave() => Allergies ?? [];
+
+    public LocalDate? BirthDateOrNull()
+    {
+        if (BirthdayMonth is not (>= 1 and <= 12) || BirthdayDay is not (>= 1 and <= 31))
+            return null;
+
+        try
+        {
+            // Year 4 lets Feb 29 validate without storing a real birth year.
+            return new LocalDate(4, BirthdayMonth.Value, BirthdayDay.Value);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    public string? ProfilePictureContentTypeForSave(string? currentContentType) =>
+        PictureMutation switch
+        {
+            UserProfilePictureMutation.Remove => null,
+            UserProfilePictureMutation.Set => ProfilePictureContentType,
+            _ => currentContentType,
+        };
+}
 
 /// <summary>
 /// Focused write for the full dietary + medical set (the DietaryMedical page).

@@ -373,7 +373,7 @@ public sealed class UserService(
         UserProfileOnboardingCommand command,
         CancellationToken ct = default)
     {
-        ValidateProfileOnboardingCommand(command);
+        command.Validate();
 
         var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
@@ -451,10 +451,10 @@ public sealed class UserService(
             profile.Latitude = command.Latitude;
             profile.Longitude = command.Longitude;
             profile.PlaceId = command.PlaceId;
-            profile.Bio = command.Bio?.TrimEnd();
+            profile.Bio = command.BioForSave();
             profile.Pronouns = command.Pronouns;
-            profile.ContributionInterests = command.ContributionInterests?.TrimEnd();
-            profile.BoardNotes = command.BoardNotes?.TrimEnd();
+            profile.ContributionInterests = command.ContributionInterestsForSave();
+            profile.BoardNotes = command.BoardNotesForSave();
             profile.EmergencyContactName = command.EmergencyContactName;
             profile.EmergencyContactPhone = command.EmergencyContactPhone;
             profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
@@ -463,38 +463,16 @@ public sealed class UserService(
             // Edit page owns meal preference + allergies (not intolerances/medical —
             // those are written via SaveDietaryMedicalAsync). Only touch these when
             // the command carries them, so a non-dietary save path can't clobber.
-            if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
+            if (command.HasDietaryPatch())
             {
-                profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
-                profile.Allergies = command.Allergies ?? [];
+                profile.DietaryPreference = command.DietaryPreferenceForSave();
+                profile.Allergies = command.AllergiesForSave().ToList();
                 profile.AllergyOtherText = command.AllergyOtherText;
             }
 
             profile.UpdatedAt = now;
-
-            // LocalDate year=4 lets Feb 29 validate.
-            if (command.BirthdayMonth is >= 1 and <= 12 && command.BirthdayDay is >= 1 and <= 31)
-            {
-                try
-                {
-                    profile.DateOfBirth = new LocalDate(4, command.BirthdayMonth.Value, command.BirthdayDay.Value);
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    profile.DateOfBirth = null;
-                }
-            }
-            else
-            {
-                profile.DateOfBirth = null;
-            }
-
-            profile.ProfilePictureContentType = command.PictureMutation switch
-            {
-                UserProfilePictureMutation.Remove => null,
-                UserProfilePictureMutation.Set => command.ProfilePictureContentType,
-                _ => profile.ProfilePictureContentType,
-            };
+            profile.DateOfBirth = command.BirthDateOrNull();
+            profile.ProfilePictureContentType = command.ProfilePictureContentTypeForSave(profile.ProfilePictureContentType);
 
             // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
             if (!IsSuspendedState(profile.State))
@@ -1263,21 +1241,6 @@ public sealed class UserService(
 
     private static bool IsSuspendedState(ProfileState? state) =>
         state is ProfileState.Suspended or ProfileState.AdminSuspended;
-
-    private static void ValidateProfileOnboardingCommand(UserProfileOnboardingCommand command)
-    {
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck
-                when command.ConsentCheckStatus is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged:
-                throw new ArgumentException(
-                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
-                    nameof(command));
-
-            case UserProfileOnboardingMutation.SetSuspension when command.Suspended is null:
-                throw new ArgumentException("SetSuspension requires Suspended.", nameof(command));
-        }
-    }
 
     private static string? GetAlternateEmail(string normalizedEmail)
     {
