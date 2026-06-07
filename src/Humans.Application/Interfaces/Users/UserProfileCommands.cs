@@ -1,3 +1,4 @@
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -121,7 +122,19 @@ public sealed record UserProfileDietaryMedicalCommand(
     string? AllergyOtherText,
     List<string> Intolerances,
     string? IntoleranceOtherText,
-    string? MedicalConditions);
+    string? MedicalConditions)
+{
+    public void ApplyTo(Profile profile, Instant updatedAt)
+    {
+        profile.DietaryPreference = DietaryPreference;
+        profile.Allergies = Allergies;
+        profile.AllergyOtherText = AllergyOtherText;
+        profile.Intolerances = Intolerances;
+        profile.IntoleranceOtherText = IntoleranceOtherText;
+        profile.MedicalConditions = MedicalConditions;
+        profile.UpdatedAt = updatedAt;
+    }
+}
 
 public enum UserProfilePictureMutation
 {

@@ -519,13 +519,7 @@ public sealed class UserService(
                 await repo.AddAsync(profile, ct);
             }
 
-            profile.DietaryPreference = command.DietaryPreference;
-            profile.Allergies = command.Allergies;
-            profile.AllergyOtherText = command.AllergyOtherText;
-            profile.Intolerances = command.Intolerances;
-            profile.IntoleranceOtherText = command.IntoleranceOtherText;
-            profile.MedicalConditions = command.MedicalConditions;
-            profile.UpdatedAt = now;
+            command.ApplyTo(profile, now);
 
             await repo.UpdateAsync(profile, ct);
         }
