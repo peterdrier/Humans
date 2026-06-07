@@ -336,6 +336,24 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsFailure_AndKeepsAmount_ForTravelLine()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m);
+        var line = (await _sut.GetAsync(id))!.Lines[0];
+        var originalAmount = line.Amount;
+
+        // Editing a computed travel line would bypass the receipt waiver — must be rejected.
+        var result = await _sut.UpdateLineWithResultAsync(id, submitter, line.Id, "hand-edited", 9999m);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Travel lines");
+        (await _sut.GetAsync(id))!.Lines[0].Amount.Should().Be(originalAmount);
+    }
+
+    [HumansFact]
     public async Task AttachFileToLineAsync_StoresFile_CreatesRow_LinksLine_Audits()
     {
         var (_, category) = SetupActiveYear();

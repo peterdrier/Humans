@@ -133,7 +133,7 @@
                     <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
                 }
 
-                @if (Model.CanEditLines)
+                @if (Model.CanEditLines && line.LineType == ExpenseLineType.Receipt)
                 {
                     <details class="mt-2">
                         <summary class="text-muted small" style="cursor:pointer;">Edit description / amount</summary>

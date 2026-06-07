@@ -328,6 +328,16 @@ public sealed class ExpenseReportService(
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
+        var existing = report.Lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        // Travel lines carry computed amounts (mileage km×rate, per-diem days×rate) and waive the
+        // receipt requirement on that basis. A free-text amount/description edit here would let a
+        // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
+        // remove it and re-add so the amount is always recomputed from its inputs.
+        if (existing.LineType != ExpenseLineType.Receipt)
+            throw new InvalidOperationException(
+                "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
+
         var line = new ExpenseLine
         {
             Id = lineId,
