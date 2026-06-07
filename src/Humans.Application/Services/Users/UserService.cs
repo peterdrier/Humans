@@ -626,14 +626,14 @@ public sealed class UserService(
         UserEmailAddCommand command,
         CancellationToken ct = default)
     {
-        var email = command.Email.Trim();
-        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-        var alternateEmail = GetAlternateEmail(normalizedEmail);
-
+        var email = command.EmailForStorage;
         if (!new EmailAddressAttribute().IsValid(email))
             throw new ValidationException("Please enter a valid email address.");
 
-        var existing = await repo.FindUserEmailByNormalizedEmailAsync(normalizedEmail, alternateEmail, ct);
+        var existing = await repo.FindUserEmailByNormalizedEmailAsync(
+            command.NormalizedEmail,
+            command.AlternateNormalizedEmail,
+            ct);
         if (existing is not null && existing.UserId == userId)
         {
             if (command.IgnoreExisting)
@@ -648,21 +648,7 @@ public sealed class UserService(
             ?? throw new InvalidOperationException("User not found.");
 
         var now = clock.GetCurrentInstant();
-        var row = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = email,
-            IsVerified = command.IsVerified,
-            IsPrimary = false,
-            IsGoogle = false,
-            Visibility = command.Visibility,
-            Provider = command.Provider,
-            ProviderKey = command.ProviderKey,
-            VerificationSentAt = command.VerificationSentAt,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var row = command.ToRow(userId, now);
 
         await AddRowWithInvariantsAsync(row, ct);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
@@ -778,10 +764,7 @@ public sealed class UserService(
             rowToInsert: command.RowToInsert,
             ct);
 
-        var mutatedUserIds = new HashSet<Guid> { userId };
-        if (command.DisplacedRowToDelete is not null)
-            mutatedUserIds.Add(command.DisplacedRowToDelete.UserId);
-
+        var mutatedUserIds = command.MutatedUserIds(userId);
         foreach (var mutatedUserId in mutatedUserIds)
         {
             await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
