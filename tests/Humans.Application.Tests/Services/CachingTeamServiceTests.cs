@@ -464,6 +464,25 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         info.PendingRequestCount.Should().Be(2);
     }
 
+    [HumansFact]
+    public async Task SearchAsync_ServesFromCache_MatchesByName_ExcludesHidden()
+    {
+        SeedTeam("Kitchen");
+        var hidden = SeedTeam("Kitchenette");
+        hidden.IsHidden = true;
+        SeedTeam("Gate");
+        await Db.SaveChangesAsync();
+
+        var results = await _service.SearchAsync("kitchen", int.MaxValue);
+
+        // Cache-served name match: case-insensitive, hidden teams excluded, non-matches dropped.
+        results.Select(r => r.Name).Should().ContainSingle().Which.Should().Be("Kitchen");
+
+        // Search must never reach the inner (DB-backed) service.
+        await _innerTeamService.DidNotReceive().SearchAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
     private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId)
     {
         var request = new TeamJoinRequest

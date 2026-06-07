@@ -2023,12 +2023,14 @@ public class ProfileController(
         }
 
         // PublicAll = name + bio + public ContactFields. Admin bit gated by code review.
+        // Uncapped: return the full match set so relevance ranking surfaces the right person
+        // (a hard cap returned an arbitrary subset before sorting). Cheap at ~500 users.
         var results = await _userService.SearchUsersAsync(
-            q!, PersonSearchFields.PublicAll, limit: 50, ct);
+            q!, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
 
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
-            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .OrderByRelevance()
             .Select(r => r.ToHumanSearchViewModel())
             .ToList();
 

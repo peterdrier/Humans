@@ -720,6 +720,23 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task SearchUsersAsync_ScoresExactNameAboveSubstringMatch()
+    {
+        // End-to-end wiring: the matcher's relevance Score must flow through the service onto each
+        // HumanSearchResult so controllers can rank "Ian" (exact) above "Brian" (substring).
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Ian"));
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Brian"));
+
+        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll);
+
+        results.Should().HaveCount(2);
+        results.Single(r => string.Equals(r.BurnerName, "Ian", StringComparison.Ordinal)).Score
+            .Should().BeGreaterThan(
+                results.Single(r => string.Equals(r.BurnerName, "Brian", StringComparison.Ordinal)).Score);
+    }
+
+    [HumansFact]
     public async Task SearchUsersAsync_PublicAll_MatchesByCity()
     {
         var sut = CreateSut();

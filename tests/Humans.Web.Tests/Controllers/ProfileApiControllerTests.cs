@@ -97,7 +97,8 @@ public class ProfileApiControllerTests
         return ctrl;
     }
 
-    private static HumanSearchResult MakeSearchResult(Guid userId, Guid profileId, string burnerName) =>
+    private static HumanSearchResult MakeSearchResult(
+        Guid userId, Guid profileId, string burnerName, int score = 0) =>
         new(
             UserId: userId,
             ProfileId: profileId,
@@ -105,7 +106,8 @@ public class ProfileApiControllerTests
             ProfilePictureUrl: null,
             MatchField: "Name",
             MatchSnippet: null,
-            MatchedEmail: null);
+            MatchedEmail: null,
+            Score: score);
 
     private static User MakeUser(Guid id) =>
         new() { Id = id, Email = $"viewer-{id:N}@example.com", DisplayName = "Viewer" };
@@ -312,6 +314,43 @@ public class ProfileApiControllerTests
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
         row.Detail.Should().Be("Discord user#1234");
+    }
+
+    [HumansFact]
+    public async Task Search_orders_results_by_relevance_score_then_name()
+    {
+        // The reported bug: searching "Ian" buried the literal Ian (exact match) a third of the way
+        // down an alphabetical list of substring hits (Adrian, Brian…). The service returns matches
+        // unordered; the controller must rank by Score desc, then name. Service order here is
+        // deliberately scrambled to prove the controller does the sorting.
+        var viewer = MakeUser(Guid.NewGuid());
+        var brian = Guid.NewGuid();
+        var ian = Guid.NewGuid();
+        var adrian = Guid.NewGuid();
+
+        _userService.SearchUsersAsync(Arg.Any<string>(),
+                Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([
+                MakeSearchResult(brian, Guid.NewGuid(), "Brian", score: 60),
+                MakeSearchResult(ian, Guid.NewGuid(), "Ian", score: 100),
+                MakeSearchResult(adrian, Guid.NewGuid(), "Adrian", score: 60),
+            ]);
+
+        _contactFieldService.GetViewerAccessLevelAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
+        _userEmailService.GetVisibleEmailsAsync(Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        _contactFieldService.GetVisibleContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var sut = BuildSut(viewer);
+
+        var result = await sut.Search(q: "Ian");
+
+        var rows = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.ToList();
+        // Ian (100) first; the two 60s follow alphabetically.
+        rows.Select(r => r.DisplayName).Should().Equal("Ian", "Adrian", "Brian");
     }
 
     // ==========================================================================

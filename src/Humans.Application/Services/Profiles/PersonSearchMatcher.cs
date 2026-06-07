@@ -4,8 +4,12 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Services.Profiles;
 
-/// <summary>Result of a single person-search match: which field hit, plus optional snippet/email for display.</summary>
-public sealed record PersonSearchMatch(string Field, string? Snippet, string? MatchedEmail);
+/// <summary>
+/// Result of a single person-search match: which field hit, plus optional snippet/email for display
+/// and a relevance <paramref name="Score"/> (higher = better) so controllers can rank results by
+/// match quality instead of alphabetically. See <see cref="PersonSearchMatcher"/> for the tiers.
+/// </summary>
+public sealed record PersonSearchMatch(string Field, string? Snippet, string? MatchedEmail, int Score);
 
 /// <summary>
 /// Pure, scope-confined matcher for person search. Operates on the cached <see cref="UserInfo"/>
@@ -17,6 +21,15 @@ public sealed record PersonSearchMatch(string Field, string? Snippet, string? Ma
 /// </summary>
 public static class PersonSearchMatcher
 {
+    // Relevance tiers (higher = better). Name matches always outrank non-name (bio/city/email)
+    // matches, and within a name the order is exact > whole-string-prefix > token-prefix > contains.
+    // This is what floats the literal "Ian" above "Adrian"/"Brian" instead of alphabetizing them.
+    private const int ScoreExactName = 100;
+    private const int ScorePrefixName = 85;
+    private const int ScoreTokenPrefixName = 80;
+    private const int ScoreContainsName = 60;
+    private const int ScoreOtherField = 40;
+
     /// <summary>Returns the first bucket that matches <paramref name="query"/>, or null if none do.</summary>
     public static PersonSearchMatch? Match(UserInfo user, string query, PersonSearchFields fields)
     {
@@ -47,42 +60,43 @@ public static class PersonSearchMatcher
 
         // ── Exact-name bucket: resolved display name, folded full-string equality (not substring/token). Public. ──
         if (includeExactName && string.Equals(Fold(user.BurnerName), foldedQuery, StringComparison.Ordinal))
-            return new PersonSearchMatch("Exact Name", null, null);
+            return new PersonSearchMatch("Exact Name", null, null, ScoreExactName);
 
         // ── Name bucket: resolved display name (BurnerName → DisplayName fallback). Public. ──
         if (includeName && AllTokensIn(user.BurnerName, tokens))
-            return new PersonSearchMatch("Name", null, null);
+            return new PersonSearchMatch("Name", null, null, ScoreNameTier(Fold(user.BurnerName), foldedQuery));
 
         // ── Legal name: FirstName/LastName. Admin/coordinator only — never public. ──
         if (includeLegal && AllTokensIn($"{p.FirstName} {p.LastName}", tokens))
-            return new PersonSearchMatch("Legal Name", null, null);
+            return new PersonSearchMatch(
+                "Legal Name", null, null, ScoreNameTier(Fold($"{p.FirstName} {p.LastName}"), foldedQuery));
 
         // ── Bio bucket: public long-form + CV + AllActiveProfiles ContactFields + publicly-exposed emails. ──
         if (includeBio)
         {
             if (FoldedContains(p.City, foldedQuery))
-                return new PersonSearchMatch("City", p.City, null);
+                return new PersonSearchMatch("City", p.City, null, ScoreOtherField);
 
             if (FoldedContains(p.ContributionInterests, foldedQuery))
-                return new PersonSearchMatch("Interests", Snippet(p.ContributionInterests, q), null);
+                return new PersonSearchMatch("Interests", Snippet(p.ContributionInterests, q), null, ScoreOtherField);
 
             if (FoldedContains(p.Bio, foldedQuery))
-                return new PersonSearchMatch("Bio", Snippet(p.Bio, q), null);
+                return new PersonSearchMatch("Bio", Snippet(p.Bio, q), null, ScoreOtherField);
 
             if (FoldedContains(p.Pronouns, foldedQuery))
-                return new PersonSearchMatch("Pronouns", p.Pronouns, null);
+                return new PersonSearchMatch("Pronouns", p.Pronouns, null, ScoreOtherField);
 
             foreach (var v in p.VolunteerHistory)
             {
                 if (FoldedContains(v.EventName, foldedQuery) || FoldedContains(v.Description, foldedQuery))
-                    return new PersonSearchMatch("Burner CV", v.EventName, null);
+                    return new PersonSearchMatch("Burner CV", v.EventName, null, ScoreOtherField);
             }
 
             foreach (var cf in p.ContactFields)
             {
                 if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles &&
                     FoldedContains(cf.Value, foldedQuery))
-                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, null);
+                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, null, ScoreOtherField);
             }
 
             foreach (var email in user.UserEmails)
@@ -90,7 +104,7 @@ public static class PersonSearchMatcher
                 if (email.IsVerified &&
                     email.Visibility == ContactFieldVisibility.AllActiveProfiles &&
                     FoldedContains(email.Email, foldedQuery))
-                    return new PersonSearchMatch("Email", null, email.Email);
+                    return new PersonSearchMatch("Email", null, email.Email, ScoreOtherField);
             }
         }
 
@@ -100,7 +114,7 @@ public static class PersonSearchMatcher
             foreach (var email in user.AllVerifiedEmails)
             {
                 if (FoldedContains(email, foldedQuery))
-                    return new PersonSearchMatch("Email", null, email);
+                    return new PersonSearchMatch("Email", null, email, ScoreOtherField);
             }
 
             foreach (var cf in p.ContactFields)
@@ -109,7 +123,7 @@ public static class PersonSearchMatcher
                 if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles)
                     continue;
                 if (FoldedContains(cf.Value, foldedQuery))
-                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, cf.Value);
+                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, cf.Value, ScoreOtherField);
             }
         }
 
@@ -159,6 +173,26 @@ public static class PersonSearchMatcher
     /// <summary>Folds the query and splits on whitespace into non-empty tokens.</summary>
     private static string[] FoldTokens(string query) =>
         Fold(query).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>
+    /// Ranks an already-matched name: exact &gt; whole-string-prefix &gt; token-prefix &gt; contains.
+    /// Both arguments are pre-folded. The caller has already confirmed a match, so the floor is
+    /// <see cref="ScoreContainsName"/> (covers token-substring/multi-token hits that aren't a prefix).
+    /// </summary>
+    private static int ScoreNameTier(string foldedName, string foldedQuery)
+    {
+        if (string.Equals(foldedName, foldedQuery, StringComparison.Ordinal))
+            return ScoreExactName;
+        if (foldedName.StartsWith(foldedQuery, StringComparison.Ordinal))
+            return ScorePrefixName;
+        foreach (var token in foldedName.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (token.StartsWith(foldedQuery, StringComparison.Ordinal))
+                return ScoreTokenPrefixName;
+        }
+
+        return ScoreContainsName;
+    }
 
     /// <summary>True when every token is a substring of the folded haystack (order-independent).</summary>
     private static bool AllTokensIn(string? haystack, string[] foldedTokens)

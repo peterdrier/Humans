@@ -26,6 +26,12 @@ namespace Humans.Application.DTOs;
 /// <c>PersonSearchFields.Admin</c> bit. Always <c>null</c> for
 /// non-admin callers — services are auth-free, but never leak admin-bit
 /// content into the basic shape.</param>
+/// <param name="Score">Relevance score (higher = better) from
+/// <c>PersonSearchMatcher</c>: exact name &gt; prefix &gt; token-prefix &gt;
+/// contains &gt; non-name field. The service returns matches unordered
+/// (per <c>memory/architecture/person-search.md</c>); controllers/views sort
+/// by this via <c>OrderByRelevance()</c> so the best name match surfaces first
+/// instead of an alphabetical list.</param>
 public record HumanSearchResult(
     Guid UserId,
     Guid ProfileId,
@@ -33,4 +39,5 @@ public record HumanSearchResult(
     string? ProfilePictureUrl,
     string? MatchField,
     string? MatchSnippet,
-    string? MatchedEmail);
+    string? MatchedEmail,
+    int Score);

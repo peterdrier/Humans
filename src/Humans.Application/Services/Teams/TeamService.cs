@@ -175,22 +175,16 @@ public sealed class TeamService(
         return teams.ToList();
     }
 
-    public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+    // Team search is served from the cached TeamInfo snapshot in CachingTeamService — it must
+    // never hit the DB. Reaching the inner service means a DI mistake. Mirrors
+    // UserService.SearchUsersAsync (search is cache-only; there is no repository search).
+    public Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
-        CancellationToken cancellationToken = default)
-    {
-        if (Guid.TryParse(query, out var id))
-        {
-            var team = await repo.GetByIdAsync(id, cancellationToken);
-            return team is null ? [] : [new TeamSearchHit(team.Name, team.Slug)];
-        }
-
-        var teams = await repo.SearchAsync(
-            query, includeHidden: false, max, cancellationToken);
-        return teams
-            .Select(t => new TeamSearchHit(t.Name, t.Slug))
-            .ToList();
-    }
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Team search runs against the cached TeamInfo snapshot in CachingTeamService. " +
+            "If this is being called on the inner TeamService it indicates a DI registration " +
+            "mistake — ITeamServiceRead must resolve to the caching decorator.");
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)

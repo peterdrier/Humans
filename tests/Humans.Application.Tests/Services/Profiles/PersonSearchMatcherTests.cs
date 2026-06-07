@@ -159,6 +159,48 @@ public class PersonSearchMatcherTests
         PersonSearchMatcher.Match(human, query, PersonSearchFields.Name).Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [InlineData("joel", "Joël")]   // unaccented query finds accented name
+    [InlineData("Joël", "joel")]   // accented query finds unaccented name
+    public void Name_match_finds_accented_and_unaccented_joel(string query, string burnerName)
+    {
+        var human = Human(burnerName: burnerName);
+
+        PersonSearchMatcher.Match(human, query, PersonSearchFields.Name).Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("Ian", 100)]         // exact
+    [InlineData("Ian Smith", 85)]    // whole-string prefix
+    [InlineData("Bob Ian", 80)]      // token prefix
+    [InlineData("Brian", 60)]        // substring only
+    public void Name_match_score_reflects_match_quality(string burnerName, int expectedScore)
+    {
+        // This ranking is what floats the literal "Ian" above "Adrian"/"Brian" instead of
+        // alphabetizing them. Controllers sort by Score; the matcher assigns it.
+        var human = Human(burnerName: burnerName);
+
+        var match = PersonSearchMatcher.Match(human, "ian", PersonSearchFields.Name);
+
+        match.Should().NotBeNull();
+        match!.Score.Should().Be(expectedScore);
+    }
+
+    [HumansFact]
+    public void Name_match_outscores_non_name_field_match()
+    {
+        // Someone named "Ian" must rank above someone whose bio merely mentions "Ian".
+        var named = Human(burnerName: "Ian");
+        var bioOnly = Human(burnerName: "Zara", bio: "I volunteered with Ian last year");
+
+        var namedMatch = PersonSearchMatcher.Match(named, "ian", PersonSearchFields.PublicAll);
+        var bioMatch = PersonSearchMatcher.Match(bioOnly, "ian", PersonSearchFields.PublicAll);
+
+        namedMatch.Should().NotBeNull();
+        bioMatch.Should().NotBeNull();
+        namedMatch!.Score.Should().BeGreaterThan(bioMatch!.Score);
+    }
+
     [HumansFact]
     public void Legal_name_matches_under_LegalName_scope_but_not_public()
     {

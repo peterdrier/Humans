@@ -90,45 +90,6 @@ internal sealed partial class CampRepository : ICampRepository
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
 
-    // Contains() → IN clause (enum stored as string; see no-enum-compare-in-ef).
-    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses = [CampSeasonStatus.Active, CampSeasonStatus.Full
-    ];
-
-    public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
-        string query, int year, bool onlyPublicStatus, int max,
-        CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return [];
-
-        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var baseQuery = ctx.Camps
-            .AsNoTracking()
-            .Include(c => c.Seasons.Where(s => s.Year == year));
-
-        // Name-match and public-status MUST bind to the same season row —
-        // splitting across two .Where(.Any(...)) lets different seasons satisfy each.
-        IQueryable<Camp> q = onlyPublicStatus
-            ? baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
-                && EF.Functions.ILike(s.Name, pattern, "\\")
-                && PublicCampSeasonStatuses.Contains(s.Status)))
-            : baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
-                && EF.Functions.ILike(s.Name, pattern, "\\")));
-
-        return await q
-            .OrderBy(c => c.Slug) // arch:db-sort-ok — orchestrator re-ranks by score
-            .Take(max)
-            .ToListAsync(ct);
-    }
-
-    private static string EscapeLikePattern(string value)
-        => value
-            .Replace("\\", "\\\\")
-            .Replace("%", "\\%")
-            .Replace("_", "\\_");
-
     // Writes — Camp (aggregate)
 
     public async Task CreateCampAsync(

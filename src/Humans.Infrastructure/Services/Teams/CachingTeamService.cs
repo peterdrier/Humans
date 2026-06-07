@@ -101,10 +101,35 @@ public sealed class CachingTeamService(
     public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetAllTeamsAsync(cancellationToken));
 
-    public Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+    public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Served entirely from the cached TeamInfo snapshot — search must never hit the DB
+        // (mirrors CachingUserService.SearchUsersAsync; the inner service + repo search are gone).
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return [];
+
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+
+        // GUID paste → jump straight to that team (any visibility), mirroring the old by-id path.
+        if (Guid.TryParse(query, out var id))
+        {
+            return teamsById.TryGetValue(id, out var byId)
+                ? [new TeamSearchHit(byId.Name, byId.Slug)]
+                : [];
+        }
+
+        // Name match, active + non-hidden (what the DB ILike filtered). Case-insensitive contains.
+        var trimmed = query.Trim();
+        return teamsById.Values
+            .Where(t => t.IsActive && !t.IsHidden
+                && t.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(max)
+            .Select(t => new TeamSearchHit(t.Name, t.Slug))
+            .ToList();
+    }
 
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,

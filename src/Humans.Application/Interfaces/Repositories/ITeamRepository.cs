@@ -98,16 +98,6 @@ public interface ITeamRepository : IRepository
         int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Active teams whose <c>Name</c> contains <paramref name="query"/>
-    /// (case-insensitive, Postgres ILike). When
-    /// <paramref name="includeHidden"/> is false, hidden teams are
-    /// filtered at the DB layer. Capped at <paramref name="max"/>;
-    /// ordering is unspecified (caller ranks). Read-only, no navs.
-    /// </summary>
-    Task<IReadOnlyList<Team>> SearchAsync(
-        string query, bool includeHidden, int max, CancellationToken ct = default);
-
-    /// <summary>
     /// Load the requested team ids plus any referenced parent teams that
     /// aren't already in the requested set. Used by the shift coordinator
     /// dashboard for department-stitching without cross-domain

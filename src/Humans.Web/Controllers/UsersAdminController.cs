@@ -390,8 +390,10 @@ public sealed class UsersAdminController(
         IReadOnlySet<Guid>? searchUserIds = null;
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // Uncapped: used as a match set to filter the admin list (ordering is the table's own),
+            // so a hard cap would silently drop matching humans. Cheap at ~500 users.
             var searchResults = await _userService.SearchUsersAsync(
-                search, PersonSearchFields.AdminAll, limit: 500, ct);
+                search, PersonSearchFields.AdminAll, limit: int.MaxValue, ct);
 
             var byEmail = allUsers
                 .Where(u =>

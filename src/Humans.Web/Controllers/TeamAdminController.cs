@@ -321,8 +321,10 @@ public class TeamAdminController(
         }
 
         // Name-only — team admins are not global admins, so no contact-data search.
+        // Uncapped + relevance-ranked: a hard cap returned an arbitrary subset (the target could be
+        // missing) alphabetized; now the best name match leads the scrollable picker.
         var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: 50);
+            q, PersonSearchFields.Name, limit: int.MaxValue);
 
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
@@ -330,8 +332,7 @@ public class TeamAdminController(
         // Display sort at controller (memory/architecture/display-sort-in-controllers.md).
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
-            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
-            .Take(10)
+            .OrderByRelevance()
             .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName))
             .ToList();
 
@@ -1138,20 +1139,25 @@ public class TeamAdminController(
             .Select(m => m.UserId)
             .ToHashSet();
 
+        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
+        // Uncapped folded name search over everyone (accent/case-insensitive); relevance-ranked.
+        var allResults = await _userService.SearchUsersAsync(
+            q, PersonSearchFields.Name, limit: int.MaxValue);
+        var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
+
+        // Team members first: matched by folded name (via the search above, so "joel" finds "Joël")
+        // OR by email — team admins may know their own members' emails, which the global name-only
+        // search deliberately won't surface for privacy.
         var matchingTeamMembers = teamMembers
-            .Where(m => m.DisplayName.ContainsOrdinalIgnoreCase(q) ||
+            .Where(m => nameMatchIds.Contains(m.UserId) ||
                         (m.Email?.ContainsOrdinalIgnoreCase(q) ?? false))
-            .Take(10)
+            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Select(m => new RoleAssignmentSearchResult(m.UserId, m.DisplayName, m.Email ?? "", true))
             .ToList();
 
-        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
-        var allResults = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: 50);
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))
-            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
-            .Take(10 - matchingTeamMembers.Count)
+            .OrderByRelevance()
             .Select(r => new RoleAssignmentSearchResult(r.UserId, r.BurnerName, "", false))
             .ToList();
 
