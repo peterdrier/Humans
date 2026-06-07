@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260606161757_AddExpenseLineType")]
+    [Migration("20260607115811_AddExpenseLineType")]
     partial class AddExpenseLineType
     {
         /// <inheritdoc />
@@ -5068,6 +5068,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("SuppressScheduleChangeEmails")
                         .HasColumnType("boolean");
