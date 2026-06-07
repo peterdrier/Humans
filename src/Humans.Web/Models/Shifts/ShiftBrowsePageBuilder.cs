@@ -28,7 +28,24 @@ public sealed record ShiftBrowsePageRequest(
     IReadOnlyList<Guid>? TagIds,
     string? Sort,
     IReadOnlyList<string>? Periods,
-    bool IsPrivileged);
+    bool IsPrivileged)
+{
+    public bool HasDateFilter =>
+        !string.IsNullOrEmpty(FromDate) || !string.IsNullOrEmpty(ToDate);
+
+    public bool UsesUrgencySort =>
+        !string.Equals(Sort, "department", StringComparison.OrdinalIgnoreCase);
+
+    public ShiftBrowseQueryFlags BuildBrowseFlags() =>
+        IsPrivileged
+            ? ShiftBrowseQueryFlags.IncludeSignups |
+              ShiftBrowseQueryFlags.IncludeAdminOnly |
+              ShiftBrowseQueryFlags.IncludeHidden
+            : ShiftBrowseQueryFlags.IncludeSignups;
+
+    public List<Guid> ActiveTagFilter() =>
+        TagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
+}
 
 public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamServiceRead teamService)
 {
@@ -38,7 +55,7 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
         var period = request.Period;
         var (filterFromDate, filterToDate) = ParseDateFilters(request.FromDate, request.ToDate);
 
-        if ((!string.IsNullOrEmpty(request.FromDate) || !string.IsNullOrEmpty(request.ToDate)) && !string.IsNullOrEmpty(period))
+        if (request.HasDateFilter && !string.IsNullOrEmpty(period))
             period = null;
 
         var activePeriods = ParseActivePeriods(request.Periods, period);
@@ -60,28 +77,23 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
             }
         }
 
-        var browseFlags = ShiftBrowseQueryFlags.IncludeSignups;
-        if (request.IsPrivileged)
-            browseFlags |= ShiftBrowseQueryFlags.IncludeAdminOnly | ShiftBrowseQueryFlags.IncludeHidden;
-
         var urgentShifts = await shiftManagement.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             request.DepartmentId,
             filterFromDate,
             filterToDate,
-            browseFlags));
+            request.BuildBrowseFlags()));
 
         var periodFilteredShifts = postFilterByPeriod
             ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
             : (IReadOnlyList<UrgentShift>)urgentShifts;
 
-        var activeTagFilter = request.TagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
+        var activeTagFilter = request.ActiveTagFilter();
         var filteredShifts = activeTagFilter.Count > 0
             ? periodFilteredShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
             : periodFilteredShifts;
 
         var departments = await BuildDepartmentGroupsAsync(filteredShifts, es);
-        var isUrgencySort = !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
         var allTags = await shiftManagement.GetTagsAsync();
@@ -115,8 +127,8 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
             Departments = departments,
             AllDepartments = allDepartments,
             ShowSignups = true,
-            Sort = isUrgencySort ? "urgency" : "department",
-            UrgencyRankedRotas = isUrgencySort
+            Sort = request.UsesUrgencySort ? "urgency" : "department",
+            UrgencyRankedRotas = request.UsesUrgencySort
                 ? departments.SelectMany(d => d.Rotas).OrderByDescending(r => r.MaxUrgencyScore).ToList()
                 : [],
             AllTags = allTags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList(),

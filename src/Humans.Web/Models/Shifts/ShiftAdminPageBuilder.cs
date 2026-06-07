@@ -17,7 +17,12 @@ public sealed record ShiftAdminPageRequest(
     bool CanApprove,
     bool CanViewMedical,
     bool IncompleteOnboarding,
-    Instant Now);
+    Instant Now)
+{
+    public bool ShouldFilterIncompleteOnboarding() => IncompleteOnboarding;
+
+    public bool CanLoadMedicalDetails() => CanViewMedical;
+}
 
 public sealed class ShiftAdminPageBuilder(
     IShiftManagementService shiftManagement,
@@ -28,9 +33,9 @@ public sealed class ShiftAdminPageBuilder(
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request)
     {
         var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id);
-        var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding);
+        var staffing = await BuildStaffingSummaryAsync(rotas, request.ShouldFilterIncompleteOnboarding());
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
-        var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical);
+        var profileDict = await LoadProfilesAsync(allUserIds, request.CanLoadMedicalDetails());
         var userLookup = allUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds);
@@ -50,7 +55,7 @@ public sealed class ShiftAdminPageBuilder(
             CanApproveSignups = request.CanApprove,
             VolunteerProfiles = profileDict,
             Users = userLookup,
-            CanViewMedical = request.CanViewMedical,
+            CanViewMedical = request.CanLoadMedicalDetails(),
             StaffingData = staffingSnapshot.StaffingData.ToList(),
             StaffingHours = staffingSnapshot.StaffingHours.ToList(),
             Now = request.Now,

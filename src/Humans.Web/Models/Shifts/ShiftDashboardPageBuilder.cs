@@ -18,7 +18,11 @@ public sealed record ShiftDashboardPageRequest(
     LocalDate? ActiveEnd,
     TrendWindow TrendWindow,
     ShiftPeriod? Period,
-    BuildSubPeriod? SubPeriod);
+    BuildSubPeriod? SubPeriod)
+{
+    public (LocalDate? Start, LocalDate? End) ActiveRange() =>
+        (ActiveStart, ActiveEnd);
+}
 
 public sealed class ShiftDashboardPageBuilder(
     IShiftManagementService shiftManagement,
@@ -28,13 +32,14 @@ public sealed class ShiftDashboardPageBuilder(
     public async Task<ShiftDashboardViewModel> BuildAsync(ShiftDashboardPageRequest request)
     {
         var es = request.EventSettings;
+        var activeRange = request.ActiveRange();
 
         var shifts = await shiftManagement.GetUrgentShiftsAsync(
             es.Id,
             limit: null,
             request.DepartmentId,
-            request.ActiveStart,
-            request.ActiveEnd,
+            activeRange.Start,
+            activeRange.End,
             request.Period,
             request.SubPeriod);
         var staffing = await shiftManagement.GetStaffingSnapshotAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
