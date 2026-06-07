@@ -75,18 +75,7 @@ public sealed class TicketingBudgetService(
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        await budgetService.UpdateTicketingProjectionAsync(
-            command.BudgetGroupId,
-            command.StartDate,
-            command.EventDate,
-            command.InitialSalesCount,
-            command.DailySalesRate,
-            command.AverageTicketPrice,
-            command.VatRate,
-            command.StripeFeePercent,
-            command.StripeFeeFixed,
-            command.TicketTailorFeePercent,
-            actorUserId);
+        await command.SaveProjectionParametersAsync(budgetService, actorUserId);
 
         return await RefreshProjectionsAsync(command.BudgetYearId, ct);
     }

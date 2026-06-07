@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Budget;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
@@ -42,4 +43,19 @@ public sealed record TicketingProjectionUpdateCommand(
     int VatRate,
     decimal StripeFeePercent,
     decimal StripeFeeFixed,
-    decimal TicketTailorFeePercent);
+    decimal TicketTailorFeePercent)
+{
+    public Task SaveProjectionParametersAsync(IBudgetService budgetService, Guid actorUserId) =>
+        budgetService.UpdateTicketingProjectionAsync(
+            BudgetGroupId,
+            StartDate,
+            EventDate,
+            InitialSalesCount,
+            DailySalesRate,
+            AverageTicketPrice,
+            VatRate,
+            StripeFeePercent,
+            StripeFeeFixed,
+            TicketTailorFeePercent,
+            actorUserId);
+}
