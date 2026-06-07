@@ -170,7 +170,7 @@ Profile includes a computed `MembershipStatus` property:
 
 ## Profile Edit Sections
 
-The Profile Edit page (`/Profile/Edit`) is organized into four card sections within a single form:
+The Profile Edit page (`/Profile/Me/Edit`) is organized into four card sections within a single form:
 
 ### Section 1: General Information (always visible)
 Profile picture, burner name, pronouns, location (Google Places), birthday, contact information, bio.
@@ -214,18 +214,18 @@ Users must provide at least one Burner CV entry **or** check the "No prior burn 
 
 ### Data Export (Right of Access)
 
-Members can download all their personal data as JSON from `/Profile/DownloadData`. The export includes profile fields, contact fields, volunteer history, consent records, team memberships, applications, and role assignments. Response headers disable caching (`no-store`).
+Members can download all their personal data as JSON from `/Profile/Me/DownloadData`. The export includes profile fields, contact fields, volunteer history, consent records, team memberships, applications, and role assignments. Response headers disable caching (`no-store`).
 
-**Route:** `GET /Profile/DownloadData`
+**Route:** `GET /Profile/Me/DownloadData`
 
 ### Account Deletion (Right to Erasure)
 
-Members can request account deletion from the Privacy page (`/Profile/Privacy`). The process uses a 30-day grace period with anonymization rather than hard delete (per decision R-02).
+Members can request account deletion from the Privacy page (`/Profile/Me/Privacy`). The process uses a 30-day grace period with anonymization rather than hard delete (per decision R-02).
 
 #### Deletion Workflow
 
 ```
-User requests deletion (/Profile/RequestDeletion)
+User requests deletion (/Profile/Me/Privacy/RequestDeletion)
     │
     ├── DeletionRequestedAt = now
     ├── DeletionScheduledFor = now + 30 days
@@ -239,7 +239,7 @@ User requests deletion (/Profile/RequestDeletion)
     │   │  30-day grace period                │
     │   │  • User can still log in            │
     │   │  • User can cancel at any time      │
-    │   │    via /Profile/CancelDeletion      │
+    │   │    via /User/Deletion/Cancel        │
     │   │  • Memberships already revoked      │
     │   │  • Cancellation does NOT restore    │
     │   │    memberships (must rejoin teams)   │
@@ -293,10 +293,10 @@ This two-step approach ensures Google deprovisioning uses the same tested code p
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/Profile/Privacy` | GET | View deletion status, data export link |
-| `/Profile/RequestDeletion` | POST | Start 30-day deletion countdown |
-| `/Profile/CancelDeletion` | POST | Cancel pending deletion |
-| `/Profile/DownloadData` | GET | Download personal data as JSON |
+| `/Profile/Me/Privacy` | GET | View deletion status, data export link |
+| `/Profile/Me/Privacy/RequestDeletion` | POST | Start 30-day deletion countdown |
+| `/User/Deletion/Cancel` | POST | Cancel pending deletion (moved to the User section) |
+| `/Profile/Me/DownloadData` | GET | Download personal data as JSON |
 
 ## Related Features
 

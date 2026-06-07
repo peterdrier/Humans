@@ -142,7 +142,7 @@ Job ID: drive-activity-monitor
 
 ## Admin UI
 
-### Route: `/Admin/AuditLog`
+### Route: `/AuditLog`
 
 | Route | Method | Action |
 |-------|--------|--------|

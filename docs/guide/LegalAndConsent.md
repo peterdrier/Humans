@@ -52,14 +52,14 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 
 ## As a Coordinator (Consent Coordinator)
 
-Consent Coordinators are the safety gate between "this human signed the paperwork" and "this human is an active volunteer."
+Consent Coordinators review signed paperwork and keep an audit record of whether each human's consents look right. App access and Volunteers membership do not wait on this review — a human gets into the app once they've entered their legal name, and is admitted to the Volunteers team automatically once they've entered their name and signed all required documents.
 
 **Reviewing the queue.** Open `/OnboardingReview`. Every human who has signed all required global documents lands here in Pending state. Open a record to see their signed documents, versions, and timestamps.
 
 **Clearing or flagging.** Two actions:
 
-- **Clear** — the human is auto-approved as a Volunteer, added to the Volunteers system team, and granted the active-member claim that unlocks the rest of the app.
-- **Flag** — activation is blocked pending Board or Admin review. Flag when something looks off and leave a note so Board can pick it up.
+- **Clear** — records that the consents look good (an audit annotation). The human is already a Volunteer with full app access; clearing does not grant access or add them to any team.
+- **Flag** — records a concern for Board or Admin to follow up, and removes the human from the Volunteers / Colaborador / Asociado teams. To keep someone out for good, suspend or reject them — a flag alone is annotation and the scheduled sync re-admits a flagged human who still has their name and required consents.
 
 Coordinators cannot edit legal documents or publish new versions — that's a Board or Admin function.
 
@@ -74,5 +74,5 @@ Coordinators cannot edit legal documents or publish new versions — that's a Bo
 ## Related sections
 
 - [Profiles](Profiles.md) — consent status lives on the profile; download/delete start there.
-- [Onboarding](Onboarding.md) — consent is the final gate before Volunteer activation.
+- [Onboarding](Onboarding.md) — entering your legal name unlocks app access; signing all required documents (plus name) admits you to the Volunteers team.
 - [Admin](Admin.md) — document management and flagged-review queue.

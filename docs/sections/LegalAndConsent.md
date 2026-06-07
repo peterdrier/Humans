@@ -148,9 +148,9 @@ Three controllers serve this section.
 
 ## Triggers
 
-- When a human signs all required global documents: their consent check status transitions to Pending AND `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` admits them to the Volunteers system team. Admission does not depend on Consent Coordinator review.
-- When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation; the human is already a Volunteer.
-- When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and `DeprovisionApprovalGatedSystemTeamsAsync` removes the user from Volunteers / Colaborador / Asociado teams. The Volunteers admission criteria explicitly exclude `ConsentCheckStatus == Flagged`, so the user stays out until Board or Admin clears or rejects the review through the onboarding-review/admin surfaces.
+- When a human signs all required global documents: their consent check status transitions to Pending. `ConsentService.SubmitConsentAsync` no longer fires a per-user team sync (name-only access switch) — Volunteers admission is reconciled by the scheduled `SystemTeamSyncJob.SyncVolunteersTeamAsync` pass on name + consents (eventually consistent). App access never depended on Volunteers membership.
+- When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation only — `ClearConsentCheckAsync` provisions no team; Volunteers membership and app access are independent of CC review.
+- When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and `DeprovisionApprovalGatedSystemTeamsAsync` removes the user from Volunteers / Colaborador / Asociado teams. Flagging is an audit annotation: the Volunteers admission criteria no longer exclude `ConsentCheckStatus == Flagged`, so the next scheduled sync re-admits a flagged human who still has name + required consents. Suspension and rejection are the levers that actually keep a human out.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - A background job suspends humans who no longer have valid consents for required documents.
 
@@ -159,7 +159,7 @@ Three controllers serve this section.
 - **Profiles:** `IProfileService` — consent-check status lives on the profile (read by `ConsentService` for the review-detail view); `IProfileService.GetActiveApprovedUserIdsAsync` is the fan-out target list when `LegalDocumentSyncService` notifies on a new published / re-consent-required version. `ConsentService` does **not** call into Profile or Onboarding directly after a consent submit — the threshold check (`OnboardingService.SetConsentCheckPendingIfEligibleAsync`) is invoked by the controller (`ConsentController.Submit`, `OnboardingWidgetController`) as a peer call alongside `ConsentService.SubmitConsentAsync`.
 - **Teams:** `ITeamService` — `AdminLegalDocumentService` stitches team names in memory (replaces `.Include(d => d.Team)`); legal documents are team-scoped (Volunteers team = global).
 - **Notifications:** `INotificationService` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationInboxService.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete).
-- **Google Integration:** `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` / `SyncCoordinatorsMembershipForUserAsync` — `ConsentService` re-syncs system team membership after each consent submit.
+- **Human Lifecycle:** `IHumanLifecycleService.RestoreConsentSuspensionAsync` — `ConsentService` lifts a consent suspension once all required consents are complete (alongside resolving the `AccessSuspended` notification). `ConsentService` no longer depends on `ISystemTeamSync` — after the name-only access switch, a consent submit does not provision system-team membership; the scheduled `SystemTeamSyncJob` reconciles Volunteers/Coordinators on name + consents.
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
 - **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target. Consent records are immutable per §12 and stay at source.
 
@@ -186,7 +186,7 @@ Three controllers serve this section.
   - `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but no current `.Include` walks it in the Application layer.
   - `ConsentRecord.DocumentVersion` (`ConsentRecord.cs:34`) — walked by `ConsentRepository.GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:74`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
   - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared and configured (`DocumentVersionConfiguration.cs:46`); not navigated by any current service path.
-- **Cross-section calls:** `IProfileService`, `IOnboardingService`, `ITeamService`, `INotificationService`, `INotificationInboxService`, `ISystemTeamSync`, `IMembershipCalculator`, `IUserService`.
+- **Cross-section calls:** `IProfileService`, `IOnboardingService`, `ITeamService`, `INotificationService`, `INotificationInboxService`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`.
 - **Architecture tests:** `tests/Humans.Application.Tests/Architecture/LegalArchitectureTests.cs` (Legal services, repository, connector), `tests/Humans.Application.Tests/Architecture/ConsentArchitectureTests.cs` (ConsentService, IConsentRepository append-only shape).
 
 ### Touch-and-clean guidance

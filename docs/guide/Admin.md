@@ -4,18 +4,17 @@
   src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
   src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml
-  src/Humans.Web/Views/AdminDuplicateAccounts/**
-  src/Humans.Web/Views/AdminMerge/**
+  src/Humans.Web/Views/UsersAdminAccountMerges/**
   src/Humans.Web/Views/Notifications/**
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
-  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
+  src/Humans.Web/Controllers/UsersAdminController.cs
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
   src/Humans.Web/Controllers/NotificationsController.cs
   src/Humans.Application/Services/AuditLog/**
   src/Humans.Application/Services/Notifications/**
-  src/Humans.Application/Services/Profile/AccountMergeService.cs
-  src/Humans.Application/Services/Profile/DuplicateAccountService.cs
+  src/Humans.Application/Services/Users/AccountMergeService.cs
+  src/Humans.Application/Services/Users/DuplicateAccountService.cs
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
   src/Humans.Application/Services/GoogleIntegration/SyncSettingsService.cs
@@ -45,8 +44,8 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 - `/Google/SyncSettings` — per-service sync mode (Admin only).
 - `/Debug/Configuration`, `/Debug/Logs`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
-- `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` — duplicate detection and merge flow.
-- `/Profile/{id}/Admin/Purge` — permanent delete, disabled in production.
+- `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
+- `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
 - `/hangfire` — Hangfire dashboard, Admin only.
 
 ## As a Volunteer
@@ -95,11 +94,11 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Resolve duplicate accounts
 
-`/Admin/DuplicateAccounts` scans for humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence. Review a candidate, then archive the duplicate and re-link its logins. Pending merge requests live at `/Admin/MergeRequests`; accepting one consolidates all associated data onto the surviving account.
+`/Users/Admin/AccountMerges` is the single merge surface. It lists, in one queue, both user-submitted merge requests and auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence). For any row you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. You can also dismiss a request, or close an orphan request whose accounts were already merged.
 
 ### Purge (non-production only)
 
-`/Profile/{id}/Admin/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
+`/Users/Admin/{id}/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
 
 ## Related sections
 

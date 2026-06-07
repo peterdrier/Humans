@@ -183,9 +183,9 @@ Note: The review queue does NOT show tier application information. Consent check
 1. **Consent check = Volunteer safety gate** — does not evaluate tier applications
 2. **ConsentCoordinator is the primary reviewer** — Board and Admin can also clear/flag as backup
 3. **VolunteerCoordinator is read-only** — cannot clear or flag, only view and assist
-4. **Clearing triggers auto-approve** — no additional Board step for Volunteer access
-5. **Flagging blocks Volunteer access** — flagged humans cannot become Volunteers until resolved
-6. **Coordinators bypass MembershipRequiredFilter** — they need system access to do their job
+4. **Clearing is an audit annotation** — sets `ConsentCheckStatus = Cleared` (and `IsApproved = true`) for the CC record only; it triggers no team provisioning and no access change. Volunteers admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
+5. **Flagging is annotation-only** — sets `ConsentCheckStatus = Flagged`; it does NOT block Volunteer admission or app access. Reject (sets `RejectedAt`) is the kick-out lever, not Flag.
+6. **Coordinators do not bypass MembershipRequiredFilter** — like everyone else, they need `UserState == Active`; the role authorizes coordinator pages only after that gate passes.
 7. **Coordinator roles follow existing RoleAssignment model** — temporal, audited
 
 ## Related Features

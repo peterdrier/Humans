@@ -63,8 +63,6 @@ graph LR
     CF[ContactFieldService]:::profiles
     UEmail[UserEmailService]:::profiles
     CommPref[CommunicationPreferenceService]:::profiles
-    Merge[AccountMergeService]:::profiles
-    DupAcct[DuplicateAccountService]:::profiles
     EmailProb[EmailProblemsService]:::profiles
 
     Team[TeamService]:::teams
@@ -130,6 +128,8 @@ graph LR
     AcctDel[AccountDeletionService]:::users
     UserParticipationBackfill[UserParticipationBackfillService]:::users
     UEmailProvBackfill[UserEmailProviderBackfillService]:::users
+    Merge[AccountMergeService]:::users
+    DupAcct[DuplicateAccountService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
     MagicLink[MagicLinkService]:::auth
@@ -179,14 +179,6 @@ graph LR
     UEmail --> Audit
     CommPref --> User
     CommPref --> Audit
-    Merge --> User
-    Merge --> Role
-    Merge --> Notif
-    Merge --> Audit
-    DupAcct --> User
-    DupAcct --> Team
-    DupAcct --> Role
-    DupAcct --> Audit
     EmailProb --> User
     EmailProb --> UEmail
 
@@ -269,6 +261,7 @@ graph LR
     LegalSync --> NotifEmitter
     Consent --> LegalSync
     Consent --> NotifInbox
+    Consent --> HumanLifecycle
     Consent --> User
     Consent --> Metrics
 
@@ -366,7 +359,6 @@ graph LR
     Onboard --> MembershipCalc
     Onboard --> Email
     Onboard --> NotifEmitter
-    Onboard --> Metrics
     Onboard --> Audit
 
     HumanLifecycle --> User
@@ -407,6 +399,14 @@ graph LR
     AcctDel --> TicketQ
     AcctDel --> Audit
     AcctDel --> Email
+    %% #899: AccountMerge + DuplicateAccount moved Profiles -> Users.
+    Merge --> User
+    Merge --> Role
+    Merge --> Notif
+    Merge --> Audit
+    DupAcct --> User
+    DupAcct --> Team
+    DupAcct --> Role
 
     %% Auth section
     Role --> User
@@ -513,6 +513,7 @@ graph LR
     ShiftMgmt -. "lazy" .-> Role
     ShiftMgmt -. "lazy" .-> TicketQ
     ShiftMgmt -. "lazy" .-> User
+    ShiftMgmt -. "lazy" .-> Camp
     ShiftSign -. "lazy" .-> Team
     UEmail -. "lazy" .-> Merge
     UEmail -. "lazy" .-> TicketQ
@@ -523,11 +524,14 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 262 eager links, indices 0..261. (Same count as the prior sweep:
-    %% the DriveMon "pending" dashed direct-audit-write edge was removed — resolved by #889
-    %% deleting the drive-monitor repo — and the new eager DriveMon → SysSettings edge took its slot.)
-    %% The 17 lazy edges are indices 262..278 (added Team → GSyncOutbox per #889 outbox writes).
-    linkStyle 262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 261 eager links, indices 0..260. (Net −1 vs the prior sweep's 262:
+    %% +Consent → HumanLifecycle (#881); −DupAcct → Audit (DuplicateAccountService dropped
+    %% IAuditLogService in the #899 Users move); −Onboard → Metrics (OnboardingService dropped
+    %% IHumansMetrics in #881). AccountMerge/DuplicateAccount edges were relocated Profiles→Users,
+    %% not net-added.)
+    %% The 18 lazy edges are indices 261..278 (added ShiftMgmt → Camp per #898 Shift-Summary-by-Camp,
+    %% which lazy-resolves ICampServiceRead via IServiceProvider).
+    linkStyle 261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -544,10 +548,10 @@ Other notable one-way lazy edges (not cycles):
 
 - **Team → User** — TeamService lazy-resolves `IUserService` for user-slice stitching. Used to be a cycle (User↔Team), but PR #314 dropped UserService's eager `ITeamService` injection — User no longer reaches back into Team.
 - **UserEmail → Tickets** (`ITicketServiceRead`) — UserEmailService lazy-resolves the tickets read interface for the email delete-guard (nobodies-collective/Humans#758), to detect ticket-linked addresses. TicketQueryService eagerly injects `IUserEmailService`, so this closes a cycle that must stay lazy on the UserEmail side.
-- **UserEmail → AccountMerge** — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting; AccountMergeService injects `IUserEmailRepository` (not the service) to avoid creating a reverse eager edge.
+- **UserEmail → AccountMerge** (now Users section, #899) — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting. AccountMergeService takes neither `IUserEmailService` nor `IUserEmailRepository`: section re-FK during a merge runs through the `IEnumerable<IUserMerge>` fan-out (UserEmail registers its own `IUserMerge`), so no reverse eager edge to UserEmail exists.
 - **CampService → CampRoleService** — CampService holds `Lazy<ICampRoleService>` (intra-section) to break the Camp↔CampRole construction cycle; CampRoleService eagerly injects the narrow `ICampRoleCampAccess` port (implemented by CampService / CachingCampService), not the full `ICampService` — the `CampRole --> Camp` edge in the diagram reflects this port.
 - **Team → GoogleSyncOutbox** (#889) — TeamService lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue transactional-outbox Google-sync events on membership/role changes. One-way; `GoogleSyncOutboxService` is a repo-only adapter that calls back into nothing.
-- **ShiftManagement → Role / User**, **Team → Role / Email**, **TeamResource → Role**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph (notably through `ISystemTeamSync`, the job interface omitted from this service-only graph).
+- **ShiftManagement → Role / User / Camp**, **Team → Role / Email**, **TeamResource → Role**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph (notably through `ISystemTeamSync`, the job interface omitted from this service-only graph). ShiftManagementService resolves `ICampServiceRead` lazily (#898 Shift-Summary-by-Camp) via `IServiceProvider`.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 
@@ -561,13 +565,13 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
 | `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
 | `UserEmailService` | 20 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
-| `ShiftManagementService` | 15 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User itself to break cycles. New eager consumers since the last sweep: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`. |
+| `ShiftManagementService` | 15 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). New eager consumers since the last sweep: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`. |
 | `IEmailService` | 12 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
 | `RoleAssignmentService` | 9 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. |
-| `CampService` | 7 | 1 | Read consumers via `ICampServiceRead`; lazy-in from its own section's `CampRoleService` construction cycle. |
+| `CampService` | 7 | 2 | Read consumers via `ICampServiceRead`; lazy-in from its own section's `CampRoleService` construction cycle, plus a new lazy `ICampServiceRead` resolve from `ShiftManagementService` (#898 Shift-Summary-by-Camp). |
 | `NotificationEmitter` | 15 | 0 | Lower-level enqueue surface — the high-fan-in notification node. Injected (`INotificationEmitter`) by Team, Camp, CampContact, CampRole, Role, ShiftSign, AppDec, LegalSync, Campaign, EmailProv, Onboard, HumanLifecycle, Feedback, Issues, and `NotificationService` itself (which wraps the emitter). Only `AccountMergeService` takes the full `INotificationService` instead. |
 | `CommunicationPreferenceService` | 6 | 0 | Consent + unsubscribe gating for any outbound message. |
-| `HumansMetricsService` | 5 | 0 | Invoked from Application services that emit counter events (ConsentService, OnboardingService, HumanLifecycleService, AppDec, OutboxEmail). Scheduled for push-model inversion in #580. |
+| `HumansMetricsService` | 4 | 0 | Invoked from Application services that emit counter events (ConsentService, HumanLifecycleService, AppDec, OutboxEmail). OnboardingService dropped its `IHumansMetrics` dependency in #881. Scheduled for push-model inversion in #580. |
 | `ApplicationDecisionService` | 5 | 0 | Tier-application decisions; read by GovIndex, Onboard, Dash, AdminDash, NotifMeter. |
 | `TeamResourceService` | 5 | 2 | Teams-owned Google resources. Lazy-in from Team + GoogleWorkspaceSync cycles. |
 | `MembershipCalculator` | 3 | 1 | Membership-status snapshot consumed by Onboard, Dash, AdminDash; lazy half of the Consent cycle. ShiftSignupService dropped its eager `IMembershipCalculator` since the last sweep. |
@@ -600,6 +604,9 @@ Below the >= 3 threshold but tracked for narrative continuity:
   - New **SystemSettings** section: `SystemSettingsService` is a thin adapter over `ISystemSettingsRepository` — no outbound service edges. It centralizes key/value system settings; consumed by `EmailOutboxService` (the `IsEmailSendingPaused` flag) and `DriveActivityMonitorService` (last-run marker). (`EmailOutboxService` is an Email-section admin service not otherwise in this service→service graph — its only section-service edge is to `SysSettings`.)
   - `GoogleSyncOutboxService` (GoogleIntegration) is the transactional-outbox owner over `IGoogleSyncOutboxRepository` — no outbound service edges. `TeamService` lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue Google-sync outbox events on membership/role changes — new dashed `Team → GSyncOutbox` edge.
 - **#894** — Camps compliance role-staffing matrix: the redesign moved into `CampComplianceController` plus supporting read types (`CampDirectoryRoleSummary`) and trimmed `CampRoleService` (the old `CampRoleComplianceReport` DTO was deleted). No service→service edges changed — `CampRoleService`/`CampService` ctor dependencies are unchanged (`CampRole → Camp/User/UEmail/NotifEmitter/Audit`, `Camp -. lazy .-> CampRole`).
+- **#899** — Account-merge consolidation moved Profiles → Users: `AccountMergeService` and `DuplicateAccountService` relocated from `Application/Services/Profiles` to `Application/Services/Users` (now `:::users` in the diagram). Edges are otherwise stable except `DuplicateAccountService` dropped its `IAuditLogService` dependency (`DupAcct → Audit` removed); it now injects only `IUserService`/`ITeamService`/`IRoleAssignmentService`. `AccountMergeService` keeps `Merge → User/Role/Notif/Audit` and remains the sole consumer of the full `INotificationService`. The `UEmail -. lazy .-> Merge` reparenting edge is unchanged.
+- **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
+- **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge; CampService lazy-in 1 → 2). The ctor is unchanged — no new eager edges.
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **GeneralAvailability/RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
 - **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.

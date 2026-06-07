@@ -61,7 +61,7 @@ The consent check is purely a **Volunteer-level safety gate** performed by a Con
 
 **Acceptance Criteria:**
 - Dashboard shows pending count (consent check pending)
-- Filter the human list by `UserState` (bare/active/suspended/rejected/deleting/merged/deleted)
+- Filter the human list by `UserState` (bare/active/suspended/adminsuspended/rejected/deleting/merged/deleted)
 - Audit trail records status-changing events
 
 ## Dashboard Status

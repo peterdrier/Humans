@@ -36,7 +36,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Workspace Account Provisioning](features/google-integration/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
 | [Tier Applications](features/governance/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
 | [Board Voting](features/governance/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
-| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model used by Board dashboard, Admin filters, and Volunteers team sync |
+| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Board dashboard and Volunteers team sync (the Admin /Humans list derives its own buckets) |
 | [Membership Tiers](features/governance/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
 | [In-App Guide](features/guide/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
 | [Issues System](features/issues/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
@@ -44,7 +44,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Mailer Audience Debug Screen](features/mailer/audience-debug-screen.md) | Per-audience debug screen previewing exactly what the next MailerLite `Sync` would apply, so admins can spot anomalies before pulling the trigger |
 | [Notification Inbox](features/notifications/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
 | [Onboarding Pipeline](features/onboarding/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
-| [Volunteer Status](features/onboarding/volunteer-status.md) | Volunteer status determined by presence in the system-managed Volunteers team requiring consent check clearance and legal document consents |
+| [Volunteer Status](features/onboarding/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
 | [Burner-Name Collision Warning](features/profiles/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
 | [Communication Preferences](features/profiles/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
 | [Feature 29: Contact Accounts](features/profiles/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |

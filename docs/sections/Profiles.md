@@ -346,7 +346,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
 | HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, approve volunteer, reject signup, view audit log, add or end role assignments). (Membership tier changes go through tier applications in Governance, not the profile admin page.) |
-| Admin | Review duplicate-account candidates at `/Admin/DuplicateAccounts` and approve/reject `AccountMergeRequest`s at `/Admin/MergeRequests` (both `PolicyNames.AdminOnly`). |
+| Admin | Review duplicate-account candidates and approve/reject `AccountMergeRequest`s at the unified `/Users/Admin/AccountMerges` queue (`PolicyNames.AdminOnly`; **Users** section — see [Users.md](Users.md)). |
 | Admin (non-production only) | Purge a human and all associated data |
 
 ## Invariants
@@ -356,6 +356,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth".
 - Membership tier (Volunteer, Colaborador, Asociado) is tracked on the profile, not as a role assignment.
 - Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
+- Since #881, app access is gated by the stored `User.State` (`UserState`: Bare/Active/DeletePending/Suspended/Rejected/Deleted/Merged/AdminSuspended) — not `Profile.State` (`ProfileState`), which is superseded for access purposes.
 - Profile deletion request sets `User.DeletionRequestedAt` and `User.DeletionScheduledFor = now + 30 days` on the User record. Team memberships and governance role assignments are revoked immediately. Actual data purge is deferred to a background job.
 - Data export returns all personal data as a JSON download (GDPR Article 15). `ProfileService` and `AccountMergeService` are this section's `IUserDataContributor` implementations per design-rules §8a; the orchestration lives in `GdprExportService`.
 - Profile pictures are stored on the filesystem via `IFileStorage` (key `uploads/profile-pictures/{profileId}{.ext}`), with `Profile.ProfilePictureData` retained as a phase-1 DB fallback (issue nobodies-collective#527). `GetProfilePictureAsync` checks `ProfilePictureContentType` as the GDPR gate: null → 404, even if a stale file exists on disk. Filesystem-first; DB fallback triggers migrate-on-read. Saves and deletions dual-write. Uploaded images are validated against an allowed-content-type set (JPEG, PNG, WebP, HEIC/HEIF, AVIF) and a 20 MB upload cap, then resized by `ProfilePictureProcessor` to a long-side of 1000 px and re-encoded as JPEG before persistence.

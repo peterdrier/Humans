@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/DebugController.cs
+  src/Humans.Web/ViewComponents/AdminNavTree.cs
+-->
+
 # Debug - Section Invariants
 
 Developer/diagnostics section. Admin-only pages exposing operational insight that no domain section owns. Owns no tables.
