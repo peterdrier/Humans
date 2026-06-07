@@ -1,5 +1,4 @@
 using Humans.Application.DTOs.VolunteerTrackingExport;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -27,7 +26,7 @@ public sealed class VolunteerTrackingExportService(
 
     public async Task<VolunteerExportModel> BuildAsync(VolunteerExportRequest request, CancellationToken ct)
     {
-        var days = EnumerateDays(request.StartDate, request.EndDate);
+        var days = request.EnumerateDays();
         var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
             request.EventSettingsId, request.StartDate, request.EndDate, request.DepartmentId, ct);
 
@@ -204,26 +203,10 @@ public sealed class VolunteerTrackingExportService(
         return totals;
     }
 
-    private static IReadOnlyList<LocalDate> EnumerateDays(LocalDate start, LocalDate end)
-    {
-        var count = Period.DaysBetween(start, end) + 1;
-        var days = new LocalDate[count];
-        for (var i = 0; i < count; i++) days[i] = start.PlusDays(i);
-        return days;
-    }
-
     private static string BuildMethodologyBlurb() =>
         "Rows = humans with >=1 confirmed shift in range. Cell color = the team they worked most " +
         "hours that day. White cell = day before their first confirmed shift (arrival day). " +
         "Totals row = humans on-site that day (used for meal counts). Names shown are playa names.";
-
-    private static string BuildFileName(VolunteerExportRequest req, string? departmentSlug)
-    {
-        var prefix = departmentSlug is { Length: > 0 } slug
-            ? $"volunteer-tracking-{slug}-"
-            : "volunteer-tracking-";
-        return $"{prefix}{req.StartDate.ToInvariantDate()}-to-{req.EndDate.ToInvariantDate()}.xlsx";
-    }
 
     private static string SlugifyTeamName(string teamName)
     {
@@ -294,17 +277,15 @@ public sealed class VolunteerTrackingExportService(
         IReadOnlyList<int> totals,
         string? filteredTeamName)
     {
-        var deptName = filteredTeamName ?? "All";
-        var periodLabel = request.Period?.ToString() ?? "custom";
         var slug = filteredTeamName is null ? null : SlugifyTeamName(filteredTeamName);
         return new VolunteerExportModel(
             MethodologyBlurb: BuildMethodologyBlurb(),
-            FilterSummary: $"Department: {deptName} - Range: {request.StartDate} -> {request.EndDate} ({periodLabel})",
+            FilterSummary: request.BuildFilterSummary(filteredTeamName),
             GeneratedAtUtc: request.GeneratedAtUtc,
             GeneratedByName: request.ActorPlayaName,
             Days: days,
             Groups: groups,
             TotalsPerDay: totals,
-            SuggestedFileName: BuildFileName(request, slug));
+            SuggestedFileName: request.BuildSuggestedFileName(slug));
     }
 }
