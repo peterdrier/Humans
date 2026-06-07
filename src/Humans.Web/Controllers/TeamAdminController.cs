@@ -1145,11 +1145,15 @@ public class TeamAdminController(
             q, PersonSearchFields.Name, limit: int.MaxValue);
         var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
 
-        // Team members first: matched by folded name (via the search above, so "joel" finds "Joël")
-        // OR by email — team admins may know their own members' emails, which the global name-only
-        // search deliberately won't surface for privacy.
+        // Team members first, matched by any of:
+        //  - folded name via the search above (so "joel" finds "Joël") — profiled members;
+        //  - direct DisplayName contains — keeps legacy/imported members who appear in team.Members
+        //    but have no searchable Profile findable by name (SearchUsersAsync skips profile-less users);
+        //  - email — team admins may know their own members' emails, which the global name-only
+        //    search deliberately won't surface for privacy.
         var matchingTeamMembers = teamMembers
             .Where(m => nameMatchIds.Contains(m.UserId) ||
+                        m.DisplayName.ContainsOrdinalIgnoreCase(q) ||
                         (m.Email?.ContainsOrdinalIgnoreCase(q) ?? false))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Select(m => new RoleAssignmentSearchResult(m.UserId, m.DisplayName, m.Email ?? "", true))
