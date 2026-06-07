@@ -478,7 +478,29 @@ public sealed record CreateShiftInput(
     int MinVolunteers,
     int MaxVolunteers,
     bool AdminOnly,
-    bool IsAllDay);
+    bool IsAllDay)
+{
+    public bool HasValidVolunteerRange() => MinVolunteers <= MaxVolunteers;
+
+    public bool IsWithinPeriod((int Start, int End) bounds) =>
+        DayOffset >= bounds.Start && DayOffset <= bounds.End;
+
+    public Shift ToShift(Instant now) => new()
+    {
+        Id = Guid.NewGuid(),
+        RotaId = RotaId,
+        Description = Description,
+        DayOffset = DayOffset,
+        StartTime = StartTime,
+        Duration = Duration.FromHours(DurationHours),
+        MinVolunteers = MinVolunteers,
+        MaxVolunteers = MaxVolunteers,
+        AdminOnly = AdminOnly,
+        IsAllDay = IsAllDay,
+        CreatedAt = now,
+        UpdatedAt = now
+    };
+}
 
 public sealed record UpdateShiftInput(
     Guid ShiftId,
@@ -489,7 +511,25 @@ public sealed record UpdateShiftInput(
     double DurationHours,
     int MinVolunteers,
     int MaxVolunteers,
-    bool AdminOnly);
+    bool AdminOnly)
+{
+    public bool HasValidVolunteerRange() => MinVolunteers <= MaxVolunteers;
+
+    public bool IsWithinPeriod((int Start, int End) bounds) =>
+        DayOffset >= bounds.Start && DayOffset <= bounds.End;
+
+    public void ApplyTo(Shift shift, Instant now)
+    {
+        shift.Description = Description;
+        shift.DayOffset = DayOffset;
+        shift.StartTime = StartTime;
+        shift.Duration = Duration.FromHours(DurationHours);
+        shift.MinVolunteers = MinVolunteers;
+        shift.MaxVolunteers = MaxVolunteers;
+        shift.AdminOnly = AdminOnly;
+        shift.UpdatedAt = now;
+    }
+}
 
 public sealed record GenerateEventShiftsInput(
     Guid RotaId,
@@ -498,7 +538,43 @@ public sealed record GenerateEventShiftsInput(
     int EndDayOffset,
     IReadOnlyList<ShiftTimeSlotInput> TimeSlots,
     int MinVolunteers,
-    int MaxVolunteers);
+    int MaxVolunteers)
+{
+    public bool HasValidEventRange(EventSettings eventSettings) =>
+        StartDayOffset >= 0 &&
+        EndDayOffset <= eventSettings.EventEndOffset &&
+        StartDayOffset <= EndDayOffset;
+
+    public bool HasValidVolunteerRange() => MinVolunteers <= MaxVolunteers;
+
+    public bool HasTimeSlots() => TimeSlots.Count > 0;
+
+    public List<Shift> ToShifts(Instant now)
+    {
+        var shifts = new List<Shift>();
+        for (var day = StartDayOffset; day <= EndDayOffset; day++)
+        {
+            foreach (var slot in TimeSlots)
+            {
+                shifts.Add(new Shift
+                {
+                    Id = Guid.NewGuid(),
+                    RotaId = RotaId,
+                    IsAllDay = false,
+                    DayOffset = day,
+                    StartTime = slot.StartTime,
+                    Duration = Duration.FromHours(slot.DurationHours),
+                    MinVolunteers = MinVolunteers,
+                    MaxVolunteers = MaxVolunteers,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
+
+        return shifts;
+    }
+}
 
 public sealed record ShiftTimeSlotInput(LocalTime StartTime, double DurationHours);
 

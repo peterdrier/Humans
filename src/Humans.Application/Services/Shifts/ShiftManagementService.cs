@@ -585,39 +585,17 @@ public sealed class ShiftManagementService(
             return ShiftGenerationResult.Failure("Event shift generation is only for Event-period rotas.");
 
         var es = rota.EventSettings;
-        if (input.StartDayOffset < 0 ||
-            input.EndDayOffset > es.EventEndOffset ||
-            input.StartDayOffset > input.EndDayOffset)
+        if (!input.HasValidEventRange(es))
             return ShiftGenerationResult.Failure("Shift dates must fall within the event period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
+        if (!input.HasValidVolunteerRange())
             return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
-        if (input.TimeSlots.Count == 0)
+        if (!input.HasTimeSlots())
             return ShiftGenerationResult.Failure("At least one time slot is required.");
 
         var now = clock.GetCurrentInstant();
-        var toInsert = new List<Shift>();
-
-        for (var day = input.StartDayOffset; day <= input.EndDayOffset; day++)
-        {
-            foreach (var slot in input.TimeSlots)
-            {
-                toInsert.Add(new Shift
-                {
-                    Id = Guid.NewGuid(),
-                    RotaId = input.RotaId,
-                    IsAllDay = false,
-                    DayOffset = day,
-                    StartTime = slot.StartTime,
-                    Duration = Duration.FromHours(slot.DurationHours),
-                    MinVolunteers = input.MinVolunteers,
-                    MaxVolunteers = input.MaxVolunteers,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                });
-            }
-        }
+        var toInsert = input.ToShifts(now);
 
         if (toInsert.Count > 0)
         {
@@ -637,28 +615,14 @@ public sealed class ShiftManagementService(
 
         var es = rota.EventSettings;
         var (periodStart, periodEnd) = GetRotaDayOffsetBounds(rota.Period, es);
-        if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
+        if (!input.IsWithinPeriod((periodStart, periodEnd)))
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
+        if (!input.HasValidVolunteerRange())
             return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
         var now = clock.GetCurrentInstant();
-        var shift = new Shift
-        {
-            Id = Guid.NewGuid(),
-            RotaId = input.RotaId,
-            Description = input.Description,
-            DayOffset = input.DayOffset,
-            StartTime = input.StartTime,
-            Duration = Duration.FromHours(input.DurationHours),
-            MinVolunteers = input.MinVolunteers,
-            MaxVolunteers = input.MaxVolunteers,
-            AdminOnly = input.AdminOnly,
-            IsAllDay = input.IsAllDay,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+        var shift = input.ToShift(now);
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
         viewInvalidator.InvalidateRota(input.RotaId);
@@ -682,20 +646,13 @@ public sealed class ShiftManagementService(
 
         var es = shift.Rota.EventSettings;
         var (periodStart, periodEnd) = GetRotaDayOffsetBounds(shift.Rota.Period, es);
-        if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
+        if (!input.IsWithinPeriod((periodStart, periodEnd)))
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
-        if (input.MinVolunteers > input.MaxVolunteers)
+        if (!input.HasValidVolunteerRange())
             return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
-        shift.Description = input.Description;
-        shift.DayOffset = input.DayOffset;
-        shift.StartTime = input.StartTime;
-        shift.Duration = Duration.FromHours(input.DurationHours);
-        shift.MinVolunteers = input.MinVolunteers;
-        shift.MaxVolunteers = input.MaxVolunteers;
-        shift.AdminOnly = input.AdminOnly;
-        shift.UpdatedAt = clock.GetCurrentInstant();
+        input.ApplyTo(shift, clock.GetCurrentInstant());
 
         await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         viewInvalidator.InvalidateShift(shift.Id);
