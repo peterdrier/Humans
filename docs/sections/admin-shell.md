@@ -1,3 +1,9 @@
+<!-- freshness:triggers
+  src/Humans.Web/ViewComponents/AdminNavTree.cs
+  src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
+-->
+
 # Admin Shell — Section Invariants
 
 Frame-only section. Provides the shared admin sidebar, breadcrumb, and dashboard skeleton. Owns no tables.
@@ -19,16 +25,16 @@ The `/Admin` route is the shared dashboard. The `AdminLayout.cshtml` layout is s
 
 ## Actors & Roles
 
-Sidebar groups: Operations, Members, Money, Governance, Integrations, Agent, People data, Diagnostics (and Dev — env-gated to `!IsProduction()`). Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups: Tickets, Members, Shifts, Barrios, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics (and Dev — env-gated to `!IsProduction()` — Design, Temp). Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Operations (Tickets, Scanner), Members (Humans, Review), Governance (Voting, Board) |
-| HumanAdmin | Members (Humans) |
-| TicketAdmin | Operations (Tickets, Scanner) |
-| FinanceAdmin | Money (Finance, Store catalog) |
-| StoreAdmin | Money (Store catalog) |
+| Board | Tickets (Tickets, Scanner), Members (Humans, Roles), Governance (Voting, Applications), Audit (Audit log) |
+| HumanAdmin | Members (Humans, Roles) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Scanner) |
+| FinanceAdmin | Expenses (Expense Review), Finance (Finance) |
+| StoreAdmin | Store (Store catalog, Store summary, Store payments) |
 | ConsentCoordinator | Members (Review) |
 | VolunteerCoordinator | Members (Review) |
 | TeamsAdmin / CampAdmin / FeedbackAdmin / NoInfoAdmin | Reach the `/Admin` dashboard (member of `AnyAdminRole`) but have no sidebar items in the current tree — they act via the dashboard tiles and any direct links from member-facing pages |

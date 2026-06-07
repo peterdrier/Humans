@@ -12,7 +12,7 @@
 - **Mechanical entries:** 7 updated, 2 verified no-op, 2 not dirty.
 - **Editorial docs:** 81 dirty (trigger-matched); 19 drift-fixed, 62 verified accurate.
 - **Pruned:** 2 husks, 4,226 lines (5.0% of pre-prune total 84,893). No wheat stranded.
-- **Flagged for human review:** 3 in-scope judgment calls + 6 pre-existing out-of-scope drifts + 2 unmarked docs needing triggers.
+- **Review items:** 11 surfaced inline (Phase 7.5) — **all approved by Peter and fixed in this PR** (3 in-scope judgment calls, 6 pre-existing out-of-scope drifts, 2 unmarked docs given `freshness:triggers`).
 
 ## Updated automatically (mechanical)
 
@@ -68,24 +68,24 @@
 **Prune total:** 4,226 lines = 5.0% of pre-prune (84,893) — at the soft target, under the 7% cap.
 **Inbound refs:** only `docs/freshness/last-report.md` (this file, regenerated each run) — non-actionable.
 
-## Flagged for human review
+## Review items — all resolved in Phase 7.5 (Peter approved fix-all)
 
-**In-scope judgment calls (surfaced inline this run):**
-1. **sections/admin-shell.md** — sidebar-group list (line 22) and Actors & Roles table are stale vs current `AdminNavTree.cs` groups (Tickets, Members, Shifts, Barrios, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics, Dev, Design, Temp). Pre-existing (not caused by #901), and the doc is unmarked — needs a decision to refresh + add triggers.
-2. **architecture/design-rules.md §15i** (Teams migration log) — predicts the `TeamService`↔`EmailService` lazy cycle-break "goes away when `AccountMergeService` migrates to `Humans.Application.Services.Profile`". #899 migrated it (to `.Users`, not `.Profile`) yet the lazy `IServiceProvider` resolution still exists — so the prediction is wrong on two counts. Needs a tense/clause rewrite, not a symbol swap.
-3. **sections/Profiles.md** — beyond the route fix applied this run, the doc never mentions the new `User.State` (UserState) access gate nor the `ProfileState` "superseded" relationship from #881. This is an architecture addition (new concept), not a flat contradiction — needs an author decision on scope.
+**In-scope judgment calls — FIXED:**
+1. **sections/admin-shell.md** — refreshed the stale sidebar-group list and per-role Actors & Roles cells to match current `AdminNavTree.cs` (Tickets, Members, Shifts, Barrios, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics, Dev, Design, Temp); added a `freshness:triggers` block.
+2. **architecture/design-rules.md §15i** (Teams migration log) — rewrote the stale prediction to past tense: `AccountMergeService` migrated to the **Users** section (`.Users`, not `.Profile` as projected); the lazy `IServiceProvider` `IEmailService` resolution in `TeamService` remains, so the cycle-break was not removed.
+3. **sections/Profiles.md** — added one Invariants line: since #881, access is gated by stored `User.State` (UserState), superseding `Profile.State` (ProfileState) for access.
 
-**Pre-existing out-of-scope drift (predates the `2f2ab285` anchor; not fixed this sweep):**
-4. sections/Onboarding.md — `OnboardingService` writes via `IUserService` but prose/invariant says `IProfileService`.
-5. features/onboarding/volunteer-status.md — US-5.3 filter enum list omits `UserState.AdminSuspended`.
-6. features/profiles/contact-fields.md — Manage Emails route shown as `/Profile/Emails` (actual `/Profile/Me/Emails`).
-7. features/profiles/profile-pictures-birthdays.md — Picture route shown with `/{id}` (actual query param); upload-size diagram says 2MB (actual 20MB; US-14.1 already says 20MB).
-8. features/legal-and-consent/legal-documents-consent.md — `SystemTeamIds` constants block stale (0002 = Coordinators not "Leads"; Asociados/Colaboradors/BarrioLeads missing).
-9. features/google-integration/drive-activity-monitoring.md — line 145 heading `### Route: /Admin/AuditLog` stale (route is `/AuditLog`).
+**Pre-existing out-of-scope drift (predated the `2f2ab285` anchor) — FIXED:**
+4. sections/Onboarding.md — `IProfileService` → `IUserService` (OnboardingService's actual ctor dep / `ApplyProfileOnboardingMutationAsync`).
+5. features/onboarding/volunteer-status.md — added `AdminSuspended` to the US-5.3 UserState filter list.
+6. features/profiles/contact-fields.md — `/Profile/Emails` → `/Profile/Me/Emails` (both occurrences).
+7. features/profiles/profile-pictures-birthdays.md — Picture route → `/Profile/Picture?id={id}` (query param); upload-size diagram 2MB → 20MB.
+8. features/legal-and-consent/legal-documents-consent.md — corrected `SystemTeamIds` block (Volunteers 0001, Coordinators 0002, Board 0003, Asociados 0004, Colaboradors 0005, BarrioLeads 0006).
+9. features/google-integration/drive-activity-monitoring.md — heading `/Admin/AuditLog` → `/AuditLog`.
 
-**Unmarked editorial — recommend adding `freshness:triggers`:**
-- sections/admin-shell.md → `src/Humans.Web/ViewComponents/AdminNavTree.cs`, `src/Humans.Web/Controllers/AdminController.cs`, `src/Humans.Web/Views/Shared/_AdminLayout.cshtml`
-- sections/Debug.md → `src/Humans.Web/Controllers/DebugController.cs`, `src/Humans.Web/ViewComponents/AdminNavTree.cs`
+**Unmarked editorial — `freshness:triggers` ADDED:**
+- sections/admin-shell.md → `AdminNavTree.cs`, `AdminController.cs`, `_AdminLayout.cshtml`
+- sections/Debug.md → `DebugController.cs`, `AdminNavTree.cs`
 
 **Noted, no action:** authentication.md — User-entity sketch omits `State`, but the block is intentionally abbreviated (already omits many real columns); not a contradiction.
 
