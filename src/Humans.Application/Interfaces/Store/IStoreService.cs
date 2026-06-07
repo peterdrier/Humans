@@ -120,7 +120,23 @@ public sealed record StoreProductSaveRequest(
     decimal VatRatePercent,
     decimal? DepositAmountEur,
     string? OrderableUntil,
-    bool IsActive);
+    bool IsActive)
+{
+    public bool IsCreate => Id is null;
+
+    public string OrderableUntilForParsing => OrderableUntil ?? string.Empty;
+
+    public ProductDto ToProductDto(NodaTime.LocalDate orderableUntil) => new(
+        Id ?? Guid.Empty,
+        Year,
+        Name ?? string.Empty,
+        Description ?? string.Empty,
+        UnitPriceEur,
+        VatRatePercent,
+        DepositAmountEur,
+        orderableUntil,
+        IsActive);
+}
 
 public sealed record StoreCatalogSaveResult(
     bool Succeeded,

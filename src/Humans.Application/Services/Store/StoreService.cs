@@ -252,24 +252,15 @@ public class StoreService(
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var parseResult = LocalDatePattern.Iso.Parse(request.OrderableUntil ?? string.Empty);
+        var parseResult = LocalDatePattern.Iso.Parse(request.OrderableUntilForParsing);
         if (!parseResult.Success)
             return StoreCatalogSaveResult.Failure(nameof(request.OrderableUntil), "Invalid date - use YYYY-MM-DD.");
 
-        var dto = new ProductDto(
-            request.Id ?? Guid.Empty,
-            request.Year,
-            request.Name ?? string.Empty,
-            request.Description ?? string.Empty,
-            request.UnitPriceEur,
-            request.VatRatePercent,
-            request.DepositAmountEur,
-            parseResult.Value,
-            request.IsActive);
+        var dto = request.ToProductDto(parseResult.Value);
 
         try
         {
-            if (request.Id is null)
+            if (request.IsCreate)
             {
                 await CreateProductAsync(dto, actorUserId, ct);
                 return StoreCatalogSaveResult.Success(created: true);
