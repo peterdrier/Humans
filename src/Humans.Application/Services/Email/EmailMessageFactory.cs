@@ -124,22 +124,16 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderCoordinatorRotaMessage(
-            request.RecipientName, request.SenderName, request.SenderEmail,
-            request.RotaName, request.MessageText, request.ShiftLines, request.Culture);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "coordinator_rota_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
+        var content = request.RenderWith(renderer);
+        return request.ToEmailMessage(content);
     }
 
     /// <inheritdoc />
     public EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var content = renderer.RenderCoordinatorTeamRotasMessage(
-            request.RecipientName, request.SenderName, request.SenderEmail,
-            request.TeamName, request.MessageText, request.ShiftGroups, request.Culture);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "coordinator_team_rotas_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
+        var content = request.RenderWith(renderer);
+        return request.ToEmailMessage(content);
     }
 
     /// <inheritdoc />
@@ -179,10 +173,8 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     {
         ArgumentNullException.ThrowIfNull(request);
         // Renderer HTML-encodes {{Code}}/{{Name}} substitutions to prevent injection.
-        var content = renderer.RenderCampaignCode(request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
-        return new EmailMessage(request.RecipientEmail, request.RecipientName, content.Subject, content.HtmlBody,
-            "campaign_code", MessageCategory.CampaignCodes,
-            ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId);
+        var content = request.RenderWith(renderer);
+        return request.ToEmailMessage(content);
     }
 
     /// <inheritdoc />

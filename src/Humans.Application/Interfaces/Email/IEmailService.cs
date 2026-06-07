@@ -39,7 +39,31 @@ public record CoordinatorRotaMessageRequest(
     string RotaName,
     string MessageText,
     IReadOnlyList<string> ShiftLines,
-    string? Culture = null);
+    string? Culture = null)
+{
+    public EmailContent RenderWith(IEmailRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+
+        return renderer.RenderCoordinatorRotaMessage(
+            RecipientName,
+            SenderName,
+            SenderEmail,
+            RotaName,
+            MessageText,
+            ShiftLines,
+            Culture);
+    }
+
+    public EmailMessage ToEmailMessage(EmailContent content) => new(
+        RecipientEmail,
+        RecipientName,
+        content.Subject,
+        content.HtmlBody,
+        "coordinator_rota_message",
+        MessageCategory.VolunteerUpdates,
+        ReplyTo: SenderEmail);
+}
 
 /// <summary>
 /// Payload for a coordinator team-level "email all rotas" message to a single signup.
@@ -55,7 +79,31 @@ public record CoordinatorTeamRotasMessageRequest(
     string TeamName,
     string MessageText,
     IReadOnlyList<RotaShiftGroup> ShiftGroups,
-    string? Culture = null);
+    string? Culture = null)
+{
+    public EmailContent RenderWith(IEmailRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+
+        return renderer.RenderCoordinatorTeamRotasMessage(
+            RecipientName,
+            SenderName,
+            SenderEmail,
+            TeamName,
+            MessageText,
+            ShiftGroups,
+            Culture);
+    }
+
+    public EmailMessage ToEmailMessage(EmailContent content) => new(
+        RecipientEmail,
+        RecipientName,
+        content.Subject,
+        content.HtmlBody,
+        "coordinator_team_rotas_message",
+        MessageCategory.VolunteerUpdates,
+        ReplyTo: SenderEmail);
+}
 
 /// <summary>
 /// A recipient's shifts on a single rota, ready for the team-level coordinator
@@ -75,7 +123,26 @@ public record CampaignCodeEmailRequest(
     string Subject,
     string MarkdownBody,
     string Code,
-    string? ReplyTo);
+    string? ReplyTo)
+{
+    public EmailContent RenderWith(IEmailRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+
+        return renderer.RenderCampaignCode(Subject, MarkdownBody, Code, RecipientName);
+    }
+
+    public EmailMessage ToEmailMessage(EmailContent content) => new(
+        RecipientEmail,
+        RecipientName,
+        content.Subject,
+        content.HtmlBody,
+        "campaign_code",
+        MessageCategory.CampaignCodes,
+        ReplyTo: ReplyTo,
+        UserId: UserId,
+        CampaignGrantId: CampaignGrantId);
+}
 
 /// <summary>
 /// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
