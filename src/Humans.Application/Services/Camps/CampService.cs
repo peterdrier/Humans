@@ -741,11 +741,11 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
             await _auditLog.LogAsync(
                 AuditAction.CampUpdated, nameof(Camp), input.CampId,
-                $"Updated camp {input.CampId}",
+                input.UpdatedAuditMessage,
                 "CampService");
 
             await UpdateSeasonAsync(input.SeasonId, input.SeasonData, cancellationToken);
-            await ChangeSeasonNameIfAllowedAsync(input.SeasonId, input.SeasonName, cancellationToken);
+            await ChangeSeasonNameIfAllowedAsync(input, cancellationToken);
 
             return CampUpdateResult.Success();
         }
@@ -756,26 +756,19 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     }
 
     private async Task ChangeSeasonNameIfAllowedAsync(
-        Guid seasonId,
-        string seasonName,
+        CampUpdateInput input,
         CancellationToken cancellationToken)
     {
-        var currentSeason = await _repo.GetSeasonByIdAsync(seasonId, cancellationToken)
+        var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken)
             ?? throw new InvalidOperationException("Season not found.");
 
-        if (string.Equals(currentSeason.Name, seasonName, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         var today = _clock.GetCurrentInstant().InUtc().Date;
-        var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-        if (nameLocked)
+        if (!input.ShouldRenameSeason(currentSeason, today))
         {
             return;
         }
 
-        await ChangeSeasonNameAsync(currentSeason.Id, seasonName, cancellationToken);
+        await ChangeSeasonNameAsync(currentSeason.Id, input.SeasonName, cancellationToken);
     }
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)

@@ -1,3 +1,4 @@
+using Humans.Application.Helpers;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -128,7 +129,53 @@ public sealed record CreateCampRoleDefinitionInput(
     string? Description,
     int SlotCount,
     int MinimumRequired,
-    int SortOrder);
+    int SortOrder)
+{
+    public string NormalizedSlug
+    {
+        get => NormalizeAndValidateSlug(Slug);
+    }
+
+    public void EnsureMinimumRequiredIsValid() => ValidateMinimumRequired(SlotCount, MinimumRequired);
+
+    private static void ValidateMinimumRequired(int slotCount, int minimumRequired)
+    {
+        if (minimumRequired < 0 || minimumRequired > slotCount)
+            throw new ArgumentException(
+                $"MinimumRequired must satisfy 0 <= MinimumRequired <= SlotCount (got SlotCount={slotCount}, MinimumRequired={minimumRequired}).",
+                nameof(minimumRequired));
+    }
+
+    private static string NormalizeAndValidateSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new ArgumentException("Slug is required.", nameof(slug));
+
+        var normalized = slug.Trim().ToLowerInvariant();
+        if (!SlugHelper.IsValidKebabSlug(normalized))
+            throw new ArgumentException(
+                "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).",
+                nameof(slug));
+
+        if (string.Equals(normalized, "create", StringComparison.Ordinal))
+            throw new InvalidOperationException("\"create\" is reserved and cannot be used as a camp role slug.");
+
+        return normalized;
+    }
+
+    public CampRoleDefinition ToDefinition(Instant now) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = Name,
+        Slug = NormalizedSlug,
+        Description = Description,
+        SlotCount = SlotCount,
+        MinimumRequired = MinimumRequired,
+        SortOrder = SortOrder,
+        CreatedAt = now,
+        UpdatedAt = now,
+    };
+}
 
 public sealed record UpdateCampRoleDefinitionInput(
     string Name,

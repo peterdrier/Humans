@@ -396,7 +396,14 @@ public sealed record CampUpdateInput(
     bool HideHistoricalNames,
     Guid SeasonId,
     string SeasonName,
-    CampSeasonData SeasonData);
+    CampSeasonData SeasonData)
+{
+    public string UpdatedAuditMessage => $"Updated camp {CampId}";
+
+    public bool ShouldRenameSeason(CampSeason currentSeason, LocalDate today) =>
+        !string.Equals(currentSeason.Name, SeasonName, StringComparison.Ordinal)
+        && (!currentSeason.NameLockDate.HasValue || today < currentSeason.NameLockDate.Value);
+}
 
 public sealed record CampUpdateResult(bool Succeeded, string? ErrorMessage)
 {

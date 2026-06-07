@@ -49,8 +49,8 @@ public sealed class CampRoleService(
 
     public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
-        var slug = NormalizeAndValidateSlug(input.Slug);
+        input.EnsureMinimumRequiredIsValid();
+        var slug = input.NormalizedSlug;
 
         if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
             throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
@@ -59,18 +59,7 @@ public sealed class CampRoleService(
             throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
 
         var now = clock.GetCurrentInstant();
-        var def = new CampRoleDefinition
-        {
-            Id = Guid.NewGuid(),
-            Name = input.Name,
-            Slug = slug,
-            Description = input.Description,
-            SlotCount = input.SlotCount,
-            MinimumRequired = input.MinimumRequired,
-            SortOrder = input.SortOrder,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+        var def = input.ToDefinition(now);
 
         await repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
         await auditLog.LogAsync(
