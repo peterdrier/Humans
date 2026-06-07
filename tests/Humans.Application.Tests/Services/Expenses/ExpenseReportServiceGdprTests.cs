@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,7 +59,8 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IHoldedClient>(),
             Substitute.For<IHoldedFinanceService>(),
             new FakeClock(FakeNow),
-            NullLogger<ExpenseReportService>.Instance);
+            NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -101,6 +103,7 @@ public class ExpenseReportServiceGdprTests
                 ExpenseReportId = Guid.NewGuid(),
                 Description = "Flight ticket",
                 Amount = 100m,
+                LineType = ExpenseLineType.Receipt,
                 SortOrder = 1,
                 AttachmentId = null,
                 Attachment = null,

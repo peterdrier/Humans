@@ -1,4 +1,5 @@
 @model Humans.Web.Models.ExpenseEditViewModel
+@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Edit Expense Report";
     var r = Model.Report!;
@@ -90,7 +91,13 @@
                     </div>
                 </div>
 
-                @if (line.Attachment is not null)
+                @if (line.LineType != ExpenseLineType.Receipt)
+                {
+                    <span class="badge bg-info text-dark">
+                        <i class="fa-solid fa-route me-1"></i>@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem") — no receipt needed
+                    </span>
+                }
+                else if (line.Attachment is not null)
                 {
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
@@ -126,7 +133,7 @@
                     <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
                 }
 
-                @if (Model.CanEditLines)
+                @if (Model.CanEditLines && line.LineType == ExpenseLineType.Receipt)
                 {
                     <details class="mt-2">
                         <summary class="text-muted small" style="cursor:pointer;">Edit description / amount</summary>
@@ -176,6 +183,59 @@
                     </div>
                 </div>
             </form>
+
+            <details class="mt-3">
+                <summary class="text-muted small" style="cursor:pointer;"><i class="fa-solid fa-car me-1"></i>Add mileage</summary>
+                <form asp-action="AddMileage" asp-route-id="@r.Id" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm">From</label>
+                            <input type="text" name="Origin" class="form-control form-control-sm" maxlength="200" placeholder="Berlin" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm">To</label>
+                            <input type="text" name="Destination" class="form-control form-control-sm" maxlength="200" placeholder="Barcelona" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label form-label-sm">Km</label>
+                            <input type="number" name="Km" class="form-control form-control-sm" step="0.1" min="0.1" placeholder="0" required />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">Add</button>
+                        </div>
+                    </div>
+                    <div class="form-text">Amount is computed at the current per-km rate. No receipt needed.</div>
+                </form>
+            </details>
+
+            <details class="mt-2">
+                <summary class="text-muted small" style="cursor:pointer;"><i class="fa-solid fa-utensils me-1"></i>Add per diem</summary>
+                <form asp-action="AddPerDiem" asp-route-id="@r.Id" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm">Type</label>
+                            <select name="Kind" class="form-select form-select-sm" required>
+                                <option value="@((int)PerDiemKind.DayTrip)">Day trip</option>
+                                <option value="@((int)PerDiemKind.Overnight)">Overnight</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label form-label-sm">Days</label>
+                            <input type="number" name="Days" class="form-control form-control-sm" step="1" min="1" value="1" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm">Note <small class="text-muted">(optional)</small></label>
+                            <input type="text" name="Note" class="form-control form-control-sm" maxlength="200" placeholder="Assembly in Madrid" />
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">Add</button>
+                        </div>
+                    </div>
+                    <div class="form-text">Amount is computed at the Spanish tax-exempt daily rate. No receipt needed.</div>
+                </form>
+            </details>
         </div>
     }
     else if (r.Status != ExpenseReportStatus.Draft)

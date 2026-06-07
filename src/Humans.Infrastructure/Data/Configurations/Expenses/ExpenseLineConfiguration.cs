@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,6 +14,11 @@ public class ExpenseLineConfiguration : IEntityTypeConfiguration<ExpenseLine>
 
         b.Property(x => x.Description).HasMaxLength(500).IsRequired();
         b.Property(x => x.Amount).HasColumnType("decimal(12,2)");
+
+        b.Property(x => x.LineType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(ExpenseLineType.Receipt);
 
         b.HasOne(x => x.Attachment)
             .WithMany()

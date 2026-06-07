@@ -15,7 +15,9 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
+using System.Globalization;
 
 namespace Humans.Application.Services.Expenses;
 
@@ -34,11 +36,13 @@ public sealed class ExpenseReportService(
     IHoldedClient holdedClient,
     IHoldedFinanceService holdedFinance,
     IClock clock,
-    ILogger<ExpenseReportService> logger) : IExpenseReportService,
+    ILogger<ExpenseReportService> logger,
+    IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportService,
         IExpenseReportBackgroundProcessor, IUserDataContributor
 {
     // Stored for future Holded Finance integration tasks (creditor status polling etc.).
     private readonly IHoldedFinanceService _holdedFinance = holdedFinance;
+    private readonly TravelReimbursementConfig _travel = travelConfig.Value;
 
     internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
@@ -63,7 +67,7 @@ public sealed class ExpenseReportService(
         if (string.IsNullOrEmpty(report.HoldedContactId))
             return new ExpenseHoldedTimeline(
                 RegisteredInHolded: false, OwedToMember: 0m, MemberRegisteredTotal: 0m,
-                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m);
+                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m, Payments: []);
 
         var status = await _holdedFinance.GetCreditorStatusAsync(
             report.HoldedSupplierAccountNum, report.HoldedContactId, ct);
@@ -90,7 +94,8 @@ public sealed class ExpenseReportService(
             OtherAmount: Math.Max(0m, owed - memberRegisteredTotal),
             Paid: paid,
             PaidOn: status?.LastPaymentDate,
-            TotalPaid: totalPaid);
+            TotalPaid: totalPaid,
+            Payments: status?.Payments ?? []);
     }
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
@@ -230,6 +235,7 @@ public sealed class ExpenseReportService(
     internal async Task<Guid> AddLineAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
         CancellationToken ct = default)
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
@@ -239,7 +245,8 @@ public sealed class ExpenseReportService(
             Id = Guid.NewGuid(),
             ExpenseReportId = reportId,
             Description = description,
-            Amount = amount
+            Amount = amount,
+            LineType = lineType
         };
         var ok = await repo.AddLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to add line.");
@@ -253,12 +260,63 @@ public sealed class ExpenseReportService(
     {
         try
         {
-            await AddLineAsync(reportId, submitterUserId, description, amount, ct);
+            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Receipt, ct);
             return ExpenseMutationResult.Success;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
+    }
+
+    public async Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        string origin, string destination, decimal km,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rate = _travel.MileageRatePerKm;
+            var amount = Math.Round(km * rate, 2, MidpointRounding.AwayFromZero);
+            var description =
+                $"{origin.Trim()} to {destination.Trim()}, " +
+                $"{km.ToString("0.#", CultureInfo.InvariantCulture)} km @ " +
+                $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
+                $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
+            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Mileage, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error adding mileage line to report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
+    }
+
+    public async Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        PerDiemKind kind, int days, string? note,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rate = kind == PerDiemKind.Overnight ? _travel.PerDiemOvernightRate : _travel.PerDiemDayTripRate;
+            var amount = Math.Round(days * rate, 2, MidpointRounding.AwayFromZero);
+            var kindLabel = kind == PerDiemKind.Overnight ? "overnight" : "day-trip";
+            var dayWord = days == 1 ? "day" : "days";
+            var description =
+                $"Per diem: {days} {dayWord} {kindLabel} @ " +
+                $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
+                $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
+            if (!string.IsNullOrWhiteSpace(note))
+                description += $" — {note.Trim()}";
+            await AddLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.PerDiem, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error adding per-diem line to report {ReportId}", reportId);
             return ExpenseMutationResult.Failure(ex.Message);
         }
     }
@@ -269,6 +327,16 @@ public sealed class ExpenseReportService(
         CancellationToken ct = default)
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+
+        var existing = report.Lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+        // Travel lines carry computed amounts (mileage km×rate, per-diem days×rate) and waive the
+        // receipt requirement on that basis. A free-text amount/description edit here would let a
+        // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
+        // remove it and re-add so the amount is always recomputed from its inputs.
+        if (existing.LineType != ExpenseLineType.Receipt)
+            throw new InvalidOperationException(
+                "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
 
         var line = new ExpenseLine
         {
@@ -458,8 +526,8 @@ public sealed class ExpenseReportService(
         if (!report.Lines.Any())
             throw new InvalidOperationException("Report must have at least one line.");
 
-        if (report.Lines.Any(l => l.AttachmentId is null))
-            throw new InvalidOperationException("Every line must have an attachment before submitting.");
+        if (report.Lines.Any(l => l.LineType == ExpenseLineType.Receipt && l.AttachmentId is null))
+            throw new InvalidOperationException("Receipt lines must have an attachment before submitting.");
 
         var profile = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
@@ -495,7 +563,7 @@ public sealed class ExpenseReportService(
             var submitted = await SubmitAsync(reportId, submitterUserId, ct);
             return submitted
                 ? ExpenseMutationResult.Success
-                : ExpenseMutationResult.Failure("Could not submit the report. Make sure it has at least one line with an attachment and your payment IBAN is set.");
+                : ExpenseMutationResult.Failure("Could not submit the report. Receipt lines need an attachment and your payment IBAN must be set.");
         }
         catch (Exception ex)
         {
@@ -1204,6 +1272,7 @@ public sealed class ExpenseReportService(
                     l.Id,
                     l.Description,
                     l.Amount,
+                    l.LineType,
                     l.SortOrder,
                     Attachment = l.Attachment is null
                         ? null

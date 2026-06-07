@@ -1,4 +1,5 @@
 @model Humans.Web.Models.ExpensesIndexViewModel
+@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "My Expense Reports";
 }
@@ -13,6 +14,78 @@
     }
 </div>
 
+
+@if (Model.Iou is { } iou)
+{
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info-subtle"><strong><i class="fa-solid fa-building-columns me-1"></i>What the collective owes you</strong></div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="text-muted small">Owed to you (Holded balance)</div>
+                    <div class="fs-4 fw-semibold">&euro;@iou.OwedToMember.ToString("N2")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small">Paid to date</div>
+                    <div class="fs-4">&euro;@iou.TotalPaid.ToString("N2")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small">Last payment</div>
+                    <div class="fs-4">@(iou.LastPaymentDate is { } d ? d.ToInvariantDate() : "—")</div>
+                </div>
+            </div>
+            @if (iou.OtherAmount > 0)
+            {
+                <p class="text-muted small mb-0 mt-3">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Your Holded balance includes &euro;@iou.OtherAmount.ToString("N2") unrelated to these reports
+                    (items fronted on the collective's behalf, adjustments, etc.), so the rows below won't necessarily sum to it.
+                </p>
+            }
+        </div>
+        @if (Model.Ledger.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Item</th>
+                            <th class="text-end">Amount</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Ledger)
+                        {
+                            <tr class="@(row.IsPayment ? "table-success" : "")">
+                                <td>@row.Date.ToInvariantDate()</td>
+                                <td>
+                                    @if (row.IsPayment)
+                                    {
+                                        <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
+                                    }
+                                    @row.Label
+                                    @if (row.Status is { } st)
+                                    {
+                                        <span class="badge bg-secondary ms-1">@st</span>
+                                    }
+                                </td>
+                                <td class="text-end">@(row.IsPayment ? "−" : "")&euro;@row.Amount.ToString("N2")</td>
+                                <td class="text-end">
+                                    @if (row.ReportId is { } rid)
+                                    {
+                                        <a asp-action="Detail" asp-route-id="@rid" class="btn btn-sm btn-outline-secondary">View</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
 
 @if (!Model.HasActiveYear)
 {

@@ -1,4 +1,5 @@
 @model Humans.Web.Models.ExpenseDetailViewModel
+@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Expense Report";
     var r = Model.Report;
@@ -106,7 +107,11 @@
                                     <td>@line.Description</td>
                                     <td class="text-end">&euro;@line.Amount.ToString("N2")</td>
                                     <td>
-                                        @if (line.Attachment is not null)
+                                        @if (line.LineType != ExpenseLineType.Receipt)
+                                        {
+                                            <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
+                                        }
+                                        else if (line.Attachment is not null)
                                         {
                                             <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
                                                class="text-decoration-none" target="_blank">

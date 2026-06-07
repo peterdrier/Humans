@@ -44,6 +44,7 @@ internal static class ExpenseReportMapper
         ExpenseReportId = l.ExpenseReportId,
         Description = l.Description,
         Amount = l.Amount,
+        LineType = l.LineType,
         AttachmentId = l.AttachmentId,
         Attachment = l.Attachment is null ? null : ToAttachmentDto(l.Attachment),
         SortOrder = l.SortOrder
