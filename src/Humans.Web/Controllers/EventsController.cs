@@ -551,7 +551,7 @@ public class EventsController(
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction(nameof(Browse), new { days, categoryId, venueId, q, favouritesOnly });
+        return RedirectToAction(nameof(Browse), null, new { days, categoryId, venueId, q, favouritesOnly }, $"event-{eventId}");
     }
 
     [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
