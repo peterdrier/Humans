@@ -31,6 +31,7 @@ public sealed record ClientStatsSnapshot(
     IReadOnlyList<ClientStatCount> OperatingSystems,
     IReadOnlyList<ClientStatCount> Browsers,
     IReadOnlyList<ClientStatCount> DeviceTypes,
+    IReadOnlyList<ClientStatCount> Bots,
     long TotalResolutionSamples,
     IReadOnlyList<ClientStatCount> Resolutions);
 
