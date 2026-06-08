@@ -36,7 +36,6 @@ public class TicketStubInfoTests
 
         stub.AttendeeName.Should().Be(row.AttendeeName);
         stub.AttendeeEmail.Should().Be(row.AttendeeEmail);
-        stub.VendorTicketId.Should().Be(row.VendorTicketId);
         stub.Status.Should().Be(row.Status);
         stub.EarlyEntryDate.Should().Be(ee);
     }

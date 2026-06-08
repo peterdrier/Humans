@@ -88,7 +88,6 @@ public sealed record MyAttendeeRowDto(
 public sealed record TicketStubInfo(
     string AttendeeName,
     string? AttendeeEmail,
-    string VendorTicketId,
     TicketAttendeeStatus Status,
     bool HasPendingTransfer,
     Guid? PendingTransferRequestId,
@@ -102,6 +101,6 @@ public sealed record TicketStubInfo(
     /// the viewer's EE (one value, shown on each of their stubs); null = no EE.
     /// </summary>
     public static TicketStubInfo From(MyAttendeeRowDto row, LocalDate? holderEarlyEntry) =>
-        new(row.AttendeeName, row.AttendeeEmail, row.VendorTicketId, row.Status,
+        new(row.AttendeeName, row.AttendeeEmail, row.Status,
             row.HasPendingOutgoingTransfer, row.PendingTransferRequestId, holderEarlyEntry);
 }
