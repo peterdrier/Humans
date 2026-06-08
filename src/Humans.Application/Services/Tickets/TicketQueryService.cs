@@ -772,20 +772,23 @@ public sealed class TicketQueryService(
         MatchedUserId: o.MatchedUserId,
         IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
             && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
-        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
-            Id: a.Id,
-            VendorTicketId: a.VendorTicketId,
-            AttendeeName: a.AttendeeName,
-            AttendeeEmail: a.AttendeeEmail,
-            TicketTypeName: a.TicketTypeName,
-            Price: a.Price,
-            Status: a.Status,
-            MatchedUserId: a.MatchedUserId,
-            Barcode: a.Barcode,
-            TransferredToName: a.Status == TicketAttendeeStatus.Void
-                && transfersByAttendee.TryGetValue(a.Id, out var tr) ? tr.ReceiverLegalName : null,
-            TransferredAt: a.Status == TicketAttendeeStatus.Void
-                && transfersByAttendee.TryGetValue(a.Id, out var tr2) ? tr2.DecidedAt : null)).ToList(),
+        Attendees: o.Attendees.Select(a =>
+        {
+            transfersByAttendee.TryGetValue(a.Id, out var tr);
+            var hasTransfer = a.Status == TicketAttendeeStatus.Void && tr is not null;
+            return new TicketAttendeeInfo(
+                Id: a.Id,
+                VendorTicketId: a.VendorTicketId,
+                AttendeeName: a.AttendeeName,
+                AttendeeEmail: a.AttendeeEmail,
+                TicketTypeName: a.TicketTypeName,
+                Price: a.Price,
+                Status: a.Status,
+                MatchedUserId: a.MatchedUserId,
+                Barcode: a.Barcode,
+                TransferredToName: hasTransfer ? tr!.ReceiverLegalName : null,
+                TransferredAt: hasTransfer ? tr!.DecidedAt : null);
+        }).ToList(),
         StripeFee: o.StripeFee,
         ApplicationFee: o.ApplicationFee);
 

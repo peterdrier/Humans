@@ -85,6 +85,34 @@ public class ScannerControllerTests
     }
 
     [HumansFact]
+    public async Task Card_VoidAttendeeWithTransfer_CarriesTransferFields()
+    {
+        var transferredAt = Instant.FromUtc(2026, 6, 5, 9, 0);
+        var attendee = new TicketAttendeeInfo(
+            Id: Guid.NewGuid(),
+            VendorTicketId: "vt-void",
+            AttendeeName: "Old Owner",
+            AttendeeEmail: "old@example.com",
+            TicketTypeName: "General Admission",
+            Price: 10m,
+            Status: TicketAttendeeStatus.Void,
+            MatchedUserId: null,
+            Barcode: "vb1",
+            TransferredToName: "Alice Receiver",
+            TransferredAt: transferredAt);
+        var tickets = TicketsWithAttendee(attendee);
+        var ctrl = NewController(tickets);
+
+        var result = await ctrl.Card("vb1", default);
+
+        var vm = result.Should().BeOfType<PartialViewResult>().Subject
+            .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
+        vm.Found.Should().BeTrue();
+        vm.TransferredToName.Should().Be("Alice Receiver");
+        vm.TransferredAt.Should().Be(transferredAt);
+    }
+
+    [HumansFact]
     public async Task Card_UnmatchedBarcode_ReturnsNotFoundCard()
     {
         var attendee = new TicketAttendeeInfo(
