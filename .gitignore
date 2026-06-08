@@ -150,3 +150,6 @@ insp*.xml
 /.claude/skills/stripe-projects
 /.claude/skills/upgrade-stripe
 /skills-lock.json
+
+# Generated artifact of the localization-coverage sweep (tests/.../Localization). Re-created on each run.
+/localization-sweep-report.md
