@@ -144,7 +144,8 @@ public class TicketTailorService : ITicketVendorService
                     Status: ticket.Status ?? "valid",
                     CheckedInAt: ticket.CheckIn?.CheckedInAt is long epoch and > 0
                         ? Instant.FromUnixTimeSeconds(epoch)
-                        : null));
+                        : null,
+                    Barcode: ticket.Barcode));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -355,7 +356,8 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId,
         [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
-        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null);
+        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null,
+        [property: JsonPropertyName("barcode")] string? Barcode = null);
 
     // TicketTailor returns `check_in` as a nested object on issued_tickets when
     // a ticket has been scanned at the gate. `checked_in_at` is epoch seconds.

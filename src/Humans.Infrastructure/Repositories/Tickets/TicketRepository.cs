@@ -243,6 +243,7 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
                 tracked.VendorEventId = attendee.VendorEventId;
                 tracked.SyncedAt = attendee.SyncedAt;
                 tracked.MatchedUserId = attendee.MatchedUserId;
+                tracked.Barcode = attendee.Barcode;
                 // TicketOrderId is init-only on existing rows; don't reparent.
             }
             else
