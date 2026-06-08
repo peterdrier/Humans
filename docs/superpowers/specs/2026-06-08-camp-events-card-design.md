@@ -166,5 +166,4 @@ Heart click (POST /Events/Barrio/{slug}/Favourite/{eventId})
 5. Edit `Details.cshtml` to invoke the VC behind the auth gate. Build.
 6. Tests (arch + VC + controller). `dotnet test Humans.slnx -v quiet`.
 7. Manual smoke on `/Barrios/{slug}` (logged in): card shows between Roster and About, hearts toggle and persist.
-</content>
 </invoke>

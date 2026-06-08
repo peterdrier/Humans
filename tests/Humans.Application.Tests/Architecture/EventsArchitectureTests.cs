@@ -194,6 +194,35 @@ public class EventsArchitectureTests
             because: "§15e — invalidator must share the decorator's singleton lifetime");
     }
 
+    // ── Cross-section read surface (IEventServiceRead) ───────────────────────
+
+    [HumansFact]
+    public void IEventService_DerivesFrom_IEventServiceRead()
+    {
+        typeof(IEventServiceRead).IsAssignableFrom(typeof(IEventService))
+            .Should().BeTrue(
+                because: "other sections consume the Events section through the IEventServiceRead read surface");
+    }
+
+    [HumansFact]
+    public void AddEventsSection_Registers_IEventServiceRead_AsSingleton()
+    {
+        // IEventServiceRead forwards to the same Singleton CachingEventService that
+        // backs IEventService, so cross-section reads hit the existing T-03 cache.
+        var services = new ServiceCollection();
+        var sectionExtensionsType = typeof(EventsController).Assembly
+            .GetType("Humans.Web.Extensions.Sections.EventsSectionExtensions", throwOnError: true)!;
+        var addMethod = sectionExtensionsType.GetMethod("AddEventsSection",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+        addMethod.Invoke(null, [services]);
+
+        var descriptor = services.Single(d =>
+            d.ServiceType == typeof(IEventServiceRead) && d.ServiceKey is null);
+
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton,
+            because: "the read surface forwards to the Singleton caching decorator");
+    }
+
     private static string RouteFor<TController>()
     {
         var route = typeof(TController)
