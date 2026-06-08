@@ -614,6 +614,33 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // SyncOrdersAndAttendeesAsync_BarcodeMappedToAttendee
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SyncOrdersAndAttendeesAsync_BarcodeMappedToAttendee()
+    {
+        var orders = new List<VendorOrderDto>
+        {
+            MakeOrderDto("ord_bc", "Buyer", "buyer@example.com")
+        };
+        var tickets = new List<VendorTicketDto>
+        {
+            MakeTicketDto("tkt_bc", "ord_bc", "Buyer", "buyer@example.com") with { Barcode = "bc-123" }
+        };
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(orders);
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(tickets);
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        var dbAttendee = await Db.TicketAttendees.SingleAsync();
+        dbAttendee.Barcode.Should().Be("bc-123");
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

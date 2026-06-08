@@ -108,6 +108,43 @@ public class EventsControllerTests
         result.Should().BeOfType<ForbidResult>();
     }
 
+    [HumansFact]
+    public async Task ToggleCampFavourite_Authenticated_TogglesAndRedirectsToCampDetails()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var controller = BuildController(userId);
+
+        var result = await controller.ToggleCampFavourite("shenanicamp", eventId);
+
+        await _guide.Received(1).ToggleFavouriteAsync(userId, eventId, Arg.Any<CancellationToken>());
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be("Details");
+        redirect.ControllerName.Should().Be("Camp");
+        redirect.RouteValues!["slug"].Should().Be("shenanicamp");
+    }
+
+    [HumansFact]
+    public async Task ToggleCampFavourite_Unauthenticated_ReturnsChallenge()
+    {
+        var controller = BuildAnonymousController();
+
+        var result = await controller.ToggleCampFavourite("shenanicamp", Guid.NewGuid());
+
+        result.Should().BeOfType<ChallengeResult>();
+        await _guide.DidNotReceive().ToggleFavouriteAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    private EventsController BuildAnonymousController() =>
+        new(_guide, _users, _camps, _authz, _clock, _email, Substitute.For<IEmailMessageFactory>(), NullLogger<EventsController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
+            },
+        };
+
     private Guid StubEvent(Guid submitterId, Guid? campId, EventStatus status)
     {
         var guideEvent = MakeEvent(campId, submitterId, status);

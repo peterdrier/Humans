@@ -47,10 +47,12 @@ Aggregate-local: `TicketOrder.Attendees`.
 
 **Table:** `ticket_attendees`
 
-Individual ticket holder (issued ticket, multiple per order). Vendor-agnostic identity is `VendorTicketId`. `AttendeeEmail` is nullable — some vendor flows don't capture per-ticket email; in that case `MatchedUserId` stays null. `Status` is normalized from the vendor string into `TicketAttendeeStatus` (`Valid` / `CheckedIn` / `Void`). Only `Valid` and `CheckedIn` count as revenue or as ticket coverage.
+Individual ticket holder (issued ticket, multiple per order). Vendor-agnostic identity is `VendorTicketId`. `AttendeeEmail` is nullable — some vendor flows don't capture per-ticket email; in that case `MatchedUserId` stays null. `Status` is normalized from the vendor string into `TicketAttendeeStatus` (`Valid` / `CheckedIn` / `Void`). Only `Valid` and `CheckedIn` count as revenue or as ticket coverage. `Barcode` is the Ticket Tailor `issued_ticket.barcode` value (the code printed on the ticket and encoded in its QR), nullable, lazy-filled during sync; a Full Re-sync backfills existing rows. It is indexed and searchable (the `/Tickets/Attendees` search matches barcode alongside name and email).
 
 Cross-domain nav `TicketAttendee.MatchedUser → MatchedUserId`. Target: strip nav, keep FK only.
 Aggregate-local: `TicketAttendee.TicketOrder`.
+
+**`TicketAttendeeInfo` read projection** (part of `TicketOrderInfo`): carries `Barcode` plus, for `Void` attendees, `TransferredToName` and `TransferredAt` sourced from the Approved `TicketTransferRequest` for the attendee (read via `ITicketTransferRepository` in `TicketQueryService.GetTicketOrdersAsync`). These fields are used by the Scanner ticket-lookup card (`/Scanner/Tickets`).
 
 ### TicketSyncState
 
@@ -161,6 +163,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - **Profiles (account merge):** `TicketSyncService` implements `IUserMerge`; `AccountMergeService.FoldAsync` fans out across all `IUserMerge` registrations, calling `TicketSyncService.ReassignAsync` which delegates to `ITicketRepository.ReassignToUserAsync` to re-FK `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId`.
 - **Users/Identity (transfer):** `IUserService.GetByIdAsync` — recipient validation and display-name resolution for transfer requests (extends the existing `IUserService` dependency).
 - **Audit (transfer):** `IAuditLogService.LogAsync` — four new actions: `TicketTransferRequested`, `TicketTransferCancelled`, `TicketTransferApproved`, `TicketTransferRejected` (existing Audit dependency, extended).
+- **Scanner (inbound):** `ScannerController` calls `ITicketServiceRead.GetTicketOrdersAsync` (read-only) to power the `/Scanner/Tickets` barcode-lookup card. No writes back to Tickets from Scanner.
 
 ## Architecture
 

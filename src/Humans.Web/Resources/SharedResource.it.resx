@@ -2919,6 +2919,33 @@
   <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve">
     <value>Il tuo browser non ha un decodificatore integrato e la libreria di fallback non si è caricata. Prova con Chrome o Safari mobile recenti.</value>
   </data>
+  <data name="Scanner_Tickets_Title" xml:space="preserve">
+    <value>Ricerca biglietti</value>
+  </data>
+  <data name="Scanner_Tickets_Intro" xml:space="preserve">
+    <value>Scansiona un biglietto per vederne i dettagli.</value>
+  </data>
+  <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
+    <value>Scansiona il codice a barre di un biglietto per vedere il titolare, lo stato e la cronologia dei trasferimenti.</value>
+  </data>
+  <data name="Scanner_Tickets_Open" xml:space="preserve">
+    <value>Apri ricerca biglietti</value>
+  </data>
+  <data name="Scanner_Tickets_NotFound" xml:space="preserve">
+    <value>Nessun biglietto trovato per questo codice:</value>
+  </data>
+  <data name="Scanner_Tickets_Type" xml:space="preserve">
+    <value>Tipo di biglietto</value>
+  </data>
+  <data name="Scanner_Tickets_Status" xml:space="preserve">
+    <value>Stato</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredTo" xml:space="preserve">
+    <value>Trasferito a</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
+    <value>Trasferito il</value>
+  </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Aggiungi membro</value>
   </data>

@@ -551,7 +551,7 @@ public class EventsController(
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction(nameof(Browse), new { days, categoryId, venueId, q, favouritesOnly });
+        return RedirectToAction(nameof(Browse), null, new { days, categoryId, venueId, q, favouritesOnly }, $"event-{eventId}");
     }
 
     [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
@@ -565,6 +565,19 @@ public class EventsController(
             SetSuccess("Event removed from your schedule.");
 
         return RedirectToAction(nameof(Schedule));
+    }
+
+    // Favourite toggle for the camp detail page's events card. Redirects back to
+    // the camp page (per-surface redirect, like Unfavourite → Schedule).
+    [HttpPost("Barrio/{slug}/Favourite/{eventId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleCampFavourite(string slug, Guid eventId)
+    {
+        var user = await GetCurrentUserInfoAsync();
+        if (user == null) return Challenge();
+
+        await guide.ToggleFavouriteAsync(user.Id, eventId);
+        return RedirectToAction(nameof(CampController.Details), "Camp", new { slug });
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>

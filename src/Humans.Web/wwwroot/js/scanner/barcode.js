@@ -17,6 +17,7 @@ export function initBarcodeScanner(refs) {
         status,
         error,
         labels,
+        onHit,
     } = refs;
 
     let mediaStream = null;
@@ -52,9 +53,13 @@ export function initBarcodeScanner(refs) {
         }
         recentHits.set(dedupeKey, now);
 
+        if (onHit) onHit(value, format);
+
         if (resultsEmpty && !resultsEmpty.classList.contains('d-none')) {
             resultsEmpty.classList.add('d-none');
         }
+
+        if (!results) return;
 
         const item = document.createElement('li');
         item.className = 'list-group-item';

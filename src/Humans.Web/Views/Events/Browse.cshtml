@@ -107,7 +107,7 @@ else
         <div class="list-group mb-3">
             @foreach (var item in dayGroup.Items)
             {
-                <div class="list-group-item">
+                <div class="list-group-item" id="event-@item.EventId">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <strong>@item.Title</strong>

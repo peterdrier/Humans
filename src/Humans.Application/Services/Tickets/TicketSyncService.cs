@@ -286,6 +286,7 @@ public sealed class TicketSyncService(
             VendorEventId = eventId,
             SyncedAt = now,
             MatchedUserId = matchedUserId,
+            Barcode = dto.Barcode,
         };
     }
 
