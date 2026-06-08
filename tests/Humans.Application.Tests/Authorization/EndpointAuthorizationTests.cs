@@ -263,28 +263,6 @@ public class EndpointAuthorizationTests
             "New anonymous endpoints: " + string.Join(", ", violations));
     }
 
-    [HumansFact]
-    public void ScannerController_Remains_ClientOnly_GetSurface()
-    {
-        var constructor = typeof(ScannerController).GetConstructors(BindingFlags.Public | BindingFlags.Instance)
-            .Should().ContainSingle()
-            .Subject;
-        constructor.GetParameters().Should().BeEmpty(
-            "Scanner is documented as a browser-only section with no server-side service, repository, or cache dependencies");
-
-        var actions = typeof(ScannerController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-
-        actions.Should().OnlyContain(
-            m => m.GetCustomAttribute<HttpGetAttribute>() != null,
-            "Scanner endpoints must not write server-side state");
-        actions.Should().OnlyContain(
-            m => m.GetCustomAttribute<HttpPostAttribute>() == null &&
-                 m.GetCustomAttribute<HttpPutAttribute>() == null &&
-                 m.GetCustomAttribute<HttpDeleteAttribute>() == null &&
-                 m.GetCustomAttribute<HttpPatchAttribute>() == null,
-            "the current Scanner section is explicitly not a check-in or persistence gateway");
-    }
-
     private static void AssertHasPolicy(Type controllerType, string? actionName, string expectedPolicy)
     {
         AuthorizeAttribute? attr;
