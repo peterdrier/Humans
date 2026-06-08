@@ -68,9 +68,12 @@ public class OnboardingWidgetController(
 
         var userId = CurrentUserId();
 
-        // SaveProfileAsync does a full-field overwrite — bail if past Names step or we'd wipe data.
-        var currentStep = await state.GetCurrentStepAsync(userId, ct);
-        if (currentStep != OnboardingWidgetStep.Names)
+        // SaveProfileAsync does a full-field overwrite — skip it for an already-named user
+        // (stale page / back-button re-POST would null City/Bio/etc.). This is a name-only
+        // check against the user's own profile: the name save must NOT be gated by any
+        // cross-section consent/step check, or a vacuously-"complete" consent state (no
+        // required legal docs) bounces a bare account into an endless Names redirect loop.
+        if (!await IsNameMissingAsync(userId, ct))
             return RedirectToAction(nameof(Index));
 
         var request = new ProfileSaveRequest(
