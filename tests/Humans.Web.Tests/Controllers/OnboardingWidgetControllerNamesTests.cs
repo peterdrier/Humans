@@ -62,12 +62,13 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public void Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
+    public async Task Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
     {
         // OAuth-supplied legal names are unverified — provider-set GivenName /
         // Surname must NOT prefill the form. Reports of users blowing through
         // the Names step with whatever Google handed us are the regression
-        // this guards.
+        // this guards. The prefill reads the saved profile (none here → blank),
+        // never the claims.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
             _userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _humanLifecycle, _localizer);
@@ -82,13 +83,32 @@ public class OnboardingWidgetControllerNamesTests
         };
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
 
-        var result = ctrl.Names();
+        var result = await ctrl.Names(CancellationToken.None);
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<NamesViewModel>(view.Model);
         Assert.Equal(string.Empty, vm.BurnerName);
         Assert.Equal(string.Empty, vm.FirstName);
         Assert.Equal(string.Empty, vm.LastName);
+    }
+
+    [HumansFact]
+    public async Task Names_Get_PrefillsFromSavedProfile()
+    {
+        // A returning or data-drifted user must see their saved name fields, not a
+        // blank form that looks like their earlier entry never persisted.
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUserInfo(userId, burner: "Saved", first: "Jean", last: "Dupont"));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.Names(CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<NamesViewModel>(view.Model);
+        Assert.Equal("Saved", vm.BurnerName);
+        Assert.Equal("Jean", vm.FirstName);
+        Assert.Equal("Dupont", vm.LastName);
     }
 
     [HumansFact]
@@ -172,7 +192,9 @@ public class OnboardingWidgetControllerNamesTests
             Arg.Any<CancellationToken>());
     }
 
-    private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>
+    private static UserInfo MakeUserInfo(
+        Guid userId, string burner, string first, string last,
+        string? city = null, string? bio = null) =>
         UserInfo.Create(
             user: new User
             {
@@ -191,6 +213,8 @@ public class OnboardingWidgetControllerNamesTests
                 BurnerName = burner,
                 FirstName = first,
                 LastName = last,
+                City = city,
+                Bio = bio,
                 State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
                     ? ProfileState.Stub
                     : ProfileState.Active,
@@ -201,6 +225,33 @@ public class OnboardingWidgetControllerNamesTests
             profileLanguages: [],
             volunteerHistory: [],
             communicationPreferences: []);
+
+    [HumansFact]
+    public async Task Names_Post_PreservesExistingProfileFields_WhenFixingDriftedName()
+    {
+        // A data-drifted profile (City/Bio on file but a blank required name) reaches
+        // this POST via NameRequiredFilter. SaveProfileAsync is a full-field overwrite,
+        // so fixing the name must carry the existing City/Bio forward, not null them.
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUserInfo(userId, burner: "Drifted", first: "Has", last: "", city: "Madrid", bio: "existing bio"));
+        var ctrl = BuildSut(userId);
+        var vm = new NamesViewModel { BurnerName = "Drifted", FirstName = "Has", LastName = "NowSet" };
+
+        var result = await ctrl.Names(vm, CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
+
+        await _profileEditor.Received(1).SaveProfileAsync(
+            userId,
+            "Drifted",
+            Arg.Is<ProfileSaveRequest>(r =>
+                r.LastName == "NowSet" &&
+                r.City == "Madrid" &&
+                r.Bio == "existing bio"),
+            Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task Names_Post_InvalidModel_ReturnsView()

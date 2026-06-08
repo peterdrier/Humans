@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.HumanLifecycle;
@@ -53,10 +54,20 @@ public class OnboardingWidgetController(
     }
 
     [HttpGet]
-    public IActionResult Names()
+    public async Task<IActionResult> Names(CancellationToken ct)
     {
-        // Force explicit entry — OAuth-supplied names are unverified.
-        return View(new NamesViewModel());
+        // Prefill from the user's OWN saved profile — never from OAuth claims, which
+        // are unverified (see Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims).
+        // Bare/Stub accounts have blank names, so a genuinely new user still gets an
+        // empty form; a returning or data-drifted user sees what's actually on file
+        // instead of a blank form that looks like their earlier entry never saved.
+        var profile = (await _userService.GetUserInfoAsync(CurrentUserId(), ct))?.Profile;
+        return View(new NamesViewModel
+        {
+            BurnerName = profile?.BurnerName ?? string.Empty,
+            FirstName = profile?.FirstName ?? string.Empty,
+            LastName = profile?.LastName ?? string.Empty,
+        });
     }
 
     [HttpPost]
@@ -67,31 +78,50 @@ public class OnboardingWidgetController(
             return View(vm);
 
         var userId = CurrentUserId();
+        var info = await _userService.GetUserInfoAsync(userId, ct);
 
-        // SaveProfileAsync does a full-field overwrite — skip it for an already-named user
-        // (stale page / back-button re-POST would null City/Bio/etc.). This is a name-only
-        // check against the user's own profile: the name save must NOT be gated by any
-        // cross-section consent/step check, or a vacuously-"complete" consent state (no
-        // required legal docs) bounces a bare account into an endless Names redirect loop.
-        if (!await IsNameMissingAsync(userId, ct))
+        // Skip the save for an already-named user (stale page / back-button re-POST).
+        // In-section check against the user's OWN profile — the name save must NOT be
+        // gated by any cross-section consent/step check, or a vacuously-"complete"
+        // consent state (no required legal docs) bounces a bare account into an endless
+        // Names redirect loop.
+        if (info is not null && info.HasRequiredNameFields)
             return RedirectToAction(nameof(Index));
 
-        var request = new ProfileSaveRequest(
-            BurnerName: vm.BurnerName,
-            FirstName: vm.FirstName,
-            LastName: vm.LastName,
-            City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
-            Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
-            BirthdayMonth: null, BirthdayDay: null,
-            EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
-            NoPriorBurnExperience: false,
-            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
+        // SaveProfileAsync is a full-field overwrite but the form only carries the three
+        // names, so preserve every other field from the current profile. A data-drifted
+        // profile (City/Bio/emergency contact on file but a blank name) must keep that
+        // data when its name is fixed here.
+        var request = BuildNameSaveRequest(vm, info?.Profile);
 
         await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
     }
+
+    // Builds a profile-save request that sets the three name fields from the form while
+    // carrying forward every other field from the existing profile (null for a brand-new
+    // profileless account — nothing to preserve). Picture is left as a no-op mutation
+    // (null data + RemoveProfilePicture:false) so SaveProfileAsync keeps the current one.
+    private static ProfileSaveRequest BuildNameSaveRequest(NamesViewModel vm, ProfileInfo? existing) =>
+        new(
+            BurnerName: vm.BurnerName,
+            FirstName: vm.FirstName,
+            LastName: vm.LastName,
+            City: existing?.City, CountryCode: existing?.CountryCode,
+            Latitude: existing?.Latitude, Longitude: existing?.Longitude, PlaceId: existing?.PlaceId,
+            Bio: existing?.Bio, Pronouns: existing?.Pronouns,
+            ContributionInterests: existing?.ContributionInterests, BoardNotes: existing?.BoardNotes,
+            BirthdayMonth: existing?.BirthdayMonth, BirthdayDay: existing?.BirthdayDay,
+            EmergencyContactName: existing?.EmergencyContactName,
+            EmergencyContactPhone: existing?.EmergencyContactPhone,
+            EmergencyContactRelationship: existing?.EmergencyContactRelationship,
+            NoPriorBurnExperience: existing?.NoPriorBurnExperience ?? false,
+            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false,
+            DietaryPreference: existing?.DietaryPreference,
+            Allergies: existing?.Allergies.ToList(),
+            AllergyOtherText: existing?.AllergyOtherText);
 
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
