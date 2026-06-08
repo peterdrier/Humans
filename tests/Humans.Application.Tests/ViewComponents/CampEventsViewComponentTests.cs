@@ -7,6 +7,7 @@ using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -22,13 +23,16 @@ public class CampEventsViewComponentTests
 {
     private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
 
-    private CampEventsViewComponent BuildSut(Guid? userId)
+    private CampEventsViewComponent BuildSut(Guid? userId, bool eventsEnabled = true)
     {
         var identity = userId is null
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString())], "Test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-        return new CampEventsViewComponent(_events, NullLogger<CampEventsViewComponent>.Instance)
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Features:Events"] = eventsEnabled ? "true" : "false" })
+            .Build();
+        return new CampEventsViewComponent(_events, config, NullLogger<CampEventsViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -89,6 +93,18 @@ public class CampEventsViewComponentTests
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         await _events.DidNotReceive().GetFavouriteEventIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RendersNothing_WhenEventsFeatureDisabled()
+    {
+        var result = await BuildSut(Guid.NewGuid(), eventsEnabled: false)
+            .InvokeAsync(Guid.NewGuid(), "shenanicamp");
+
+        result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
+        await _events.DidNotReceive().GetApprovedEventsAsync(
+            Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

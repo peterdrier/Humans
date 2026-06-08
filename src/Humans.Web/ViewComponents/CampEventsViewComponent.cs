@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Events;
 using Humans.Web.Helpers;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using NodaTime;
 
 namespace Humans.Web.ViewComponents;
@@ -11,17 +12,23 @@ namespace Humans.Web.ViewComponents;
 /// Renders a compact card of a camp's approved events on the camp detail page,
 /// with the Browse-style per-row favourite toggle. Invoked with the camp's id
 /// and slug only — no Event types cross into the Camps view. Auth-gated at the
-/// call site (logged-in Humans users); returns empty content when the camp has
-/// no approved events so the card auto-hides.
+/// call site (logged-in Humans users); returns empty content when the Events
+/// feature is disabled or the camp has no approved events so the card auto-hides.
 /// </summary>
 public class CampEventsViewComponent(
     IEventServiceRead events,
+    IConfiguration configuration,
     ILogger<CampEventsViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid campId, string campSlug)
     {
         try
         {
+            // Mirror EventsFeatureFilter: when the Event Guide is off, the Events
+            // routes 404 — so the card (and its favourite POST target) must vanish too.
+            if (!configuration.GetValue<bool>("Features:Events"))
+                return Content(string.Empty);
+
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 

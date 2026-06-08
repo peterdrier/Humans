@@ -577,7 +577,7 @@ public class EventsController(
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction("Details", "Camp", new { slug });
+        return RedirectToAction(nameof(CampController.Details), "Camp", new { slug });
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
