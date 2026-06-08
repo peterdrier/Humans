@@ -76,7 +76,7 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.98" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.101" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
