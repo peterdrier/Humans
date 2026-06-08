@@ -1,4 +1,5 @@
 @using Humans.Domain.Enums
+@using NodaTime
 @model Humans.Web.Models.ScannerTicketCardViewModel
 
 @if (!Model.Found)
@@ -30,7 +31,7 @@ else
             @if (Model.TransferredAt.HasValue)
             {
                 <dt class="col-sm-4">@Localizer["Scanner_Tickets_TransferredOn"]</dt>
-                <dd class="col-sm-8">@Model.TransferredAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd")</dd>
+                <dd class="col-sm-8">@Model.TransferredAt.Value.ToDate(DateTimeZone.Utc)</dd>
             }
         }
     </dl>

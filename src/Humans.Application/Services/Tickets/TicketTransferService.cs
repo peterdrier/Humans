@@ -28,6 +28,7 @@ public sealed class TicketTransferService(
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLog,
+    ITicketCacheInvalidator cacheInvalidator,
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
@@ -188,6 +189,10 @@ public sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = adminNotes;
         await transferRepo.UpdateAsync(request, ct);
+
+        // Approving changes the cached order projection (it now carries the
+        // recipient/decided-at for void attendees), so evict it here.
+        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferApproved,

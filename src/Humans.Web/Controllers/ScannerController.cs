@@ -28,8 +28,12 @@ public class ScannerController(ITicketServiceRead tickets) : Controller
         if (code.Length == 0)
             return PartialView("_TicketCard", new ScannerTicketCardViewModel(false, null, null, null, null, null));
 
+        // Gate scope: only the current event's tickets are admissible here, so a
+        // barcode from a previous event reads as "not found" rather than a valid card.
         var orders = await tickets.GetTicketOrdersAsync(ct);
-        var hit = orders.SelectMany(o => o.Attendees)
+        var hit = orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
             .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
 
         if (hit is null)
