@@ -9,10 +9,10 @@ namespace Humans.Application.Interfaces.Events;
 /// <summary>
 /// Service for the Events section (camp-event guide).
 /// </summary>
-public interface IEventService : IApplicationService
+public interface IEventService : IApplicationService, IEventServiceRead
 {
     // ── Settings ─────────────────────────────────────────────────────────
-    Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
+    // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
     Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
@@ -73,13 +73,11 @@ public interface IEventService : IApplicationService
         CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
-    Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
-        Guid? campId, Guid? venueId, Guid? categoryId, string? q,
-        IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
+    // GetApprovedEventsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
 
     // ── Favourites ────────────────────────────────────────────────────────
-    Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
+    // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
