@@ -193,7 +193,8 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     TicketTypeName: ticket.Type,
                     Price: ticket.Price,
                     Status: status,
-                    CheckedInAt: checkedInAt);
+                    CheckedInAt: checkedInAt,
+                    Barcode: MakeBarcode(vendorTicketId));
 
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
@@ -235,7 +236,8 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 AttendeeEmail: buyer.Email,
                 TicketTypeName: ticket.Name,
                 Price: ticket.Price,
-                Status: "void");
+                Status: "void",
+                Barcode: MakeBarcode(vendorTicketId));
 
             tickets.Add(ticketDto);
 
@@ -296,6 +298,16 @@ public sealed class StubTicketVendorService : ITicketVendorService
         foreach (var c in value)
             hash = (hash * 31) + c;
         return hash;
+    }
+
+    // 8-char alnum, deterministic per vendor ticket id, mimics a Ticket Tailor barcode.
+    private static string MakeBarcode(string vendorTicketId)
+    {
+        const string alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghijkmnpqrstuvwxyz";
+        var h = (uint)DeterministicHash(vendorTicketId);
+        var chars = new char[8];
+        for (var i = 0; i < 8; i++) { chars[i] = alphabet[(int)(h % (uint)alphabet.Length)]; h = (h * 31) + 7; }
+        return new string(chars);
     }
 
     private sealed record SampleData(

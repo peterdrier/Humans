@@ -2919,6 +2919,33 @@
   <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve">
     <value>Ton navigateur n'a pas de décodeur intégré et la bibliothèque de repli n'a pas pu se charger. Essaye avec Chrome ou Safari mobile récents.</value>
   </data>
+  <data name="Scanner_Tickets_Title" xml:space="preserve">
+    <value>Recherche de billets</value>
+  </data>
+  <data name="Scanner_Tickets_Intro" xml:space="preserve">
+    <value>Scanne un billet pour voir ses détails.</value>
+  </data>
+  <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
+    <value>Scanne le code-barres d'un billet pour voir le titulaire, le statut et l'historique des transferts.</value>
+  </data>
+  <data name="Scanner_Tickets_Open" xml:space="preserve">
+    <value>Ouvrir la recherche de billets</value>
+  </data>
+  <data name="Scanner_Tickets_NotFound" xml:space="preserve">
+    <value>Aucun billet trouvé pour ce code :</value>
+  </data>
+  <data name="Scanner_Tickets_Type" xml:space="preserve">
+    <value>Type de billet</value>
+  </data>
+  <data name="Scanner_Tickets_Status" xml:space="preserve">
+    <value>Statut</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredTo" xml:space="preserve">
+    <value>Transféré à</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
+    <value>Transféré le</value>
+  </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Ajouter un membre</value>
   </data>

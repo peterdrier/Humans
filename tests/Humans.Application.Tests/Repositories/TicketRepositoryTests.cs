@@ -446,4 +446,65 @@ public sealed class TicketRepositoryTests : IDisposable
 
         result.Should().BeEquivalentTo("tkt_a", "tkt_b");
     }
+
+    // ── GetAttendeesPageAsync — barcode search ───────────────────────────────
+
+    [HumansFact]
+    public async Task GetAttendeesPageAsync_SearchByBarcode_ReturnsOnlyMatchingAttendee()
+    {
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_bc",
+            VendorEventId = "ev_bc",
+            BuyerEmail = "buyer@bc.com",
+            BuyerName = "Buyer",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+
+        var barcodeId = Guid.NewGuid();
+        await _dbContext.TicketAttendees.AddRangeAsync(
+            new TicketAttendee
+            {
+                Id = barcodeId,
+                TicketOrderId = orderId,
+                VendorEventId = "ev_bc",
+                VendorTicketId = "tkt_with_barcode",
+                AttendeeName = "Alice",
+                Status = TicketAttendeeStatus.Valid,
+                Barcode = "xyz34Qy5",
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "ev_bc",
+                VendorTicketId = "tkt_no_barcode",
+                AttendeeName = "Bob",
+                Status = TicketAttendeeStatus.Valid,
+                Barcode = null,
+                SyncedAt = _clock.GetCurrentInstant(),
+            });
+        await _dbContext.SaveChangesAsync();
+
+        var (rows, totalCount) = await _repo.GetAttendeesPageAsync(
+            search: "xyz34Qy5",
+            sortBy: "name",
+            sortDesc: false,
+            page: 1,
+            pageSize: 50,
+            filterTicketType: null,
+            filterStatus: null,
+            filterMatched: null,
+            filterOrderId: null,
+            filterMultipleTickets: false);
+
+        totalCount.Should().Be(1);
+        rows.Should().ContainSingle(r => r.Id == barcodeId);
+    }
 }

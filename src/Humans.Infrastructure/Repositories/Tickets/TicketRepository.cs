@@ -243,6 +243,7 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
                 tracked.VendorEventId = attendee.VendorEventId;
                 tracked.SyncedAt = attendee.SyncedAt;
                 tracked.MatchedUserId = attendee.MatchedUserId;
+                tracked.Barcode = attendee.Barcode;
                 // TicketOrderId is init-only on existing rows; don't reparent.
             }
             else
@@ -680,7 +681,8 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             query = query.Where(a =>
                 a.AttendeeName.ToLower().Contains(normalizedSearch) ||
-                (a.AttendeeEmail != null && a.AttendeeEmail.ToLower().Contains(normalizedSearch)));
+                (a.AttendeeEmail != null && a.AttendeeEmail.ToLower().Contains(normalizedSearch)) ||
+                (a.Barcode != null && a.Barcode.ToLower().Contains(normalizedSearch)));
 #pragma warning restore MA0011
         }
 

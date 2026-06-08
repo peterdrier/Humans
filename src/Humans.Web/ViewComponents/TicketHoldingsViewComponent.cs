@@ -30,7 +30,6 @@ public sealed class TicketHoldingsViewComponent(
             .Select(t => new TicketStubInfo(
                 t.AttendeeName,
                 t.AttendeeEmail,
-                t.VendorTicketId,
                 t.Status,
                 pendingAttendeeIds.Contains(t.AttendeeId),
                 PendingTransferRequestId: null,

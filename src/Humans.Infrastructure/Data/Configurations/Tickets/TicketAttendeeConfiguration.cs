@@ -32,6 +32,11 @@ public class TicketAttendeeConfiguration : IEntityTypeConfiguration<TicketAttend
         builder.Property(a => a.AttendeeEmail)
             .HasMaxLength(320);
 
+        builder.Property(a => a.Barcode)
+            .HasMaxLength(100);
+
+        builder.HasIndex(a => a.Barcode);
+
         builder.Property(a => a.TicketTypeName)
             .IsRequired()
             .HasMaxLength(100);

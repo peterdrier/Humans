@@ -15,7 +15,10 @@ public sealed record TicketAttendeeInfo(
     string? TicketTypeName,
     decimal Price,
     TicketAttendeeStatus Status,
-    Guid? MatchedUserId);
+    Guid? MatchedUserId,
+    string? Barcode = null,
+    string? TransferredToName = null,
+    Instant? TransferredAt = null);
 
 /// <summary>
 /// Compact projection of a <see cref="Humans.Domain.Entities.TicketOrder"/>

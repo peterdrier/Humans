@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -19,6 +20,7 @@ namespace Humans.Application.Tests.Services;
 public sealed class TicketQueryServiceTests : ServiceTestHarness
 {
     private readonly TicketRepository _repo;
+    private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly ICampaignServiceRead _campaignService = Substitute.For<ICampaignServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -31,8 +33,12 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
     {
         _repo = new TicketRepository(DbFactory);
 
+        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         _service = new TicketQueryService(
             _repo,
+            _transferRepo,
             _budgetService,
             _campaignService,
             _userService,
@@ -508,6 +514,78 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         rows[0].Date.Should().Be("2026-03-01");
         rows[1].Date.Should().Be("2026-01-01");
         rows[0].AttendeeCount.Should().Be(2);
+    }
+
+    // ====================================================================
+    // GetTicketOrdersAsync tests
+    // ====================================================================
+
+    [HumansFact]
+    public async Task GetTicketOrdersAsync_VoidAttendeeWithApprovedTransfer_CarriesRecipientAndBarcode()
+    {
+        var attendeeId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var decidedAt = Instant.FromUtc(2026, 5, 10, 14, 0);
+
+        var order = new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_transfer",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 100m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            Attendees =
+            [
+                new TicketAttendee
+                {
+                    Id = attendeeId,
+                    VendorTicketId = "tkt_void",
+                    TicketOrderId = orderId,
+                    TicketOrder = null!,
+                    AttendeeName = "Original Holder",
+                    TicketTypeName = "Full Week",
+                    Price = 100m,
+                    Status = TicketAttendeeStatus.Void,
+                    Barcode = "BC-001",
+                    VendorEventId = "ev_test",
+                    SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+                }
+            ]
+        };
+
+        Db.TicketOrders.Add(order);
+        await Db.SaveChangesAsync();
+
+        var transfer = new TicketTransferRequest
+        {
+            Id = Guid.NewGuid(),
+            OriginalTicketAttendeeId = attendeeId,
+            SenderUserId = Guid.NewGuid(),
+            ReceiverUserId = Guid.NewGuid(),
+            ReceiverLegalName = "Alice Smith",
+            ReceiverEmail = "alice@example.com",
+            SenderReason = "Can't attend",
+            Status = TicketTransferStatus.Approved,
+            RequestedAt = Instant.FromUtc(2026, 5, 1, 10, 0),
+            DecidedAt = decidedAt,
+        };
+
+        _transferRepo.GetByStatusAsync(TicketTransferStatus.Approved, Arg.Any<CancellationToken>())
+            .Returns([transfer]);
+
+        var result = await _service.GetTicketOrdersAsync();
+
+        var attendeeInfo = result.Should().ContainSingle().Which
+            .Attendees.Should().ContainSingle().Subject;
+
+        attendeeInfo.Barcode.Should().Be("BC-001");
+        attendeeInfo.TransferredToName.Should().Be("Alice Smith");
+        attendeeInfo.TransferredAt.Should().Be(decidedAt);
     }
 
     // ====================================================================

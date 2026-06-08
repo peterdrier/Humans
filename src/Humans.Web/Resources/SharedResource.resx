@@ -1242,6 +1242,15 @@
   <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve"><value>ZXing fallback</value></data>
   <data name="Scanner_Barcode_Error_Camera" xml:space="preserve"><value>Couldn't access the camera. Make sure you've granted permission and that this page is served over HTTPS.</value></data>
   <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>Your browser doesn't have a built-in barcode decoder and the fallback library failed to load. Try a recent mobile Chrome or Safari.</value></data>
+  <data name="Scanner_Tickets_Title" xml:space="preserve"><value>Ticket lookup</value></data>
+  <data name="Scanner_Tickets_Intro" xml:space="preserve"><value>Scan a ticket to see its details.</value></data>
+  <data name="Scanner_Tickets_CardBlurb" xml:space="preserve"><value>Scan a ticket barcode to view the ticket holder, status, and transfer history.</value></data>
+  <data name="Scanner_Tickets_Open" xml:space="preserve"><value>Open ticket lookup</value></data>
+  <data name="Scanner_Tickets_NotFound" xml:space="preserve"><value>No ticket found for this code:</value></data>
+  <data name="Scanner_Tickets_Type" xml:space="preserve"><value>Ticket type</value></data>
+  <data name="Scanner_Tickets_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Scanner_Tickets_TransferredTo" xml:space="preserve"><value>Transferred to</value></data>
+  <data name="Scanner_Tickets_TransferredOn" xml:space="preserve"><value>Transferred on</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Add Member</value></data>
