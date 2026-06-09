@@ -37,7 +37,7 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
 
         builder.HasIndex(b => b.Slug).IsUnique();
 
-        builder.HasOne(b => b.CreatedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(b => b.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);

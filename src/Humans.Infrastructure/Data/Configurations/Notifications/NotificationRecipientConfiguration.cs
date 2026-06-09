@@ -18,7 +18,7 @@ public class NotificationRecipientConfiguration : IEntityTypeConfiguration<Notif
 
         builder.HasKey(r => new { r.NotificationId, r.UserId });
 
-        builder.HasOne(r => r.User)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);

@@ -38,7 +38,7 @@ public class EventParticipationConfiguration : IEntityTypeConfiguration<EventPar
         builder.HasIndex(ep => new { ep.UserId, ep.Year })
             .IsUnique();
 
-        builder.HasOne(ep => ep.User)
+        builder.HasOne<User>()
             .WithMany(u => u.EventParticipations)
             .HasForeignKey(ep => ep.UserId)
             .OnDelete(DeleteBehavior.Cascade);

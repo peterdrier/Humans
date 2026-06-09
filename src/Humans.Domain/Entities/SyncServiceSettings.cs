@@ -21,7 +21,4 @@ public class SyncServiceSettings
 
     /// <summary>Who last changed the mode. Null for seed data.</summary>
     public Guid? UpdatedByUserId { get; set; }
-
-    /// <summary>Navigation property to the user who last changed the setting.</summary>
-    public User? UpdatedByUser { get; set; }
 }

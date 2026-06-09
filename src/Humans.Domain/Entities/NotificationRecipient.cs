@@ -27,9 +27,4 @@ public class NotificationRecipient
     /// Navigation to the notification.
     /// </summary>
     public Notification Notification { get; init; } = null!;
-
-    /// <summary>
-    /// Navigation to the recipient user.
-    /// </summary>
-    public User User { get; init; } = null!;
 }

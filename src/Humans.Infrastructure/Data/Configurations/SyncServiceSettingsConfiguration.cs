@@ -32,7 +32,7 @@ public class SyncServiceSettingsConfiguration : IEntityTypeConfiguration<SyncSer
         builder.HasIndex(s => s.ServiceType)
             .IsUnique();
 
-        builder.HasOne(s => s.UpdatedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(s => s.UpdatedByUserId)
             .OnDelete(DeleteBehavior.SetNull);

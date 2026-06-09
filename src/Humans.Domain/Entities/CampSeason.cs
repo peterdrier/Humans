@@ -44,7 +44,6 @@ public class CampSeason
 
     // Review
     public Guid? ReviewedByUserId { get; set; }
-    public User? ReviewedByUser { get; set; }
     public string? ReviewNotes { get; set; }
     public Instant? ResolvedAt { get; set; }
 

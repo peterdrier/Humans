@@ -45,12 +45,6 @@ public class AuditLogEntry
     public Guid? ActorUserId { get; init; }
 
     /// <summary>
-    /// Navigation property to the actor user.
-    /// Uses set (not init) as required by EF Core for navigation properties.
-    /// </summary>
-    public User? ActorUser { get; set; }
-
-    /// <summary>
     /// ID of a secondary related entity (e.g. UserId when EntityType=Team).
     /// Enables per-user views across both direct and related entries.
     /// </summary>

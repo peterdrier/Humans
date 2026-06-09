@@ -16,9 +16,9 @@ namespace Humans.Infrastructure.Repositories.Notifications;
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
 /// <remarks>
-/// Read methods deliberately do not <c>.Include</c> cross-domain navigations
-/// (recipient <see cref="NotificationRecipient.User"/>,
-/// resolver <see cref="Notification.ResolvedByUser"/>). Callers resolve
+/// Read methods deliberately do not <c>.Include</c> cross-domain user data
+/// (recipient <see cref="NotificationRecipient.UserId"/>,
+/// resolver <see cref="Notification.ResolvedByUserId"/>). Callers resolve
 /// display names through <c>IUserService</c> and stitch results in memory,
 /// preserving table ownership (§2c) and eliminating cross-domain joins (§6).
 /// </remarks>
