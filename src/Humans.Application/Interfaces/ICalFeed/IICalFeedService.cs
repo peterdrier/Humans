@@ -5,7 +5,7 @@ namespace Humans.Application.Interfaces.ICalFeed;
 /// <see cref="ICalendarFeedContributor"/> and serializes the merged result.
 /// Calls services only (never repositories).
 /// </summary>
-public interface IICalFeedService : IApplicationService
+public interface IICalFeedService : IOrchestrator
 {
     /// <summary>
     /// The merged, Start-ordered calendar items for a user. No token check —
