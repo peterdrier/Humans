@@ -80,7 +80,7 @@ Placement: `Views/UsersAdmin/AdminDetail.cshtml` (after `<vc:shift-signups>`), p
 
 - Contributor unit tests: status filtering (Confirmed/Pending in, others out; non-Approved favourites out), recurrence expansion, timezone resolution, pending annotation.
 - `ICalFeedService` tests: aggregation + sort across contributors, token validation matrix (no user / merged / null token / wrong token / right token), ICS output parses back with Ical.Net, empty feed is valid.
-- Controller/integration: wrong token → 404, right token → 200 `text/calendar`, regenerated token kills the old URL.
+- Controller/integration: wrong token → 404, right token → 200 `text/calendar`. (Regenerating the token kills the old URL via the same wrong-token comparison path — covered by the wrong-token unit cases rather than a DB-seeded integration test.)
 - View component test if existing components have them; otherwise covered by service tests.
 
 ## Out of scope
