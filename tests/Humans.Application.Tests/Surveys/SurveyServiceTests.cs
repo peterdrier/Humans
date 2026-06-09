@@ -3,6 +3,7 @@ using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -35,11 +36,12 @@ public class SurveyServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ISurveyInviteTokenProvider _tokenProvider = Substitute.For<ISurveyInviteTokenProvider>();
+    private readonly IGoogleTranslationService _translation = Substitute.For<IGoogleTranslationService>();
 
     private SurveyService CreateService() => new(
         _repo, _audit, _clock, NullLogger<SurveyService>.Instance,
         _teamService, _userService, _ticketService, _shiftView,
-        _userEmailService, _emailService, _emailMessages, _tokenProvider);
+        _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation);
 
     private static LocalizedText L(string en) => new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
@@ -160,6 +162,71 @@ public class SurveyServiceTests
         var act = async () => await CreateService().OpenAsync(Guid.NewGuid(), Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    // ── Pre-fill translations (§6.1) ─────────────────────────────────────────
+
+    private void StubTranslationAsMarker() =>
+        _translation.TranslateAsync(Arg.Any<IReadOnlyList<string>>(), "en", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult<IReadOnlyList<string>>(
+                ci.Arg<IReadOnlyList<string>>().Select(t => ci.ArgAt<string>(2) + ":" + t).ToList()));
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_fills_only_blank_cultures_and_never_overwrites()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "Hello",
+            ["es"] = "Hola", // authored — must survive untouched
+        });
+        var questionId = Guid.NewGuid();
+        survey.Questions = new List<SurveyQuestion>
+        {
+            new()
+            {
+                Id = questionId, SurveyId = survey.Id, PageNumber = 1, Order = 1,
+                Type = SurveyQuestionType.SingleChoice, Prompt = L("How was it?"),
+                Options = new List<SurveyQuestionOption>
+                {
+                    new() { Id = Guid.NewGuid(), QuestionId = questionId, Order = 1, Value = "good", Label = L("Good") },
+                },
+            },
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        Survey? captured = null;
+        _repo.When(r => r.UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<Survey>());
+        StubTranslationAsMarker();
+
+        // es is missing prompt+label (2); de is missing title+prompt+label (3).
+        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en", "es", "de"], Guid.NewGuid());
+
+        filled.Should().Be(5);
+        captured.Should().NotBeNull();
+        captured!.Title.Values["es"].Should().Be("Hola");
+        captured.Title.Values["de"].Should().Be("de:Hello");
+        var q = captured.Questions.Single();
+        q.Prompt.Values["es"].Should().Be("es:How was it?");
+        q.Prompt.Values["de"].Should().Be("de:How was it?");
+        q.Options.Single().Label.Values["es"].Should().Be("es:Good");
+        // Empty source fields (intro, thank-you, help, rating labels) are not sent for translation.
+        captured.Intro.Values.Should().NotContainKey("de");
+    }
+
+    [HumansFact]
+    public async Task PreFillTranslationsAsync_no_missing_translations_is_a_noop()
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        // Only target is the source culture itself → nothing to fill.
+        var filled = await CreateService().PreFillTranslationsAsync(survey.Id, ["en"], Guid.NewGuid());
+
+        filled.Should().Be(0);
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _translation.DidNotReceive().TranslateAsync(
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // ── Invitations ──────────────────────────────────────────────────────────

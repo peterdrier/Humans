@@ -207,6 +207,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
 - **Profiles:** `IUserEmailService` — effective notification target email per recipient when queueing invite/reminder mail.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.SurveyInvitation` / `SurveyReminder` — invite + reminder mail (queued through the email outbox in production).
+- **GoogleIntegration:** `IGoogleTranslationService` — the builder's "Save + translate missing" pre-fills blank cultures from the default culture (Cloud Translation; dev stub returns `[xx]`-prefixed text). Fills blanks only — authored text is never overwritten.
 - **Audit Log:** `IAuditLogService.LogAsync` — survey lifecycle + send/reminder events (never individual submissions).
 - **Data Protection:** `IDataProtectionProvider` via `ISurveyInviteTokenProvider` — time-limited, tamper-evident invite tokens (`/Survey/Answer?t={token}`).
 - **GDPR:** implements `IUserDataContributor` to export the user's Identified survey responses under `GdprExportSections.SurveyResponses`.

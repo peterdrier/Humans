@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Enums;
@@ -98,11 +97,17 @@ public sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderVi
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 public sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
 
+/// <summary>One show-if clause row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__CKEY__</c> placeholders in templates).</summary>
+public sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
+
 /// <summary>
-/// The full survey builder form. Localized fields bind per culture (<c>Title[en]</c>, …); questions
-/// and options use non-sequential indexers (a <c>.Index</c> hidden field per collection) so rows can
-/// be added/removed client-side without renumbering. <c>ShowIf</c> is posted as a BranchCondition JSON
-/// string per question and validated server-side (plan Task 2.2).
+/// The full survey builder form. Localized fields bind per culture (<c>Title[en]</c>, …); questions,
+/// options and show-if clauses use non-sequential indexers (a <c>.Index</c> hidden field per
+/// collection) so rows can be added/removed client-side without renumbering. Show-if conditions are
+/// posted as structured clause rows (question/operator/option values) and the resulting
+/// <see cref="BranchCondition"/> is validated server-side on save. New questions get their
+/// <see cref="SurveyQuestionBuilderViewModel.Id"/> pre-assigned client-side so clauses can reference
+/// questions that haven't been saved yet (the service honours supplied ids).
 /// </summary>
 public sealed class SurveyBuilderViewModel
 {
@@ -194,7 +199,8 @@ public sealed class SurveyQuestionBuilderViewModel
     public int? RatingMax { get; set; }
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
-    public string? ShowIfJson { get; set; }
+    public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
+    public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
 
     public QuestionInput ToInput(int order) => new(
@@ -209,7 +215,7 @@ public sealed class SurveyQuestionBuilderViewModel
         RatingMax,
         new LocalizedText(RatingMinLabel),
         new LocalizedText(RatingMaxLabel),
-        ParseShowIf(ShowIfJson),
+        ToShowIf(),
         Options.Select((o, i) => o.ToInput(i)).ToList());
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
@@ -224,24 +230,42 @@ public sealed class SurveyQuestionBuilderViewModel
         RatingMax = q.RatingMax,
         RatingMinLabel = SurveyBuilderViewModel.ToDict(q.RatingMinLabel),
         RatingMaxLabel = SurveyBuilderViewModel.ToDict(q.RatingMaxLabel),
-        ShowIfJson = q.ShowIf is null ? null : JsonSerializer.Serialize(q.ShowIf),
+        ShowIfCombine = q.ShowIf?.Combine ?? BranchCombine.All,
+        ShowIfClauses = q.ShowIf?.Clauses.Select(SurveyBranchClauseBuilderViewModel.FromClause).ToList() ?? [],
         Options = q.Options.Select(SurveyOptionBuilderViewModel.FromInput).ToList(),
     };
 
-    private static BranchCondition? ParseShowIf(string? json)
+    /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>
+    private BranchCondition? ToShowIf()
     {
-        if (string.IsNullOrWhiteSpace(json)) return null;
-        try
-        {
-            return JsonSerializer.Deserialize<BranchCondition>(json);
-        }
-        catch (JsonException)
-        {
-            // Malformed JSON ⇒ no condition (question always visible). Structural issues
-            // (forward references) are caught server-side by SurveyBranchingEvaluator on save.
-            return null;
-        }
+        var clauses = ShowIfClauses
+            .Where(c => c.QuestionId is not null)
+            .Select(c => c.ToClause())
+            .ToList();
+        return clauses.Count == 0 ? null : new BranchCondition { Combine = ShowIfCombine, Clauses = clauses };
     }
+}
+
+/// <summary>One structured show-if clause: an earlier question, an operator, and (for Is/IsNot) the option values to match.</summary>
+public sealed class SurveyBranchClauseBuilderViewModel
+{
+    public Guid? QuestionId { get; set; }
+    public BranchOperator Operator { get; set; } = BranchOperator.Is;
+    public List<string> OptionValues { get; set; } = [];
+
+    public BranchClause ToClause() => new()
+    {
+        QuestionId = QuestionId!.Value,
+        Operator = Operator,
+        OptionValues = OptionValues.Where(v => !string.IsNullOrWhiteSpace(v)).ToList(),
+    };
+
+    public static SurveyBranchClauseBuilderViewModel FromClause(BranchClause c) => new()
+    {
+        QuestionId = c.QuestionId,
+        Operator = c.Operator,
+        OptionValues = c.OptionValues.ToList(),
+    };
 }
 
 public sealed class SurveyOptionBuilderViewModel

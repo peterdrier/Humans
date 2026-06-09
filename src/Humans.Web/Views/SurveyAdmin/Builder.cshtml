@@ -4,6 +4,8 @@
 
 @{
     ViewData["Title"] = Model.IsNew ? "New survey" : "Edit survey";
+    // The culture the localized-field partials render visible initially (see _SurveyLocalizedField).
+    ViewData["SurveyActiveCulture"] = Model.DefaultCulture;
 }
 
 <nav aria-label="breadcrumb">
@@ -42,13 +44,26 @@
 
 <div asp-validation-summary="All" class="alert alert-danger" role="alert" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
 
-<form asp-controller="SurveyAdmin" asp-action="Save" method="post">
+<form asp-controller="SurveyAdmin" asp-action="Save" method="post" id="survey-builder-form">
     @Html.AntiForgeryToken()
     @if (!Model.IsNew)
     {
         <input type="hidden" asp-for="Id" />
     }
     <input type="hidden" asp-for="Status" />
+
+    @* One culture is edited at a time; the badge counts fields still missing vs the default language. *@
+    <div class="d-flex flex-wrap align-items-center gap-1 mb-2" id="culture-tabs">
+        <span class="small text-muted me-1">Editing language:</span>
+        @foreach (var c in CultureCatalog.SupportedCultureCodes)
+        {
+            <button type="button" data-culture="@c"
+                    class="btn btn-sm culture-tab @(c == Model.DefaultCulture ? "btn-primary" : "btn-outline-secondary")">
+                @c.ToDisplayLanguageName()
+                <span class="badge text-bg-warning missing-badge" style="display:none"></span>
+            </button>
+        }
+    </div>
 
     <div class="card mb-3">
         <div class="card-header py-2"><strong>Survey</strong></div>
@@ -127,7 +142,13 @@
 
     <div class="d-flex justify-content-between mt-3">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="add-question">+ Add question</button>
-        <button type="submit" class="btn btn-primary">Save survey</button>
+        <div class="d-flex gap-2">
+            <button type="submit" name="submitAction" value="save-translate" class="btn btn-outline-primary"
+                    title="Saves, then machine-translates fields still missing in other languages from the default language. Existing text is never overwritten — review before opening.">
+                Save + translate missing
+            </button>
+            <button type="submit" class="btn btn-primary">Save survey</button>
+        </div>
     </div>
 </form>
 
@@ -136,9 +157,61 @@
         (function () {
             const container = document.getElementById('questions-container');
             const qTemplate = document.getElementById('question-template');
+            const defaultCulture = document.querySelector('select[name="DefaultCulture"]');
 
             function freshKey(p) { return p + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
+            function uuid() {
+                return (crypto.randomUUID && crypto.randomUUID()) ||
+                    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+                        const r = Math.random() * 16 | 0;
+                        return (ch === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                    });
+            }
+
+            // ── culture switcher ─────────────────────────────────────────────
+            let activeCulture = defaultCulture.value;
+
+            function applyCulture(scope) {
+                (scope || document).querySelectorAll('.survey-culture-field').forEach(el => {
+                    el.style.display = el.dataset.culture === activeCulture ? '' : 'none';
+                });
+            }
+
+            function cultureInput(group, culture) {
+                return group.querySelector('.survey-culture-field[data-culture="' + culture + '"] input, ' +
+                                           '.survey-culture-field[data-culture="' + culture + '"] textarea');
+            }
+
+            function updateMissingBadges() {
+                const src = defaultCulture.value;
+                const groups = Array.from(document.querySelectorAll('.survey-localized-field'));
+                document.querySelectorAll('.culture-tab').forEach(tab => {
+                    const badge = tab.querySelector('.missing-badge');
+                    const culture = tab.dataset.culture;
+                    if (culture === src) { badge.style.display = 'none'; return; }
+                    let missing = 0;
+                    groups.forEach(g => {
+                        const s = cultureInput(g, src);
+                        const t = cultureInput(g, culture);
+                        if (s && t && s.value.trim() && !t.value.trim()) missing++;
+                    });
+                    badge.textContent = missing;
+                    badge.style.display = missing ? '' : 'none';
+                });
+            }
+
+            document.querySelectorAll('.culture-tab').forEach(tab => tab.addEventListener('click', () => {
+                activeCulture = tab.dataset.culture;
+                document.querySelectorAll('.culture-tab').forEach(t => {
+                    t.classList.toggle('btn-primary', t === tab);
+                    t.classList.toggle('btn-outline-secondary', t !== tab);
+                });
+                applyCulture();
+                updateMissingBadges();
+            }));
+
+            // ── question cards ───────────────────────────────────────────────
             function applyTypeVisibility(card) {
                 const type = card.querySelector('.question-type')?.value;
                 const ratings = card.querySelector('.rating-section');
@@ -148,36 +221,167 @@
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
             }
 
+            function ensureQuestionId(card) {
+                const id = card.querySelector('.question-id');
+                if (id && !id.value) id.value = uuid();
+            }
+
             function addOption(card) {
                 const tpl = card.querySelector('.option-template');
                 if (!tpl) return;
                 const html = tpl.innerHTML.replaceAll('__OKEY__', freshKey('o'));
                 card.querySelector('.options-container').insertAdjacentHTML('beforeend', html);
+                applyCulture(card.querySelector('.options-container').lastElementChild);
             }
 
+            // ── show-if clause editor ────────────────────────────────────────
+            function questionCards() { return Array.from(container.querySelectorAll('.question-card')); }
+
+            function questionLabel(card, index) {
+                // The first localized field on a card is its Prompt.
+                const prompt = card.querySelector('.survey-localized-field');
+                const text = prompt && cultureInput(prompt, defaultCulture.value)?.value.trim() || '(untitled)';
+                return 'Q' + (index + 1) + ': ' + (text.length > 60 ? text.slice(0, 57) + '…' : text);
+            }
+
+            function populateQuestionSelect(select) {
+                const current = select.value;
+                const ownCard = select.closest('.question-card');
+                select.innerHTML = '';
+                select.add(new Option('— choose a question —', ''));
+                questionCards().forEach((card, i) => {
+                    if (card === ownCard) return;
+                    const id = card.querySelector('.question-id')?.value;
+                    if (id) select.add(new Option(questionLabel(card, i), id));
+                });
+                select.value = current;
+                if (select.value !== current) select.value = ''; // referenced question is gone
+            }
+
+            function populateOptionValues(row) {
+                const select = row.querySelector('.clause-options');
+                const op = row.querySelector('.clause-operator').value;
+                const needsValues = op === 'Is' || op === 'IsNot';
+                select.style.display = needsValues ? '' : 'none';
+                if (!needsValues) { Array.from(select.options).forEach(o => o.selected = false); return; }
+
+                const selected = new Set(Array.from(select.selectedOptions).map(o => o.value));
+                select.innerHTML = '';
+                const targetId = row.querySelector('.clause-question').value;
+                const target = questionCards().find(c => c.querySelector('.question-id')?.value === targetId);
+                if (!target) return;
+                target.querySelectorAll('.option-row').forEach(or => {
+                    const value = or.querySelector('input[name$=".Value"]')?.value.trim();
+                    if (!value) return;
+                    const labelText = cultureInput(or, defaultCulture.value)?.value.trim();
+                    const label = labelText ? labelText + ' (' + value + ')' : value;
+                    select.add(new Option(label, value, false, selected.has(value)));
+                });
+            }
+
+            function updateCombineVisibility(card) {
+                const combine = card.querySelector('.showif-combine');
+                if (combine) combine.style.display =
+                    card.querySelectorAll('.clauses-container .clause-row').length > 1 ? '' : 'none';
+            }
+
+            function addClause(card) {
+                const tpl = card.querySelector('.clause-template');
+                const html = tpl.innerHTML.replaceAll('__CKEY__', freshKey('c'));
+                const clauses = card.querySelector('.clauses-container');
+                clauses.insertAdjacentHTML('beforeend', html);
+                populateQuestionSelect(clauses.lastElementChild.querySelector('.clause-question'));
+                populateOptionValues(clauses.lastElementChild);
+                updateCombineVisibility(card);
+            }
+
+            function removeClauseRowsReferencing(questionId) {
+                document.querySelectorAll('.clause-question').forEach(sel => {
+                    if (sel.value === questionId) {
+                        const card = sel.closest('.question-card');
+                        sel.closest('.clause-row').remove();
+                        updateCombineVisibility(card);
+                    }
+                });
+            }
+
+            function initCard(card) {
+                ensureQuestionId(card);
+                applyTypeVisibility(card);
+                updateCombineVisibility(card);
+                card.querySelectorAll('.clause-row').forEach(row => {
+                    populateQuestionSelect(row.querySelector('.clause-question'));
+                    populateOptionValues(row);
+                });
+            }
+
+            // ── events ───────────────────────────────────────────────────────
             document.getElementById('add-question').addEventListener('click', function () {
                 const html = qTemplate.innerHTML.replaceAll('__QKEY__', freshKey('q'));
                 container.insertAdjacentHTML('beforeend', html);
-                applyTypeVisibility(container.lastElementChild);
+                const card = container.lastElementChild;
+                initCard(card);
+                applyCulture(card);
             });
 
             container.addEventListener('click', function (e) {
                 if (e.target.classList.contains('remove-question')) {
-                    e.target.closest('.question-card').remove();
+                    const card = e.target.closest('.question-card');
+                    const id = card.querySelector('.question-id')?.value;
+                    card.remove();
+                    if (id) removeClauseRowsReferencing(id);
                 } else if (e.target.classList.contains('add-option')) {
                     addOption(e.target.closest('.question-card'));
                 } else if (e.target.classList.contains('remove-option')) {
                     e.target.closest('.option-row').remove();
+                } else if (e.target.classList.contains('add-clause')) {
+                    addClause(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('remove-clause')) {
+                    const card = e.target.closest('.question-card');
+                    e.target.closest('.clause-row').remove();
+                    if (card.querySelectorAll('.clauses-container .clause-row').length === 0) {
+                        card.querySelector('.showif-mode').value = 'always';
+                        card.querySelector('.showif-clauses').style.display = 'none';
+                    }
+                    updateCombineVisibility(card);
                 }
             });
 
             container.addEventListener('change', function (e) {
                 if (e.target.classList.contains('question-type')) {
                     applyTypeVisibility(e.target.closest('.question-card'));
+                } else if (e.target.classList.contains('showif-mode')) {
+                    const card = e.target.closest('.question-card');
+                    const conditional = e.target.value === 'conditional';
+                    card.querySelector('.showif-clauses').style.display = conditional ? '' : 'none';
+                    if (conditional && card.querySelectorAll('.clauses-container .clause-row').length === 0) {
+                        addClause(card);
+                    } else if (!conditional) {
+                        card.querySelectorAll('.clauses-container .clause-row').forEach(r => r.remove());
+                        updateCombineVisibility(card);
+                    }
+                } else if (e.target.classList.contains('clause-question') || e.target.classList.contains('clause-operator')) {
+                    populateOptionValues(e.target.closest('.clause-row'));
                 }
             });
 
-            container.querySelectorAll('.question-card').forEach(applyTypeVisibility);
+            // Refresh a clause's question list right before the user opens it, so prompt edits,
+            // newly added questions and removals are always reflected.
+            container.addEventListener('focusin', function (e) {
+                if (e.target.classList.contains('clause-question')) populateQuestionSelect(e.target);
+            });
+
+            defaultCulture.addEventListener('change', updateMissingBadges);
+
+            let badgeTimer = null;
+            document.getElementById('survey-builder-form').addEventListener('input', function () {
+                clearTimeout(badgeTimer);
+                badgeTimer = setTimeout(updateMissingBadges, 500);
+            });
+
+            questionCards().forEach(initCard);
+            applyCulture();
+            updateMissingBadges();
         })();
     </script>
 }

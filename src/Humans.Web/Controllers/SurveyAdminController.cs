@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Humans.Web.Models.Survey;
 using Microsoft.AspNetCore.Authorization;
@@ -64,7 +65,7 @@ public class SurveyAdminController(
 
     [HttpPost("Save")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Save(SurveyBuilderViewModel model, CancellationToken ct)
+    public async Task<IActionResult> Save(SurveyBuilderViewModel model, string? submitAction, CancellationToken ct)
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
@@ -75,19 +76,19 @@ public class SurveyAdminController(
             return View("Builder", model);
         }
 
+        Guid id;
         try
         {
             var input = model.ToEditInput(Zone);
             if (model.Id is null)
             {
-                var newId = await surveyService.CreateAsync(input, actorId.Value, ct);
-                SetSuccess("Survey created.");
-                return RedirectToAction(nameof(Edit), new { id = newId });
+                id = await surveyService.CreateAsync(input, actorId.Value, ct);
             }
-
-            await surveyService.UpdateAsync(model.Id.Value, input, actorId.Value, ct);
-            SetSuccess("Survey saved.");
-            return RedirectToAction(nameof(Edit), new { id = model.Id.Value });
+            else
+            {
+                id = model.Id.Value;
+                await surveyService.UpdateAsync(id, input, actorId.Value, ct);
+            }
         }
         catch (InvalidOperationException ex)
         {
@@ -96,6 +97,31 @@ public class SurveyAdminController(
             model.Teams = await LoadTeamsAsync(ct);
             return View("Builder", model);
         }
+
+        // The save is committed at this point — a translation failure must not re-render the
+        // builder as unsaved (a re-submit would double-create), so it reports and redirects.
+        if (string.Equals(submitAction, "save-translate", StringComparison.Ordinal))
+        {
+            try
+            {
+                var filled = await surveyService.PreFillTranslationsAsync(
+                    id, CultureCatalog.SupportedCultureCodes, actorId.Value, ct);
+                SetSuccess(filled > 0
+                    ? $"Survey saved; {filled} missing translation(s) pre-filled — review them before opening."
+                    : "Survey saved — no missing translations to fill.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
+                SetError($"Survey saved, but translation failed: {ex.Message}");
+            }
+        }
+        else
+        {
+            SetSuccess(model.Id is null ? "Survey created." : "Survey saved.");
+        }
+
+        return RedirectToAction(nameof(Edit), new { id });
     }
 
     [HttpPost("Open/{id:guid}")]
