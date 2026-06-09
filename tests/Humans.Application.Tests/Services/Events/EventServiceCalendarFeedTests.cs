@@ -33,22 +33,22 @@ public class EventServiceCalendarFeedTests
         EventStatus status,
         bool isRecurring = false,
         string? recurrenceDays = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        SubmitterUserId = Guid.NewGuid(),
-        CategoryId = Guid.NewGuid(),
-        Title = "Sunset Yoga",
-        Description = "Bring a mat.",
-        LocationNote = "Behind the dome",
-        Host = "Stretchy",
-        StartAt = EventStart,
-        DurationMinutes = 90,
-        IsRecurring = isRecurring,
-        RecurrenceDays = recurrenceDays,
-        Status = status,
-        SubmittedAt = FixedNow,
-        LastUpdatedAt = FixedNow,
-    };
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Guid.NewGuid(),
+            CategoryId = Guid.NewGuid(),
+            Title = "Sunset Yoga",
+            Description = "Bring a mat.",
+            LocationNote = "Behind the dome",
+            Host = "Stretchy",
+            StartAt = EventStart,
+            DurationMinutes = 90,
+            IsRecurring = isRecurring,
+            RecurrenceDays = recurrenceDays,
+            Status = status,
+            SubmittedAt = FixedNow,
+            LastUpdatedAt = FixedNow,
+        };
 
     private void StubFavourites(Guid userId, params Event[] events)
     {
