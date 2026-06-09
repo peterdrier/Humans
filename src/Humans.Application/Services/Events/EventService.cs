@@ -414,6 +414,24 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
         => repo.GetActiveCampEventsAsync(ct);
 
+    public async Task ModeratorEditEventAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        guideEvent.LastUpdatedAt = now;
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEvent.Id,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Edited,
+            Reason = null,
+            CreatedAt = now
+        };
+
+        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+    }
+
     public async Task ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default)
     {

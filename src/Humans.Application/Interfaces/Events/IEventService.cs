@@ -95,6 +95,7 @@ public interface IEventService : IApplicationService, IEventServiceRead
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default);
+    Task ModeratorEditEventAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default);
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);

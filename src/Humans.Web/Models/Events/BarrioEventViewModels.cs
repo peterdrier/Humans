@@ -105,6 +105,12 @@ public class CampEventFormViewModel
     /// Whether this is a resubmission of a rejected/resubmit-requested event.
     /// </summary>
     public bool IsResubmit { get; set; }
+
+    /// <summary>When set, the form posts to this URL instead of the default Events controller action.</summary>
+    public string? PostUrl { get; set; }
+
+    /// <summary>When true, the post is a moderator direct edit — status is preserved instead of re-queuing.</summary>
+    public bool IsModerationEdit { get; set; }
 }
 
 public class CategoryOptionViewModel

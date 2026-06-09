@@ -173,30 +173,13 @@ else
                                 }
                             </div>
 
-                            @if (evt.Status == EventStatus.Approved)
-                            {
-                                <div class="col-md-4">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Actions</h6>
-                                            <form method="post" asp-action="Withdraw">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="EventId" value="@evt.Id" />
-                                                <button type="submit" class="btn btn-outline-secondary w-100" data-confirm="Withdraw this event? It will be hidden from the guide.">
-                                                    <i class="fa-solid fa-eye-slash me-1"></i>Withdraw
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            @if (evt.Status == EventStatus.Pending)
-                            {
-                                <div class="col-md-4">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Actions</h6>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Actions</h6>
 
+                                        @if (evt.Status == EventStatus.Pending)
+                                        {
                                             <form method="post" asp-action="Approve" class="mb-2">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="EventId" value="@evt.Id" />
@@ -216,7 +199,7 @@ else
                                                 </button>
                                             </form>
 
-                                            <form method="post" asp-action="RequestEdit">
+                                            <form method="post" asp-action="RequestEdit" class="mb-2">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="EventId" value="@evt.Id" />
                                                 <div class="mb-2">
@@ -226,10 +209,28 @@ else
                                                     <i class="fa-solid fa-pen-to-square me-1"></i>Request Edit
                                                 </button>
                                             </form>
-                                        </div>
+                                        }
+
+                                        @if (evt.Status == EventStatus.Approved)
+                                        {
+                                            <form method="post" asp-action="Withdraw" class="mb-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="EventId" value="@evt.Id" />
+                                                <button type="submit" class="btn btn-outline-secondary w-100" data-confirm="Withdraw this event? It will be hidden from the guide.">
+                                                    <i class="fa-solid fa-eye-slash me-1"></i>Withdraw
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @if (evt.Status != EventStatus.Withdrawn)
+                                        {
+                                            <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-outline-primary w-100">
+                                                <i class="fa-solid fa-pencil me-1"></i>Edit
+                                            </a>
+                                        }
                                     </div>
                                 </div>
-                            }
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -62,6 +62,18 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - On Approve: submitter receives confirmation email
 - All decisions logged as append-only ModerationAction records
 
+### US-26.4b: Moderator Edits a Submitted Event
+**As a** GuideModerator
+**I want to** edit a submitted event directly
+**So that** I can fix minor issues without asking the submitter to resubmit
+
+**Acceptance Criteria:**
+- Edit action available from the moderation queue on any non-Withdrawn event
+- Moderator can change all event fields (title, description, category, date/time, duration, location note, host, recurrence, priority rank, venue for individual events)
+- Event status is preserved — the event is not re-queued for moderation
+- Edit is recorded as a `ModerationAction` with type `Edited` (visible in moderation history)
+- No email sent to the submitter on a moderator edit
+
 ### US-26.4b: Withdrawing an Approved Event
 
 **As a** moderator or the original submitter

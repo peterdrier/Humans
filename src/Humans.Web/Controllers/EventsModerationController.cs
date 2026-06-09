@@ -111,6 +111,34 @@ public class EventsModerationController(
         return await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
     }
 
+    [HttpGet("{eventId:guid}/Edit")]
+    public async Task<IActionResult> Edit(Guid eventId)
+    {
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        if (guideEvent == null) return NotFound();
+
+        if (guideEvent.CampId.HasValue)
+        {
+            var guideSettings = await guide.GetGuideSettingsAsync();
+            var eventSettings = guideSettings != null ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId) : null;
+            if (eventSettings == null)
+            {
+                SetError("Event settings not configured.");
+                return RedirectToAction(nameof(Index));
+            }
+            var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year);
+            var slug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
+            if (slug == null)
+            {
+                SetError("Camp not found.");
+                return RedirectToAction(nameof(Index));
+            }
+            return RedirectToAction("BarrioEdit", "Events", new { slug, eventId, isModerationEdit = true });
+        }
+
+        return RedirectToAction("Edit", "Events", new { eventId, isModerationEdit = true });
+    }
+
     [HttpPost("Withdraw")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(ModerationActionFormModel model)
@@ -152,7 +180,7 @@ public class EventsModerationController(
         return await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────
+    // ─── Moderation action helpers ────────────────────────────────
 
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {

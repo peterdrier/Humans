@@ -3,6 +3,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models.Events;
 
+
 public class ModerationQueueViewModel
 {
     public EventStatus ActiveTab { get; set; } = EventStatus.Pending;
@@ -61,6 +62,7 @@ public class ModerationHistoryItemViewModel
         EventModerationActionType.Approved => "bg-success",
         EventModerationActionType.Rejected => "bg-danger",
         EventModerationActionType.ResubmitRequested => "bg-info",
+        EventModerationActionType.Edited => "bg-primary",
         _ => "bg-secondary"
     };
 }

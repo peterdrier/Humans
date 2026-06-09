@@ -12,5 +12,8 @@ public enum EventModerationActionType
     Rejected = 1,
 
     /// <summary>Moderator requested edits — reason required.</summary>
-    ResubmitRequested = 2
+    ResubmitRequested = 2,
+
+    /// <summary>Moderator edited the event directly without changing its status.</summary>
+    Edited = 3
 }

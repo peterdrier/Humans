@@ -206,17 +206,19 @@ public class EventsController(
     }
 
     [HttpGet("Submit/{eventId:guid}/Edit")]
-    public async Task<IActionResult> Edit(Guid eventId)
+    public async Task<IActionResult> Edit(Guid eventId, bool isModerationEdit = false)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
+        var isMod = isModerationEdit && RoleChecks.IsEventsAdmin(User);
+
         var guideEvent = await guide.GetEventForModerationAsync(eventId);
         if (guideEvent is null || guideEvent.CampId != null) return NotFound();
-        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
+        if (!isMod && guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
             return Forbid();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!isMod && guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -248,7 +250,13 @@ public class EventsController(
         model.Host = guideEvent.Host;
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
-        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+        model.IsResubmit = !isMod && guideEvent.Status is (EventStatus.Rejected or EventStatus.ResubmitRequested);
+
+        if (isMod)
+        {
+            model.IsModerationEdit = true;
+            model.PostUrl = Url.Action(nameof(Update), new { eventId })!;
+        }
 
         return View("IndividualEventForm", model);
     }
@@ -262,10 +270,12 @@ public class EventsController(
 
         var guideEvent = await guide.GetEventForModerationAsync(eventId);
         if (guideEvent is null || guideEvent.CampId != null) return NotFound();
-        if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
+
+        var isModerationEdit = model.IsModerationEdit && RoleChecks.IsEventsAdmin(User);
+        if (!isModerationEdit && guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
             return Forbid();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!isModerationEdit && guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -284,6 +294,8 @@ public class EventsController(
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
+            if (isModerationEdit)
+                model.PostUrl = Url.Action(nameof(Update), new { eventId })!;
             await PopulateDropdownsAsync(model, eventSettings);
             return View("IndividualEventForm", model);
         }
@@ -302,6 +314,14 @@ public class EventsController(
         guideEvent.Host = model.Host;
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+
+        if (isModerationEdit)
+        {
+            await guide.ModeratorEditEventAsync(guideEvent, user.Id);
+            logger.LogInformation("Moderator {UserId} edited event '{Title}' ({EventId})", user.Id, model.Title, eventId);
+            SetSuccess($"Event \"{model.Title}\" updated.");
+            return RedirectToAction(nameof(Index), "EventsModeration", new { tab = guideEvent.Status });
+        }
 
         try
         {
@@ -705,15 +725,28 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/{eventId:guid}/Edit")]
-    public async Task<IActionResult> BarrioEdit(string slug, Guid eventId)
+    public async Task<IActionResult> BarrioEdit(string slug, Guid eventId, bool isModerationEdit = false)
     {
-        var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
-        if (error != null) return error;
+        var isMod = isModerationEdit && RoleChecks.IsEventsAdmin(User);
+
+        CampInfo camp;
+        if (isMod)
+        {
+            var found = await GetCampBySlugAsync(slug);
+            if (found == null) return NotFound();
+            camp = found;
+        }
+        else
+        {
+            var (error, _, resolved) = await ResolveCampEventManagementAsync(slug);
+            if (error != null) return error;
+            camp = resolved;
+        }
 
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!isMod && guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -739,7 +772,13 @@ public class EventsController(
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.PriorityRank = guideEvent.PriorityRank;
-        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
+        model.IsResubmit = !isMod && guideEvent.Status is (EventStatus.Rejected or EventStatus.ResubmitRequested);
+
+        if (isMod)
+        {
+            model.IsModerationEdit = true;
+            model.PostUrl = Url.Action(nameof(BarrioUpdate), new { slug, eventId })!;
+        }
 
         return View("BarrioEventForm", model);
     }
@@ -748,10 +787,57 @@ public class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
-        var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
+        // Moderation edit: moderator bypasses camp-lead auth check
+        if (model.IsModerationEdit && RoleChecks.IsEventsAdmin(User))
+        {
+            var moderator = await GetCurrentUserInfoAsync();
+            if (moderator == null) return Challenge();
+
+            var camp = await GetCampBySlugAsync(slug);
+            if (camp == null) return NotFound();
+
+            var guideEventForMod = await guide.GetCampEventAsync(eventId, camp.Id);
+            if (guideEventForMod == null) return NotFound();
+
+            var guideSettingsForMod = await guide.GetGuideSettingsAsync()
+                ?? throw new InvalidOperationException("Guide settings not configured.");
+            var eventSettingsForMod = await LoadBurnSettingsAsync(guideSettingsForMod)
+                ?? throw new InvalidOperationException("Event settings not configured.");
+
+            if (!ModelState.IsValid)
+            {
+                model.Id = eventId;
+                model.CampId = camp.Id;
+                model.CampName = ResolveCampDisplayName(camp);
+                model.CampSlug = slug;
+                model.IsModerationEdit = true;
+                model.PostUrl = Url.Action(nameof(BarrioUpdate), new { slug, eventId })!;
+                await PopulateBarrioDropdownsAsync(model, eventSettingsForMod);
+                return View("BarrioEventForm", model);
+            }
+
+            var tzForMod = GetTimeZone(eventSettingsForMod);
+            guideEventForMod.Title = model.Title;
+            guideEventForMod.Description = model.Description;
+            guideEventForMod.CategoryId = model.CategoryId;
+            guideEventForMod.StartAt = ToInstant(model.StartDate.Add(model.StartTime), tzForMod);
+            guideEventForMod.DurationMinutes = model.DurationMinutes;
+            guideEventForMod.LocationNote = model.LocationNote;
+            guideEventForMod.Host = model.Host;
+            guideEventForMod.IsRecurring = model.IsRecurring;
+            guideEventForMod.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+            guideEventForMod.PriorityRank = model.PriorityRank;
+
+            await guide.ModeratorEditEventAsync(guideEventForMod, moderator.Id);
+            logger.LogInformation("Moderator {UserId} edited barrio event '{Title}' ({EventId})", moderator.Id, model.Title, eventId);
+            SetSuccess($"Event \"{model.Title}\" updated.");
+            return RedirectToAction(nameof(Index), "EventsModeration", new { tab = guideEventForMod.Status });
+        }
+
+        var (error, user, camp2) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp2.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
@@ -768,8 +854,8 @@ public class EventsController(
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampId = camp2.Id;
+            model.CampName = ResolveCampDisplayName(camp2);
             model.CampSlug = slug;
             await PopulateBarrioDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);

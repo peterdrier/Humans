@@ -381,6 +381,13 @@ public sealed class CachingEventService(
         await RefreshEventEntryAsync(eventId, ct);
     }
 
+    public async Task ModeratorEditEventAsync(Event guideEvent, Guid actorUserId, CancellationToken ct = default)
+    {
+        await WithInner(inner => inner.ModeratorEditEventAsync(guideEvent, actorUserId, ct));
+        // Field edits on an Approved event must be visible to the public API immediately.
+        await RefreshEventEntryAsync(guideEvent.Id, ct);
+    }
+
     // ==========================================================================
     // Dashboard / Export — moderator-only, must show fresh pending count
     // ==========================================================================

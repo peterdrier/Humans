@@ -32,11 +32,10 @@
 <div class="card" style="max-width: 700px;">
     <div class="card-body">
         <form method="post"
-              asp-controller="Events"
-              asp-action="@(isEdit ? "BarrioUpdate" : "BarrioCreate")"
-              asp-route-slug="@Model.CampSlug"
-              asp-route-eventId="@Model.Id">
+              action="@(Model.PostUrl ?? Url.Action(isEdit ? "BarrioUpdate" : "BarrioCreate", "Events", new { slug = Model.CampSlug, eventId = Model.Id }))"
+              >
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="IsModerationEdit" />
 
             <div class="mb-3">
                 <label asp-for="Title" class="form-label"></label>
