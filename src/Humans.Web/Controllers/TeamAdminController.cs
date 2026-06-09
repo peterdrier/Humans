@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -1118,6 +1120,27 @@ public class TeamAdminController(
             TeamName = team.Name,
             Grants = rows,
         };
+    }
+
+    /// <summary>
+    /// Resolve a ticket barcode to its issued attendee within the current event only
+    /// (the gate-scanner admissibility scope, see <see cref="ScannerController"/> / #916).
+    /// Exact, case-sensitive (<see cref="StringComparison.Ordinal"/>) — barcodes are codes,
+    /// not names. Returns null for empty/whitespace input or no match.
+    /// </summary>
+    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
+        IReadOnlyList<TicketOrderInfo> orders, string? barcode)
+    {
+        var code = barcode?.Trim() ?? string.Empty;
+        if (code.Length == 0)
+        {
+            return null;
+        }
+
+        return orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
     }
 
     [HttpGet("Roles/SearchMembers")]
