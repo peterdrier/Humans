@@ -29,7 +29,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Administration](features/global/administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
 | [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
 | [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
-| [Global Search (`/Search`)](features/global/global-search.md) | Single-entry magnifying-glass search that fans out across humans, teams, camps, and shifts by name |
+| [Global Search (`/Search`)](features/global/global-search.md) | Single-entry magnifying-glass search that fans out across humans, teams, camps, shifts, and (when `Features:Events` is on) approved events |
 | [F-13: Drive Activity Monitoring](features/google-integration/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
 | [Google Integration](features/google-integration/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
 | [Google Removal Notifications](features/google-integration/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
@@ -68,7 +68,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Teams & Working Groups](features/teams/teams.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
 | [Test System Reliability](features/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
 | [Event Participation Tracking](features/tickets/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
-| [Ticket Transfer](features/tickets/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, vendor-voided and reissued under the receiver after admin approval |
+| [Ticket Transfer](features/tickets/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, processed manually by the ticket team in the vendor dashboard and reconciled by the next sync |
 | [Ticket Vendor Integration](features/tickets/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
 | [User Search Overhaul](features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
 
@@ -126,7 +126,7 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Camps](guide/Camps.md) | Self-organizing themed communities ("barrios") with annual registration, leads, images, and per-year seasons |
 | [City Planning](guide/CityPlanning.md) | Interactive aerial map where camps stake out their physical footprint before the event |
 | [Email](guide/Email.md) | Personal `@nobodies.team` mailboxes and team group emails: how they work and how to send "as" your team |
-| [Events](guide/Events.md) | Browse and submit community events; admins moderate submissions |
+| [Events](guide/Events.md) | Browse the festival programme and submit your own events; moderators approve submissions into the public guide |
 | [Expenses](guide/Expenses.md) | Submit expense reports and track reimbursement; FinanceAdmin reviews |
 | [Feedback](guide/Feedback.md) | Report a bug, suggest an improvement, or ask a question without leaving the app |
 | [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |

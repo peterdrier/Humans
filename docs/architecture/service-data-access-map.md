@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-07
+**Generated:** 2026-06-09
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -180,8 +180,12 @@ Read-only DTO assemblers — no repository, no cache. Fan out over
 cache) over the cached `UserInfo` read-model. It is consumed by
 `CachingUserService` (the person-search entry point on `IUserServiceRead`)
 so the search runs entirely in-memory against the unified User+Profile
-projection — no extra DB read. `PersonSearchFields` is the accompanying
-scope-flag enum that doubles as the field-level authorization model.
+projection — no extra DB read. Since #906 each match carries a relevance
+`Score` (exact name 100 / name-prefix 85 / token-prefix 80 / contains 60 /
+non-name field 40, accent-folded) so every people-search surface ranks by
+match quality instead of alphabetically; the previous arbitrary result
+caps are gone. `PersonSearchFields` is the accompanying scope-flag enum
+that doubles as the field-level authorization model.
 
 ---
 
@@ -510,6 +514,12 @@ table is therefore owned wholly by Google Integration.
 > owns. `TeamService` now injects `IEarlyEntryInvalidator` and contributes a
 > `GdprExportSections.TeamEarlyEntry` GDPR slice; the `IUserMerge` path
 > reassigns grants across the merge.
+>
+> **New this sweep (#906):** team search is now **cache-only**.
+> `CachingTeamService.SearchAsync` filters the cached `TeamInfo` snapshot
+> (hidden teams excluded unless requested); the inner
+> `TeamService.SearchAsync` **throws `NotSupportedException`**, and the dead
+> DB-search method `ITeamRepository.SearchAsync` was removed.
 
 The inner `ITeamService`
 registration is wrapped by
@@ -562,7 +572,8 @@ so the prior design-rule violation here is **closed**.
 
 Implements `ITeamService`, `ITeamServiceRead`, `IUserMerge`. Replaces the
 previous `ActiveTeams` `IMemoryCache` entry — the `TeamInfo` dictionary is
-the canonical source. Surfaced on `/Debug/CacheStats`.
+the canonical source. `SearchAsync` is served from the cached `TeamInfo`
+snapshot (never the DB — #906). Surfaced on `/Debug/CacheStats`.
 
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
 
@@ -735,6 +746,13 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 > `ICampRoleCampAccess` (implemented by `CampService`) for camp-member
 > status lookups, plus `ICampInfoInvalidator` to evict the cached
 > `CampInfo` on role-assignment writes.
+>
+> **New this sweep (#906):** camp search is now **cache-only**.
+> `CachingCampService.SearchAsync` filters the cached `CampInfo` snapshot
+> (relevance-ranked, public-status gated); the inner
+> `CampService.SearchAsync` **throws `NotSupportedException`** (reaching it
+> indicates a DI registration mistake), and the dead DB-search method
+> `ICampRepository.SearchForYearAsync` was removed.
 
 ### CampService (Scoped — wrapped by CachingCampService Singleton decorator)
 
@@ -775,7 +793,8 @@ directly — all caching lives in the decorator.
 | `CampSettingsInfo` single slot (no `IMemoryCache`) | Static | yes | yes | yes (`ICampInfoInvalidator.InvalidateSettingsAsync`) |
 
 Implements `ICampService`, `ICampServiceRead`, `IUserMerge`,
-`ICampInfoInvalidator`. Surfaced on `/Debug/CacheStats`.
+`ICampInfoInvalidator`. `SearchAsync` is served from the cached `CampInfo`
+snapshot (never the DB — #906). Surfaced on `/Debug/CacheStats`.
 
 ### CampRoleService (Scoped)
 
@@ -1366,13 +1385,14 @@ key the section still uses is `TicketEventSummary:{eventId}`.
 
 ### TicketQueryService (Scoped, keyed `"ticket-query-inner"` — inner of CachingTicketQueryService)
 
-Repository: `ITicketRepository`.
+Repositories: `ITicketRepository`, `ITicketTransferRepository` (new — #916).
 
 | Table | R/W |
 |-------|-----|
 | TicketOrders | R |
 | TicketAttendees | R |
 | TicketSyncStates | R |
+| TicketTransferRequests | R (approved transfers joined into the orders projection — void attendees carry recipient/decided-at, #916) |
 
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
@@ -1396,6 +1416,17 @@ been **removed**.
 > routes through `IUserServiceRead.GetAllUserInfosAsync` (see
 > `TicketSyncService.BuildEmailLookupAsync`). The cross-section
 > design-rule violation on `UserEmails` is closed.
+>
+> **New this sweep (#916 — barcode):** `TicketAttendees` gained a `Barcode`
+> column (synced from Ticket Tailor). `TicketAttendeeInfo` in the cached
+> orders projection now carries `Barcode` plus transfer detail
+> (`TransferredToName` / `TransferredAt` for void attendees, resolved from
+> approved `TicketTransferRequests` — hence the new `ITicketTransferRepository`
+> read in `TicketQueryService`). The admin attendee search predicate in
+> `TicketRepository` matches barcode alongside name/email. The Scanner gate
+> card (`ScannerController`) resolves a barcode by filtering
+> `ITicketServiceRead.GetTicketOrdersAsync` in memory — no new interface
+> method.
 
 ### CachingTicketQueryService (Singleton, Infrastructure)
 
@@ -1447,8 +1478,10 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `IEmailService`, `IAuditLogService`. Invalidates ticket caches via
-`ITicketCacheInvalidator` (`InvalidateAfterTransfer`). No `IMemoryCache`
-directly.
+`ITicketCacheInvalidator` (`InvalidateAfterTransfer`, called from
+`ApproveAsync` since #916 — approval mutates the cached order projection's
+transfer detail, so the orders slice and both users' holdings are
+evicted). No `IMemoryCache` directly.
 
 ### TicketingBudgetService (Scoped)
 
@@ -1744,11 +1777,16 @@ service has no `IMemoryCache`.
 | Flat `EventVenueView` list | Static | yes | yes | yes |
 | `EventGuideSettingsView` singleton | Static | yes | yes | yes |
 
-Implements `IEventService`, `IEventViewInvalidator`, `IHostedService`
-(`StartAsync` warms all four projections). The moderator-only
-`GetAllEventsForDashboardAsync` passes through to the inner service (needs a
-fresh pending count; the cache only holds approved events). Only the event
-projection is surfaced on `/Debug/CacheStats`.
+Implements `IEventService` (which extends the new cross-section read
+surface `IEventServiceRead` — #915), `IEventViewInvalidator`,
+`IHostedService` (`StartAsync` warms all four projections).
+`IEventServiceRead` (approved events / guide settings / favourite ids) is
+registered as a forward to this singleton so cross-section consumers (the
+camp detail page's events card, `CampEventsViewComponent`) read from the
+cache. The moderator-only `GetAllEventsForDashboardAsync` passes through
+to the inner service (needs a fresh pending count; the cache only holds
+approved events). Only the event projection is surfaced on
+`/Debug/CacheStats`.
 
 ---
 
@@ -1774,6 +1812,13 @@ Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters per PR #791). Implements `IUserDataContributor`. No
 `IMemoryCache`.
+
+> **New this sweep (#900 — travel lines):** expense lines can now be
+> travel reimbursements (mileage / per-diem; `ExpenseLineType` +
+> `PerDiemKind` columns on `ExpenseLines` — same table, no new DbSet).
+> The service gained an `IOptions<TravelReimbursementConfig>` dependency
+> (rates from `appsettings.json`); rate math happens in the service, not
+> the DB. The personal IOU view reads through the existing surface.
 
 ### SepaPaymentFileBuilder
 
@@ -2049,7 +2094,9 @@ former HUM0025 `[Grandfathered]` markers have been retired:
    inject instead of the full service: `IUserServiceRead`,
    `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
    `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`,
-   `ICampaignServiceRead` (consumed by `TicketQueryService`), and
+   `ICampaignServiceRead` (consumed by `TicketQueryService`),
+   `IEventServiceRead` (new — #915, consumed by `CampEventsViewComponent`
+   for the camp detail page's events card), and
    the Governance pair `IApplicationServiceRead` / `IMembershipCalculatorRead`
    (PR #851). Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain

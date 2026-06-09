@@ -20,7 +20,7 @@
 
 # Expenses — Section Invariants
 
-Members submit expense reports for reimbursement. Finance Admin approves and processes payment via SEPA batch; Holded is notified asynchronously. Full workflow and field-level detail in `docs/superpowers/plans/2026-05-10-expense-reports.md`.
+Members submit expense reports for reimbursement. Finance Admin approves and processes payment via SEPA batch; Holded is notified asynchronously. Full workflow and field-level detail in `docs/superpowers/specs/2026-05-10-expense-reports-design.md`.
 
 ## Concepts
 
@@ -138,6 +138,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 - A report follows the lifecycle: Draft → Submitted → (CoordinatorEndorsed →) Approved → SepaSent → Paid. Terminal alternates: Withdrawn (from Submitted/CoordinatorEndorsed/Approved). `ExpenseReportService` enforces all transitions; `IExpenseRepository` persists them atomically.
 - A report cannot be submitted without at least one line. Every **Receipt** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
+- Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
 - `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
 - The coordinator endorsement step is required only if the report's category has at least one budget coordinator (`CategoryRequiresCoordinatorEndorsementAsync`). Finance Admin may approve directly from Submitted if no coordinator is assigned.

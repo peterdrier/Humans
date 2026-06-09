@@ -105,7 +105,7 @@ The Razor partial renders all user-controlled values (`displayName`, `detail`) v
 
 | Method | Route | Returns | Notes |
 | --- | --- | --- | --- |
-| `GET` | `/api/profiles/search?q={term}&scope={name|...}` | `HumanLookupSearchResult[]` | Existing endpoint. Detail enrichment added by this feature. Up to `MaxResults = 10` rows. |
+| `GET` | `/api/profiles/search?q={term}&scope={name|...}` | `HumanLookupSearchResult[]` | Existing endpoint. Detail enrichment added by this feature. Uncapped — all matches, relevance-ranked (`OrderByRelevance()`: best name match first, then name). |
 | `GET` | `/api/profiles/by-userid/{userId:guid}` | `HumanLookupSearchResult` | New. Single-person lookup. 404 if user not found or profile rejected. |
 
 `HumanLookupSearchResult` shape: `{ userId, displayName, detail, profilePictureUrl }`.

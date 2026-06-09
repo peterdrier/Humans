@@ -1,4 +1,4 @@
-@model Humans.Web.Models.Events.CampEventsCardViewModel
+@model Humans.Web.Models.Events.EventsCardViewModel
 
 @functions {
     static string FormatDuration(int minutes)
@@ -29,8 +29,8 @@
                             </span>
                         }
                     </div>
-                    <form method="post" asp-controller="Events" asp-action="ToggleCampFavourite"
-                          asp-route-slug="@Model.CampSlug" asp-route-eventId="@row.EventId" class="d-inline ms-2">
+                    <form method="post" asp-controller="Events" asp-action="ToggleCardFavourite"
+                          asp-route-eventId="@row.EventId" asp-route-returnUrl="@Model.ReturnUrl" class="d-inline ms-2">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-sm @(row.IsFavourited ? "btn-danger" : "btn-outline-danger")"
                                 title="@(row.IsFavourited ? "Remove from favourites" : "Add to favourites")">

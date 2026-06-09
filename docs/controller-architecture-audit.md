@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-07 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-09 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,9 +10,9 @@ Living document. Last updated: 2026-06-07 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-07) tracked the account-merge consolidation and the legacy-`/Admin` route relocations. The duplicate-account and merge-request workflows were folded into a single ordered surface at `/Users/Admin/AccountMerges` (#899): the **deleted** `AdminMergeController` and `AdminDuplicateAccountsController` were replaced by one **new** `UsersAdminAccountMergesController` (`Index`, `Merge`, `MergeRequest`, `Dismiss`, `Close`). The legacy-admin-route move (#901) gutted `AdminController` down to its dashboard `Index` and pushed the debug pages onto `DebugController` (`/Debug/*`, already reflected) and the user-identity debug table onto the new-since-prior-sweep `UsersAdminDebugController` (`/Users/Admin/Debug`). The Profile-section retirement (#881) finished moving the per-human admin surface off `ProfileController` onto `UsersAdminController` (`AdminList`, `Roles`, `AdminDetail`, `RevealIban`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `PurgeHuman`, `AddRole`, `EndRole`, plus the relocated `Audience`); the account-status wall and cancel-deletion lever moved to a **new** `UserController` (`Status`, `Deletion`, `CancelDeletion`), so `ProfileController.CancelDeletion` is gone. `ShiftsController` gained the read-only Shift Summary by Camp at three scopes (#898): `Summary`, `SummaryTeam`, `SummaryRota`; its previous `SignUp` / `SignUpRange` form actions no longer exist (per-day sign-up flows through `ToggleDay`). All other controllers carry forward unchanged.
+This regeneration (2026-06-09) is a small delta. `ScannerController` gained the ticket-scanning pair (#916): `Tickets` (in-browser ticket barcode scanner page) and `Card` (current-event attendee ticket-card partial looked up by barcode). `ExpensesController` gained the travel line types `AddMileage` and `AddPerDiem` (#900). `EventsController` gained `ToggleCampFavourite` (favourite toggle on the barrio event pages). On the removals side — both missed by the prior regen — `ProfileController.ImportGooglePhoto` is gone (removed when profile-picture storage was consolidated into `UserService`, #745), and `ProfileAdminController` lost `EmailProblemsCompare` and `Merge` (the compare-and-merge surface was absorbed by `UsersAdminAccountMergesController`, #899, leaving `/Profile/Admin/EmailProblems` with the queue plus orphan-email/backfill levers). All other controllers carry forward unchanged.
 
-The additions captured in the 2026-05-29 sweep — now all stable in the tables below — were: `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), `DebugController` (`/Debug/ClientStats`); plus `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover`, `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay`, `TicketTransferController.Confirm` (replaced the prior `Lookup` action), `ShiftAdminController.EmailTeamRotas` (GET+POST), and `StoreController.CreateTeamOrder` / `Delete`.
+The changes captured in the 2026-06-07 sweep — now all stable in the tables below — were: the account-merge consolidation (#899: deleted `AdminMergeController` / `AdminDuplicateAccountsController`, new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`), the legacy-`/Admin` route relocations (#901: `AdminController` reduced to its dashboard `Index`, debug pages onto `DebugController` and the new `UsersAdminDebugController`), the Profile-section retirement (#881: per-human admin surface onto `UsersAdminController`, account-status wall + cancel-deletion onto the new `UserController`), and the read-only Shift Summary by Camp on `ShiftsController` (#898: `Summary` / `SummaryTeam` / `SummaryRota`, with the old `SignUp` / `SignUpRange` form actions replaced by `ToggleDay`).
 
 ---
 
@@ -391,6 +391,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Browse | /Events/Browse | GET | Browse the event programme | OK |
 | ToggleFavourite | /Events/Browse/Favourite/{eventId:guid} | POST | Toggle favourite from Browse | OK |
 | Unfavourite | /Events/Schedule/Unfavourite/{eventId:guid} | POST | Remove a favourite from Schedule | OK |
+| ToggleCampFavourite | /Events/Barrio/{slug}/Favourite/{eventId:guid} | POST | Toggle favourite from a barrio's event list | OK |
 | BarrioSubmit | /Events/Barrio/{slug}/Submit | GET | Barrio event submission form | OK |
 | BarrioCreate | /Events/Barrio/{slug}/Submit | POST | Submit a barrio event | OK |
 | BarrioEdit | /Events/Barrio/{slug}/{eventId:guid}/Edit | GET | Edit barrio event form | OK |
@@ -434,6 +435,8 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Edit | /Expenses/{id:guid}/Edit | GET | Edit expense form | OK |
 | Edit | /Expenses/{id:guid}/Edit | POST | Save expense edits | OK |
 | AddLine | /Expenses/{id:guid}/Lines/Add | POST | Add an expense line | OK |
+| AddMileage | /Expenses/{id:guid}/Lines/AddMileage | POST | Add a mileage travel line | OK |
+| AddPerDiem | /Expenses/{id:guid}/Lines/AddPerDiem | POST | Add a per-diem travel line | OK |
 | UpdateLine | /Expenses/{id:guid}/Lines/Update | POST | Update an expense line | OK |
 | RemoveLine | /Expenses/{id:guid}/Lines/{lineId:guid}/Remove | POST | Remove an expense line | OK |
 | AttachFile | /Expenses/{id:guid}/Lines/{lineId:guid}/Attach | POST | Attach a file to a line | OK |
@@ -698,8 +701,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | EmailProblems | /Profile/Admin/EmailProblems | GET | Email problems queue | OK |
-| EmailProblemsCompare | /Profile/Admin/EmailProblems/Compare | GET | Compare two email-problem accounts | OK |
-| Merge | /Profile/Admin/EmailProblems/Merge | POST | Merge two accounts | OK |
 | DeleteOrphanEmail | /Profile/Admin/EmailProblems/DeleteOrphanEmail | POST | Delete an orphan email | OK |
 | BackfillLegacyEmails | /Profile/Admin/EmailProblems/BackfillLegacyEmails | POST | Backfill legacy emails | OK |
 
@@ -761,7 +762,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Notifications | /Profile/Me/Notifications | GET | Permanent redirect to CommunicationPreferences | OK |
 | DownloadData | /Profile/Me/DownloadData | GET | GDPR data export | OK |
 | Picture | /Profile/Picture | GET | Serve custom profile picture | OK |
-| ImportGooglePhoto | /Profile/Me/ImportGooglePhoto | POST | Import Google photo | OK |
 | ViewProfile | /Profile/{id} | GET | Public profile page for a human | OK |
 | Popover | /Profile/{id}/Popover | GET | Mini profile popover (partial) | OK |
 | PublicPopover | /Profile/{id}/PublicPopover | GET | Public mini popover for `<vc:human>` on publicly-visible roles | OK |
@@ -782,6 +782,8 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | Index | /Scanner | GET | Scanner section landing page | OK |
 | Barcode | /Scanner/Barcode | GET | Browser-only barcode decode tool | OK |
+| Tickets | /Scanner/Tickets | GET | In-browser ticket barcode scanner page | OK |
+| Card | /Scanner/Tickets/Card | GET | Attendee ticket-card partial looked up by barcode (current event only) | OK |
 
 ## SearchController
 
@@ -1141,7 +1143,7 @@ The profile controller still owns own-profile, email, linked-account, privacy, s
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
-| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ImportGooglePhoto`, `ShiftInfo`, `DietaryMedical`, `ViewProfile`, `Popover`, `PublicPopover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
+| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ShiftInfo`, `DietaryMedical`, `ViewProfile`, `Popover`, `PublicPopover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
 | `Emails`, `AddEmail`, `VerifyEmail`, `SetPrimary`, `SetEmailVisibility`, `DeleteEmail`, `SetGoogle`, `ClearGoogle`, `ClearPrimary`, `Link`, `Unlink`, `UnlinkLinkedAccount` + all `Admin*Email*` actions | ProfileController | Email / linked-account management — large own sub-domain | **ProfileEmailController** (`/Profile/Me/Emails/...`) |
 | `Privacy`, `RequestDeletion`, `DownloadData`, `MyOutbox` | ProfileController | GDPR/data rights | **ProfilePrivacyController** (`/Profile/Me/Privacy/...`) |
 | `CommunicationPreferences`, `UpdatePreference`, `Notifications` | ProfileController | Communication prefs | Could stay or move to email controller |
