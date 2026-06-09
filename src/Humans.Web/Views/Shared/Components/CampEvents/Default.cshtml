@@ -55,6 +55,10 @@
                         <text> &middot; <i class="fa-solid fa-user me-1"></i>@row.Host</text>
                     }
                 </div>
+                @if (!string.IsNullOrEmpty(row.Description))
+                {
+                    <p class="mt-2 mb-0 small">@row.Description</p>
+                }
             </div>
         }
     </div>

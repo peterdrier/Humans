@@ -41,10 +41,10 @@ public class CampEventsViewComponentTests
         };
     }
 
-    private static ApprovedEventView Approved(Guid id, string title, Instant startAt) => new(
+    private static ApprovedEventView Approved(Guid id, string title, Instant startAt, string description = "") => new(
         Id: id, CampId: Guid.NewGuid(), GuideSharedVenueId: null, SubmitterUserId: Guid.NewGuid(),
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
-        VenueName: null, Title: title, Description: "", LocationNote: null, Host: null,
+        VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: startAt, DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
         PriorityRank: 0, SubmittedAt: startAt, LastUpdatedAt: startAt);
 
@@ -61,7 +61,7 @@ public class CampEventsViewComponentTests
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
-        var early = Approved(Guid.NewGuid(), "Early", Instant.FromUtc(2026, 8, 1, 10, 0));
+        var early = Approved(Guid.NewGuid(), "Early", Instant.FromUtc(2026, 8, 1, 10, 0), description: "Morning yoga by the temple.");
         var late = Approved(Guid.NewGuid(), "Late", Instant.FromUtc(2026, 8, 1, 22, 0));
         _events.GetApprovedEventsAsync(campId, null, null, null,
                 Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
@@ -78,6 +78,7 @@ public class CampEventsViewComponentTests
         vm.Rows.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
         vm.Rows[0].IsFavourited.Should().BeTrue();   // Early — favourited
         vm.Rows[1].IsFavourited.Should().BeFalse();  // Late — not favourited
+        vm.Rows[0].Description.Should().Be("Morning yoga by the temple.");
     }
 
     [HumansFact]

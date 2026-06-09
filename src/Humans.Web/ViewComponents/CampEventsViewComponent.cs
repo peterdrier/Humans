@@ -50,6 +50,7 @@ public class CampEventsViewComponent(
                     EventId = e.Id,
                     Title = e.Title,
                     CategoryName = e.CategoryName,
+                    Description = e.Description,
                     StartAt = EventsTimeHelpers.ToLocalDateTime(e.StartAt, tz),
                     DurationMinutes = e.DurationMinutes,
                     VenueName = e.VenueName,
