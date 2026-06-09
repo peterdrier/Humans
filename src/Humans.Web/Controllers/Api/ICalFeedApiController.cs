@@ -20,13 +20,14 @@ public class ICalFeedApiController(
 {
     [HttpGet("{userId:guid}/{token:guid}.ics")]
     [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetFeed(Guid userId, Guid token, CancellationToken ct)
     {
         try
         {
             var ics = await feed.GetFeedIcsAsync(userId, token, ct);
             if (ics is null) return NotFound();
-            return File(System.Text.Encoding.UTF8.GetBytes(ics), "text/calendar", "nobodies.ics");
+            return File(System.Text.Encoding.UTF8.GetBytes(ics), "text/calendar");
         }
         catch (Exception ex)
         {
