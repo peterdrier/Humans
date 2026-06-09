@@ -1143,6 +1143,27 @@ public class TeamAdminController(
             .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Build the 0-or-1 picker row for a barcode hit. A row is emitted only when the
+    /// attendee is personally paired to a human (<see cref="TicketAttendeeInfo.MatchedUserId"/>)
+    /// who still resolves and is active. Otherwise empty — the picker stays silent (it just
+    /// shows name matches), matching the type-ahead "no result" convention.
+    /// </summary>
+    internal static List<HumanLookupSearchResult> BuildTicketLookupRows(
+        TicketAttendeeInfo? hit, UserInfo? matchedUser, string detailLabel)
+    {
+        if (hit?.MatchedUserId is null || matchedUser is null || !matchedUser.IsActive)
+        {
+            return [];
+        }
+
+        return
+        [
+            new HumanLookupSearchResult(
+                matchedUser.Id, matchedUser.BurnerName, detailLabel, matchedUser.ProfilePictureUrl),
+        ];
+    }
+
     [HttpGet("Roles/SearchMembers")]
     public async Task<IActionResult> SearchMembersForRole(string slug, string q)
     {
