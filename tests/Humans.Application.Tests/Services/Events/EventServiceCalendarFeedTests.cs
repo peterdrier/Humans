@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -22,7 +23,7 @@ public class EventServiceCalendarFeedTests
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, new FakeClock(FixedNow));
+        _service = new EventService(_repo, _burnSettings, new FakeClock(FixedNow), NullLogger<EventService>.Instance);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);
@@ -150,7 +151,11 @@ public class EventServiceCalendarFeedTests
             Instant.FromUtc(2026, 7, 1, 17, 0),
             Instant.FromUtc(2026, 7, 3, 17, 0),
         });
-        items.Select(i => i.Uid).Should().OnlyHaveUniqueItems();
+        items.Select(i => i.Uid).Should().BeEquivalentTo(new[]
+        {
+            $"event-{ev.Id}-20260701@humans.nobodies.team",
+            $"event-{ev.Id}-20260703@humans.nobodies.team",
+        });
     }
 
     [HumansFact]

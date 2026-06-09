@@ -9,11 +9,13 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Events;
 
-public sealed class EventService(IEventRepository repo, IBurnSettingsService burnSettings, IClock clock)
+public sealed class EventService(
+    IEventRepository repo, IBurnSettingsService burnSettings, IClock clock, ILogger<EventService> logger)
     : IEventService, IUserDataContributor, ICalendarFeedContributor
 {
     // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
@@ -565,13 +567,21 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         var guideSettings = await repo.GetGuideSettingsAsync(ct);
         var burn = guideSettings is null ? null : await burnSettings.GetByIdAsync(guideSettings.EventSettingsId, ct);
         var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+        if (burn is not null && tz is null)
+        {
+            logger.LogWarning(
+                "Burn settings {EventSettingsId} have unknown timezone {TimeZoneId}; iCal feed falls back to single occurrences keyed by UTC date",
+                burn.Id,
+                burn.TimeZoneId);
+        }
 
         var items = new List<CalendarFeedItem>();
         foreach (var favourite in approved)
         {
             var e = favourite.Event;
-            IReadOnlyList<Instant> occurrences = burn is not null && tz is not null
-                ? e.GetOccurrenceInstants(burn.GateOpeningDate, tz)
+            // tz non-null implies burn non-null (tz is derived from burn above).
+            IReadOnlyList<Instant> occurrences = tz is not null
+                ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz)
                 : [e.StartAt];
 
             var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
