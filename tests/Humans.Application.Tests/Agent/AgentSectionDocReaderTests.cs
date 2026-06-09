@@ -1,4 +1,11 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
+using Humans.Infrastructure.Configuration;
+using Humans.Infrastructure.Services.Preload;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Octokit;
 using Xunit;
 
 namespace Humans.Application.Tests.Agent;
@@ -6,8 +13,8 @@ namespace Humans.Application.Tests.Agent;
 /// <summary>
 /// Guards the case-insensitive whitelist + canonical-cased path resolution
 /// (nobodies-collective/Humans#789). LLMs routinely lowercase the section key
-/// (e.g. "shifts"); the reader must canonicalize it to the on-disk filename
-/// ("Shifts.md") so the lookup works on case-sensitive filesystems (Linux).
+/// (e.g. "shifts"); the reader must canonicalize it to the on-GitHub filename
+/// ("Shifts.md") because GitHub paths are case-sensitive.
 /// </summary>
 public class AgentSectionDocReaderTests
 {
@@ -15,75 +22,86 @@ public class AgentSectionDocReaderTests
     [InlineData("Shifts")]
     [InlineData("shifts")]
     [InlineData("SHIFTS")]
-    public async Task ReadAsync_resolves_any_casing_to_the_canonical_guide(string key)
+    public async Task ReadAsync_resolves_any_casing_to_the_canonical_section_file(string key)
     {
-        var env = new TestHostEnvironment();
-        var reader = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
+        var source = new FakeSource();
+        var reader = MakeReader(source);
 
         var content = await reader.ReadAsync(key, CancellationToken.None);
 
-        var canonical = await File.ReadAllTextAsync(
-            Path.Combine(env.ContentRootPath, "docs", "sections", "Shifts.md"),
-            CancellationToken.None);
-
-        content.Should().Be(canonical, "any casing of a whitelisted key must resolve to docs/sections/Shifts.md");
-    }
-
-    /// <summary>
-    /// Proves the canonicalization is independent of the host filesystem's case sensitivity:
-    /// a content root containing ONLY the canonical-cased file "Profiles.md" is read
-    /// successfully even when the caller supplies a lowercased "profiles" key. The reader
-    /// must build the path from the whitelist's canonical entry, not the raw key.
-    /// </summary>
-    [HumansFact]
-    public async Task ReadAsync_uses_canonical_filename_not_caller_casing()
-    {
-        var root = Path.Combine(Path.GetTempPath(), "humans-doc-reader-" + Guid.NewGuid().ToString("N"));
-        var sectionsDir = Path.Combine(root, "docs", "sections");
-        Directory.CreateDirectory(sectionsDir);
-        try
-        {
-            const string body = "# Profiles guide\nbody";
-            await File.WriteAllTextAsync(Path.Combine(sectionsDir, "Profiles.md"), body);
-
-            var env = new TestHostEnvironment { ContentRootPath = root };
-            var reader = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
-
-            var content = await reader.ReadAsync("profiles", CancellationToken.None);
-
-            content.Should().Be(body);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        content.Should().NotBeNullOrEmpty();
+        source.LastFolder.Should().Be(AgentSectionDocReader.FolderPath);
+        source.LastStem.Should().Be("Shifts", "the reader must canonicalize the key, not pass caller casing");
     }
 
     [HumansFact]
     public async Task ReadAsync_returns_null_for_non_whitelisted_key()
     {
-        var env = new TestHostEnvironment();
-        var reader = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
+        var reader = MakeReader(new FakeSource());
 
         var content = await reader.ReadAsync("NotASection", CancellationToken.None);
 
         content.Should().BeNull();
     }
 
-    private static string RepoRoot()
+    [HumansFact]
+    public async Task ReadAsync_returns_null_when_github_returns_not_found()
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "docs", "sections")))
-            dir = dir.Parent;
-        return dir?.FullName ?? AppContext.BaseDirectory;
+        var source = new FakeSource { FailWith = new NotFoundException("missing", System.Net.HttpStatusCode.NotFound) };
+        var reader = MakeReader(source);
+
+        var content = await reader.ReadAsync("Shifts", CancellationToken.None);
+
+        content.Should().BeNull();
     }
 
-    private sealed class TestHostEnvironment : Microsoft.Extensions.Hosting.IHostEnvironment
+    [HumansFact]
+    public async Task ReadAsync_returns_null_on_transient_github_failure()
     {
-        public string EnvironmentName { get; set; } = "Test";
-        public string ApplicationName { get; set; } = "Humans.Application.Tests";
-        public string ContentRootPath { get; set; } = RepoRoot();
-        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
-            new Microsoft.Extensions.FileProviders.PhysicalFileProvider(RepoRoot());
+        var source = new FakeSource { FailWith = new InvalidOperationException("network down") };
+        var reader = MakeReader(source);
+
+        var content = await reader.ReadAsync("Shifts", CancellationToken.None);
+
+        content.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ReadAsync_caches_successful_fetch()
+    {
+        var source = new FakeSource();
+        var reader = MakeReader(source);
+
+        await reader.ReadAsync("Shifts", CancellationToken.None);
+        await reader.ReadAsync("Shifts", CancellationToken.None);
+
+        source.CallCount.Should().Be(1);
+    }
+
+    private static AgentSectionDocReader MakeReader(FakeSource source) =>
+        new(
+            source,
+            new MemoryCache(new MemoryCacheOptions()),
+            Options.Create(new GuideSettings { CacheTtlHours = 6 }),
+            NullLogger<AgentSectionDocReader>.Instance);
+
+    private sealed class FakeSource : IGuideContentSource
+    {
+        public int CallCount { get; private set; }
+        public string? LastFolder { get; private set; }
+        public string? LastStem { get; private set; }
+        public Exception? FailWith { get; set; }
+
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Agent reader must use the folder-parameterized overload.");
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            LastFolder = folderPath;
+            LastStem = fileStem;
+            if (FailWith is not null) throw FailWith;
+            return Task.FromResult($"# {fileStem}\n\nBody.");
+        }
     }
 }

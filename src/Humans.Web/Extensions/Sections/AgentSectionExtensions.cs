@@ -31,6 +31,9 @@ internal static class AgentSectionExtensions
 
         services.AddScoped<IAgentAnthropicBalanceProvider, Humans.Infrastructure.Services.Anthropic.AnthropicBalanceProvider>();
 
+        // Singletons: stateless readers that own a per-stem MemoryCache slot via the shared
+        // IMemoryCache. IGuideContentSource is registered as a singleton by AddGuideSection,
+        // so capturing it here is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
         services.AddSingleton<IAgentPreloadCorpusBuilder, AgentPreloadCorpusBuilder>();
