@@ -104,6 +104,13 @@ public sealed class WidgetGalleryController(
                     AdminDetailUrl = "#",
                 },
             },
+            SampleTableRows =
+            [
+                new() { Name = "Sparkle", Amount = 120.50m, JoinedAt = NodaTime.SystemClock.Instance.GetCurrentInstant().Minus(NodaTime.Duration.FromDays(400)), Status = Humans.Domain.Enums.TicketAttendeeStatus.Valid, IsVip = true },
+                new() { Name = "Embers", Amount = 95.00m, JoinedAt = NodaTime.SystemClock.Instance.GetCurrentInstant().Minus(NodaTime.Duration.FromDays(120)), Status = Humans.Domain.Enums.TicketAttendeeStatus.CheckedIn, IsVip = false },
+                new() { Name = "Dusty", Amount = 240.00m, JoinedAt = NodaTime.SystemClock.Instance.GetCurrentInstant().Minus(NodaTime.Duration.FromDays(30)), Status = Humans.Domain.Enums.TicketAttendeeStatus.Void, IsVip = false },
+                new() { Name = "Nova", Amount = 95.00m, JoinedAt = NodaTime.SystemClock.Instance.GetCurrentInstant().Minus(NodaTime.Duration.FromDays(10)), Status = Humans.Domain.Enums.TicketAttendeeStatus.Valid, IsVip = false },
+            ],
         };
 
         return View(model);
@@ -234,4 +241,14 @@ public sealed class WidgetGalleryViewModel
     public required PagerViewModel SamplePager { get; init; }
     public required ProfileSummaryViewModel SampleProfileSummary { get; init; }
     public required IReadOnlyList<HumanSearchResultViewModel> SampleHumanSearchResults { get; init; }
+    public List<TableDemoRow> SampleTableRows { get; set; } = [];
+}
+
+public sealed class TableDemoRow
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public NodaTime.Instant JoinedAt { get; set; }
+    public Humans.Domain.Enums.TicketAttendeeStatus Status { get; set; }
+    public bool IsVip { get; set; }
 }

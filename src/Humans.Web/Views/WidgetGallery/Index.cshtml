@@ -1,6 +1,7 @@
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Html
+@using Humans.Web.Models.Tables
 @{
     ViewData["Title"] = "Widget Gallery";
     Layout = "_Layout";
@@ -233,6 +234,7 @@
                 <a href="#layout">Layout Bits</a>
                 <a href="#skipped">Skipped (with reason)</a>
                 <a href="#choosing">Choosing between them</a>
+                <a href="#wg-tables">Tables</a>
             </nav>
         </div>
 
@@ -1309,6 +1311,43 @@
                     <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> is the canonical floating-widget example.</li>
                     <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
+            </section>
+
+
+            @* ============== TABLES ============== *@
+            <section class="wg-section" id="wg-tables">
+                <h2>Tables</h2>
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_Table.cshtml (TableModel)</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Table.cshtml · src/Humans.Web/Models/Tables/</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Column-model table component — the single authority for list tables. Sorting, filtering,
+                        and formatting are per-column config. Client mode shown here (sort: click headers;
+                        filter row + search box). Server mode (query-param sort links, GET filter form, _Pager)
+                        is live on /Ticket/Attendees. Spec: docs/superpowers/specs/2026-06-10-table-component-design.md
+                    </div>
+                    <div class="wg-card-example">
+                        @{
+                            var demoTable = TableModel.For(Model.SampleTableRows)
+                                .Column("Name", r => r.Name, c => c.TextFilter())
+                                .Column("Joined", r => r.JoinedAt, c => c.Date())
+                                .Column("Amount", r => r.Amount, c => c.Currency().End())
+                                .Column("Status", r => r.Status, c => c.EnumBadge().SelectFilter())
+                                .Column("VIP", r => r.IsVip, c => c.BoolIcon())
+                                .SearchBox(placeholder: "Search demo rows...")
+                                .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
+                                        new TableFooterCell(Model.SampleTableRows.Sum(r => r.Amount).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
+                                        new TableFooterCell(""), new TableFooterCell(""))
+                                .Build();
+                        }
+                        <partial name="_Table" model="demoTable" />
+                    </div>
+                </div>
             </section>
 
         </div>

@@ -32,13 +32,16 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
         }
     }
 
-    public async Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default)
+    public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+        GetMarkdownAsync(_guideSettings.Value.FolderPath, fileStem, cancellationToken);
+
+    public async Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
     {
         var settings = _guideSettings.Value;
-        var path = $"{settings.FolderPath.TrimEnd('/')}/{fileStem}.md";
+        var path = $"{folderPath.TrimEnd('/')}/{fileStem}.md";
 
         _logger.LogDebug(
-            "Fetching guide file {Path} from {Owner}/{Repository}@{Branch}",
+            "Fetching markdown file {Path} from {Owner}/{Repository}@{Branch}",
             path, settings.Owner, settings.Repository, settings.Branch);
 
         var rawBytes = await _client.Repository.Content.GetRawContentByRef(

@@ -67,15 +67,7 @@ public sealed class VolunteerTrackingService(
     {
         var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         if (es is null)
-        {
-            return new VolunteerTrackingViewModel(
-                false,
-                0,
-                default,
-                default,
-                [],
-                []);
-        }
+            return EmptyTrackingViewModel();
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
         var today = clock.GetCurrentInstant().InZone(zone).Date;
@@ -83,103 +75,160 @@ public sealed class VolunteerTrackingService(
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var users = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var statusMap = users
+        var statusMap = BuildParticipationStatusMap(users, es.Year);
+        var perUserSignups = BuildPerUserSignupMap(signups);
+
+        var bsRows = await trackingRepo.GetBuildStatusesForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
+        var bsByUser = bsRows.ToDictionary(r => r.UserId);
+        var mainRows = BuildMainCohortRows(es, perUserSignups, statusMap, bsByUser);
+
+        var availabilityRows = await trackingRepo.GetAvailabilityForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
+        var availabilityByUser = availabilityRows
+            .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
+        var unbookedRows = BuildUnbookedCohortRows(
+            es,
+            todayOffset,
+            statusMap,
+            perUserSignups,
+            availabilityByUser,
+            bsByUser);
+
+        return new VolunteerTrackingViewModel(
+            true,
+            es.BuildStartOffset,
+            es.GateOpeningDate,
+            today,
+            mainRows,
+            unbookedRows);
+    }
+
+    private static VolunteerTrackingViewModel EmptyTrackingViewModel() =>
+        new(
+            false,
+            0,
+            default,
+            default,
+            [],
+            []);
+
+    private static Dictionary<Guid, ParticipationStatus> BuildParticipationStatusMap(
+        IEnumerable<UserInfo> users,
+        int eventYear)
+        => users
             .SelectMany(
-                user => user.EventParticipations.Where(p => p.Year == es.Year),
+                user => user.EventParticipations.Where(p => p.Year == eventYear),
                 (user, participation) => (UserId: user.Id, participation.Status))
             .Where(p => p.Status == ParticipationStatus.NotAttending
                      || p.Status == ParticipationStatus.Ticketed
                      || p.Status == ParticipationStatus.Attended)
             .ToDictionary(p => p.UserId, p => p.Status);
 
-        // Per-user, per-day: best status (Confirmed > Pending) + distinct rota names.
-        var perUserSignups = signups
+    private static Dictionary<Guid, Dictionary<int, VolunteerDaySignup>> BuildPerUserSignupMap(
+        IEnumerable<EligibleBuildSignup> signups)
+        => signups
             .GroupBy(s => s.UserId)
             .ToDictionary(g => g.Key, g => g
                 .GroupBy(x => x.DayOffset)
                 .ToDictionary(
                     dg => dg.Key,
-                    dg => (
-                        Status: dg.Any(x => x.Status == SignupStatus.Confirmed)
+                    dg => new VolunteerDaySignup(
+                        dg.Any(x => x.Status == SignupStatus.Confirmed)
                             ? SignupStatus.Confirmed : SignupStatus.Pending,
-                        RotaNames: (IReadOnlyList<string>)dg
+                        dg
                             .Select(x => x.RotaName)
                             .Distinct(StringComparer.Ordinal)
                             .ToList())));
 
-        var bsRows = await trackingRepo.GetBuildStatusesForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
-        var bsByUser = bsRows.ToDictionary(r => r.UserId);
-
+    private static List<VolunteerHeatmapRow> BuildMainCohortRows(
+        EventSettings es,
+        IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
+        IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
+        IReadOnlyDictionary<Guid, VolunteerBuildStatus> bsByUser)
+    {
         var mainRows = new List<VolunteerHeatmapRow>();
         foreach (var (userId, daySignups) in perUserSignups)
         {
             if (statusMap.TryGetValue(userId, out var st) && st == ParticipationStatus.NotAttending)
-            {
                 continue;
-            }
 
-            var firstSignupDay = daySignups.Keys.Min();
-            var lastEligibleSignupOffset = daySignups.Keys.Max();
             bsByUser.TryGetValue(userId, out var bs);
-            int? setupOffset = bs?.BarrioSetupStartDate is { } d
-                ? OffsetOf(es, d)
-                : null;
+            var firstSignupDay = daySignups.Keys.Min();
+            var setupOffset = GetSetupOffset(es, bs);
             var lastExpectedDay = Math.Min(setupOffset ?? int.MaxValue, 0);
-            var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
-
-            var cells = new List<VolunteerCell>(-es.BuildStartOffset);
-            int gapCount = 0;
-            for (int d2 = es.BuildStartOffset; d2 < 0; d2++)
-            {
-                VolunteerCellState s;
-                IReadOnlyList<string> rotaNames = [];
-                if (setupOffset.HasValue && d2 >= setupOffset.Value)
-                {
-                    s = VolunteerCellState.CampSetup;
-                }
-                else if (d2 < firstSignupDay || d2 >= lastExpectedDay)
-                {
-                    s = VolunteerCellState.Outside;
-                }
-                else if (daySignups.TryGetValue(d2, out var info))
-                {
-                    s = info.Status == SignupStatus.Confirmed
-                        ? VolunteerCellState.Confirmed
-                        : VolunteerCellState.Pending;
-                    rotaNames = info.RotaNames;
-                }
-                else if (dayOffSet.Contains(d2))
-                {
-                    s = VolunteerCellState.DayOff;
-                }
-                else
-                {
-                    s = VolunteerCellState.Gap;
-                    gapCount++;
-                }
-
-                cells.Add(new VolunteerCell(d2, s, rotaNames));
-            }
-
-            // Repo persists DayOffs sorted by DayOffset; no resort needed.
-            var dayOffSummaries = (bs?.DayOffs ?? [])
-                .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
-                .ToList();
+            var buildRow = BuildMainCohortCells(es, daySignups, bs, firstSignupDay, lastExpectedDay, setupOffset);
 
             mainRows.Add(new VolunteerHeatmapRow(
                 userId,
                 firstSignupDay,
-                lastEligibleSignupOffset,
+                daySignups.Keys.Max(),
                 bs?.BarrioSetupStartDate,
-                gapCount,
-                cells,
-                dayOffSummaries));
+                buildRow.GapCount,
+                buildRow.Cells,
+                BuildDayOffSummaries(bs)));
         }
 
-        var availabilityRows = await trackingRepo.GetAvailabilityForEventAsync(es.Id, ct: ct).ConfigureAwait(false);
-        var availabilityByUser = availabilityRows
-            .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
+        return mainRows;
+    }
 
+    private static MainCohortCells BuildMainCohortCells(
+        EventSettings es,
+        IReadOnlyDictionary<int, VolunteerDaySignup> daySignups,
+        VolunteerBuildStatus? bs,
+        int firstSignupDay,
+        int lastExpectedDay,
+        int? setupOffset)
+    {
+        var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
+        var cells = new List<VolunteerCell>(-es.BuildStartOffset);
+        int gapCount = 0;
+        for (int day = es.BuildStartOffset; day < 0; day++)
+        {
+            var cell = BuildMainCohortCell(day, daySignups, dayOffSet, firstSignupDay, lastExpectedDay, setupOffset);
+            if (cell.State == VolunteerCellState.Gap)
+                gapCount++;
+
+            cells.Add(cell);
+        }
+
+        return new MainCohortCells(cells, gapCount);
+    }
+
+    private static VolunteerCell BuildMainCohortCell(
+        int dayOffset,
+        IReadOnlyDictionary<int, VolunteerDaySignup> daySignups,
+        IReadOnlySet<int> dayOffSet,
+        int firstSignupDay,
+        int lastExpectedDay,
+        int? setupOffset)
+    {
+        if (setupOffset.HasValue && dayOffset >= setupOffset.Value)
+            return new VolunteerCell(dayOffset, VolunteerCellState.CampSetup, []);
+
+        if (dayOffset < firstSignupDay || dayOffset >= lastExpectedDay)
+            return new VolunteerCell(dayOffset, VolunteerCellState.Outside, []);
+
+        if (daySignups.TryGetValue(dayOffset, out var info))
+        {
+            var state = info.Status == SignupStatus.Confirmed
+                ? VolunteerCellState.Confirmed
+                : VolunteerCellState.Pending;
+            return new VolunteerCell(dayOffset, state, info.RotaNames);
+        }
+
+        if (dayOffSet.Contains(dayOffset))
+            return new VolunteerCell(dayOffset, VolunteerCellState.DayOff, []);
+
+        return new VolunteerCell(dayOffset, VolunteerCellState.Gap, []);
+    }
+
+    private static List<VolunteerCohortRow> BuildUnbookedCohortRows(
+        EventSettings es,
+        int todayOffset,
+        IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
+        IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
+        IReadOnlyDictionary<Guid, HashSet<int>> availabilityByUser,
+        IReadOnlyDictionary<Guid, VolunteerBuildStatus> bsByUser)
+    {
         var unbookedRows = new List<VolunteerCohortRow>();
         foreach (var participation in statusMap)
         {
@@ -191,69 +240,76 @@ public sealed class VolunteerTrackingService(
 
             var userId = participation.Key;
             if (perUserSignups.ContainsKey(userId))
-            {
                 continue; // already in main cohort
-            }
 
             if (!availabilityByUser.TryGetValue(userId, out var avail))
-            {
                 continue;
-            }
 
             var inBuild = avail.Where(d => d >= es.BuildStartOffset && d < 0).ToHashSet();
             if (inBuild.Count == 0)
-            {
                 continue;
-            }
 
             var firstAvailableDay = inBuild.Min();
             bsByUser.TryGetValue(userId, out var bs);
-            int? setupOffset = bs?.BarrioSetupStartDate is { } d2
-                ? OffsetOf(es, d2)
-                : null;
-
-            var cells = new List<VolunteerCell>(-es.BuildStartOffset);
-            int unbookedCount = 0;
-            for (int d3 = es.BuildStartOffset; d3 < 0; d3++)
-            {
-                VolunteerCellState s;
-                if (setupOffset.HasValue && d3 >= setupOffset.Value)
-                {
-                    s = VolunteerCellState.CampSetup;
-                }
-                else if (inBuild.Contains(d3) && d3 < todayOffset)
-                {
-                    s = VolunteerCellState.AvailableUnbooked;
-                    unbookedCount++;
-                }
-                else if (inBuild.Contains(d3))
-                {
-                    s = VolunteerCellState.AvailableExpected;
-                }
-                else
-                {
-                    s = VolunteerCellState.NotAvailable;
-                }
-
-                cells.Add(new VolunteerCell(d3, s, []));
-            }
+            var buildRow = BuildUnbookedCohortCells(es, inBuild, todayOffset, GetSetupOffset(es, bs));
 
             unbookedRows.Add(new VolunteerCohortRow(
                 userId,
                 firstAvailableDay,
                 bs?.BarrioSetupStartDate,
-                unbookedCount,
-                cells));
+                buildRow.UnbookedCount,
+                buildRow.Cells));
         }
 
-        return new VolunteerTrackingViewModel(
-            true,
-            es.BuildStartOffset,
-            es.GateOpeningDate,
-            today,
-            mainRows,
-            unbookedRows);
+        return unbookedRows;
     }
+
+    private static UnbookedCohortCells BuildUnbookedCohortCells(
+        EventSettings es,
+        IReadOnlySet<int> inBuild,
+        int todayOffset,
+        int? setupOffset)
+    {
+        var cells = new List<VolunteerCell>(-es.BuildStartOffset);
+        int unbookedCount = 0;
+        for (int day = es.BuildStartOffset; day < 0; day++)
+        {
+            var state = GetUnbookedCohortCellState(day, inBuild, todayOffset, setupOffset);
+            if (state == VolunteerCellState.AvailableUnbooked)
+                unbookedCount++;
+
+            cells.Add(new VolunteerCell(day, state, []));
+        }
+
+        return new UnbookedCohortCells(cells, unbookedCount);
+    }
+
+    private static VolunteerCellState GetUnbookedCohortCellState(
+        int dayOffset,
+        IReadOnlySet<int> inBuild,
+        int todayOffset,
+        int? setupOffset)
+    {
+        if (setupOffset.HasValue && dayOffset >= setupOffset.Value)
+            return VolunteerCellState.CampSetup;
+
+        if (inBuild.Contains(dayOffset) && dayOffset < todayOffset)
+            return VolunteerCellState.AvailableUnbooked;
+
+        return inBuild.Contains(dayOffset)
+            ? VolunteerCellState.AvailableExpected
+            : VolunteerCellState.NotAvailable;
+    }
+
+    private static int? GetSetupOffset(EventSettings es, VolunteerBuildStatus? buildStatus) =>
+        buildStatus?.BarrioSetupStartDate is { } date
+            ? OffsetOf(es, date)
+            : null;
+
+    private static List<DayOffSummary> BuildDayOffSummaries(VolunteerBuildStatus? buildStatus) =>
+        (buildStatus?.DayOffs ?? [])
+            .Select(dayOff => new DayOffSummary(dayOff.DayOffset, dayOff.Reason))
+            .ToList();
 
     public async Task<SetCampSetupResult> SetCampSetupAsync(
         Guid targetUserId, LocalDate barrioSetupStartDate, string? notes,
@@ -453,4 +509,16 @@ public sealed class VolunteerTrackingService(
 
     private static int OffsetOf(EventSettings es, LocalDate date) =>
         Period.Between(es.GateOpeningDate, date, PeriodUnits.Days).Days;
+
+    private sealed record VolunteerDaySignup(
+        SignupStatus Status,
+        IReadOnlyList<string> RotaNames);
+
+    private sealed record MainCohortCells(
+        List<VolunteerCell> Cells,
+        int GapCount);
+
+    private sealed record UnbookedCohortCells(
+        List<VolunteerCell> Cells,
+        int UnbookedCount);
 }
