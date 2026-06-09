@@ -88,11 +88,11 @@ Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Human
 
 ### VolunteerBuildStatus
 
-Per-user per-event build-period coordination state. Drives the Volunteer Tracking sub-page (gap detection, "went to camp set-up" marker, blocked-day list). Tracks two orthogonal facts that the schedule itself cannot infer:
+Per-user per-event build-period coordination state. Drives the Volunteer Tracking sub-page (gap detection, "went to camp set-up" marker, day-off list). Tracks two orthogonal facts that the schedule itself cannot infer:
 
 - `BarrioSetupStartDate` (nullable `LocalDate`) — the day a volunteer left scheduled rotas to join camp set-up. From this day onwards their row renders blue and gap detection stops flagging missing days.
-- `BarrioSetupSetByUserId` (nullable `Guid`) and `BarrioSetupSetAt` (nullable `Instant`) — audit fields recording who set the camp-set-up marker and when. Cleared when the marker is cleared.
-- `BlockedDayOffsets` (jsonb `IList<int>`) — day offsets (relative to `EventSettings.GateOpeningDate`, all negative for build days) the volunteer or coordinator marked as unavailable. Blocked days render yellow on the heatmap and are excluded from gap counts.
+- `SetByUserId` (nullable `Guid`) and `SetAt` (nullable `Instant`) — audit fields recording who last modified the camp-set-up marker and when, plus optional `Notes` free-text (max 500) from that coordinator. Cleared when the marker is cleared.
+- `DayOffs` (jsonb `List<DayOffEntry>`: `DayOffset`, optional `Reason`, `MarkedByUserId`, `MarkedAt`) — sparse day-off annotations, one entry per day offset (relative to `EventSettings.GateOpeningDate`, all negative for build days) where the coordinator has acknowledged the volunteer is off-site. Day-off days render striped grey on the heatmap and are excluded from gap counts.
 
 **Table:** `volunteer_build_statuses`
 
@@ -102,7 +102,7 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 **Write paths:**
 
-- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `BarrioSetupSetByUserId`, `BarrioSetupSetAt`, and individual `BlockedDayOffsets` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`.
+- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `Notes`, `SetByUserId`, `SetAt`, and individual `DayOffs` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`.
 
 All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`.
 

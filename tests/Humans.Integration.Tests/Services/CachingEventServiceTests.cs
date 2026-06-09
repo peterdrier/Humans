@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Events;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using Xunit;
 
 namespace Humans.Integration.Tests.Services;
@@ -134,6 +136,66 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
 
         var active = await svc.GetActiveVenuesAsync();
         active.Should().NotContain(v => v.Id == venue.Id);
+    }
+
+    [HumansFact]
+    public async Task AdminUpdateAsync_through_decorator_updates_cached_approved_event()
+    {
+        // §15g-bis for the admin in-place edit path: an Approved event edited
+        // via AdminUpdateAsync stays approved (status preserved) and the cached
+        // approved-events projection must reflect the new field values.
+        var svc = factory.Services.GetRequiredService<IEventService>();
+        await ((CachingEventService)svc).WarmAllAsync();
+
+        var category = new EventCategory
+        {
+            Id = Guid.NewGuid(),
+            Name = "Edit-cache cat",
+            Slug = $"itest-edit-{Guid.NewGuid():N}",
+            IsSensitive = false,
+            DisplayOrder = await svc.GetNextCategoryOrderAsync(),
+            IsActive = true,
+        };
+        await svc.CreateCategoryAsync(category);
+
+        var venue = new EventVenue
+        {
+            Id = Guid.NewGuid(),
+            Name = $"itest-edit-venue-{Guid.NewGuid():N}",
+            DisplayOrder = await svc.GetNextVenueOrderAsync(),
+            IsActive = true,
+        };
+        await svc.CreateVenueAsync(venue);
+
+        var ev = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = null,
+            GuideSharedVenueId = venue.Id,
+            SubmitterUserId = Guid.NewGuid(),
+            CategoryId = category.Id,
+            Title = "Original title",
+            Description = "Desc",
+            StartAt = Instant.FromUtc(2026, 7, 8, 18, 0),
+            DurationMinutes = 60,
+            Status = EventStatus.Pending,
+            SubmittedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
+            LastUpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
+        };
+        await svc.SubmitEventAsync(ev);
+        await svc.ApplyModerationAsync(ev.Id, Guid.NewGuid(), EventModerationActionType.Approved, null);
+
+        (await svc.GetApprovedEventByIdAsync(ev.Id))!.Title.Should().Be("Original title");
+
+        // Mirror the controller: re-load fresh, mutate, save in place.
+        var loaded = await svc.GetEventForModerationAsync(ev.Id);
+        loaded!.Title = "Edited title";
+        await svc.AdminUpdateAsync(loaded, Guid.NewGuid(), "fixed typo");
+
+        loaded.Status.Should().Be(EventStatus.Approved);
+        var cached = await svc.GetApprovedEventByIdAsync(ev.Id);
+        cached.Should().NotBeNull("an edited Approved event stays approved and in the cache");
+        cached!.Title.Should().Be("Edited title");
     }
 
     [HumansFact]

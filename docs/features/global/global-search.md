@@ -52,12 +52,12 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
+- **Humans** match via `IUserServiceRead.SearchUsersAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
 - **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to names-only: the orchestrator reuses `IEventService.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
-- All matchers run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
+- Humans, Teams, and Camps match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these buckets. Shifts and Events still run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: Search surfaces the public-visibility set, never more
 **As an** authenticated viewer (any role)
@@ -89,16 +89,16 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 ```
 SearchController
    └── ISearchService.SearchAsync(query, onlyType)
-         ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields.PublicAll, limit) → IReadOnlyList<HumanSearchResult>
+         ├── IUserServiceRead.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
          ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
          ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
          └── IEventService.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
 ```
 
-Each section's repository runs the case-insensitive Postgres `ILike` filter against the entity's name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. Shifts and Events still run the case-insensitive Postgres `ILike` filter against the name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
-The orchestrator scores each hit by name-match strength:
+The orchestrator scores each non-human hit by name-match strength (humans arrive pre-scored by `PersonSearchMatcher`, which adds tiers for token-prefix and non-name-field matches):
 
 | Match shape     | Score |
 |-----------------|-------|
@@ -106,7 +106,7 @@ The orchestrator scores each hit by name-match strength:
 | Name (prefix)   |   80  |
 | Name (contains) |   60  |
 
-Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, Title asc` at the controller; the humans bucket sorts by `BurnerName asc`, matching `/Profile/Search`.
+Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, Title asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Profile/Search`.
 
 Counts reflect every match — there is no cap, so the chip count is the true number of hits the user can scroll to. There is no separate `CountMatchingAsync` per section; the buckets are already the full result set.
 
@@ -114,7 +114,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 | DTO | Returned by | Used by |
 |---|---|---|
-| `HumanSearchResult` | `IProfileService` (existing) | View renders via `_HumanSearchResults` partial |
+| `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View renders via `_HumanSearchResults` partial |
 | `TeamSearchHit (Name, Slug)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `CampSearchHit (Slug, Name)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |

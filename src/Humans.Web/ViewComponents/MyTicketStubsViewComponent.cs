@@ -10,20 +10,20 @@ namespace Humans.Web.ViewComponents;
 /// chrome), stamping each with the holder's Early Entry date. The single home for
 /// "my tickets as stubs" on the homepage dashboard; the transfer wizard shares the
 /// same <see cref="TicketStubInfo.From"/> mapper for its selectable list. Renders
-/// nothing when the holder has no visible tickets.
+/// nothing when the holder owns no tickets.
 /// </summary>
 public sealed class MyTicketStubsViewComponent(
-    ITicketTransferService transferService,
+    ITicketServiceRead ticketService,
     IEarlyEntryService earlyEntryService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var rows = await transferService.GetMyAttendeesAsync(userId, HttpContext.RequestAborted);
-        if (rows.Count == 0) return Content(string.Empty);
+        var holdings = await ticketService.GetUserTicketHoldingsAsync(userId, HttpContext.RequestAborted);
+        if (holdings.Tickets.Count == 0) return Content(string.Empty);
 
         var earlyEntry = await earlyEntryService.GetForUserAsync(userId, HttpContext.RequestAborted);
-        var stubs = rows
-            .Select(r => TicketStubInfo.From(r, earlyEntry?.EarliestEntryDate))
+        var stubs = holdings.Tickets
+            .Select(t => TicketStubInfo.From(t, earlyEntry?.EarliestEntryDate))
             .ToList();
 
         return View(stubs);

@@ -63,6 +63,17 @@ public interface IEventService : IApplicationService, IEventServiceRead
     Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
 
     /// <summary>
+    /// Admin / moderator in-place edit of a mutated event. Persists the field
+    /// changes and bumps <see cref="Event.LastUpdatedAt"/> but leaves
+    /// <see cref="Event.Status"/> untouched (an Approved event stays Approved /
+    /// published — no re-queue), appending an <see cref="EventModerationActionType.Edited"/>
+    /// history record by <paramref name="actorUserId"/> with the optional
+    /// <paramref name="note"/> as its reason. The authoritative "edit in a pinch"
+    /// path; distinct from <see cref="UpdateAndResubmitAsync"/>, which re-queues to Pending.
+    /// </summary>
+    Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default);
+
+    /// <summary>
     /// All-or-nothing barrio bulk import: validates every parsed row first and,
     /// if all pass, creates new events (empty Id) and re-queues edited existing
     /// ones. Returns per-row errors with nothing written when validation fails.

@@ -675,6 +675,11 @@ public sealed class TicketQueryService(
             .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        // GroupBy defensive: stray duplicate pendings must not crash dashboard read.
+        var pendingByAttendee = (await ticketTransferRepository.GetBySenderAsync(userId, ct))
+            .Where(r => r.Status == TicketTransferStatus.Pending)
+            .GroupBy(r => r.OriginalTicketAttendeeId)
+            .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
             .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
@@ -685,7 +690,11 @@ public sealed class TicketQueryService(
                 a.AttendeeEmail,
                 a.VendorTicketId,
                 a.TicketTypeName,
-                a.Status))
+                a.Status,
+                HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
+                PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
+                    ? transferId
+                    : null))
             .ToList();
 
         var ticketCount = await ComputeUserTicketCountAsync(userId);

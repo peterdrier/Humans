@@ -201,6 +201,24 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         return repo.SaveEventAsync(guideEvent, ct);
     }
 
+    public Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        guideEvent.LastUpdatedAt = now; // Status deliberately untouched — admin edit never re-queues.
+
+        var action = new EventModerationAction
+        {
+            Id = Guid.NewGuid(),
+            GuideEventId = guideEvent.Id,
+            ActorUserId = actorUserId,
+            Action = EventModerationActionType.Edited,
+            Reason = string.IsNullOrWhiteSpace(note) ? null : note,
+            CreatedAt = now
+        };
+
+        return repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+    }
+
     public async Task<BulkImportResult> BulkImportAsync(
         Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,

@@ -44,7 +44,7 @@ Go to `/Events` to see every approved event in the guide. Filter by category, ve
 
 ### Make it your own
 
-Hide categories you're not interested in, and your choices are saved to your profile and applied whenever you browse. Save individual events to your favourites to build a personal schedule.
+Hide categories you're not interested in, and your choices are saved to your profile and applied whenever you browse. Save individual events to your favourites to build a personal schedule. A camp's approved events are also listed on its detail page in [Camps](Camps.md), with the same favourite heart — so you can build your schedule while browsing barrios.
 
 ### Submit an event
 

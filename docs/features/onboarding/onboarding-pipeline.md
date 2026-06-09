@@ -189,7 +189,7 @@ A guided three-step UX that replaces the single-page profile form for the Volunt
 
 ### Steps
 
-1. **Names** — burner name, first name, last name. Pre-filled from OAuth claims when present. Required because every downstream view ("Hi, X") depends on a display name.
+1. **Names** — burner name, first name, last name. Pre-filled from the user's own saved profile when present — never from OAuth claims, which are unverified. Required because every downstream view ("Hi, X") depends on a display name.
 2. **Shifts** — browse priority shifts and pick one (or skip). Build/Strike rotas use the multi-day range picker; event shifts use the standard sign-up. Signups before admission are stored as `Pending` and auto-promoted on admission.
 3. **Consents** — the unsigned legal documents required for Volunteers, signed one at a time inline.
 
@@ -209,7 +209,7 @@ Shift signups created in Step 2 follow the rota's normal `Policy`: Public rotas 
 
 ### Direct-POST safety
 
-The Names POST is reachable directly. `ProfileService.SaveProfileAsync` does a full-field overwrite, and the widget's Names viewmodel has only three populated fields. A step guard short-circuits when `GetCurrentStepAsync` is already past Names and dispatches the user back through `Index`, so a stray POST can't wipe an already-populated profile (bio, location, emergency contact, …).
+The Names POST is reachable directly. `IProfileEditorService.SaveProfileAsync` does a full-field overwrite, and the widget's Names viewmodel has only three populated fields, so the controller builds the save request by carrying forward every other field from the existing profile — a stray POST can't wipe an already-populated profile (bio, location, emergency contact, …). For an already-named user (stale page / back-button re-POST) the save is skipped and the user is dispatched back through `Index`. That guard checks the user's own profile (`HasRequiredNameFields`), not the cross-section widget step — gating the name save on consent/step state bounced bare accounts with no required legal docs into an endless Names redirect loop (peterdrier/Humans PR #908).
 
 ### Authorization
 
