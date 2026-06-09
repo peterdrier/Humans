@@ -9,18 +9,20 @@ using NodaTime;
 namespace Humans.Web.ViewComponents;
 
 /// <summary>
-/// Renders a compact card of a camp's approved events on the camp detail page,
-/// with the Browse-style per-row favourite toggle. Invoked with the camp's id
-/// and slug only — no Event types cross into the Camps view. Auth-gated at the
-/// call site (logged-in Humans users); returns empty content when the Events
-/// feature is disabled or the camp has no approved events so the card auto-hides.
+/// Renders a compact card of approved events with the Browse-style per-row
+/// favourite toggle. Scoped to exactly one of: a camp (the camp detail page's
+/// events card) or a user's submitted events (their profile page). Invoked with
+/// ids only — no Event types cross into the host section's views. The favourite
+/// toggle bounces back to the current request's URL. Auth-gated at the call
+/// site (logged-in Humans users); returns empty content when the Events feature
+/// is disabled or there are no approved events in scope so the card auto-hides.
 /// </summary>
-public class CampEventsViewComponent(
+public class EventsCardViewComponent(
     IEventServiceRead events,
     IConfiguration configuration,
-    ILogger<CampEventsViewComponent> logger) : ViewComponent
+    ILogger<EventsCardViewComponent> logger) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid campId, string campSlug)
+    public async Task<IViewComponentResult> InvokeAsync(Guid? campId = null, Guid? userId = null)
     {
         try
         {
@@ -29,10 +31,18 @@ public class CampEventsViewComponent(
             if (!configuration.GetValue<bool>("Features:Events"))
                 return Content(string.Empty);
 
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            if (campId is null == userId is null)
+            {
+                logger.LogError("EventsCard invoked with campId={CampId}, userId={UserId} — exactly one scope required", campId, userId);
+                return Content(string.Empty);
+            }
+
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
                 return Content(string.Empty);
 
             var approved = await events.GetApprovedEventsAsync(campId, null, null, null, []);
+            if (userId is not null)
+                approved = approved.Where(e => e.SubmitterUserId == userId).ToList();
             if (approved.Count == 0)
                 return Content(string.Empty);
 
@@ -41,11 +51,11 @@ public class CampEventsViewComponent(
                 ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.TimeZoneId)
                 : null;
 
-            var favouriteIds = await events.GetFavouriteEventIdsAsync(userId);
+            var favouriteIds = await events.GetFavouriteEventIdsAsync(viewerId);
 
             var rows = approved
                 .OrderBy(e => e.StartAt)
-                .Select(e => new CampEventsCardRow
+                .Select(e => new EventsCardRow
                 {
                     EventId = e.Id,
                     Title = e.Title,
@@ -61,11 +71,16 @@ public class CampEventsViewComponent(
                 })
                 .ToList();
 
-            return View(new CampEventsCardViewModel { CampSlug = campSlug, Rows = rows });
+            var request = ViewContext.HttpContext.Request;
+            return View(new EventsCardViewModel
+            {
+                ReturnUrl = request.Path + request.QueryString,
+                Rows = rows
+            });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to load events card for camp {CampId}", campId);
+            logger.LogError(ex, "Failed to load events card (campId={CampId}, userId={UserId})", campId, userId);
             return Content(string.Empty);
         }
     }
