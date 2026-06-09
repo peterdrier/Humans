@@ -289,13 +289,31 @@ public class EventsModerationController(
 
     private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, BurnSettingsInfo burn)
     {
-        var categories = await guide.GetActiveCategoriesAsync();
-        model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        var categories = (await guide.GetActiveCategoriesAsync())
+            .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        // Keep the event's current category selectable even if it has since been
+        // deactivated — otherwise editing an unrelated field would silently drop it.
+        if (model.CategoryId != Guid.Empty && categories.All(c => c.Id != model.CategoryId))
+        {
+            var current = await guide.GetCategoryAsync(model.CategoryId);
+            if (current != null)
+                categories.Add(new CategoryOptionViewModel { Id = current.Id, Name = current.Name });
+        }
+        model.Categories = categories;
+
         if (!model.IsCampEvent)
         {
-            var venues = await guide.GetActiveVenuesAsync();
-            model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+            var venues = (await guide.GetActiveVenuesAsync())
+                .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+            if (model.VenueId is { } venueId && venueId != Guid.Empty && venues.All(v => v.Id != venueId))
+            {
+                var current = await guide.GetVenueAsync(venueId);
+                if (current != null)
+                    venues.Add(new VenueOptionViewModel { Id = current.Id, Name = current.Name });
+            }
+            model.Venues = venues;
         }
+
         model.EventDays = BuildEventDayOptions(burn);
         model.TimeZoneId = burn.TimeZoneId;
     }
