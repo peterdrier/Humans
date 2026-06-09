@@ -2964,6 +2964,10 @@
   <data name="TeamAdmin_Add" xml:space="preserve">
     <value>Ajouter</value>
   </data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve">
+    <value>Billet #{0}</value>
+    <comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment>
+  </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Message Humans de : {0}</value>
   </data>
