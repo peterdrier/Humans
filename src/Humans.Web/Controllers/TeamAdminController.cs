@@ -31,11 +31,13 @@ public class TeamAdminController(
     IAuthorizationService authorizationService,
     ISystemTeamSync systemTeamSyncJob,
     ILogger<TeamAdminController> logger,
-    IStringLocalizer<SharedResource> localizer)
+    IStringLocalizer<SharedResource> localizer,
+    ITicketServiceRead tickets)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamService _teamService = teamService;
     private readonly IUserServiceRead _userService = userService;
+    private readonly ITicketServiceRead _tickets = tickets;
 
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]
@@ -1093,6 +1095,31 @@ public class TeamAdminController(
         }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpGet("EarlyEntry/LookupTicket")]
+    public async Task<IActionResult> LookupTicket(string slug, string q, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var orders = await _tickets.GetTicketOrdersAsync(ct);
+        var hit = FindCurrentEventAttendeeByBarcode(orders, q);
+
+        var matched = hit?.MatchedUserId is { } id
+            ? await _userService.GetUserInfoAsync(id, ct)
+            : null;
+
+        var detailLabel = localizer["TeamAdmin_TicketLabel", hit?.Barcode ?? string.Empty].Value;
+        return Json(BuildTicketLookupRows(hit, matched, detailLabel));
     }
 
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
