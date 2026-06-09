@@ -1,3 +1,6 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Humans.Application.Services.Store.Dtos
 @model Humans.Web.Models.Store.StoreSummaryViewModel
 @{
     ViewData["Title"] = "Store summary";
@@ -19,15 +22,6 @@
 <section class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">By counterparty</h2>
-        <div class="d-flex gap-2 align-items-center">
-            <label for="paid-filter" class="form-label mb-0 small">Show</label>
-            <select id="paid-filter" class="form-select form-select-sm" style="width: 9rem;">
-                <option value="all" selected>All</option>
-                <option value="paid">Paid</option>
-                <option value="partial">Partial</option>
-                <option value="unpaid">Unpaid</option>
-            </select>
-        </div>
     </div>
     <div class="card-body p-0">
         @if (s.ByCounterparty.Count == 0)
@@ -36,62 +30,45 @@
         }
         else
         {
-            <table class="table table-sm mb-0" id="by-camp-table" data-sortable-table>
-                <thead>
-                    <tr>
-                        <th data-sort-key="type" data-sort-type="text">Type <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th data-sort-key="camp" data-sort-type="text">Counterparty <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th data-sort-key="state" data-sort-type="text">State <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="text-end" data-sort-key="due" data-sort-type="number">Total due (€) <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="text-end" data-sort-key="paid" data-sort-type="number">Paid (€) <span class="sort-indicator" aria-hidden="true"></span></th>
-                        <th class="text-end" data-sort-key="balance" data-sort-type="number">Balance (€) <span class="sort-indicator" aria-hidden="true"></span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var row in s.ByCounterparty.OrderBy(r => r.CounterpartyType).ThenBy(r => r.CounterpartyName, StringComparer.Ordinal))
-                {
-                    string paidClass =
-                        row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "paid" :
-                        row.BalanceEur <= 0m ? "paid" :
-                        row.PaymentsTotalEur > 0m ? "partial" : "unpaid";
-                    <tr data-paid-status="@paidClass"
-                        data-type="@row.CounterpartyType"
-                        data-camp="@row.CounterpartyName"
-                        data-state="@row.State"
-                        data-due="@row.TotalDueEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        data-paid="@row.PaymentsTotalEur.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        data-balance="@row.BalanceEur.ToString(System.Globalization.CultureInfo.InvariantCulture)">
-                        <td>@row.CounterpartyType</td>
-                        <td>
-                            <a asp-controller="Store" asp-action="Order" asp-route-id="@row.OrderId">
-                                @row.CounterpartyName
-                            </a>
-                        </td>
-                        <td>@row.State</td>
-                        <td class="text-end">@row.TotalDueEur.ToString("N2")</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("N2"))</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("N2"))</td>
-                    </tr>
-                }
-                </tbody>
-                @* Totals cover camps only: teams never pay (paid/balance hardcoded to 0),
-                   so including their due would make Total due ≠ Paid + Balance. *@
-                @{
-                    var camps = s.ByCounterparty
-                        .Where(r => r.CounterpartyType != Humans.Domain.Enums.StoreOrderCounterpartyType.Team)
-                        .ToList();
-                }
-                <tfoot class="table-group-divider">
-                    <tr class="fw-semibold">
-                        <td>Total</td>
-                        <td>@camps.Count camps</td>
-                        <td></td>
-                        <td class="text-end">@camps.Sum(r => r.TotalDueEur).ToString("N2")</td>
-                        <td class="text-end">@camps.Sum(r => r.PaymentsTotalEur).ToString("N2")</td>
-                        <td class="text-end">@camps.Sum(r => r.BalanceEur).ToString("N2")</td>
-                    </tr>
-                </tfoot>
-            </table>
+            Func<OrderSummaryDto, IHtmlContent> counterpartyCell =
+                @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@item.CounterpartyName</a></text>;
+
+            bool IsTeam(OrderSummaryDto r) =>
+                r.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team;
+
+            string PaymentStatus(OrderSummaryDto r) =>
+                IsTeam(r) ? "paid"
+                : r.BalanceEur <= 0m ? "paid"
+                : r.PaymentsTotalEur > 0m ? "partial" : "unpaid";
+
+            var counterpartyRows = s.ByCounterparty
+                .OrderBy(r => r.CounterpartyType)
+                .ThenBy(r => r.CounterpartyName, StringComparer.Ordinal)
+                .ToList();
+            var camps = s.ByCounterparty
+                .Where(r => !IsTeam(r))
+                .ToList();
+
+            var counterpartyTable = TableModel.For(counterpartyRows)
+                .Column("Type", r => r.CounterpartyType)
+                .Template("Counterparty", counterpartyCell)
+                .Column("State", r => r.State)
+                .Column("Payment", r => PaymentStatus(r), c => c.SelectFilter())
+                .Column("Total due (€)", r => r.TotalDueEur, c => c.Currency().End())
+                .Column("Paid (€)", r => IsTeam(r) ? null : r.PaymentsTotalEur, c => c.Currency().End())
+                .Column("Balance (€)", r => IsTeam(r) ? null : r.BalanceEur, c => c.Currency().End())
+                .Id("by-camp-table")
+                // Totals cover camps only: teams never pay (paid/balance hardcoded to 0),
+                // so including their due would make Total due ≠ Paid + Balance.
+                .Footer(new TableFooterCell("Total"),
+                        new TableFooterCell($"{camps.Count} camps"),
+                        new TableFooterCell(""),
+                        new TableFooterCell(""),
+                        new TableFooterCell(camps.Sum(r => r.TotalDueEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
+                        new TableFooterCell(camps.Sum(r => r.PaymentsTotalEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
+                        new TableFooterCell(camps.Sum(r => r.BalanceEur).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"))
+                .Build();
+            <partial name="_Table" model="counterpartyTable" />
         }
     </div>
 </section>
@@ -106,25 +83,12 @@
         }
         else
         {
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th class="text-end">Total qty</th>
-                        <th class="text-end">Total revenue (€)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var row in s.ByItem)
-                {
-                    <tr>
-                        <td>@row.ProductName</td>
-                        <td class="text-end">@row.TotalQty</td>
-                        <td class="text-end">@row.TotalRevenueEur.ToString("N2")</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+            var itemTable = TableModel.For(s.ByItem)
+                .Column("Product", r => r.ProductName)
+                .Column("Total qty", r => r.TotalQty, c => c.Number().End())
+                .Column("Total revenue (€)", r => r.TotalRevenueEur, c => c.Currency().End())
+                .Build();
+            <partial name="_Table" model="itemTable" />
         }
     </div>
 </section>
@@ -159,7 +123,7 @@
                         @foreach (var col in s.CrossTab.Products)
                         {
                             var qty = cp.QtyByProduct.TryGetValue(col.ProductId, out var q) ? q : 0;
-                            <td class="text-end">@(qty == 0 ? "" : qty.ToString())</td>
+                            <td class="text-end">@(qty == 0 ? "" : qty.ToString(System.Globalization.CultureInfo.InvariantCulture))</td>
                         }
                     </tr>
                 }
@@ -177,24 +141,3 @@
         }
     </div>
 </section>
-
-@section Scripts {
-    <script nonce="@Context.Items["CspNonce"]">
-        (function () {
-            const table = document.getElementById('by-camp-table');
-            if (!table) return;
-            const tbody = table.tBodies[0];
-
-            const select = document.getElementById('paid-filter');
-            if (select) {
-                select.addEventListener('change', function () {
-                    const v = select.value;
-                    tbody.querySelectorAll('tr').forEach(tr => {
-                        tr.style.display = (v === 'all' || tr.dataset.paidStatus === v) ? '' : 'none';
-                    });
-                });
-            }
-
-        })();
-    </script>
-}
