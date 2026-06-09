@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/ScannerController.cs
+  src/Humans.Web/Views/Scanner/**
+  src/Humans.Web/wwwroot/js/scanner/**
+  src/Humans.Web/Models/ScannerTicketCardViewModel.cs
+-->
+<!-- freshness:flag-on-change
+  Client-only barcode decode, read-only ticket lookup via ITicketServiceRead, and the never-a-check-in-tool negative rules — review when ScannerController, the scanner views, or the scanner JS change.
+-->
+
 # Scanner — Section Invariants
 
 ## Concepts

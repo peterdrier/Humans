@@ -134,8 +134,8 @@ All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackin
 ## Related
 
 - [`docs/sections/Shifts.md`](../sections/Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
-- [`docs/features/25-shift-management.md`](25-shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
-- [`docs/features/26-shift-signup-visibility.md`](26-shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
-- [`docs/features/event-participation.md`](event-participation.md) — `EventParticipation.Status = Attending` is the pre-filter for the declared-but-unbooked cohort.
+- [`docs/features/shifts/shift-management.md`](shifts/shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
+- [`docs/features/shifts/shift-signup-visibility.md`](shifts/shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
+- [`docs/features/tickets/event-participation.md`](tickets/event-participation.md) — `EventParticipation.Status = Attending` is the pre-filter for the declared-but-unbooked cohort.
 - [`memory/architecture/display-sort-in-controllers.md`](../../memory/architecture/display-sort-in-controllers.md) — why the row sort lives in `VolunteerTrackingController`, not the service or repo.
 - [`memory/architecture/no-cross-section-ef-joins.md`](../../memory/architecture/no-cross-section-ef-joins.md) — why `VolunteerBuildStatus.UserId` is a bare `Guid` with no nav.
