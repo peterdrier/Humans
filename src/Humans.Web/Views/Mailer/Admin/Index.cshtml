@@ -1,4 +1,5 @@
 @using Humans.Web.Models.Mailer
+@using Humans.Web.Models.Tables
 @model MailerDashboardViewModel
 @{
     ViewData["Title"] = "Mailer Dashboard";
@@ -199,35 +200,18 @@
             else
             {
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Id</th>
-                                    <th>Name</th>
-                                    <th class="text-end">Active</th>
-                                    <th class="text-end">Unsubscribed</th>
-                                    <th class="text-end">Unconfirmed</th>
-                                    <th class="text-end">Bounced</th>
-                                    <th class="text-end">Junk</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var group in Model.Groups)
-                                {
-                                    <tr>
-                                        <td class="font-monospace text-muted" style="font-size:0.8rem;">@group.Id</td>
-                                        <td>@group.Name</td>
-                                        <td class="text-end">@group.ActiveCount.ToString("N0")</td>
-                                        <td class="text-end">@group.UnsubscribedCount.ToString("N0")</td>
-                                        <td class="text-end">@group.UnconfirmedCount.ToString("N0")</td>
-                                        <td class="text-end">@group.BouncedCount.ToString("N0")</td>
-                                        <td class="text-end">@group.JunkCount.ToString("N0")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    @{
+                        var groupsTable = TableModel.For(Model.Groups!)
+                            .Column("Id", g => g.Id, c => c.Css("font-monospace text-muted").HeaderCss("").NoSort())
+                            .Column("Name", g => g.Name)
+                            .Column("Active", g => g.ActiveCount, c => c.Number().End())
+                            .Column("Unsubscribed", g => g.UnsubscribedCount, c => c.Number().End())
+                            .Column("Unconfirmed", g => g.UnconfirmedCount, c => c.Number().End())
+                            .Column("Bounced", g => g.BouncedCount, c => c.Number().End())
+                            .Column("Junk", g => g.JunkCount, c => c.Number().End())
+                            .Build();
+                    }
+                    <partial name="_Table" model="groupsTable" />
                 </div>
             }
         </div>

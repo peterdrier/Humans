@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.MyTeamsViewModel
 @{
     ViewData["Title"] = Localizer["MyTeams_Title"].Value;
@@ -17,58 +19,47 @@
 {
     <div class="card mb-4">
         <div class="card-header">@Localizer["MyTeams_TeamMemberships"]</div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@Localizer["MyTeams_Team"]</th>
-                        <th>@Localizer["MyTeams_Role"]</th>
-                        <th>@Localizer["MyTeams_Joined"]</th>
-                        <th>@Localizer["MyTeams_Actions"]</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var membership in Model.Memberships)
+        @{
+        Func<Humans.Web.Models.MyTeamMembershipViewModel, IHtmlContent> membershipTeamCell = @<text>
+            <a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a>
+            @if (item.IsSystemTeam)
+            {
+                <span class="badge bg-secondary ms-1">@Localizer["Teams_System"]</span>
+            }
+        </text>;
+        Func<Humans.Web.Models.MyTeamMembershipViewModel, IHtmlContent> membershipRoleCell = @<text>
+            <partial name="_RoleBadge" model="@(item.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)" />
+        </text>;
+        Func<Humans.Web.Models.MyTeamMembershipViewModel, IHtmlContent> membershipActionsCell = @<text>
+            <a asp-action="Details" asp-route-slug="@item.TeamSlug" class="btn btn-sm btn-outline-primary">@Localizer["MyTeams_View"]</a>
+            @if (item.IsCoordinator)
+            {
+                <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@item.TeamSlug" class="btn btn-sm btn-outline-secondary">
+                    @Localizer["Teams_Manage"]
+                    @if (item.PendingRequestCount > 0)
                     {
-                        <tr>
-                            <td>
-                                <a asp-action="Details" asp-route-slug="@membership.TeamSlug">@membership.TeamName</a>
-                                @if (membership.IsSystemTeam)
-                                {
-                                    <span class="badge bg-secondary ms-1">@Localizer["Teams_System"]</span>
-                                }
-                            </td>
-                            <td>
-                                @await Html.PartialAsync("_RoleBadge", membership.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
-                            </td>
-                            <td>@membership.JoinedAt.ToDate()</td>
-                            <td>
-                                <a asp-action="Details" asp-route-slug="@membership.TeamSlug" class="btn btn-sm btn-outline-primary">@Localizer["MyTeams_View"]</a>
-                                @if (membership.IsCoordinator)
-                                {
-                                    <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@membership.TeamSlug" class="btn btn-sm btn-outline-secondary">
-                                        @Localizer["Teams_Manage"]
-                                        @if (membership.PendingRequestCount > 0)
-                                        {
-                                            <span class="badge bg-warning ms-1">@membership.PendingRequestCount</span>
-                                        }
-                                    </a>
-                                }
-                                @if (membership.CanLeave)
-                                {
-                                    <form asp-action="Leave" asp-route-slug="@membership.TeamSlug" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@string.Format(Localizer["MyTeams_LeaveConfirm"].Value, membership.TeamName)">
-                                            @Localizer["MyTeams_Leave"]
-                                        </button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
+                        <span class="badge bg-warning ms-1">@item.PendingRequestCount</span>
                     }
-                </tbody>
-            </table>
-        </div>
+                </a>
+            }
+            @if (item.CanLeave)
+            {
+                <form asp-action="Leave" asp-route-slug="@item.TeamSlug" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@string.Format(Localizer["MyTeams_LeaveConfirm"].Value, item.TeamName)">
+                        @Localizer["MyTeams_Leave"]
+                    </button>
+                </form>
+            }
+        </text>;
+            var membershipsTable = TableModel.For(Model.Memberships)
+                .Template(Localizer["MyTeams_Team"].Value, membershipTeamCell)
+                .Template(Localizer["MyTeams_Role"].Value, membershipRoleCell)
+                .Column(Localizer["MyTeams_Joined"].Value, r => r.JoinedAt.ToDate())
+                .Template(Localizer["MyTeams_Actions"].Value, membershipActionsCell, c => c.NoSort())
+                .Build();
+        }
+        <partial name="_Table" model="membershipsTable" />
     </div>
 }
 else
@@ -82,39 +73,26 @@ else
 {
     <div class="card">
         <div class="card-header">@Localizer["MyTeams_PendingRequests"]</div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@Localizer["MyTeams_Team"]</th>
-                        <th>@Localizer["MyTeams_Status"]</th>
-                        <th>@Localizer["MyTeams_Requested"]</th>
-                        <th>@Localizer["MyTeams_Actions"]</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var request in Model.PendingRequests)
-                    {
-                        <tr>
-                            <td>
-                                <a asp-action="Details" asp-route-slug="@request.TeamSlug">@request.TeamName</a>
-                            </td>
-                            <td>
-                                <span class="badge @request.StatusBadgeClass">@request.Status</span>
-                            </td>
-                            <td>@request.RequestedAt.ToDate()</td>
-                            <td>
-                                <form asp-action="WithdrawRequest" asp-route-id="@request.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["MyTeams_WithdrawConfirm"].Value">
-                                        @Localizer["MyTeams_Withdraw"]
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+        Func<Humans.Web.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestTeamCell =
+            @<text><a asp-action="Details" asp-route-slug="@item.TeamSlug">@item.TeamName</a></text>;
+        Func<Humans.Web.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestStatusCell =
+            @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+        Func<Humans.Web.Models.TeamJoinRequestSummaryViewModel, IHtmlContent> requestWithdrawCell = @<text>
+            <form asp-action="WithdrawRequest" asp-route-id="@item.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["MyTeams_WithdrawConfirm"].Value">
+                    @Localizer["MyTeams_Withdraw"]
+                </button>
+            </form>
+        </text>;
+            var pendingRequestsTable = TableModel.For(Model.PendingRequests)
+                .Template(Localizer["MyTeams_Team"].Value, requestTeamCell)
+                .Template(Localizer["MyTeams_Status"].Value, requestStatusCell)
+                .Column(Localizer["MyTeams_Requested"].Value, r => r.RequestedAt.ToDate())
+                .Template(Localizer["MyTeams_Actions"].Value, requestWithdrawCell, c => c.NoSort())
+                .Build();
+        }
+        <partial name="_Table" model="pendingRequestsTable" />
     </div>
 }

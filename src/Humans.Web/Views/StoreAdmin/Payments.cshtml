@@ -1,5 +1,7 @@
 @using Humans.Application.Services.Store.Dtos
 @using Humans.Web.Models.Store
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model StorePaymentsReconciliationViewModel
 @{
     ViewData["Title"] = "Store Stripe Payments";
@@ -86,42 +88,39 @@ else if (!report.StripeQueried)
 }
 else
 {
+    Func<StripeReconciliationRow, IHtmlContent> stripeCreatedCell =
+        @<text>@(item.CreatedAt?.ToInvariantTimestamp() ?? "—")</text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeAmountCell =
+        @<text>@(item.AmountEur.HasValue ? $"€{item.AmountEur.Value:0.00}" : "—")</text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeStatusCell = @<text>
+        @{
+            var (css, label) = StatusBadge(item.Status);
+        }
+        <span class="badge @css">@label</span>
+    </text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeOrderCell = @<text>
+        @if (item.OrderId is { } oid)
+        {
+            <a asp-controller="Store" asp-action="Order" asp-route-id="@oid">@(item.OrderLabel ?? oid.ToString())</a>
+        }
+        else
+        {
+            <span class="text-muted">no order metadata</span>
+        }
+    </text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripePiCell =
+        @<text><code class="small">@(item.PaymentIntentId ?? "—")</code></text>;
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Created (UTC)</th>
-                        <th class="text-end">Amount</th>
-                        <th>Status</th>
-                        <th>Order</th>
-                        <th>PaymentIntent</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Rows)
-                    {
-                        var (css, label) = StatusBadge(row.Status);
-                        <tr>
-                            <td>@(row.CreatedAt?.ToInvariantTimestamp() ?? "—")</td>
-                            <td class="text-end">@(row.AmountEur.HasValue ? $"€{row.AmountEur.Value:0.00}" : "—")</td>
-                            <td><span class="badge @css">@label</span></td>
-                            <td>
-                                @if (row.OrderId is { } oid)
-                                {
-                                    <a asp-controller="Store" asp-action="Order" asp-route-id="@oid">@(row.OrderLabel ?? oid.ToString())</a>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">no order metadata</span>
-                                }
-                            </td>
-                            <td><code class="small">@(row.PaymentIntentId ?? "—")</code></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            var stripeTable = TableModel.For(Model.Rows)
+                .Template("Created (UTC)", stripeCreatedCell)
+                .Template("Amount", stripeAmountCell, c => c.NoSort().End())
+                .Template("Status", stripeStatusCell)
+                .Template("Order", stripeOrderCell)
+                .Template("PaymentIntent", stripePiCell)
+                .Build();
+        }
+        <partial name="_Table" model="stripeTable" />
     </div>
 }
 
@@ -129,29 +128,21 @@ else
 {
     <h2 class="h5 mt-4 mb-2 text-warning">Orphan payments — recorded here but not found in Stripe</h2>
     <p class="text-muted small">Investigate manually; these are never auto-removed.</p>
+    Func<StripeOrphanPayment, IHtmlContent> orphanAmountCell =
+        @<text>€@item.AmountEur.ToString("0.00", System.Globalization.CultureInfo.CurrentCulture)</text>;
+    Func<StripeOrphanPayment, IHtmlContent> orphanOrderCell =
+        @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@(item.OrderLabel ?? item.OrderId.ToString())</a></text>;
+    Func<StripeOrphanPayment, IHtmlContent> orphanPiCell =
+        @<text><code class="small">@item.PaymentIntentId</code></text>;
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>Recorded (UTC)</th>
-                        <th class="text-end">Amount</th>
-                        <th>Order</th>
-                        <th>PaymentIntent</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var o in report.Orphans)
-                    {
-                        <tr>
-                            <td>@o.ReceivedAt.ToInvariantTimestamp()</td>
-                            <td class="text-end">€@o.AmountEur.ToString("0.00")</td>
-                            <td><a asp-controller="Store" asp-action="Order" asp-route-id="@o.OrderId">@(o.OrderLabel ?? o.OrderId.ToString())</a></td>
-                            <td><code class="small">@o.PaymentIntentId</code></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            var orphansTable = TableModel.For(report.Orphans)
+                .Column("Recorded (UTC)", o => o.ReceivedAt.ToInvariantTimestamp())
+                .Template("Amount", orphanAmountCell, c => c.NoSort().End())
+                .Template("Order", orphanOrderCell)
+                .Template("PaymentIntent", orphanPiCell)
+                .Build();
+        }
+        <partial name="_Table" model="orphansTable" />
     </div>
 }

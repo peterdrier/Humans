@@ -1,4 +1,6 @@
 @using Humans.Application.Interfaces.Profiles
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model IReadOnlyList<UserEmailFlagViolation>
 @{
     ViewData["Title"] = "Email flag violations";
@@ -23,82 +25,72 @@
     }
     else
     {
+        Func<UserEmailFlagViolation, IHtmlContent> userCell =
+            @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+        Func<UserEmailFlagViolation, IHtmlContent> isGoogleCell = @<text>
+            @if (item.HasMultipleGoogle)
+            {
+                <span class="badge bg-danger">@item.IsGoogleCount</span>
+            }
+            else if (item.HasZeroGoogle)
+            {
+                <span class="badge bg-warning text-dark">@item.IsGoogleCount</span>
+            }
+            else
+            {
+                <span class="text-muted">@item.IsGoogleCount</span>
+            }
+        </text>;
+        Func<UserEmailFlagViolation, IHtmlContent> primaryCell = @<text>
+            @if (item.HasPrimaryProblem)
+            {
+                <span class="badge bg-warning text-dark">@item.VerifiedPrimaryCount</span>
+            }
+            else
+            {
+                <span class="text-muted">@item.VerifiedPrimaryCount</span>
+            }
+        </text>;
+        Func<UserEmailFlagViolation, IHtmlContent> issueCell = @<text>
+            @if (item.HasMultipleGoogle)
+            {
+                <div><i class="fa-brands fa-google me-1 text-danger"></i>Multiple Google rows</div>
+            }
+            @if (item.HasZeroGoogle)
+            {
+                <div><i class="fa-brands fa-google me-1 text-warning"></i>No Google row among verified emails</div>
+            }
+            @if (item.HasPrimaryProblem)
+            {
+                <div>
+                    <i class="fa-solid fa-star me-1 text-warning"></i>
+                    @if (item.VerifiedPrimaryCount == 0)
+                    {
+                        <text>No primary among verified rows</text>
+                    }
+                    else
+                    {
+                        <text>Multiple primary verified rows</text>
+                    }
+                </div>
+            }
+        </text>;
+        Func<UserEmailFlagViolation, IHtmlContent> actionCell = @<text>
+            <a asp-controller="Profile" asp-action="AdminEmails" asp-route-id="@item.UserId" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-envelope me-1"></i>Open admin emails
+            </a>
+        </text>;
+        var table = TableModel.For(Model)
+            .Template("User", userCell)
+            .Template("IsGoogle rows", isGoogleCell)
+            .Column("Verified rows", r => r.VerifiedCount)
+            .Template("Primary verified rows", primaryCell)
+            .Template("Issue", issueCell)
+            .Template("Action", actionCell, c => c.NoSort().End())
+            .Build();
         <div class="card mb-4">
             <div class="card-body p-0">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>IsGoogle rows</th>
-                            <th>Verified rows</th>
-                            <th>Primary verified rows</th>
-                            <th>Issue</th>
-                            <th class="text-end">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var v in Model)
-                    {
-                        <tr>
-                            <td><vc:human user-id="@v.UserId" link="Admin" /></td>
-                            <td>
-                                @if (v.HasMultipleGoogle)
-                                {
-                                    <span class="badge bg-danger">@v.IsGoogleCount</span>
-                                }
-                                else if (v.HasZeroGoogle)
-                                {
-                                    <span class="badge bg-warning text-dark">@v.IsGoogleCount</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">@v.IsGoogleCount</span>
-                                }
-                            </td>
-                            <td><span class="text-muted">@v.VerifiedCount</span></td>
-                            <td>
-                                @if (v.HasPrimaryProblem)
-                                {
-                                    <span class="badge bg-warning text-dark">@v.VerifiedPrimaryCount</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">@v.VerifiedPrimaryCount</span>
-                                }
-                            </td>
-                            <td>
-                                @if (v.HasMultipleGoogle)
-                                {
-                                    <div><i class="fa-brands fa-google me-1 text-danger"></i>Multiple Google rows</div>
-                                }
-                                @if (v.HasZeroGoogle)
-                                {
-                                    <div><i class="fa-brands fa-google me-1 text-warning"></i>No Google row among verified emails</div>
-                                }
-                                @if (v.HasPrimaryProblem)
-                                {
-                                    <div>
-                                        <i class="fa-solid fa-star me-1 text-warning"></i>
-                                        @if (v.VerifiedPrimaryCount == 0)
-                                        {
-                                            <text>No primary among verified rows</text>
-                                        }
-                                        else
-                                        {
-                                            <text>Multiple primary verified rows</text>
-                                        }
-                                    </div>
-                                }
-                            </td>
-                            <td class="text-end">
-                                <a asp-controller="Profile" asp-action="AdminEmails" asp-route-id="@v.UserId" class="btn btn-outline-primary btn-sm">
-                                    <i class="fa-solid fa-envelope me-1"></i>Open admin emails
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+                <partial name="_Table" model="table" />
             </div>
         </div>
     }

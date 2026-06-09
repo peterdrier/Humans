@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Application.DTOs.SyncReport
 @{
     ViewData["Title"] = "System Team Sync Results";
@@ -40,35 +42,17 @@
             </div>
             @if (step.HasChanges)
             {
+                Func<Humans.Application.DTOs.SyncChange, IHtmlContent> actionCell = r =>
+                    new HtmlString($"<span class=\"badge {(string.Equals(r.Action, "Added", StringComparison.Ordinal) ? "bg-success" : string.Equals(r.Action, "Removed", StringComparison.Ordinal) ? "bg-danger" : string.Equals(r.Action, "Fixed", StringComparison.Ordinal) ? "bg-info" : "bg-secondary")}\">{Html.Encode(r.Action)}</span>");
+                Func<Humans.Application.DTOs.SyncChange, IHtmlContent> humanCell =
+                    @<text><vc:human user-id="@item.User.UserId" link="Admin" /></text>;
+                var stepTable = TableModel.For(step.Changes)
+                    .Template("Action", actionCell, c => c.NoSort())
+                    .Template("Human", humanCell)
+                    .Column("Detail", r => r.Detail)
+                    .Build();
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 100px">Action</th>
-                                <th>Human</th>
-                                <th>Detail</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var change in step.Changes)
-                            {
-                                var badgeClass = change.Action switch
-                                {
-                                    "Added" => "bg-success",
-                                    "Removed" => "bg-danger",
-                                    "Fixed" => "bg-info",
-                                    _ => "bg-secondary"
-                                };
-                                <tr>
-                                    <td><span class="badge @badgeClass">@change.Action</span></td>
-                                    <td>
-                                        <vc:human user-id="@change.User.UserId" link="Admin" />
-                                    </td>
-                                    <td class="text-muted">@change.Detail</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <partial name="_Table" model="stepTable" />
                 </div>
             }
         </div>
