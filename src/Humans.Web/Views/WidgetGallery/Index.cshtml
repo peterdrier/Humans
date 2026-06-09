@@ -573,6 +573,23 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-calendar user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:things-to-do&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
