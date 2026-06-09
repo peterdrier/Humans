@@ -3,10 +3,13 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-calendar-days me-2"></i>Calendar Feed</span>
-        <small class="text-muted">
-            @Model.Items.Count @(Model.Items.Count == 1 ? "item" : "items")
-            &middot; feed @(Model.HasFeedToken ? "provisioned" : "not provisioned")
-        </small>
+        @if (!Model.LoadFailed)
+        {
+            <small class="text-muted">
+                @Model.Items.Count @(Model.Items.Count == 1 ? "item" : "items")
+                &middot; feed @(Model.HasFeedToken ? "provisioned" : "not provisioned")
+            </small>
+        }
     </div>
     @if (Model.LoadFailed)
     {

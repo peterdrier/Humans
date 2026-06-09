@@ -9,7 +9,7 @@ namespace Humans.Web.ViewComponents;
 /// aggregated items the /api/ical endpoint serializes (one code path via
 /// IICalFeedService). Never shows the secret token or feed URL.
 /// </summary>
-public class UserCalendarViewComponent(
+public sealed class UserCalendarViewComponent(
     IICalFeedService feed,
     IUserServiceRead users,
     ILogger<UserCalendarViewComponent> logger) : ViewComponent
@@ -19,9 +19,10 @@ public class UserCalendarViewComponent(
         var model = new UserCalendarViewModel();
         try
         {
-            var user = await users.GetUserInfoAsync(userId);
+            var ct = HttpContext.RequestAborted;
+            var user = await users.GetUserInfoAsync(userId, ct);
             model.HasFeedToken = user?.ICalToken is not null;
-            model.Items = await feed.GetFeedItemsAsync(userId);
+            model.Items = await feed.GetFeedItemsAsync(userId, ct);
         }
         catch (Exception ex)
         {
