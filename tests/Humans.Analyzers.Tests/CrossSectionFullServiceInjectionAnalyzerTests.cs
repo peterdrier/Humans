@@ -96,6 +96,35 @@ public class CrossSectionFullServiceInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_when_wiring_uses_a_null_guard_coalesce()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Application.Services.Expenses
+            {
+                public sealed class ExpenseGuardedService
+                {
+                    private readonly Humans.Application.Interfaces.Teams.ITeamService _teams;
+
+                    public ExpenseGuardedService(Humans.Application.Interfaces.Teams.ITeamService teams)
+                    {
+                        _teams = teams ?? throw new System.ArgumentNullException(nameof(teams));
+                    }
+
+                    public System.Threading.Tasks.Task<int> CountAsync() => _teams.GetTeamCountAsync();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionFullServiceInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0032(d));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_when_a_write_member_is_used()
     {
         var source = Stubs + """

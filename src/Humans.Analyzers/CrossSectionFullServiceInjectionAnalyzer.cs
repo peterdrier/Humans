@@ -257,6 +257,20 @@ public sealed class CrossSectionFullServiceInjectionAnalyzer : DiagnosticAnalyze
                 when ReferenceEquals(assignmentTarget.Target, reference):
                 return ReferenceKind.Wiring;
 
+            // Null-guarded wiring: `_teams = teams ?? throw …`. The reference's
+            // parent is the coalesce, not the assignment — classify the coalesce
+            // node in the reference's place so the wiring (or member-access)
+            // detection above still applies. Implicit conversions get the same
+            // pass-through.
+            case ICoalesceOperation coalesce when ReferenceEquals(coalesce.Value, reference):
+            case IConversionOperation { IsImplicit: true }:
+                return Classify(reference.Parent, candidate, out accessedMember);
+
+            // `nameof(teams)` (e.g. in the ArgumentNullException guard) never
+            // touches the object — benign, neither a use nor an escape.
+            case INameOfOperation:
+                return ReferenceKind.Wiring;
+
             default:
                 return ReferenceKind.Escape;
         }
