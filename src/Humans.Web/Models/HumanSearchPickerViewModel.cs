@@ -42,7 +42,7 @@ public class HumanSearchPickerViewModel
     /// Used by the Early Entry card to resolve a human from a ticket number. Null for
     /// every other caller — the second fetch is never wired up.
     /// </summary>
-    public string? TicketLookupUrl { get; init; }
+    public string? TicketLookupUrl { get; set; }
 
     /// <summary>Optional prefill — the picked user id (null = empty picker).</summary>
     public Guid? SelectedUserId { get; set; }

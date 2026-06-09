@@ -1098,7 +1098,7 @@ public class TeamAdminController(
     }
 
     [HttpGet("EarlyEntry/LookupTicket")]
-    public async Task<IActionResult> LookupTicket(string slug, string q, CancellationToken ct)
+    public async Task<IActionResult> LookupTicket(string slug, string? q, CancellationToken ct)
     {
         var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
         if (teamError is not null)
