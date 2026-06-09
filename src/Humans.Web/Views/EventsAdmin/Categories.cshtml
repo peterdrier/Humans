@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.Events.EventCategoryListViewModel
 @{
     ViewData["Title"] = "Event Categories";
@@ -19,81 +21,70 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">Order</th>
-                    <th>Name</th>
-                    <th>Slug</th>
-                    <th>Sensitive</th>
-                    <th>Active</th>
-                    <th>Events</th>
-                    <th style="width: 200px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Categories.Count; i++)
-                {
-                    var cat = Model.Categories[i];
-                    <tr class="@(!cat.IsActive ? "table-secondary" : "")">
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                @if (i > 0)
-                                {
-                                    <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryUp" asp-route-id="@cat.Id" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
-                                            <i class="fa-solid fa-arrow-up"></i>
-                                        </button>
-                                    </form>
-                                }
-                                @if (i < Model.Categories.Count - 1)
-                                {
-                                    <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryDown" asp-route-id="@cat.Id" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
-                                            <i class="fa-solid fa-arrow-down"></i>
-                                        </button>
-                                    </form>
-                                }
-                            </div>
-                        </td>
-                        <td>@cat.Name</td>
-                        <td><code>@cat.Slug</code></td>
-                        <td>
-                            @if (cat.IsSensitive)
-                            {
-                                <span class="badge bg-warning text-dark">Sensitive</span>
-                            }
-                        </td>
-                        <td>
-                            @if (cat.IsActive)
-                            {
-                                <span class="badge bg-success">Active</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Inactive</span>
-                            }
-                        </td>
-                        <td>@cat.EventCount</td>
-                        <td>
-                            <a asp-controller="EventsAdmin" asp-action="EditCategory" asp-route-id="@cat.Id" class="btn btn-sm btn-outline-primary me-1">
-                                <i class="fa-solid fa-pen me-1"></i>Edit
-                            </a>
-                            <form method="post" asp-controller="EventsAdmin" asp-action="DeleteCategory" asp-route-id="@cat.Id" class="d-inline" data-confirm="Delete this category?">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fa-solid fa-trash me-1"></i>Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    var catList = Model.Categories;
+    Func<EventCategoryRowViewModel, IHtmlContent> catOrderCell = @<text>
+        <div class="btn-group btn-group-sm">
+            @{ var catIdx = catList.IndexOf(item); }
+            @if (catIdx > 0)
+            {
+                <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryUp" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </form>
+            }
+            @if (catIdx < catList.Count - 1)
+            {
+                <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryDown" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                </form>
+            }
+        </div>
+    </text>;
+    Func<EventCategoryRowViewModel, IHtmlContent> catSlugCell =
+        @<text><code>@item.Slug</code></text>;
+    Func<EventCategoryRowViewModel, IHtmlContent> catSensitiveCell = @<text>
+        @if (item.IsSensitive)
+        {
+            <span class="badge bg-warning text-dark">Sensitive</span>
+        }
+    </text>;
+    Func<EventCategoryRowViewModel, IHtmlContent> catActiveCell = @<text>
+        @if (item.IsActive)
+        {
+            <span class="badge bg-success">Active</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Inactive</span>
+        }
+    </text>;
+    Func<EventCategoryRowViewModel, IHtmlContent> catActionsCell = @<text>
+        <a asp-controller="EventsAdmin" asp-action="EditCategory" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary me-1">
+            <i class="fa-solid fa-pen me-1"></i>Edit
+        </a>
+        <form method="post" asp-controller="EventsAdmin" asp-action="DeleteCategory" asp-route-id="@item.Id" class="d-inline" data-confirm="Delete this category?">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fa-solid fa-trash me-1"></i>Delete
+            </button>
+        </form>
+    </text>;
+    var catTable = TableModel.For(Model.Categories)
+        .Template("Order", catOrderCell, c => c.NoSort())
+        .Column("Name", r => r.Name)
+        .Template("Slug", catSlugCell)
+        .Template("Sensitive", catSensitiveCell)
+        .Template("Active", catActiveCell)
+        .Column("Events", r => r.EventCount)
+        .Template("Actions", catActionsCell, c => c.NoSort())
+        .RowCss(r => !r.IsActive ? "table-secondary" : null)
+        .Build();
+    <partial name="_Table" model="catTable" />
 }
 
 <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">

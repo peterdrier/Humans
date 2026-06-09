@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.GoogleSyncAuditListViewModel
 @{
     ViewData["Title"] = Model.Title;
@@ -19,65 +21,51 @@
 }
 else
 {
+    Func<GoogleSyncAuditEntryViewModel, IHtmlContent> actionCell =
+        @<text><span class="badge bg-secondary">@item.Action</span></text>;
+    Func<GoogleSyncAuditEntryViewModel, IHtmlContent> descriptionCell = @<text>
+        @item.Description
+        @if (item.ResourceName != null)
+        {
+            <br />
+            <small class="text-muted">Resource: @item.ResourceName</small>
+        }
+    </text>;
+    Func<GoogleSyncAuditEntryViewModel, IHtmlContent> resultCell = @<text>
+        @if (item.Success == true)
+        {
+            <span class="badge bg-success">OK</span>
+        }
+        else if (item.Success == false)
+        {
+            <span class="badge bg-danger" title="@item.ErrorMessage">Failed</span>
+            @if (!string.IsNullOrEmpty(item.ErrorMessage))
+            {
+                <br />
+                <small class="text-danger">@item.ErrorMessage</small>
+            }
+        }
+        else
+        {
+            <span class="text-muted">--</span>
+        }
+    </text>;
+    Func<GoogleSyncAuditEntryViewModel, IHtmlContent> actorCell =
+        @<text><span class="badge bg-info">System</span></text>;
+    Func<GoogleSyncAuditEntryViewModel, IHtmlContent> whenCell =
+        @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+    var table = TableModel.For(Model.Entries)
+        .Template("Action", actionCell, c => c.NoSort())
+        .Template("Description", descriptionCell)
+        .Column("User", e => e.UserEmail ?? "--")
+        .Column("Role", e => e.Role ?? "--")
+        .Column("Source", e => e.SyncSource != null ? e.SyncSource.ToString() : "--")
+        .Template("Result", resultCell, c => c.NoSort())
+        .Template("Actor", actorCell, c => c.NoSort())
+        .Template("When", whenCell)
+        .RowCss(e => e.Success == false ? "table-danger" : null)
+        .Build();
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Action</th>
-                        <th>Description</th>
-                        <th>User</th>
-                        <th>Role</th>
-                        <th>Source</th>
-                        <th>Result</th>
-                        <th>Actor</th>
-                        <th>When</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var entry in Model.Entries)
-                    {
-                        var rowClass = entry.Success == false ? "table-danger" : "";
-                        <tr class="@rowClass">
-                            <td><span class="badge bg-secondary">@entry.Action</span></td>
-                            <td>
-                                @entry.Description
-                                @if (entry.ResourceName != null)
-                                {
-                                    <br />
-                                    <small class="text-muted">Resource: @entry.ResourceName</small>
-                                }
-                            </td>
-                            <td>@(entry.UserEmail ?? "--")</td>
-                            <td>@(entry.Role ?? "--")</td>
-                            <td>@(entry.SyncSource?.ToString() ?? "--")</td>
-                            <td>
-                                @if (entry.Success == true)
-                                {
-                                    <span class="badge bg-success">OK</span>
-                                }
-                                else if (entry.Success == false)
-                                {
-                                    <span class="badge bg-danger" title="@entry.ErrorMessage">Failed</span>
-                                    @if (!string.IsNullOrEmpty(entry.ErrorMessage))
-                                    {
-                                        <br />
-                                        <small class="text-danger">@entry.ErrorMessage</small>
-                                    }
-                                }
-                                else
-                                {
-                                    <span class="text-muted">--</span>
-                                }
-                            </td>
-                            <td>
-                                <span class="badge bg-info">System</span>
-                            </td>
-                            <td class="text-nowrap">@entry.OccurredAt.ToInvariantTimestamp()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="table" />
     </div>
 }

@@ -1,6 +1,20 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using System.Text.Encodings.Web
 @model List<(Guid Id, string DisplayName, string Email)>
 @{
     ViewData["Title"] = "Dev Login — Choose User";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+    var rows = Model.Select(u => new { u.Id, u.DisplayName, u.Email }).ToList();
+    var table = TableModel.For(rows)
+        .Column("Name", r => r.DisplayName)
+        .Column("Email", r => r.Email)
+        .Template("", r =>
+        {
+            var url = Url.Action("SignInAsUser", "DevLogin", new { id = r.Id, returnUrl });
+            return new HtmlString($"""<a href="{HtmlEncoder.Default.Encode(url ?? string.Empty)}" class="btn btn-sm btn-outline-primary">Sign in</a>""");
+        }, c => c.NoSort().End())
+        .Build();
 }
 
 <div class="row justify-content-center">
@@ -11,32 +25,7 @@
             </div>
             <div class="card-body">
                 <p class="text-muted mb-3">Select a user to sign in as. This is only available in dev/preview environments.</p>
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var user in Model)
-                            {
-                                <tr>
-                                    <td>@user.DisplayName</td>
-                                    <td class="text-muted">@user.Email</td>
-                                    <td>
-                                        <a asp-controller="DevLogin" asp-action="SignInAsUser"
-                                           asp-route-id="@user.Id"
-                                           asp-route-returnUrl="@ViewData["ReturnUrl"]"
-                                           class="btn btn-sm btn-outline-primary">Sign in</a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <partial name="_Table" model="table" />
             </div>
         </div>
 

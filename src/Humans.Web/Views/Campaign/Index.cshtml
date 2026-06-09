@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model IReadOnlyList<Humans.Application.DTOs.CampaignListSummary>
 @{
     ViewData["Title"] = "Campaigns";
@@ -26,49 +28,27 @@
         }
         else
         {
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Codes</th>
-                        <th>Sent</th>
-                        <th>Failed</th>
-                        <th>Created</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var campaign in Model)
-                    {
-                        var statusClass = campaign.Status switch
-                        {
-                            CampaignStatus.Draft => "bg-secondary",
-                            CampaignStatus.Active => "bg-success",
-                            CampaignStatus.Completed => "bg-info",
-                            _ => "bg-secondary"
-                        };
-                        <tr>
-                            <td>
-                                <a asp-action="Detail" asp-route-id="@campaign.Id">@campaign.Title</a>
-                            </td>
-                            <td><span class="badge @statusClass">@campaign.Status</span></td>
-                            <td>@campaign.AssignedCodes / @campaign.TotalCodes</td>
-                            <td>@campaign.SentCount</td>
-                            <td>
-                                @if (campaign.FailedCount > 0)
-                                {
-                                    <span class="text-danger">@campaign.FailedCount</span>
-                                }
-                                else
-                                {
-                                    @campaign.FailedCount
-                                }
-                            </td>
-                            <td>@campaign.CreatedAt.ToDate()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            Func<Humans.Application.DTOs.CampaignListSummary, IHtmlContent> titleCell =
+                @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Title</a></text>;
+            Func<Humans.Application.DTOs.CampaignListSummary, IHtmlContent> failedCell = @<text>
+                @if (item.FailedCount > 0)
+                {
+                    <span class="text-danger">@item.FailedCount</span>
+                }
+                else
+                {
+                    @item.FailedCount
+                }
+            </text>;
+            var table = TableModel.For(Model)
+                .Template("Title", titleCell)
+                .Column("Status", r => r.Status, c => c.EnumBadge())
+                .Column("Codes", r => $"{r.AssignedCodes} / {r.TotalCodes}")
+                .Column("Sent", r => r.SentCount)
+                .Template("Failed", failedCell)
+                .Column("Created", r => r.CreatedAt, c => c.Date())
+                .Build();
+            <partial name="_Table" model="table" />
         }
     </div>
 </div>

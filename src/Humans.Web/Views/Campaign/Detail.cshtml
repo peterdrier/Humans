@@ -1,5 +1,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.CampaignDetailViewModel
 @{
@@ -168,67 +170,60 @@
         }
         else
         {
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Human</th>
-                        <th>Code</th>
-                        <th>Assigned</th>
-                        <th>Redeemed</th>
-                        <th>Email Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var grant in Model.Campaign.Grants.OrderByDescending(g => g.AssignedAt))
+            var rows = Model.Campaign.Grants.OrderByDescending(g => g.AssignedAt).ToList();
+            Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> humanCell =
+                @<text><vc:human user-id="@item.UserId" /></text>;
+            Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> codeCell =
+                @<text><code>@item.Code</code></text>;
+            Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> redeemedCell = @<text>
+                @if (item.RedeemedAt.HasValue)
+                {
+                    <span class="text-success">@item.RedeemedAt.Value.ToDate()</span>
+                }
+                else
+                {
+                    <span class="text-muted">&mdash;</span>
+                }
+            </text>;
+            Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> emailStatusCell = @<text>
+                @if (item.LatestEmailStatus.HasValue)
+                {
+                    var emailStatusClass = item.LatestEmailStatus switch
                     {
-                        var emailStatusClass = grant.LatestEmailStatus switch
-                        {
-                            EmailOutboxStatus.Queued => "bg-warning",
-                            EmailOutboxStatus.Sent => "bg-success",
-                            EmailOutboxStatus.Failed => "bg-danger",
-                            _ => "bg-secondary"
-                        };
-                        <tr>
-                            <td><vc:human user-id="@grant.UserId" /></td>
-                            <td><code>@grant.Code</code></td>
-                            <td>@grant.AssignedAt.ToDateTime()</td>
-                            <td>
-                                @if (grant.RedeemedAt.HasValue)
-                                {
-                                    <span class="text-success">@grant.RedeemedAt.Value.ToDate()</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">&mdash;</span>
-                                }
-                            </td>
-                            <td>
-                                @if (grant.LatestEmailStatus.HasValue)
-                                {
-                                    <span class="badge @emailStatusClass">@grant.LatestEmailStatus</span>
-                                    @if (grant.LatestEmailAt.HasValue)
-                                    {
-                                        <small class="text-muted ms-1">@grant.LatestEmailAt.Value.ToDateTime()</small>
-                                    }
-                                }
-                                else
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                            </td>
-                            <td class="text-end">
-                                <form asp-action="Resend" asp-route-grantId="@grant.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-rotate-right me-1"></i>Resend
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                        EmailOutboxStatus.Queued => "bg-warning",
+                        EmailOutboxStatus.Sent => "bg-success",
+                        EmailOutboxStatus.Failed => "bg-danger",
+                        _ => "bg-secondary"
+                    };
+                    <span class="badge @emailStatusClass">@item.LatestEmailStatus</span>
+                    @if (item.LatestEmailAt.HasValue)
+                    {
+                        <small class="text-muted ms-1">@item.LatestEmailAt.Value.ToDateTime()</small>
                     }
-                </tbody>
-            </table>
+                }
+                else
+                {
+                    <span class="text-muted">-</span>
+                }
+            </text>;
+            Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> resendCell =
+                @<text>
+                    <form asp-action="Resend" asp-route-grantId="@item.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-rotate-right me-1"></i>Resend
+                        </button>
+                    </form>
+                </text>;
+            var grantsTable = TableModel.For(rows)
+                .Template("Human", humanCell)
+                .Template("Code", codeCell)
+                .Column("Assigned", r => r.AssignedAt, c => c.DateTime())
+                .Template("Redeemed", redeemedCell)
+                .Template("Email Status", emailStatusCell)
+                .Template("", resendCell, c => c.NoSort().End())
+                .Build();
+            <partial name="_Table" model="grantsTable" />
         }
     </div>
 </div>
