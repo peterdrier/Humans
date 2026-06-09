@@ -176,7 +176,9 @@ public record UserTicketHoldingRow(
     string? AttendeeEmail,
     string VendorTicketId,
     string TicketTypeName,
-    TicketAttendeeStatus Status);
+    TicketAttendeeStatus Status,
+    bool HasPendingOutgoingTransfer = false,
+    Guid? PendingTransferRequestId = null);
 
 /// <summary>
 /// A single row in the order-drift diagnostic.
