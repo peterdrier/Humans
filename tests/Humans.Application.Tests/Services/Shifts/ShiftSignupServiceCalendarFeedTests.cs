@@ -23,14 +23,13 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly ShiftSignupService _service;
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
 
     public ShiftSignupServiceCalendarFeedTests()
         : base(TestNow)
     {
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With<ITeamServiceRead>(_teamService)
             .Build();
 
         var repo = new ShiftRepository(DbFactory, Db, Clock);
@@ -217,5 +216,43 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         var items = await _service.GetCalendarItemsForUserAsync(Guid.NewGuid(), CancellationToken.None);
 
         items.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetCalendarItems_NoDescriptionOrPracticalInfo_DescriptionIsNull()
+    {
+        var (_, rota, shift) = SeedShiftScenario();
+        rota.PracticalInfo = null;
+        shift.Description = null;
+        var userId = Guid.NewGuid();
+        SeedSignup(shift, userId, SignupStatus.Confirmed);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        await Db.SaveChangesAsync();
+
+        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+
+        items.Should().HaveCount(1);
+        items[0].Description.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetCalendarItems_AllDayShift_UsesAllDayWindow()
+    {
+        var (_, _, shift) = SeedShiftScenario();
+        shift.IsAllDay = true;
+        var userId = Guid.NewGuid();
+        SeedSignup(shift, userId, SignupStatus.Confirmed);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+        await Db.SaveChangesAsync();
+
+        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+
+        items.Should().HaveCount(1);
+        // All-day window is 08:00–18:00 Europe/Madrid (Shift.AllDayWindowStart/End);
+        // 2026-07-02 is CEST (UTC+2) → 06:00–16:00 UTC.
+        items[0].Start.Should().Be(Instant.FromUtc(2026, 7, 2, 6, 0));
+        items[0].End.Should().Be(Instant.FromUtc(2026, 7, 2, 16, 0));
     }
 }
