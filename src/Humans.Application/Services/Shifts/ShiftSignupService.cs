@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -32,7 +33,7 @@ public sealed class ShiftSignupService(
     IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge
+    ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
@@ -1258,6 +1259,42 @@ public sealed class ShiftSignupService(
         }).ToList());
 
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
+    }
+
+    public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Active commitments only — Confirmed + Pending. Cancelled/bailed/noshow
+        // history is deliberately out of feed scope (spec 2026-06-09-ical-feed).
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToList();
+        if (signups.Count == 0) return [];
+
+        // Team names cross-section via ITeamServiceRead (same as the GDPR contributor).
+        var teamsById = await TeamService.GetTeamsAsync(ct);
+
+        return signups.Select(ss =>
+        {
+            var es = ss.Shift.Rota.EventSettings;
+            var summary = teamsById.TryGetValue(ss.Shift.Rota.TeamId, out var team)
+                ? $"{team.Name}: {ss.Shift.Rota.Name}"
+                : ss.Shift.Rota.Name;
+            if (ss.Status == SignupStatus.Pending)
+                summary += " (pending)";
+
+            var description = string.Join("\n\n", new[] { ss.Shift.Description, ss.Shift.Rota.PracticalInfo }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            return new CalendarFeedItem(
+                Uid: $"shift-{ss.Id}@humans.nobodies.team",
+                Source: "Shifts",
+                Summary: summary,
+                Description: description.Length == 0 ? null : description,
+                Start: ss.Shift.GetAbsoluteStart(es),
+                End: ss.Shift.GetAbsoluteEnd(es),
+                Location: null,
+                Url: $"{CalendarFeedItem.BaseUrl}/Shifts/Mine");
+        }).ToList();
     }
 
     public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
