@@ -78,12 +78,14 @@
             Func<BoardVoteDetailItemViewModel, IHtmlContent> boardMemberCell =
                 @<text><vc:human user-id="@item.BoardMemberUserId" /></text>;
             Func<BoardVoteDetailItemViewModel, IHtmlContent> votedAtCell =
-                @<text><small>@item.VotedAt.ToString("d", System.Globalization.CultureInfo.CurrentCulture)</small></text>;
+                @<text><small>@item.VotedAt.ToDate()</small></text>;
+            Func<BoardVoteDetailItemViewModel, IHtmlContent> noteCell =
+                @<text><small class="text-muted">@item.Note</small></text>;
             var votesTable = TableModel.For(Model.Votes)
                 .Template(Localizer["BoardVoting_BoardMember"].Value, boardMemberCell)
                 .Column(Localizer["BoardVoting_Vote"].Value, r => r.Vote, c => c.EnumBadge())
                 .Template(Localizer["BoardVoting_Date"].Value, votedAtCell)
-                .Column(Localizer["BoardVoting_Note"].Value, r => r.Note)
+                .Template(Localizer["BoardVoting_Note"].Value, noteCell)
                 .Build();
             <div class="card mb-4">
                 <div class="card-header">@Localizer["BoardVoting_VotesSoFar"]</div>
