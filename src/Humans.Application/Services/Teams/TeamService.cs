@@ -1112,46 +1112,7 @@ public sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var coordinatorTeamIds = await repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
-        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
-    }
-
-    private bool IsUserCoordinatorOfActiveTeam(
-        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
-        IReadOnlyCollection<Guid> coordinatorTeamIds,
-        Guid teamId,
-        Guid userId)
-    {
-        if (!teamsById.TryGetValue(teamId, out var team) || !team.IsActive)
-        {
-            logger.LogDebug("Coordinator check: team {TeamId} not found in cache for user {UserId}", teamId, userId);
-            return false;
-        }
-
-        if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
-        {
-            logger.LogDebug("Coordinator check: user {UserId} is direct coordinator of team {TeamName} ({TeamId})",
-                userId, team.Name, teamId);
-            return true;
-        }
-
-        if (coordinatorTeamIds.Contains(teamId))
-        {
-            logger.LogDebug("Coordinator check: user {UserId} has IsManagement role on team {TeamName} ({TeamId})",
-                userId, team.Name, teamId);
-            return true;
-        }
-
-        if (team.ParentTeamId.HasValue)
-        {
-            logger.LogDebug("Coordinator check: checking parent team {ParentTeamId} for user {UserId} on team {TeamName} ({TeamId})",
-                team.ParentTeamId.Value, userId, team.Name, teamId);
-            return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, team.ParentTeamId.Value, userId);
-        }
-
-        logger.LogDebug("Coordinator check: user {UserId} is NOT coordinator of team {TeamName} ({TeamId})",
-            userId, team.Name, teamId);
-        return false;
+        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(

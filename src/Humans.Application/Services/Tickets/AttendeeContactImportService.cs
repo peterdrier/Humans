@@ -25,10 +25,7 @@ public sealed class AttendeeContactImportService(
 {
     public async Task<AttendeeImportPlan> BuildPlanAsync(CancellationToken ct = default)
     {
-        var state = await ticketRepository.GetSyncStateAsync(ct);
-        var eventId = state?.VendorEventId;
-        if (string.IsNullOrEmpty(eventId))
-            throw new InvalidOperationException("No active vendor event id — sync has not run.");
+        var eventId = await RequireActiveVendorEventIdAsync(ct);
 
         var unmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
         var decisions = new List<AttendeeImportDecision>();
@@ -76,154 +73,53 @@ public sealed class AttendeeContactImportService(
             throw new InvalidOperationException("No active vendor event id — sync has not run.");
 
         // Re-query so plan/apply are stateless (a sync between plan and apply is tolerated).
-        var freshUnmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
-        var freshById = freshUnmatched.ToDictionary(a => a.Id);
-
-        var toUpsert = new List<TicketAttendee>();
-        var newlyMatchedUserIds = new HashSet<Guid>();
-        int attempted = 0, created = 0, attached = 0, replaced = 0,
-            ambiguous = 0, noEmail = 0, vanished = 0, errors = 0;
+        var freshById = await LoadFreshUnmatchedAttendeesByIdAsync(eventId, ct);
+        var importState = new AttendeeImportApplyState();
 
         foreach (var d in plan.Decisions.Where(d => selectedAttendeeIds.Contains(d.AttendeeId)))
         {
-            attempted++;
+            importState.Attempted++;
 
-            var groupIds = new List<Guid>(1 + (d.AdditionalAttendeeIds?.Count ?? 0))
-                { d.AttendeeId };
-            if (d.AdditionalAttendeeIds is { Count: > 0 } more) groupIds.AddRange(more);
-
-            // Tolerate per-attendee drift between plan and apply (lead must remain).
-            var resolved = new List<TicketAttendee>();
-            foreach (var gid in groupIds)
-            {
-                if (!freshById.TryGetValue(gid, out var ga))
-                {
-                    logger.LogWarning(
-                        "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
-                        gid, d.Email);
-                    continue;
-                }
-                // Trim+OrdinalIgnoreCase to match plan-time grouping.
-                if (!string.Equals(ga.AttendeeEmail?.Trim(), d.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
-                {
-                    logger.LogWarning(
-                        "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",
-                        gid, d.Email, ga.AttendeeEmail);
-                    continue;
-                }
-                resolved.Add(ga);
-            }
+            var resolved = ResolveFreshAttendeeGroup(d, freshById);
 
             if (resolved.Count == 0)
             {
-                vanished++;
+                importState.Vanished++;
                 continue;
             }
 
             try
             {
-                switch (d.Outcome)
-                {
-                    case AttendeeImportOutcome.SkipNoEmail:
-                        noEmail++;
-                        break;
-
-                    case AttendeeImportOutcome.SkipVoided:
-                        break;
-
-                    case AttendeeImportOutcome.AmbiguousMultipleVerified:
-                        ambiguous++;
-                        logger.LogWarning(
-                            "Attendee {AttendeeId} email {Email} verified by multiple users {UserIds}",
-                            d.AttendeeId, d.Email, d.AmbiguousUserIds);
-                        break;
-
-                    case AttendeeImportOutcome.AttachVerified:
-                        {
-                            var targetUserId = d.TargetUserId!.Value;
-                            foreach (var ga in resolved)
-                            {
-                                ga.MatchedUserId = targetUserId;
-                                toUpsert.Add(ga);
-                            }
-                            newlyMatchedUserIds.Add(targetUserId);
-                            attached++;
-                            break;
-                        }
-
-                    case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
-                        {
-                            if (d.UnverifiedRowUserId is Guid uid &&
-                                d.UnverifiedEmailIdToDelete is Guid eid)
-                            {
-                                await userEmails.DeleteEmailAsync(uid, eid, ct);
-                            }
-                            var (newUser, wasCreated) = await provisioning.FindOrCreateUserByEmailAsync(
-                                d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                            foreach (var ga in resolved)
-                            {
-                                ga.MatchedUserId = newUser.Id;
-                                toUpsert.Add(ga);
-                            }
-                            newlyMatchedUserIds.Add(newUser.Id);
-                            if (wasCreated) created++;
-                            replaced++;
-                            break;
-                        }
-
-                    case AttendeeImportOutcome.CreateNewUser:
-                        {
-                            var (newUser, wasCreated) = await provisioning.FindOrCreateUserByEmailAsync(
-                                d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                            foreach (var ga in resolved)
-                            {
-                                ga.MatchedUserId = newUser.Id;
-                                toUpsert.Add(ga);
-                            }
-                            newlyMatchedUserIds.Add(newUser.Id);
-                            if (wasCreated) created++;
-                            break;
-                        }
-                }
+                await ApplyResolvedImportDecisionAsync(d, resolved, importState, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                errors++;
+                importState.Errors++;
                 logger.LogError(ex,
                     "Attendee contact import failed for {AttendeeId} ({Email})",
                     d.AttendeeId, d.Email);
             }
         }
 
-        if (toUpsert.Count > 0)
+        if (importState.ToUpsert.Count > 0)
         {
-            await ticketRepository.UpsertAttendeesAsync(toUpsert, ct);
+            await ticketRepository.UpsertAttendeesAsync(importState.ToUpsert, ct);
         }
 
         // Evict before participation loop so attendee mutation always invalidates caches.
         ticketCacheInvalidator.InvalidateAfterContactImport();
 
         var active = await shifts.GetActiveAsync();
-        if (active is not null && newlyMatchedUserIds.Count > 0)
+        if (active is not null && importState.NewlyMatchedUserIds.Count > 0)
         {
-            foreach (var userId in newlyMatchedUserIds)
+            foreach (var userId in importState.NewlyMatchedUserIds)
             {
                 await users.SetParticipationFromTicketSyncAsync(
                     userId, active.Year, ParticipationStatus.Ticketed, checkedInAt: null, ct);
             }
         }
 
-        var elapsed = clock.GetCurrentInstant() - start;
-        var result = new AttendeeImportResult(
-            TotalAttempted: attempted,
-            UsersCreated: created,
-            AttachedToExistingVerified: attached,
-            UnverifiedRowsDeletedAndUserCreated: replaced,
-            AmbiguousSkipped: ambiguous,
-            NoEmailSkipped: noEmail,
-            VanishedBetweenPlanAndApply: vanished,
-            Errors: errors,
-            Elapsed: elapsed);
+        var result = BuildImportResult(importState, start);
 
         await audit.LogAsync(
             AuditAction.TicketContactsImported,
@@ -233,6 +129,135 @@ public sealed class AttendeeContactImportService(
 
         return result;
     }
+
+    private async Task<string> RequireActiveVendorEventIdAsync(CancellationToken ct)
+    {
+        var state = await ticketRepository.GetSyncStateAsync(ct);
+        return string.IsNullOrEmpty(state?.VendorEventId)
+            ? throw new InvalidOperationException("No active vendor event id — sync has not run.")
+            : state.VendorEventId;
+    }
+
+    private async Task<Dictionary<Guid, TicketAttendee>> LoadFreshUnmatchedAttendeesByIdAsync(
+        string eventId,
+        CancellationToken ct)
+    {
+        var freshUnmatched = await ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
+        return freshUnmatched.ToDictionary(a => a.Id);
+    }
+
+    private List<TicketAttendee> ResolveFreshAttendeeGroup(
+        AttendeeImportDecision decision,
+        IReadOnlyDictionary<Guid, TicketAttendee> freshById)
+    {
+        var groupIds = new List<Guid>(1 + (decision.AdditionalAttendeeIds?.Count ?? 0))
+            { decision.AttendeeId };
+        if (decision.AdditionalAttendeeIds is { Count: > 0 } more)
+            groupIds.AddRange(more);
+
+        var resolved = new List<TicketAttendee>();
+        foreach (var groupId in groupIds)
+        {
+            if (!freshById.TryGetValue(groupId, out var attendee))
+            {
+                logger.LogWarning(
+                    "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
+                    groupId, decision.Email);
+                continue;
+            }
+
+            if (!string.Equals(
+                    attendee.AttendeeEmail?.Trim(),
+                    decision.Email?.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning(
+                    "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",
+                    groupId, decision.Email, attendee.AttendeeEmail);
+                continue;
+            }
+
+            resolved.Add(attendee);
+        }
+
+        return resolved;
+    }
+
+    private async Task ApplyResolvedImportDecisionAsync(
+        AttendeeImportDecision decision,
+        IReadOnlyList<TicketAttendee> resolved,
+        AttendeeImportApplyState state,
+        CancellationToken ct)
+    {
+        switch (decision.Outcome)
+        {
+            case AttendeeImportOutcome.SkipNoEmail:
+                state.NoEmail++;
+                return;
+
+            case AttendeeImportOutcome.SkipVoided:
+                return;
+
+            case AttendeeImportOutcome.AmbiguousMultipleVerified:
+                state.Ambiguous++;
+                logger.LogWarning(
+                    "Attendee {AttendeeId} email {Email} verified by multiple users {UserIds}",
+                    decision.AttendeeId, decision.Email, decision.AmbiguousUserIds);
+                return;
+
+            case AttendeeImportOutcome.AttachVerified:
+                AttachResolvedAttendees(resolved, decision.TargetUserId!.Value, state);
+                state.Attached++;
+                return;
+
+            case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
+                if (decision.UnverifiedRowUserId is Guid uid &&
+                    decision.UnverifiedEmailIdToDelete is Guid eid)
+                {
+                    await userEmails.DeleteEmailAsync(uid, eid, ct);
+                }
+
+                var replacement = await provisioning.FindOrCreateUserByEmailAsync(
+                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
+                AttachResolvedAttendees(resolved, replacement.User.Id, state);
+                if (replacement.Created) state.Created++;
+                state.Replaced++;
+                return;
+
+            case AttendeeImportOutcome.CreateNewUser:
+                var createdUser = await provisioning.FindOrCreateUserByEmailAsync(
+                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
+                AttachResolvedAttendees(resolved, createdUser.User.Id, state);
+                if (createdUser.Created) state.Created++;
+                return;
+        }
+    }
+
+    private static void AttachResolvedAttendees(
+        IEnumerable<TicketAttendee> resolved,
+        Guid userId,
+        AttendeeImportApplyState state)
+    {
+        foreach (var attendee in resolved)
+        {
+            attendee.MatchedUserId = userId;
+            state.ToUpsert.Add(attendee);
+        }
+
+        state.NewlyMatchedUserIds.Add(userId);
+    }
+
+    private AttendeeImportResult BuildImportResult(AttendeeImportApplyState state, Instant start)
+        => new(
+            TotalAttempted: state.Attempted,
+            UsersCreated: state.Created,
+            AttachedToExistingVerified: state.Attached,
+            UnverifiedRowsDeletedAndUserCreated: state.Replaced,
+            AmbiguousSkipped: state.Ambiguous,
+            NoEmailSkipped: state.NoEmail,
+            VanishedBetweenPlanAndApply: state.Vanished,
+            Errors: state.Errors,
+            Elapsed: clock.GetCurrentInstant() - start);
 
     private async Task<AttendeeImportDecision> ClassifyAsync(
         TicketAttendee a,
@@ -326,4 +351,18 @@ public sealed class AttendeeContactImportService(
 
     private static string? ResolveDisplayName(TicketAttendee a) =>
         string.IsNullOrWhiteSpace(a.AttendeeName) ? null : a.AttendeeName.Trim();
+
+    private sealed class AttendeeImportApplyState
+    {
+        public List<TicketAttendee> ToUpsert { get; } = [];
+        public HashSet<Guid> NewlyMatchedUserIds { get; } = [];
+        public int Attempted { get; set; }
+        public int Created { get; set; }
+        public int Attached { get; set; }
+        public int Replaced { get; set; }
+        public int Ambiguous { get; set; }
+        public int NoEmail { get; set; }
+        public int Vanished { get; set; }
+        public int Errors { get; set; }
+    }
 }
