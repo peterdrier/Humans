@@ -18,7 +18,13 @@ public sealed class MyTicketStubsViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var rows = await transferService.GetMyAttendeesAsync(userId, HttpContext.RequestAborted);
+        // GetMyAttendeesAsync also returns attendees on orders this account *bought*,
+        // even when those tickets are owned by the attendee's own account. The homepage
+        // strip is "tickets you hold", so show only the ones this account currently owns,
+        // matching the owner-filtered holdings list (GetUserTicketHoldingsAsync).
+        var rows = (await transferService.GetMyAttendeesAsync(userId, HttpContext.RequestAborted))
+            .Where(r => r.IsCurrentOwner)
+            .ToList();
         if (rows.Count == 0) return Content(string.Empty);
 
         var earlyEntry = await earlyEntryService.GetForUserAsync(userId, HttpContext.RequestAborted);
