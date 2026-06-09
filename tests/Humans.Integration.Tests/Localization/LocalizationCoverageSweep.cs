@@ -81,7 +81,7 @@ public sealed class LocalizationCoverageSweep(
         }
         catch (Exception ex)
         {
-            return RouteScanResult.Error(route, ex.GetType().Name);
+            return RouteScanResult.Error(route, $"{ex.GetType().Name}: {ex.Message}");
         }
 
         var status = (int)response.StatusCode;

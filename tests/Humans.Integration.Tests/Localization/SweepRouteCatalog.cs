@@ -118,13 +118,28 @@ internal static class SweepRouteCatalog
                 .Replace("[controller]", action.ControllerName, StringComparison.OrdinalIgnoreCase)
                 .Replace("[action]", action.ActionName, StringComparison.OrdinalIgnoreCase);
 
-            if (resolved.Contains('{'))
+            // Optional ({x?}) and defaulted ({x=…}) segments can be omitted to form a valid URL;
+            // only a required {param} genuinely needs seed data. Drop the omittable ones and skip
+            // only if something required is left (e.g. /Legal from [HttpGet("{slug?}")] is scannable).
+            var kept = new List<string>();
+            foreach (var segment in resolved.Split('/', StringSplitOptions.RemoveEmptyEntries))
             {
-                reason = $"param route: {template}";
-                return false;
+                if (!segment.Contains('{'))
+                {
+                    kept.Add(segment);
+                    continue;
+                }
+
+                var omittable = segment.Contains("?}", StringComparison.Ordinal)
+                    || segment.Contains('=', StringComparison.Ordinal);
+                if (!omittable)
+                {
+                    reason = $"param route: {template}";
+                    return false;
+                }
             }
 
-            url = "/" + resolved.TrimStart('/');
+            url = "/" + string.Join('/', kept);
             return true;
         }
 

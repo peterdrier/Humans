@@ -5,7 +5,8 @@ using AngleSharp.Html.Parser;
 namespace Humans.Integration.Tests.Localization;
 
 /// <summary>
-/// Extracts user-visible text runs from rendered HTML and tests them for the pseudo-localizer
+/// Extracts user-visible text runs from rendered HTML — both text nodes and a whitelist of
+/// visible attributes (placeholder/title/alt/aria-label) — and tests them for the pseudo-localizer
 /// marker. Script/style/etc. containers are skipped, whitespace is collapsed, and runs with no
 /// letters (pure digits/punctuation) are dropped — they are never localizable prose.
 /// </summary>
@@ -17,6 +18,9 @@ internal static class RenderedTextScanner
     {
         "SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "SVG",
     };
+
+    // User-visible attribute text (labels/hints) that should be localized just like body text.
+    private static readonly string[] VisibleTextAttributes = ["placeholder", "title", "alt", "aria-label"];
 
     /// <summary>
     /// One run per visible text node — enough granularity to test each for the marker. Scanning
@@ -42,13 +46,17 @@ internal static class RenderedTextScanner
             switch (node)
             {
                 case IText text:
-                    var run = CollapseWhitespace(text.Data);
-                    if (run.Length > 0 && ContainsLetter(run))
-                        runs.Add(run);
+                    AddRun(runs, text.Data);
                     break;
 
                 case IElement element when SkipContainers.Contains(element.TagName):
                     break; // don't descend into script/style/etc.
+
+                case IElement element:
+                    foreach (var attribute in VisibleTextAttributes)
+                        AddRun(runs, element.GetAttribute(attribute));
+                    PushChildren(stack, element);
+                    break;
 
                 default:
                     PushChildren(stack, node);
@@ -59,6 +67,15 @@ internal static class RenderedTextScanner
         return runs;
     }
 
+    private static void AddRun(List<string> runs, string? value)
+    {
+        if (value is null)
+            return;
+        var run = CollapseWhitespace(value);
+        if (run.Length > 0 && ContainsLetter(run))
+            runs.Add(run);
+    }
+
     private static void PushChildren(Stack<INode> stack, INode node)
     {
         foreach (var child in node.ChildNodes)
@@ -67,10 +84,6 @@ internal static class RenderedTextScanner
 
     public static bool HasMarker(string run) =>
         run.Contains(PseudoStringLocalizer.Open) || run.Contains(PseudoStringLocalizer.Close);
-
-    public static string StripMarkers(string run) =>
-        run.Replace(PseudoStringLocalizer.Open.ToString(), string.Empty)
-           .Replace(PseudoStringLocalizer.Close.ToString(), string.Empty);
 
     private static bool ContainsLetter(string value)
     {
