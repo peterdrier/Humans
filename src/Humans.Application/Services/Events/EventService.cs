@@ -4,6 +4,7 @@ using Humans.Application.Events;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
@@ -13,7 +14,7 @@ using NodaTime;
 namespace Humans.Application.Services.Events;
 
 public sealed class EventService(IEventRepository repo, IBurnSettingsService burnSettings, IClock clock)
-    : IEventService, IUserDataContributor
+    : IEventService, IUserDataContributor, ICalendarFeedContributor
 {
     // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
 
@@ -549,6 +550,56 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
             return Instant.FromDateTimeUtc(utc);
         }
         return localDateTime.InZoneLeniently(tz).ToInstant();
+    }
+
+    public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Favourited events that are still Approved — moderation changes drop
+        // an event out of the feed without touching the favourite row.
+        var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
+        var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
+        if (approved.Count == 0) return [];
+
+        // Recurrence expansion needs the burn's gate date + timezone, stitched
+        // cross-section via IBurnSettingsService (§2c) like the guide settings view.
+        var guideSettings = await repo.GetGuideSettingsAsync(ct);
+        var burn = guideSettings is null ? null : await burnSettings.GetByIdAsync(guideSettings.EventSettingsId, ct);
+        var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+
+        var items = new List<CalendarFeedItem>();
+        foreach (var favourite in approved)
+        {
+            var e = favourite.Event;
+            IReadOnlyList<Instant> occurrences = burn is not null && tz is not null
+                ? e.GetOccurrenceInstants(burn.GateOpeningDate, tz)
+                : [e.StartAt];
+
+            var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            var description = string.Join("\n\n", new[]
+            {
+                e.Description,
+                string.IsNullOrWhiteSpace(e.Host) ? null : $"Host: {e.Host}",
+                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"Category: {e.Category!.Name}",
+            }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            foreach (var start in occurrences)
+            {
+                var dateKey = DateFormattingExtensions.IcalBasicDatePattern.Format(start.InZone(tz ?? DateTimeZone.Utc).Date);
+                items.Add(new CalendarFeedItem(
+                    Uid: $"event-{e.Id}-{dateKey}@humans.nobodies.team",
+                    Source: "Events",
+                    Summary: e.Title,
+                    Description: description.Length == 0 ? null : description,
+                    Start: start,
+                    End: start.Plus(Duration.FromMinutes(e.DurationMinutes)),
+                    Location: location.Length == 0 ? null : location,
+                    // No per-event public page; the schedule is where favourites live.
+                    Url: $"{CalendarFeedItem.BaseUrl}/Events/Schedule"));
+            }
+        }
+
+        return items;
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
