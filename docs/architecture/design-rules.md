@@ -264,10 +264,11 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
+| **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Finance** | `HoldedFinanceService` | `holded_expense_docs`, `holded_category_map`, `holded_creditor_balances`, `holded_payments`, `holded_sync_states` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`, `TicketTransferService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests` |
 | **Store** | `StoreService` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
-| **Scanner** | none (phase 1 is presentational) | none |
+| **Scanner** | none (no business logic — `ScannerController` reads via `ITicketServiceRead`) | none |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
@@ -278,7 +279,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
-| **Event Guide** | `EventGuideService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
+| **Event Guide** | `EventService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
 
 **`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 
@@ -484,7 +485,7 @@ Caching<Section>Service   (optional decorator)      [Infrastructure — Singleto
   ↓ IDbContextFactory<HumansDbContext>              [Singleton — creates short-lived contexts per method]
 ```
 
-The decorator is "optional" in the sense that removing it leaves the system fully functional — the inner service implements every method against the DB. The decorator is a pure performance optimization layered on top.
+The decorator is "optional" in the sense that removing it leaves the system fully functional — the inner service implements every method against the DB, except declared cache-only reads (§15c). The decorator is a pure performance optimization layered on top.
 
 ### 15b. Repository Rules
 
@@ -515,7 +516,7 @@ The application service (`UserService`, `ProfileService`, `ContactFieldService`,
 - Injects repository interfaces, never `DbContext`.
 - Never imports `IMemoryCache` or any caching abstraction — it is completely cache-unaware.
 - When the section has a caching decorator: registered as **Scoped** and **keyed** under that decorator's `InnerServiceKey` (e.g., `CachingUserService.InnerServiceKey` = `"user-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
-- Implements **every** read method against the DB. Removing the decorator must leave the system fully functional — the base service must **never** return empty results for a method "so the decorator can override."
+- Implements **every** read method against the DB, with one carve-out: **cache-only reads** — projections served from the decorator's warmed snapshot with no repository equivalent (relevance-ranked search: `UserService.SearchUsersAsync`, `TeamService.SearchAsync`, `CampService.SearchAsync`; merge-tombstone scan: `UserService.GetMergedSourceIdsAsync`, §12) — have no DB implementation. For those, the inner method throws `NotSupportedException` so a DI mis-registration fails loudly instead of silently bypassing the cache. The base service must **never** return empty results for a method "so the decorator can override" — implement it against the DB, or throw.
 - Sub-aggregates belong to the parent section (CV entries are written through `IProfileService.SaveCVEntriesAsync`; the parent repository owns the reconcile logic).
 
 ### 15d. Caching Decorator Rules

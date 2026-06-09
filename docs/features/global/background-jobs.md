@@ -160,7 +160,7 @@ Day 30: Suspension (handled by SuspendJob)
 
 **Preserved for audit trail**: ConsentRecords and Applications are kept (anonymized implicitly via the user record). ConsentRecords are immutable (DB triggers prevent UPDATE/DELETE).
 
-See [Profiles — Account Deletion](02-profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
+See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-right-to-erasure) for the full user-facing workflow.
 
 ---
 

@@ -58,9 +58,13 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 `/Tickets` shows five summary cards across the top — Tickets Sold (with a break-even progress bar against capacity), Gross Revenue (with a fees percentage), Net Revenue (with the Stripe / TT split), Avg. Gross Price, and Tickets Remaining. Below them are a Volunteer Ticket Coverage card (matched-attendee Volunteers as a percentage of active Volunteers, colour-coded by coverage band), a Participation Breakdown donut (Has Ticket / No Ticket / Not Coming for the active event year), a Daily Sales chart with a 7-day rolling average line, a Fees by Payment Method table when fees are present, an Attention list (unmatched orders, sync errors, low-remaining warning), and Recent Orders. The coverage card links through to "Who Hasn't Bought?".
 
-`/Tickets/Orders` lists every order with search, sort, filter (payment status, ticket type, matched/unmatched), and per-order donation, VAT, discount, payment-method, and Stripe-fee columns. `/Tickets/Attendees` lists every issued ticket with a VIP badge above the VIP threshold (315 EUR) and the split between taxable portion and VIP donation premium.
+`/Tickets/Orders` lists every order with search, sort, filter (payment status, ticket type, matched/unmatched), and per-order donation, VAT, discount, payment-method, and Stripe-fee columns. `/Tickets/Attendees` lists every issued ticket with a VIP badge above the VIP threshold (315 EUR) and the split between taxable portion and VIP donation premium; its search box matches attendee name, email, or the ticket's barcode.
 
 ![TODO: screenshot — `/Tickets/Orders` with the paginated order list, donation and VAT columns]
+
+### Look up a ticket at the gate
+
+The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera to scan a ticket's barcode and shows the holder, ticket type, and status — and, for a voided ticket, who it was transferred to and when. Only the current event's tickets match; an older barcode reads as not found. It is read-only — it never checks anyone in.
 
 ### Trigger a sync
 

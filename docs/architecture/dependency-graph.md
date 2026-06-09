@@ -83,7 +83,6 @@ graph LR
     VolTrackExport[VolunteerTrackingExportService]:::shifts
     BurnSettings[BurnSettingsService]:::shifts
     ShiftView[ShiftViewService]:::shifts
-    GenAvail[GeneralAvailabilityService]:::shifts
     RotaMsg[RotaCoordinatorMessageService]:::shifts
     Workload[WorkloadService]:::shifts
 
@@ -117,6 +116,7 @@ graph LR
     GSyncOutbox[GoogleSyncOutboxService]:::google
 
     Onboard[OnboardingService]:::onboarding
+    OnboardWidget[OnboardingWidgetState]:::onboarding
     HumanLifecycle[HumanLifecycleService]:::onboarding
     Feedback[FeedbackService]:::feedback
     Budget[BudgetService]:::budget
@@ -234,7 +234,8 @@ graph LR
     Workload --> Team
     Workload --> User
     Workload --> ShiftView
-    %% BurnSettings + ShiftView + GeneralAvailability are repo-only adapters (no service→service edges)
+    %% BurnSettings + ShiftView are repo-only adapters (no service→service edges).
+    %% #820: GeneralAvailabilityService was deleted in the Shifts surface refactor — node removed.
 
     %% Governance section
     AppDec --> User
@@ -361,6 +362,14 @@ graph LR
     Onboard --> NotifEmitter
     Onboard --> Audit
 
+    %% OnboardingWidgetState (IOnboardingWidgetState) — read-only widget-step resolver;
+    %% reads via IUserServiceRead / IMembershipCalculatorRead / IConsentServiceRead + IShiftView.
+    OnboardWidget --> User
+    OnboardWidget --> ShiftView
+    OnboardWidget --> MembershipCalc
+    OnboardWidget --> ShiftMgmt
+    OnboardWidget --> Consent
+
     HumanLifecycle --> User
     HumanLifecycle --> NotifEmitter
     HumanLifecycle --> NotifInbox
@@ -441,7 +450,8 @@ graph LR
     Notif --> CommPref
     NotifEmitter --> CommPref
     NotifInbox --> User
-    NotifResolver --> Team
+    %% #852: NotificationRecipientResolver narrowed to a pass-through over
+    %% IRoleAssignmentService — the old ITeamServiceRead edge is gone.
     NotifResolver --> Role
     NotifMeter --> User
     NotifMeter --> GSyncSvc
@@ -483,6 +493,10 @@ graph LR
     MailerImport --> AcctProv
     MailerImport --> CommPref
     MailerImport --> Audit
+    %% Mailer audience classes (Services/Mailer/Audiences) are IMailerAudience implementations
+    %% fanned into MailerAudienceSyncService via IEnumerable<IMailerAudience>. Each audience
+    %% ctor-injects IUserServiceRead / IShiftView / ITicketServiceRead directly — per-audience
+    %% deps, not MailerSync ctor edges, so they are not drawn as MailerSync arrows.
     EventSvc --> BurnSettings
     %% EarlyEntryService fans out IEnumerable<IEarlyEntryProvider> — no eager service-typed deps.
     %% Providers registered: TeamService (camp-team EE allocation) + VolunteerTrackingExportService.
@@ -524,14 +538,13 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 261 eager links, indices 0..260. (Net −1 vs the prior sweep's 262:
-    %% +Consent → HumanLifecycle (#881); −DupAcct → Audit (DuplicateAccountService dropped
-    %% IAuditLogService in the #899 Users move); −Onboard → Metrics (OnboardingService dropped
-    %% IHumansMetrics in #881). AccountMerge/DuplicateAccount edges were relocated Profiles→Users,
-    %% not net-added.)
-    %% The 18 lazy edges are indices 261..278 (added ShiftMgmt → Camp per #898 Shift-Summary-by-Camp,
-    %% which lazy-resolves ICampServiceRead via IServiceProvider).
-    linkStyle 261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 265 eager links, indices 0..264. (Net +4 vs the prior sweep's 261:
+    %% +5 OnboardWidget → User/ShiftView/MembershipCalc/ShiftMgmt/Consent (OnboardingWidgetState,
+    %% registered as IOnboardingWidgetState, was missing from the diagram); −NotifResolver → Team
+    %% (#852 narrowed NotificationRecipientResolver to a pass-through over IRoleAssignmentService).
+    %% GenAvail node also removed (#820 deleted GeneralAvailabilityService) — no edge impact.
+    %% The 18 lazy edges are indices 265..282 (set unchanged since the prior sweep).
+    linkStyle 265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
