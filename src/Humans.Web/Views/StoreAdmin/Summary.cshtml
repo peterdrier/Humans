@@ -51,7 +51,7 @@
                 @foreach (var row in s.ByCounterparty.OrderBy(r => r.CounterpartyType).ThenBy(r => r.CounterpartyName, StringComparer.Ordinal))
                 {
                     string paidClass =
-                        row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "paid" :
+                        row.CounterpartyType == StoreOrderCounterpartyType.Team ? "paid" :
                         row.BalanceEur <= 0m ? "paid" :
                         row.PaymentsTotalEur > 0m ? "partial" : "unpaid";
                     <tr data-paid-status="@paidClass"
@@ -69,8 +69,8 @@
                         </td>
                         <td>@row.State</td>
                         <td class="text-end">@row.TotalDueEur.ToString("N2")</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("N2"))</td>
-                        <td class="text-end">@(row.CounterpartyType == Humans.Domain.Enums.StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("N2"))</td>
+                        <td class="text-end">@(row.CounterpartyType == StoreOrderCounterpartyType.Team ? "—" : row.PaymentsTotalEur.ToString("N2"))</td>
+                        <td class="text-end">@(row.CounterpartyType == StoreOrderCounterpartyType.Team ? "—" : row.BalanceEur.ToString("N2"))</td>
                     </tr>
                 }
                 </tbody>
@@ -78,7 +78,7 @@
                    so including their due would make Total due ≠ Paid + Balance. *@
                 @{
                     var camps = s.ByCounterparty
-                        .Where(r => r.CounterpartyType != Humans.Domain.Enums.StoreOrderCounterpartyType.Team)
+                        .Where(r => r.CounterpartyType != StoreOrderCounterpartyType.Team)
                         .ToList();
                 }
                 <tfoot class="table-group-divider">

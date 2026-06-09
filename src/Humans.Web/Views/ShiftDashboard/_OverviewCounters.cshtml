@@ -11,7 +11,6 @@
         : Localizer["ShiftDash_Status_BelowTarget"].Value;
 
     var o = Model.Overview;
-    var shiftsPct = o.TotalShifts == 0 ? 0 : 100.0 * o.FilledShifts / o.TotalShifts;
     var slotsPct = o.TotalSlots == 0 ? 0 : 100.0 * o.FilledSlots / o.TotalSlots;
     var engagedPct = o.TicketHolderCount == 0 ? 0 : 100.0 * o.TicketHoldersEngaged / o.TicketHolderCount;
     var unreached = Math.Max(0, o.TicketHolderCount - o.TicketHoldersEngaged);

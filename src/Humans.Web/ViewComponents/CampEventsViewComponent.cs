@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Events;
 using Humans.Web.Helpers;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using NodaTime;
 
 namespace Humans.Web.ViewComponents;

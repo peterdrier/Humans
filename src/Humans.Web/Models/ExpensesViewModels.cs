@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
-using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using NodaTime;
 

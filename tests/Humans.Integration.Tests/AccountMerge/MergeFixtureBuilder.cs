@@ -26,7 +26,6 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// </summary>
 public sealed class MergeFixtureBuilder
 {
-    private readonly IServiceScope _scope;
     private readonly HumansDbContext _db;
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
@@ -36,7 +35,6 @@ public sealed class MergeFixtureBuilder
 
     internal MergeFixtureBuilder(IServiceScope scope, Guid sourceUserId, Guid targetUserId)
     {
-        _scope = scope;
         _db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;

@@ -5,10 +5,8 @@ using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Web.Controllers.Mailer;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,20 +20,12 @@ namespace Humans.Web.Tests.Controllers.Mailer;
 /// </summary>
 public class MailerAdminControllerAudienceSyncTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IMailerImportService _importService = Substitute.For<IMailerImportService>();
     private readonly IMailerLiteService _mlService = Substitute.For<IMailerLiteService>();
     private readonly IMailerAudienceSyncService _audienceSync = Substitute.For<IMailerAudienceSyncService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-
-    public MailerAdminControllerAudienceSyncTests()
-    {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-    }
 
     [HumansFact]
     public async Task SyncAudience_KnownKey_RedirectsWithBanner()

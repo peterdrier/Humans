@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Services.Finance.Dtos;
 
 namespace Humans.Application.Interfaces.Finance;

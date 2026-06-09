@@ -10,7 +10,6 @@ using Humans.Infrastructure.Services.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Xunit;
 using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Architecture;

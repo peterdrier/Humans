@@ -25,7 +25,6 @@ namespace Humans.Infrastructure.Jobs;
 public class SystemTeamSyncJob(
     ITeamService teamService,
     IUserService userService,
-    IUserEmailService userEmailService,
     ICampRepository campRepository,
     IServiceProvider serviceProvider,
     IGoogleSyncService googleSyncService,
@@ -38,8 +37,6 @@ public class SystemTeamSyncJob(
     ILogger<SystemTeamSyncJob> logger,
     IClock clock) : ISystemTeamSync
 {
-    private readonly IUserEmailService _userEmailService = userEmailService;
-
     // Lazy via IServiceProvider to break DI cycles (these services depend on ISystemTeamSync).
 
     private IApplicationServiceRead ApplicationDecisionService =>

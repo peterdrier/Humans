@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

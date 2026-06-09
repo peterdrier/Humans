@@ -66,7 +66,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Infrastructure, System.StringComparison.Ordinal))
+        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Infrastructure, StringComparison.Ordinal))
             return;
 
         var dbContextType = context.Compilation.GetTypeByMetadataName(HumansDbContextFullName);

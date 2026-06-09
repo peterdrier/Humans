@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
-using Humans.Web.Models;
 using Humans.Web.Models.VolunteerTracking;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

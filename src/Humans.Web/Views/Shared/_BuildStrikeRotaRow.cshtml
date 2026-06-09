@@ -20,9 +20,9 @@
         </div>
     </td>
     <td>
-        @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
+        @if (Model.Interaction == ShiftSignupInteraction.InstantToggle)
         {
-            @await Html.PartialAsync("_ShiftToggleButton", new Humans.Web.Models.ShiftToggleButtonModel
+            @await Html.PartialAsync("_ShiftToggleButton", new ShiftToggleButtonModel
             {
                 ShiftId = item.Shift.Id,
                 IsSignedUp = Model.IsSignedUp,

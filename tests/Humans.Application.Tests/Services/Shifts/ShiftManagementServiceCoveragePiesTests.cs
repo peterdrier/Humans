@@ -8,7 +8,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -40,7 +39,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
                         ParentTeamId: t.ParentTeamId))));
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamServiceRead>(_teamService)
+            .With(_teamService)
             .With<IRoleAssignmentService>()
             .With<IUserService>()
             .Build();
@@ -54,8 +53,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
     }
 
     [HumansFact]
@@ -73,7 +71,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task SingleDept_SingleRota_NoSignups_RequestedSummedFilledZero()
     {
         var (es, art, _) = SeedDeptScenario();
-        var rota = AddRota(es, art, RotaPeriod.Event);
+        var rota = AddRota(es, art);
         AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 2.0);
         await Db.SaveChangesAsync();
@@ -92,9 +90,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task PromotedSubteam_GetsOwnPie_ParentExcludesSubteamRotas()
     {
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: true);
-        AddShift(AddRota(es, art, RotaPeriod.Event, name: "ArtRota"),
+        AddShift(AddRota(es, art, name: "ArtRota"),
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
-        AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
+        AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync();
 
@@ -113,9 +111,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task NonPromotedSubteam_RotasRollUpToParent_NoSubteamPie()
     {
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
-        AddShift(AddRota(es, art, RotaPeriod.Event, name: "ArtRota"),
+        AddShift(AddRota(es, art, name: "ArtRota"),
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
-        AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
+        AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync();
 
@@ -133,7 +131,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         // (Art / Lighting) has a rota. The TeamInfo parent walk must include
         // Art in the team lookup so the bucket rollup finds a target.
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
-        AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
+        AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync();
 
@@ -151,7 +149,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         // Service caps confirmed at MaxVolunteers, so 0..100 is already the
         // service contract — this guards the DTO clamp.
         var (es, art, _) = SeedDeptScenario();
-        var rota = AddRota(es, art, RotaPeriod.Event);
+        var rota = AddRota(es, art);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         AddConfirmedSignup(shift); // 1/3 → 33.3% → 33 (away from zero)
         await Db.SaveChangesAsync();
@@ -216,7 +214,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         await Db.Teams.AddRangeAsync(mango, appleSlice, banana);
 
         foreach (var t in new[] { mango, appleSlice, banana })
-            AddShift(AddRota(es, t, RotaPeriod.Event), dayOffset: 0, maxVolunteers: 1, durationHours: 4.0);
+            AddShift(AddRota(es, t), dayOffset: 0, maxVolunteers: 1, durationHours: 4.0);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
@@ -234,8 +232,8 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task HiddenRota_Excluded_AdminOnlyShift_Excluded()
     {
         var (es, art, _) = SeedDeptScenario();
-        var visibleRota = AddRota(es, art, RotaPeriod.Event, isVisibleToVolunteers: true, name: "Visible");
-        var hiddenRota = AddRota(es, art, RotaPeriod.Event, isVisibleToVolunteers: false, name: "Hidden");
+        var visibleRota = AddRota(es, art, isVisibleToVolunteers: true, name: "Visible");
+        var hiddenRota = AddRota(es, art, isVisibleToVolunteers: false, name: "Hidden");
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0, adminOnly: true);
         AddShift(hiddenRota, dayOffset: 0, maxVolunteers: 10, durationHours: 4.0);
@@ -251,7 +249,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task ConfirmedCountCappedAtMaxVolunteers_PreventsOver100Pct()
     {
         var (es, art, _) = SeedDeptScenario();
-        var rota = AddRota(es, art, RotaPeriod.Event);
+        var rota = AddRota(es, art);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         for (var i = 0; i < 7; i++) AddConfirmedSignup(shift);
         await Db.SaveChangesAsync();
@@ -266,7 +264,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task ConfirmedSignupsCounted_OtherStatusesIgnored()
     {
         var (es, art, _) = SeedDeptScenario();
-        var rota = AddRota(es, art, RotaPeriod.Event);
+        var rota = AddRota(es, art);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 10, durationHours: 4.0);
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
@@ -429,7 +427,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         return shift;
     }
 
-    private ShiftSignup AddConfirmedSignup(Shift shift, Guid? userId = null)
+    private void AddConfirmedSignup(Shift shift, Guid? userId = null)
     {
         var s = new ShiftSignup
         {
@@ -441,6 +439,5 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             UpdatedAt = TestNow
         };
         Db.ShiftSignups.Add(s);
-        return s;
     }
 }

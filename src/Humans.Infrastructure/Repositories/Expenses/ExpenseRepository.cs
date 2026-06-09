@@ -4,16 +4,13 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Expenses;
 
-internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> factory, ILogger<ExpenseRepository> logger)
+internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> factory)
     : IExpenseRepository
 {
-    private readonly ILogger<ExpenseRepository> _logger = logger;
-
     public async Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

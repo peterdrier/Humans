@@ -36,7 +36,7 @@ internal static class MailerAudienceDebugSnapshotBuilder
 
         // Pull subscribers + groups once; any failure surfaces as MlError and
         // the page renders Humans-side data only.
-        List<MailerLiteSubscriber>? subscribers = null;
+        List<MailerLiteSubscriber>? subscribers;
         MailerLiteGroup? group = null;
         bool groupExists = false;
         string? mlError = null;
@@ -49,7 +49,7 @@ internal static class MailerAudienceDebugSnapshotBuilder
             groupExists = group is not null;
 
             var fetched = new List<MailerLiteSubscriber>();
-            await foreach (var s in ml.ListSubscribersAsync(ct).WithCancellation(ct))
+            await foreach (var s in ml.ListSubscribersAsync(ct))
                 fetched.Add(s);
             // Only assign on successful completion — a partial fetch must not
             // back §2/§3/§4 computation.
@@ -108,8 +108,7 @@ internal static class MailerAudienceDebugSnapshotBuilder
             {
                 if (!s.GroupIds.Contains(group.Id, StringComparer.Ordinal)) continue;
                 if (SuppressedSubscriberStatuses.Contains(s.Status)) continue;
-                UserInfo? matchedUser = null;
-                emailToUser.TryGetValue(s.Email, out matchedUser);
+                emailToUser.TryGetValue(s.Email, out var matchedUser);
                 var name = matchedUser?.BurnerName ?? "—";
                 currentlyInMl.Add(new DebugMlRow(
                     SubscriberId: s.Id,

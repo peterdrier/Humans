@@ -116,7 +116,7 @@ public class AccountController(
 
                 // Don't fall through — unauthenticated branches would spawn a duplicate User. Surface as error toast.
                 SetError(localizer["EmailGrid_LinkFailed"].Value);
-                return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Profile/Me/Emails");
+                return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "/Profile/Me/Emails");
             }
         }
 
@@ -513,6 +513,6 @@ public class AccountController(
 
     private IActionResult RedirectToLocal(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl)
-            ? LocalRedirect(returnUrl!)
+            ? LocalRedirect(returnUrl)
             : Redirect(Url.Content("~/"));
 }

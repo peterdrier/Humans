@@ -230,7 +230,7 @@ public class MembershipPartitionTests
         var allIds = new[] { activeUser, pendingUser, suspendedUser, incompleteUser, deletionUser, missingConsentsUser };
         var result = await _service.PartitionUsersAsync(allIds);
 
-        var buckets = new HashSet<Guid>[]
+        var buckets = new[]
         {
             result.Active, result.PendingApproval, result.Suspended,
             result.IncompleteSignup, result.PendingDeletion, result.MissingConsents

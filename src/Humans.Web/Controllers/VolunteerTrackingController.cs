@@ -397,5 +397,5 @@ public sealed class VolunteerTrackingController(
     }
 
     private IActionResult RedirectBack(string? returnUrl) =>
-        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Index));
+        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Index));
 }

@@ -20,7 +20,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
         """;
 
     private static bool IsHum0030(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, DateTimeFormatStringAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, DateTimeFormatStringAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_DateTime_ToString_custom_format()

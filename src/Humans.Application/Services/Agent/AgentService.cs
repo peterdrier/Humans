@@ -15,7 +15,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Agent;
 
-public sealed class AgentService : IAgentService, IUserDataContributor
+public sealed class AgentService : IAgentService
 {
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;

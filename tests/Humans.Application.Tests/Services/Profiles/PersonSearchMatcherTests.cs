@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -183,7 +182,7 @@ public class PersonSearchMatcherTests
         var match = PersonSearchMatcher.Match(human, "ian", PersonSearchFields.Name);
 
         match.Should().NotBeNull();
-        match!.Score.Should().Be(expectedScore);
+        match.Score.Should().Be(expectedScore);
     }
 
     [HumansFact]
@@ -198,7 +197,7 @@ public class PersonSearchMatcherTests
 
         namedMatch.Should().NotBeNull();
         bioMatch.Should().NotBeNull();
-        namedMatch!.Score.Should().BeGreaterThan(bioMatch!.Score);
+        namedMatch.Score.Should().BeGreaterThan(bioMatch.Score);
     }
 
     [HumansFact]
@@ -211,7 +210,7 @@ public class PersonSearchMatcherTests
 
         var match = PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.ManageAll);
         match.Should().NotBeNull();
-        match!.Field.Should().Be("Legal Name");
+        match.Field.Should().Be("Legal Name");
         PersonSearchMatcher.Match(human, "garcia maria", PersonSearchFields.PublicAll).Should().BeNull();
     }
 
@@ -304,7 +303,7 @@ public class PersonSearchMatcherTests
         var match = PersonSearchMatcher.Match(human, query, PersonSearchFields.ExactName);
 
         match.Should().NotBeNull();
-        match!.Field.Should().Be("Exact Name");
+        match.Field.Should().Be("Exact Name");
     }
 
     [HumansTheory]

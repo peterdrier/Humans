@@ -73,7 +73,6 @@ public class DebugController(
                 displayValue = e.Value switch
                 {
                     { Length: > 4 } v => v[..4] + "******",
-                    not null => "******",
                     _ => "******"
                 };
             }

@@ -175,8 +175,8 @@ public class AgentUserSnapshotProviderTests
                 IsPublicPage: false,
                 IsHidden: m.IsHidden,
                 IsPromotedToDirectory: false,
-                CreatedAt: NodaTime.Instant.MinValue,
-                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, NodaTime.Instant.MinValue)]))
+                CreatedAt: Instant.MinValue,
+                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, Instant.MinValue)]))
             .ToList();
         var teamDict = teamInfos.ToDictionary(t => t.Id);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>())

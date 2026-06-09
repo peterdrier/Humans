@@ -3,7 +3,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;

@@ -1,5 +1,4 @@
 @model Humans.Web.Models.ExpenseDetailViewModel
-@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Expense Report";
     var r = Model.Report;
@@ -11,7 +10,6 @@
         ExpenseReportStatus.Approved => "bg-success",
         ExpenseReportStatus.SepaSent => "bg-warning text-dark",
         ExpenseReportStatus.Paid => "bg-success",
-        ExpenseReportStatus.Withdrawn => "bg-secondary",
         _ => "bg-secondary"
     };
 }

@@ -23,7 +23,6 @@ namespace Humans.Application.Services.Camps;
 public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
-    private readonly IUserServiceRead _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
@@ -41,7 +40,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     public CampService(
         ICampRepository repo,
-        IUserServiceRead userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         IFileStorage fileStorage,
@@ -53,7 +51,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         ILogger<CampService> logger)
     {
         _repo = repo;
-        _userService = userService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
@@ -953,7 +950,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
         string? oldName = null;
         var campId = Guid.Empty;
-        var year = 0;
 
         var found = await _repo.ApplyNameChangeAsync(seasonId, season =>
         {
@@ -969,7 +965,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
             oldName = season.Name;
             campId = season.CampId;
-            year = season.Year;
 
             var historyEntry = new CampHistoricalName
             {

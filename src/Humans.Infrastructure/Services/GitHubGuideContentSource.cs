@@ -10,7 +10,6 @@ namespace Humans.Infrastructure.Services;
 public sealed class GitHubGuideContentSource : IGuideContentSource
 {
     private readonly IOptions<GuideSettings> _guideSettings;
-    private readonly IOptions<GitHubSettings> _gitHubSettings;
     private readonly GitHubClient _client;
     private readonly ILogger<GitHubGuideContentSource> _logger;
 
@@ -20,7 +19,6 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
         ILogger<GitHubGuideContentSource> logger)
     {
         _guideSettings = guideSettings;
-        _gitHubSettings = gitHubSettings;
         _logger = logger;
 
         _client = new GitHubClient(new ProductHeaderValue("NobodiesHumansGuide"));

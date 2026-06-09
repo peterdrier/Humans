@@ -50,8 +50,8 @@ public class AccountMergeServiceMergeTests
             .Returns(new User
             {
                 Id = sourceId,
-                MergedToUserId = sourceTombstoned ? targetId : (Guid?)null,
-                MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : (NodaTime.Instant?)null,
+                MergedToUserId = sourceTombstoned ? targetId : null,
+                MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : null,
             }.ToUserInfo());
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId }.ToUserInfo());

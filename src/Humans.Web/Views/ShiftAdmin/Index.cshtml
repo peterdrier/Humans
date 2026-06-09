@@ -403,7 +403,6 @@
                                             {
                                                 ShiftPeriod.Build => "bg-info",
                                                 ShiftPeriod.Event => "bg-success",
-                                                ShiftPeriod.Strike => "bg-secondary",
                                                 _ => "bg-secondary"
                                             };
                                             var phaseLabel = phase switch
@@ -437,7 +436,6 @@
                                                     @for (var i = 0; i < activeSignups.Count; i++)
                                                     {
                                                         var ss = activeSignups[i];
-                                                        var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
                                                         if (i > 0) { <text>, </text> }
                                                         <span class="@(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")"><vc:human user-id="@ss.UserId" /></span>@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}

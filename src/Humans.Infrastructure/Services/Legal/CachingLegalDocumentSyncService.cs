@@ -50,8 +50,6 @@ public sealed class CachingLegalDocumentSyncService(
     /// </summary>
     public const string InnerServiceKey = "legal-document-sync-inner";
 
-    private readonly ILogger<CachingLegalDocumentSyncService> _logger = logger;
-
     // Version-id → document-id index. Rebuilt with the main dict on warm so
     // GetVersionByIdAsync can answer without scanning every document.
     private volatile IReadOnlyDictionary<Guid, Guid> _versionToDocument =
@@ -247,31 +245,6 @@ public sealed class CachingLegalDocumentSyncService(
 
         _versionToDocument = versionIndex;
     }
-
-    private static LegalDocumentInfo BuildLegalDocumentInfo(LegalDocument document, string teamName) =>
-        new(
-            document.Id,
-            document.Name,
-            document.TeamId,
-            teamName,
-            document.LastSyncedAt,
-            document.Versions
-                .OrderBy(v => v.EffectiveFrom)
-                .Select(BuildVersionSnapshot)
-                .ToList());
-
-    private static LegalDocumentVersionSnapshot BuildVersionSnapshot(DocumentVersion version) =>
-        new(
-            version.Id,
-            version.LegalDocumentId,
-            version.LegalDocument.Name,
-            version.LegalDocument.GracePeriodDays,
-            version.VersionNumber,
-            new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
-            version.EffectiveFrom,
-            version.RequiresReConsent,
-            version.CreatedAt,
-            version.ChangesSummary);
 
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredSnapshot(LegalDocumentInfo info) =>
         new(

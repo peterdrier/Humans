@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Notifications;
@@ -144,7 +143,7 @@ public class HumanLifecycleServiceTests
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default, default, default, null!, null!);
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, Guid.Empty, null, null);
+            default, null!, default, null!, Guid.Empty);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
     }
 
@@ -232,7 +231,7 @@ public class HumanLifecycleServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("notification down"));
+            .Returns(_ => throw new InvalidOperationException("notification down"));
 
         var sut = BuildSut();
 
@@ -258,7 +257,7 @@ public class HumanLifecycleServiceTests
             .Returns(new OnboardingResult(true));
         _notificationInboxService
             .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new InvalidOperationException("inbox down"));
+            .Returns(_ => throw new InvalidOperationException("inbox down"));
 
         var sut = BuildSut();
 

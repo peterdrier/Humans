@@ -3,7 +3,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Filters;

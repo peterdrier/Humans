@@ -451,7 +451,6 @@
             var deptFillPercent = deptTotalSlots > 0 ? (int)Math.Round(100.0 * deptTotalConfirmed / deptTotalSlots) : 0;
             var deptFillColor = deptFillPercent >= 80 ? "bg-success" : deptFillPercent >= 40 ? "bg-warning" : "bg-danger";
             var deptRotaCount = dept.Rotas.Count;
-            var deptShiftCount = dept.Rotas.Sum(r => r.Shifts.Count);
 
             <div class="card mb-3">
                 <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#@deptId" aria-expanded="@(deptExpanded ? "true" : "false")" aria-controls="@deptId" style="cursor: pointer;">

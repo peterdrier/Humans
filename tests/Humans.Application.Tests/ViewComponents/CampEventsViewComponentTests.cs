@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Events;
-using Humans.Testing;
 using Humans.Web.Models.Events;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Http;

@@ -292,22 +292,4 @@ public class EndpointAuthorizationTests
             $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have Policy='{expectedPolicy}'");
     }
 
-    private static AuthorizeAttribute? GetAuthorizeAttribute(Type controllerType, string? actionName)
-    {
-        if (actionName is null)
-        {
-            return controllerType.GetCustomAttribute<AuthorizeAttribute>();
-        }
-
-        var methods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .Where(m => string.Equals(m.Name, actionName, StringComparison.Ordinal))
-            .ToList();
-
-        methods.Should().NotBeEmpty($"action '{actionName}' should exist on {controllerType.Name}");
-
-        return methods
-            .Select(m => m.GetCustomAttribute<AuthorizeAttribute>())
-            .FirstOrDefault(a => a is not null)
-            ?? controllerType.GetCustomAttribute<AuthorizeAttribute>();
-    }
 }

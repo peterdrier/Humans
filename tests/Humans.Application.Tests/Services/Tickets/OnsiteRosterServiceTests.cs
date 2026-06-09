@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
@@ -14,19 +13,18 @@ namespace Humans.Application.Tests.Services.Tickets;
 public class OnsiteRosterServiceTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
 
     private OnsiteRosterService NewService() =>
-        new(_users, _shifts, _camps, _teams, _roles);
+        new(_users, _camps, _teams, _roles);
 
     [HumansFact]
     public async Task GetRosterAsync_YearZero_ReturnsEmpty()
     {
         var service = NewService();
-        var result = await service.GetRosterAsync(0, null, null, null, default);
+        var result = await service.GetRosterAsync(0, null, null, null);
         result.Rows.Should().BeEmpty();
         await _users.DidNotReceive().GetOnsiteUsersAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
@@ -38,7 +36,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<OnsiteUserRow>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null, default);
+        var result = await service.GetRosterAsync(2026, null, null, null);
 
         result.Rows.Should().BeEmpty();
         await _camps.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
@@ -68,7 +66,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null, default);
+        var result = await service.GetRosterAsync(2026, null, null, null);
 
         result.Rows.Should().HaveCount(2);
         result.Rows.Single(r => r.UserId == aliceId).RoleNames.Should().Contain("Board");
@@ -99,7 +97,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, "Board", default);
+        var result = await service.GetRosterAsync(2026, null, null, "Board");
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].UserId.Should().Be(aliceId);
@@ -130,7 +128,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null, default);
+        var result = await service.GetRosterAsync(2026, null, null, null);
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].UserId.Should().Be(liveId);
@@ -154,10 +152,10 @@ public class OnsiteRosterServiceTests
                     new List<CampSeasonInfo>
                     {
                         new(seasonId, campId, "thunderdome", 2026, null, "Thunderdome 2026",
-                            "", "", new List<Humans.Domain.Enums.CampVibe>(),
-                            Humans.Domain.Enums.CampSeasonStatus.Active,
-                            Humans.Domain.Enums.YesNoMaybe.Yes, Humans.Domain.Enums.YesNoMaybe.No,
-                            Humans.Domain.Enums.AdultPlayspacePolicy.No,
+                            "", "", new List<CampVibe>(),
+                            CampSeasonStatus.Active,
+                            YesNoMaybe.Yes, YesNoMaybe.No,
+                            AdultPlayspacePolicy.No,
                             1, null, null, null, 0, null, null)
                         {
                             Members =
@@ -174,7 +172,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null, default);
+        var result = await service.GetRosterAsync(2026, null, null, null);
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].CampNames.Should().Equal("Thunderdome 2026");
