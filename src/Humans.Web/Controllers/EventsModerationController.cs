@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Filters;
