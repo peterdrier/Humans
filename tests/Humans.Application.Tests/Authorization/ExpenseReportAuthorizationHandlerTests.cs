@@ -29,6 +29,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     private static readonly Guid RandomUserId = Guid.NewGuid();
     private static readonly Guid CategoryId = Guid.NewGuid();
     private static readonly Guid TeamId = Guid.NewGuid();
+    private static readonly Guid OtherTeamId = Guid.NewGuid();
 
     public ExpenseReportAuthorizationHandlerTests()
     {
