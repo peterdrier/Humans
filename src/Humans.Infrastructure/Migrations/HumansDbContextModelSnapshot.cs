@@ -5853,7 +5853,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.AuditLogEntry", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "ActorUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -5862,8 +5862,6 @@ namespace Humans.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ResourceId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ActorUser");
 
                     b.Navigation("Resource");
                 });
@@ -5973,13 +5971,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "CreatedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampHistoricalName", b =>
@@ -6040,15 +6036,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "LastModifiedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("LastModifiedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CampSeason");
-
-                    b.Navigation("LastModifiedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygonHistory", b =>
@@ -6059,15 +6053,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "ModifiedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ModifiedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CampSeason");
-
-                    b.Navigation("ModifiedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
@@ -6105,14 +6097,12 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "ReviewedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Camp");
-
-                    b.Navigation("ReviewedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>
@@ -6181,15 +6171,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("DocumentVersion");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ContactField", b =>
@@ -6278,13 +6266,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany("EventParticipations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ExpenseLine", b =>
@@ -6448,12 +6434,10 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ResolvedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ResolvedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.NotificationRecipient", b =>
@@ -6464,15 +6448,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Notification");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
@@ -6655,12 +6637,10 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.SyncServiceSettings", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "UpdatedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
@@ -6788,7 +6768,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketAttendee", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "MatchedUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("MatchedUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -6799,19 +6779,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("MatchedUser");
-
                     b.Navigation("TicketOrder");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketOrder", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "MatchedUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("MatchedUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("MatchedUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketTransferRequest", b =>
