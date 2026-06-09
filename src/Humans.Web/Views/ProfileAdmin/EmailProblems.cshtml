@@ -1,5 +1,7 @@
 @using Humans.Web.Models.EmailProblems
+@using Humans.Web.Models.Tables
 @using Humans.Application.DTOs.EmailProblems
+@using Microsoft.AspNetCore.Html
 @model EmailProblemsListViewModel
 @{
     ViewData["Title"] = "Email Problems";
@@ -23,22 +25,16 @@
 }
 else
 {
-    <table class="table">
-        <thead><tr><th>User</th><th>Problems</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var row in Model.SingleUserIssues)
-            {
-                <tr>
-                    <td><vc:human user-id="@row.UserId" link="Admin" /></td>
-                    <td>@string.Join(", ", row.ProblemSummaries)</td>
-                    <td>
-                        <a class="btn btn-sm btn-secondary"
-                           href="/Profile/@row.UserId/Admin/Emails">Open emails ▸</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<SingleUserIssueRow, IHtmlContent> issueUserCell =
+        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+    Func<SingleUserIssueRow, IHtmlContent> issueActionCell =
+        @<text><a class="btn btn-sm btn-secondary" href="/Profile/@item.UserId/Admin/Emails">Open emails ▸</a></text>;
+    var singleUserTable = TableModel.For(Model.SingleUserIssues)
+        .Template("User", issueUserCell)
+        .Column("Problems", r => string.Join(", ", r.ProblemSummaries))
+        .Template("", issueActionCell, c => c.NoSort().End())
+        .Build();
+    <partial name="_Table" model="singleUserTable" />
 }
 
 <h2>Legacy User.Email column not in user_emails</h2>
@@ -60,18 +56,15 @@ else
             Backfill all (@Model.LegacyEmailRows.Count)
         </button>
     </form>
-    <table class="table table-sm">
-        <thead><tr><th>User</th><th>Legacy User.Email</th></tr></thead>
-        <tbody>
-            @foreach (var row in Model.LegacyEmailRows)
-            {
-                <tr>
-                    <td><vc:human user-id="@row.UserId" link="Admin" /></td>
-                    <td><code>@row.LegacyEmail</code></td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<LegacyEmailRow, IHtmlContent> legacyUserCell =
+        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+    Func<LegacyEmailRow, IHtmlContent> legacyEmailCell =
+        @<text><code>@item.LegacyEmail</code></text>;
+    var legacyTable = TableModel.For(Model.LegacyEmailRows)
+        .Template("User", legacyUserCell)
+        .Template("Legacy User.Email", legacyEmailCell)
+        .Build();
+    <partial name="_Table" model="legacyTable" />
 }
 
 <h2>System-level issues</h2>
@@ -81,36 +74,30 @@ else
 }
 else
 {
-    <table class="table">
-        <thead><tr><th>Issue</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var row in Model.SystemLevelIssues)
-            {
-                <tr>
-                    <td>@row.Detail</td>
-                    <td>
-                        @if (row.Kind == EmailProblemKind.OrphanUserEmail)
-                        {
-                            <form method="post" asp-action="DeleteOrphanEmail" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="emailId" value="@row.UserEmailId" />
-                                <button type="submit" class="btn btn-sm btn-danger"
-                                        data-confirm="Delete orphan UserEmail row? This is irreversible.">Delete row ✕</button>
-                            </form>
-                        }
-                        else if (row.Kind == EmailProblemKind.GhostExternalLogins)
-                        {
-                            <a class="btn btn-sm btn-outline-secondary"
-                               asp-controller="Profile"
-                               asp-action="AdminEmails"
-                               asp-route-id="@row.UserId"
-                               asp-fragment="external-logins">Investigate ▸</a>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<SystemLevelIssueRow, IHtmlContent> systemActionCell = @<text>
+        @if (item.Kind == EmailProblemKind.OrphanUserEmail)
+        {
+            <form method="post" asp-action="DeleteOrphanEmail" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="emailId" value="@item.UserEmailId" />
+                <button type="submit" class="btn btn-sm btn-danger"
+                        data-confirm="Delete orphan UserEmail row? This is irreversible.">Delete row ✕</button>
+            </form>
+        }
+        else if (item.Kind == EmailProblemKind.GhostExternalLogins)
+        {
+            <a class="btn btn-sm btn-outline-secondary"
+               asp-controller="Profile"
+               asp-action="AdminEmails"
+               asp-route-id="@item.UserId"
+               asp-fragment="external-logins">Investigate ▸</a>
+        }
+    </text>;
+    var systemTable = TableModel.For(Model.SystemLevelIssues)
+        .Column("Issue", r => r.Detail)
+        .Template("", systemActionCell, c => c.NoSort().End())
+        .Build();
+    <partial name="_Table" model="systemTable" />
 }
 
 <script>
