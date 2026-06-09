@@ -12,109 +12,6 @@
 /* Prevent layout shift when scrollbar appears/disappears */
 html { scrollbar-gutter: stable; }
 
-/* --- CSS Custom Properties (Design Tokens) --- */
-:root {
-    /* Brand palette — Renaissance parchment & ink */
-    --h-parchment:       #f5e6c8;
-    --h-parchment-light: #faf3e6;
-    --h-parchment-dark:  #e8d4ab;
-    --h-aged-ink:        #3d2b1f;
-    --h-aged-ink-light:  #5a4535;
-    --h-gold:            #c9a96e;
-    --h-gold-light:      #d9c08e;
-    --h-gold-dark:       #a88a4e;
-    --h-warm-white:      #fefaf3;
-    --h-sepia:           #8b7355;
-    --h-sepia-light:     #a69178;
-    --h-umber:           #6b5340;
-    --h-vellum:          #f0e2c8;
-    --h-border:          #d4c4a8;
-    --h-border-light:    #e2d6bf;
-
-    /* Status colors — warm-shifted to match the palette */
-    --h-sage:            #6b8f71;
-    --h-sage-dark:       #4f7054;
-    --h-amber:           #c48a2a;
-    --h-amber-dark:      #a87520;
-    --h-amber-light:     #daa84a;
-    --h-rust:            #a04030;
-    --h-blue-muted:      #5b7d8f;
-
-    /* Semantic tokens */
-    --h-text:            var(--h-aged-ink);
-    --h-text-secondary:  var(--h-sepia);
-    --h-text-on-dark:    #fff;
-    --h-bg:              var(--h-parchment-light);
-    --h-bg-card:         var(--h-warm-white);
-    --h-bg-elevated:     #fff;
-    --h-accent:          var(--h-gold);
-    --h-accent-hover:    var(--h-gold-dark);
-
-    /* Alert semantic tokens */
-    --h-alert-warning-bg:    #fdf1dc;
-    --h-alert-warning-text:  #6b5520;
-    --h-alert-info-bg:       #e5eff5;
-    --h-alert-info-text:     #2c5a72;
-    --h-alert-success-bg:    #e6f0e7;
-    --h-alert-success-text:  #3b5e3e;
-    --h-alert-danger-bg:     #f5e5e3;
-    --h-alert-danger-text:   #6e2e25;
-
-    /* Interactive/form tokens */
-    --h-muted-bg:            #f8f9fa;
-    --h-muted-border:        #dee2e6;
-    --h-muted-border-hover:  #adb5bd;
-    --h-muted-text:          #6c757d;
-    --h-focus-ring:          #0d6efd;
-    --h-selected-bg:         #e7f1ff;
-    --h-chip-text:           #495057;
-
-    /* Chart semantic tokens */
-    --h-chart-success:       #198754;
-    --h-chart-warning:       #ffc107;
-    --h-chart-danger:        #dc3545;
-    --h-chart-muted:         #e9ecef;
-
-    /* Map marker tokens */
-    --h-map-pin:             #1a73e8;
-    --h-map-pin-border:      #1558b0;
-    --h-map-cluster-large:   #d93025;
-    --h-map-cluster-large-border: #a5211a;
-    --h-map-cluster-medium:  #e8710a;
-    --h-map-cluster-medium-border: #b85a08;
-
-    /* Chart categorical palette (income) */
-    --h-chart-cat-1:  #198754; --h-chart-cat-2:  #20c997; --h-chart-cat-3:  #0dcaf0;
-    --h-chart-cat-4:  #0d6efd; --h-chart-cat-5:  #6f42c1; --h-chart-cat-6:  #d63384;
-    --h-chart-cat-7:  #ffc107; --h-chart-cat-8:  #fd7e14; --h-chart-cat-9:  #6610f2;
-    --h-chart-cat-10: #adb5bd; --h-chart-cat-11: #495057; --h-chart-cat-12: #e83e8c;
-    --h-chart-cat-13: #17a2b8; --h-chart-cat-14: #28a745; --h-chart-cat-15: #007bff;
-
-    /* Chart categorical palette (expense) — same colors in different order */
-    --h-chart-exp-1:  #dc3545; --h-chart-exp-2:  #fd7e14; --h-chart-exp-3:  #ffc107;
-    --h-chart-exp-4:  #e83e8c; --h-chart-exp-5:  #6f42c1; --h-chart-exp-6:  #0d6efd;
-    --h-chart-exp-7:  #0dcaf0; --h-chart-exp-8:  #20c997; --h-chart-exp-9:  #198754;
-    --h-chart-exp-10: #adb5bd; --h-chart-exp-11: #495057; --h-chart-exp-12: #d63384;
-    --h-chart-exp-13: #17a2b8; --h-chart-exp-14: #6610f2; --h-chart-exp-15: #28a745;
-
-    /* Typography */
-    --h-font-display:    'Cormorant Garamond', 'Garamond', 'Georgia', serif;
-    --h-font-body:       'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
-
-    /* Spacing */
-    --h-radius:          6px;
-    --h-radius-lg:       10px;
-    --h-radius-sm:       3px;
-
-    /* Shadows (warm sepia tint) */
-    --h-shadow-sm:       0 1px 3px rgba(61, 43, 31, 0.08);
-    --h-shadow:          0 2px 8px rgba(61, 43, 31, 0.10);
-    --h-shadow-lg:       0 8px 24px rgba(61, 43, 31, 0.12);
-
-    /* Parchment noise texture */
-    --h-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-}
-
 /* --- Environment Banner (non-production) --- */
 .env-banner {
     background: var(--h-rust);
@@ -695,6 +592,21 @@ h5, .h5 { font-size: 1.1rem; }
 .table td {
     border-color: var(--h-border-light);
     vertical-align: middle;
+}
+
+.sortable-table-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortable-table-header:focus-visible {
+    outline: 2px solid var(--h-gold);
+    outline-offset: 2px;
+}
+
+.sortable-table-header.sort-asc,
+.sortable-table-header.sort-desc {
+    color: var(--h-aged-ink);
 }
 
 /* --- Footer --- */
@@ -1539,6 +1451,112 @@ a.notification-row-line:hover .notification-title {
 
 /* ─── Guest Dashboard ─── */
 
+.dashboard-callout {
+    background: var(--h-aged-ink);
+    color: var(--h-parchment-light);
+}
+
+.dashboard-callout-title {
+    color: var(--h-parchment-light);
+}
+
+.dashboard-callout-copy {
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.3;
+    color: var(--h-parchment-light);
+}
+
+.dashboard-callout-muted {
+    color: var(--h-parchment-dark);
+    line-height: 1.3;
+}
+
+.dashboard-callout-phase {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-callout-accent {
+    color: var(--h-gold);
+}
+
+.dashboard-callout-primary {
+    background: var(--h-gold);
+    color: var(--h-aged-ink);
+    font-weight: 600;
+}
+
+.dashboard-callout-primary:hover,
+.dashboard-callout-primary:focus {
+    background: var(--h-gold-light);
+    color: var(--h-aged-ink);
+}
+
+.dashboard-action-card {
+    color: inherit;
+}
+
+.dashboard-action-button {
+    background: var(--h-bg-elevated);
+    cursor: pointer;
+}
+
+.dashboard-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.dashboard-action-icon-lg {
+    width: 48px;
+    height: 48px;
+}
+
+.dashboard-action-icon-sm {
+    width: 40px;
+    height: 40px;
+}
+
+.dashboard-action-icon-neutral {
+    background: var(--h-parchment);
+    color: var(--h-aged-ink);
+}
+
+.dashboard-action-icon-info {
+    background: var(--h-alert-info-bg);
+    color: var(--h-blue-muted);
+}
+
+.dashboard-action-icon-warning {
+    background: var(--h-alert-warning-bg);
+    color: var(--h-amber-dark);
+}
+
+.dashboard-action-icon-success {
+    background: var(--h-alert-success-bg);
+    color: var(--h-sage-dark);
+}
+
+.dashboard-action-icon-danger {
+    background: var(--h-alert-danger-bg);
+    color: var(--h-rust);
+}
+
+.dashboard-action-title {
+    color: var(--h-text);
+}
+
+.dashboard-action-description {
+    line-height: 1.3;
+}
+
+.dashboard-membership-badge {
+    font-size: 0.4em;
+    vertical-align: middle;
+}
+
 .guest-explore-card {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -1977,6 +1995,90 @@ a.notification-row-line:hover .notification-title {
 .dept-pie-stat {
     color: var(--h-text-secondary);
     font-size: .75rem;
+}
+
+/* --- City planning map shell --- */
+body.city-map-fullscreen {
+    height: 100vh;
+    overflow: hidden;
+}
+
+body.city-map-fullscreen .main-content {
+    display: flex;
+    max-width: 100vw;
+    padding: 0;
+    min-height: 0;
+}
+
+body.city-map-fullscreen main {
+    display: flex;
+    flex: 1;
+    padding: 0;
+    min-height: 0;
+}
+
+.city-map-page {
+    --container-fill: var(--h-sepia);
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.city-map-container-page {
+    --container-fill-selected: var(--h-gold);
+}
+
+.city-map-canvas {
+    height: 100%;
+    width: 100%;
+}
+
+.city-map-controls {
+    z-index: 10;
+}
+
+.city-map-panel-label {
+    font-size: 10px;
+    letter-spacing: .05em;
+}
+
+.city-map-legend {
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.city-map-legend-swatch {
+    flex-shrink: 0;
+}
+
+.city-map-container-body {
+    fill: var(--container-fill);
+    fill-opacity: .7;
+}
+
+.city-map-container-door {
+    fill: var(--container-fill);
+}
+
+.city-map-image-thumb {
+    height: 96px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.city-map-help-image {
+    max-height: 250px;
+    object-fit: contain;
+    object-position: top;
+}
+
+.city-map-history-panel {
+    width: 360px;
+}
+
+.city-map-add-select {
+    width: 200px;
 }
 
 /* ── Shift card readability (issue #755) ───────────────────────────────

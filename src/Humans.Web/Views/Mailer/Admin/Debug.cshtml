@@ -53,7 +53,6 @@
     </a>
 </div>
 
-<vc:temp-data-alerts />
 
 <div class="card mb-4">
     <div class="card-body">
@@ -163,7 +162,7 @@
                             }
                         </td>
                         <td class="font-monospace">@r.Email</td>
-                        <td class="text-muted small">@(r.InMlSince?.ToAuditTimestamp() ?? "—")</td>
+                        <td class="text-muted small">@(r.InMlSince?.ToInvariantTimestamp() ?? "—")</td>
                     </tr>
                 }
                 @if (inMl.Rows.Count == 0)

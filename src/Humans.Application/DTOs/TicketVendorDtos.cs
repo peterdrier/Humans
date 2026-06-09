@@ -33,7 +33,8 @@ public record VendorTicketDto(
     string TicketTypeName,
     decimal Price,
     string Status,
-    Instant? CheckedInAt = null);
+    Instant? CheckedInAt = null,
+    string? Barcode = null);
 
 /// <summary>High-level event summary from vendor.</summary>
 public record VendorEventSummaryDto(

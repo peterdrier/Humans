@@ -69,9 +69,9 @@ Stored as **string** (`HasConversion<string>()`, `HasMaxLength(20)`). The `Faile
 
 | Key | Purpose |
 |-----|---------|
-| `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxService.IsEmailPausedAsync` / `SetEmailPausedAsync` (which delegate to `IEmailOutboxRepository.GetSendingPausedAsync` / `SetSendingPausedAsync`). The job itself also reads it directly through the repository, since the job is registered in Infrastructure. |
+| `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxService.IsEmailPausedAsync` / `SetEmailPausedAsync`, which delegate to `ISystemSettingsService` (the SystemSettings section owns the `system_settings` table). The processor job also reads it through `IEmailOutboxService.IsEmailPausedAsync`. |
 
-Per design-rules §8, each `system_settings` key is owned by the consuming section's repository. Email owns this key; do not touch it from any other section.
+Per design-rules §8, each `system_settings` key is owned by its consuming section. Email owns this key (its semantics and the only reads/writes); persistence routes through `ISystemSettingsService`. Do not touch this key from any other section.
 
 ## Routing
 
@@ -84,7 +84,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
 | `GET /Profile/Me/Outbox` | authenticated | `ProfileController` — own outbox history |
-| `GET /Profile/{id}/Admin/Outbox` | `HumanAdminBoardOrAdmin` | `ProfileController` — another user's outbox history |
+| `GET /Users/Admin/{id}/Outbox` | `HumanAdminBoardOrAdmin` | `UsersAdminController` — another user's outbox history |
 
 ## Actors & Roles
 
@@ -93,7 +93,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 | Any service / job | Build a fully-rendered `EmailMessage` via a typed `IEmailMessageFactory` method (e.g. `AccessSuspended`, `ApplicationApproved`, `CampaignCode`) and hand it to the single `IEmailService.SendAsync(message, ct)`. The default `IEmailService` is `OutboxEmailService`, which writes the row to `email_outbox_messages`. |
 | Admin (`AdminOnly` policy) | Pause / resume outbox. Retry a failed message (re-queue). Discard a failed message (delete). View the outbox dashboard at `/Email/EmailOutbox`. Preview rendered templates at `/Email/EmailPreview`. |
 | Any authenticated human | View own outbox (`GET /Profile/Me/Outbox`) — emails where `UserId` matches the signed-in user. |
-| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Profile/{id}/Admin/Outbox`). |
+| HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | View another human's outbox (`GET /Users/Admin/{id}/Outbox`). |
 
 ## Invariants
 
@@ -106,13 +106,13 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 - Admin retry resets a row to `Status = Queued`, `RetryCount = 0`, `LastError = null`, `NextRetryAt = null`, `PickedUpAt = null`.
 - Recipient addresses ending in `@localhost` or `@ticketstub.local` are short-circuit-marked `Sent` without contacting the transport (test addresses; sending real mail to them would damage sender reputation).
 - `IEmailBodyComposer` is an Application-layer abstraction so consumers stay SDK-free; the implementation (`BrandedEmailBodyComposer`) and `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) live in Infrastructure.
-- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Profile/{id}/Admin/Outbox` views.
+- The Email section does **not** contribute to the GDPR export (`IUserDataContributor`). User-scoped outbox history is exposed only through the `/Profile/Me/Outbox` and `/Users/Admin/{id}/Outbox` views.
 
 ## Negative Access Rules
 
 - Regular humans **cannot** view another human's outbox.
 - Services **cannot** send email by calling MailKit / `SmtpClient` / `IEmailTransport` directly — build an `EmailMessage` via `IEmailMessageFactory` and route through `IEmailService.SendAsync` (which writes to the outbox).
-- The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxRepository`.
+- The pause flag **cannot** be read or written by any non-Email code — other sections must not touch `system_settings` with key `IsEmailSendingPaused`. The processor job is the only Infrastructure-side reader and it goes through `IEmailOutboxService.IsEmailPausedAsync`.
 - Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based) or admin discard. No service clears rows as a side-effect.
 
 ## Triggers
@@ -135,6 +135,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
 - **Onboarding:** `IOnboardingService` sends welcome emails through this section on Volunteer activation.
+- **SystemSettings:** `ISystemSettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the SystemSettings section owns the table).
 
 ## Architecture
 
@@ -144,7 +145,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 **Status:** (A) Migrated.
 
 - `EmailOutboxService` and `OutboxEmailService` live in `Humans.Application.Services.Email/` and depend only on Application-layer abstractions.
-- `IEmailOutboxRepository` (impl `src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. It also owns the single `IsEmailSendingPaused` row in `system_settings`. Registered Singleton via `IDbContextFactory<HumansDbContext>` so it can be injected into Application services and the recurring job alike.
+- `IEmailOutboxRepository` (impl `src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISystemSettingsService` (SystemSettings section owns the table). Registered Singleton via `IDbContextFactory<HumansDbContext>` so it can be injected into Application services and the recurring job alike.
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
 - **Cross-domain nav stripped:** `EmailOutboxMessage.User` (shadow relationship in `EmailOutboxMessageConfiguration` preserves the FK + `ON DELETE SET NULL`; user display data resolves via `IUserService`). `CampaignGrant` and `ShiftSignup` navs are kept as aggregate-local (status mirroring and dedup query respectively).
 - **Four Application-layer connector abstractions keep Infrastructure concerns out of Application** (all in `Humans.Application.Interfaces.Email`):

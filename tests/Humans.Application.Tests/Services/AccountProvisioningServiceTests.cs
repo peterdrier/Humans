@@ -249,8 +249,6 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
             GetCustomPictureRowsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -283,6 +281,9 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> WriteBackStateIfNullAsync(
             Guid userId, ProfileState state, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> WriteBackUserStateIfNullAsync(
+            Guid userId, UserState state, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
             Guid userId, CancellationToken ct = default) =>

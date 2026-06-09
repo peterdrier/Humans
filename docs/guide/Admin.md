@@ -2,20 +2,19 @@
   src/Humans.Web/Views/Admin/**
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/ViewComponents/AdminNavTree.cs
-  src/Humans.Web/Views/Profile/AdminList.cshtml
-  src/Humans.Web/Views/Profile/AdminDetail.cshtml
-  src/Humans.Web/Views/AdminDuplicateAccounts/**
-  src/Humans.Web/Views/AdminMerge/**
+  src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
+  src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml
+  src/Humans.Web/Views/UsersAdminAccountMerges/**
   src/Humans.Web/Views/Notifications/**
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
-  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
+  src/Humans.Web/Controllers/UsersAdminController.cs
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
   src/Humans.Web/Controllers/NotificationsController.cs
   src/Humans.Application/Services/AuditLog/**
   src/Humans.Application/Services/Notifications/**
-  src/Humans.Application/Services/Profile/AccountMergeService.cs
-  src/Humans.Application/Services/Profile/DuplicateAccountService.cs
+  src/Humans.Application/Services/Users/AccountMergeService.cs
+  src/Humans.Application/Services/Users/DuplicateAccountService.cs
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
   src/Humans.Application/Services/GoogleIntegration/SyncSettingsService.cs
@@ -28,25 +27,25 @@
 
 ## What this section is for
 
-The Admin section is the global control panel: managing humans (suspending, approving, assigning roles, purging in non-production), configuring Google sync, reading the audit log, triaging the notification inbox, and running technical operations like configuration review, in-memory logs, database version, cache and query stats, and Hangfire lock cleanup.
+The Admin section is the global control panel: managing humans (suspending, rejecting, assigning roles, purging in non-production), configuring Google sync, reading the audit log, triaging the notification inbox, and running technical operations like configuration review, in-memory logs, database version, cache and query stats, and Hangfire lock cleanup.
 
-Admin is layered. **Board** and **HumanAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, approve, reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camp Admin, and Ticket Admin are separate roles covered in their own section guides.
+Admin is layered. **Board** and **HumanAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, and reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camp Admin, and Ticket Admin are separate roles covered in their own section guides.
 
 ![TODO: screenshot — Admin dashboard home showing humans summary, recent audit entries, and sync status]
 
 ## Key pages at a glance
 
 - `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
-- `/Profile/Admin` — humans list; `?filter=pending` scopes to pending approvals.
-- `/Profile/{id}/Admin` — per-human detail, with suspend, unsuspend, approve, reject, add role, end role.
-- `/Profile/{id}/Admin/Outbox` — per-human email outbox.
+- `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
+- `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
+- `/Users/Admin/{id}/Outbox` — per-human email outbox.
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Google/SyncSettings` — per-service sync mode (Admin only).
-- `/Admin/Configuration`, `/Admin/Logs`, `/Admin/DbStats`, `/Admin/CacheStats`, `/Admin/DbVersion` — technical diagnostics.
-- `/Admin/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
-- `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` — duplicate detection and merge flow.
-- `/Admin/Humans/{id}/Purge` — permanent delete, disabled in production.
+- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
+- `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
+- `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
+- `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
 - `/hangfire` — Hangfire dashboard, Admin only.
 
 ## As a Volunteer
@@ -65,10 +64,9 @@ Open `/Admin` for the dashboard. The summary tiles — humans in review, open fe
 
 ### Manage humans
 
-Open `/Profile/Admin`. Search by name or email, filter pending volunteers with `?filter=pending`, and click through to a human's detail page. From there you can:
+Open `/Users/Admin`. Search by name or email, filter by `UserState` (`bare`, `active`, `suspended`, `rejected`, `deleting`, `merged`, or `deleted`), and click through to a human's detail page. From there you can:
 
-- **Approve** a pending volunteer. Approval, combined with all required consents signed, immediately adds the human to the Volunteers team and grants the ActiveMember claim — no wait for the hourly sync.
-- **Reject** a signup. Audited, and the human is notified.
+- **Reject** a signup. Audited, and the human is notified. (There is no "approve volunteer" action — app access is automatic once the human enters their legal name (`UserState == Active`); Volunteers-team / Google Workspace provisioning follows from name + consents via the scheduled sync.)
 - **Suspend** or **Unsuspend**. Suspension requires a note; it revokes Google Workspace access on the next sync and ends current memberships. Unsuspension clears the flag and re-queues access.
 - **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **Board** and **HumanAdmin** can assign any role **except** Admin. The first Admin must be seeded directly in the database.
 
@@ -88,19 +86,19 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Run technical operations (Admin only)
 
-- **Configuration** (`/Admin/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked. The feedback API key is set here and enables the in-app feedback submission flow described in [Feedback](Feedback.md).
-- **Logs** (`/Admin/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
+- **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked. The feedback API key is set here and enables the in-app feedback submission flow described in [Feedback](Feedback.md).
+- **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
 - **Hangfire dashboard** (`/hangfire`) is Admin-only for inspecting and re-queueing jobs.
 
 ### Resolve duplicate accounts
 
-`/Admin/DuplicateAccounts` scans for humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence. Review a candidate, then archive the duplicate and re-link its logins. Pending merge requests live at `/Admin/MergeRequests`; accepting one consolidates all associated data onto the surviving account.
+`/Users/Admin/AccountMerges` is the single merge surface. It lists, in one queue, both user-submitted merge requests and auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence). For any row you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. You can also dismiss a request, or close an orphan request whose accounts were already merged.
 
 ### Purge (non-production only)
 
-`/Admin/Humans/{id}/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
+`/Users/Admin/{id}/Purge` permanently deletes a human and all associated data, severing the OAuth link so the next Google login creates a fresh account. Purge is **disabled in production**, and you cannot purge your own account.
 
 ## Related sections
 

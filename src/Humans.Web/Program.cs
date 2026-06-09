@@ -169,7 +169,7 @@ builder.Services.AddAuthentication()
 
                 var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                // Warning + client IP so /Admin/Logs traces user-reported sign-in issues — see #483.
+                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues — see #483.
                 if (isAccessDenied)
                 {
                     logger.LogWarning(
@@ -467,7 +467,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
-// Wire IHttpContextAccessor so Instant.ToDisplay*() picks up session timezone.
+// Wire IHttpContextAccessor so the ambient Instant display formatters pick up session timezone.
 DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
 
 // Post-Build so the parameterless enricher activator can read ambient HttpContext per log emission.

@@ -84,7 +84,7 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 Public, anonymous-accessible page used as the redirect target after a buyer completes checkout on TicketTailor. Explains shift participation in the org's voice and routes the buyer toward signing in / claiming shifts.
 
 - **Route**: `/Welcome` (`WelcomeController`, `[AllowAnonymous]`)
-- **Active-member shortcut**: authenticated users with the `ActiveMember` claim are redirected straight to `/Shifts` — they don't need the explainer. Authenticated non-active visitors are redirected into `/OnboardingWidget` rather than seeing the explainer.
+- **Active-user shortcut**: authenticated users whose `UserState == Active` are redirected straight to `/Shifts` — they don't need the explainer. Authenticated non-Active visitors are redirected into `/OnboardingWidget` rather than seeing the explainer.
 - **CTA**: links to `/Account/Login?returnUrl=/OnboardingWidget` so post-login lands in the guided onboarding flow that surfaces priority shifts as Step 2.
 - **Localization**: `Welcome_*` strings in `SharedResource.{en,es,ca,de,fr,it}.resx`
 

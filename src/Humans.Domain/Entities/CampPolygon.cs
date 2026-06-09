@@ -13,7 +13,6 @@ public class CampPolygon
     public double AreaSqm { get; set; }
 
     public Guid LastModifiedByUserId { get; set; }
-    public User LastModifiedByUser { get; set; } = null!;
 
     public Instant LastModifiedAt { get; set; }
 }

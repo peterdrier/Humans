@@ -1,8 +1,28 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Services.Finance.Dtos;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Web.Models;
+
+public sealed class ExpenseIouSummary
+{
+    public required decimal OwedToMember { get; init; }
+    public required decimal TotalPaid { get; init; }
+    public required decimal OtherAmount { get; init; }
+    public LocalDate? LastPaymentDate { get; init; }
+}
+
+/// <summary>One row in the combined reports-and-payments ledger, sorted by <see cref="Date"/> desc.</summary>
+public sealed record ExpenseLedgerRow(
+    LocalDate Date,
+    bool IsPayment,
+    string Label,
+    decimal Amount,
+    Guid? ReportId,
+    ExpenseReportStatus? Status);
 
 public sealed class ExpensesIndexViewModel
 {
@@ -11,6 +31,10 @@ public sealed class ExpensesIndexViewModel
     public bool HasIban { get; init; }
     public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
         new Dictionary<Guid, string>();
+
+    /// <summary>Non-null when the member has a Holded creditor account with activity.</summary>
+    public ExpenseIouSummary? Iou { get; init; }
+    public IReadOnlyList<ExpenseLedgerRow> Ledger { get; init; } = [];
 }
 
 public sealed class ExpenseNewViewModel
@@ -65,6 +89,30 @@ public sealed class AddLineInputModel
 
     [Required, Range(0.01, 1_000_000)]
     public decimal Amount { get; set; }
+}
+
+public sealed class AddMileageInputModel
+{
+    [Required, StringLength(200)]
+    public string Origin { get; set; } = "";
+
+    [Required, StringLength(200)]
+    public string Destination { get; set; } = "";
+
+    [Required, Range(0.1, 100_000)]
+    public decimal Km { get; set; }
+}
+
+public sealed class AddPerDiemInputModel
+{
+    [Required]
+    public PerDiemKind Kind { get; set; }
+
+    [Required, Range(1, 366)]
+    public int Days { get; set; }
+
+    [StringLength(200)]
+    public string? Note { get; set; }
 }
 
 public sealed class EditLineInputModel

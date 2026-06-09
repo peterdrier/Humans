@@ -96,6 +96,23 @@ public static class MergeFixtureExtensions
     }
 
     /// <summary>
+    /// Seeds a fresh source+target user pair plus a Pending
+    /// <see cref="AccountMergeRequest"/> (with a pending unverified
+    /// <see cref="UserEmail"/> on the target), and returns the request id together
+    /// with the target and source user ids. Convenience over calling
+    /// <see cref="SeedMergeFixtureAsync"/> + <see cref="SeedMergeRequestAsync"/>.
+    /// </summary>
+    public static async Task<(Guid requestId, Guid targetId, Guid sourceId)> SeedPendingMergeRequestAsync(
+        this HumansWebApplicationFactory fx,
+        string? email = null)
+    {
+        ArgumentNullException.ThrowIfNull(fx);
+        var (sourceId, targetId) = await fx.SeedMergeFixtureAsync();
+        var requestId = await fx.SeedMergeRequestAsync(sourceId, targetId, email);
+        return (requestId, targetId, sourceId);
+    }
+
+    /// <summary>
     /// Mirror of the inline <c>SeedUserAsync</c> pattern in
     /// <c>CalendarServiceTests</c>: Identity-managed user creation plus a
     /// minimal Profile so cross-section seeders can attach

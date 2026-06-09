@@ -24,7 +24,7 @@ public class CampaignControllerTests
     {
         var routeAttr = typeof(CampaignController).GetCustomAttribute<RouteAttribute>();
         routeAttr.Should().NotBeNull();
-        routeAttr.Template.Should().Be("Admin/Campaigns");
+        routeAttr.Template.Should().Be("Campaigns/Admin");
     }
 
     [HumansFact]

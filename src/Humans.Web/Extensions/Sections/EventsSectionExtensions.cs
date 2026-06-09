@@ -40,12 +40,17 @@ internal static class EventsSectionExtensions
         services.AddSingleton<CachingEventService>();
         services.AddSingleton<IEventService>(sp => sp.GetRequiredService<CachingEventService>());
 
+        // Cross-section read surface — forwards to the same caching Singleton so
+        // reads served to other sections (e.g. the camp detail events card) hit
+        // the existing T-03 cache. Interface segregation only; no new cache layer.
+        services.AddSingleton<IEventServiceRead>(sp => sp.GetRequiredService<CachingEventService>());
+
         // IEventViewInvalidator must resolve to the SAME Singleton instance
         // that backs IEventService (§15e CRITICAL).
         services.AddSingleton<IEventViewInvalidator>(sp =>
             sp.GetRequiredService<CachingEventService>());
 
-        // Surface Events cache diagnostics on /Admin/CacheStats.
+        // Surface Events cache diagnostics on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);
 
         // CachingEventService is itself the IHostedService — its StartAsync

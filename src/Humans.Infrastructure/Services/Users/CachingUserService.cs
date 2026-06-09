@@ -141,7 +141,8 @@ public sealed class CachingUserService(
                         ProfilePictureUrl: byId.ProfilePictureUrl,
                         MatchField: "User ID",
                         MatchSnippet: null,
-                        MatchedEmail: null)
+                        MatchedEmail: null,
+                        Score: 100) // Exact id hit — top relevance (sole result, so ordering is moot).
                 ];
             }
             return [];
@@ -163,7 +164,8 @@ public sealed class CachingUserService(
                 ProfilePictureUrl: u.ProfilePictureUrl,
                 MatchField: match.Field,
                 MatchSnippet: match.Snippet,
-                MatchedEmail: match.MatchedEmail));
+                MatchedEmail: match.MatchedEmail,
+                Score: match.Score));
 
             if (results.Count >= limit) break;
         }

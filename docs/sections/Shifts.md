@@ -33,6 +33,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
 - **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](Users.md)); Shifts may surface it as a derived view but does not write to it.
+- **Shift Summary by Camp** is a read-only roll-up of confirmed-shift totals (hours + count) per human and pivoted per camp, viewable at three scopes (global / team-set / single rota). Pure read view over confirmed signups — no new tables, no writes. Built by `IShiftManagementService.BuildSummaryAsync` (`ShiftSummary` DTO); gated by the `ShiftDepartmentManager` policy.
 
 ## Data Model
 
@@ -167,8 +168,7 @@ Selected routes:
 |---|---|
 | `GET /Shifts` | Browse shifts (department/date/period/tag filters) |
 | `GET /Shifts/Mine` | Volunteer's own signups |
-| `POST /Shifts/SignUp` | Single shift signup |
-| `POST /Shifts/SignUpRange` | Date-range signup (build/strike) |
+| `POST /Shifts/ToggleDay` | Per-day instant signup/bail on the browse page (AJAX, returns the re-rendered row) |
 | `POST /Shifts/Bail` | Single bail |
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |
@@ -177,6 +177,9 @@ Selected routes:
 | `GET /Shifts/Settings` | Admin: view event settings |
 | `POST /Shifts/Settings` | Admin: update event settings |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
+| `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
+| `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
+| `GET /Shifts/Summary/{teamSlug}/{rotaGuid:guid}` | Shift Summary scoped to a single rota |
 | `GET /Teams/{slug}/Shifts` | Coordinator: rota/shift admin |
 | `POST /Teams/{slug}/Shifts/Rotas` | Create rota |
 | `POST /Teams/{slug}/Shifts/Rotas/{rotaId}` | Edit rota |
@@ -298,10 +301,10 @@ Selected routes:
 
 ### Repository surface
 
-- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `rotas`, `shifts`, `event_settings`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags`, `volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial of this single interface (the former `IShiftSignupRepository` was folded in), so Shifts has one repository contract backed by one `ShiftRepository` adapter. The GDPR contributor's `volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
+- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `rotas`, `shifts`, `event_settings`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags`, `volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial of this single interface (the former `IShiftSignupRepository` was folded in), so Shifts has one repository contract backed by one `ShiftRepository` adapter. The signup partial also carries the Build-period gap/export reads `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync` (converged off `IVolunteerTrackingRepository` in #882). The GDPR contributor's `volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
   - Aggregate-local navs kept: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side, capacity counts), `EventSettings.Rotas`, `ShiftSignup.Shift` (read-only projection chain).
   - Cross-domain navs stripped: `Rota.Team` (team display via `ITeamService.GetByIdsWithParentsAsync` / `GetTeamNamesByIdsAsync`); `ShiftSignup.User`, `ShiftSignup.ReviewedByUser` (display via `IUserService.GetByIdsAsync`).
-- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability`, `volunteer_build_statuses`. Also surfaces reads for `shift_signups`, `shifts`, `rotas`, and `volunteer_event_profiles` used by export and tracking queries.
+- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability`, `volunteer_build_statuses` and **only** those two tables (#882). The Build-period signup reads it formerly surfaced (`GetEligibleBuildSignupsAsync`, `GetConfirmedShiftsInRangeAsync` over `shift_signups` / `shifts` / `rotas`) were converged onto `IShiftManagementRepository` so each Shifts table has a single repository owner; `VolunteerTrackingService` and `VolunteerTrackingExportService` now read them via `IShiftManagementRepository`. The HUM0025 grandfathered markers on the two repositories were removed in the same pass.
   - Cross-domain navs stripped: `GeneralAvailability.User` (removed 2026-04-22 in #541c; FK kept via typed-FK form — schema unchanged).
 
 ### Touch-and-clean guidance

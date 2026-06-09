@@ -31,16 +31,11 @@ public static class PolicyNames
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
-    /// Active member (Volunteers team) OR has shift dashboard access roles.
-    /// Composite policy requiring a custom authorization handler.
+    /// Can use the app: <c>UserState == Active</c> (entered legal name).
+    /// The single nav-visibility gate replaces the former
+    /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).
     /// </summary>
-    public const string ActiveMemberOrShiftAccess = nameof(ActiveMemberOrShiftAccess);
-
-    /// <summary>
-    /// Active member (Volunteers team member) OR TeamsAdmin/Board/Admin.
-    /// Composite policy requiring a custom authorization handler.
-    /// </summary>
-    public const string IsActiveMember = nameof(IsActiveMember);
+    public const string AppAccess = nameof(AppAccess);
 
     /// <summary>
     /// HumanAdmin who is NOT also Admin or Board. Used for the nav "Humans" link
@@ -53,6 +48,15 @@ public static class PolicyNames
     /// Board member (standalone). Used rarely — most Board gates also include Admin.
     /// </summary>
     public const string BoardOnly = nameof(BoardOnly);
+
+    /// <summary>
+    /// Read-only Barrios compliance matrix: CampAdmin OR Admin OR a coordinator /
+    /// management role-holder on any team or sub-team. Broader than
+    /// <see cref="CampAdminOrAdmin"/> (which gates the camp-management surface) so
+    /// team coordinators can also see role staffing across barrios. Composite
+    /// policy requiring a custom authorization handler.
+    /// </summary>
+    public const string CampComplianceAccess = nameof(CampComplianceAccess);
 
     /// <summary>
     /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,

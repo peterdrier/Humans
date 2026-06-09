@@ -19,7 +19,7 @@
 
 ## Business Context
 
-Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Coordinator** performs safety checks on new humans before they gain Volunteer access. The **Volunteer Coordinator** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles bypass the `MembershipRequiredFilter` (like Board and Admin) so they can access the system to perform their duties.
+Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Coordinator** performs safety checks on new humans before they gain Volunteer access. The **Volunteer Coordinator** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles authorize the onboarding-review tools after the user has passed the `UserState == Active` access gate.
 
 The consent check is purely a **Volunteer-level safety gate**. It is independent of tier applications — it does not evaluate whether someone should be a Colaborador or Asociado.
 
@@ -36,7 +36,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 
 | Capability | Board | Admin | ConsentCoordinator | VolunteerCoordinator |
 |------------|-------|-------|-------------------|---------------------|
-| Bypass MembershipRequiredFilter | Yes | Yes | Yes | Yes |
+| Requires `UserState == Active` access gate | Yes | Yes | Yes | Yes |
 | Access Admin area | Yes | Yes | No | No |
 | Access Onboarding Review queue | Yes | Yes | Yes | Yes (read-only) |
 | Clear/Flag consent checks | Yes | Yes | Yes | No |
@@ -68,7 +68,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 **Acceptance Criteria:**
 - See queue of humans with `ConsentCheckStatus = Pending`
 - View their profile (including Board-visible fields)
-- Clear: sets `ConsentCheckStatus = Cleared` → triggers auto-approve as Volunteer
+- Clear: sets `ConsentCheckStatus = Cleared`; Volunteers-team provisioning follows name + consents
 - Flag: sets `ConsentCheckStatus = Flagged` with required notes
 - Flagged humans can be cleared later or escalated
 - This check is about Volunteer safety — it does NOT evaluate tier applications
@@ -112,15 +112,7 @@ RoleAssignment
 ## Authorization Changes
 
 ### MembershipRequiredFilter
-Coordinators bypass the global membership filter, same as Board and Admin:
-```
-Exempt users (have claims):
-- ActiveMember
-- Board
-- Admin
-- ConsentCoordinator
-- VolunteerCoordinator
-```
+Coordinator roles do not bypass the global access filter. A coordinator must have `UserState == Active`; after that, the role authorizes coordinator pages such as `/OnboardingReview`.
 
 ### OnboardingReview Controller Authorization
 ```
@@ -191,9 +183,9 @@ Note: The review queue does NOT show tier application information. Consent check
 1. **Consent check = Volunteer safety gate** — does not evaluate tier applications
 2. **ConsentCoordinator is the primary reviewer** — Board and Admin can also clear/flag as backup
 3. **VolunteerCoordinator is read-only** — cannot clear or flag, only view and assist
-4. **Clearing triggers auto-approve** — no additional Board step for Volunteer access
-5. **Flagging blocks Volunteer access** — flagged humans cannot become Volunteers until resolved
-6. **Coordinators bypass MembershipRequiredFilter** — they need system access to do their job
+4. **Clearing is an audit annotation** — sets `ConsentCheckStatus = Cleared` (and `IsApproved = true`) for the CC record only; it triggers no team provisioning and no access change. Volunteers admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
+5. **Flagging is annotation-only** — sets `ConsentCheckStatus = Flagged`; it does NOT block Volunteer admission or app access. Reject (sets `RejectedAt`) is the kick-out lever, not Flag.
+6. **Coordinators do not bypass MembershipRequiredFilter** — like everyone else, they need `UserState == Active`; the role authorizes coordinator pages only after that gate passes.
 7. **Coordinator roles follow existing RoleAssignment model** — temporal, audited
 
 ## Related Features

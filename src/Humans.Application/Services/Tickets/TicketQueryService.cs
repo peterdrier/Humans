@@ -23,6 +23,7 @@ namespace Humans.Application.Services.Tickets;
 /// </summary>
 public sealed class TicketQueryService(
     ITicketRepository ticketRepository,
+    ITicketTransferRepository ticketTransferRepository,
     IBudgetService budgetService,
     ICampaignServiceRead campaignService,
     IUserService userService,
@@ -58,9 +59,12 @@ public sealed class TicketQueryService(
         var currentEventId = syncState?.VendorEventId;
         var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
 
-        return orders
-            .Select(o => Project(o, currentEventId))
-            .ToList();
+        var approved = await ticketTransferRepository.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var transfersByAttendee = approved
+            .GroupBy(t => t.OriginalTicketAttendeeId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
+
+        return orders.Select(o => Project(o, currentEventId, transfersByAttendee)).ToList();
     }
 
     private async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
@@ -155,7 +159,7 @@ public sealed class TicketQueryService(
 
                 dailySalesPoints.Add(new DailySales
                 {
-                    Date = date.ToIsoDateString(),
+                    Date = date.ToInvariantDate(),
                     TicketsSold = count,
                     RollingAverage = Math.Round(rollingAvg, 1),
                 });
@@ -319,7 +323,7 @@ public sealed class TicketQueryService(
                 var sunday = monday.PlusDays(6);
                 return new WeeklySalesAggregate
                 {
-                    WeekLabel = $"{monday.ToString("MMM d", null)} – {sunday.ToString("MMM d", null)}",
+                    WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
                     OrderCount = g.Count(),
@@ -752,7 +756,9 @@ public sealed class TicketQueryService(
         return new UserTicketExportData(orderRows, attendeeRows);
     }
 
-    private static TicketOrderInfo Project(TicketOrder o, string? currentEventId) => new(
+    private static TicketOrderInfo Project(
+        TicketOrder o, string? currentEventId,
+        IReadOnlyDictionary<Guid, TicketTransferRequest> transfersByAttendee) => new(
         Id: o.Id,
         VendorOrderId: o.VendorOrderId,
         BuyerName: o.BuyerName,
@@ -766,15 +772,23 @@ public sealed class TicketQueryService(
         MatchedUserId: o.MatchedUserId,
         IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
             && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
-        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
-            Id: a.Id,
-            VendorTicketId: a.VendorTicketId,
-            AttendeeName: a.AttendeeName,
-            AttendeeEmail: a.AttendeeEmail,
-            TicketTypeName: a.TicketTypeName,
-            Price: a.Price,
-            Status: a.Status,
-            MatchedUserId: a.MatchedUserId)).ToList(),
+        Attendees: o.Attendees.Select(a =>
+        {
+            transfersByAttendee.TryGetValue(a.Id, out var tr);
+            var hasTransfer = a.Status == TicketAttendeeStatus.Void && tr is not null;
+            return new TicketAttendeeInfo(
+                Id: a.Id,
+                VendorTicketId: a.VendorTicketId,
+                AttendeeName: a.AttendeeName,
+                AttendeeEmail: a.AttendeeEmail,
+                TicketTypeName: a.TicketTypeName,
+                Price: a.Price,
+                Status: a.Status,
+                MatchedUserId: a.MatchedUserId,
+                Barcode: a.Barcode,
+                TransferredToName: hasTransfer ? tr!.ReceiverLegalName : null,
+                TransferredAt: hasTransfer ? tr!.DecidedAt : null);
+        }).ToList(),
         StripeFee: o.StripeFee,
         ApplicationFee: o.ApplicationFee);
 
@@ -791,7 +805,7 @@ public sealed class TicketQueryService(
             o.Currency,
             o.PaymentStatus,
             o.DiscountCode,
-            PurchasedAt = o.PurchasedAt.ToInvariantInstantString(),
+            PurchasedAt = o.PurchasedAt.ToIso8601(),
         }).ToList());
 
         var attendeesSlice = new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new

@@ -13,7 +13,7 @@
                 {
                     @Model.ReporterName
                 }
-                · @Model.CreatedAt.ToString("MMM dd, HH:mm") ·
+                · @Model.CreatedAt.ToMonthDayTime() ·
                 <span class="text-muted">@Model.PageUrl</span>
             </div>
         </div>
@@ -141,7 +141,7 @@
     var borderClass = msg.IsReporter ? "border-primary" : "border-success";
     <div class="mb-3">
         <div class="text-muted mb-1" style="font-size: 0.75rem;">
-            <strong>@msg.SenderName</strong> · @msg.CreatedAt.ToString("MMM dd, HH:mm")
+            <strong>@msg.SenderName</strong> · @msg.CreatedAt.ToMonthDayTime()
         </div>
         <div class="p-2 rounded border-start border-3 @borderClass bg-body-tertiary" style="white-space: pre-wrap;">@msg.Content</div>
     </div>
@@ -159,7 +159,7 @@
 @if (Model.ResolvedAt.HasValue)
 {
     <div class="text-muted small mt-3">
-        @Html.Raw(string.Format(Localizer["Feedback_ResolvedAt"].Value, Html.Encode(Model.ResolvedAt.Value.ToString("MMM dd, HH:mm"))))
+        @Html.Raw(string.Format(Localizer["Feedback_ResolvedAt"].Value, Html.Encode(Model.ResolvedAt.Value.ToMonthDayTime())))
         @if (!string.IsNullOrEmpty(Model.ResolvedByName))
         {
             <text> @Html.Raw(string.Format(Localizer["Feedback_ResolvedBy"].Value, Html.Encode(Model.ResolvedByName)))</text>

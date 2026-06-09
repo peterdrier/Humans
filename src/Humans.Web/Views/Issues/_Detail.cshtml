@@ -19,7 +19,7 @@
                 <div class="text-muted small mt-2">
                     @Localizer["Issue_OpenedBy"]
                     <vc:human user-id="@Model.ReporterUserId" link="@(Model.IsHandler ? HumanLink.Admin : HumanLink.Public)" />
-                    · @Model.CreatedAt.ToDisplayDateTime()
+                    · @Model.CreatedAt.ToDateTime()
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Model.Description))
@@ -60,7 +60,7 @@
                                     <span class="badge bg-info bg-opacity-25 text-info-emphasis ms-1" style="font-size: 0.65rem;">@Localizer["Issue_Reporter"]</span>
                                 }
                             </span>
-                            <span>@ev.At.ToDisplayDateTime()</span>
+                            <span>@ev.At.ToDateTime()</span>
                         </div>
                         <div class="mt-1" style="white-space: pre-wrap;">@ev.Content</div>
                     </div>
@@ -71,7 +71,7 @@
                         <i class="fa-solid fa-circle-info fa-xs me-1"></i>
                         <strong>@(ev.ActorName ?? "System")</strong>
                         @ev.Description
-                        <span class="ms-1">· @ev.At.ToDisplayDateTime()</span>
+                        <span class="ms-1">· @ev.At.ToDateTime()</span>
                     </div>
                 }
             }
@@ -231,22 +231,22 @@
                 </dd>
 
                 <dt class="col-5">@Localizer["Issue_Opened"]</dt>
-                <dd class="col-7">@Model.CreatedAt.ToDisplayDate()</dd>
+                <dd class="col-7">@Model.CreatedAt.ToDate()</dd>
 
                 <dt class="col-5">@Localizer["Issue_LastUpdate"]</dt>
-                <dd class="col-7">@Model.UpdatedAt.ToDisplayDateTime()</dd>
+                <dd class="col-7">@Model.UpdatedAt.ToDateTime()</dd>
 
                 @if (Model.DueDate.HasValue)
                 {
                     <dt class="col-5">@Localizer["Issue_Due"]</dt>
-                    <dd class="col-7">@Model.DueDate.Value.ToDisplayDate()</dd>
+                    <dd class="col-7">@Model.DueDate.Value.ToDate()</dd>
                 }
 
                 @if (Model.ResolvedAt.HasValue)
                 {
                     <dt class="col-5">@Localizer["Issue_Resolved"]</dt>
                     <dd class="col-7">
-                        @Model.ResolvedAt.Value.ToDisplayDate()
+                        @Model.ResolvedAt.Value.ToDate()
                         @if (!string.IsNullOrEmpty(Model.ResolvedByName))
                         {
                             <div class="text-muted">@Localizer["Issue_ResolvedBy"] @Model.ResolvedByName</div>

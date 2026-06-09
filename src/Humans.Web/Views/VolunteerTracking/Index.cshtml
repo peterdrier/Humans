@@ -31,7 +31,6 @@
         <h2><i class="fa-solid fa-people-group me-2"></i>@Localizer["VolTrack_Title"]</h2>
     </div>
 
-    <vc:temp-data-alerts />
 
     @if (!Model.HasActiveEvent)
     {
@@ -47,7 +46,7 @@
         <div class="card-body">
             <div class="text-muted small mb-2">
                 <i class="fa-regular fa-calendar-day me-1"></i>
-                @string.Format(Localizer["VolTrack_AsOfToday"].Value, Model.Today.ToDisplayDate())
+                @string.Format(Localizer["VolTrack_AsOfToday"].Value, Model.Today.ToDate())
             </div>
             <div class="row g-3 align-items-center mb-3">
                 <div class="col-md-3">

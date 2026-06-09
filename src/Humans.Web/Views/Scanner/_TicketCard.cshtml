@@ -1,0 +1,38 @@
+@using Humans.Domain.Enums
+@using NodaTime
+@model Humans.Web.Models.ScannerTicketCardViewModel
+
+@if (!Model.Found)
+{
+    <div class="alert alert-secondary" role="alert">
+        @Localizer["Scanner_Tickets_NotFound"]
+        @if (!string.IsNullOrEmpty(Model.ScannedBarcode))
+        {
+            <code class="text-break d-block mt-1">@Model.ScannedBarcode</code>
+        }
+    </div>
+}
+else
+{
+    <vc:ticket-stub stub="@Model.Stub" />
+
+    <dl class="row mt-3 mb-0 small">
+        <dt class="col-sm-4">@Localizer["Scanner_Tickets_Type"]</dt>
+        <dd class="col-sm-8">@Model.TicketTypeName</dd>
+
+        <dt class="col-sm-4">@Localizer["Scanner_Tickets_Status"]</dt>
+        <dd class="col-sm-8">@Model.Stub!.Status</dd>
+
+        @if (Model.Stub.Status == TicketAttendeeStatus.Void && Model.TransferredToName != null)
+        {
+            <dt class="col-sm-4">@Localizer["Scanner_Tickets_TransferredTo"]</dt>
+            <dd class="col-sm-8">@Model.TransferredToName</dd>
+
+            @if (Model.TransferredAt.HasValue)
+            {
+                <dt class="col-sm-4">@Localizer["Scanner_Tickets_TransferredOn"]</dt>
+                <dd class="col-sm-8">@Model.TransferredAt.Value.ToDate(DateTimeZone.Utc)</dd>
+            }
+        }
+    </dl>
+}

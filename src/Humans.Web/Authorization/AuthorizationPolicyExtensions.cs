@@ -15,14 +15,13 @@ public static class AuthorizationPolicyExtensions
 {
     public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
     {
-        services.AddSingleton<IAuthorizationHandler, ActiveMemberOrShiftAccessHandler>();
-        services.AddSingleton<IAuthorizationHandler, IsActiveMemberHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Scoped: depend on scoped services.
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, ContainerAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
@@ -76,6 +75,12 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.CampAdmin, RoleNames.Admin));
 
+            // CampAdmin/Admin OR any team coordinator — the OR (including the
+            // team-coordinator lookup) lives in CampComplianceAccessHandler so the
+            // policy is a single requirement (policy requirements AND together).
+            options.AddPolicy(PolicyNames.CampComplianceAccess, policy =>
+                policy.AddRequirements(new CampComplianceAccessRequirement()));
+
             options.AddPolicy(PolicyNames.TicketAdminBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.TicketAdmin, RoleNames.Admin, RoleNames.Board));
 
@@ -127,11 +132,10 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
                 policy.AddRequirements(new AgentRateLimitRequirement()));
 
-            options.AddPolicy(PolicyNames.ActiveMemberOrShiftAccess, policy =>
-                policy.AddRequirements(new ActiveMemberOrShiftAccessRequirement()));
-
-            options.AddPolicy(PolicyNames.IsActiveMember, policy =>
-                policy.AddRequirements(new IsActiveMemberRequirement()));
+            // Single nav-visibility gate: only Active users see app navigation.
+            options.AddPolicy(PolicyNames.AppAccess, policy =>
+                policy.RequireAssertion(ctx =>
+                    RoleAssignmentClaimsTransformation.IsActive(ctx.User)));
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));

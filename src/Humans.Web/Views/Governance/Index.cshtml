@@ -60,12 +60,12 @@
                         }
 
                         <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
-                        <dd class="col-sm-8">@Model.ApplicationSubmittedAt.ToDisplayLongDate()</dd>
+                        <dd class="col-sm-8">@Model.ApplicationSubmittedAt.ToDate()</dd>
 
                         @if (Model.ApplicationResolvedAt.HasValue)
                         {
                             <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
-                            <dd class="col-sm-8">@Model.ApplicationResolvedAt.ToDisplayLongDate()</dd>
+                            <dd class="col-sm-8">@Model.ApplicationResolvedAt.ToDate()</dd>
                         }
 
                         @if (Model.ApplicationStatus == ApplicationStatus.Approved && Model.ApplicationResolvedAt.HasValue)

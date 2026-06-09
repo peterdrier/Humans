@@ -10,7 +10,6 @@
     </a>
 </div>
 
-<vc:temp-data-alerts />
 
 @if (Model.Applications.Count == 0)
 {
@@ -63,7 +62,7 @@ else
                                     </span>
                                 </td>
                                 <td class="text-center">
-                            <small>@app.SubmittedAt.ToDisplayDate()</small>
+                            <small>@app.SubmittedAt.ToDate()</small>
                                 </td>
                                 @foreach (var member in Model.BoardMembers)
                                 {

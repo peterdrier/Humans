@@ -8,7 +8,6 @@
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);
-    var invariant = System.Globalization.CultureInfo.InvariantCulture;
 
     var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
     var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
@@ -58,7 +57,7 @@
                 var day = firstOfMonth.PlusDays(d - 1);
                 var dayOccs = byDate.TryGetValue(day, out var list) ? list : [];
                 <tr>
-                    <td style="width: 10rem"><strong>@day.ToString("d MMM (ddd)", System.Globalization.CultureInfo.CurrentCulture)</strong></td>
+                    <td style="width: 10rem"><strong>@day.ToWeekdayDayMonth()</strong></td>
                     <td>
                         @if (dayOccs.Count == 0)
                         {
@@ -80,7 +79,7 @@
                                     }
                                     else
                                     {
-                                        <span class="badge bg-light text-dark">@localStart.ToString("HH:mm", invariant)</span>
+                                        <span class="badge bg-light text-dark">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
                                     }
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                                 </div>

@@ -1,5 +1,7 @@
 namespace Humans.Application.DTOs;
 
+using Humans.Domain.Enums;
+
 public record AdminHumanRow(
     Guid UserId,
     string Email,
@@ -7,6 +9,4 @@ public record AdminHumanRow(
     string? ProfilePictureUrl,
     DateTime CreatedAt,
     DateTime? LastLoginAt,
-    bool HasProfile,
-    bool IsApproved,
-    string MembershipStatus);
+    UserState State);

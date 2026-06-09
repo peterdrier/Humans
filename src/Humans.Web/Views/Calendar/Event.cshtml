@@ -31,14 +31,14 @@
     <dl class="row">
         <dt class="col-sm-3">First start</dt>
         <dd class="col-sm-9">
-            @firstLocal.ToString("dddd d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+            @firstLocal.ToMonthDayTime()
             <small class="text-muted">(@Model.ViewerTimezoneLabel)</small>
         </dd>
 
         @if (endLocal is { } el)
         {
             <dt class="col-sm-3">End</dt>
-            <dd class="col-sm-9">@el.ToString("dddd d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)</dd>
+            <dd class="col-sm-9">@el.ToMonthDayTime()</dd>
         }
 
         @if (Model.Event.IsAllDay)
@@ -87,7 +87,7 @@
                 var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
                 <li class="mb-1 d-flex align-items-center gap-2">
                     <span>
-                        <strong>@localStart.ToString("d MMM (ddd) HH:mm", System.Globalization.CultureInfo.CurrentCulture)</strong>
+                        <strong>@localStart.ToMonthDayTime()</strong>
                         @if (!string.Equals(o.Title, Model.Event.Title, StringComparison.Ordinal))
                         {
                             <em class="text-muted">— @o.Title</em>
@@ -120,10 +120,10 @@
         var updatedLocal = Model.Event.UpdatedAt.InZone(zone).LocalDateTime;
     }
     <p class="text-muted small mt-4">
-        Created @createdLocal.ToString("d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+        Created @createdLocal.ToDateTime()
         @if (Model.Event.UpdatedAt != Model.Event.CreatedAt)
         {
-            <span>· Last updated @updatedLocal.ToString("d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)</span>
+            <span>· Last updated @updatedLocal.ToDateTime()</span>
         }
     </p>
 

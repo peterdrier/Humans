@@ -170,7 +170,8 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
 
         var start = ConfigurationNamespacePrefix.Length + 1;
         var dot = ns.IndexOf('.', start);
-        return dot < 0 ? ns.Substring(start) : ns.Substring(start, dot - start);
+        var raw = dot < 0 ? ns.Substring(start) : ns.Substring(start, dot - start);
+        return FoldSection(raw);
     }
 
     private static INamedTypeSymbol? FindTargetEntity(
@@ -240,6 +241,13 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
 
     private static string SymbolKey(ITypeSymbol type) =>
         type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static string FoldSection(string raw) =>
+        raw switch
+        {
+            "Users" or "Profile" or "Profiles" => "Humans",
+            _ => raw,
+        };
 
     private sealed class OwnershipMap
     {

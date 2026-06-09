@@ -2375,6 +2375,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("ExpenseReportId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("LineType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Receipt");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -4908,6 +4915,10 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
 
@@ -4944,6 +4955,8 @@ namespace Humans.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AttendeeEmail");
+
+                    b.HasIndex("Barcode");
 
                     b.HasIndex("MatchedUserId");
 
@@ -5345,6 +5358,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool>("SuppressScheduleChangeEmails")
                         .HasColumnType("boolean");

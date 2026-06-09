@@ -6,6 +6,8 @@ Use this reference to guide autonomous tech-debt reduction passes in the Humans 
 
 Reduce impactful tech debt. Favor consolidation, clearer ownership, shared patterns, and simpler code paths. Do not add features or chase style-only cleanup.
 
+Reforge and similar scores are triage signals only. A lower score is not proof of improvement and must never be the primary reason to keep a change. Every committed change needs an architecture reason that is valid without score context: a concept deleted, duplicated behavior collapsed, ownership clarified, coupling reduced, or durable surface removed.
+
 Good candidates usually look like:
 
 - duplicated logic that should be shared
@@ -53,6 +55,7 @@ Deprioritize:
 - large rewrites with weak behavioral payoff
 - breaking interface churn unless the call graph is fully understood
 - file splitting done only to reduce line count
+- moving assignments, string formatting, or service calls into DTO/request/command records only to make a metric stop flagging them
 
 ## Layer-Separation Rules
 
@@ -138,6 +141,32 @@ Bad pattern:
 
 New durable surfaces are justified when the data is unbounded, permission-specific, expensive to materialize through the read model, transactional, sensitive, not a stable fact of the aggregate, or when adding the fields would pollute the canonical DTO with screen-only concerns. Otherwise, a few scalar DTO properties are lower weight than another interface, implementation, DI registration, test fixture, cache path, and HUM0025 ownership surface.
 
+## Parameter-Bag And Command Rules
+
+Treat parameter-bag warnings as prompts to inspect ownership, not as instructions to add methods.
+
+Bad fixes:
+
+- add `ApplyTo`, `ToDto`, `RenderWith`, `BuildSummary`, `SaveAsync`, or similar thin methods whose body only assigns fields, formats existing fields, or delegates to a service
+- move a long call's arguments into an input record and immediately unpack them elsewhere
+- add behavior to a public request/command only so Reforge no longer classifies it as a bag
+- convert explicit domain verbs into generic action/mode dispatchers
+
+Good fixes:
+
+- replace a long signature with a command that has cohesive domain meaning and is reused across related flows
+- put validation, invariants, state-transition rules, authorization-neutral domain policy, or normalization on the object that owns those rules
+- delete duplicated call structures or public overload families because callers can use one clear command/query
+- add facts to an existing canonical read DTO when doing so removes DB reads, service predicates, or projection methods
+
+Before committing a parameter-object change, answer:
+
+- What responsibility is now in the correct owner?
+- What concept, overload, method family, or duplicate call structure was deleted?
+- Would this diff still be worth keeping if Reforge showed no score movement?
+
+If the answer is weak, abandon the patch even if the score improves.
+
 ## Section Read-Service Rules
 
 When a section exposes both a full service interface and a `*ServiceRead` interface, code outside the owning section should depend on the read interface unless it truly writes, invalidates caches, performs an owning-section workflow, or needs an entity-only method that has no read-model equivalent yet.
@@ -164,3 +193,4 @@ Migration strategy:
 - When touching authorization, preserve the exact access level.
 - Keep controllers thin and services cohesive, but do not move code across boundaries unless the ownership problem is obvious and local.
 - Stop if the next step drifts into database, migration, or entity-shape changes.
+- Stop when remaining candidates only satisfy metric movement, not architecture value. Report the exhausted safe opportunities instead of forcing a target.

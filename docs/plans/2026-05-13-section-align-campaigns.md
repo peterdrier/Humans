@@ -18,15 +18,15 @@ Campaign UI/admin flow is owned by `CampaignController` only.
 
 ### 1.3 URL surface - clean
 Routes are under one canonical surface:
-- `GET/POST /Admin/Campaigns`
-- `/Admin/Campaigns/{id:guid}` (detail)
-- `/Admin/Campaigns/{id:guid}/ImportCodes`
-- `/Admin/Campaigns/{id:guid}/GenerateCodes`
-- `/Admin/Campaigns/{id:guid}/Activate`
-- `/Admin/Campaigns/{id:guid}/Complete`
-- `/Admin/Campaigns/{id:guid}/SendWave`
-- `/Admin/Campaigns/{id:guid}/RetryAllFailed`
-- `/Admin/Campaigns/Grants/{grantId:guid}/Resend`
+- `GET/POST /Campaigns/Admin`
+- `/Campaigns/Admin/{id:guid}` (detail)
+- `/Campaigns/Admin/{id:guid}/ImportCodes`
+- `/Campaigns/Admin/{id:guid}/GenerateCodes`
+- `/Campaigns/Admin/{id:guid}/Activate`
+- `/Campaigns/Admin/{id:guid}/Complete`
+- `/Campaigns/Admin/{id:guid}/SendWave`
+- `/Campaigns/Admin/{id:guid}/RetryAllFailed`
+- `/Campaigns/Admin/Grants/{grantId:guid}/Resend`
 
 No `Team*`-style route aliasing or undocumented controller split was found.
 
@@ -171,7 +171,7 @@ None.
 2. [ ] Add `CampaignsArchitectureTests` and wire section boundary checks.
 
 ### Phase 3 - Test hardening
-1. [ ] Add controller-auth tests for `/Admin/Campaigns/*` policies.
+1. [ ] Add controller-auth tests for `/Campaigns/Admin/*` policies.
 2. [ ] Add targeted campaign admin e2e coverage for core workflow if not already implied by existing suite.
 
 ### Phase 4 - Docs

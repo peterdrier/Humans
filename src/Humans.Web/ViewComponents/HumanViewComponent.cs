@@ -50,7 +50,7 @@ public class HumanViewComponent(IUserServiceRead userService, IUrlHelperFactory 
         {
             var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
             href = link == HumanLink.Admin
-                ? urlHelper.Action("AdminDetail", "Profile", new { id = userId })
+                ? urlHelper.Action("AdminDetail", "UsersAdmin", new { id = userId })
                 : urlHelper.Action("ViewProfile", "Profile", new { id = userId });
         }
 

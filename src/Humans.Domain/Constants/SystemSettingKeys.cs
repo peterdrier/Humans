@@ -6,4 +6,5 @@ namespace Humans.Domain.Constants;
 public static class SystemSettingKeys
 {
     public const string IsEmailSendingPaused = "IsEmailSendingPaused";
+    public const string DriveActivityMonitorLastRunAt = "DriveActivityMonitor:LastRunAt";
 }

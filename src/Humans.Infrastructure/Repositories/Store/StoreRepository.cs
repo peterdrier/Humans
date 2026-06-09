@@ -128,6 +128,7 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
+            .Include(o => o.Payments)
             .Where(o => o.TeamId == teamId && o.Year == year)
             .FirstOrDefaultAsync(ct);
     }

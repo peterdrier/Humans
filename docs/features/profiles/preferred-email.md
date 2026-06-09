@@ -182,10 +182,9 @@ Uses ASP.NET Identity's built-in token providers:
 
 | Route | Purpose |
 |-------|---------|
-| `/Profile/Emails` | Manage email addresses (add, verify, remove, set visibility, Google preference) |
-| `/Profile/PreferredEmail` | Legacy redirect → `/Profile/Emails` |
-| `/Admin/Email` | List all @nobodies.team accounts, provision, suspend, link to humans |
-| `/Human/{id}/ProvisionEmail` | Provision @nobodies.team account from human admin page |
+| `/Profile/Me/Emails` | Manage email addresses (add, verify, remove, set visibility, Google preference) |
+| `/Google/Accounts` | List all @nobodies.team accounts, provision, suspend, link to humans |
+| `/Google/Human/{id}/ProvisionEmail` | Provision @nobodies.team account from human admin page |
 
 ## Service Integration
 

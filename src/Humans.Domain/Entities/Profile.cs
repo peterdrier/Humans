@@ -94,7 +94,7 @@ public class Profile
     /// <summary>Obsolete — pictures live on the file share. DB column retained for prod-soak drop. See #702.</summary>
     [PersonalData]
     [Obsolete("Pictures live on the file share; this column is unused. The DB column stays until a follow-up PR after prod soak per memory/architecture/no-drops-until-prod-verified.md.", DiagnosticId = "HUM_PROFILE_PICTUREDATA", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/702")]
-    [Architecture.ExpiresOn("2026-06-01", reason: "Issue #702 — DB→FS migration complete (PR #576); column reserved for prod-soak drop.")]
+    [Architecture.ExpiresOn("2026-09-01", reason: "Issue #702 — DB→FS migration complete (PR #576); column reserved for prod-soak drop.")]
     public byte[]? ProfilePictureData { get; set; }
 
     /// <summary>Doubles as the "has picture?" predicate; supplies the file extension.</summary>

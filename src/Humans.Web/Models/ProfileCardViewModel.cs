@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Domain.Enums;
 using Humans.Web.ViewComponents;
 
@@ -65,8 +66,7 @@ public class ProfileCardViewModel
             try
             {
                 var date = new LocalDate(4, BirthdayMonth.Value, BirthdayDay.Value);
-                var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMMM d");
-                return pattern.Format(date);
+                return date.ToWeekdayDayMonth();
             }
             catch (ArgumentOutOfRangeException)
             {

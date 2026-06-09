@@ -46,6 +46,23 @@ public class UserAgentClassifierTests
         result.Device.Should().Be("Bot");
     }
 
+    [HumansFact]
+    public void Classify_Googlebot_SurfacesSpecificBotName()
+    {
+        const string ua = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+
+        var result = UserAgentClassifier.Classify(ua);
+
+        // A recognised crawler carries its specific name (not the "Other bot" fallback)
+        // so the ClientStats screen can break the collapsed "Bot" bucket down.
+        result.BotName.Should().NotBeNullOrEmpty();
+        result.BotName.Should().NotBe("Other bot");
+    }
+
+    [HumansFact]
+    public void Classify_NormalBrowser_HasNoBotName()
+        => UserAgentClassifier.Classify(WinChrome).BotName.Should().BeNull();
+
     [HumansTheory]
     [InlineData(null)]
     [InlineData("")]

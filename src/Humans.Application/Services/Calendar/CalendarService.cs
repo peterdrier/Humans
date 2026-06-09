@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Repositories;
@@ -199,13 +200,11 @@ public sealed class CalendarService(
                 }
                 if (val.Contains('T'))
                 {
-                    var local = NodaTime.Text.LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss")
-                        .Parse(val).Value;
+                    var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val).Value;
                     return local.InZoneStrictly(zone).ToInstant();
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
-                var date = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyyMMdd")
-                    .Parse(val).Value;
+                var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
                 return (date.PlusDays(1).AtMidnight()).InZoneStrictly(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))

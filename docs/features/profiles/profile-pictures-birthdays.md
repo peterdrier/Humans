@@ -117,7 +117,7 @@ Saves and removals dual-write: `SaveProfileAsync` writes both DB and filesystem,
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `GET /Profile/Picture/{id}` | GET | Serve profile picture (anonymous, cached 1hr) |
+| `GET /Profile/Picture?id={id}` | GET | Serve profile picture (anonymous, cached 1hr) |
 | `POST /Profile/Me/ImportGooglePhoto` | POST | Import the signed-in user's Google avatar as their custom picture (anti-forgery; SSRF-guarded to `*.googleusercontent.com`) |
 | `GET /Teams/Birthdays` | GET | Birthday calendar (current month) |
 | `GET /Teams/Birthdays?month=N` | GET | Birthday calendar for specific month |
@@ -132,7 +132,7 @@ Saves and removals dual-write: `SaveProfileAsync` writes both DB and filesystem,
        │
 ┌──────▼──────────┐
 │  Validate:      │
-│  - Size ≤ 2MB   │
+│  - Size ≤ 20MB  │
 │  - JPEG/PNG/WebP│
 └──────┬──────────┘
        │

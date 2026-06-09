@@ -52,7 +52,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.Property(n => n.CreatedAt)
             .IsRequired();
 
-        builder.HasOne(n => n.ResolvedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(n => n.ResolvedByUserId)
             .OnDelete(DeleteBehavior.SetNull);

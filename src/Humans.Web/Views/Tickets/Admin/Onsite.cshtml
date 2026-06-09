@@ -74,7 +74,7 @@ else
                 {
                     <tr>
                         <td><vc:human user-id="@row.UserId" /></td>
-                        <td>@row.CheckedInAt.ToDisplayDateTime()</td>
+                        <td>@row.CheckedInAt.ToDateTime()</td>
                         <td>@(row.CampNames.Count == 0 ? "—" : string.Join(", ", row.CampNames))</td>
                         <td>@(row.TeamNames.Count == 0 ? "—" : string.Join(", ", row.TeamNames))</td>
                         <td>@(row.RoleNames.Count == 0 ? "—" : string.Join(", ", row.RoleNames))</td>

@@ -20,17 +20,28 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 - Do not modify entity shapes, migration files, or JSON serialization attributes.
 - Do not delete files, remove controller actions, or remove public members as part of the cleanup.
 - Prefer structural simplification and consolidation over broad rewrites.
+- Treat Reforge or any score as a detector, not an objective. A score decrease alone never justifies a commit.
+- Do not add thin behavior to DTO/request/command/options/input records just to escape a parameter-bag or long-signature rule. Methods such as `ApplyTo`, `ToDto`, `RenderWith`, `BuildSummary`, `SaveAsync`, or service-delegating wrappers are acceptable only when they enforce real invariants, validation, state transitions, or domain policy that the type already owns.
 
 ## Working Loop
 
 1. Read [humans-tech-debt-rules.md](./references/humans-tech-debt-rules.md).
 2. Pick one high-value debt item at a time.
-3. Make the smallest coherent improvement that reduces divergence, duplication, or misplaced responsibility.
-4. Add or extend tests when practical.
-5. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q`.
-6. Periodically run `dotnet test Humans.slnx --no-build --disable-build-servers -v q --filter "FullyQualifiedName~Application"`.
-7. Commit each improvement separately and push the branch after verified progress.
-8. Continue until remaining ideas are low-value, speculative, or blocked by forbidden areas.
+3. Before editing, write a one-sentence architecture thesis: what concept will be deleted, what responsibility will move to its rightful owner, or what duplication/coupling will disappear. If the thesis is "the score drops", abandon the candidate.
+4. Make the smallest coherent improvement that reduces divergence, duplication, misplaced responsibility, or durable public surface.
+5. Add or extend tests when practical.
+6. Run targeted verification, plus `dotnet build Humans.slnx --disable-build-servers -v q`.
+7. Run a score-blind second pass before commit. Review only the diff, the architecture thesis, and verification. Reject the change if it would not be worth keeping without metric movement.
+8. Periodically run `dotnet test Humans.slnx --no-build --disable-build-servers -v q --filter "FullyQualifiedName~Application"`.
+9. Commit each accepted improvement separately and push the branch after verified progress.
+10. Continue until remaining ideas are low-value, speculative, blocked by forbidden areas, or only reducible through metric-gaming changes.
+
+## Metric Integrity
+
+- Use Reforge to find suspicious surfaces and compare checkpoints, not to decide that a weak patch is good.
+- Prefer changes that remove a real concept, collapse duplicated behavior, narrow cross-section dependencies, or move a rule to its owning section.
+- Reject refactors whose main effect is moving assignments, formatting strings, or service calls from one class into a request/command object without reducing coupling or clarifying ownership.
+- Do not keep working toward a percentage target after the remaining candidates fail the architecture thesis or score-blind review. Report that the safe score reduction is exhausted instead.
 
 ## Parallel Work
 

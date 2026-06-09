@@ -9,6 +9,8 @@ public sealed record ClientStatsViewModel(
     IReadOnlyList<ClientStatRow> OperatingSystems,
     IReadOnlyList<ClientStatRow> Browsers,
     IReadOnlyList<ClientStatRow> DeviceTypes,
+    long TotalBotPageViews,
+    IReadOnlyList<ClientStatRow> Bots,
     long TotalResolutionSamples,
     IReadOnlyList<ClientStatRow> Resolutions,
     long TotalResponses,

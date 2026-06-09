@@ -327,4 +327,4 @@ The `.env.example` at the repo root has the Docker Compose variables. Copy to `.
 
 ## Verifying the Setup
 
-After configuring credentials, check the **Admin > Configuration** page (`/Admin/Configuration`). It shows which keys are set and which are missing. The health check endpoint (`/health/ready`) also verifies Google Workspace connectivity.
+After configuring credentials, check the **Admin > Configuration** page (`/Debug/Configuration`). It shows which keys are set and which are missing. The health check endpoint (`/health/ready`) also verifies Google Workspace connectivity.

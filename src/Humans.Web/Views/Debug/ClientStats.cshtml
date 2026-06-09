@@ -32,6 +32,10 @@
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
+                 model="@(new Humans.Web.Models.ClientStatTableModel("Bots / crawlers", "fa-solid fa-robot", Model.TotalBotPageViews, Model.Bots))" />
+    </div>
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
                  model="@(new Humans.Web.Models.ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
     </div>
 </div>

@@ -219,7 +219,7 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
         {
             var category = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
             var date = NodaTime.Text.LocalDatePattern.Iso.Parse(row.Date).Value;
-            var time = NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Value;
+            var time = DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Value;
             var startAt = (date + time).InZoneLeniently(timeZone).ToInstant();
             var recurrenceOffsets = row.IsRecurring && !string.IsNullOrEmpty(row.RecurrenceDays)
                 ? EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset)
@@ -324,7 +324,7 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
                 rowErrors.Add("Date must be in yyyy-MM-dd format.");
 
             if (string.IsNullOrWhiteSpace(row.StartTime)) rowErrors.Add("StartTime is required.");
-            else if (!NodaTime.Text.LocalTimePattern.CreateWithInvariantCulture("HH:mm").Parse(row.StartTime).Success)
+            else if (!DateFormattingExtensions.TimeOfDayPattern.Parse(row.StartTime).Success)
                 rowErrors.Add("StartTime must be in HH:mm format.");
 
             if (row.DurationMinutes < 15 || row.DurationMinutes > 480)
@@ -545,12 +545,12 @@ public sealed class EventService(IEventRepository repo, IBurnSettingsService bur
                 .Select(f => new
                 {
                     f.GuideEventId,
-                    CreatedAt = f.CreatedAt.ToInvariantInstantString()
+                    CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
             Preference = preference == null ? null : new
             {
                 preference.ExcludedCategorySlugs,
-                UpdatedAt = preference.UpdatedAt.ToInvariantInstantString()
+                UpdatedAt = preference.UpdatedAt.ToIso8601()
             }
         };
 

@@ -59,13 +59,13 @@ else
                     {
                         <td><vc:human user-id="@conv.UserId" link="Admin" /></td>
                     }
-                    <td class="text-nowrap">@conv.StartedAt.ToAuditMinuteTimestamp()</td>
+                    <td class="text-nowrap">@conv.StartedAt.ToInvariantTimestamp()</td>
                     @if (Model.IsAdminView)
                     {
                         <td>@conv.Locale</td>
                     }
                     <td class="text-end">@conv.MessageCount</td>
-                    <td class="text-nowrap">@conv.LastMessageAt.ToAuditMinuteTimestamp()</td>
+                    <td class="text-nowrap">@conv.LastMessageAt.ToInvariantTimestamp()</td>
                     @* Non-admin viewers go to the user-facing transcript (issue #632) which
                        reuses the live-chat bubble style and surfaces the live user-context tail.
                        Admins keep the existing token/tool-call diagnostic view. *@

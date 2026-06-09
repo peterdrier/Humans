@@ -194,8 +194,8 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Human/{id}/Admin` | GET | Human admin page (shows provisioning form) |
-| `/Human/{id}/Admin/ProvisionEmail` | POST | Provision and link @nobodies.team account |
+| `/Users/Admin/{id}` | GET | Human admin page (shows provisioning form) |
+| `/Google/Human/{id}/ProvisionEmail` | POST | Provision and link @nobodies.team account |
 | `/Google/Accounts` | GET | List all @nobodies.team accounts with 2FA status, recovery email, link orphans (replaces the legacy `/Admin/Email` route) |
 | `/Google/Accounts/ResetPassword` | POST | Reset password — temp password shown once in a modal |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Reset password + issue one backup verification code — both shown once in the same modal |

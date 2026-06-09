@@ -18,7 +18,11 @@ public class ProfileApiController(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
-    private const int MaxResults = 10;
+    // No result cap: at ~500-user scale a name match returns a handful of rows, and a hard cap
+    // returned an *arbitrary* N in cache-iteration order (so the person being searched for could be
+    // missing entirely), then alphabetized them. We request the full match set, rank by relevance,
+    // and the scrollable dropdown shows the best matches first. Mirrors SearchService's Unlimited.
+    private const int Unlimited = int.MaxValue;
 
     private readonly IUserServiceRead _userService = userService;
 
@@ -64,10 +68,11 @@ public class ProfileApiController(
             });
         }
 
-        var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
+        var results = await _userService.SearchUsersAsync(q, fields, Unlimited, ct);
 
         var response = new List<HumanLookupSearchResult>(results.Count);
-        foreach (var result in results.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase))
+        // Display sort at controller (display-sort-in-controllers): relevance, then name.
+        foreach (var result in results.OrderByRelevance())
         {
             var detail = await GetSharedDetailAsync(
                 result.UserId,

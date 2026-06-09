@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
@@ -8,7 +9,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Application.Services.Shifts;
 
@@ -353,11 +353,9 @@ public sealed class RotaCoordinatorMessageService(
     {
         var local = zoned.LocalDateTime;
         // Invariant culture: stable parseable shape for short ops notices.
-        var datePattern = LocalDateTimePattern.CreateWithInvariantCulture("ddd MMMM d");
-        var timePattern = LocalDateTimePattern.CreateWithInvariantCulture("HH:mm");
         return isAllDay
-            ? datePattern.Format(local)
-            : $"{datePattern.Format(local)} @ {timePattern.Format(local)}";
+            ? DateFormattingExtensions.OpsNoticeDatePattern.Format(local)
+            : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
     }
 
     private static string Truncate(string text, int max) =>

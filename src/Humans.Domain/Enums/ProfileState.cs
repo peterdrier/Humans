@@ -24,11 +24,18 @@ public enum ProfileState
     Active = 1,
 
     /// <summary>
-    /// Profile has been administratively suspended. Replaces the
+    /// Profile has been suspended for missing required consents. Replaces the
     /// <c>IsSuspended = true</c> write path; the underlying
     /// <see cref="Entities.Profile.IsSuspended"/> column stays per
     /// <c>memory/architecture/no-drops-until-prod-verified.md</c> until a
     /// follow-up PR drops it after prod soak.
     /// </summary>
     Suspended = 2,
+
+    /// <summary>
+    /// Profile has been explicitly suspended by an administrator. Kept separate
+    /// from <see cref="Suspended"/> so consent completion cannot clear an admin
+    /// suspension.
+    /// </summary>
+    AdminSuspended = 3,
 }

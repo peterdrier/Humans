@@ -11,7 +11,6 @@
     <vc:access-matrix section="OnboardingReview" />
 </div>
 
-<vc:temp-data-alerts />
 
 @if (Model.PendingReviews.Count == 0 && Model.FlaggedReviews.Count == 0)
 {
@@ -69,7 +68,7 @@
                                     </span>
                                 }
                                 <br />
-                                <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                                <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
                                     <i class="fa-solid fa-eye me-1"></i>Review
                                 </a>
@@ -127,7 +126,7 @@
                                     </span>
                                 }
                                 <br />
-                                <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                                <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
                                     <i class="fa-solid fa-eye me-1"></i>Review
                                 </a>

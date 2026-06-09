@@ -1,21 +1,13 @@
 @model Humans.Web.Models.ContainerMapViewModel
 @{
     ViewData["Title"] = $"Container Placement {Model.Year}";
+    ViewData["BodyClass"] = "city-map-fullscreen";
     Layout = "_Layout";
-    var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
 }
 
 @section Styles {
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
     <style>
-        :root {
-            --container-fill:          var(--h-sepia);
-            --container-fill-selected: var(--h-gold);
-        }
-        /* Override the main layout to occupy the whole screen space */
-        body { height: 100vh; overflow: hidden; }
-        .main-content { display: flex; max-width: 100vw; padding: 0; min-height: 0; }
-        main { display: flex; flex: 1; padding: 0; min-height: 0; }
         #map-page, #container-sidebar { min-height: 0; }
         #container-sidebar { width: 280px; }
         #rotation-handle {
@@ -50,7 +42,7 @@
 
 @Html.AntiForgeryToken()
 
-<div id="map-page" class="d-flex flex-fill overflow-hidden">
+<div id="map-page" class="city-map-page city-map-container-page d-flex flex-fill overflow-hidden">
     <div id="container-sidebar" class="border-end d-flex flex-column overflow-hidden flex-shrink-0">
         <div class="px-3 py-2 border-bottom d-flex flex-column align-items-center gap-2">
             <div>
@@ -83,33 +75,24 @@
         </div>
     </div>
     <div id="map-container" class="flex-fill position-relative">
-        <div id="map" class="h-100 w-100"
+        <div id="map" class="city-map-canvas"
              data-year="@Model.Year"
              data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
              data-user-camp-id="@Model.UserCampId"></div>
         <div id="rotation-handle"><i class="fa-solid fa-rotate"></i></div>
         <div id="map-toast" class="alert alert-danger py-2 px-3 mb-0 shadow-sm" role="alert"></div>
-        <div class="position-absolute top-0 end-0 m-3 d-grid gap-3" style="z-index:10;">
+        <div class="position-absolute top-0 end-0 m-3 d-grid gap-3 city-map-controls">
+            @await Html.PartialAsync("_MeasurePanel", new CityPlanningMeasurePanelViewModel
+            {
+                AccessMatrixSection = "ContainerMap"
+            })
             <div class="card shadow-sm">
-                <div class="card-body py-2 px-3 d-flex flex-column gap-1">
-                    <vc:access-matrix section="ContainerMap" />
-                    <div class="d-flex gap-1">
-                        <button type="button" id="measure-btn" class="btn btn-outline-secondary btn-sm flex-grow-1" aria-pressed="false">
-                            <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
-                        </button>
-                        <button id="clear-measurements-btn" type="button" class="btn btn-sm btn-outline-danger d-none" title="@clearMeasurementsLabel" aria-label="@clearMeasurementsLabel">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="card shadow-sm">
-                <div class="card-body py-2 px-3" style="font-size:11px; line-height:1.4;">
-                    <div class="fw-semibold mb-1 text-muted text-uppercase" style="font-size:10px; letter-spacing:.05em;">@Localizer["ContainerMap_Legend_Title"]</div>
+                <div class="card-body py-2 px-3 city-map-legend">
+                    <div class="fw-semibold mb-1 text-muted text-uppercase city-map-panel-label">@Localizer["ContainerMap_Legend_Title"]</div>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                      <svg width="36" height="18" viewBox="0 0 36 18" style="flex-shrink:0;">
-                          <polygon points="0,0 0,18 24,18 24,13.5 30,9 24,4.5 24,0" style="fill: var(--container-fill); fill-opacity: 0.7"/>
-                          <polygon points="24,4.5 30,9 24,13.5" style="fill: var(--container-fill)"/>
+                      <svg width="36" height="18" viewBox="0 0 36 18" class="city-map-legend-swatch">
+                          <polygon points="0,0 0,18 24,18 24,13.5 30,9 24,4.5 24,0" class="city-map-container-body" />
+                          <polygon points="24,4.5 30,9 24,13.5" class="city-map-container-door" />
                       </svg>
                       <ul class="list-unstyled mb-0">
                         <li>@Localizer["ContainerMap_Legend_Body"]</li>
@@ -144,7 +127,7 @@
                         <div class="mb-3">
                             <label class="form-label">@Localizer["Container_FieldPlacementImage"]</label>
                             <div class="mb-2 d-none" data-role="existing-image-wrap">
-                                <img data-role="existing-image" alt="" style="height:96px;object-fit:cover;border-radius:4px;" />
+                                <img data-role="existing-image" alt="" class="city-map-image-thumb" />
                             </div>
                             <div class="form-check mb-2 d-none" data-role="remove-image-wrap">
                                 <input type="checkbox" name="RemovePlacementImage" value="true" class="form-check-input" id="removePlacementImageMap" />

@@ -1,5 +1,7 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
@@ -33,6 +35,11 @@ public class EventsController(
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 21 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> MySubmissions()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -254,6 +261,11 @@ public class EventsController(
 
     [HttpPost("Submit/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 42 statements, cc 17.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -387,8 +399,8 @@ public class EventsController(
                 DurationMinutes = e.DurationMinutes,
                 DayOffset = dayOffset,
                 DayLabel = gateOpeningDate != null
-                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToString("ddd d MMM", null)
-                    : localStart.ToString("ddd d MMM", System.Globalization.CultureInfo.InvariantCulture),
+                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
+                    : localStart.ToWeekdayDayMonth(),
                 StartInstant = e.StartAt,
                 HasConflict = false
             };
@@ -428,6 +440,11 @@ public class EventsController(
     }
 
     [HttpGet("Browse")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 23.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
@@ -509,7 +526,7 @@ public class EventsController(
                 eventDays.Add(new EventDayOptionViewModel
                 {
                     DayOffset = offset,
-                    Label = date.ToString("ddd d MMM", null)
+                    Label = date.ToWeekdayDayMonth()
                 });
             }
         }
@@ -533,8 +550,8 @@ public class EventsController(
                 {
                     DayOffset = g.Key,
                     DayLabel = gateOpeningDate != null
-                        ? gateOpeningDate.Value.PlusDays(g.Key).ToString("ddd d MMM", null)
-                        : g.First().StartAt.ToString("ddd d MMM", System.Globalization.CultureInfo.InvariantCulture),
+                        ? gateOpeningDate.Value.PlusDays(g.Key).ToWeekdayDayMonth()
+                        : g.First().StartAt.ToWeekdayDayMonth(),
                     Items = g.OrderBy(i => i.StartAt).ToList()
                 }).ToList()
         };
@@ -550,7 +567,7 @@ public class EventsController(
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction(nameof(Browse), new { days, categoryId, venueId, q, favouritesOnly });
+        return RedirectToAction(nameof(Browse), null, new { days, categoryId, venueId, q, favouritesOnly }, $"event-{eventId}");
     }
 
     [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
@@ -564,6 +581,19 @@ public class EventsController(
             SetSuccess("Event removed from your schedule.");
 
         return RedirectToAction(nameof(Schedule));
+    }
+
+    // Favourite toggle for the camp detail page's events card. Redirects back to
+    // the camp page (per-surface redirect, like Unfavourite → Schedule).
+    [HttpPost("Barrio/{slug}/Favourite/{eventId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleCampFavourite(string slug, Guid eventId)
+    {
+        var user = await GetCurrentUserInfoAsync();
+        if (user == null) return Challenge();
+
+        await guide.ToggleFavouriteAsync(user.Id, eventId);
+        return RedirectToAction(nameof(CampController.Details), "Camp", new { slug });
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
@@ -601,7 +631,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToString("ddd d MMM", null),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }
@@ -732,6 +762,11 @@ public class EventsController(
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 41 statements, cc 11.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
@@ -818,6 +853,11 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 60 statements, cc 14.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
@@ -882,8 +922,8 @@ public class EventsController(
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
-            var date = localDt.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-            var time = localDt.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            var date = localDt.ToInvariantDate();
+            var time = localDt.ToInvariantTime();
             var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
                 ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
@@ -908,8 +948,8 @@ public class EventsController(
         if (nonWithdrawn.Count == 0)
         {
             var exampleDate = gateDate.HasValue
-                ? gateDate.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                ? gateDate.Value.ToInvariantDate()
+                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
             var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
             sb.AppendCsvRow(
                 string.Empty,
@@ -1030,7 +1070,7 @@ public class EventsController(
             model.EventDays.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
-                Label = date.ToString("ddd d MMM", null),
+                Label = date.ToWeekdayDayMonth(),
                 Date = dt
             });
         }

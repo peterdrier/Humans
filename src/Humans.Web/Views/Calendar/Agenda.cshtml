@@ -6,7 +6,6 @@
     ViewData["Title"] = "Calendar — Agenda";
     ViewData["ActiveView"] = "agenda";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
-    var invariant = System.Globalization.CultureInfo.InvariantCulture;
 
     // Expand each occurrence across every day it covers (inclusive) so multi-day events
     // appear on each day they span, not just the start day.
@@ -52,7 +51,7 @@
     {
         @foreach (var dayGroup in grouped)
         {
-            <h2 class="h5 mt-4">@dayGroup.Key.ToString("d MMM yyyy (ddd)", System.Globalization.CultureInfo.CurrentCulture)</h2>
+            <h2 class="h5 mt-4">@dayGroup.Key.ToWeekdayDayMonth()</h2>
             <ul class="list-unstyled">
                 @foreach (var (day, o) in dayGroup.OrderBy(x => x.Occ.OccurrenceStartUtc))
                 {
@@ -68,7 +67,7 @@
                         }
                         else
                         {
-                            <span class="badge bg-light text-dark me-2">@localStart.ToString("HH:mm", invariant)</span>
+                            <span class="badge bg-light text-dark me-2">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay)</span>
                         }
                         <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                         <small class="text-muted">— @o.OwningTeamName</small>

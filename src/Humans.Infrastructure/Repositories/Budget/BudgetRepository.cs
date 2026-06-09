@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -831,8 +832,8 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         {
             AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.ExpectedDate),
-                lineItem.ExpectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                update.ExpectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                lineItem.ExpectedDate.ToInvariantDate(),
+                update.ExpectedDate.ToInvariantDate(),
                 actorUserId, now);
             lineItem.ExpectedDate = update.ExpectedDate;
         }
@@ -1239,7 +1240,7 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
 
     private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
+        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 
     private static void RemoveProjectedItems(HumansDbContext ctx, BudgetCategory category)

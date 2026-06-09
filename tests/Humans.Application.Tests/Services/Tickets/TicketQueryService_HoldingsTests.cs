@@ -24,12 +24,17 @@ public sealed class TicketQueryService_HoldingsTests
     private static readonly Guid UserB = Guid.NewGuid();
 
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
+    private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly TicketQueryService Service;
 
     public TicketQueryService_HoldingsTests()
     {
+        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
         Service = new TicketQueryService(
             _ticketRepo,
+            _transferRepo,
             Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IUserService>(),

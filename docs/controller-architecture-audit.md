@@ -1,16 +1,16 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-03 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-07 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 80 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 82 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-03) found one change versus the 2026-05-31 baseline: `TeamAdminController` gained an early-entry management surface — `EarlyEntry` (GET, `/Teams/{slug}/EarlyEntry`) plus `AddEarlyEntry` / `EditEarlyEntry` / `RemoveEarlyEntry` (POST `EarlyEntry/Add`|`Edit`|`Remove`). All four conform to the action-naming heuristics (`EarlyEntry` is the sub-resource group, not a controller-name prefix; the verbs mirror the existing `AddMember` / `RemoveMember` pattern). The same 80 controllers remain; `CampController.Index` picked up `ShowLeadPositions` handling and dropped its `INotificationService` dependency, but neither changes its action name, verb, or route. All other purposes and rename suggestions below are carried forward unchanged.
+This regeneration (2026-06-07) tracked the account-merge consolidation and the legacy-`/Admin` route relocations. The duplicate-account and merge-request workflows were folded into a single ordered surface at `/Users/Admin/AccountMerges` (#899): the **deleted** `AdminMergeController` and `AdminDuplicateAccountsController` were replaced by one **new** `UsersAdminAccountMergesController` (`Index`, `Merge`, `MergeRequest`, `Dismiss`, `Close`). The legacy-admin-route move (#901) gutted `AdminController` down to its dashboard `Index` and pushed the debug pages onto `DebugController` (`/Debug/*`, already reflected) and the user-identity debug table onto the new-since-prior-sweep `UsersAdminDebugController` (`/Users/Admin/Debug`). The Profile-section retirement (#881) finished moving the per-human admin surface off `ProfileController` onto `UsersAdminController` (`AdminList`, `Roles`, `AdminDetail`, `RevealIban`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `PurgeHuman`, `AddRole`, `EndRole`, plus the relocated `Audience`); the account-status wall and cancel-deletion lever moved to a **new** `UserController` (`Status`, `Deletion`, `CancelDeletion`), so `ProfileController.CancelDeletion` is gone. `ShiftsController` gained the read-only Shift Summary by Camp at three scopes (#898): `Summary`, `SummaryTeam`, `SummaryRota`; its previous `SignUp` / `SignUpRange` form actions no longer exist (per-day sign-up flows through `ToggleDay`). All other controllers carry forward unchanged.
 
 The additions captured in the 2026-05-29 sweep — now all stable in the tables below — were: `CantinaController` (`/Cantina/Roster*`), `EarlyEntryRosterController` (`/Shifts/Admin/EarlyEntry`), `DebugController` (`/Debug/ClientStats`); plus `ProfileController.DietaryMedical` (GET+POST) and `ProfileController.PublicPopover`, `FinanceController.HoldedAccounts` / `ProvisionHoldedAccounts` / `HoldedUnmatched` / `RunHoldedSync` (Holded creditor integration), `VolunteerTrackingController.ExportXlsx` plus `SetAvailabilityDay` / `ClearAvailabilityDay`, `TicketTransferController.Confirm` (replaced the prior `Lookup` action), `ShiftAdminController.EmailTeamRotas` (GET+POST), and `StoreController.CreateTeamOrder` / `Delete`.
 
@@ -53,27 +53,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Admin | GET | Admin dashboard | OK |
-| PurgeHuman | /Admin/Humans/{id}/Purge | POST | Purge a human (non-prod) | OK |
-| Logs | /Admin/Logs | GET | View in-memory logs | OK |
-| Maintenance | /Admin/Maintenance | GET | Maintenance | OK |
-| Configuration | /Admin/Configuration | GET | View configuration status | OK |
-| DbVersion | /Admin/DbVersion | GET | Database migration info (anonymous) | OK |
-| DbStats | /Admin/DbStats | GET | DB query statistics | OK |
-| ResetDbStats | /Admin/DbStats/Reset | POST | Reset DB query statistics | OK |
-| ClearHangfireLocks | /Admin/ClearHangfireLocks | POST | Clear stale Hangfire locks | OK |
-| BackfillUserEmailProviders | /Admin/BackfillUserEmailProviders | GET | Backfill user email providers | OK |
-| BackfillUserEmailProvidersRun | /Admin/BackfillUserEmailProviders | POST | Backfill user email providers run | OK |
-| CacheStats | /Admin/CacheStats | GET | Cache hit/miss/size statistics | OK |
-| ResetCacheStats | /Admin/CacheStats/Reset | POST | Reset cache statistics | OK |
-| AudienceSegmentation | /Admin/Audience | GET | Audience segmentation (profile × ticket) | OK |
-
-## AdminDuplicateAccountsController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Admin/DuplicateAccounts | GET | List duplicate-account groups | OK |
-| Detail | /Admin/DuplicateAccounts/Detail | GET | Side-by-side duplicate detail | OK |
-| Resolve | /Admin/DuplicateAccounts/Resolve | POST | Resolve a duplicate (archive source, re-link logins) | OK |
 
 ## AdminLegalDocumentsController
 
@@ -87,15 +66,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | ArchiveLegalDocument | /Legal/Admin/Documents/{id}/Archive | POST | Archive a legal document | OK |
 | SyncLegalDocument | /Legal/Admin/Documents/{id}/Sync | POST | Sync legal document from GitHub | OK |
 | UpdateVersionSummary | /Legal/Admin/Documents/{id}/Versions/{versionId}/Summary | POST | Update version change summary | OK |
-
-## AdminMergeController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Admin/MergeRequests | GET | List pending merge requests | OK |
-| Detail | /Admin/MergeRequests/{id} | GET | Merge request detail | OK |
-| Accept | /Admin/MergeRequests/{id}/Accept | POST | Accept a merge request | OK |
-| Reject | /Admin/MergeRequests/{id}/Reject | POST | Reject a merge request | OK |
 
 ## AgentApiController
 
@@ -178,7 +148,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | DeactivateRole | /Camps/Admin/Roles/{id:guid}/Deactivate | POST | Deactivate role | OK |
 | ReactivateRole | /Camps/Admin/Roles/{id:guid}/Reactivate | POST | Reactivate role | OK |
 | SeedSystemRoles | /Camps/Admin/SeedSystemRoles | POST | Seed system role definitions | OK |
-| Compliance | /Camps/Admin/Compliance | GET | Camp compliance overview | OK |
 
 ## CampApiController
 
@@ -186,6 +155,12 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | GetCamps | /api/camps/{year} (or /api/barrios/{year}) | GET | Public camp summaries for a year | OK |
 | GetPlacement | /api/camps/{year}/placement | GET | Camp placement summaries | OK |
+
+## CampComplianceController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Compliance | /Barrios/Admin/Compliance (or /Camps/Admin/Compliance) | GET | Read-only Barrios role-compliance matrix (per-camp role staffing vs minimums); split from CampAdmin so it can be gated by the broader `CampComplianceAccess` policy | OK |
 
 ## CampController
 
@@ -225,20 +200,20 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Admin/Campaigns | GET | List campaigns | OK |
-| Create | /Admin/Campaigns/Create | GET | Create campaign form | OK |
-| Create | /Admin/Campaigns/Create | POST | Submit new campaign | OK |
-| Edit | /Admin/Campaigns/Edit/{id} | GET | Edit campaign form | OK |
-| Edit | /Admin/Campaigns/Edit/{id} | POST | Submit campaign edits | OK |
-| Detail | /Admin/Campaigns/{id} | GET | Campaign detail page | OK |
-| ImportCodes | /Admin/Campaigns/{id}/ImportCodes | POST | Import discount codes from CSV | OK |
-| GenerateCodes | /Admin/Campaigns/{id}/GenerateCodes | POST | Generate discount codes via vendor | OK |
-| Activate | /Admin/Campaigns/{id}/Activate | POST | Activate a campaign | OK |
-| Complete | /Admin/Campaigns/{id}/Complete | POST | Mark campaign complete | OK |
-| SendWave | /Admin/Campaigns/{id}/SendWave | GET | Send wave preview page | OK |
-| SendWave | /Admin/Campaigns/{id}/SendWave | POST | Execute send wave | OK |
-| Resend | /Admin/Campaigns/Grants/{grantId}/Resend | POST | Resend code to a grant | OK |
-| RetryAllFailed | /Admin/Campaigns/{id}/RetryAllFailed | POST | Retry all failed sends | OK |
+| Index | /Campaigns/Admin | GET | List campaigns | OK |
+| Create | /Campaigns/Admin/Create | GET | Create campaign form | OK |
+| Create | /Campaigns/Admin/Create | POST | Submit new campaign | OK |
+| Edit | /Campaigns/Admin/Edit/{id} | GET | Edit campaign form | OK |
+| Edit | /Campaigns/Admin/Edit/{id} | POST | Submit campaign edits | OK |
+| Detail | /Campaigns/Admin/{id} | GET | Campaign detail page | OK |
+| ImportCodes | /Campaigns/Admin/{id}/ImportCodes | POST | Import discount codes from CSV | OK |
+| GenerateCodes | /Campaigns/Admin/{id}/GenerateCodes | POST | Generate discount codes via vendor | OK |
+| Activate | /Campaigns/Admin/{id}/Activate | POST | Activate a campaign | OK |
+| Complete | /Campaigns/Admin/{id}/Complete | POST | Mark campaign complete | OK |
+| SendWave | /Campaigns/Admin/{id}/SendWave | GET | Send wave preview page | OK |
+| SendWave | /Campaigns/Admin/{id}/SendWave | POST | Execute send wave | OK |
+| Resend | /Campaigns/Admin/Grants/{grantId}/Resend | POST | Resend code to a grant | OK |
+| RetryAllFailed | /Campaigns/Admin/{id}/RetryAllFailed | POST | Retry all failed sends | OK |
 
 ## CantinaController
 
@@ -315,7 +290,17 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
+| Logs | /Debug/Logs | GET | View in-memory logs | OK |
+| Maintenance | /Debug/Maintenance | GET | Maintenance | OK |
+| Configuration | /Debug/Configuration | GET | View configuration status | OK |
+| DbVersion | /Debug/DbVersion | GET | Database migration info (anonymous) | OK |
+| DbStats | /Debug/DbStats | GET | DB query statistics | OK |
+| ResetDbStats | /Debug/DbStats/Reset | POST | Reset DB query statistics | OK |
+| ClearHangfireLocks | /Debug/Maintenance/ClearHangfireLocks | POST | Clear stale Hangfire locks | OK |
+| CacheStats | /Debug/CacheStats | GET | Cache hit/miss statistics | OK |
+| ResetCacheStats | /Debug/CacheStats/Reset | POST | Reset cache statistics | OK |
 | ClientStats | /Debug/ClientStats | GET | Debug page returning client request/UA stats | OK |
+| FormatGallery | /Debug/FormatGallery | GET | Developer reference page for the date/time formatting home (`DateFormattingExtensions` output samples) | OK |
 
 ## DevLoginController
 
@@ -723,6 +708,7 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Search | /api/profiles/search | GET | Profile autocomplete API | OK |
+| BurnerNameCount | /api/profiles/burner-name-count | GET | Uncapped exact burner-name collision count (drives live edit-profile warning) | OK |
 | GetByUserId | /api/profiles/by-userid/{userId:guid} | GET | Get a profile by user id (API) | OK |
 
 ## ProfileBackfillAdminController
@@ -766,7 +752,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | MyOutbox | /Profile/Me/Outbox | GET | View own email outbox | OK |
 | Privacy | /Profile/Me/Privacy | GET | Privacy & data management page | → `DataPrivacy` ? (overlaps with `HomeController.Privacy`; this is the user's GDPR page, not the public privacy policy) |
 | RequestDeletion | /Profile/Me/Privacy/RequestDeletion | POST | Request account deletion | OK |
-| CancelDeletion | /Profile/Me/Privacy/CancelDeletion | POST | Cancel pending deletion | OK |
 | ShiftInfo | /Profile/Me/ShiftInfo | GET | Shift profile info form | OK |
 | ShiftInfo | /Profile/Me/ShiftInfo | POST | Submit shift profile info | OK |
 | DietaryMedical | /Profile/Me/DietaryMedical | GET | Dietary & medical info form (moved from Shifts profile) | OK |
@@ -783,18 +768,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | SendMessage | /Profile/{id}/SendMessage | GET | Facilitated message form | OK |
 | SendMessage | /Profile/{id}/SendMessage | POST | Send facilitated message | OK |
 | Search | /Profile/Search | GET | Human search page | OK |
-| AdminList | /Profile/Admin | GET | Admin: human list with filters | OK |
-| Roles | /Profile/Admin/Roles | GET | Admin: governance role assignments list | OK |
-| AdminDetail | /Profile/{id}/Admin | GET | Admin: human detail page | OK |
-| RevealIban | /Profile/{id:guid}/Admin/RevealIban | POST | Reveal a human's IBAN | OK |
-| AdminOutbox | /Profile/{id}/Admin/Outbox | GET | Admin: email outbox for a human | OK |
-| SuspendHuman | /Profile/{id}/Admin/Suspend | POST | Suspend a human | OK |
-| UnsuspendHuman | /Profile/{id}/Admin/Unsuspend | POST | Unsuspend a human | OK |
-| ApproveVolunteer | /Profile/{id}/Admin/Approve | POST | Approve volunteer onboarding | OK |
-| RejectSignup | /Profile/{id}/Admin/Reject | POST | Reject a signup | OK |
-| AddRole | /Profile/{id}/Admin/Roles/Add | GET | Add role form | OK |
-| AddRole | /Profile/{id}/Admin/Roles/Add | POST | Submit role assignment | OK |
-| EndRole | /Profile/{id}/Admin/Roles/{roleId}/End | POST | End a role assignment | OK |
 
 ## ProfilePictureMigrationAdminController
 
@@ -867,8 +840,10 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Shifts | GET | Browse all shifts | OK |
-| SignUp | /Shifts/SignUp | POST | Sign up for a shift | OK |
-| SignUpRange | /Shifts/SignUpRange | POST | Sign up for a shift range | OK |
+| Summary | /Shifts/Summary | GET | Read-only Shift Summary by Camp, global scope (all teams) | OK |
+| SummaryTeam | /Shifts/Summary/{teamSlug} | GET | Shift Summary scoped to one team | OK |
+| SummaryRota | /Shifts/Summary/{teamSlug}/{rotaGuid:guid} | GET | Shift Summary scoped to a single rota | OK |
+| ToggleDay | /Shifts/ToggleDay | POST | AJAX per-day sign-up/bail toggle; returns re-rendered row partial | OK |
 | BailRange | /Shifts/BailRange | POST | Bail from a shift range | OK |
 | Bail | /Shifts/Bail | POST | Bail from a single shift | OK |
 | Mine | /Shifts/Mine | GET | My shifts page | OK |
@@ -885,6 +860,8 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 |--------|-------|------|---------|------------|
 | Catalog | /Store/Admin/Catalog | GET | Store product catalog | OK |
 | Summary | /Store/Admin/Summary | GET | Store sales/order summary | OK |
+| Payments | /Store/Admin/Payments | GET | Stripe reconciliation report (Stripe vs Store ledger) | OK |
+| RecordMissingPayments | /Store/Admin/Payments/RecordMissing | POST | Record missing Stripe payments into the Store ledger | OK |
 | Edit | /Store/Admin/Catalog/Edit | GET | New product form | OK |
 | Edit | /Store/Admin/Catalog/Edit/{id:guid} | GET | Edit product form | OK |
 | Save | /Store/Admin/Catalog/Save | POST | Save a product | OK |
@@ -1003,7 +980,6 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Index | /Tickets/Admin/Transfers | GET | Ticket transfer requests list | OK |
 | Detail | /Tickets/Admin/Transfers/Detail/{id:guid} | GET | Transfer request detail | OK |
 | Decide | /Tickets/Admin/Transfers/Decide | POST | Approve/reject a transfer | OK |
-| RetryIssue | /Tickets/Admin/Transfers/{id:guid}/RetryIssue | POST | Retry a failed ticket issue | OK |
 
 ## TicketTransferController
 
@@ -1027,6 +1003,44 @@ The additions captured in the 2026-05-29 sweep — now all stable in the tables 
 | Index | /Unsubscribe/{token} | GET | Validate token; redirect to comms prefs (or legacy confirm page) | → `Landing` ? (token-specific landing rather than a list — `Index` is misleading) |
 | Confirm | /Unsubscribe/{token} | POST | Execute legacy unsubscribe | OK |
 | OneClick | /Unsubscribe/OneClick | POST | RFC 8058 one-click unsubscribe | OK |
+
+## UserController
+
+Landing pages for non-Active users — the account-status wall and the pending-deletion cancel screen (exempt from `MembershipRequiredFilter`; each action self-checks state).
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Status | /User/Status | GET | Account-status wall (Suspended/Rejected/Deleted/Merged) | OK |
+| Deletion | /User/Deletion | GET | Pending-deletion landing page | OK |
+| CancelDeletion | /User/Deletion/Cancel | POST | Cancel a pending account deletion (moved from ProfileController) | OK |
+
+## UsersAdminAccountMergesController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Users/Admin/AccountMerges | GET | Consolidated account-merge queue (pending merge requests + detected duplicate groups) | OK |
+| Merge | /Users/Admin/AccountMerges/Merge | POST | Merge two accounts directly (survivor + archived) | OK |
+| MergeRequest | /Users/Admin/AccountMerges/{requestId:guid}/Merge | POST | Accept a user-submitted merge request | OK |
+| Dismiss | /Users/Admin/AccountMerges/{requestId:guid}/Dismiss | POST | Reject/dismiss a merge request | OK |
+| Close | /Users/Admin/AccountMerges/{requestId:guid}/Close | POST | Close an orphan request whose accounts were already merged | OK |
+
+## UsersAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| AdminList | /Users/Admin | GET | Admin: human list with UserState filters | OK |
+| Roles | /Users/Admin/Roles | GET | Admin: governance role assignments list | OK |
+| AdminDetail | /Users/Admin/{id:guid} | GET | Admin: human detail page | OK |
+| RevealIban | /Users/Admin/{id:guid}/RevealIban | POST | Reveal a human's IBAN (Admin-only) | OK |
+| AdminOutbox | /Users/Admin/{id}/Outbox | GET | Admin: email outbox for a human | OK |
+| SuspendHuman | /Users/Admin/{id:guid}/Suspend | POST | Suspend a human | OK |
+| UnsuspendHuman | /Users/Admin/{id:guid}/Unsuspend | POST | Unsuspend a human | OK |
+| RejectSignup | /Users/Admin/{id:guid}/Reject | POST | Reject a signup | OK |
+| AddRole | /Users/Admin/{id:guid}/Roles/Add | GET | Add role form | OK |
+| AddRole | /Users/Admin/{id:guid}/Roles/Add | POST | Submit role assignment | OK |
+| EndRole | /Users/Admin/{id:guid}/Roles/{roleId:guid}/End | POST | End a role assignment | OK |
+| Audience | /Users/Admin/Audience | GET | Audience segmentation (profile × ticket); Admin-only, relocated from AdminController (#901) | OK |
+| PurgeHuman | /Users/Admin/{id:guid}/Purge | POST | Purge a human (non-prod, Admin-only) | OK |
 
 ## UsersAdminDebugController
 
@@ -1100,14 +1114,15 @@ All other actions have names that adequately describe what the user sees or what
 
 Several of the splits proposed in the original audit have since shipped:
 
-- **HumanController has been merged into `ProfileController`** — `View`/`Popover`/`SendMessage`, the admin actions (`AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole`, `EndRole`), and even the `Search` page now live on `/Profile`. The `View` → `HumanProfile` rename was implemented as `ViewProfile`.
+- **Human administration moved to `UsersAdminController`** — `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup`, `PurgeHuman`, `Audience`, `AddRole`, and `EndRole` now live under `/Users/Admin` (the #881 Profile-section retirement finished this move). The self/profile viewing actions remain on `ProfileController`.
 - **GoogleController** absorbed all sync, workspace-account, and email-rename actions previously spread across `AdminController`, `BoardController`, `AdminEmailController`, and the team-controller `Sync*` actions. The two redundant-prefix Google audit actions later moved to `AuditLogController` (#499).
 - **EmailController** is now its own controller (`/Email`) holding the email outbox + preview that previously lived on `AdminController`.
-- **AdminDuplicateAccountsController** handles the duplicate-account workflow.
+- **`UsersAdminAccountMergesController`** (`/Users/Admin/AccountMerges`) handles the consolidated account-merge + duplicate-account workflow — it replaced the now-deleted `AdminDuplicateAccountsController` and `AdminMergeController` (#899).
+- **`AdminController` is now dashboard-only** (`Index`) — the legacy `/Admin/*` debug and audience routes were relocated to `DebugController`, `UsersAdminDebugController`, and `UsersAdminController` (#901).
 - **CalendarController** and **CityPlanningController** / **CityPlanningApiController** are dedicated sections.
 - **GuestController** owns the profileless-account dashboard, with its own GDPR / comms-prefs actions parallel to `ProfileController`.
 - **NotificationsController** is its own section.
-- **GovernanceController.Roles moved to `ProfileController.Roles`** (`/Profile/Admin/Roles`) — the governance role-assignments admin list now lives with the human-admin surface, leaving `GovernanceController` as a single info page. (Note: this lands the admin role list on the user-profile controller; see the ProfileController split discussion below.)
+- **GovernanceController.Roles moved to `UsersAdminController.Roles`** (`/Users/Admin/Roles`) — the governance role-assignments admin list lives beside the per-human role management surface.
 
 ### Remaining misplaced actions
 
@@ -1120,30 +1135,28 @@ Several of the splits proposed in the original audit have since shipped:
 | `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** |
 | `Summary`, `CreateTeam`, `EditTeam`, `DeleteTeam` | TeamController | Admin team CRUD | **TeamAdminController** already exists — move these there (route: `/Teams/Admin/...`) |
 
-#### ProfileController — multiple concerns in one (~55 actions)
+#### ProfileController — multiple concerns in one (~45 actions)
 
-The profile controller has grown — it now owns own-profile, email, linked-account, privacy, shift info, comms prefs, public viewing, the entire human-admin surface, and (newly) the governance role-assignments admin list.
+The profile controller still owns own-profile, email, linked-account, privacy, shift info, comms prefs, and public viewing. The per-human admin surface has moved off it onto `UsersAdminController` (#881); the account-status wall + cancel-deletion now live on `UserController`. Two sub-domains remain candidates for extraction.
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
-| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ImportGooglePhoto`, `ShiftInfo`, `ViewProfile`, `Popover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
+| `Index`, `Me`, `Edit` (GET+POST), `Picture`, `ImportGooglePhoto`, `ShiftInfo`, `DietaryMedical`, `ViewProfile`, `Popover`, `PublicPopover`, `SendMessage`, `Search` | ProfileController | Core profile + public viewing — fine here | Stay |
 | `Emails`, `AddEmail`, `VerifyEmail`, `SetPrimary`, `SetEmailVisibility`, `DeleteEmail`, `SetGoogle`, `ClearGoogle`, `ClearPrimary`, `Link`, `Unlink`, `UnlinkLinkedAccount` + all `Admin*Email*` actions | ProfileController | Email / linked-account management — large own sub-domain | **ProfileEmailController** (`/Profile/Me/Emails/...`) |
-| `Privacy`, `RequestDeletion`, `CancelDeletion`, `DownloadData`, `MyOutbox` | ProfileController | GDPR/data rights | **ProfilePrivacyController** (`/Profile/Me/Privacy/...`) |
+| `Privacy`, `RequestDeletion`, `DownloadData`, `MyOutbox` | ProfileController | GDPR/data rights | **ProfilePrivacyController** (`/Profile/Me/Privacy/...`) |
 | `CommunicationPreferences`, `UpdatePreference`, `Notifications` | ProfileController | Communication prefs | Could stay or move to email controller |
-| `AdminList`, `Roles`, `AdminDetail`, `AdminOutbox`, `RevealIban`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole` (GET+POST), `EndRole` | ProfileController | Admin human management + role assignments — behind admin-policy overrides | **HumanAdminController** (`/Profile/Admin/...` or `/Humans/Admin/...`) |
 
 #### ShiftsController — admin settings mixed with user browsing
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
-| `Index`, `SignUp`, `SignUpRange`, `Bail`, `BailRange`, `Mine`, `SaveAvailability`, `RegenerateIcal`, `SaveTagPreferences` | ShiftsController | User-facing shift browsing | Stay |
+| `Index`, `ToggleDay`, `Summary`, `SummaryTeam`, `SummaryRota`, `Bail`, `BailRange`, `Mine`, `SaveAvailability`, `RegenerateIcal`, `SaveTagPreferences` | ShiftsController | User-facing shift browsing + read-only summary | Stay |
 | `Settings` (GET+POST), `OrphanSignups` | ShiftsController | Admin-only event settings / diagnostics | **ShiftDashboardController** or a dedicated **EventSettingsController** |
 
 ### Priority Ranking for Splits
 
-If tackling this incrementally, ordered by impact:
+If tackling this incrementally, ordered by impact (the highest-impact ProfileController → human-admin split has since shipped as `UsersAdminController`, #881):
 
-1. **ProfileController → HumanAdminController** — highest impact, ~11 admin actions (now including the governance `Roles` list) on a user-profile controller; clear `[Authorize]`-policy boundary makes the split mechanical.
-2. **ProfileController → ProfileEmailController + ProfilePrivacyController** — email/linked-account + GDPR sub-domains across two clear boundaries.
-3. **TeamController → TeamAdminController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on the existing `TeamAdminController`.
-4. **ShiftsController → EventSettingsController** — minor, just the settings + orphan-signups actions.
+1. **ProfileController → ProfileEmailController + ProfilePrivacyController** — email/linked-account + GDPR sub-domains across two clear boundaries.
+2. **TeamController → TeamAdminController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on the existing `TeamAdminController`.
+3. **ShiftsController → EventSettingsController** — minor, just the settings + orphan-signups actions.

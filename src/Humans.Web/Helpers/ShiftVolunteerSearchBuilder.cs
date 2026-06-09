@@ -77,15 +77,12 @@ public sealed class ShiftVolunteerSearchBuilder(
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
-        // SearchUsersAsync iterates the in-memory cache and short-circuits at
-        // `limit`, so passing limit: 10 directly returns an arbitrary 10 (cache
-        // order is non-deterministic). Request the full match set and sort
-        // before capping to preserve the prior OrderBy(DisplayName).Take(10)
-        // semantics (Codex P2, PR #638). Cache is ~500 users, so the full sort
-        // is cheap.
+        // Request the full match set (the service short-circuits at `limit`, so a small limit
+        // returns an arbitrary subset in non-deterministic cache order) and rank by relevance so
+        // the closest name match leads. Uncapped — people must be findable (Codex P2, PR #638);
+        // cache is ~500 users so the full sort is cheap.
         var users = (await userService.SearchUsersAsync(query, PersonSearchFields.Name, limit: int.MaxValue))
-            .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
-            .Take(10)
+            .OrderByRelevance()
             .ToList();
 
         var poolVolunteers = await volunteerTrackingService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);

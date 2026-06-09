@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Repositories;
@@ -187,8 +188,7 @@ public sealed class CityPlanningService(
             ?? throw new InvalidOperationException(
                 $"History entry {historyId} not found for CampSeason {campSeasonId}.");
 
-        var localDt = entry.ModifiedAt.InUtc().LocalDateTime;
-        var note = $"Restored from {localDt:yyyy-MM-dd HH:mm} UTC";
+        var note = $"Restored from {entry.ModifiedAt.ToDateTimeUtc().ToInvariantTimestamp()} UTC";
         return await SaveCampPolygonAsync(
             campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }
@@ -394,7 +394,7 @@ public sealed class CityPlanningService(
     public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
         string? opensAt, string? closesAt, CancellationToken cancellationToken = default)
     {
-        var pattern = LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
+        var pattern = DateFormattingExtensions.PlacementDateTimePattern;
 
         var opensResult = ParsePlacementDate(opensAt, pattern);
         if (!opensResult.Success)

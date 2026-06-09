@@ -92,7 +92,7 @@ public sealed class NotificationMeterProvider(
             {
                 Title = "Pending account deletions",
                 Count = counts.PendingDeletions,
-                ActionUrl = "/Profile/Admin?filter=deleting&sort=name&dir=asc",
+                ActionUrl = "/Users/Admin?filter=deleting&sort=name&dir=asc",
                 Priority = 8,
             });
         }

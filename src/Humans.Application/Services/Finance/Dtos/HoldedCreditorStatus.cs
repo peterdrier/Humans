@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NodaTime;
 
 namespace Humans.Application.Services.Finance.Dtos;
@@ -8,4 +9,5 @@ public sealed record HoldedCreditorStatus(
     decimal? Balance,           // signed; negative = org owes the member. NULL = no cached balance row (unknown — NOT settled).
     decimal OwedToMember,       // = max(0, -Balance), or 0 when Balance is unknown
     LocalDate? LastPaymentDate,
-    decimal TotalPaid);
+    decimal TotalPaid,
+    IReadOnlyList<HoldedPaymentInfo>? Payments = null);  // individual rows for the per-member ledger

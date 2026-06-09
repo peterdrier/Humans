@@ -4,6 +4,8 @@
     var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
     var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
     var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
+    var feedbackSuccess = Localizer["Feedback_Submitted"].Value;
+    var feedbackError = Localizer["Feedback_Error"].Value;
 }
 
 <!-- Floating "Help" bubble + popover menu -->
@@ -33,6 +35,12 @@
                 data-bs-toggle="modal" data-bs-target="#issuesWidgetModal">
             <i class="fa-solid fa-circle-exclamation me-2 text-primary"></i>
             <span>@Localizer["Help_Menu_CreateIssue"]</span>
+        </button>
+        <button type="button" role="menuitem" class="help-widget-menu-item"
+                id="helpWidgetFeedbackItem"
+                data-bs-toggle="modal" data-bs-target="#feedbackWidgetModal">
+            <i class="fa-solid fa-comment-dots me-2 text-primary"></i>
+            <span>@Localizer["Feedback_Button"]</span>
         </button>
     </div>
 </div>
@@ -125,6 +133,49 @@
     </div>
 </div>
 
+<!-- Feedback submission modal (the Help widget is the single floating launcher). -->
+<div class="modal fade" id="feedbackWidgetModal" tabindex="-1" aria-labelledby="feedbackWidgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="feedbackWidgetForm" asp-controller="Feedback" asp-action="Submit" method="post" enctype="multipart/form-data"
+                  data-toast-success="@feedbackSuccess"
+                  data-toast-error="@feedbackError">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackWidgetModalLabel">@Localizer["Feedback_Title"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Category"]</label>
+                        <select name="Category" class="form-select" required>
+                            <option value="Bug">@Localizer["Feedback_Category_Bug"]</option>
+                            <option value="FeatureRequest">@Localizer["Feedback_Category_FeatureRequest"]</option>
+                            <option value="Question">@Localizer["Feedback_Category_Question"]</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Description"]</label>
+                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                                  placeholder="@Localizer["Feedback_DescriptionPlaceholder"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Screenshot"]</label>
+                        <input type="file" name="Screenshot" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                        <div class="form-text">@Localizer["Feedback_ScreenshotHelp"]</div>
+                    </div>
+                    <input type="hidden" name="PageUrl" id="feedbackWidgetPageUrl" />
+                    <input type="hidden" name="UserAgent" id="feedbackWidgetUserAgent" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Feedback_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Feedback_Submit"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="~/css/agent.css" asp-append-version="true" />
 @if (Model.AgentAvailable)
 {
@@ -186,6 +237,15 @@
             });
         }
 
+        // "Feedback" — close menu when modal trigger fires.
+        var feedbackItem = document.getElementById('helpWidgetFeedbackItem');
+        if (feedbackItem) {
+            feedbackItem.addEventListener('click', function () {
+                if (menu) menu.style.display = 'none';
+                if (launcher) launcher.setAttribute('aria-expanded', 'false');
+            });
+        }
+
         // Issues modal pre-fill + AJAX submit (carried over from former IssuesWidget).
         var modalEl = document.getElementById('issuesWidgetModal');
         if (!modalEl) return;
@@ -239,6 +299,44 @@
             })
             .catch(function () {
                 show(toastNetworkError, 'danger');
+            })
+            .finally(function () {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        });
+
+        var feedbackModalEl = document.getElementById('feedbackWidgetModal');
+        var feedbackForm = document.getElementById('feedbackWidgetForm');
+        if (!feedbackModalEl || !feedbackForm) return;
+
+        feedbackModalEl.addEventListener('show.bs.modal', function () {
+            document.getElementById('feedbackWidgetPageUrl').value = window.location.href;
+            document.getElementById('feedbackWidgetUserAgent').value = navigator.userAgent;
+        });
+
+        feedbackForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = feedbackForm.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            fetch(feedbackForm.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new FormData(feedbackForm)
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    feedbackForm.reset();
+                    var modal = bootstrap.Modal.getInstance(feedbackModalEl);
+                    if (modal) modal.hide();
+                    show(data.message || feedbackForm.getAttribute('data-toast-success'), 'success');
+                } else {
+                    show(data.message || feedbackForm.getAttribute('data-toast-error'), 'danger');
+                }
+            })
+            .catch(function () {
+                show(feedbackForm.getAttribute('data-toast-error'), 'danger');
             })
             .finally(function () {
                 if (submitBtn) submitBtn.disabled = false;

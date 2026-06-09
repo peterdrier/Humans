@@ -647,6 +647,13 @@ public class RotaHeaderViewModel
 {
     public Rota Rota { get; set; } = null!;
     public bool ShowPreferenceStar { get; set; }
+    public bool ShowPeriodBadge { get; set; } = true;
+    public bool ShowTags { get; set; } = true;
+    public bool ShowDescription { get; set; } = true;
+    public bool ShowPracticalInfo { get; set; } = true;
+    public string BadgeSpacingClass { get; set; } = "ms-1";
+    public string DescriptionCssClass { get; set; } = "text-muted small";
+    public string PracticalInfoCssClass { get; set; } = "text-muted small";
 }
 
 public record UserSignupConflictItem(

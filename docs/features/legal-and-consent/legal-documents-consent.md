@@ -158,9 +158,12 @@ Database triggers prevent UPDATE and DELETE operations.
 
 ### SystemTeamIds Constants
 ```
-Volunteers:  00000000-0000-0000-0001-000000000001  (global docs)
-Leads:       00000000-0000-0000-0001-000000000002
-Board:       00000000-0000-0000-0001-000000000003
+Volunteers:   00000000-0000-0000-0001-000000000001  (global docs)
+Coordinators: 00000000-0000-0000-0001-000000000002
+Board:        00000000-0000-0000-0001-000000000003
+Asociados:    00000000-0000-0000-0001-000000000004
+Colaboradors: 00000000-0000-0000-0001-000000000005
+BarrioLeads:  00000000-0000-0000-0001-000000000006
 ```
 
 ## Consent Flow
@@ -183,10 +186,10 @@ Create ConsentRecord
   - Content Hash (SHA-256 of Spanish/canonical)
   - ExplicitConsent = true
     |
-Trigger SyncVolunteersMembershipForUserAsync
-  - Checks if user now has all required consents + is approved
-  - If eligible, immediately adds to Volunteers team
-  - Grants ActiveMember claim → full app access
+ConsentRecord written (append-only) — that's it
+  - SubmitConsentAsync no longer triggers a per-user team sync (name-only access switch)
+  - Volunteers team is reconciled by SystemTeamSyncJob on name + consents (eventually consistent)
+  - App access is independent: granted when UserState == Active (legal name entered)
 ```
 
 ## Document Sync Process

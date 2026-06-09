@@ -46,7 +46,7 @@ public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry
             .HasMaxLength(100);
 
         // FK to User with SetNull on delete (null ActorUserId = system action or deleted user)
-        builder.HasOne(e => e.ActorUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(e => e.ActorUserId)
             .OnDelete(DeleteBehavior.SetNull);

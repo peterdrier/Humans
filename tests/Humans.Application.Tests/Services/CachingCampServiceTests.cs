@@ -350,6 +350,23 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         }
     }
 
+    [HumansFact]
+    public async Task SearchAsync_ServesFromCache_MatchesPublicYearSeasonName()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (camp, _) = await SeedCampWithSeasonAsync(year: 2026); // season "Test Camp", Active
+
+        var results = await _service.SearchAsync("test camp", int.MaxValue);
+
+        var hit = results.Should().ContainSingle().Subject;
+        hit.Slug.Should().Be(camp.Slug);
+        hit.Name.Should().Be("Test Camp");
+
+        // Search must never reach the inner service's SearchAsync (the DB ILike path is gone).
+        await _innerSubstitute.DidNotReceive().SearchAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
     private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(int year)
     {
         var camp = new Camp

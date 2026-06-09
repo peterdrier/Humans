@@ -12,7 +12,6 @@
 
 <h1>@Localizer["Camp_AdminTitle"]</h1>
 
-<vc:temp-data-alerts />
 
 @* Summary cards *@
 <div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
@@ -74,7 +73,7 @@
             <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-clipboard-check me-2"></i>Compliance report</h5>
                 <p class="card-text">See which barrios are missing required roles for the current public year.</p>
-                <a asp-action="Compliance" class="btn btn-outline-primary">Open report</a>
+                <a asp-controller="CampCompliance" asp-action="Compliance" class="btn btn-outline-primary">Open report</a>
             </div>
         </div>
     </div>
@@ -274,7 +273,7 @@
                                 <strong>@year:</strong>
                                 @if (lockDate.HasValue)
                                 {
-                                    @lockDate.Value.ToDisplayDate()
+                                    @lockDate.Value.ToDate()
                                 }
                                 else
                                 {
@@ -333,7 +332,7 @@
             EE start date:
             @if (Model.EeStartDate.HasValue)
             {
-                <strong>@Model.EeStartDate.Value.ToDisplayDate()</strong>
+                <strong>@Model.EeStartDate.Value.ToDate()</strong>
             }
             else
             {
@@ -351,7 +350,7 @@
             @Html.AntiForgeryToken()
             <label class="form-label mb-0">Set EE start date:</label>
             <input type="date" name="eeStartDate" class="form-control form-control-sm" style="max-width:180px;"
-                   value="@(Model.EeStartDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+                   value="@(Model.EeStartDate.ToInvariantDate())" />
             <button type="submit" class="btn btn-sm btn-primary text-nowrap">Save</button>
         </form>
     </div>

@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -112,6 +113,14 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.CampAdminOrAdmin, RoleNames.Board, false },
         { PolicyNames.CampAdminOrAdmin, RoleNames.TeamsAdmin, false },
 
+        // Role short-circuits only; the team-coordinator path (no coordinated teams in
+        // this fixture) is covered by the dedicated facts below.
+        { PolicyNames.CampComplianceAccess, RoleNames.CampAdmin, true },
+        { PolicyNames.CampComplianceAccess, RoleNames.Admin, true },
+        { PolicyNames.CampComplianceAccess, RoleNames.Board, false },
+        { PolicyNames.CampComplianceAccess, RoleNames.TeamsAdmin, false },
+        { PolicyNames.CampComplianceAccess, RoleNames.VolunteerCoordinator, false },
+
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.TicketAdmin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Admin, true },
         { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Board, true },
@@ -173,19 +182,12 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.MedicalDataViewer, RoleNames.Board, false },
         { PolicyNames.MedicalDataViewer, RoleNames.VolunteerCoordinator, false },
 
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.Admin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.Board, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.TeamsAdmin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.NoInfoAdmin, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, RoleNames.VolunteerCoordinator, true },
-        { PolicyNames.ActiveMemberOrShiftAccess, "SomeNonAdminRole", false },
-
-        { PolicyNames.IsActiveMember, RoleNames.Admin, true },
-        { PolicyNames.IsActiveMember, RoleNames.Board, true },
-        { PolicyNames.IsActiveMember, RoleNames.TeamsAdmin, true },
-        { PolicyNames.IsActiveMember, RoleNames.NoInfoAdmin, false },
-        { PolicyNames.IsActiveMember, RoleNames.CampAdmin, false },
-        { PolicyNames.IsActiveMember, "SomeNonAdminRole", false },
+        // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.
+        { PolicyNames.AppAccess, RoleNames.Admin, false },
+        { PolicyNames.AppAccess, RoleNames.NoInfoAdmin, false },
+        { PolicyNames.AppAccess, RoleNames.VolunteerCoordinator, false },
+        { PolicyNames.AppAccess, RoleNames.CampAdmin, false },
+        { PolicyNames.AppAccess, RoleNames.CantinaAdmin, false },
     };
 
     public static TheoryData<string> AnonymousPolicyCases =>
@@ -502,24 +504,74 @@ public class AuthorizationPolicyTests : IDisposable
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
     }
 
+    // --- CampComplianceAccess ---
+
     [HumansFact]
-    public async Task ActiveMemberOrShiftAccess_AllowsActiveMember()
+    public async Task CampComplianceAccess_AllowsUserWithCoordinatedTeams()
     {
-        var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue);
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ActiveMemberOrShiftAccess);
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
+
         result.Succeeded.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task IsActiveMember_AllowsActiveMemberClaim()
+    public async Task CampComplianceAccess_DeniesUserWithNoRoleAndNoCoordinatedTeams()
+    {
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.CampComplianceAccess);
+
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CampComplianceAccess_CampAdmin_ShortCircuitsWithoutCallingShiftService()
+    {
+        _shiftManagement.ClearReceivedCalls();
+
+        var result = await AuthorizeAsync(PolicyNames.CampComplianceAccess, RoleNames.CampAdmin);
+
+        result.Succeeded.Should().BeTrue();
+        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task AppAccess_AllowsActiveStateUserWithNoRole()
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-            RoleAssignmentClaimsTransformation.ActiveClaimValue);
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.IsActiveMember);
+            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            UserState.Active.ToString());
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task AppAccess_DeniesRoleHolderWithoutActiveState()
+    {
+        // Roles alone do not bypass UserState.
+        var user = CreateUserWithRoles(RoleNames.CantinaAdmin);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(UserState.Bare))]
+    [InlineData(nameof(UserState.Suspended))]
+    [InlineData(nameof(UserState.AdminSuspended))]
+    [InlineData(nameof(UserState.Rejected))]
+    public async Task AppAccess_DeniesNonActiveStateUserWithNoRole(string state)
+    {
+        var user = CreateUserWithClaim(
+            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            state);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
+        result.Succeeded.Should().BeFalse();
     }
 
     [HumansTheory]

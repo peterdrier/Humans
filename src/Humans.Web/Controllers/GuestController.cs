@@ -134,7 +134,7 @@ public class GuestController(
             var payload = BuildExportPayload(export);
             var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
+            var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
         }

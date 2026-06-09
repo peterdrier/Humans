@@ -67,7 +67,7 @@ internal static class ShiftsSectionExtensions
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddSingleton<IShiftViewInvalidator>(sp => sp.GetRequiredService<CachingShiftViewService>());
 
-        // Surface both ShiftView caches (User + Rota) on /Admin/CacheStats.
+        // Surface both ShiftView caches (User + Rota) on /Debug/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 

@@ -704,8 +704,8 @@ public sealed class CampaignService(
         {
             CampaignTitle = g.CampaignTitle,
             Code = g.Code,
-            AssignedAt = g.AssignedAt.ToInvariantInstantString(),
-            RedeemedAt = g.RedeemedAt.ToInvariantInstantString(),
+            AssignedAt = g.AssignedAt.ToIso8601(),
+            RedeemedAt = g.RedeemedAt.ToIso8601(),
             EmailStatus = g.LatestEmailStatus?.ToString()
         }).ToList();
 

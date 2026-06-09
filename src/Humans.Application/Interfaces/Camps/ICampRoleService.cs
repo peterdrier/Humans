@@ -60,8 +60,6 @@ public interface ICampRoleService : IApplicationService
 
     // Reporting
 
-    Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default);
-
     /// <summary>
     /// Per-season fill summary across ALL active role definitions, keyed by
     /// <c>CampSeasonId</c>. Powers the /Barrios "show lead positions" pills.

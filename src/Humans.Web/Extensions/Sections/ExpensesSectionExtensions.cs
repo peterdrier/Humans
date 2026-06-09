@@ -34,6 +34,9 @@ internal static class ExpensesSectionExtensions
         });
         services.AddSingleton<ISepaPaymentFileBuilder, SepaPaymentFileBuilder>();
 
+        // Travel-reimbursement rates — bind from appsettings "TravelReimbursement"; defaults are the 2026 values.
+        services.Configure<TravelReimbursementConfig>(config.GetSection("TravelReimbursement"));
+
         return services;
     }
 }

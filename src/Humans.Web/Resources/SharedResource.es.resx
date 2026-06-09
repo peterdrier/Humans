@@ -1608,11 +1608,14 @@
   <data name="AdminHumans_Active" xml:space="preserve">
     <value>Activos</value>
   </data>
-  <data name="AdminHumans_PendingApproval" xml:space="preserve">
-    <value>Pendiente de aprobación</value>
+  <data name="AdminHumans_Bare" xml:space="preserve">
+    <value>Bare</value>
   </data>
   <data name="AdminHumans_Suspended" xml:space="preserve">
     <value>Suspendidos</value>
+  </data>
+  <data name="AdminHumans_Rejected" xml:space="preserve">
+    <value>Rejected</value>
   </data>
   <data name="AdminHumans_Deleting" xml:space="preserve">
     <value>Pendiente de borrado</value>
@@ -1622,9 +1625,6 @@
   </data>
   <data name="AdminHumans_Deleted" xml:space="preserve">
     <value>Eliminado</value>
-  </data>
-  <data name="AdminHumans_HasName" xml:space="preserve">
-    <value>Con nombre</value>
   </data>
   <data name="AdminHumanDetail_Title" xml:space="preserve">
     <value>Miembro: {0}</value>
@@ -1965,9 +1965,6 @@
   </data>
   <data name="AdminHuman_ConsentCount" xml:space="preserve">
     <value>Acuerdos</value>
-  </data>
-  <data name="AdminHuman_ApproveVolunteer" xml:space="preserve">
-    <value>Aprobar human</value>
   </data>
   <data name="AdminHuman_UnsuspendMember" xml:space="preserve">
     <value>Levantar suspensión del human</value>
@@ -2945,6 +2942,33 @@
   </data>
   <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve">
     <value>Tu navegador no tiene decodificador integrado y la librería de fallback no se cargó. Prueba con Chrome o Safari móvil recientes.</value>
+  </data>
+  <data name="Scanner_Tickets_Title" xml:space="preserve">
+    <value>Consulta de entradas</value>
+  </data>
+  <data name="Scanner_Tickets_Intro" xml:space="preserve">
+    <value>Escanea una entrada para ver sus detalles.</value>
+  </data>
+  <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
+    <value>Escanea el código de barras de una entrada para ver el titular, el estado y el historial de transferencias.</value>
+  </data>
+  <data name="Scanner_Tickets_Open" xml:space="preserve">
+    <value>Abrir consulta de entradas</value>
+  </data>
+  <data name="Scanner_Tickets_NotFound" xml:space="preserve">
+    <value>No se ha encontrado ninguna entrada para este código:</value>
+  </data>
+  <data name="Scanner_Tickets_Type" xml:space="preserve">
+    <value>Tipo de entrada</value>
+  </data>
+  <data name="Scanner_Tickets_Status" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredTo" xml:space="preserve">
+    <value>Transferida a</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
+    <value>Transferida el</value>
   </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Agregar miembro</value>
@@ -5531,7 +5555,6 @@
   <data name="VolTrack_Export_Methodology" xml:space="preserve">
     <value>Filas = humanos con ≥1 turno confirmado en el rango. Color de celda = el equipo en el que trabajaron más horas ese día. Celda blanca = día anterior a su primer turno confirmado (día de llegada). Fila de totales = humanos presentes ese día (usado para conteo de comidas). Los nombres mostrados son nombres de playa.</value>
   </data>
-
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Ocultar voluntarios sin huecos</value>
     <comment>TODO: translate</comment>
@@ -5943,4 +5966,18 @@
   <!-- Survey                   -->
   <!-- ======================== -->
   <data name="Survey_TransparencyNote" xml:space="preserve"><value>Tus respuestas pueden ser revisadas y analizadas, incluso mediante herramientas automatizadas, para mejorar el colectivo.</value></data>
+  <data name="AccountStatus_Title" xml:space="preserve"><value>Estado de la cuenta</value></data>
+  <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida</value></data>
+  <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Tu cuenta ha sido rechazada</value></data>
+  <data name="AccountStatus_HeadingDeleted" xml:space="preserve"><value>Tu cuenta ha sido eliminada</value></data>
+  <data name="AccountStatus_HeadingMerged" xml:space="preserve"><value>Tu cuenta ha sido fusionada</value></data>
+  <data name="AccountStatus_HeadingUnavailable" xml:space="preserve"><value>Tu cuenta no está disponible</value></data>
+  <data name="AccountStatus_ContactInfo" xml:space="preserve"><value>Contacta con un administrador para más información:</value></data>
+  <data name="AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
+  <data name="AccountStatus_ReferenceId" xml:space="preserve"><value>ID de referencia:</value></data>
+  <data name="AccountDeletion_Title" xml:space="preserve"><value>Eliminación de cuenta pendiente</value></data>
+  <data name="AccountDeletion_Heading" xml:space="preserve"><value>Tu cuenta está programada para eliminación</value></data>
+  <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Se eliminará permanentemente el {0} a menos que la canceles.</value></data>
+  <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Se eliminará permanentemente a menos que la canceles.</value></data>
+  <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Cancelar solicitud de eliminación</value></data>
 </root>

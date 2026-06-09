@@ -21,8 +21,7 @@
         .ticket-stub-email { font-size:12.5px; color:#6b6453; overflow-wrap:anywhere; }
         .ticket-stub-side { width:74px; background:#efe7d6; display:flex; flex-direction:column; align-items:center;
             justify-content:center; gap:5px; border-left:2px dashed #c9bfa7; position:relative; flex-shrink:0; }
-        .ticket-stub-serial { writing-mode:vertical-rl; font-family:ui-monospace,monospace; font-size:10px; color:#8a7f68; letter-spacing:.1em; }
-        .ticket-stub-ico { font-size:18px; }
+.ticket-stub-ico { font-size:18px; }
         .ticket-stub.pending .ticket-stub-main { filter:saturate(.6); }
         .ticket-stub.voided { opacity:.6; }
         .ticket-stub.voided .ticket-stub-name { text-decoration:line-through; }
@@ -55,16 +54,12 @@
         @if (Model.EarlyEntryDate is { } ee)
         {
             <div class="ticket-stub-badge" style="background:#5b4636; color:#fff; margin-top:8px;">
-                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToString("ddd d MMM", null)
+                <i class="fa-solid fa-door-open me-1"></i>Early entry @ee.ToWeekdayDayMonth()
             </div>
         }
     </div>
     <div class="ticket-stub-side">
         <span class="ticket-stub-ico">🎟️</span>
-        @if (!string.IsNullOrEmpty(Model.VendorTicketId))
-        {
-            <span class="ticket-stub-serial">@Model.VendorTicketId</span>
-        }
     </div>
     @if (pending)
     {

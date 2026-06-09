@@ -71,7 +71,7 @@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["ConsentReview_BackToList"]</a>
                 <div class="text-end text-muted">
-                    Agreed to by <strong>@Model.ConsentedByFullName</strong> on @Model.ConsentedAt.ToDisplayDate() at @Model.ConsentedAt.ToDisplayTime() UTC
+                    Agreed to by <strong>@Model.ConsentedByFullName</strong> on @Model.ConsentedAt.ToDate() at @Model.ConsentedAt.ToTime() UTC
                 </div>
             </div>
         }

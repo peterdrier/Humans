@@ -11,7 +11,6 @@
     </ol>
 </nav>
 
-<vc:temp-data-alerts />
 
 <div class="row">
     <div class="col-md-8">
@@ -94,6 +93,12 @@
             var season = Model.CurrentSeason;
 
             <partial name="_CampRosterCard" model="Model" />
+
+            @* Events the camp is hosting this edition (logged-in users only; auto-hidden when empty) *@
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <vc:camp-events camp-id="@Model.Id" camp-slug="@Model.Slug" />
+            }
 
             @* Blurb *@
             <div class="card mb-4">

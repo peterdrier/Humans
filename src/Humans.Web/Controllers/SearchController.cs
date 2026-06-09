@@ -58,9 +58,10 @@ public sealed class SearchController(
         {
             Query = results.Query,
             Filter = filter,
-            // Display sort lives in controller (display-sort-in-controllers): humans by BurnerName, others by Score desc + Title asc.
+            // Display sort lives in controller (display-sort-in-controllers): humans by relevance
+            // (exact/prefix/contains, then name), others by Score desc + Title asc.
             HumanResults = results.Humans
-                .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+                .OrderByRelevance()
                 .Select(r => r.ToHumanSearchViewModel())
                 .ToList(),
             TeamResults = SortByScore(results.Teams),

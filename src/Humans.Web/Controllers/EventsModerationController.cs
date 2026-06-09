@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
@@ -154,6 +155,11 @@ public class EventsModerationController(
 
     // ─── Helpers ──────────────────────────────────────────────────
 
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 29 statements, cc 18.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {
         var moderator = await GetCurrentUserInfoAsync();

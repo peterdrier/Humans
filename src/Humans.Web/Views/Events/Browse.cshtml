@@ -107,7 +107,7 @@ else
         <div class="list-group mb-3">
             @foreach (var item in dayGroup.Items)
             {
-                <div class="list-group-item">
+                <div class="list-group-item" id="event-@item.EventId">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <strong>@item.Title</strong>
@@ -129,7 +129,7 @@ else
                         </form>
                     </div>
                     <div class="mt-1 small text-muted">
-                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToString("HH:mm") — @item.StartAt.AddMinutes(item.DurationMinutes).ToString("HH:mm")
+                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToTime() — @item.StartAt.AddMinutes(item.DurationMinutes).ToTime()
                         (@FormatDuration(item.DurationMinutes))
                         @if (item.CampName != null)
                         {

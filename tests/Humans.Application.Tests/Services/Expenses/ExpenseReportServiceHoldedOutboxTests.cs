@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Tests.Infrastructure;
+using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -88,7 +89,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedClient,
             Substitute.For<IHoldedFinanceService>(),
             _clock,
-            Substitute.For<ILogger<ExpenseReportService>>());
+            Substitute.For<ILogger<ExpenseReportService>>(),
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -218,8 +220,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line B", Amount = 20m, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line B", Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
             }
         };
 
@@ -267,7 +269,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "No receipt", Amount = 5m, SortOrder = 1, AttachmentId = null, Attachment = null },
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "No receipt", Amount = 5m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = null, Attachment = null },
             }
         };
 
@@ -310,7 +312,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
             }
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -476,7 +478,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             _holdedClient,
             Substitute.For<IHoldedFinanceService>(),
             _clock,
-            logger);
+            logger,
+            Options.Create(new TravelReimbursementConfig()));
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,7 +17,6 @@ namespace Humans.Infrastructure.Repositories.Teams;
 /// registered as Singleton.
 /// </para>
 /// </summary>
-[Grandfathered("HUM0025", justification: "GoogleSyncOutboxEvents (owned by GoogleSyncOutboxRepository) is written here so each team mutation is atomic with its outbox append; converge on one owner.", since: "2026-05-25", issueRef: "docs/superpowers/specs/2026-05-25-analyzer-consolidation.md", scope: "GoogleSyncOutboxEvents")]
 internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory) : ITeamRepository
 {
     // ==========================================================================
@@ -125,36 +123,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             .ToDictionary(
                 g => g.Key,
                 g => (IReadOnlyList<TeamRoleDefinition>)g.ToList());
-    }
-
-    private static string EscapeLikePattern(string value)
-        => value
-            .Replace("\\", "\\\\")
-            .Replace("%", "\\%")
-            .Replace("_", "\\_");
-
-    public async Task<IReadOnlyList<Team>> SearchAsync(
-        string query, bool includeHidden, int max, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return [];
-
-        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
-
-        await using var db = await factory.CreateDbContextAsync(ct);
-        var q = db.Teams
-            .AsNoTracking()
-            .Where(t => t.IsActive);
-
-        if (!includeHidden)
-            q = q.Where(t => !t.IsHidden);
-
-        return await q
-            .Where(t => EF.Functions.ILike(t.Name, pattern, "\\"))
-            // Deterministic Take(max) for global search; controller re-ranks by score before display.
-            .OrderBy(t => t.Name) // arch:db-sort-ok
-            .Take(max)
-            .ToListAsync(ct);
     }
 
     public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
@@ -741,12 +709,10 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
     // Bulk / seed / revoke
     // ==========================================================================
 
-    public async Task<bool> AddMemberWithOutboxAsync(
-        TeamMember member, GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
+    public async Task<bool> TryAddMemberAsync(TeamMember member, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamMembers.Add(member);
-        db.GoogleSyncOutboxEvents.Add(outboxEvent);
         try
         {
             await db.SaveChangesAsync(ct);
@@ -761,15 +727,12 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
     public async Task<bool> ApproveRequestWithMemberAsync(
         TeamJoinRequest request,
         TeamMember member,
-        GoogleSyncOutboxEvent? outboxEvent,
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.TeamJoinRequests.Attach(request);
         db.Entry(request).State = EntityState.Modified;
         db.TeamMembers.Add(member);
-        if (outboxEvent is not null)
-            db.GoogleSyncOutboxEvents.Add(outboxEvent);
 
         try
         {
@@ -782,8 +745,8 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         }
     }
 
-    public async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftWithOutboxAsync(
-        Guid teamMemberId, Instant leftAt, GoogleSyncOutboxEvent? outboxEvent, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
+        Guid teamMemberId, Instant leftAt, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var member = await db.TeamMembers.FirstOrDefaultAsync(tm => tm.Id == teamMemberId, ct)
@@ -799,9 +762,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             db.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
 
         member.LeftAt = leftAt;
-
-        if (outboxEvent is not null)
-            db.GoogleSyncOutboxEvents.Add(outboxEvent);
 
         await db.SaveChangesAsync(ct);
         return roleAssignments;
@@ -859,7 +819,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         Guid targetUserId,
         Guid actorUserId,
         TeamMember? autoAddMember,
-        GoogleSyncOutboxEvent? outboxEvent,
         bool promoteToCoordinator,
         Instant now,
         CancellationToken ct = default)
@@ -891,9 +850,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
                 pendingRequest.ReviewNotes = "Added via role assignment";
                 pendingRequest.ResolvedAt = now;
             }
-
-            if (outboxEvent is not null)
-                db.GoogleSyncOutboxEvents.Add(outboxEvent);
         }
         else
         {
@@ -1080,34 +1036,17 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         return activeMembers.Count;
     }
 
-    public async Task<int> EnqueueResyncEventsForUserAsync(
-        Guid userId, Instant now, CancellationToken ct = default)
+    public async Task<IReadOnlyList<(Guid TeamMemberId, Guid TeamId)>> GetActiveMembershipsForGoogleResyncAsync(
+        Guid userId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var memberships = await db.TeamMembers
+            .AsNoTracking()
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
             .Select(tm => new { tm.Id, tm.TeamId })
             .ToListAsync(ct);
 
-        if (memberships.Count == 0)
-            return 0;
-
-        foreach (var membership in memberships)
-        {
-            var dedupeKey = $"{membership.Id}:{Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
-            db.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
-            {
-                Id = Guid.NewGuid(),
-                EventType = Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources,
-                TeamId = membership.TeamId,
-                UserId = userId,
-                OccurredAt = now,
-                DeduplicationKey = dedupeKey
-            });
-        }
-
-        await db.SaveChangesAsync(ct);
-        return memberships.Count;
+        return memberships.Select(m => (m.Id, m.TeamId)).ToList();
     }
 
     public async Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default)
@@ -1151,13 +1090,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
         await tx.CommitAsync(ct);
 
         return true;
-    }
-
-    public async Task AddOutboxEventAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.GoogleSyncOutboxEvents.Add(outboxEvent);
-        await db.SaveChangesAsync(ct);
     }
 
     // ==========================================================================

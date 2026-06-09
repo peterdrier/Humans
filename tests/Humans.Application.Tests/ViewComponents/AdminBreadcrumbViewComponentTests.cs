@@ -30,15 +30,15 @@ public class AdminBreadcrumbViewComponentTests
     [HumansFact]
     public void Disambiguates_Items_That_Share_A_Controller_By_Action()
     {
-        // Regression: AdminController has 5 sidebar items (Logs, DbStats, CacheStats,
-        // Configuration, AudienceSegmentation). Matching by controller alone returned
+        // Regression: DebugController has multiple sidebar items (Logs, DbStats,
+        // CacheStats, Configuration, ClientStats). Matching by controller alone returned
         // the first one regardless of action. The breadcrumb must disambiguate by action.
         var sut = new AdminBreadcrumbViewComponent();
         var ctx = new ViewComponentContext
         {
             ViewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
             {
-                RouteData = new RouteData { Values = { ["controller"] = "Admin", ["action"] = "DbStats" } }
+                RouteData = new RouteData { Values = { ["controller"] = "Debug", ["action"] = "DbStats" } }
             }
         };
         sut.ViewComponentContext = ctx;

@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Services.Auth;
 /// <remarks>
 /// Mirrors <c>CachingLegalDocumentSyncService</c>: warmed on startup via the
 /// <see cref="TrackedCache{TKey,TValue}"/> base, wholesale flush on writes,
-/// stats exposed via <c>/Admin/CacheStats</c>. Reads served from cache:
+/// stats exposed via <c>/Debug/CacheStats</c>. Reads served from cache:
 /// <see cref="GetActiveCountsByRoleAsync"/>,
 /// <see cref="GetActiveForUserAsync"/>. Every other surface method passes
 /// through to the inner service via a freshly resolved scope. Other read

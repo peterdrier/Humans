@@ -1,4 +1,5 @@
 @model Humans.Web.Models.ExpenseDetailViewModel
+@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "Expense Report";
     var r = Model.Report;
@@ -45,7 +46,6 @@
     </div>
 </div>
 
-<vc:temp-data-alerts />
 
 @if (Model.LastRejectionReason is not null)
 {
@@ -70,12 +70,12 @@
                     <dd class="col-sm-8 fw-semibold">&euro;@r.Total.ToString("N2")</dd>
 
                     <dt class="col-sm-4">Created</dt>
-                    <dd class="col-sm-8">@r.CreatedAt.ToDisplayDateTime()</dd>
+                    <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>
 
                     @if (r.SubmittedAt.HasValue)
                     {
                         <dt class="col-sm-4">Submitted</dt>
-                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDisplayDateTime()</dd>
+                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDateTime()</dd>
                     }
                 </dl>
             </div>
@@ -107,7 +107,11 @@
                                     <td>@line.Description</td>
                                     <td class="text-end">&euro;@line.Amount.ToString("N2")</td>
                                     <td>
-                                        @if (line.Attachment is not null)
+                                        @if (line.LineType != ExpenseLineType.Receipt)
+                                        {
+                                            <span class="badge bg-info text-dark">@(line.LineType == ExpenseLineType.Mileage ? "Mileage" : "Per diem")</span>
+                                        }
+                                        else if (line.Attachment is not null)
                                         {
                                             <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
                                                class="text-decoration-none" target="_blank">
@@ -181,7 +185,7 @@
                         {
                             <li class="mb-0">
                                 <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
-                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d:yyyy-MM-dd}" : "") &mdash; balance &euro;0
+                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d.ToInvariantDate()}" : "") &mdash; balance &euro;0
                             </li>
                         }
                         else

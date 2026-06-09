@@ -907,7 +907,7 @@ public sealed class BudgetService(
 
     private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
     {
-        return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
+        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -932,7 +932,7 @@ public sealed class BudgetService(
             bal.EntityType,
             bal.FieldName,
             bal.Description,
-            OccurredAt = bal.OccurredAt.ToInvariantInstantString()
+            OccurredAt = bal.OccurredAt.ToIso8601()
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.BudgetAuditLog, shaped)];

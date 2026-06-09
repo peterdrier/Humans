@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
 namespace Humans.Infrastructure.Services.Camps;
@@ -115,9 +116,49 @@ public sealed class CachingCampService(
         Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
 
-    public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
-        string query, int max, CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
+    // A camp surfaces in global search only when its public-year season is publicly visible.
+    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
+        [CampSeasonStatus.Active, CampSeasonStatus.Full];
+
+    public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
+        string query, int max, CancellationToken cancellationToken = default)
+    {
+        // Served from the cached CampInfo snapshot — search must never hit the DB. PublicYear is
+        // always a warm year, so both the settings read and GetCampsForYearAsync stay in-cache.
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return [];
+
+        var settings = await GetSettingsAsync(cancellationToken);
+        var year = settings.PublicYear;
+
+        // GUID paste → jump straight to that camp (any status), mirroring the old by-id path.
+        if (Guid.TryParse(query, out var id))
+        {
+            await EnsureWarmedAsync(cancellationToken);
+            var camp = Values.FirstOrDefault(c => c.Id == id);
+            if (camp is null)
+                return [];
+            var byIdSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            return [new CampSearchHit(camp.Slug, byIdSeason?.Name ?? camp.Slug)];
+        }
+
+        // Name match against the public-year season name, public statuses only (what the DB
+        // ILike + status filter did). Case-insensitive contains.
+        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        var trimmed = query.Trim();
+        var hits = new List<CampSearchHit>();
+        foreach (var camp in camps)
+        {
+            var season = camp.Seasons.FirstOrDefault(s =>
+                s.Year == year
+                && PublicCampSeasonStatuses.Contains(s.Status)
+                && s.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+            if (season is not null)
+                hits.Add(new CampSearchHit(camp.Slug, season.Name));
+        }
+
+        return hits.Take(max).ToList();
+    }
 
     public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)

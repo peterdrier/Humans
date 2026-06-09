@@ -9,12 +9,13 @@ namespace Humans.Application.Interfaces.Users;
 /// (<paramref name="mergedToUserId"/> — the target).
 ///
 /// <para>
-/// The orchestrator (<c>AccountMergeService.AcceptAsync</c>) fans out across
-/// every registered implementation inside an ambient <c>TransactionScope</c>,
-/// so all section moves either commit or roll back atomically. Impls may
-/// invalidate their own caches inline if eviction (not synchronous DB rebuild)
-/// is safe-on-rollback; otherwise the orchestrator handles cache refresh in
-/// its post-commit block.
+/// The orchestrator (<c>AccountMergeService.MergeAsync</c>) fans out across
+/// every registered implementation as ordered, independently-committing steps —
+/// there is NO wrapping <c>TransactionScope</c>. Implementations MUST therefore
+/// be idempotent: re-running "move source's rows to target" after a partial
+/// failure must be a safe no-op (a re-FK of an already-moved row must not error).
+/// Defer cache invalidation to the orchestrator, which evicts in a <c>finally</c>
+/// after all steps complete.
 /// </para>
 /// </summary>
 public interface IUserMerge

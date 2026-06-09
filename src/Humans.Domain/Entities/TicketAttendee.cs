@@ -26,11 +26,13 @@ public class TicketAttendee
     /// <summary>Ticket holder's email (may not always be provided by vendor).</summary>
     public string? AttendeeEmail { get; set; }
 
+    /// <summary>Short scannable code printed on the ticket / encoded in its QR
+    /// (Ticket Tailor <c>issued_ticket.barcode</c>, e.g. "xyz34Qy5"). Distinct from
+    /// VendorTicketId (the ti_… object id). Null until a sync repopulates the row.</summary>
+    public string? Barcode { get; set; }
+
     /// <summary>Auto-matched user by email. Null if no match or no email.</summary>
     public Guid? MatchedUserId { get; set; }
-
-    /// <summary>Navigation to matched user.</summary>
-    public User? MatchedUser { get; set; }
 
     /// <summary>Ticket type name (e.g. "Full Week", "Weekend Pass").</summary>
     public string TicketTypeName { get; set; } = string.Empty;

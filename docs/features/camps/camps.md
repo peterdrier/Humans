@@ -3,9 +3,11 @@
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/CampAdminController.cs
   src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Controllers/CampComplianceController.cs
   src/Humans.Web/Controllers/HumansCampControllerBase.cs
   src/Humans.Web/Views/Camp/**
   src/Humans.Web/Views/CampAdmin/**
+  src/Humans.Web/Views/CampCompliance/**
   src/Humans.Domain/Entities/Camp.cs
   src/Humans.Domain/Entities/CampSeason.cs
   src/Humans.Domain/Entities/CampLead.cs
@@ -168,14 +170,14 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact.
-- Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `<vc:human-search>` typeahead picker (search-as-you-type, burner-name match via `scope="Name"`).
+- Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one block per active role definition, ordered by `SortOrder`. The role heading carries a `{filled}/{SlotCount} filled` count, a `required` badge when applicable, and (for managers) an info-icon button that collapses/expands the role description so it no longer crowds the panel. Filled slots render as a wrap of avatar pills (one `<vc:human>` avatar+name per assignee, each with an inline unassign button for managers). When the role has empty slots, a `+` button reveals a single collapsed `<vc:human-search>` typeahead form (search-as-you-type, burner-name match via `scope="Name"`); the per-empty-slot repeated picker is gone.
 - The picker excludes humans already filling the same role from its suggestions (`exclude-user-ids`), so leads can't accidentally re-assign the same human.
 - Assigning a role: the picker posts to `/Camps/{slug}/Roles/AssignByUser` which adds the picked human as a CampMember (Active) if they're not already one and assigns the role in one step (`ICampService.AddMemberAndAssignRoleInActiveSeasonAsync`). Audited as `CampMemberAddedByLead` for the membership add. The legacy `/Roles/Assign` endpoint (taking a `campMemberId`) remains available for callers that already have a member id.
 - Service still rejects with `MemberNotActive` / `MemberSeasonMismatch` if a stale member id is submitted to the legacy endpoint, and with `AlreadyHoldsRole` if the same human is re-submitted before the page refreshes.
 - Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
 - A human cannot hold the same role twice in the same season (DB unique index + `AlreadyHoldsRole` outcome).
 - Lead-add-active-member shortcut: leads can also add members without assigning a role at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
-- Compliance report at `/Camps/Admin/Compliance` lists camps where any required role's filled-slot count is below `MinimumRequired` for the chosen year (defaults to current public year).
+- Role-staffing compliance matrix at `/Camps/Admin/Compliance` (`CampComplianceController`) shows a grid of all active barrios (Active/Full) for the chosen year (defaults to current public year): rows are barrios with a member-count column, columns are the active role definitions, and each cell renders the assignees' avatars plus a dashed placeholder for every unfilled required slot. A barrio is flagged when any role's holder count is below its `MinimumRequired`. Access is gated by the `CampComplianceAccess` policy — CampAdmin/Admin or any team/sub-team coordinator — broader than the CampAdmin-only camp-management surface.
 - All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
 - Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
 - Role email lists (the derived Google Groups `barrios-{year}-{slug}`) fall back to the camp's barrio lead(s): for a **non-Lead** role, any camp that has a Lead for that year but no direct assignee for the role contributes its Lead(s) as stand-in recipients, so messages to an unfilled role still reach the camp's lead instead of nobody (`CampRoleService.GetExpectedAsync`).
@@ -451,7 +453,7 @@ Transitions:
 | Assign / unassign per-camp role | Camp Lead, CampAdmin, or Admin |
 | Add active member to camp (lead-driven shortcut) | Camp Lead, CampAdmin, or Admin |
 | View role assignments | Authenticated users only (no anonymous render) |
-| Compliance report | CampAdmin or Admin |
+| Role-staffing compliance matrix | CampAdmin, Admin, or any team/sub-team coordinator (`CampComplianceAccess`) |
 | JSON API | Public (AllowAnonymous) |
 
 ## URL Structure
@@ -486,7 +488,7 @@ Transitions:
 | `POST /Camps/Admin/Roles/{id}/Edit` | Edit role definition |
 | `POST /Camps/Admin/Roles/{id}/Deactivate` | Soft-delete role definition |
 | `POST /Camps/Admin/Roles/{id}/Reactivate` | Reactivate a soft-deleted role definition |
-| `GET /Camps/Admin/Compliance` | Required-role compliance report (defaults to current public year) |
+| `GET /Camps/Admin/Compliance` | Role-staffing compliance matrix (`CampComplianceController`): barrios × role definitions grid, defaults to current public year |
 | `POST /Camps/{slug}/Members/Add` | Lead-adds-active-member shortcut |
 | `POST /Camps/{slug}/Roles/Assign` | Assign role for the current season |
 | `POST /Camps/{slug}/Roles/{assignmentId}/Unassign` | Unassign role (controller verifies cross-camp ownership) |

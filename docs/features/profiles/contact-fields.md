@@ -31,7 +31,7 @@ Members need to share contact information (Signal, Telegram, WhatsApp, Discord, 
 - Choose from predefined types: Phone, Signal, Telegram, WhatsApp, Discord
 - Can add "Other" type with custom label (e.g., Matrix, IRC)
 - Each field has a value (the actual contact info)
-- Email addresses are managed separately via the Manage Emails page (`/Profile/Emails`)
+- Email addresses are managed separately via the Manage Emails page (`/Profile/Me/Emails`)
 - Fields can be reordered
 
 ### US-10.2: Set Per-Field Visibility
@@ -246,7 +246,7 @@ UserEmail
 - Exactly one `IsNotificationTarget = true` per user (app-level enforcement)
 - OAuth emails cannot be deleted
 
-### Manage Emails Page (`/Profile/Emails`)
+### Manage Emails Page (`/Profile/Me/Emails`)
 - Lists all emails: OAuth email first (non-deletable, always verified), then additional
 - Each row: email address, verified badge, notification target control, visibility dropdown, delete button
 - "Add email" form sends verification, shows pending state

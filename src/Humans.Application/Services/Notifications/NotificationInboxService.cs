@@ -185,9 +185,9 @@ public sealed class NotificationInboxService(
             nr.Notification.ActionUrl,
             nr.Notification.Priority,
             nr.Notification.Source,
-            CreatedAt = nr.Notification.CreatedAt.ToInvariantInstantString(),
-            ReadAt = nr.ReadAt.ToInvariantInstantString(),
-            ResolvedAt = nr.Notification.ResolvedAt.ToInvariantInstantString()
+            CreatedAt = nr.Notification.CreatedAt.ToIso8601(),
+            ReadAt = nr.ReadAt.ToIso8601(),
+            ResolvedAt = nr.Notification.ResolvedAt.ToIso8601()
         }).ToList();
 
         return [new UserDataSlice(GdprExportSections.Notifications, shaped)];

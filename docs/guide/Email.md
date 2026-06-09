@@ -40,7 +40,7 @@ Group, and sync mechanics underneath sit in
 - **Profile → Emails** (`/Profile/Me/Emails`) — your verified addresses, your
   notification target, your Google service email.
 - **Team page** (`/Teams/{slug}`) — your team's group address is shown here.
-- **Provision Email** (Admin only, on `/Profile/{id}/Admin`) — creates a new
+- **Provision Email** (Admin only, on `/Users/Admin/{id}`) — creates a new
   `@nobodies.team` mailbox for a human.
 - **mail.google.com** — sign in here with your `@nobodies.team` address to
   reach your inbox.
@@ -102,7 +102,7 @@ them on Discord or email them directly.
 
 ### Provision a `@nobodies.team` mailbox
 
-From a human's profile admin page (`/Profile/{id}/Admin`), use **Provision
+From a human's profile admin page (`/Users/Admin/{id}`), use **Provision
 Email**. The app:
 
 1. Creates the Google Workspace account.

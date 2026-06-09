@@ -10,6 +10,8 @@ using Humans.Infrastructure.Services.Users;
 using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using UsersAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
+using UsersDuplicateAccountService = Humans.Application.Services.Users.DuplicateAccountService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -19,6 +21,15 @@ internal static class UsersSectionExtensions
     {
         // User section — see #511 / #703. CachingUserService decorator + UserInfo read-model spans User/Profile sections.
         services.AddSingleton<IUserRepository, UserRepository>();
+
+        // Account merge + duplicate detection — moved Profiles → Users (PR 899): the
+        // AccountMergeRequests table is a Users table, so its repository + services live here.
+        // AccountMergeService also contributes to the GDPR export fan-out (IUserDataContributor).
+        services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
+        services.AddScoped<UsersAccountMergeService>();
+        services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<UsersAccountMergeService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersAccountMergeService>());
+        services.AddScoped<IDuplicateAccountService, UsersDuplicateAccountService>();
 
         // Inner Scoped + keyed; decorator resolves via IServiceScopeFactory per-call.
         services.AddKeyedScoped<IUserService, UsersUserService>(CachingUserService.InnerServiceKey);

@@ -76,7 +76,7 @@ public class CityPlanningApiController(
             {
                 id = h.Id,
                 modifiedByDisplayName = h.ModifiedByDisplayName,
-                modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
+                modifiedAt = h.ModifiedAt.ToDateTime(),
                 areaSqm = h.AreaSqm,
                 note = h.Note,
                 geoJson = h.GeoJson,

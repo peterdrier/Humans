@@ -23,9 +23,14 @@ public static class UserAgentClassifier
         var info = HttpUserAgentInformation.Parse(userAgent);
 
         // Bots collapse to a single bucket across all three dimensions so crawler
-        // traffic is visible without inflating cardinality with bot names.
+        // traffic is visible without inflating cardinality. The specific bot name
+        // (from the parser's bounded known-bot list) is carried separately so the
+        // ClientStats screen can break the "Bot" bucket down by crawler.
         if (info.IsRobot())
-            return new ClientClassification("Bot", "Bot", "Bot");
+        {
+            var botName = string.IsNullOrEmpty(info.Name) ? "Other bot" : info.Name!;
+            return new ClientClassification("Bot", "Bot", "Bot", botName);
+        }
 
         var os = MapOs(info.Platform?.PlatformType);
         var browser = string.IsNullOrEmpty(info.Name) ? "Unknown" : info.Name!;
@@ -49,5 +54,10 @@ public static class UserAgentClassifier
     };
 }
 
-/// <summary>Coarse family-level classification of one client.</summary>
-public sealed record ClientClassification(string Os, string Browser, string Device);
+/// <summary>
+/// Coarse family-level classification of one client. <paramref name="BotName"/> is
+/// non-null only when the client is a recognised crawler (<see cref="UserAgentClassifier"/>
+/// still collapses <paramref name="Os"/>/<paramref name="Browser"/>/<paramref name="Device"/>
+/// to <c>"Bot"</c>); it names the specific crawler for the ClientStats breakdown.
+/// </summary>
+public sealed record ClientClassification(string Os, string Browser, string Device, string? BotName = null);

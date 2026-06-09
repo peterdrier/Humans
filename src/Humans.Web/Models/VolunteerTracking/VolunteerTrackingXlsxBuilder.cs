@@ -1,6 +1,6 @@
-using System.Globalization;
 using ClosedXML.Excel;
 using Humans.Application.DTOs.VolunteerTrackingExport;
+using Humans.Application.Extensions;
 
 namespace Humans.Web.Models.VolunteerTracking;
 
@@ -41,7 +41,7 @@ public sealed class VolunteerTrackingXlsxBuilder
 
     private static void WriteMetadataBlock(IXLWorksheet sheet, VolunteerExportModel model)
     {
-        var generatedAt = model.GeneratedAtUtc.ToString("uuuu-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+        var generatedAt = model.GeneratedAtUtc.ToDateTimeUtc().ToInvariantTimestamp();
         sheet.Cell("A1").Value = $"Volunteer tracking export — generated {generatedAt} by {model.GeneratedByName}";
         sheet.Cell("A2").Value = model.FilterSummary;
         sheet.Cell("A3").Value = model.MethodologyBlurb;

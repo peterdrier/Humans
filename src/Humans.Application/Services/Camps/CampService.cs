@@ -262,33 +262,16 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return info with { NameLockDates = nameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value) };
     }
 
-    public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
+    // Camp search is served from the cached CampInfo snapshot in CachingCampService — it must
+    // never hit the DB. Reaching the inner service means a DI mistake. Mirrors
+    // UserService.SearchUsersAsync (search is cache-only; there is no repository search).
+    public Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max,
-        CancellationToken cancellationToken = default)
-    {
-        var settings = await GetSettingsAsync(cancellationToken);
-        var year = settings.PublicYear;
-
-        if (Guid.TryParse(query, out var id))
-        {
-            var camp = await _repo.GetByIdAsync(id, cancellationToken);
-            if (camp is null) return [];
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            return [new CampSearchHit(camp.Slug, season?.Name ?? camp.Slug)];
-        }
-
-        var camps = await _repo.SearchForYearAsync(
-            query, year, onlyPublicStatus: true, max, cancellationToken);
-
-        var hits = new List<CampSearchHit>(camps.Count);
-        foreach (var camp in camps)
-        {
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            var name = season?.Name ?? camp.Slug;
-            hits.Add(new CampSearchHit(camp.Slug, name));
-        }
-        return hits;
-    }
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Camp search runs against the cached CampInfo snapshot in CachingCampService. " +
+            "If this is being called on the inner CampService it indicates a DI registration " +
+            "mistake — ICampServiceRead must resolve to the caching decorator.");
 
     /// <summary>
     /// Special-role user-id lists (Lead/Workshop) keyed by season+role, plus the full
@@ -1404,8 +1387,8 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         {
             CampSlug = cl.Camp.Slug,
             cl.Role,
-            JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
-            LeftAt = cl.LeftAt.ToInvariantInstantString()
+            JoinedAt = cl.JoinedAt.ToIso8601(),
+            LeftAt = cl.LeftAt.ToIso8601()
         }).ToList();
 
         var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
@@ -1415,7 +1398,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             CampSlug = a.CampSeason.Camp.Slug,
             SeasonYear = a.CampSeason.Year,
             RoleName = a.Definition.Name,
-            AssignedAt = a.AssignedAt.ToInvariantInstantString(),
+            AssignedAt = a.AssignedAt.ToIso8601(),
             a.AssignedByUserId
         }).ToList();
 
@@ -1438,7 +1421,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             nameof(CampSettings), settings.Id,
             eeStartDate is null
                 ? "EE start date cleared."
-                : $"EE start date set to {eeStartDate.Value:yyyy-MM-dd}.",
+                : $"EE start date set to {eeStartDate.Value.ToInvariantDate()}.",
             actorUserId);
 
         // Global date change shifts EE for every camp holder at once.
