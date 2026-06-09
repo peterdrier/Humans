@@ -91,7 +91,7 @@ public class SurveyAdminController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogInformation(ex, "Survey save rejected for {SurveyId}", model.Id);
+            logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
             model.Teams = await LoadTeamsAsync(ct);
             return View("Builder", model);

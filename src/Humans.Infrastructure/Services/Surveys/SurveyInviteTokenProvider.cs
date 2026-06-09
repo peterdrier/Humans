@@ -28,6 +28,7 @@ public sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProtec
         }
         catch (Exception ex) when (ex is CryptographicException or FormatException)
         {
+            // Expected: expired or tampered token. Signal "invalid" to the caller via null.
             return null;
         }
     }
