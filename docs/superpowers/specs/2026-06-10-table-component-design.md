@@ -1,7 +1,7 @@
 # Table Component — One Definition of a Table
 
 **Date:** 2026-06-10
-**Status:** Draft for review
+**Status:** Accepted 2026-06-10 (currency + enforcement decisions resolved by Peter)
 **Branch:** `feat/table-component`
 
 ## Problem
@@ -93,7 +93,7 @@ Alternatives rejected:
 |---|---|---|
 | `Text` (default) | — | `@value`, null → muted `—` |
 | `Date` / `DateTime` | inline `.ToDate()`/`.ToDateTime()` calls | reuses `DateTimeDisplayExtensions` (NodaTime, user-timezone aware); emits ISO `data-sort-value` |
-| `Currency` | `N2` / `€` / `"C"` divergence | one shared formatter, one convention app-wide (match dominant existing display: `1.234,56 €` style — final call at implementation); raw numeric `data-sort-value` |
+| `Currency` | `N2` / `€` / `"C"` divergence | one shared formatter, bare `N2` (`#,##0.00`) app-wide — no currency symbol (Peter's call, 2026-06-10); raw numeric `data-sort-value` |
 | `Number` | ad-hoc `N0`/`N2` | numeric alignment + `data-sort-value` |
 | `EnumBadge` | per-view `switch` → badge class | central per-enum-value → Bootstrap badge class registry; unmapped values get `bg-secondary` |
 | `BoolIcon` | ad-hoc check/×/em-dash | standard check / muted em-dash |
@@ -130,18 +130,17 @@ Server mode reuses `_Pager.cshtml`/`PagerViewModel` unchanged — the table mode
 
 `<div class="table-responsive">` wrapper · canonical `table table-sm table-hover mb-0` (+opt-in extras like `align-middle`) · `<th scope="col">` · `aria-sort` via the engine · standard empty-state row (`colspan`, muted, configurable message) · `tr[data-href]` row-click via the existing global handler.
 
-## Enforcement — burn-down of raw `<table>`
+## Enforcement — deferred
 
-A guard that flags raw `<table` in `.cshtml` outside `_Table.cshtml` and an explicit allowlist (the non-goal tables above + the not-yet-migrated baseline), shrinking as migration waves land.
-
-The hard rules prefer analyzers over baseline tests for call-site rules. This rule, however, targets **Razor markup, not C# call sites** — Roslyn analyzers don't see `.cshtml` text, and inspecting Razor-generated C# string literals is fragile. So this is implemented as an architecture baseline test (file-content scan, same shape as the existing `Architecture/Baselines` suite), on the reasoning that the rule does not fit the analyzer pattern. **Flagged for Peter's explicit sign-off in spec review.**
+No burn-down guard in v1 (Peter's call, 2026-06-10). The component must prove itself on a few real views first. If/when migration goes "full blast", revisit an enforcement mechanism then.
 
 ## Migration plan
 
-- **Phase 1 (this branch):** component + formatters + `site.js` filter extension + `_Table.cshtml` + WidgetGallery entry + baseline guard with full allowlist + flagship conversions proving both modes:
+- **Phase 1 (this branch):** component + formatters + `site.js` filter extension + `_Table.cshtml` + WidgetGallery entry + flagship conversions proving both modes:
   - client mode: `StoreAdmin/Summary.cshtml` (already uses `data-sortable-table`) and one plain admin list (e.g. `ProfileAdmin/EmailProblems.cshtml`, the worst class-string offender);
   - server mode: `Ticket/Attendees.cshtml` (sort links + filter bar + pager, controller untouched).
-- **Phase 2+:** per-section migration waves as GitHub issues, sprint-batch sized (~10–15 views each), burning the baseline down. New tables must use the component from day one (guard enforces).
+- **Evaluation gate:** Peter gets a feel for the component on the converted views (PR preview deploy) before any wider rollout is planned.
+- **Phase 2+ (only after the gate):** per-section migration waves as GitHub issues, sprint-batch sized (~10–15 views each).
 
 ## Testing
 
@@ -149,7 +148,7 @@ The hard rules prefer analyzers over baseline tests for call-site rules. This ru
 - Rendering: WidgetGallery demo page with one table per feature (sortable, filterable, server-mode mock) serves as the living visual check; `/test-site` smoke covers the converted flagship views.
 - `site.js` filter logic: no JS test infra exists; keep the engine small and declarative, verified through the smoke tests.
 
-## Open questions
+## Resolved decisions (spec review, 2026-06-10)
 
-1. **Currency convention** — one formatter, but which display: `1.234,56 €` (es-ES, matches Store views) or bare `N2` (matches Tickets)? Recommendation: es-ES with `€` suffix, since the app is a Spanish nonprofit and Store/Expenses already do this. Decide at spec review.
-2. **Baseline-test-vs-analyzer for the markup guard** — see Enforcement above; needs Peter's sign-off since it touches a hard-rule preference.
+1. **Currency convention** — bare `N2` (`#,##0.00`), no currency symbol. Store/Expenses views adopt this as they migrate.
+2. **Burn-down guard** — not yet. Deferred until the component has been evaluated on the Phase 1 conversions.
