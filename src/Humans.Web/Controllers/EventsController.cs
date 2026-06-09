@@ -881,8 +881,8 @@ public class EventsController(
         {
             ModelState.AddModelError(string.Empty, ex.Message);
             model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampId = camp2.Id;
+            model.CampName = ResolveCampDisplayName(camp2);
             model.CampSlug = slug;
             await PopulateBarrioDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
