@@ -242,23 +242,7 @@ public class EventsModerationController(
             return View("AdminEventForm", model);
         }
 
-        var isAllDay = !isCampEvent && model.IsAllDay;
-        var durationMinutes = isAllDay ? 1440 : model.DurationMinutes;
-        var startTime = isAllDay ? TimeSpan.Zero : model.StartTime;
-
-        guideEvent.Title = model.Title;
-        guideEvent.Description = model.Description;
-        guideEvent.CategoryId = model.CategoryId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
-        guideEvent.DurationMinutes = durationMinutes;
-        guideEvent.LocationNote = model.LocationNote;
-        guideEvent.Host = model.Host;
-        guideEvent.IsRecurring = model.IsRecurring;
-        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
-        if (isCampEvent)
-            guideEvent.PriorityRank = model.PriorityRank;
-        else
-            guideEvent.GuideSharedVenueId = model.VenueId;
+        ApplyFormToEvent(guideEvent, model, isCampEvent, tz);
 
         await guide.AdminUpdateAsync(guideEvent, moderator.Id, model.Note);
 
@@ -317,6 +301,26 @@ public class EventsModerationController(
 
         model.EventDays = BuildEventDayOptions(burn);
         model.TimeZoneId = burn.TimeZoneId;
+    }
+
+    // Maps the posted form fields onto the event. Camp events carry a priority
+    // rank; individual events carry a venue and the all-day flag.
+    private void ApplyFormToEvent(Event guideEvent, AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
+    {
+        var isAllDay = !isCampEvent && model.IsAllDay;
+        guideEvent.Title = model.Title;
+        guideEvent.Description = model.Description;
+        guideEvent.CategoryId = model.CategoryId;
+        guideEvent.StartAt = ToInstant(model.StartDate.Add(isAllDay ? TimeSpan.Zero : model.StartTime), tz);
+        guideEvent.DurationMinutes = isAllDay ? 1440 : model.DurationMinutes;
+        guideEvent.LocationNote = model.LocationNote;
+        guideEvent.Host = model.Host;
+        guideEvent.IsRecurring = model.IsRecurring;
+        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+        if (isCampEvent)
+            guideEvent.PriorityRank = model.PriorityRank;
+        else
+            guideEvent.GuideSharedVenueId = model.VenueId;
     }
 
     [Grandfathered(
