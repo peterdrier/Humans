@@ -25,14 +25,18 @@ public interface ICalendarFeedContributor : IFanout
 }
 
 public sealed record CalendarFeedItem(
-    string Uid,            // stable across fetches: "shift-{signupId}@humans", "event-{eventId}-{occurrenceDate:yyyyMMdd}@humans"
+    string Uid,            // stable across fetches: "shift-{signupId}@humans.nobodies.team", "event-{eventId}-{occurrenceDate:yyyyMMdd}@humans.nobodies.team"
     string Source,         // contributing section, e.g. "Shifts", "Events"; emitted as ICS CATEGORIES
     string Summary,
     string? Description,
     Instant Start,
     Instant End,
     string? Location,
-    string? Url);          // absolute deep link back into the app
+    string? Url);          // absolute deep link back into the app; emitted as ICS URL
+
+// The base URL is hardcoded to https://humans.nobodies.team for the 2026 cycle
+// (Peter's call, 2026-06-10) — no per-event public detail pages exist, so shifts
+// link to /Shifts/Mine and events to /Events/Schedule. Make it configurable for 2027.
 ```
 
 Contributors return absolute `Instant`s — each section resolves its own wall-clock times through `EventSettings.TimeZoneId`. The serializer emits UTC; calendar clients localize.
