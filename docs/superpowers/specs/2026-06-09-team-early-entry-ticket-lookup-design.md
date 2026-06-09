@@ -50,6 +50,9 @@ parameter (tag-helper attribute `ticket-lookup-url`), carried on
   row shape** as profile search (`{ userId, displayName, detail, profilePictureUrl }`), so the
   existing renderer and the existing `mousedown`→`hiddenInput.value = r.userId` selection path
   handle a ticket-resolved row with no change.
+- **Partial-failure:** the two fetches are independent — if one rejects (e.g. the ticket
+  endpoint 403s) the other's results still render. Each fetch resolves to `[]` on error rather
+  than failing the merge; only if *both* yield nothing does the dropdown hide.
 - When `ticketLookupUrl` is null (every other caller), behaviour is byte-for-byte identical to
   today — the second fetch is never wired up.
 
@@ -86,21 +89,26 @@ public async Task<IActionResult> LookupTicket(string slug, string q, Cancellatio
       .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
   ```
 - **Human projection:** if `hit?.MatchedUserId` is a value, resolve it via
-  `IUserServiceRead.GetUserInfoAsync(id)` (already injected as `_userService`). If the user
-  resolves and `IsActive`, return a one-row JSON array; otherwise empty.
-- **Response shape** (matches profile search rows so the JS merge is trivial):
+  `IUserServiceRead.GetUserInfoAsync(id, ct)` (already injected as `_userService`; thread the
+  action's `ct`). If the user resolves and `IsActive == true` (the same gate
+  `HumanSearchViewComponent` prefill uses), return a one-row array; otherwise empty.
+- **Response type: reuse the existing `HumanLookupSearchResult`** — do **not** add a new record.
+  `src/Humans.Web/Models/SearchResponseModels.cs` defines
+  `HumanLookupSearchResult(Guid UserId, string DisplayName, string? Detail = null, string? ProfilePictureUrl = null)`,
+  which serializes to exactly `{ userId, displayName, detail, profilePictureUrl }` — the same
+  shape `/api/profiles/search` (`ProfileApiController.Search`) returns and the same the picker JS
+  already consumes. The action returns `Json(rows)` where `rows` is a 0-or-1 element
+  `List<HumanLookupSearchResult>`.
   ```json
   [ { "userId": "<guid>", "displayName": "<BurnerName>",
       "detail": "Ticket #4b4DGpc", "profilePictureUrl": "<url-or-null>" } ]
   ```
-  `detail` is the localized "Ticket #{barcode}" string so the coordinator sees the match came
-  from a ticket. Use the existing shared-resource pattern for the label.
+  `Detail` is the localized "Ticket #{barcode}" label so the coordinator sees the match came from
+  a ticket: `localizer["TeamAdmin_TicketLabel", hit.Barcode]` using the already-injected
+  `IStringLocalizer<SharedResource> localizer`, with key `TeamAdmin_TicketLabel = "Ticket #{0}"`.
 - **No new cross-section interface method** — `ITicketServiceRead` keeps `[SurfaceBudget(2)]`;
   resolution is controller-side filtering, which Peter's hard rules assign to controllers.
-
-A small Web-layer result record (e.g. `TicketLookupRow` in `Humans.Web/Models`) types the JSON.
-If a profile-search row type with the same fields already exists in the Web layer, reuse it
-instead of adding a new record (reuse-first; confirm during implementation).
+  `TeamAdminController` does not yet inject `ITicketServiceRead`; add that injection.
 
 ### 3. Outcomes
 
@@ -157,8 +165,8 @@ unchanged) plus a manual check of the merged dropdown on the Early Entry page.
 - `src/Humans.Web/ViewComponents/HumanSearchViewComponent.cs` — add `ticketLookupUrl` param.
 - `src/Humans.Web/Models/HumanSearchPickerViewModel.cs` — add `TicketLookupUrl`.
 - `src/Humans.Web/Views/Shared/Components/HumanSearch/Default.cshtml` — parallel fetch + merge.
-- `src/Humans.Web/Controllers/TeamAdminController.cs` — `LookupTicket` action.
-- `src/Humans.Web/Models/` — small `TicketLookupRow` record (or reuse existing search-row type).
+- `src/Humans.Web/Controllers/TeamAdminController.cs` — add `ITicketServiceRead` injection +
+  `LookupTicket` action returning `List<HumanLookupSearchResult>` (existing type, no new record).
 - `src/Humans.Web/Views/TeamAdmin/EarlyEntry.cshtml` — pass `ticket-lookup-url` + placeholder.
 - `src/Humans.Web/Resources/SharedResource.*.resx` — "Ticket #{0}" + placeholder strings.
 - `tests/Humans.Web.Tests/Controllers/` — `LookupTicket` tests.
