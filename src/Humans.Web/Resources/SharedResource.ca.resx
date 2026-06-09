@@ -3278,10 +3278,11 @@
     <value>Inicia la sessió</value>
   </data>
   <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nom d’usuari o contrasenya incorrectes.</value>
+    <value>Nom d’usuari o contrasenya incorrectes. El nom d’usuari és "gate"; la contrasenya l’estableix l’equip d’entrades — demana’ls l’actual.</value>
   </data>
-  <data name="GateLogin_LockedOut" xml:space="preserve">
-    <value>Massa intents fallits. Espera uns minuts i torna-ho a provar.</value>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>L’inici de sessió des d’aquesta xarxa està en pausa durant {0} segons: s’han fet massa intents amb contrasenya incorrecta des d’aquí. Si no has estat tu, algú que comparteix aquesta connexió està provant contrasenyes en aquesta pàgina. Espera, i després introdueix la contrasenya correcta — pregunta a l’equip d’entrades si no n’estàs segur. El compte NO està bloquejat; els administradors d’entrades poden comprovar o canviar la contrasenya a Tickets → Gate terminal.</value>
+    <comment>{0}=seconds remaining</comment>
   </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Revisa el teu correu</value>

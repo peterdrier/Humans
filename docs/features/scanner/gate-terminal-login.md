@@ -32,12 +32,28 @@ the design dialogue: "no heroics on the hard read-only bit").
 - **Credential:** the Identity `PasswordHash` on the row itself — no extra storage,
   no schema change. Set/rotate at `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`).
   Rotation bumps the security stamp, which kills existing gate sessions at the next
-  security-stamp validation sweep (≤30 min), and clears any lockout.
+  security-stamp validation sweep (≤30 min).
 - **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
-  `lockoutOnFailure: true` (Identity lockout = brute-force protection that self-heals
-  in minutes). Success signs in with `isPersistent: true` and redirects to
-  `/Scanner/Tickets`.
+  `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
+  to `/Scanner/Tickets`.
+- **Brute-force protection is per source IP, never per account.** The username is
+  public, so Identity's per-account lockout would let anyone deny the real terminal
+  at gate by deliberately failing passwords — the attacker and the victim would share
+  the lockout. Instead `GateLoginThrottle` (in-memory, singleton) allows 10 failed
+  attempts per minute per source IP; an attacker only ever locks themselves out.
+  Lockout is explicitly disabled on the account (`SetLockoutEnabledAsync(false)` on
+  every password set) so no other code path can ever lock it either. Forwarded
+  headers are enabled in deployment, so `RemoteIpAddress` is the real client IP.
+  Known trade-off: an attacker NATed behind the same public IP as the gate laptop
+  (event wifi) shares its bucket for the 60-second window — accepted, and the error
+  message tells gate staff exactly that.
+- **Errors are actionable, never blank.** Wrong credential: says the username is
+  `gate` and the password comes from the ticket team. Throttled: says sign-in from
+  this network is paused for {N} seconds, why (too many wrong-password attempts from
+  this connection — possibly someone else on it), what to do (wait, use the correct
+  password, ask the ticket team), and that the account itself is NOT locked and
+  admins can verify/change the password under Tickets → Gate terminal.
 - **Authorization:** scanner routes moved from `TicketAdminBoardOrAdmin` to the new
   `ScannerAccess` policy — TicketAdmin/Board/Admin roles OR `NameIdentifier ==
   SystemUserIds.GateTerminal`. Deliberately NOT a `RoleNames` constant: role
@@ -69,7 +85,9 @@ the design dialogue: "no heroics on the hard read-only bit").
 
 - If the laptop loses its cookie (cleared browser, >14 days idle), gate staff
   re-enter the known credential at `/Account/GateLogin` — no admin needed on-site.
-- Wrong password 5× locks the account for the Identity default window (~5 min);
-  the admin card shows lockout state, and setting a new password clears it.
+- The account can never be locked out. Sustained wrong passwords from one source
+  pause that source for 60-second windows; the gate laptop on its own IP is
+  unaffected by attackers elsewhere, and the on-screen error explains the wait
+  and the fix.
 - The account shows up as "Gate Terminal" in people lists/search (it has a
   profile); that's accepted and self-documenting.

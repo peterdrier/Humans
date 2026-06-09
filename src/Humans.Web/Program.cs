@@ -81,8 +81,10 @@ if (!builder.Environment.IsProduction())
     builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
-// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate).
+// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
+// + the per-source-IP sign-in failure throttle for /Account/GateLogin.
 builder.Services.AddScoped<GateTerminalAccountSeeder>();
+builder.Services.AddSingleton<GateLoginThrottle>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

@@ -46,13 +46,6 @@
                             <span>No password set</span>
                         }
                     </li>
-                    @if (Model.IsLockedOut)
-                    {
-                        <li>
-                            <i class="fa-solid fa-lock text-warning me-1"></i>
-                            <span>Locked out after failed attempts — setting a new password clears it</span>
-                        </li>
-                    }
                     @if (Model.LastLoginAt is { } lastLogin)
                     {
                         <li>
@@ -79,6 +72,9 @@
                 <p class="text-muted small mt-2 mb-0">
                     Pick something gate staff can type on a laptop keyboard. Anyone with this
                     password can see attendee names, emails, and ticket status.
+                    The account never locks out — wrong-password attempts are throttled per
+                    source IP instead (@Humans.Web.Infrastructure.GateLoginThrottle.MaxFailuresPerWindow
+                    failures per minute), so nobody can deny the gate by hammering the login.
                 </p>
             </div>
         </div>

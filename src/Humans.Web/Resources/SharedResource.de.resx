@@ -3278,10 +3278,11 @@
     <value>Anmelden</value>
   </data>
   <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Benutzername oder Passwort falsch.</value>
+    <value>Benutzername oder Passwort falsch. Der Benutzername ist "gate"; das Passwort wird vom Ticket-Team festgelegt — frag dort nach dem aktuellen.</value>
   </data>
-  <data name="GateLogin_LockedOut" xml:space="preserve">
-    <value>Zu viele Fehlversuche. Warte ein paar Minuten und versuche es erneut.</value>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>Die Anmeldung aus diesem Netzwerk ist für {0} Sekunden pausiert: Von hier kamen zu viele Versuche mit falschem Passwort. Wenn du das nicht warst, probiert gerade jemand mit derselben Internetverbindung Passwörter auf dieser Seite aus. Warte ab und gib dann das richtige Passwort ein — frag das Ticket-Team, wenn du unsicher bist. Das Konto ist NICHT gesperrt; Ticket-Admins können das Passwort jederzeit unter Tickets → Gate terminal prüfen oder ändern.</value>
+    <comment>{0}=seconds remaining</comment>
   </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Überprüfe deine E-Mails</value>

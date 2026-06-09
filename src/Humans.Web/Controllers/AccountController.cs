@@ -10,6 +10,7 @@ using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Web.Infrastructure;
 
 namespace Humans.Web.Controllers;
 
@@ -22,6 +23,7 @@ public class AccountController(
     IUserEmailService userEmailService,
     IMagicLinkService magicLinkService,
     IAccountProvisioningService accountProvisioningService,
+    GateLoginThrottle gateThrottle,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
@@ -510,6 +512,18 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GateLogin(string? username, string? password)
     {
+        // Throttle by source IP, never by account — anyone failing passwords on
+        // purpose must only lock themselves out, not the terminal at gate.
+        var source = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (gateThrottle.SecondsUntilRetry(source) is { } waitSeconds)
+        {
+            logger.LogWarning(
+                "Gate terminal sign-in throttled for {Source} ({WaitSeconds}s remaining)",
+                source, waitSeconds);
+            ModelState.AddModelError(string.Empty, localizer["GateLogin_Throttled", waitSeconds]);
+            return View();
+        }
+
         var user = string.Equals(username?.Trim(), SystemUserIds.GateTerminalLoginName,
                 StringComparison.OrdinalIgnoreCase)
             ? await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString())
@@ -517,24 +531,21 @@ public class AccountController(
 
         if (user is null || string.IsNullOrEmpty(password))
         {
+            gateThrottle.RecordFailure(source);
             ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
             return View();
         }
 
-        var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
-        if (result.IsLockedOut)
-        {
-            logger.LogWarning("Gate terminal sign-in locked out after repeated failures");
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_LockedOut"]);
-            return View();
-        }
-
+        var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
-            logger.LogWarning("Gate terminal sign-in failed (wrong password)");
+            gateThrottle.RecordFailure(source);
+            logger.LogWarning("Gate terminal sign-in failed (wrong password) from {Source}", source);
             ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
             return View();
         }
+
+        gateThrottle.Reset(source);
 
         user.LastLoginAt = clock.GetCurrentInstant();
         await userManager.UpdateAsync(user);

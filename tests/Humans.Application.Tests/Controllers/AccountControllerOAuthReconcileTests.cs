@@ -71,6 +71,10 @@ public class AccountControllerOAuthReconcileTests
             _userEmailService,
             _magicLinkService,
             Substitute.For<IAccountProvisioningService>(),
+            new Web.Infrastructure.GateLoginThrottle(
+                new Microsoft.Extensions.Caching.Memory.MemoryCache(
+                    new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
+                _clock),
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);

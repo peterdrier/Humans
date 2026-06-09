@@ -3278,10 +3278,11 @@
     <value>Se connecter</value>
   </data>
   <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nom d'utilisateur ou mot de passe incorrect.</value>
+    <value>Nom d'utilisateur ou mot de passe incorrect. Le nom d'utilisateur est "gate" ; le mot de passe est défini par l'équipe billetterie — demande-leur le mot de passe actuel.</value>
   </data>
-  <data name="GateLogin_LockedOut" xml:space="preserve">
-    <value>Trop de tentatives échouées. Attends quelques minutes et réessaie.</value>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>La connexion depuis ce réseau est suspendue pendant {0} secondes : trop de tentatives avec un mauvais mot de passe sont venues d'ici. Si ce n'était pas toi, quelqu'un partageant cette connexion essaie des mots de passe sur cette page. Patiente, puis saisis le bon mot de passe — demande à l'équipe billetterie en cas de doute. Le compte n'est PAS bloqué ; les admins billetterie peuvent vérifier ou changer le mot de passe dans Tickets → Gate terminal.</value>
+    <comment>{0}=seconds remaining</comment>
   </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Vérifiez vos e-mails</value>

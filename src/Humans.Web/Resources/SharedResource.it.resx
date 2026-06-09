@@ -3278,10 +3278,11 @@
     <value>Accedi</value>
   </data>
   <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nome utente o password errati.</value>
+    <value>Nome utente o password errati. Il nome utente è "gate"; la password è impostata dal team biglietti — chiedi a loro quella attuale.</value>
   </data>
-  <data name="GateLogin_LockedOut" xml:space="preserve">
-    <value>Troppi tentativi falliti. Attendi qualche minuto e riprova.</value>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>L'accesso da questa rete è sospeso per {0} secondi: da qui sono arrivati troppi tentativi con password sbagliata. Se non sei stato tu, qualcuno che condivide questa connessione sta provando password su questa pagina. Aspetta, poi inserisci la password corretta — chiedi al team biglietti se non ne sei sicuro. L'account NON è bloccato; gli amministratori biglietti possono verificare o cambiare la password in Tickets → Gate terminal.</value>
+    <comment>{0}=seconds remaining</comment>
   </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Controlla la tua e-mail</value>

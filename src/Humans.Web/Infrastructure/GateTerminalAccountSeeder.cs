@@ -13,7 +13,7 @@ using NodaTime;
 namespace Humans.Web.Infrastructure;
 
 /// <summary>Admin-card status of the shared gate-terminal account.</summary>
-public record GateTerminalStatus(bool Provisioned, bool HasPassword, bool IsLockedOut, Instant? LastLoginAt);
+public record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
 
 /// <summary>
 /// Provisions and manages the shared gate-terminal account
@@ -40,18 +40,19 @@ public sealed class GateTerminalAccountSeeder(
     {
         var user = await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString());
         if (user is null)
-            return new GateTerminalStatus(false, false, false, null);
+            return new GateTerminalStatus(false, false, null);
 
         var hasPassword = await userManager.HasPasswordAsync(user);
-        var isLockedOut = await userManager.IsLockedOutAsync(user);
-        return new GateTerminalStatus(true, hasPassword, isLockedOut, user.LastLoginAt);
+        return new GateTerminalStatus(true, hasPassword, user.LastLoginAt);
     }
 
     /// <summary>
     /// Sets (or rotates) the gate password, provisioning the account on first use.
     /// Rotation bumps the Identity security stamp, so existing gate sessions die
-    /// at the next security-stamp validation sweep. Also clears any lockout so a
-    /// fresh password is immediately usable at gate.
+    /// at the next security-stamp validation sweep. Identity lockout is disabled
+    /// on the account: the username is public, so per-account lockout would let
+    /// anyone deny the real terminal at gate. Sign-in failures are throttled per
+    /// source IP instead (<see cref="GateLoginThrottle"/>).
     /// </summary>
     public async Task<IdentityResult> SetPasswordAsync(string password, Guid actorUserId)
     {
@@ -71,8 +72,7 @@ public sealed class GateTerminalAccountSeeder(
         if (!added.Succeeded)
             return added;
 
-        await userManager.SetLockoutEndDateAsync(user, null);
-        await userManager.ResetAccessFailedCountAsync(user);
+        await userManager.SetLockoutEnabledAsync(user, false);
 
         await auditLogService.LogAsync(
             AuditAction.GateTerminalPasswordSet,
