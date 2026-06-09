@@ -66,7 +66,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | Reason | string? | max 500 |
 | CreatedAt | Instant | |
 
-Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted.
+Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents cascade-deleting history when a GuideEvent is deleted. Action values: `Approved` / `Rejected` / `ResubmitRequested` (state-transition decisions, Pending-only) and `Edited` (an admin/moderator in-place field edit — **not** a state transition; appended directly without going through `Event.ApplyModerationAction`).
 
 ### GuideSettings (singleton)
 
@@ -152,12 +152,13 @@ Unique constraint on (UserId, GuideEventId).
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
 | Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved via `ICampService.GetEventManagedCampsAsync` (unions `CampRoleAssignment` Lead/Workshop rows + legacy `CampLead` table). Workshop Leads do NOT gain general camp-management authority. Can bulk-upload events via CSV at `/Events/Barrio/{slug}/BulkUpload` (US-26.10). |
-| GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
+| GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, **edit any event's fields in place from the moderation queue (any status; status preserved, no re-queue)**, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
 
 - Submissions are only accepted when `now >= GuideSettings.SubmissionOpenAt && now <= GuideSettings.SubmissionCloseAt`; the controller enforces this with `IClock` before creating or resubmitting.
 - A moderation action (Approve/Reject/RequestEdit) may only be applied to a `Pending` event; the controller validates status before calling `ApplyModerationAsync`.
+- An admin/moderator in-place edit (`EventsModerationController.Edit`/`Update` → `IEventService.AdminUpdateAsync`) may edit **any** event in **any** status and **preserves `Status`** — an Approved event stays Approved/published and is never re-queued to Pending (contrast `UpdateAndResubmitAsync`, the submitter path, which does re-queue). It appends an `Edited` `ModerationAction` (actor + optional note) and never changes the event's camp association or submitter.
 - `ModerationAction` records are never deleted or updated — `OnDelete(DeleteBehavior.Restrict)` prevents cascade; no Update paths exist in the repository.
 - Category slugs are globally unique (unique constraint enforced at DB level; service validates before create/update).
 - `GuideApiController` is gated behind `EventGuideFeatureFilter` at class level and `[EnableCors("GuideApi")]`; the public endpoints allow unauthenticated access while `[Authorize] + [DisableCors]` endpoints are same-origin only.
