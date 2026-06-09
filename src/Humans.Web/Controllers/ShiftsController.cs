@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application;
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
@@ -165,6 +166,11 @@ public class ShiftsController(
     // 204 with X-Redirect so the client navigates instead of swapping a row.
     [HttpPost("ToggleDay")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 20.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();

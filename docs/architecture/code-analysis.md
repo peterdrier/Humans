@@ -92,8 +92,9 @@ HUM0027 | Type implements both IApplicationService and IOrchestrator (the role a
 HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning) | Error
 HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microsoft.EntityFrameworkCore` type, or `IQueryable` in a method signature (`[Grandfathered("HUM0029")]` downgrades to Warning) | Error
 HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Application.Extensions.DateFormattingExtensions` | Error
+HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and ratchet down over time (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
 
-> The next free id is **HUM0031** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0032** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
@@ -118,7 +119,7 @@ analyzer to their own compilation — they instantiate analyzers directly via
 | "in this folder, no calls of shape X" / "section ownership comes from directory layout" | **Filesystem-aware ratchet test** | Analyzers see compilations, not folders. |
 | EF migration-file checks (no `Drop*` in `Up()`) | **Ratchet test** | Migration files are EF-generated; an analyzer would fire on legitimate ops. |
 
-The 10 ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
+The ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
 and the boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall into
 "ratchet" / "marker" / "filesystem-aware" buckets — they stay as tests.
 

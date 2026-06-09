@@ -1,12 +1,13 @@
 namespace Humans.Application.Architecture;
 
 /// <summary>
-/// Marks a class as a known, pre-existing violator of an architecture analyzer
-/// rule. The analyzer downgrades its diagnostic from <c>Error</c> to
-/// <c>Warning</c> for any type carrying this attribute with the matching
-/// <c>RuleId</c>, so the build stays green while the migration work is in
-/// flight. Every use is a TODO — refactor the class to comply with the rule,
-/// then delete the attribute in the same commit.
+/// Marks a class (or, for method-level rules like HUM0031, a method) as a
+/// known, pre-existing violator of an architecture analyzer rule. The analyzer
+/// downgrades its diagnostic from <c>Error</c> to <c>Warning</c> for any
+/// declaration carrying this attribute with the matching <c>RuleId</c>, so the
+/// build stays green while the migration work is in flight. Every use is a
+/// TODO — refactor the code to comply with the rule, then delete the attribute
+/// in the same commit.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -45,7 +46,7 @@ namespace Humans.Application.Architecture;
 /// scope (HUM0009, HUM0024, …) leave it <c>null</c> and ignore it.
 /// </para>
 /// </remarks>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = false)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
 public sealed class GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef, string? scope = null)
     : Attribute
 {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
@@ -39,6 +40,11 @@ public class AccountController(
     }
 
     [HttpGet]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 107 statements, cc 33.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> ExternalLoginCallback(string? returnUrl = null, string? remoteError = null)
     {
         returnUrl ??= Url.Content("~/");

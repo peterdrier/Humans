@@ -50,12 +50,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoBusinessLogicInControllers.baseline.txt",
-            NoBusinessLogicInControllersRule.Scan(repoRoot),
-            "no business logic in controllers (memory/architecture/no-business-logic-in-controllers.md)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt",
             ServiceBoundaryArchitectureTests.ScanApplicationServiceEntityReadReturns(),
             "no new Application service read methods return EF/domain entities (docs/architecture/service-entity-boundary-ratchet.md)");

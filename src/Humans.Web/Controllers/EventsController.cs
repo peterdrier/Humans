@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
@@ -34,6 +35,11 @@ public class EventsController(
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 21 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> MySubmissions()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -255,6 +261,11 @@ public class EventsController(
 
     [HttpPost("Submit/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 42 statements, cc 17.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -429,6 +440,11 @@ public class EventsController(
     }
 
     [HttpGet("Browse")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 23.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
@@ -746,6 +762,11 @@ public class EventsController(
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 41 statements, cc 11.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
@@ -832,6 +853,11 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 60 statements, cc 14.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
