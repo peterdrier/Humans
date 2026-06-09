@@ -1,10 +1,10 @@
 using System.Text.Json;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Extensions;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Web.Models;
 
@@ -133,11 +133,8 @@ public sealed class SurveyBuilderViewModel
     public string OpensAtInput => FormatLocal(OpensAt);
     public string ClosesAtInput => FormatLocal(ClosesAt);
 
-    private static readonly LocalDateTimePattern DateTimeLocalPattern =
-        LocalDateTimePattern.CreateWithInvariantCulture("uuuu-MM-dd'T'HH:mm");
-
     private static string FormatLocal(LocalDateTime? local)
-        => local is null ? string.Empty : DateTimeLocalPattern.Format(local.Value);
+        => local is null ? string.Empty : DateFormattingExtensions.PlacementDateTimePattern.Format(local.Value);
 
     /// <summary>Maps the posted form to the service authoring input. Question/option order is the posted order.</summary>
     public SurveyEditInput ToEditInput(DateTimeZone zone) => new(

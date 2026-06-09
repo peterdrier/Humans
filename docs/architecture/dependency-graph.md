@@ -47,6 +47,7 @@ graph LR
     classDef earlyentry fill:#fb923c,color:#fff
     classDef agent fill:#e879f9,color:#000
     classDef systemsettings fill:#71717a,color:#fff
+    classDef surveys fill:#0ea5e9,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -158,6 +159,7 @@ graph LR
     EventSvc[EventService]:::events
     EarlyEntry[EarlyEntryService]:::earlyentry
     Agent[AgentService]:::agent
+    Survey[SurveyService]:::surveys
     SysSettings[SystemSettingsService]:::systemsettings
 
     %% ═══════════════════════════════════
@@ -469,6 +471,16 @@ graph LR
     Store --> Team
     Store --> ShiftMgmt
     Store --> Audit
+
+    %% ── Surveys ──
+    Survey --> Team
+    Survey --> User
+    Survey --> TicketQ
+    Survey --> ShiftView
+    Survey --> UEmail
+    Survey --> Email
+    Survey --> Audit
+
     ExpenseReport --> Budget
     ExpenseReport --> Team
     ExpenseReport --> User

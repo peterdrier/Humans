@@ -85,10 +85,21 @@ public interface ISurveyService : ISurveyServiceRead, IApplicationService
 
     /// <summary>
     /// Finalises a wizard submission per its anonymity tier (see <see cref="SurveySubmission"/>),
-    /// dropping answers to questions hidden under branching. Individual submissions are never
-    /// audit-logged (privacy).
+    /// dropping answers to questions hidden under branching. Validates the survey is Open and within
+    /// its answer window. Individual submissions are never audit-logged (privacy).
     /// </summary>
     Task SubmitResponseAsync(SurveySubmission submission, CancellationToken ct = default);
+
+    /// <summary>
+    /// Advances the answering wizard one step from a posted page: captures the page's visible answers
+    /// into <paramref name="state"/>, fires the path-specific first-advance funnel side effect,
+    /// autosaves Identified drafts, validates required-visible questions, then navigates
+    /// back/next — or submits when no visible page remains. Mutates <paramref name="state"/>
+    /// (answers, <c>CurrentPage</c>, <c>Started</c>); the caller persists it per the outcome.
+    /// </summary>
+    Task<SurveyWizardAdvanceResult> AdvanceWizardAsync(
+        SurveyWizardState state, int page, bool back, IReadOnlyList<SurveyAnswerInput> postedAnswers,
+        CancellationToken ct = default);
 
     // ── Results ────────────────────────────────────────────────────────────
     /// <summary>
@@ -221,6 +232,56 @@ public sealed record SurveyAnswerInput(
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
     int? RatingValue);
+
+/// <summary>
+/// Per-session state of the answering wizard. The Web layer JSON-serialises it into the HTTP session
+/// and hands it to <see cref="ISurveyService.AdvanceWizardAsync"/>, which owns all flow decisions.
+/// Answers are keyed by <c>QuestionId.ToString()</c> (Guid object keys don't round-trip through JSON
+/// cleanly; string keys do).
+/// </summary>
+public sealed class SurveyWizardState
+{
+    public Guid SurveyId { get; set; }
+    public Guid? InvitationId { get; set; }   // the token's invitation — all invited tiers (drives Started/Completed funnel flags)
+    public Guid? UserId { get; set; }          // the token's user — all invited tiers; the RESPONSE columns are written only for Identified (see submit)
+    public Guid? DraftResponseId { get; set; } // Identified draft only (set by StartIdentifiedDraftAsync)
+    public ResponseAnonymity Anonymity { get; set; }
+    public SurveyInputMethod InputMethod { get; set; } = SurveyInputMethod.UserSpecificLink;
+    public string Culture { get; set; } = "en";
+    public int CurrentPage { get; set; }
+    public bool Started { get; set; }
+    public Dictionary<string, SurveyWizardAnswer> Answers { get; set; } = new(StringComparer.Ordinal); // key = QuestionId.ToString()
+}
+
+/// <summary>One captured answer in the wizard session.</summary>
+public sealed class SurveyWizardAnswer
+{
+    public List<string> SelectedOptionValues { get; set; } = [];
+    public string? TextValue { get; set; }
+    public int? RatingValue { get; set; }
+}
+
+/// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries the missing required question ids.</summary>
+public enum SurveyWizardOutcome
+{
+    /// <summary>The survey no longer exists (treat as an invalid link).</summary>
+    NotFound,
+
+    /// <summary>The survey is not Open or is outside its answer window.</summary>
+    Closed,
+
+    /// <summary>Required visible questions are unanswered; the state stays on the posted page.</summary>
+    ValidationFailed,
+
+    /// <summary>Moved to the previous/next visible page (<c>state.CurrentPage</c> updated).</summary>
+    Navigated,
+
+    /// <summary>No visible page remained — the response was submitted.</summary>
+    Submitted,
+}
+
+/// <summary>Outcome of one wizard advance. <see cref="MissingRequired"/> is empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
+public sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
 
 // ── Results DTOs (co-located) ───────────────────────────────────────────────
 

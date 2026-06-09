@@ -1,8 +1,8 @@
 using System.Globalization;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Enums;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Web.Models.Survey;
 
@@ -13,9 +13,6 @@ namespace Humans.Web.Models.Survey;
 public static class SurveyResultsBuilder
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    private static readonly ZonedDateTimePattern SubmittedPattern =
-        ZonedDateTimePattern.CreateWithInvariantCulture("dd MMM yyyy HH:mm", DateTimeZoneProviders.Tzdb);
 
     public static SurveyResultsViewModel Build(SurveyResultsView view) => new()
     {
@@ -50,7 +47,7 @@ public static class SurveyResultsBuilder
     };
 
     private static string FormatInstant(Instant? instant) =>
-        instant is null ? "—" : SubmittedPattern.Format(instant.Value.InZone(Zone));
+        instant is null ? "—" : instant.Value.ToDateTime(Zone);
 }
 
 /// <summary>Admin results page: response-rate header, funnel, per-question aggregates, and the Identified drill-down.</summary>

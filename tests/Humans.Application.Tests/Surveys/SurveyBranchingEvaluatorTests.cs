@@ -15,16 +15,18 @@ public class SurveyBranchingEvaluatorTests
     private static BranchClause Clause(Guid q, BranchOperator op, params string[] vals)
         => new() { QuestionId = q, Operator = op, OptionValues = vals.ToList() };
 
-    private static Dictionary<Guid, IReadOnlyList<string>> Answers(Guid q, params string[] vals)
-        => new() { [q] = vals };
+    private static Dictionary<Guid, AnswerState> NoAnswers() => new();
+
+    private static Dictionary<Guid, AnswerState> Answers(Guid q, params string[] vals)
+        => new() { [q] = new AnswerState(vals, null, null) };
 
     [HumansFact]
     public void Null_condition_is_visible()
-        => SurveyBranchingEvaluator.IsVisible(null, new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeTrue();
+        => SurveyBranchingEvaluator.IsVisible(null, NoAnswers()).Should().BeTrue();
 
     [HumansFact]
     public void Empty_clauses_is_visible()
-        => SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All), new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeTrue();
+        => SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All), NoAnswers()).Should().BeTrue();
 
     [HumansFact]
     public void Is_matches_selected_value()
@@ -41,7 +43,7 @@ public class SurveyBranchingEvaluatorTests
         var q = Guid.NewGuid();
         SurveyBranchingEvaluator.IsVisible(
             Cond(BranchCombine.All, Clause(q, BranchOperator.Is, "yes")),
-            new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeFalse();
+            NoAnswers()).Should().BeFalse();
     }
 
     [HumansFact]
@@ -52,7 +54,7 @@ public class SurveyBranchingEvaluatorTests
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.IsNot, "yes")), Answers(q, "yes")).Should().BeFalse();
         // unanswered: the value is not selected → IsNot true
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.IsNot, "yes")),
-            new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeTrue();
+            NoAnswers()).Should().BeTrue();
     }
 
     [HumansFact]
@@ -60,9 +62,35 @@ public class SurveyBranchingEvaluatorTests
     {
         var q = Guid.NewGuid();
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), Answers(q, "a")).Should().BeTrue();
-        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeFalse();
-        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.NotAnswered)), new Dictionary<Guid, IReadOnlyList<string>>()).Should().BeTrue();
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), NoAnswers()).Should().BeFalse();
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.NotAnswered)), NoAnswers()).Should().BeTrue();
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.NotAnswered)), Answers(q, "a")).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Answered_sees_text_answers()
+    {
+        var q = Guid.NewGuid();
+        var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], "some text", null) };
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), answers).Should().BeTrue();
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.NotAnswered)), answers).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Answered_sees_rating_answers()
+    {
+        var q = Guid.NewGuid();
+        var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], null, 4) };
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), answers).Should().BeTrue();
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.NotAnswered)), answers).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Whitespace_text_is_not_answered()
+    {
+        var q = Guid.NewGuid();
+        var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], "   ", null) };
+        SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), answers).Should().BeFalse();
     }
 
     [HumansFact]
@@ -70,7 +98,11 @@ public class SurveyBranchingEvaluatorTests
     {
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
-        var answers = new Dictionary<Guid, IReadOnlyList<string>> { [q1] = new[] { "a" }, [q2] = new[] { "b" } };
+        var answers = new Dictionary<Guid, AnswerState>
+        {
+            [q1] = new AnswerState(["a"], null, null),
+            [q2] = new AnswerState(["b"], null, null),
+        };
         SurveyBranchingEvaluator.IsVisible(
             Cond(BranchCombine.All, Clause(q1, BranchOperator.Is, "a"), Clause(q2, BranchOperator.Is, "b")), answers).Should().BeTrue();
         SurveyBranchingEvaluator.IsVisible(
@@ -94,7 +126,7 @@ public class SurveyBranchingEvaluatorTests
     public void Is_on_multichoice_matches_any_selected()
     {
         var q = Guid.NewGuid();
-        var answers = new Dictionary<Guid, IReadOnlyList<string>> { [q] = new[] { "a", "b" } };
+        var answers = Answers(q, "a", "b");
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Is, "b")), answers).Should().BeTrue();
     }
 
@@ -128,5 +160,26 @@ public class SurveyBranchingEvaluatorTests
         };
 
         SurveyBranchingEvaluator.ValidateNoForwardReferences(questions).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void ValidateClauseOptionValues_flags_Is_and_IsNot_without_values()
+    {
+        var q1 = Guid.NewGuid();
+        var q2 = Guid.NewGuid();
+        var q3 = Guid.NewGuid();
+        var q4 = Guid.NewGuid();
+        var questions = new List<SurveyQuestion>
+        {
+            new() { Id = q1, PageNumber = 1, Order = 1 },
+            // Is with no values → offender (could never match)
+            new() { Id = q2, PageNumber = 1, Order = 2, ShowIf = Cond(BranchCombine.All, Clause(q1, BranchOperator.Is)) },
+            // IsNot with no values → offender (always vacuously true)
+            new() { Id = q3, PageNumber = 1, Order = 3, ShowIf = Cond(BranchCombine.All, Clause(q1, BranchOperator.IsNot)) },
+            // Answered needs no values → ok
+            new() { Id = q4, PageNumber = 1, Order = 4, ShowIf = Cond(BranchCombine.All, Clause(q1, BranchOperator.Answered)) },
+        };
+
+        SurveyBranchingEvaluator.ValidateClauseOptionValues(questions).Should().BeEquivalentTo(new[] { q2, q3 });
     }
 }

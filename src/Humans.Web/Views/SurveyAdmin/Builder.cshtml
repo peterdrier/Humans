@@ -61,9 +61,10 @@
                 <div class="col-md-3">
                     <label class="form-label small">Default language</label>
                     <select asp-for="DefaultCulture" class="form-select form-select-sm">
+                        @* asp-for selects the matching option — no manual selected attribute. *@
                         @foreach (var c in CultureCatalog.SupportedCultureCodes)
                         {
-                            <option value="@c" selected="@(Model.DefaultCulture == c ? "selected" : null)">@c.ToDisplayLanguageName()</option>
+                            <option value="@c">@c.ToDisplayLanguageName()</option>
                         }
                     </select>
                 </div>
@@ -90,7 +91,7 @@
                         <option value="">(choose at send time)</option>
                         @foreach (var a in Enum.GetValues<SurveyAudienceType>())
                         {
-                            <option value="@a" selected="@(Model.AudienceType == a ? "selected" : null)">@a</option>
+                            <option value="@a">@a</option>
                         }
                     </select>
                 </div>
@@ -100,7 +101,7 @@
                         <option value="">—</option>
                         @foreach (var t in Model.Teams)
                         {
-                            <option value="@t.Id" selected="@(Model.AudienceTeamId == t.Id ? "selected" : null)">@t.Name</option>
+                            <option value="@t.Id">@t.Name</option>
                         }
                     </select>
                 </div>

@@ -2,7 +2,7 @@
 @model Humans.Web.Models.Survey.SurveyPageViewModel
 
 @{
-    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? "Survey" : Model.Title;
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title;
 }
 
 <div class="row justify-content-center">
@@ -10,17 +10,17 @@
         <div class="card mt-4">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h1 class="h4 mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "Survey" : Model.Title)</h1>
+                    <h1 class="h4 mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title)</h1>
                     @if (Model.TotalSteps > 0)
                     {
-                        <span class="badge text-bg-secondary">Page @Model.StepNumber of @Model.TotalSteps</span>
+                        <span class="badge text-bg-secondary">@Localizer["Survey_PageOf", Model.StepNumber, Model.TotalSteps]</span>
                     }
                 </div>
 
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="alert alert-danger" role="alert">
-                        Please answer the required questions before continuing.
+                        @Localizer["Survey_RequiredAlert"]
                     </div>
                 }
 
@@ -127,7 +127,7 @@
 
                             @if (hasError)
                             {
-                                <div class="text-danger small mt-1">This question is required.</div>
+                                <div class="text-danger small mt-1">@Localizer["Survey_QuestionRequired"]</div>
                             }
                         </fieldset>
                     }
@@ -136,7 +136,7 @@
                         @if (Model.CanGoBack)
                         {
                             <button type="submit" name="Back" value="true" class="btn btn-outline-secondary" formnovalidate>
-                                <i class="fa-solid fa-arrow-left me-1"></i>Back
+                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
                             </button>
                         }
                         else
@@ -147,11 +147,11 @@
                         <button type="submit" class="btn btn-primary">
                             @if (Model.IsLastStep)
                             {
-                                <span>Submit<i class="fa-solid fa-paper-plane ms-1"></i></span>
+                                <span>@Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
                             }
                             else
                             {
-                                <span>Next<i class="fa-solid fa-arrow-right ms-1"></i></span>
+                                <span>@Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
                             }
                         </button>
                     </div>

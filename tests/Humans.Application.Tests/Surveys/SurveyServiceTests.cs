@@ -294,8 +294,11 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         var inv = new SurveyInvitation
         {
-            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId,
-            SentAt = now - Duration.FromDays(8), LatestEmailStatus = EmailOutboxStatus.Sent,
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            SentAt = now - Duration.FromDays(8),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
         };
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { inv });
@@ -337,8 +340,11 @@ public class SurveyServiceTests
         var userId = Guid.NewGuid();
         var inv = new SurveyInvitation
         {
-            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId,
-            SentAt = _clock.GetCurrentInstant() - Duration.FromDays(9), LatestEmailStatus = EmailOutboxStatus.Sent,
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            SentAt = _clock.GetCurrentInstant() - Duration.FromDays(9),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
         };
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { inv });
@@ -356,20 +362,75 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task SendDueRemindersAsync_continues_sweep_after_one_send_failure()
+    {
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        Guid userA = Guid.NewGuid(), userB = Guid.NewGuid();
+        var invA = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userA,
+            SentAt = now - Duration.FromDays(8),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        var invB = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userB,
+            SentAt = now - Duration.FromDays(8),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { invA, invB });
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>
+            {
+                [userA] = "a@example.org",
+                [userB] = "b@example.org",
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        // First send (invitee A) blows up; the sweep must still reach invitee B.
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(
+                _ => Task.FromException(new InvalidOperationException("smtp down")),
+                _ => Task.CompletedTask);
+
+        var count = await CreateService().SendDueRemindersAsync();
+
+        count.Should().Be(1);
+        await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        // A stays unstamped (retried next run); B is stamped.
+        await _repo.DidNotReceive().SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).SetReminderSentAsync(invB.Id, now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetInviteStatusesAsync_stitches_burner_names_and_falls_back_to_user_id()
     {
         var surveyId = Guid.NewGuid();
         Guid known = Guid.NewGuid(), unknown = Guid.NewGuid();
         var knownInvite = new SurveyInvitation
         {
-            Id = Guid.NewGuid(), SurveyId = surveyId, UserId = known,
-            SentAt = _clock.GetCurrentInstant(), LatestEmailStatus = EmailOutboxStatus.Sent,
-            Started = true, Completed = true,
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = known,
+            SentAt = _clock.GetCurrentInstant(),
+            LatestEmailStatus = EmailOutboxStatus.Sent,
+            Started = true,
+            Completed = true,
         };
         var unknownInvite = new SurveyInvitation
         {
-            Id = Guid.NewGuid(), SurveyId = surveyId, UserId = unknown,
-            SentAt = _clock.GetCurrentInstant(), LatestEmailStatus = EmailOutboxStatus.Queued,
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = unknown,
+            SentAt = _clock.GetCurrentInstant(),
+            LatestEmailStatus = EmailOutboxStatus.Queued,
         };
         _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<SurveyInvitation>)new List<SurveyInvitation> { knownInvite, unknownInvite });
@@ -494,6 +555,7 @@ public class SurveyServiceTests
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
+        survey.AllowAnonymous = true;
         _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
@@ -503,6 +565,22 @@ public class SurveyServiceTests
         ctx!.SurveyId.Should().Be(survey.Id);
         ctx.Definition.Id.Should().Be(survey.Id);
         ctx.Definition.Status.Should().Be(SurveyStatus.Open);
+    }
+
+    [HumansFact]
+    public async Task ResolvePublicContextAsync_returns_null_when_anonymous_disallowed()
+    {
+        // A slug left behind after AllowAnonymous was switched off must not resolve —
+        // the service is the authoritative guard, not just the controller.
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.PublicSlug = "feedback";
+        survey.AllowAnonymous = false;
+        _repo.GetIdByPublicSlugAsync("feedback", Arg.Any<CancellationToken>()).Returns(survey.Id);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var ctx = await CreateService().ResolvePublicContextAsync("feedback");
+
+        ctx.Should().BeNull();
     }
 
     [HumansFact]
@@ -707,11 +785,166 @@ public class SurveyServiceTests
         captured.Answers.Select(a => a.QuestionId).Should().NotContain(hidden);
     }
 
+    [HumansFact]
+    public async Task SubmitResponseAsync_throws_when_survey_not_open()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        survey.Status = SurveyStatus.Closed;
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        var act = async () => await CreateService().SubmitResponseAsync(submission);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_throws_when_window_closed()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        survey.ClosesAt = _clock.GetCurrentInstant() - Duration.FromMinutes(1);
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        var act = async () => await CreateService().SubmitResponseAsync(submission);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    // ── Wizard advance (flow decisions live in the service) ────────────────────
+
+    private Survey SurveyForWizard(out Guid q1Id, out Guid q2Id)
+    {
+        q1Id = Guid.NewGuid();
+        q2Id = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.Questions = new List<SurveyQuestion>
+        {
+            new()
+            {
+                Id = q1Id, SurveyId = survey.Id, PageNumber = 1, Order = 1,
+                Type = SurveyQuestionType.SingleChoice, IsRequired = true, Prompt = L("Q1"),
+                Options =
+                [
+                    new SurveyQuestionOption { Id = Guid.NewGuid(), QuestionId = q1Id, Order = 1, Value = "yes", Label = L("Yes") },
+                ],
+            },
+            new()
+            {
+                Id = q2Id, SurveyId = survey.Id, PageNumber = 2, Order = 1,
+                Type = SurveyQuestionType.ShortText, Prompt = L("Q2"),
+            },
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        return survey;
+    }
+
+    private static SurveyWizardState WizardState(Guid surveyId, Guid? invitationId = null) => new()
+    {
+        SurveyId = surveyId,
+        InvitationId = invitationId,
+        Anonymity = ResponseAnonymity.Anonymous,
+        InputMethod = SurveyInputMethod.UserSpecificLink,
+        Culture = "en",
+        CurrentPage = 1,
+    };
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_navigates_to_next_page_and_fires_started_once()
+    {
+        var survey = SurveyForWizard(out var q1Id, out _);
+        var invitationId = Guid.NewGuid();
+        var state = WizardState(survey.Id, invitationId);
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 1, back: false, [Ans(q1Id, "yes")]);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+        state.CurrentPage.Should().Be(2);
+        state.Started.Should().BeTrue();
+        state.Answers.Should().ContainKey(q1Id.ToString());
+        await _repo.Received(1).MarkInvitationStartedAsync(invitationId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_reports_missing_required_and_stays_on_page()
+    {
+        var survey = SurveyForWizard(out var q1Id, out _);
+        var state = WizardState(survey.Id);
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false, []);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
+        result.MissingRequired.Should().BeEquivalentTo(new[] { q1Id });
+        state.CurrentPage.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_submits_after_last_visible_page()
+    {
+        var survey = SurveyForWizard(out var q1Id, out var q2Id);
+        var state = WizardState(survey.Id);
+        state.Answers[q1Id.ToString()] = new SurveyWizardAnswer { SelectedOptionValues = ["yes"] };
+        state.CurrentPage = 2;
+        state.Started = true;
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+
+        var result = await CreateService().AdvanceWizardAsync(
+            state, 2, back: false, [TextAns(q2Id, "done")]);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+        captured.Should().NotBeNull();
+        captured!.Anonymity.Should().Be(ResponseAnonymity.Anonymous);
+        captured.Answers.Select(a => a.QuestionId).Should().BeEquivalentTo(new[] { q1Id, q2Id });
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_returns_closed_when_survey_not_open()
+    {
+        var survey = SurveyForWizard(out var q1Id, out _);
+        survey.Status = SurveyStatus.Closed;
+        var state = WizardState(survey.Id);
+
+        var result = await CreateService().AdvanceWizardAsync(state, 1, back: false, [Ans(q1Id, "yes")]);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Closed);
+        state.Started.Should().BeFalse();
+        await _repo.DidNotReceive().MarkInvitationStartedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdvanceWizardAsync_back_navigates_without_validation()
+    {
+        var survey = SurveyForWizard(out var q1Id, out _);
+        var state = WizardState(survey.Id);
+        state.Answers[q1Id.ToString()] = new SurveyWizardAnswer { SelectedOptionValues = ["yes"] };
+        state.CurrentPage = 2;
+        state.Started = true;
+
+        // Back from page 2 with the required q2 (page 2 text) unanswered must not validate.
+        var result = await CreateService().AdvanceWizardAsync(state, 2, back: true, []);
+
+        result.Outcome.Should().Be(SurveyWizardOutcome.Navigated);
+        state.CurrentPage.Should().Be(1);
+    }
+
     // ── Results aggregation (Task 6.1) ─────────────────────────────────────────
 
     private static SurveyQuestion ChoiceQuestion(Guid id, Guid surveyId, SurveyQuestionType type, int order, params (string Value, string Label, int Order)[] opts) => new()
     {
-        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = type,
+        Id = id,
+        SurveyId = surveyId,
+        PageNumber = 1,
+        Order = order,
+        Type = type,
         Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         Options = opts.Select(o => new SurveyQuestionOption { Id = Guid.NewGuid(), QuestionId = id, Order = o.Order, Value = o.Value, Label = L(o.Label) })
             .ToList<SurveyQuestionOption>(),
@@ -719,29 +952,38 @@ public class SurveyServiceTests
 
     private static SurveyQuestion RatingQuestion(Guid id, Guid surveyId, int order, int min, int max) => new()
     {
-        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = SurveyQuestionType.Rating,
+        Id = id,
+        SurveyId = surveyId,
+        PageNumber = 1,
+        Order = order,
+        Type = SurveyQuestionType.Rating,
         Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
-        RatingMin = min, RatingMax = max,
+        RatingMin = min,
+        RatingMax = max,
     };
 
     private static SurveyQuestion TextQuestion(Guid id, Guid surveyId, int order) => new()
     {
-        Id = id, SurveyId = surveyId, PageNumber = 1, Order = order, Type = SurveyQuestionType.ShortText,
+        Id = id,
+        SurveyId = surveyId,
+        PageNumber = 1,
+        Order = order,
+        Type = SurveyQuestionType.ShortText,
         Prompt = L($"Q{order.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
     };
 
     private static SurveyResponse SubmittedResponse(
         Guid surveyId, ResponseAnonymity anonymity, SurveyInputMethod inputMethod, Instant submittedAt,
         Guid? userId, params SurveyAnswer[] answers) => new()
-    {
-        Id = Guid.NewGuid(),
-        SurveyId = surveyId,
-        UserId = userId,
-        Anonymity = anonymity,
-        InputMethod = inputMethod,
-        SubmittedAt = submittedAt,
-        Answers = answers.ToList(),
-    };
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = surveyId,
+            UserId = userId,
+            Anonymity = anonymity,
+            InputMethod = inputMethod,
+            SubmittedAt = submittedAt,
+            Answers = answers.ToList(),
+        };
 
     private static SurveyAnswer ChoiceAnswer(Guid questionId, params string[] values) =>
         new() { Id = Guid.NewGuid(), QuestionId = questionId, SelectedOptionValues = values.ToList() };
@@ -827,6 +1069,46 @@ public class SurveyServiceTests
 
         var text = result.Questions.Single(q => q.QuestionId == textId);
         text.FreeTextAnswers.Should().BeEquivalentTo(new[] { "great", "ok" });
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_percent_base_is_respondents_who_answered_the_question()
+    {
+        // Branched/optional questions aren't seen by everyone: the percent base must be the
+        // respondents who answered THIS question, not all submissions.
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2)),
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+
+        var now = _clock.GetCurrentInstant();
+        var responses = new List<SurveyResponse>
+        {
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                ChoiceAnswer(choiceId, "yes")),
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
+                ChoiceAnswer(choiceId, "no")),
+            // Never saw the question (hidden by branching) — no answer row for it.
+            SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null),
+        };
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<SurveyResponse>)responses);
+        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, int>)new Dictionary<Guid, int>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+
+        var result = await CreateService().GetResultsAsync(surveyId);
+
+        var choice = result!.Questions.Single(q => q.QuestionId == choiceId);
+        // 2 answered → "yes" is 1 of 2 = 50%, not 1 of 3 ≈ 33%.
+        choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Percent
+            .Should().BeApproximately(50d, 0.0001);
     }
 
     [HumansFact]

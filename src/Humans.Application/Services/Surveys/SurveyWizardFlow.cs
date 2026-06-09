@@ -1,4 +1,6 @@
 using Humans.Application.Interfaces.Surveys;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Services.Surveys;
 
@@ -30,17 +32,14 @@ public static class SurveyWizardFlow
 
     /// <summary>
     /// Questions on <paramref name="page"/> whose <c>ShowIf</c> is satisfied by <paramref name="answers"/>,
-    /// in display order. Visibility uses each answer's selected option values.
+    /// in display order. Visibility sees the full answer state (options, text, rating).
     /// </summary>
     public static IReadOnlyList<QuestionInput> VisibleQuestionsOnPage(
         IReadOnlyList<QuestionInput> questions, int page, IReadOnlyDictionary<Guid, AnswerState> answers)
-    {
-        var visibility = ToVisibility(answers);
-        return questions
-            .Where(q => q.PageNumber == page && SurveyBranchingEvaluator.IsVisible(q.ShowIf, visibility))
+        => questions
+            .Where(q => q.PageNumber == page && SurveyBranchingEvaluator.IsVisible(q.ShowIf, answers))
             .OrderBy(q => q.Order)
             .ToList();
-    }
 
     /// <summary>The first page (ascending) that has at least one visible question, or null if none.</summary>
     public static int? FirstVisiblePage(
@@ -70,7 +69,50 @@ public static class SurveyWizardFlow
             .Select(q => q.Id!.Value)
             .ToList();
 
-    private static IReadOnlyDictionary<Guid, IReadOnlyList<string>> ToVisibility(
-        IReadOnlyDictionary<Guid, AnswerState> answers)
-        => answers.ToDictionary(kv => kv.Key, kv => kv.Value.Options);
+    /// <summary>The nearest page strictly before <paramref name="page"/> that has a visible question, or null at the start.</summary>
+    public static int? PreviousVisiblePage(
+        IReadOnlyList<QuestionInput> questions, int page, IReadOnlyDictionary<Guid, AnswerState> answers)
+        => OrderedPages(questions)
+            .Where(p => p < page && VisibleQuestionsOnPage(questions, p, answers).Count > 0)
+            .Cast<int?>()
+            .LastOrDefault();
+
+    /// <summary>
+    /// True when the survey can be answered at <paramref name="now"/>: status Open and within the
+    /// optional [<c>opensAt</c>, <c>closesAt</c>] window. The single home for the answer-window rule —
+    /// applied by the controller at every entry/page gate and by the service at submit.
+    /// </summary>
+    public static bool IsAnswerable(SurveyStatus status, Instant? opensAt, Instant? closesAt, Instant now)
+    {
+        if (status != SurveyStatus.Open) return false;
+        if (opensAt is { } from && now < from) return false;
+        if (closesAt is { } until && now > until) return false;
+        return true;
+    }
+
+    /// <summary>Projects the session answers into the flow's <see cref="AnswerState"/> map (keyed by question id).</summary>
+    public static Dictionary<Guid, AnswerState> ToAnswerStates(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
+    {
+        var result = new Dictionary<Guid, AnswerState>();
+        foreach (var (key, a) in answers)
+        {
+            if (Guid.TryParse(key, out var id))
+            {
+                result[id] = new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Maps the session answers to the submission/autosave shape.</summary>
+    public static IReadOnlyList<SurveyAnswerInput> ToAnswerInputs(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
+        => answers
+            .Where(kv => Guid.TryParse(kv.Key, out _))
+            .Select(kv => new SurveyAnswerInput(
+                Guid.Parse(kv.Key),
+                kv.Value.SelectedOptionValues,
+                kv.Value.TextValue,
+                kv.Value.RatingValue))
+            .ToList();
 }

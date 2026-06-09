@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Surveys;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Controllers;
@@ -27,7 +28,7 @@ public class SurveysApiControllerTests
 
     public SurveysApiControllerTests()
     {
-        _sut = new SurveysApiController(_surveys);
+        _sut = new SurveysApiController(_surveys, Substitute.For<IUserServiceRead>());
     }
 
     private static LocalizedText Text(string en) =>

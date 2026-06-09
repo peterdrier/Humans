@@ -1,11 +1,11 @@
 @model Humans.Web.Models.SurveyClosedViewModel
 
 @{
-    ViewData["Title"] = "Survey unavailable";
+    ViewData["Title"] = Localizer["Survey_Closed_Title"].Value;
 
-    var (heading, body) = string.Equals(Model.Reason, "closed", StringComparison.Ordinal)
-        ? ("This survey is closed", "Thanks for your interest — this survey is no longer accepting responses.")
-        : ("This link is no longer valid", "The survey link you used is invalid or has expired. If you think this is a mistake, please request a new link.");
+    var isClosed = string.Equals(Model.Reason, "closed", StringComparison.Ordinal);
+    var heading = isClosed ? Localizer["Survey_Closed_Heading"] : Localizer["Survey_InvalidLink_Heading"];
+    var body = isClosed ? Localizer["Survey_Closed_Body"] : Localizer["Survey_InvalidLink_Body"];
 }
 
 <div class="row justify-content-center">

@@ -270,9 +270,20 @@ public sealed class SurveyService(
             var token = tokenProvider.Create(inv.Id);
             var msg = emailMessages.SurveyReminder(email, name, meta.Title, token, culture);
 
-            await emailService.SendAsync(msg, ct);
-            await repo.SetReminderSentAsync(inv.Id, now, ct);
-            reminded++;
+            // Per-invitee guard (mirrors SendInvitesAsync): one transport failure must not abort the
+            // sweep. ReminderSentAt stays unstamped on failure so the next daily run retries.
+            try
+            {
+                await emailService.SendAsync(msg, ct);
+                await repo.SetReminderSentAsync(inv.Id, now, ct);
+                reminded++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to enqueue survey reminder email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
+                    inv.UserId, inv.Id, inv.SurveyId);
+            }
         }
 
         await auditLog.LogAsync(AuditAction.SurveyReminderSent, nameof(Survey), Guid.Empty,
@@ -365,6 +376,10 @@ public sealed class SurveyService(
         var definition = await GetForEditAsync(surveyId.Value, ct);
         if (definition is null) return null;
 
+        // A slug only answers when anonymous responding is allowed (e.g. AllowAnonymous was switched
+        // off after the slug was set). The service guards this, not just the controller.
+        if (!definition.Editable.AllowAnonymous) return null;
+
         return new SurveyPublicContext(surveyId.Value, definition);
     }
 
@@ -380,91 +395,199 @@ public sealed class SurveyService(
         var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
             ?? throw new InvalidOperationException("Survey not found.");
 
+        // The service is the authoritative gate: the controller's window checks are UX, this one is the rule.
+        if (!SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, clock.GetCurrentInstant()))
+        {
+            throw new InvalidOperationException("Survey is not open for responses.");
+        }
+
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
         var visibleAnswers = VisibleAnswers(survey, submission.Answers);
 
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:
-            {
-                var now = clock.GetCurrentInstant();
-                if (submission.DraftResponseId is { } draftId)
                 {
-                    await repo.SaveDraftAnswersAsync(draftId, MapAnswers(draftId, visibleAnswers), submittedAt: now, ct);
+                    var now = clock.GetCurrentInstant();
+                    if (submission.DraftResponseId is { } draftId)
+                    {
+                        await repo.SaveDraftAnswersAsync(draftId, MapAnswers(draftId, visibleAnswers), submittedAt: now, ct);
+                    }
+                    else
+                    {
+                        var responseId = Guid.NewGuid();
+                        var response = new SurveyResponse
+                        {
+                            Id = responseId,
+                            SurveyId = submission.SurveyId,
+                            InvitationId = submission.InvitationId,
+                            UserId = submission.UserId,
+                            Anonymity = ResponseAnonymity.Identified,
+                            InputMethod = submission.InputMethod,
+                            Culture = submission.Culture,
+                            SubmittedAt = now,
+                            Answers = MapAnswers(responseId, visibleAnswers),
+                        };
+                        await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                    }
+
+                    if (submission.InvitationId is { } invId)
+                    {
+                        await repo.SetInvitationCompletedAsync(invId, ct);
+                    }
+
+                    break;
                 }
-                else
+
+            case ResponseAnonymity.CompletionTracked:
                 {
                     var responseId = Guid.NewGuid();
                     var response = new SurveyResponse
                     {
                         Id = responseId,
                         SurveyId = submission.SurveyId,
-                        InvitationId = submission.InvitationId,
-                        UserId = submission.UserId,
-                        Anonymity = ResponseAnonymity.Identified,
+                        // No link stored on the response — only the invitation's Completed flag is flipped.
+                        InvitationId = null,
+                        UserId = null,
+                        Anonymity = ResponseAnonymity.CompletionTracked,
                         InputMethod = submission.InputMethod,
                         Culture = submission.Culture,
-                        SubmittedAt = now,
+                        SubmittedAt = clock.GetCurrentInstant(),
                         Answers = MapAnswers(responseId, visibleAnswers),
                     };
                     await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+
+                    if (submission.InvitationId is { } invId)
+                    {
+                        await repo.SetInvitationCompletedAsync(invId, ct);
+                    }
+
+                    break;
                 }
-
-                if (submission.InvitationId is { } invId)
-                {
-                    await repo.SetInvitationCompletedAsync(invId, ct);
-                }
-
-                break;
-            }
-
-            case ResponseAnonymity.CompletionTracked:
-            {
-                var responseId = Guid.NewGuid();
-                var response = new SurveyResponse
-                {
-                    Id = responseId,
-                    SurveyId = submission.SurveyId,
-                    // No link stored on the response — only the invitation's Completed flag is flipped.
-                    InvitationId = null,
-                    UserId = null,
-                    Anonymity = ResponseAnonymity.CompletionTracked,
-                    InputMethod = submission.InputMethod,
-                    Culture = submission.Culture,
-                    SubmittedAt = clock.GetCurrentInstant(),
-                    Answers = MapAnswers(responseId, visibleAnswers),
-                };
-                await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-
-                if (submission.InvitationId is { } invId)
-                {
-                    await repo.SetInvitationCompletedAsync(invId, ct);
-                }
-
-                break;
-            }
 
             case ResponseAnonymity.Anonymous:
             default:
-            {
-                var responseId = Guid.NewGuid();
-                var response = new SurveyResponse
                 {
-                    Id = responseId,
-                    SurveyId = submission.SurveyId,
-                    InvitationId = null,
-                    UserId = null,
-                    Anonymity = ResponseAnonymity.Anonymous,
-                    InputMethod = submission.InputMethod,
-                    Culture = submission.Culture,
-                    SubmittedAt = clock.GetCurrentInstant(),
-                    Answers = MapAnswers(responseId, visibleAnswers),
-                };
-                // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
-                await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
-                break;
+                    var responseId = Guid.NewGuid();
+                    var response = new SurveyResponse
+                    {
+                        Id = responseId,
+                        SurveyId = submission.SurveyId,
+                        InvitationId = null,
+                        UserId = null,
+                        Anonymity = ResponseAnonymity.Anonymous,
+                        InputMethod = submission.InputMethod,
+                        Culture = submission.Culture,
+                        SubmittedAt = clock.GetCurrentInstant(),
+                        Answers = MapAnswers(responseId, visibleAnswers),
+                    };
+                    // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
+                    await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                    break;
+                }
+        }
+    }
+
+    /// <summary>
+    /// One wizard step (see <see cref="ISurveyService.AdvanceWizardAsync"/>): capture → first-advance
+    /// funnel side effect → Identified autosave → required-validation → back/next navigation or submit.
+    /// All flow decisions live here; the controller only persists the session and renders the outcome.
+    /// </summary>
+    public async Task<SurveyWizardAdvanceResult> AdvanceWizardAsync(
+        SurveyWizardState state, int page, bool back, IReadOnlyList<SurveyAnswerInput> postedAnswers,
+        CancellationToken ct = default)
+    {
+        var definition = await GetForEditAsync(state.SurveyId, ct);
+        if (definition is null) return new SurveyWizardAdvanceResult(SurveyWizardOutcome.NotFound, []);
+
+        var editable = definition.Editable;
+        if (!SurveyWizardFlow.IsAnswerable(definition.Status, editable.OpensAt, editable.ClosesAt, clock.GetCurrentInstant()))
+        {
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Closed, []);
+        }
+
+        // Only accept answers for questions actually visible on the posted page (re-evaluated server-side).
+        var visibleBefore = SurveyWizardFlow.VisibleQuestionsOnPage(
+            editable.Questions, page, SurveyWizardFlow.ToAnswerStates(state.Answers));
+        var posted = postedAnswers.ToDictionary(a => a.QuestionId);
+
+        foreach (var question in visibleBefore)
+        {
+            var id = question.Id!.Value;
+            if (!posted.TryGetValue(id, out var answer))
+            {
+                state.Answers.Remove(id.ToString());
+                continue;
+            }
+
+            state.Answers[id.ToString()] = new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.Where(v => !string.IsNullOrEmpty(v)).ToList(),
+                TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
+                RatingValue = answer.RatingValue,
+            };
+        }
+
+        // First advance past the intro fires the path-specific Started funnel side effect (idempotent via state.Started).
+        if (!state.Started)
+        {
+            if (state.InputMethod == SurveyInputMethod.Slug)
+            {
+                await repo.IncrementPublicStartedAsync(state.SurveyId, ct);
+            }
+            else if (state.InvitationId is { } startInvId)
+            {
+                await repo.MarkInvitationStartedAsync(startInvId, ct);
+            }
+
+            state.Started = true;
+        }
+
+        var answerStates = SurveyWizardFlow.ToAnswerStates(state.Answers);
+
+        // Identified per-page autosave (replace-all; the draft stays in-progress). Slug path is Anonymous — skipped.
+        if (state.Anonymity == ResponseAnonymity.Identified && state.DraftResponseId is { } draftId)
+        {
+            await SaveDraftAnswersAsync(draftId, SurveyWizardFlow.ToAnswerInputs(state.Answers), ct);
+        }
+
+        // Re-validate required-visible on this page; a Back navigation skips validation.
+        if (!back)
+        {
+            var visibleAfter = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, page, answerStates);
+            var missing = SurveyWizardFlow.RequiredUnanswered(visibleAfter, answerStates);
+            if (missing.Count > 0)
+            {
+                state.CurrentPage = page;
+                return new SurveyWizardAdvanceResult(SurveyWizardOutcome.ValidationFailed, missing);
             }
         }
+
+        if (back)
+        {
+            state.CurrentPage = SurveyWizardFlow.PreviousVisiblePage(editable.Questions, page, answerStates) ?? page;
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Navigated, []);
+        }
+
+        var nextPage = SurveyWizardFlow.NextVisiblePage(editable.Questions, page, answerStates);
+        if (nextPage is not null)
+        {
+            state.CurrentPage = nextPage.Value;
+            return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Navigated, []);
+        }
+
+        // No further visible page ⇒ submit. Identity columns are written only for Identified (see SubmitResponseAsync).
+        await SubmitResponseAsync(new SurveySubmission(
+            state.SurveyId,
+            state.InvitationId,
+            state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
+            state.DraftResponseId,
+            state.Anonymity,
+            state.InputMethod,
+            state.Culture,
+            SurveyWizardFlow.ToAnswerInputs(state.Answers)), ct);
+
+        return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
 
     public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default)
@@ -610,7 +733,7 @@ public sealed class SurveyService(
                 return new
                 {
                     Survey = survey?.Title.Resolve(culture, culture) ?? r.SurveyId.ToString(),
-                    SubmittedAt = r.SubmittedAt.ToInvariantInstantString(),
+                    SubmittedAt = r.SubmittedAt.ToIso8601(),
                     Culture = culture,
                     Answers = r.Answers.Select(a => new
                     {
@@ -640,45 +763,47 @@ public sealed class SurveyService(
         {
             case SurveyQuestionType.SingleChoice:
             case SurveyQuestionType.MultiChoice:
-            {
-                var responseCount = responses.Count;
-                var optionCounts = question.Options
-                    .OrderBy(o => o.Order)
-                    .Select(o =>
-                    {
-                        var count = answers.Count(a => a.SelectedOptionValues.Contains(o.Value, StringComparer.Ordinal));
-                        var percent = responseCount == 0 ? 0d : (double)count / responseCount * 100d;
-                        return new OptionCount(o.Value, o.Label.Resolve(culture, culture), count, percent);
-                    })
-                    .ToList();
-                return new QuestionAggregate(question.Id, prompt, question.Type, optionCounts, [], null, []);
-            }
-
-            case SurveyQuestionType.Rating:
-            {
-                var values = answers.Where(a => a.RatingValue.HasValue).Select(a => a.RatingValue!.Value).ToList();
-                var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
-                var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
-                var distribution = new List<RatingBucket>();
-                for (var v = min; v <= max; v++)
                 {
-                    distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                    // Percent base = respondents who answered THIS question, not all submissions —
+                    // branched/optional questions aren't seen by everyone, so the total would skew low.
+                    var answeredCount = answers.Count(a => a.SelectedOptionValues.Count > 0);
+                    var optionCounts = question.Options
+                        .OrderBy(o => o.Order)
+                        .Select(o =>
+                        {
+                            var count = answers.Count(a => a.SelectedOptionValues.Contains(o.Value, StringComparer.Ordinal));
+                            var percent = answeredCount == 0 ? 0d : (double)count / answeredCount * 100d;
+                            return new OptionCount(o.Value, o.Label.Resolve(culture, culture), count, percent);
+                        })
+                        .ToList();
+                    return new QuestionAggregate(question.Id, prompt, question.Type, optionCounts, [], null, []);
                 }
 
-                double? average = values.Count > 0 ? values.Average() : null;
-                return new QuestionAggregate(question.Id, prompt, question.Type, [], distribution, average, []);
-            }
+            case SurveyQuestionType.Rating:
+                {
+                    var values = answers.Where(a => a.RatingValue.HasValue).Select(a => a.RatingValue!.Value).ToList();
+                    var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
+                    var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
+                    var distribution = new List<RatingBucket>();
+                    for (var v = min; v <= max; v++)
+                    {
+                        distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                    }
+
+                    double? average = values.Count > 0 ? values.Average() : null;
+                    return new QuestionAggregate(question.Id, prompt, question.Type, [], distribution, average, []);
+                }
 
             case SurveyQuestionType.ShortText:
             case SurveyQuestionType.LongText:
             default:
-            {
-                var texts = answers
-                    .Where(a => !string.IsNullOrEmpty(a.TextValue))
-                    .Select(a => a.TextValue!)
-                    .ToList();
-                return new QuestionAggregate(question.Id, prompt, question.Type, [], [], null, texts);
-            }
+                {
+                    var texts = answers
+                        .Where(a => !string.IsNullOrEmpty(a.TextValue))
+                        .Select(a => a.TextValue!)
+                        .ToList();
+                    return new QuestionAggregate(question.Id, prompt, question.Type, [], [], null, texts);
+                }
         }
     }
 
@@ -728,17 +853,17 @@ public sealed class SurveyService(
             .ToList();
     }
 
-    /// <summary>Keeps only the answers to questions visible under full branching against the submitted option values.</summary>
+    /// <summary>Keeps only the answers to questions visible under full branching against the submitted answer states.</summary>
     private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
     {
-        var optionValues = answers.ToDictionary(
+        var states = answers.ToDictionary(
             a => a.QuestionId,
-            a => (IReadOnlyList<string>)a.SelectedOptionValues);
+            a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue));
         var byId = survey.Questions.ToDictionary(q => q.Id);
 
         return answers
             .Where(a => byId.TryGetValue(a.QuestionId, out var q)
-                        && SurveyBranchingEvaluator.IsVisible(q.ShowIf, optionValues))
+                        && SurveyBranchingEvaluator.IsVisible(q.ShowIf, states))
             .ToList();
     }
 
@@ -763,36 +888,36 @@ public sealed class SurveyService(
         switch (type)
         {
             case SurveyAudienceType.Team:
-            {
-                if (teamId is null) return new HashSet<Guid>();
-                var team = await teamService.GetTeamAsync(teamId.Value, ct);
-                return team?.Members.Select(m => m.UserId).ToHashSet() ?? new HashSet<Guid>();
-            }
+                {
+                    if (teamId is null) return new HashSet<Guid>();
+                    var team = await teamService.GetTeamAsync(teamId.Value, ct);
+                    return team?.Members.Select(m => m.UserId).ToHashSet() ?? new HashSet<Guid>();
+                }
 
             case SurveyAudienceType.AllActiveMembers:
                 return (await ActiveMemberIdsAsync(ct)).ToHashSet();
 
             case SurveyAudienceType.TicketHolders:
-            {
-                var orders = await ticketService.GetTicketOrdersAsync(ct);
-                return orders
-                    .Where(o => o.IsCurrentEvent)
-                    .SelectMany(o => o.Attendees)
-                    .Where(a => a.MatchedUserId.HasValue
-                        && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
-                    .Select(a => a.MatchedUserId!.Value)
-                    .ToHashSet();
-            }
+                {
+                    var orders = await ticketService.GetTicketOrdersAsync(ct);
+                    return orders
+                        .Where(o => o.IsCurrentEvent)
+                        .SelectMany(o => o.Attendees)
+                        .Where(a => a.MatchedUserId.HasValue
+                            && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+                        .Select(a => a.MatchedUserId!.Value)
+                        .ToHashSet();
+                }
 
             case SurveyAudienceType.ShiftParticipants:
-            {
-                var activeIds = await ActiveMemberIdsAsync(ct);
-                var views = await shiftView.GetUsersAsync(activeIds, ct);
-                return views
-                    .Where(kv => kv.Value.HasShift)
-                    .Select(kv => kv.Key)
-                    .ToHashSet();
-            }
+                {
+                    var activeIds = await ActiveMemberIdsAsync(ct);
+                    var views = await shiftView.GetUsersAsync(activeIds, ct);
+                    return views
+                        .Where(kv => kv.Value.HasShift)
+                        .Select(kv => kv.Key)
+                        .ToHashSet();
+                }
 
             default:
                 return new HashSet<Guid>();
@@ -846,6 +971,13 @@ public sealed class SurveyService(
         {
             throw new InvalidOperationException(
                 $"A branching condition references a question that is not strictly earlier. Offending question ids: {string.Join(", ", offenders)}.");
+        }
+
+        var emptyClauses = SurveyBranchingEvaluator.ValidateClauseOptionValues(questions);
+        if (emptyClauses.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"A branching Is/IsNot clause has no option values (the condition would be vacuous). Offending question ids: {string.Join(", ", emptyClauses)}.");
         }
     }
 

@@ -8,6 +8,7 @@ using Humans.Web.Models;
 using Humans.Web.Models.Survey;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
@@ -16,15 +17,17 @@ namespace Humans.Web.Controllers;
 /// Public survey answering wizard. Two entry paths share one page flow: the tokenised invite link
 /// (<c>/Survey/Answer?t=…</c>), where identity comes from the token's invitation (never the current
 /// principal); and the public slug link (<c>/Survey/{slug}</c>), which is always Anonymous and carries
-/// no identity. Controllers parse → call the service → format (hard rule). The shared page rendering
-/// and submit live in <c>RenderPage</c>/<c>ProcessPage</c>; the two paths differ only in how they
-/// load/save the wizard session and which side effect the first advance triggers.
+/// no identity. Controllers parse → call the service → format (hard rule): all flow decisions live in
+/// <see cref="ISurveyService.AdvanceWizardAsync"/>; the controller persists the session per
+/// <see cref="WizardRoute"/> and renders/redirects per the outcome.
 /// </summary>
 [AllowAnonymous]
 [Route("Survey")]
 public class SurveyController(
     ISurveyService surveyService,
     IUserServiceRead userService,
+    IClock clock,
+    IStringLocalizer<SharedResource> localizer,
     ILogger<SurveyController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Answer")]
@@ -39,9 +42,7 @@ public class SurveyController(
 
         var editable = ctx.Definition.Editable;
 
-        // Gate: survey must be Open and within its optional [opens-at, closes-at] window.
-        var now = SystemClock.Instance.GetCurrentInstant();
-        if (!IsWithinAnswerWindow(ctx.Definition, now))
+        if (!IsAnswerable(ctx.Definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -65,8 +66,8 @@ public class SurveyController(
                 };
             }
 
-            resumeState.CurrentPage =
-                SurveyWizardFlow.FirstVisiblePage(editable.Questions, ToAnswerStates(resumeState.Answers)) ?? 0;
+            resumeState.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
+                editable.Questions, SurveyWizardFlow.ToAnswerStates(resumeState.Answers)) ?? 0;
             SurveyWizardSession.Save(HttpContext.Session, t, resumeState);
             return RedirectToAction("Page", new { t });
         }
@@ -96,6 +97,12 @@ public class SurveyController(
 
         var editable = ctx.Definition.Editable;
 
+        // Re-gate on the POST: the intro may have been loaded just before the window closed.
+        if (!IsAnswerable(ctx.Definition))
+        {
+            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+        }
+
         // When the survey forbids anonymity, the only tier is Identified.
         var anonymity = editable.AllowAnonymous ? model.Anonymity : ResponseAnonymity.Identified;
         var culture = ResolveCulture(model.Culture, editable.DefaultCulture);
@@ -114,7 +121,7 @@ public class SurveyController(
 
         // Enter at the first page that has a visible question (0 ⇒ no questions / nothing visible).
         state.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
-            editable.Questions, ToAnswerStates(state.Answers)) ?? 0;
+            editable.Questions, SurveyWizardFlow.ToAnswerStates(state.Answers)) ?? 0;
 
         SurveyWizardSession.Save(HttpContext.Session, model.Token, state);
         return RedirectToAction("Page", new { t = model.Token });
@@ -143,15 +150,13 @@ public class SurveyController(
         // Reserved words can never be a public slug; let the literal-segment actions own them.
         if (IsReservedSlug(slug)) return NotFound();
 
+        // The service returns null for unknown slugs and for surveys that no longer allow anonymous.
         var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
         if (ctx is null) return NotFound();
 
         var editable = ctx.Definition.Editable;
-        // A slug only answers when anonymous responding is allowed; otherwise the link is not public.
-        if (!editable.AllowAnonymous) return NotFound();
 
-        var now = SystemClock.Instance.GetCurrentInstant();
-        if (!IsWithinAnswerWindow(ctx.Definition, now))
+        if (!IsAnswerable(ctx.Definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -180,10 +185,8 @@ public class SurveyController(
         if (ctx is null) return NotFound();
 
         var editable = ctx.Definition.Editable;
-        if (!editable.AllowAnonymous) return NotFound();
 
-        var now = SystemClock.Instance.GetCurrentInstant();
-        if (!IsWithinAnswerWindow(ctx.Definition, now))
+        if (!IsAnswerable(ctx.Definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
@@ -238,20 +241,7 @@ public class SurveyController(
 
         // The wizard session is already cleared; re-resolve the survey for the closing copy.
         var ctx = await surveyService.ResolvePublicContextAsync(slug, ct);
-        if (ctx is null)
-        {
-            return View("ThankYou", new SurveyThankYouViewModel { ThankYou = "Thank you for your response." });
-        }
-
-        var editable = ctx.Definition.Editable;
-        var culture = ResolveCulture(editable.DefaultCulture);
-        var thankYou = editable.ThankYou.Resolve(culture, editable.DefaultCulture);
-
-        return View("ThankYou", new SurveyThankYouViewModel
-        {
-            Title = editable.Title.Resolve(culture, editable.DefaultCulture),
-            ThankYou = string.IsNullOrWhiteSpace(thankYou) ? "Thank you for your response." : thankYou,
-        });
+        return View("ThankYou", BuildThankYou(ctx?.Definition));
     }
 
     [HttpGet("Answer/ThankYou")]
@@ -259,27 +249,13 @@ public class SurveyController(
     {
         // The wizard session is already cleared; re-resolve the survey (token still valid) for the copy.
         var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
-        if (ctx is null)
-        {
-            return View("ThankYou", new SurveyThankYouViewModel { ThankYou = "Thank you for your response." });
-        }
-
-        var editable = ctx.Definition.Editable;
-        var culture = ResolveCulture(editable.DefaultCulture);
-        var thankYou = editable.ThankYou.Resolve(culture, editable.DefaultCulture);
-
-        return View("ThankYou", new SurveyThankYouViewModel
-        {
-            Title = editable.Title.Resolve(culture, editable.DefaultCulture),
-            ThankYou = string.IsNullOrWhiteSpace(thankYou) ? "Thank you for your response." : thankYou,
-        });
+        return View("ThankYou", BuildThankYou(ctx?.Definition));
     }
 
     /// <summary>
     /// Routing/side-effect differences between the two entry paths, so the shared page flow stays
-    /// path-agnostic. The invited path saves session by token, redirects to <c>Page</c>/<c>ThankYou</c>,
-    /// and flips the invitation's <c>Started</c> flag on first advance; the public path saves by slug,
-    /// redirects to <c>PublicPage</c>/<c>PublicThankYou</c>, and increments the survey's public counter.
+    /// path-agnostic. The invited path saves session by token and redirects to <c>Page</c>/<c>ThankYou</c>;
+    /// the public path saves by slug and redirects to <c>PublicPage</c>/<c>PublicThankYou</c>.
     /// </summary>
     private sealed record WizardRoute(bool IsPublic, string Key)
     {
@@ -310,19 +286,11 @@ public class SurveyController(
         => string.Equals(slug, "admin", StringComparison.OrdinalIgnoreCase)
            || string.Equals(slug, "answer", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// True when the survey can be answered right now: status Open and within its optional
-    /// [<c>OpensAt</c>, <c>ClosesAt</c>] window. Applied at every entry/page gate so a survey is never
-    /// answerable before its scheduled open time or after its close, regardless of how it was opened.
-    /// </summary>
-    private static bool IsWithinAnswerWindow(SurveyDetail definition, Instant now)
-    {
-        if (definition.Status != SurveyStatus.Open) return false;
-        var editable = definition.Editable;
-        if (editable.OpensAt is { } opensAt && now < opensAt) return false;
-        if (editable.ClosesAt is { } closesAt && now > closesAt) return false;
-        return true;
-    }
+    /// <summary>Entry/page UX gate (the service re-enforces the same rule authoritatively at submit).</summary>
+    private bool IsAnswerable(SurveyDetail definition)
+        => SurveyWizardFlow.IsAnswerable(
+            definition.Status, definition.Editable.OpensAt, definition.Editable.ClosesAt,
+            clock.GetCurrentInstant());
 
     /// <summary>
     /// Shared GET page render for both entry paths. Re-gates Open/closes-at, skips a now-all-hidden page,
@@ -334,13 +302,12 @@ public class SurveyController(
         if (definition is null) return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
 
         var editable = definition.Editable;
-        var now = SystemClock.Instance.GetCurrentInstant();
-        if (!IsWithinAnswerWindow(definition, now))
+        if (!IsAnswerable(definition))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
         }
 
-        var answerStates = ToAnswerStates(state.Answers);
+        var answerStates = SurveyWizardFlow.ToAnswerStates(state.Answers);
 
         // The current page may have become all-hidden since it was set; advance to the next visible one.
         var visible = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, state.CurrentPage, answerStates);
@@ -358,118 +325,45 @@ public class SurveyController(
     }
 
     /// <summary>
-    /// Shared POST page processor for both entry paths. Captures the page's visible answers, fires the
-    /// path-specific first-advance side effect, autosaves Identified drafts, validates required-visible,
-    /// then navigates back/next or submits + clears the session. <paramref name="route"/> carries the
-    /// token-vs-slug differences (session key, redirect actions, first-advance effect).
+    /// Shared POST page processor for both entry paths: parse the posted answers, let the service
+    /// advance the wizard, persist the session, and render/redirect per the outcome.
     /// </summary>
     private async Task<IActionResult> ProcessPage(
         SurveyWizardState state, SurveyPageInputModel model, WizardRoute route, CancellationToken ct)
     {
-        var definition = await surveyService.GetForEditAsync(state.SurveyId, ct);
-        if (definition is null) return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+        var posted = (model.Answers ?? [])
+            .Select(a => new SurveyAnswerInput(
+                a.QuestionId, a.SelectedOptionValues ?? [], a.TextValue, a.RatingValue))
+            .ToList();
 
-        var editable = definition.Editable;
-        var now = SystemClock.Instance.GetCurrentInstant();
-        if (!IsWithinAnswerWindow(definition, now))
+        var result = await surveyService.AdvanceWizardAsync(state, model.Page, model.Back, posted, ct);
+
+        switch (result.Outcome)
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
-        }
+            case SurveyWizardOutcome.NotFound:
+                return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
 
-        // Only accept answers for questions actually visible on the posted page (re-evaluated server-side).
-        var visibleBefore = SurveyWizardFlow.VisibleQuestionsOnPage(
-            editable.Questions, model.Page, ToAnswerStates(state.Answers));
-        var posted = (model.Answers ?? []).ToDictionary(a => a.QuestionId);
+            case SurveyWizardOutcome.Closed:
+                return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
 
-        foreach (var question in visibleBefore)
-        {
-            var id = question.Id!.Value;
-            if (!posted.TryGetValue(id, out var answer))
-            {
-                state.Answers.Remove(id.ToString());
-                continue;
-            }
-
-            state.Answers[id.ToString()] = new SurveyWizardAnswer
-            {
-                SelectedOptionValues = (answer.SelectedOptionValues ?? []).Where(v => !string.IsNullOrEmpty(v)).ToList(),
-                TextValue = string.IsNullOrWhiteSpace(answer.TextValue) ? null : answer.TextValue,
-                RatingValue = answer.RatingValue,
-            };
-        }
-
-        // First advance past the intro fires the path-specific Started funnel side effect (idempotent via state.Started).
-        if (!state.Started)
-        {
-            if (route.IsPublic)
-            {
-                await surveyService.IncrementPublicStartedAsync(state.SurveyId, ct);
-            }
-            else if (state.InvitationId is { } startInvId)
-            {
-                await surveyService.MarkInvitationStartedAsync(startInvId, ct);
-            }
-
-            state.Started = true;
-        }
-
-        var answerStates = ToAnswerStates(state.Answers);
-
-        // Identified per-page autosave (replace-all; the draft stays in-progress). Slug path is Anonymous — skipped.
-        if (state.Anonymity == ResponseAnonymity.Identified && state.DraftResponseId is { } draftId)
-        {
-            await surveyService.SaveDraftAnswersAsync(draftId, MapAnswers(state.Answers), ct);
-        }
-
-        // Re-validate required-visible on this page; a Back navigation skips validation.
-        var visibleAfter = SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, model.Page, answerStates);
-        if (!model.Back)
-        {
-            var missing = SurveyWizardFlow.RequiredUnanswered(visibleAfter, answerStates);
-            if (missing.Count > 0)
-            {
-                foreach (var id in missing)
+            case SurveyWizardOutcome.ValidationFailed:
+                foreach (var id in result.MissingRequired)
                 {
-                    ModelState.AddModelError(id.ToString(), "This question is required.");
+                    ModelState.AddModelError(id.ToString(), localizer["Survey_QuestionRequired"]);
                 }
 
-                state.CurrentPage = model.Page;
                 route.Save(HttpContext.Session, state);
-                var errorVm = BuildPageViewModel(route, state, editable, visibleAfter, answerStates);
-                return View("Page", errorVm);
-            }
+                return await RenderPage(state, route, ct);
+
+            case SurveyWizardOutcome.Submitted:
+                route.Clear(HttpContext.Session);
+                return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
+
+            case SurveyWizardOutcome.Navigated:
+            default:
+                route.Save(HttpContext.Session, state);
+                return RedirectToAction(route.PageAction, route.PageRouteValues);
         }
-
-        if (model.Back)
-        {
-            var prev = PreviousVisiblePage(editable, model.Page, answerStates);
-            state.CurrentPage = prev ?? model.Page;
-            route.Save(HttpContext.Session, state);
-            return RedirectToAction(route.PageAction, route.PageRouteValues);
-        }
-
-        var nextPage = SurveyWizardFlow.NextVisiblePage(editable.Questions, model.Page, answerStates);
-        if (nextPage is not null)
-        {
-            state.CurrentPage = nextPage.Value;
-            route.Save(HttpContext.Session, state);
-            return RedirectToAction(route.PageAction, route.PageRouteValues);
-        }
-
-        // No further visible page ⇒ submit, then clear the wizard session.
-        var submission = new SurveySubmission(
-            state.SurveyId,
-            state.InvitationId,
-            state.Anonymity == ResponseAnonymity.Identified ? state.UserId : null,
-            state.DraftResponseId,
-            state.Anonymity,
-            state.InputMethod,
-            state.Culture,
-            MapAnswers(state.Answers));
-        await surveyService.SubmitResponseAsync(submission, ct);
-
-        route.Clear(HttpContext.Session);
-        return RedirectToAction(route.ThankYouAction, route.PageRouteValues);
     }
 
     /// <summary>
@@ -490,6 +384,25 @@ public class SurveyController(
             CurrentPage = 0,
         };
 
+    /// <summary>Resolves the thank-you copy (survey's own text, else the localized fallback).</summary>
+    private SurveyThankYouViewModel BuildThankYou(SurveyDetail? definition)
+    {
+        if (definition is null)
+        {
+            return new SurveyThankYouViewModel { ThankYou = localizer["Survey_ThankYouFallback"] };
+        }
+
+        var editable = definition.Editable;
+        var culture = ResolveCulture(editable.DefaultCulture);
+        var thankYou = editable.ThankYou.Resolve(culture, editable.DefaultCulture);
+
+        return new SurveyThankYouViewModel
+        {
+            Title = editable.Title.Resolve(culture, editable.DefaultCulture),
+            ThankYou = string.IsNullOrWhiteSpace(thankYou) ? localizer["Survey_ThankYouFallback"] : thankYou,
+        };
+    }
+
     /// <summary>Picks a supported display culture, defaulting to the current UI culture then the survey's default.</summary>
     private static string ResolveCulture(string surveyDefault)
         => ResolveCulture(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, surveyDefault);
@@ -500,39 +413,6 @@ public class SurveyController(
         if (surveyDefault.IsSupportedCultureCode()) return surveyDefault;
         return CultureCatalog.DefaultCultureCode;
     }
-
-    /// <summary>Projects the session answers into the flow's <see cref="AnswerState"/> map (keyed by question id).</summary>
-    private static Dictionary<Guid, AnswerState> ToAnswerStates(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
-    {
-        var result = new Dictionary<Guid, AnswerState>();
-        foreach (var (key, a) in answers)
-        {
-            if (Guid.TryParse(key, out var id))
-            {
-                result[id] = new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue);
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>Maps the session answers to the service submission/autosave shape.</summary>
-    private static IReadOnlyList<SurveyAnswerInput> MapAnswers(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
-        => answers
-            .Where(kv => Guid.TryParse(kv.Key, out _))
-            .Select(kv => new SurveyAnswerInput(
-                Guid.Parse(kv.Key),
-                kv.Value.SelectedOptionValues,
-                kv.Value.TextValue,
-                kv.Value.RatingValue))
-            .ToList();
-
-    /// <summary>The nearest visible page strictly before <paramref name="page"/>, or null at the start.</summary>
-    private static int? PreviousVisiblePage(SurveyEditInput editable, int page, IReadOnlyDictionary<Guid, AnswerState> answers)
-        => SurveyWizardFlow.OrderedPages(editable.Questions)
-            .Where(p => p < page && SurveyWizardFlow.VisibleQuestionsOnPage(editable.Questions, p, answers).Count > 0)
-            .Cast<int?>()
-            .LastOrDefault();
 
     /// <summary>Resolves a page's visible questions to display strings and counts the visible-page step position.</summary>
     private static SurveyPageViewModel BuildPageViewModel(

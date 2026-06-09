@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Humans.Application.Interfaces.Surveys;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models.Survey;
@@ -21,7 +22,8 @@ namespace Humans.Web.Controllers;
 [ApiController]
 [Route("api/surveys")]
 [ServiceFilter(typeof(SurveyApiKeyAuthFilter))]
-public class SurveysApiController(ISurveyService surveyService) : ControllerBase
+public class SurveysApiController(ISurveyService surveyService, IUserServiceRead userService)
+    : ApiControllerBase(userService)
 {
     private const int DefaultLimit = 100;
     private const int MaxLimit = 1000;
