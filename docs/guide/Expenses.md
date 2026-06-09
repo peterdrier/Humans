@@ -16,13 +16,13 @@
 
 ## What this section is for
 
-Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items, attach a receipt to each, and submit it. Once it's approved and paid, you're told automatically.
+Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items — purchases with a receipt attached, plus travel items (mileage and per diem) that are worked out for you — and submit it. Once it's approved and paid, you're told automatically.
 
 Finance handles the approval and pays you by bank transfer, and the org's accounting system is updated behind the scenes.
 
 ## Key pages at a glance
 
-- **My expenses** (`/Expenses`) — your reports and where each one's up to
+- **My expenses** (`/Expenses`) — your reports and where each one's up to, plus what the org currently owes you once payments start flowing
 - **New report** (`/Expenses/New`) — start a new draft
 - **Report detail** (`/Expenses/{id}`) — one report: its items, receipts, status, and history
 - **Edit a draft** (`/Expenses/{id}/Edit`) — change a report while it's still a draft
@@ -33,11 +33,20 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 
 ### Start a report
 
-Go to `/Expenses/New` to start a draft. A report is a container — you add items to it, each with a description, an amount, and a **receipt**. A report with no items can't be submitted.
+Go to `/Expenses/New` to start a draft. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**, and travel items (mileage and per diem) that don't need one. A report with no items can't be submitted.
 
 ### Add items and attach receipts
 
-Add each thing you spent money on as an item, and attach the receipt or supporting document when you add it. Every item needs a receipt before you can submit.
+Add each thing you spent money on as an item, and attach the receipt or supporting document when you add it. Every purchase item needs a receipt before you can submit.
+
+### Add travel items (mileage and per diem)
+
+Travel doesn't need receipts. On the draft's edit page:
+
+- **Add mileage** — enter where you went from and to and the distance in km; the amount is worked out for you at the official per-km rate.
+- **Add per diem** — pick day trip or overnight, enter the number of days and an optional note; the amount is worked out at the Spanish tax-exempt daily rate.
+
+Because their amounts are computed, travel items can't be edited afterwards — remove one and add it again if something's wrong.
 
 ### Add your bank details (IBAN)
 
@@ -45,7 +54,7 @@ Your IBAN has to be on your profile before you can submit, since that's how you 
 
 ### Submit and track
 
-Once every item has a receipt and your IBAN is set, submit. You can withdraw a submitted report from its detail page as long as it hasn't been approved yet. A report moves through these stages:
+Once every purchase item has a receipt and your IBAN is set, submit. You can withdraw a submitted report from its detail page as long as it hasn't been approved yet. A report moves through these stages:
 
 - **Draft** — you're still building it
 - **Submitted** — waiting for a coordinator's sign-off (if its category has one) or for Finance
@@ -56,6 +65,10 @@ Once every item has a receipt and your IBAN is set, submit. You can withdraw a s
 - **Withdrawn** — you pulled it back
 
 ![TODO: screenshot — expense report detail showing items, receipt links, and a status badge]
+
+### See what you're owed
+
+Once one of your reports has reached the org's accounting system, **My expenses** shows a card with what the collective currently owes you, what's been paid to date, and when the last payment went out — plus a ledger of your submitted reports and the payments received against them. The balance can include amounts unrelated to your reports, so the rows won't always sum to it exactly.
 
 ## As a Coordinator
 

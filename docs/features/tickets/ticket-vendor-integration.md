@@ -28,7 +28,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 ### New Entities
 
 - **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, DonationAmount, VatAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee
-- **TicketAttendee** — one per issued ticket (multiple per order). Fields: VendorTicketId, TicketOrderId, AttendeeName, AttendeeEmail, MatchedUserId, TicketTypeName, Price, Status (Valid/Void/CheckedIn), VendorEventId, SyncedAt
+- **TicketAttendee** — one per issued ticket (multiple per order). Fields: VendorTicketId, TicketOrderId, AttendeeName, AttendeeEmail, MatchedUserId, TicketTypeName, Price, Status (Valid/Void/CheckedIn), Barcode (vendor `issued_ticket.barcode`, nullable, indexed — searchable on `/Tickets/Attendees` alongside name and email), VendorEventId, SyncedAt
 - **TicketSyncState** — singleton (Id=1) tracking sync operational state. Fields: VendorEventId, LastSyncAt, SyncStatus (Idle/Running/Error), LastError, StatusChangedAt
 
 ### Modified Entities
@@ -38,7 +38,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 ## Architecture
 
 - **ITicketVendorService** — vendor-agnostic interface (Application layer)
-- **TicketTailorService** — TicketTailor API client (Infrastructure layer). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID) and discount amounts from line items.
+- **TicketTailorService** — TicketTailor API client (Infrastructure layer). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets.
 - **IStripeService / StripeService** — Stripe API client (read-only). Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
 - **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees, upsert, email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
 - **TicketSyncJob** — Hangfire recurring job (default every 15 min)

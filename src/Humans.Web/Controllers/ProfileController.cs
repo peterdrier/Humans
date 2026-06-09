@@ -3,6 +3,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Architecture;
 using Humans.Application.Authorization;
 using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
@@ -202,6 +203,11 @@ public class ProfileController(
 
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 78 statements, cc 46.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
@@ -1561,6 +1567,11 @@ public class ProfileController(
 
     [HttpPost("Me/DietaryMedical")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 36 statements, cc 21.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
     {
         if (!ModelState.IsValid)
@@ -2042,6 +2053,11 @@ public class ProfileController(
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
 
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 46 statements, cc 27.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
         var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);

@@ -1,18 +1,19 @@
 namespace Humans.Web.Models.Events;
 
 /// <summary>
-/// Compact list of a camp's approved events rendered on the camp detail page
-/// by <c>CampEventsViewComponent</c>. Auth-gated; approved events only.
+/// Compact list of approved events rendered by <c>EventsCardViewComponent</c> —
+/// a camp's events on the camp detail page, or a user's submitted events on
+/// their profile. Auth-gated; approved events only.
 /// </summary>
-public class CampEventsCardViewModel
+public class EventsCardViewModel
 {
-    /// <summary>Camp slug — the favourite toggle redirects back to this camp's detail page.</summary>
-    public string CampSlug { get; set; } = string.Empty;
+    /// <summary>Local URL of the host page — the favourite toggle redirects back here.</summary>
+    public string ReturnUrl { get; set; } = string.Empty;
 
-    public List<CampEventsCardRow> Rows { get; set; } = [];
+    public List<EventsCardRow> Rows { get; set; } = [];
 }
 
-public class CampEventsCardRow
+public class EventsCardRow
 {
     public Guid EventId { get; set; }
     public string Title { get; set; } = string.Empty;

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application.Architecture;
 using Humans.Application.Configuration;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -90,6 +91,11 @@ public class TeamController(
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 33 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);

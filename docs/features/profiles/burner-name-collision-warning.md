@@ -42,8 +42,8 @@ want to.
   `jose`; `Peter` does not collide with `Peter Pan`.
 - The count **excludes the editing user themselves**, and excludes rejected
   profiles and tombstoned (profile-less) users.
-- The count is **uncapped** — it reports the true number, not clamped at the
-  search cap of 10.
+- The count is **uncapped** — it reports the true number of collisions, never
+  a clamped subset.
 - The warning is best-effort: transient fetch failures are swallowed and never
   block editing or saving.
 

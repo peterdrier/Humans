@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
@@ -90,6 +91,11 @@ public class TeamAdminController(
     }
 
     [HttpGet("Members")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 23 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
         var pageSize = 20;

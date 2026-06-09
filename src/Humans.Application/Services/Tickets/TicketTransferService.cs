@@ -139,6 +139,10 @@ public sealed class TicketTransferService(
 
         await transferRepo.AddAsync(request, ct);
 
+        // Pendency is baked into the cached holdings rows ("transfer pending" stamp),
+        // so every pendency change must evict the sender's holdings.
+        cacheInvalidator.InvalidateAfterTransfer(senderUserId, dto.ReceiverUserId);
+
         await auditLog.LogAsync(
             AuditAction.TicketTransferRequested,
             nameof(TicketTransferRequest),
@@ -166,6 +170,8 @@ public sealed class TicketTransferService(
         request.Status = TicketTransferStatus.Cancelled;
         request.DecidedAt = now;
         await transferRepo.UpdateAsync(request, ct);
+
+        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferCancelled,
@@ -225,6 +231,8 @@ public sealed class TicketTransferService(
         request.DecidedAt = now;
         request.AdminNotes = reason;
         await transferRepo.UpdateAsync(request, ct);
+
+        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
         await auditLog.LogAsync(
             AuditAction.TicketTransferRejected,

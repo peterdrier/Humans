@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
@@ -34,6 +35,11 @@ public class EventsController(
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 21 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> MySubmissions()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -255,6 +261,11 @@ public class EventsController(
 
     [HttpPost("Submit/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 42 statements, cc 17.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -429,6 +440,11 @@ public class EventsController(
     }
 
     [HttpGet("Browse")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 23.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
@@ -567,17 +583,18 @@ public class EventsController(
         return RedirectToAction(nameof(Schedule));
     }
 
-    // Favourite toggle for the camp detail page's events card. Redirects back to
-    // the camp page (per-surface redirect, like Unfavourite → Schedule).
-    [HttpPost("Barrio/{slug}/Favourite/{eventId:guid}")]
+    // Favourite toggle for the events card (camp detail page, profile page).
+    // Bounces back to the host page via returnUrl, falling back to Browse when
+    // the URL is missing or not local.
+    [HttpPost("Card/Favourite/{eventId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleCampFavourite(string slug, Guid eventId)
+    public async Task<IActionResult> ToggleCardFavourite(Guid eventId, string? returnUrl)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction(nameof(CampController.Details), "Camp", new { slug });
+        return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(Browse));
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
@@ -746,6 +763,11 @@ public class EventsController(
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 41 statements, cc 11.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
@@ -832,6 +854,11 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 60 statements, cc 14.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);

@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -35,6 +36,11 @@ public sealed class UsersAdminDebugController(IUserServiceRead userService) : Hu
         return View(new UsersDebugViewModel(paged, total, page, pageSize, sort, dir));
     }
 
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Sort-key switch over many columns — sorting is controller turf; reshape rather than relocate. 4 statements, cc 16.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     private static List<UserDebugRow> ApplySort(List<UserDebugRow> rows, string sort, string dir)
     {
         var asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);

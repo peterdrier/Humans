@@ -1,10 +1,10 @@
 ---
 name: Analyzer exceptions live on the code via attributes, never in centralised lists
-description: Per-class `[Grandfathered("HUM####", ...)]` attributes are the only way to grandfather a class out of an analyzer rule. No baselines, no editorconfig per-file severity blocks, no analyzer-internal allowlists, no SuppressMessage scattered files-as-a-list.
+description: Per-declaration `[Grandfathered("HUM####", ...)]` attributes (on the violating class, interface, or method) are the only way to grandfather existing code out of an analyzer rule. No baselines, no editorconfig per-file severity blocks, no analyzer-internal allowlists, no SuppressMessage scattered files-as-a-list.
 type: feedback
 ---
 
-When an analyzer rule (HUMxxxx) needs to allow existing violators while still blocking new ones, the exception **lives as an attribute on the violating class itself**. Use `[Grandfathered(ruleId, justification, since, issueRef)]` from `Humans.Application.Architecture`. The analyzer detects the attribute and downgrades the diagnostic from Error to Warning for that class only.
+When an analyzer rule (HUMxxxx) needs to allow existing violators while still blocking new ones, the exception **lives as an attribute on the violating declaration itself** (class, interface, or — for method-level rules like HUM0031 — the method). Use `[Grandfathered(ruleId, justification, since, issueRef)]` from `Humans.Application.Architecture`. The analyzer detects the attribute and downgrades the diagnostic from Error to Warning for that declaration only.
 
 **Why:** Centralised lists conflict on every merge and pull cleanup attention away from the violating code. We've been bitten by this pattern enough times (analyzer-internal allowlists, baseline-text-files, surface-budget history blocks, `.editorconfig` per-file overrides) that the project's posture is now: **lists for this purpose are dead**.
 
