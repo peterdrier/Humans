@@ -52,7 +52,7 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
+- **Humans** match via `IUserServiceRead.SearchUsersAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
@@ -89,7 +89,7 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 ```
 SearchController
    └── ISearchService.SearchAsync(query, onlyType)
-         ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields.PublicAll, limit) → IReadOnlyList<HumanSearchResult>
+         ├── IUserServiceRead.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
          ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
          ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
@@ -114,7 +114,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 | DTO | Returned by | Used by |
 |---|---|---|
-| `HumanSearchResult` | `IProfileService` (existing) | View renders via `_HumanSearchResults` partial |
+| `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View renders via `_HumanSearchResults` partial |
 | `TeamSearchHit (Name, Slug)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `CampSearchHit (Slug, Name)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |

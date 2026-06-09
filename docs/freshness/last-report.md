@@ -55,18 +55,18 @@
 
 ## Flagged for human review
 
-Presented to Peter inline in Phase 7.5; resolutions to be recorded per item.
+Presented to Peter inline in Phase 7.5 — **all 10 resolved same-session** (his dispositions in bold):
 
-1. **`sections/Tickets.md` vs code — NotAttending overwrite (judgment call):** doc says self-declared NotAttending rows "are never overwritten by ticket sync"; `TicketSyncService.SyncEventParticipationsAsync` + `UserRepository.UpsertParticipationAsync` flip NotAttending → Ticketed when a valid ticket matches (matching `features/tickets/event-participation.md`). Doc fix or code issue?
-2. **`features/global/global-search.md`** (pre-existing): architecture diagram + DTO row still say `IProfileService.SearchProfilesAsync`; code uses `IUserServiceRead.SearchUsersAsync`.
-3. **`features/tickets/ticket-vendor-integration.md`** (pre-existing): routes table says `/Tickets/GateList — Stub for June implementation`; it's a live door check-in list.
-4. **Onboarding docs naming** (pre-existing): `onboarding-pipeline.md` + `sections/Onboarding.md` say `ProfileService.SaveProfileAsync`; the widget calls `IProfileEditorService.SaveProfileAsync`.
-5. **`features/profiles/profile-pictures-birthdays.md`** (pre-existing): claims dual-write (DB + filesystem) picture storage with DB fallback; code is filesystem-only, DB column `[Obsolete]` awaiting drop (#702). Doc also cites #527 where code cites #702.
-6. **`design-rules.md` §15i** (pre-existing): "26 repositories" count + list stale (omits Expense/Event/Store/Issues/Agent/etc. repos).
-7. **`dependency-graph.md` prose** (pre-existing, below the regenerated diagram): fan-in table counts drifted (TeamService 28→27 eager, UserService 54→55, ShiftManagementService 15→16, MembershipCalculator 3→4); "new thin sections" bullet still names deleted GeneralAvailability.
-8. **`sections/Shifts.md` §VolunteerBuildStatus** (pre-existing, found during prune verify): describes `BlockedDayOffsets` jsonb + `BarrioSetupSetByUserId`/`SetAt`; entity has `DayOffs` (`List<DayOffEntry>`) + `SetByUserId`/`SetAt`; audit-action names partly stale.
-9. **`sections/Events.md`** (unmarked editorial, drift found by Events/Camps agent): missing the #915 IEventServiceRead read surface, CampEventsViewComponent composition, and POST `/Events/Barrio/{slug}/Favourite/{eventId}`; also needs `freshness:triggers`.
-10. **`sections/Scanner.md`** (unmarked editorial): content current (updated by #916 itself) but needs `freshness:triggers` to be covered by future sweeps.
+1. **`sections/Tickets.md` vs code — NotAttending overwrite:** doc said NotAttending rows "are never overwritten by ticket sync"; code flips NotAttending → Ticketed on a matched ticket. **Peter: code is correct — "a ticket is a physical thing, overriding any intentions."** Doc sentence rewritten to match code.
+2. **`features/global/global-search.md`** `IProfileService.SearchProfilesAsync` → `IUserServiceRead.SearchUsersAsync`. **Fixed** (AC bullet, diagram, DTO row; verified against SearchService.cs).
+3. **`features/tickets/ticket-vendor-integration.md`** `/Tickets/GateList — Stub for June implementation`. **Peter: still a stub — no change.**
+4. **Onboarding docs naming** `ProfileService.SaveProfileAsync` → `IProfileEditorService.SaveProfileAsync`. **Fixed** (onboarding-pipeline.md + 2 spots in sections/Onboarding.md).
+5. **`features/profiles/profile-pictures-birthdays.md`** dual-write claims. **Fixed**: storage approach, read path, flow diagram, computed property now FS-only with the `[Obsolete]` DB column pending #702 (citation corrected from #527). Additionally excised the removed US-14.5 Google-photo import (route row, user story → removal tombstone, localization table → orphaned-keys note) — verified `ImportGooglePhoto` no longer exists in src (#745).
+6. **`design-rules.md` §15i repositories.** **Refreshed**: count corrected 26→33; added 11 missing repos; removed nonexistent UserEmailRepository/DriveActivityMonitorRepository; adjacent Shifts migration bullet's stale `IShiftSignupRepository`/`GeneralAvailabilityService` fragment corrected.
+7. **`dependency-graph.md` prose.** **Fixed**: fan-in counts (UserService 55, TeamService 27, ShiftManagementService 16, MembershipCalculator 4 — OnboardingWidgetState consumers noted); GeneralAvailability annotated as deleted (#820).
+8. **`sections/Shifts.md` §VolunteerBuildStatus.** **Fixed**: `DayOffs` (`List<DayOffEntry>`: DayOffset/Reason/MarkedByUserId/MarkedAt), `SetByUserId`/`SetAt` + Notes(500), rendering/write-path corrected; audit-action and service-method names verified already accurate.
+9. **`sections/Events.md`.** **Fixed**: freshness markers added (29 verified trigger paths); #915/#919 surface documented (Favourite route, Camps consumer bullet, IEventServiceRead read-split). Follow-on naming drift also fixed: full rename pass to verified code symbols (GuideEvent→Event, EventGuideService→EventService, EventGuideRepository→EventRepository, GuideApiController→EventsApiController, etc., with real EF table names kept); phantom `IsAllDay`/`CreatedAt` rows removed, `AdminNotes` added, missing `Draft` status added, false cross-section-navs sentence corrected. The flagged "decorator writes via repository?" concern was verified FALSE — CachingEventService routes through the keyed inner `IEventService` (doc already correct).
+10. **`sections/Scanner.md`.** **Fixed**: freshness:triggers + flag-on-change markers added (controller, views, scanner JS, view model).
 
 **Informational (no decision needed):**
 - No `docs/guide/Scanner.md` exists; the /Scanner/Tickets lookup is covered by a sentence in guide/Tickets.md. Consider a guide page if Scanner grows.
@@ -79,7 +79,7 @@ None — all candidates resolved this sweep (prune candidates verified against c
 
 ## Questions
 
-See Flagged items 1–10 above, presented to Peter inline in Phase 7.5.
+All asked and answered inline in Phase 7.5 — see resolutions above. Two carried Peter rulings worth remembering: a matched ticket overrides a NotAttending declaration (item 1), and `/Tickets/GateList` remains a stub (item 3).
 
 ## Skipped (errors)
 
