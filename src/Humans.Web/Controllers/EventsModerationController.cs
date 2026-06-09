@@ -117,6 +117,12 @@ public class EventsModerationController(
         var guideEvent = await guide.GetEventForModerationAsync(eventId);
         if (guideEvent == null) return NotFound();
 
+        if (guideEvent.Status == EventStatus.Withdrawn)
+        {
+            SetError("Withdrawn events cannot be edited.");
+            return RedirectToAction(nameof(Index));
+        }
+
         if (guideEvent.CampId.HasValue)
         {
             var guideSettings = await guide.GetGuideSettingsAsync();

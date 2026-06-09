@@ -33,6 +33,7 @@
     <div class="card-body">
         <form method="post"
               action="@(Model.PostUrl ?? Url.Action(isEdit ? "BarrioUpdate" : "BarrioCreate", "Events", new { slug = Model.CampSlug, eventId = Model.Id }))"
+              asp-antiforgery="true"
               >
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="IsModerationEdit" />
