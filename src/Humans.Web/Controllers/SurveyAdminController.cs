@@ -104,7 +104,7 @@ public class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        await RunStatusTransitionAsync(() => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
+        await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -114,7 +114,7 @@ public class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        await RunStatusTransitionAsync(() => surveyService.CloseAsync(id, actorId.Value, ct), "Survey closed.");
+        await RunStatusTransitionAsync(id, () => surveyService.CloseAsync(id, actorId.Value, ct), "Survey closed.");
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -154,6 +154,7 @@ public class SurveyAdminController(
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("Send invites rejected for survey {SurveyId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Send), new { id });
@@ -188,7 +189,7 @@ public class SurveyAdminController(
         return File(Encoding.UTF8.GetBytes(json), "application/json", $"survey-{id}.json");
     }
 
-    private async Task RunStatusTransitionAsync(Func<Task> transition, string success)
+    private async Task RunStatusTransitionAsync(Guid id, Func<Task> transition, string success)
     {
         try
         {
@@ -197,6 +198,7 @@ public class SurveyAdminController(
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("Status transition rejected for survey {SurveyId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
     }

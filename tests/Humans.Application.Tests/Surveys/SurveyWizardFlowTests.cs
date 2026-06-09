@@ -64,6 +64,30 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
+    public void VisibleQuestionsOnPage_ignores_stale_answers_on_hidden_branches()
+    {
+        // Q1 gates Q2, Q2 gates Q3. Q2 was answered while Q1 == "yes"; the respondent went back
+        // and flipped Q1 to "no" — Q2's stale answer must not keep Q3 visible.
+        var q1 = Guid.NewGuid();
+        var q2 = Guid.NewGuid();
+        var q3 = Guid.NewGuid();
+        var questions = new[]
+        {
+            Q(q1, 1, 1, SurveyQuestionType.SingleChoice, opts: Opt("yes")),
+            Q(q2, 2, 1, SurveyQuestionType.SingleChoice, showIf: ShowIfIs(q1, "yes"), opts: Opt("vegetarian")),
+            Q(q3, 3, 1, SurveyQuestionType.ShortText, showIf: ShowIfIs(q2, "vegetarian")),
+        };
+        var answers = new Dictionary<Guid, AnswerState>
+        {
+            [q1] = new AnswerState(["no"], null, null),
+            [q2] = new AnswerState(["vegetarian"], null, null),
+        };
+
+        SurveyWizardFlow.VisibleQuestionsOnPage(questions, 2, answers).Should().BeEmpty();
+        SurveyWizardFlow.VisibleQuestionsOnPage(questions, 3, answers).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public void NextVisiblePage_skips_a_page_whose_questions_are_all_hidden()
     {
         var gate = Guid.NewGuid();

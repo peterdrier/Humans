@@ -32,14 +32,25 @@ public static class SurveyWizardFlow
 
     /// <summary>
     /// Questions on <paramref name="page"/> whose <c>ShowIf</c> is satisfied by <paramref name="answers"/>,
-    /// in display order. Visibility sees the full answer state (options, text, rating).
+    /// in display order. Visibility sees the full answer state (options, text, rating) and cascades:
+    /// answers to questions that are themselves hidden are ignored, so a stale answer on a hidden
+    /// branch cannot keep downstream questions visible.
     /// </summary>
     public static IReadOnlyList<QuestionInput> VisibleQuestionsOnPage(
         IReadOnlyList<QuestionInput> questions, int page, IReadOnlyDictionary<Guid, AnswerState> answers)
-        => questions
-            .Where(q => q.PageNumber == page && SurveyBranchingEvaluator.IsVisible(q.ShowIf, answers))
+    {
+        var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(
+            questions
+                .Where(q => q.Id is not null)
+                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+                .Select(q => (q.Id!.Value, q.ShowIf)),
+            answers);
+
+        return questions
+            .Where(q => q.PageNumber == page && SurveyBranchingEvaluator.IsVisible(q.ShowIf, effective))
             .OrderBy(q => q.Order)
             .ToList();
+    }
 
     /// <summary>The first page (ascending) that has at least one visible question, or null if none.</summary>
     public static int? FirstVisiblePage(

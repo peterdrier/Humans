@@ -529,6 +529,21 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task ResolveAnswerContextAsync_returns_null_when_invitation_completed()
+    {
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var invitation = InvitationFor(survey.Id, Guid.NewGuid());
+        invitation.Completed = true;
+        _tokenProvider.Resolve("spent").Returns(invitation.Id);
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+
+        var ctx = await CreateService().ResolveAnswerContextAsync("spent");
+
+        ctx.Should().BeNull();
+        await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug()
     {
         _repo.GetIdByPublicSlugAsync("missing", Arg.Any<CancellationToken>()).Returns((Guid?)null);
@@ -783,6 +798,72 @@ public class SurveyServiceTests
         captured.Should().NotBeNull();
         captured!.Answers.Select(a => a.QuestionId).Should().Contain(gate);
         captured.Answers.Select(a => a.QuestionId).Should().NotContain(hidden);
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_drops_answers_unlocked_only_by_a_stale_hidden_answer()
+    {
+        // Q1 gates Q2, Q2 gates Q3 — flipping Q1 to "no" must hide Q3 even though Q2's stale
+        // answer would still satisfy Q3's condition on its own.
+        var q1 = Guid.NewGuid();
+        var q2 = Guid.NewGuid();
+        var q3 = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        survey.Questions = new List<SurveyQuestion>
+        {
+            new() { Id = q1, SurveyId = survey.Id, PageNumber = 1, Order = 1, Type = SurveyQuestionType.SingleChoice },
+            new()
+            {
+                Id = q2, SurveyId = survey.Id, PageNumber = 2, Order = 1, Type = SurveyQuestionType.SingleChoice,
+                ShowIf = new BranchCondition
+                {
+                    Combine = BranchCombine.All,
+                    Clauses = { new BranchClause { QuestionId = q1, Operator = BranchOperator.Is, OptionValues = { "yes" } } },
+                },
+            },
+            new()
+            {
+                Id = q3, SurveyId = survey.Id, PageNumber = 3, Order = 1, Type = SurveyQuestionType.ShortText,
+                ShowIf = new BranchCondition
+                {
+                    Combine = BranchCombine.All,
+                    Clauses = { new BranchClause { QuestionId = q2, Operator = BranchOperator.Is, OptionValues = { "vegetarian" } } },
+                },
+            },
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        SurveyResponse? captured = null;
+        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+             .Do(ci => captured = ci.Arg<SurveyResponse>());
+
+        var submission = new SurveySubmission(
+            survey.Id, null, null, null,
+            ResponseAnonymity.Anonymous, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(q1, "no"), Ans(q2, "vegetarian"), TextAns(q3, "leaked") });
+
+        await CreateService().SubmitResponseAsync(submission);
+
+        captured.Should().NotBeNull();
+        captured!.Answers.Select(a => a.QuestionId).Should().BeEquivalentTo([q1]);
+    }
+
+    [HumansFact]
+    public async Task SubmitResponseAsync_throws_when_invitation_already_completed()
+    {
+        var survey = SurveyForSubmit(out var q1Id, out _);
+        var invitation = InvitationFor(survey.Id, Guid.NewGuid());
+        invitation.Completed = true;
+        _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
+        var submission = new SurveySubmission(
+            survey.Id, invitation.Id, null, null,
+            ResponseAnonymity.CompletionTracked, SurveyInputMethod.UserSpecificLink, "en",
+            new List<SurveyAnswerInput> { Ans(q1Id, "yes") });
+
+        var act = async () => await CreateService().SubmitResponseAsync(submission);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SetInvitationCompletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

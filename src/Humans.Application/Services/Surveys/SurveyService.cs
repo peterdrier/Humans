@@ -318,6 +318,11 @@ public sealed class SurveyService(
         var invitation = await repo.GetInvitationByIdAsync(invitationId.Value, ct);
         if (invitation is null) return null;
 
+        // A completed invitation's token is spent (Identified/CompletionTracked flip Completed at
+        // submit) — resolving it again would let the same invite submit a second response.
+        // Anonymous completions leave Completed false by design, so those tokens stay answerable.
+        if (invitation.Completed) return null;
+
         var definition = await GetForEditAsync(invitation.SurveyId, ct);
         if (definition is null) return null;
 
@@ -399,6 +404,17 @@ public sealed class SurveyService(
         if (!SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, clock.GetCurrentInstant()))
         {
             throw new InvalidOperationException("Survey is not open for responses.");
+        }
+
+        // Same authoritative posture for the duplicate gate: a completed invitation can't submit
+        // again on the tracked tiers (Anonymous never flips Completed, so it is unaffected).
+        if (submission.Anonymity != ResponseAnonymity.Anonymous && submission.InvitationId is { } gateInvId)
+        {
+            var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
+            if (invitation?.Completed == true)
+            {
+                throw new InvalidOperationException("This invitation has already submitted a response.");
+            }
         }
 
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
@@ -853,18 +869,23 @@ public sealed class SurveyService(
             .ToList();
     }
 
-    /// <summary>Keeps only the answers to questions visible under full branching against the submitted answer states.</summary>
+    /// <summary>
+    /// Keeps only the answers to questions visible under full cascading branching: an answer on a
+    /// hidden question neither survives nor counts towards downstream <c>ShowIf</c> conditions.
+    /// </summary>
     private static IReadOnlyList<SurveyAnswerInput> VisibleAnswers(Survey survey, IReadOnlyList<SurveyAnswerInput> answers)
     {
         var states = answers.ToDictionary(
             a => a.QuestionId,
             a => new AnswerState(a.SelectedOptionValues, a.TextValue, a.RatingValue));
-        var byId = survey.Questions.ToDictionary(q => q.Id);
 
-        return answers
-            .Where(a => byId.TryGetValue(a.QuestionId, out var q)
-                        && SurveyBranchingEvaluator.IsVisible(q.ShowIf, states))
-            .ToList();
+        var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(
+            survey.Questions
+                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+                .Select(q => (q.Id, q.ShowIf)),
+            states);
+
+        return answers.Where(a => effective.ContainsKey(a.QuestionId)).ToList();
     }
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)

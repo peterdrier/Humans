@@ -38,6 +38,29 @@ public static class SurveyBranchingEvaluator
     }
 
     /// <summary>
+    /// Reduces raw answers to the set effective under cascading visibility. Questions are walked in
+    /// authoring order (<c>ShowIf</c> may only reference strictly earlier questions, enforced at save),
+    /// and an answer only counts when its own question is visible under the answers accepted so far.
+    /// This drops stale answers left behind when an earlier change hid their question, so they can no
+    /// longer satisfy (or block) downstream conditions.
+    /// </summary>
+    public static Dictionary<Guid, AnswerState> EffectiveAnswerStates(
+        IEnumerable<(Guid Id, BranchCondition? ShowIf)> orderedQuestions,
+        IReadOnlyDictionary<Guid, AnswerState> answers)
+    {
+        var effective = new Dictionary<Guid, AnswerState>();
+        foreach (var (id, showIf) in orderedQuestions)
+        {
+            if (IsVisible(showIf, effective) && answers.TryGetValue(id, out var answer))
+            {
+                effective[id] = answer;
+            }
+        }
+
+        return effective;
+    }
+
+    /// <summary>
     /// Returns the ids of questions whose <c>ShowIf</c> references a question that is not strictly
     /// earlier in <c>(PageNumber, Order)</c> (a self- or forward-reference, or a reference to a
     /// question not in the set). Empty list = valid.

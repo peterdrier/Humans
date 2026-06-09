@@ -182,4 +182,30 @@ public class SurveyBranchingEvaluatorTests
 
         SurveyBranchingEvaluator.ValidateClauseOptionValues(questions).Should().BeEquivalentTo(new[] { q2, q3 });
     }
+
+    [HumansFact]
+    public void EffectiveAnswerStates_drops_stale_answers_on_hidden_branches_transitively()
+    {
+        // Q1 gates Q2, Q2 gates Q3. Q2/Q3 were answered while Q1 == "yes"; after flipping Q1 to
+        // "no", their stale answers must not count — directly or via each other.
+        var q1 = Guid.NewGuid();
+        var q2 = Guid.NewGuid();
+        var q3 = Guid.NewGuid();
+        var ordered = new (Guid, BranchCondition?)[]
+        {
+            (q1, null),
+            (q2, Cond(BranchCombine.All, Clause(q1, BranchOperator.Is, "yes"))),
+            (q3, Cond(BranchCombine.All, Clause(q2, BranchOperator.Is, "vegetarian"))),
+        };
+        var raw = new Dictionary<Guid, AnswerState>
+        {
+            [q1] = new AnswerState(["no"], null, null),
+            [q2] = new AnswerState(["vegetarian"], null, null),
+            [q3] = new AnswerState([], "stale", null),
+        };
+
+        var effective = SurveyBranchingEvaluator.EffectiveAnswerStates(ordered, raw);
+
+        effective.Keys.Should().BeEquivalentTo(new[] { q1 });
+    }
 }
