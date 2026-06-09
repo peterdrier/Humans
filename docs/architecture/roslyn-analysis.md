@@ -276,7 +276,7 @@ analyzer.
 - `NoConcurrencyTokensRule` — replaced by semantic analyzer `HUM0007`.
 - `NoCrossSectionEfJoinsRule` — replaced by analyzer `HUM0024`.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.
-- `NoBusinessLogicInControllersRule` (`tests/.../Rules/NoBusinessLogicInControllersRule.cs`) — heuristic (action methods > 50 lines or cyclomatic ≥ 6); baseline-ratcheted. Stay as ratchet.
+- `NoBusinessLogicInControllersRule` — retired (the regex heuristic was noisy and only saw public action signatures; nobodies-collective/Humans#793). Replaced by semantic analyzer `HUM0031` (`ControllerBusinessLogicAnalyzer`): statements > 40 or cyclomatic complexity > 15 on any controller method, method-level `[Grandfathered]`, thresholds ratchet down.
 - `NoObsoleteNavReadsRule` — replaced by semantic analyzer `HUM0021`.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` (`tests/.../Rules/NoStartupGuardsRule.cs`) — heuristic regex over `Program.cs` and startup classes; pattern is too fuzzy for crisp call-site analyzer detection. Stay as ratchet.

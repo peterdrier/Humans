@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Email;
 
 using Humans.Application.Interfaces.Users;
@@ -85,6 +86,11 @@ public class EmailController(
     }
 
     [HttpGet("EmailPreview")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 51 statements, cc 2.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
         [FromServices] IOptions<EmailSettings> emailSettings)
