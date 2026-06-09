@@ -61,6 +61,7 @@ public class ModerationHistoryItemViewModel
         EventModerationActionType.Approved => "bg-success",
         EventModerationActionType.Rejected => "bg-danger",
         EventModerationActionType.ResubmitRequested => "bg-info",
+        EventModerationActionType.Edited => "bg-primary",
         _ => "bg-secondary"
     };
 }
