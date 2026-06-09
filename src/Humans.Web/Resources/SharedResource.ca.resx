@@ -3262,6 +3262,27 @@
   <data name="Login_MagicLink_Submit" xml:space="preserve">
     <value>Envia’m un enllaç d’inici de sessió</value>
   </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Terminal de porta</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Inicia sessió al portàtil compartit de la porta per consultar entrades. Demana les credencials a l’equip d’entrades.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Nom d’usuari</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Contrasenya</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Inicia la sessió</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Nom d’usuari o contrasenya incorrectes.</value>
+  </data>
+  <data name="GateLogin_LockedOut" xml:space="preserve">
+    <value>Massa intents fallits. Espera uns minuts i torna-ho a provar.</value>
+  </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Revisa el teu correu</value>
   </data>

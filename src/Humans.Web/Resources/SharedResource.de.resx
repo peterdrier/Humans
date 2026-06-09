@@ -3262,6 +3262,27 @@
   <data name="Login_MagicLink_Submit" xml:space="preserve">
     <value>Anmeldelink senden</value>
   </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Gate-Terminal</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Melde den gemeinsamen Gate-Laptop an, um Tickets nachzuschlagen. Die Zugangsdaten bekommst du vom Ticket-Team.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Benutzername</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Passwort</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Anmelden</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Benutzername oder Passwort falsch.</value>
+  </data>
+  <data name="GateLogin_LockedOut" xml:space="preserve">
+    <value>Zu viele Fehlversuche. Warte ein paar Minuten und versuche es erneut.</value>
+  </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Überprüfe deine E-Mails</value>
   </data>

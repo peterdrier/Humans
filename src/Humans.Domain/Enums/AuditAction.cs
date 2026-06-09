@@ -185,4 +185,5 @@ public enum AuditAction
     EarlyEntryUpdated,
     EarlyEntryRevoked,
     StorePaymentsReconciled,
+    GateTerminalPasswordSet,
 }

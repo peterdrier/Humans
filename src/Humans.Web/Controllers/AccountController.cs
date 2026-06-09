@@ -5,6 +5,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Architecture;
 using Humans.Application.Extensions;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -492,6 +493,56 @@ public class AccountController(
 #pragma warning restore CS0618
 
         return RedirectToLocal(returnUrl);
+    }
+
+    // --- Gate terminal ---
+
+    /// <summary>
+    /// Shared gate-terminal sign-in for the laptop at gate (see
+    /// <see cref="SystemUserIds.GateTerminal"/>). Credential is set from the
+    /// ticketing admin page; the session is persistent so the device survives
+    /// restarts without an admin on-site.
+    /// </summary>
+    [HttpGet]
+    public IActionResult GateLogin() => View();
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GateLogin(string? username, string? password)
+    {
+        var user = string.Equals(username?.Trim(), SystemUserIds.GateTerminalLoginName,
+                StringComparison.OrdinalIgnoreCase)
+            ? await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString())
+            : null;
+
+        if (user is null || string.IsNullOrEmpty(password))
+        {
+            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            return View();
+        }
+
+        var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            logger.LogWarning("Gate terminal sign-in locked out after repeated failures");
+            ModelState.AddModelError(string.Empty, localizer["GateLogin_LockedOut"]);
+            return View();
+        }
+
+        if (!result.Succeeded)
+        {
+            logger.LogWarning("Gate terminal sign-in failed (wrong password)");
+            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            return View();
+        }
+
+        user.LastLoginAt = clock.GetCurrentInstant();
+        await userManager.UpdateAsync(user);
+
+        await signInManager.SignInAsync(user, isPersistent: true);
+        logger.LogInformation("Gate terminal signed in");
+
+        return RedirectToAction(nameof(ScannerController.Tickets), "Scanner");
     }
 
     // --- Standard Auth ---

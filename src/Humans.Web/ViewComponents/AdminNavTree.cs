@@ -16,7 +16,8 @@ public static class AdminNavTree
             new("Tickets",            "Ticket",         "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin),
             new("Transfer requests",  "TicketTransferAdmin", "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin,
                  PillCount: PillCounts.TransferQueue),
-            new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.TicketAdminBoardOrAdmin)
+            new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.ScannerAccess),
+            new("Gate terminal",      "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",       PolicyNames.TicketAdminOrAdmin)
         ]),
         new("Members", [
             new("Humans", "UsersAdmin", "AdminList",    null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),

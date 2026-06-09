@@ -31,6 +31,13 @@ public static class PolicyNames
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
+    /// Scanner tools (/Scanner/*): TicketAdmin, Board, or Admin — plus the shared
+    /// gate-terminal account (matched by its well-known id, not a role, so it never
+    /// shows up in role-assignment UI). Composite assertion policy.
+    /// </summary>
+    public const string ScannerAccess = nameof(ScannerAccess);
+
+    /// <summary>
     /// Can use the app: <c>UserState == Active</c> (entered legal name).
     /// The single nav-visibility gate replaces the former
     /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).

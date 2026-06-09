@@ -81,6 +81,9 @@ if (!builder.Environment.IsProduction())
     builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
+// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate).
+builder.Services.AddScoped<GateTerminalAccountSeeder>();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);

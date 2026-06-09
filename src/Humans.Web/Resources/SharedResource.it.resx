@@ -3262,6 +3262,27 @@
   <data name="Login_MagicLink_Submit" xml:space="preserve">
     <value>Inviami un link di accesso</value>
   </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Terminale del gate</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Accedi al portatile condiviso del gate per consultare i biglietti. Chiedi le credenziali al team biglietti.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Nome utente</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Accedi</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Nome utente o password errati.</value>
+  </data>
+  <data name="GateLogin_LockedOut" xml:space="preserve">
+    <value>Troppi tentativi falliti. Attendi qualche minuto e riprova.</value>
+  </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Controlla la tua e-mail</value>
   </data>

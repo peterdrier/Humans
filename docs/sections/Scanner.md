@@ -31,12 +31,13 @@
 
 | Actor | Capabilities |
 |-------|-------------|
-| TicketAdmin, Board, Admin | Access the scanner index and use the barcode tool |
-| Everyone else | No access — all routes require `TicketAdminBoardOrAdmin` |
+| TicketAdmin, Board, Admin | Access the scanner index and use the barcode + ticket lookup tools |
+| Gate terminal account (`SystemUserIds.GateTerminal`) | Same scanner access, matched by well-known id — the shared laptop at gate signs in at `/Account/GateLogin` with the credential set on `/Tickets/Admin/Gate`. Holds no roles, so it sees nothing admin-gated elsewhere. See `docs/features/scanner/gate-terminal-login.md` |
+| Everyone else | No access — all routes require `ScannerAccess` |
 
 ## Invariants
 
-- All scanner routes require the `TicketAdminBoardOrAdmin` policy (`TicketAdmin`, `Board`, or `Admin`). Enforced by `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` on `ScannerController`.
+- All scanner routes require the `ScannerAccess` policy (`TicketAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`.
 - `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
 - `/Scanner/Tickets` performs a cross-section read via `ITicketServiceRead.GetTicketOrdersAsync` and renders a ticket card. It is strictly read-only and must never write server-side state.
 - **The ticket card must never mark check-in, write `EventParticipation`, or mutate ticket state.** Scanner is not an attendance gateway.

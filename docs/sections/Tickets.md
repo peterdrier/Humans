@@ -81,7 +81,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 |-------|--------------|
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
-| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`) |
+| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `docs/features/scanner/gate-terminal-login.md`) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`) |
 
 ## Invariants
@@ -104,6 +104,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - Board **cannot** trigger any sync (incremental or full), export CSV, or open the participation backfill page.
 - Board **cannot** approve or reject transfer requests — transfer review is gated by `TicketAdminOrAdmin`. Board can view ticket data but the transfer side-effects (vendor void+reissue, local attendee mutation) are admin-only.
 - Board **cannot** trigger attendee contact import — same `TicketAdminOrAdmin` gate as the sync.
+- Board **cannot** set or rotate the gate-terminal password (`/Tickets/Admin/Gate` is `TicketAdminOrAdmin`).
+- The gate-terminal account **cannot** reach any `/Tickets/*` page — it holds no roles; only the Scanner section's `ScannerAccess` policy admits it.
 - TicketAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketAdminBoardOrAdmin`.
@@ -124,6 +126,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/FullResync` | POST | `AdminOnly` | Trigger full re-sync |
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview attendee-contact-import plan |
 | `/Tickets/Admin/Contacts/Apply` | POST | `TicketAdminOrAdmin` | Apply selected attendees |
+| `/Tickets/Admin/Gate` | GET | `TicketAdminOrAdmin` | Gate-terminal account status card |
+| `/Tickets/Admin/Gate/SetPassword` | POST | `TicketAdminOrAdmin` | Set/rotate the gate-terminal password (provisions the account on first set) |
 | `/Tickets/Participation/Backfill` | GET + POST | `AdminOnly` | CSV import of participation records |
 | `/Tickets/Export/Attendees` | GET | `TicketAdminOrAdmin` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
