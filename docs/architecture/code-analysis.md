@@ -93,8 +93,9 @@ HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrade
 HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microsoft.EntityFrameworkCore` type, or `IQueryable` in a method signature (`[Grandfathered("HUM0029")]` downgrades to Warning) | Error
 HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Application.Extensions.DateFormattingExtensions` | Error
 HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and ratchet down over time (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
+HUM0032 | Cross-section caller in `Humans.Application.Services.*` injects a full `I*Service` but only uses members of its `I*ServiceRead` base — inject the read interface instead (`[Grandfathered("HUM0032")]` downgrades to Warning) | Error
 
-> The next free id is **HUM0032** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0033** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

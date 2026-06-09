@@ -49,7 +49,7 @@ That is service work.
 
 ## Caching
 
-See [`design-rules.md`](design-rules.md) §4–§5 for the structured caching pattern (store + decorator).
+See [`design-rules.md`](design-rules.md) §15 for the structured caching pattern (caching decorator owning a `TrackedCache` / `ConcurrentDictionary`; §4–§5 there describe the retired store + decorator predecessor).
 
 Two controller-level rules still apply at this layer:
 
@@ -158,7 +158,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 - Class: `{Name}ViewComponent.cs` under `ViewComponents/`
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
-- Invocation: `@await Component.InvokeAsync("{Name}", new { param = value })`
+- Invocation: `<vc:{kebab-name} param="…">` tag helper or `@await Component.InvokeAsync("{Name}", new { param = value })`
 - Responsive table+card pairs render both layouts and toggle via `d-none d-md-block` / `d-md-none` rather than branching per device.
 - authorization tag helpers for role-based visibility
 
@@ -189,6 +189,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Notification/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
 | `Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
 | `Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
+| `Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
 | `site.js` | Timezone, notification popup, profile popover | Utility |
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.

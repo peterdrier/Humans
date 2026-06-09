@@ -3,6 +3,7 @@ using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -153,7 +154,174 @@ public class EventsModerationController(
         return await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
     }
 
+    // ─── Admin in-place edit (any event, any state, status preserved) ─────
+
+    [HttpGet("{eventId:guid}/Edit")]
+    public async Task<IActionResult> Edit(Guid eventId)
+    {
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        if (guideEvent == null) return NotFound();
+
+        var (eventSettings, tz) = await LoadEventSettingsAsync();
+        if (eventSettings == null)
+        {
+            SetError("Event settings not configured.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
+        var model = new AdminEventFormViewModel
+        {
+            Id = guideEvent.Id,
+            IsCampEvent = guideEvent.CampId.HasValue,
+            Status = guideEvent.Status,
+            Title = guideEvent.Title,
+            Description = guideEvent.Description,
+            CategoryId = guideEvent.CategoryId,
+            VenueId = guideEvent.GuideSharedVenueId,
+            StartDate = localStart.Date,
+            StartTime = localStart.TimeOfDay,
+            IsAllDay = guideEvent.DurationMinutes == 1440,
+            DurationMinutes = guideEvent.DurationMinutes,
+            LocationNote = guideEvent.LocationNote,
+            Host = guideEvent.Host,
+            IsRecurring = guideEvent.IsRecurring,
+            RecurrenceDays = guideEvent.RecurrenceDays,
+            PriorityRank = guideEvent.PriorityRank == 0 ? 1 : guideEvent.PriorityRank
+        };
+
+        if (guideEvent.CampId.HasValue)
+            model.CampName = await ResolveCampNameAsync(guideEvent.CampId.Value, eventSettings);
+
+        await PopulateAdminFormAsync(model, eventSettings);
+        return View("AdminEventForm", model);
+    }
+
+    [HttpPost("{eventId:guid}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(Guid eventId, AdminEventFormViewModel model)
+    {
+        var moderator = await GetCurrentUserInfoAsync();
+        if (moderator == null) return Challenge();
+
+        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        if (guideEvent == null) return NotFound();
+
+        // The event's own CampId — not the posted flag — is the source of truth
+        // for which field set applies.
+        var isCampEvent = guideEvent.CampId.HasValue;
+        model.Id = eventId;
+        model.IsCampEvent = isCampEvent;
+        model.Status = guideEvent.Status;
+
+        if (isCampEvent)
+        {
+            // Venue is irrelevant to camp events; PriorityRank's Range applies.
+            ModelState.Remove(nameof(model.VenueId));
+        }
+        else
+        {
+            // PriorityRank is irrelevant to individual events; venue is required.
+            ModelState.Remove(nameof(model.PriorityRank));
+            if (!model.VenueId.HasValue || model.VenueId.Value == Guid.Empty)
+                ModelState.AddModelError(nameof(model.VenueId), "Venue is required.");
+        }
+
+        var (eventSettings, tz) = await LoadEventSettingsAsync();
+        if (eventSettings == null)
+        {
+            SetError("Event settings not configured.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            if (isCampEvent)
+                model.CampName = await ResolveCampNameAsync(guideEvent.CampId!.Value, eventSettings);
+            await PopulateAdminFormAsync(model, eventSettings);
+            return View("AdminEventForm", model);
+        }
+
+        ApplyFormToEvent(guideEvent, model, isCampEvent, tz);
+
+        await guide.AdminUpdateAsync(guideEvent, moderator.Id, model.Note);
+
+        logger.LogInformation(
+            "Moderator {UserId} edited event '{Title}' ({EventId}) in place; {Status} status preserved",
+            moderator.Id, guideEvent.Title, eventId, guideEvent.Status);
+
+        SetSuccess($"Event \"{guideEvent.Title}\" updated.");
+        return RedirectToAction(nameof(Index), new { tab = guideEvent.Status });
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────
+
+    private async Task<(BurnSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync()
+    {
+        var guideSettings = await guide.GetGuideSettingsAsync();
+        var eventSettings = guideSettings != null
+            ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+            : null;
+        return (eventSettings, GetTimeZone(eventSettings));
+    }
+
+    private async Task<string?> ResolveCampNameAsync(Guid campId, BurnSettingsInfo eventSettings)
+    {
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year);
+        var camp = campsById.GetValueOrDefault(campId);
+        return camp?.Active?.Name ?? camp?.Slug;
+    }
+
+    private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, BurnSettingsInfo burn)
+    {
+        var categories = (await guide.GetActiveCategoriesAsync())
+            .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        // Keep the event's current category selectable even if it has since been
+        // deactivated — otherwise editing an unrelated field would silently drop it.
+        if (model.CategoryId != Guid.Empty && categories.All(c => c.Id != model.CategoryId))
+        {
+            var current = await guide.GetCategoryAsync(model.CategoryId);
+            if (current != null)
+                categories.Add(new CategoryOptionViewModel { Id = current.Id, Name = current.Name });
+        }
+        model.Categories = categories;
+
+        if (!model.IsCampEvent)
+        {
+            var venues = (await guide.GetActiveVenuesAsync())
+                .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+            if (model.VenueId is { } venueId && venueId != Guid.Empty && venues.All(v => v.Id != venueId))
+            {
+                var current = await guide.GetVenueAsync(venueId);
+                if (current != null)
+                    venues.Add(new VenueOptionViewModel { Id = current.Id, Name = current.Name });
+            }
+            model.Venues = venues;
+        }
+
+        model.EventDays = BuildEventDayOptions(burn);
+        model.TimeZoneId = burn.TimeZoneId;
+    }
+
+    // Maps the posted form fields onto the event. Camp events carry a priority
+    // rank; individual events carry a venue and the all-day flag.
+    private void ApplyFormToEvent(Event guideEvent, AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
+    {
+        var isAllDay = !isCampEvent && model.IsAllDay;
+        guideEvent.Title = model.Title;
+        guideEvent.Description = model.Description;
+        guideEvent.CategoryId = model.CategoryId;
+        guideEvent.StartAt = ToInstant(model.StartDate.Add(isAllDay ? TimeSpan.Zero : model.StartTime), tz);
+        guideEvent.DurationMinutes = isAllDay ? 1440 : model.DurationMinutes;
+        guideEvent.LocationNote = model.LocationNote;
+        guideEvent.Host = model.Host;
+        guideEvent.IsRecurring = model.IsRecurring;
+        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+        if (isCampEvent)
+            guideEvent.PriorityRank = model.PriorityRank;
+        else
+            guideEvent.GuideSharedVenueId = model.VenueId;
+    }
 
     [Grandfathered(
         ruleId: "HUM0031",

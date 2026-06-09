@@ -583,17 +583,18 @@ public class EventsController(
         return RedirectToAction(nameof(Schedule));
     }
 
-    // Favourite toggle for the camp detail page's events card. Redirects back to
-    // the camp page (per-surface redirect, like Unfavourite → Schedule).
-    [HttpPost("Barrio/{slug}/Favourite/{eventId:guid}")]
+    // Favourite toggle for the events card (camp detail page, profile page).
+    // Bounces back to the host page via returnUrl, falling back to Browse when
+    // the URL is missing or not local.
+    [HttpPost("Card/Favourite/{eventId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleCampFavourite(string slug, Guid eventId)
+    public async Task<IActionResult> ToggleCardFavourite(Guid eventId, string? returnUrl)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         await guide.ToggleFavouriteAsync(user.Id, eventId);
-        return RedirectToAction(nameof(CampController.Details), "Camp", new { slug });
+        return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(Browse));
     }
 
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>

@@ -19,7 +19,7 @@ public sealed class SearchService(
     ITeamServiceRead teamService,
     ICampServiceRead campService,
     IShiftManagementService shiftService,
-    IEventService eventService,
+    IEventServiceRead eventService,
     IConfiguration configuration) : ISearchService
 {
     // Name-match scoring: exact > prefix > contains.

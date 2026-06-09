@@ -14,14 +14,14 @@ When a section's service is consumed by code in other sections, that service exp
 
 Same implementation class implements both. DI registers both interfaces pointing at the same singleton/scope.
 
-**Why:** Outside sections shouldn't depend on EF entities of another section (couples them to that section's storage shape, defeats nav-strip work) and shouldn't see write methods that aren't theirs to call. Today the boundary is advisory; a future analyzer will enforce.
+**Why:** Outside sections shouldn't depend on EF entities of another section (couples them to that section's storage shape, defeats nav-strip work) and shouldn't see write methods that aren't theirs to call. Enforced by analyzer HUM0032.
 
 **How to apply:**
 - Trigger is **cross-section consumption**, not the presence of a caching decorator.
 - The read interface is the *minimum* surface external sections call. Section-internal reads that happen to be consumed only by the section's own controllers/services stay on the full interface.
 - Methods returning EF entities (`Team`, `TeamMember`, etc.) never go on `*Read`. If an external caller needs entity-shaped data, that's a signal the section's projection (`TeamInfo`, etc.) is missing a field — fix the projection, don't expose the entity.
 - Cache-invalidation hooks (e.g. `InvalidateActiveTeamsCache`) stay on the full interface — they're writes against cache state. Eventually these become event-driven and go away.
-- Enforcement today is advisory. PR review catches drift. Future: Roslyn analyzer (HUM00xx) bans non-section files from referencing the full interface unless calling a write.
+- Enforced by analyzer HUM0032 (`CrossSectionFullServiceInjectionAnalyzer`): a class under `Humans.Application.Services.<A>` injecting another section's full `I*Service` while only using members of its `I*ServiceRead` base is a build error — demote the parameter to the read interface. Callers that genuinely write through the full interface are not flagged; passing the dependency onward disqualifies the type (conservative). Read-interface *content* hygiene (DTOs only) is HUM0029. Each new read split arms HUM0032 for its section automatically.
 
 **Reference implementation:** Teams (`ITeamServiceRead` / `ITeamService`).
 

@@ -97,7 +97,7 @@
             @* Events the camp is hosting this edition (logged-in users only; auto-hidden when empty) *@
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <vc:camp-events camp-id="@Model.Id" camp-slug="@Model.Slug" />
+                <vc:events-card camp-id="@Model.Id" />
             }
 
             @* Blurb *@

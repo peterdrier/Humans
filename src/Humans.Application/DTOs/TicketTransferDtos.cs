@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs;
@@ -96,11 +97,16 @@ public sealed record TicketStubInfo(
     /// <summary>
     /// Projects an attendee row into a stub, stamping the holder's earliest entry
     /// date. Single mapper for every surface that renders a holder's own stubs
-    /// (homepage strip + transfer wizard) so the EE pill can never be dropped on
-    /// one surface and present on another. <paramref name="holderEarlyEntry"/> is
-    /// the viewer's EE (one value, shown on each of their stubs); null = no EE.
+    /// (homepage strip + holdings list + transfer wizard) so the EE pill can never
+    /// be dropped on one surface and present on another. <paramref name="holderEarlyEntry"/>
+    /// is the viewer's EE (one value, shown on each of their stubs); null = no EE.
     /// </summary>
     public static TicketStubInfo From(MyAttendeeRowDto row, LocalDate? holderEarlyEntry) =>
+        new(row.AttendeeName, row.AttendeeEmail, row.Status,
+            row.HasPendingOutgoingTransfer, row.PendingTransferRequestId, holderEarlyEntry);
+
+    /// <inheritdoc cref="From(MyAttendeeRowDto, LocalDate?)"/>
+    public static TicketStubInfo From(UserTicketHoldingRow row, LocalDate? holderEarlyEntry) =>
         new(row.AttendeeName, row.AttendeeEmail, row.Status,
             row.HasPendingOutgoingTransfer, row.PendingTransferRequestId, holderEarlyEntry);
 }
