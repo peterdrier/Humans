@@ -107,14 +107,11 @@ else
                                     }
                                     @if (r.Status == ExpenseReportStatus.SepaSent)
                                     {
-                                        <form asp-action="SepaReopen" asp-route-id="@r.Id" method="post"
-                                              style="display:inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-warning"
-                                                    onclick="return confirm('Reopen this report? It will return to Approved so you can include it in a new SEPA batch.')">
-                                                <i class="fa-solid fa-rotate-left me-1"></i>Reopen SEPA
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#reopenSepaModal-@r.Id">
+                                            <i class="fa-solid fa-rotate-left me-1"></i>Reopen SEPA
+                                        </button>
                                     }
                                 </div>
                             </td>
@@ -188,6 +185,37 @@ else
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-danger">Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    @foreach (var r in Model.Reports.Where(x => x.Status == ExpenseReportStatus.SepaSent))
+    {
+        <div class="modal fade" id="reopenSepaModal-@r.Id" tabindex="-1"
+             aria-labelledby="reopenSepaModalLabel-@r.Id" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="SepaReopen" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="reopenSepaModalLabel-@r.Id">Reopen SEPA Batch</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>
+                                Reopen report <strong>@r.Id.ToString()[..8]…</strong>?
+                            </p>
+                            <p class="text-muted mb-0">
+                                It will return to <strong>Approved</strong> status so you can include it in a new SEPA batch.
+                                Use this only if the previous download failed before the file reached your bank.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning">Reopen</button>
                         </div>
                     </form>
                 </div>
