@@ -1274,6 +1274,7 @@
   <data name="TeamAdmin_MemberAdded" xml:space="preserve"><value>Member added successfully.</value></data>
   <data name="TeamAdmin_NoResults" xml:space="preserve"><value>No matching humans found</value></data>
   <data name="TeamAdmin_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve"><value>Ticket #{0}</value><comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment></data>
 
   <!-- Facilitated Messaging -->
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>

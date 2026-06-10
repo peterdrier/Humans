@@ -27,6 +27,9 @@
     var scopeJson = System.Text.Json.JsonSerializer.Serialize(scopeArg);
     // Optional: allow an exact-email query to resolve a single person (no enumeration leak).
     var allowEmailJson = System.Text.Json.JsonSerializer.Serialize(Model.AllowEmail);
+    // Optional team-scoped ticket-number lookup. Null for all callers except the
+    // Early Entry card; when set, the picker also resolves a ticket barcode → human.
+    var ticketLookupUrlJson = System.Text.Json.JsonSerializer.Serialize(Model.TicketLookupUrl);
     // Optional prefill — visible BurnerName + hidden id (e.g. edit forms).
     var selectedValue = Model.SelectedUserId?.ToString() ?? "";
     var selectedBurnerName = Model.SelectedBurnerName ?? "";
@@ -60,6 +63,7 @@
     var excludeIds = @Html.Raw(excludeIdsJson);
     var scopeArg = @Html.Raw(scopeJson);
     var allowEmail = @Html.Raw(allowEmailJson);
+    var ticketLookupUrl = @Html.Raw(ticketLookupUrlJson);
 
     // Move dropdown to body once at init so no parent stacking/clip ever applies.
     if (dropdown.parentNode !== document.body) {
@@ -112,17 +116,34 @@
         hideDropdown();
     });
 
-    function fetchResults(q) {
-        var url = '/api/profiles/search?q=' + encodeURIComponent(q);
-        if (scopeArg) url += '&scope=' + encodeURIComponent(scopeArg);
-        if (allowEmail) url += '&allowEmail=true';
-        fetch(url, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
-            .then(function (results) { renderDropdown(results); })
+    function fetchJsonOrEmpty(url) {
+        return fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : []; })
             .catch(function (err) {
                 console.error('Human search fetch failed', err);
-                hideDropdown();
+                return [];
             });
+    }
+
+    function fetchResults(q) {
+        var profileUrl = '/api/profiles/search?q=' + encodeURIComponent(q);
+        if (scopeArg) profileUrl += '&scope=' + encodeURIComponent(scopeArg);
+        if (allowEmail) profileUrl += '&allowEmail=true';
+
+        var fetches = [fetchJsonOrEmpty(profileUrl)];
+        if (ticketLookupUrl) {
+            fetches.push(fetchJsonOrEmpty(ticketLookupUrl + '?q=' + encodeURIComponent(q)));
+        }
+
+        // Each source resolves to [] on error, so one failing (e.g. ticket 403) still
+        // renders the other's results. Profile rows first, then any ticket-resolved row.
+        Promise.all(fetches).then(function (lists) {
+            var merged = [];
+            lists.forEach(function (list) {
+                if (Array.isArray(list)) { merged = merged.concat(list); }
+            });
+            renderDropdown(merged);
+        });
     }
 
     function renderDropdown(results) {

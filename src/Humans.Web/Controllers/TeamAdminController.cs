@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -29,11 +31,13 @@ public class TeamAdminController(
     IAuthorizationService authorizationService,
     ISystemTeamSync systemTeamSyncJob,
     ILogger<TeamAdminController> logger,
-    IStringLocalizer<SharedResource> localizer)
+    IStringLocalizer<SharedResource> localizer,
+    ITicketServiceRead tickets)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly ITeamService _teamService = teamService;
     private readonly IUserServiceRead _userService = userService;
+    private readonly ITicketServiceRead _tickets = tickets;
 
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]
@@ -1098,6 +1102,31 @@ public class TeamAdminController(
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
 
+    [HttpGet("EarlyEntry/LookupTicket")]
+    public async Task<IActionResult> LookupTicket(string slug, string? q, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var orders = await _tickets.GetTicketOrdersAsync(ct);
+        var hit = FindCurrentEventAttendeeByBarcode(orders, q);
+
+        var matched = hit?.MatchedUserId is { } id
+            ? await _userService.GetUserInfoAsync(id, ct)
+            : null;
+
+        var detailLabel = localizer["TeamAdmin_TicketLabel", hit?.Barcode ?? string.Empty].Value;
+        return Json(BuildTicketLookupRows(hit, matched, detailLabel));
+    }
+
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
@@ -1123,6 +1152,48 @@ public class TeamAdminController(
             TeamName = team.Name,
             Grants = rows,
         };
+    }
+
+    /// <summary>
+    /// Resolve a ticket barcode to its issued attendee within the current event only
+    /// (the gate-scanner admissibility scope, see <see cref="ScannerController"/> / #916).
+    /// Exact, case-sensitive (<see cref="StringComparison.Ordinal"/>) — barcodes are codes,
+    /// not names. Returns null for empty/whitespace input or no match.
+    /// </summary>
+    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
+        IReadOnlyList<TicketOrderInfo> orders, string? barcode)
+    {
+        var code = barcode?.Trim() ?? string.Empty;
+        if (code.Length == 0)
+        {
+            return null;
+        }
+
+        return orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Build the 0-or-1 picker row for a barcode hit. A row is emitted only when the
+    /// attendee is personally paired to a human (<see cref="TicketAttendeeInfo.MatchedUserId"/>)
+    /// who still resolves and is active. Otherwise empty — the picker stays silent (it just
+    /// shows name matches), matching the type-ahead "no result" convention.
+    /// </summary>
+    internal static List<HumanLookupSearchResult> BuildTicketLookupRows(
+        TicketAttendeeInfo? hit, UserInfo? matchedUser, string detailLabel)
+    {
+        if (hit?.MatchedUserId is null || matchedUser is null || !matchedUser.IsActive)
+        {
+            return [];
+        }
+
+        return
+        [
+            new HumanLookupSearchResult(
+                matchedUser.Id, matchedUser.BurnerName, detailLabel, matchedUser.ProfilePictureUrl),
+        ];
     }
 
     [HttpGet("Roles/SearchMembers")]
