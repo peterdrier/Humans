@@ -61,16 +61,14 @@ public sealed class GateTerminalAccountSeeder(
         if (user is null)
             return IdentityResult.Failed(new IdentityError { Description = "Gate account provisioning failed." });
 
-        if (await userManager.HasPasswordAsync(user))
-        {
-            var removed = await userManager.RemovePasswordAsync(user);
-            if (!removed.Succeeded)
-                return removed;
-        }
-
-        var added = await userManager.AddPasswordAsync(user, password);
-        if (!added.Succeeded)
-            return added;
+        // Validate-then-replace: ResetPasswordAsync checks the new password against
+        // the policy BEFORE touching the stored hash, so a rejected rotation leaves
+        // the old password (and live gate sessions) intact. On success it bumps the
+        // security stamp, signing out existing gate sessions.
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var reset = await userManager.ResetPasswordAsync(user, token, password);
+        if (!reset.Succeeded)
+            return reset;
 
         await userManager.SetLockoutEnabledAsync(user, false);
 
@@ -82,7 +80,7 @@ public sealed class GateTerminalAccountSeeder(
             actorUserId);
 
         logger.LogWarning("Gate terminal password set by {ActorUserId}", actorUserId);
-        return added;
+        return reset;
     }
 
     private async Task<User?> ProvisionAsync(Guid actorUserId)

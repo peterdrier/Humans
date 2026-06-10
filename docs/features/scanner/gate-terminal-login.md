@@ -30,9 +30,10 @@ the design dialogue: "no heroics on the hard read-only bit").
   filter requires it). Consent check is auto-cleared so the account never sits in
   the Consent Coordinator review queue.
 - **Credential:** the Identity `PasswordHash` on the row itself — no extra storage,
-  no schema change. Set/rotate at `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`).
-  Rotation bumps the security stamp, which kills existing gate sessions at the next
-  security-stamp validation sweep (≤30 min).
+  no schema change. Set/rotate at `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`)
+  via reset-token replace, so a new password that fails the Identity policy leaves the
+  old password untouched. A successful rotation bumps the security stamp, which kills
+  existing gate sessions at the next security-stamp validation sweep (≤30 min).
 - **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
   `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
