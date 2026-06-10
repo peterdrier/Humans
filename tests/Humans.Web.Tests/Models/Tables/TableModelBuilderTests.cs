@@ -58,6 +58,18 @@ public class TableModelBuilderTests
     }
 
     [HumansFact]
+    public void Sort_captures_descending_first_per_column()
+    {
+        var table = TableModel.For(Rows)
+            .Column("Name", r => r.Name, c => c.Sort("name"))
+            .Column("Amount", r => r.Amount, c => c.Sort("amount", descendingFirst: true))
+            .Build();
+
+        table.Columns[0].SortDescFirst.Should().BeFalse();
+        table.Columns[1].SortDescFirst.Should().BeTrue();
+    }
+
+    [HumansFact]
     public void RowHref_and_RowCss_delegate_to_the_typed_lambdas()
     {
         var table = TableModel.For(Rows)
