@@ -11,15 +11,27 @@
 
     // Server-mode sort link: preserve every current query param except page,
     // toggle sortDesc when re-clicking the active column. Same technique as _Pager.cshtml.
-    string SortHref(string key)
+    // First click on an inactive column honors the column's SortDescFirst convention.
+    string SortHref(ITableColumn col)
     {
         var query = Context.Request.Query
             .Where(p => !string.Equals(p.Key, "page", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(p => p.Key, p => p.Value.ToString(), StringComparer.OrdinalIgnoreCase);
-        var isActive = string.Equals(Model.SortBy, key, StringComparison.OrdinalIgnoreCase);
-        query["sortBy"] = key;
-        query["sortDesc"] = (isActive && !Model.SortDesc).ToString();
+        var isActive = string.Equals(Model.SortBy, col.SortKey, StringComparison.OrdinalIgnoreCase);
+        query["sortBy"] = col.SortKey!;
+        query["sortDesc"] = (isActive ? !Model.SortDesc : col.SortDescFirst).ToString();
         return QueryHelpers.AddQueryString(Context.Request.Path, query!);
+    }
+
+    // Razor's null-attribute suppression skips data-* attributes, so a row without an
+    // href must branch around the attribute entirely — data-href="" would make site.js
+    // navigate to "" (page reload) on any row click.
+    void RenderCells(object row)
+    {
+        foreach (var col in cols)
+        {
+            <td class="@col.CellCssClass" data-sort-value="@col.SortValue(row)">@col.Cell(row)</td>
+        }
     }
 }
 
@@ -94,7 +106,7 @@
                             var isActive = string.Equals(Model.SortBy, col.SortKey, StringComparison.OrdinalIgnoreCase);
                             <th scope="col" class="@col.HeaderCssClass"
                                 aria-sort="@(isActive ? (Model.SortDesc ? "descending" : "ascending") : null)">
-                                <a href="@SortHref(col.SortKey)">@col.Header</a>@(isActive ? (Model.SortDesc ? " ▼" : " ▲") : null)
+                                <a href="@SortHref(col)">@col.Header</a>@(isActive ? (Model.SortDesc ? " ▼" : " ▲") : null)
                             </th>
                         }
                         else
@@ -133,12 +145,19 @@
             <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    <tr data-href="@Model.RowHref(row)" class="@Model.RowCss(row)">
-                        @foreach (var col in cols)
-                        {
-                            <td class="@col.CellCssClass" data-sort-value="@col.SortValue(row)">@col.Cell(row)</td>
-                        }
-                    </tr>
+                    var rowHref = Model.RowHref(row);
+                    if (!string.IsNullOrEmpty(rowHref))
+                    {
+                        <tr data-href="@rowHref" class="@Model.RowCss(row)">
+                            @{ RenderCells(row); }
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr class="@Model.RowCss(row)">
+                            @{ RenderCells(row); }
+                        </tr>
+                    }
                 }
                 @if (Model.RowCount == 0)
                 {

@@ -1,4 +1,6 @@
 @using Humans.Domain.Constants
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.AdminRoleAssignmentListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -43,71 +45,60 @@
 
 <div class="card">
     <div class="card-body p-0">
-        @if (Model.RoleAssignments.Count == 0)
-        {
-            <p class="text-muted text-center py-4 mb-0">@Localizer["AdminHuman_NoRoleAssignments"]</p>
-        }
-        else
-        {
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@Localizer["AdminRoles_User"]</th>
-                        <th>@Localizer["MyTeams_Role"]</th>
-                        <th>@Localizer["AdminRoles_ValidFrom"]</th>
-                        <th>@Localizer["AdminRoles_ValidTo"]</th>
-                        <th>@Localizer["Common_Status"]</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var ra in Model.RoleAssignments)
+        @{
+            Func<Humans.Web.Models.AdminRoleAssignmentViewModel, IHtmlContent> userCell =
+                @<text>
+                    <vc:human user-id="@item.UserId" link="Admin" />
+                    <br />
+                    <small class="text-muted">@item.UserEmail</small>
+                </text>;
+            Func<Humans.Web.Models.AdminRoleAssignmentViewModel, IHtmlContent> roleCell =
+                @<text><strong>@item.RoleName</strong></text>;
+            Func<Humans.Web.Models.AdminRoleAssignmentViewModel, IHtmlContent> validToCell =
+                @<text>
+                    @if (item.ValidTo.HasValue)
                     {
-                        <tr class="@(ra.IsActive ? "" : "table-secondary")">
-                            <td>
-                                <vc:human user-id="@ra.UserId" link="Admin" />
-                                <br />
-                                <small class="text-muted">@ra.UserEmail</small>
-                            </td>
-                            <td><strong>@ra.RoleName</strong></td>
-                            <td>@ra.ValidFrom.ToDate()</td>
-                            <td>
-                                @if (ra.ValidTo.HasValue)
-                                {
-                                    @ra.ValidTo.Value.ToDate()
-                                }
-                                else
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                            </td>
-                            <td>
-                                @if (ra.IsActive)
-                                {
-                                    <span class="badge bg-success">@Localizer["AdminHuman_Active"]</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">@Localizer["AdminHuman_Ended"]</span>
-                                }
-                            </td>
-                            <td class="text-end">
-                                @if (ra.IsActive)
-                                {
-                                    <form asp-controller="UsersAdmin" asp-action="EndRole" asp-route-id="@ra.UserId" asp-route-roleId="@ra.Id" method="post" class="d-inline"
-                                          data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
+                        @item.ValidTo.Value.ToDate()
                     }
-                </tbody>
-            </table>
+                    else
+                    {
+                        <span class="text-muted">-</span>
+                    }
+                </text>;
+            Func<Humans.Web.Models.AdminRoleAssignmentViewModel, IHtmlContent> statusCell =
+                @<text>
+                    @if (item.IsActive)
+                    {
+                        <span class="badge bg-success">@Localizer["AdminHuman_Active"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@Localizer["AdminHuman_Ended"]</span>
+                    }
+                </text>;
+            Func<Humans.Web.Models.AdminRoleAssignmentViewModel, IHtmlContent> actionCell =
+                @<text>
+                    @if (item.IsActive)
+                    {
+                        <form asp-controller="UsersAdmin" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline"
+                              data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
+                        </form>
+                    }
+                </text>;
+            var rolesTable = TableModel.For(Model.RoleAssignments)
+                .Template(Localizer["AdminRoles_User"].Value, userCell)
+                .Template(Localizer["MyTeams_Role"].Value, roleCell)
+                .Column(Localizer["AdminRoles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate())
+                .Template(Localizer["AdminRoles_ValidTo"].Value, validToCell)
+                .Template(Localizer["Common_Status"].Value, statusCell, c => c.NoSort())
+                .Template("", actionCell, c => c.NoSort().End())
+                .RowCss(ra => ra.IsActive ? null : "table-secondary")
+                .Empty(Localizer["AdminHuman_NoRoleAssignments"].Value)
+                .ServerMode(null, false, new PagerViewModel(Model.TotalPages, Model.PageNumber, "Roles") { NavCssClass = "mt-4" })
+                .Build();
         }
+        <partial name="_Table" model="rolesTable" />
     </div>
 </div>
-
-@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Roles") { NavCssClass = "mt-4" }; }
-<partial name="_Pager" model="pagerModel" />

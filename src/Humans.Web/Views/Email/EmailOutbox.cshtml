@@ -1,3 +1,6 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Humans.Application.Interfaces.Email
 @model Humans.Web.Models.EmailOutboxViewModel
 @{
     ViewData["Title"] = "Email Outbox";
@@ -105,85 +108,73 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Template</th>
-                        <th>Email Address</th>
-                        <th>Status</th>
-                        <th>Queued At</th>
-                        <th>Sent At</th>
-                        <th>Actions</th>
-                        <th>Error</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var msg in Model.Messages)
-                    {
-                        var badgeClass = msg.Status switch
-                        {
-                            EmailOutboxStatus.Queued => "bg-warning text-dark",
-                            EmailOutboxStatus.Sent => "bg-success",
-                            EmailOutboxStatus.Failed => "bg-danger",
-                            _ => "bg-secondary"
-                        };
-                        <tr>
-                            <td>
-                                @if (msg.UserId.HasValue)
-                                {
-                                    <vc:human user-id="@msg.UserId.Value" />
-                                }
-                                else
-                                {
-                                    @(msg.RecipientName ?? "—")
-                                }
-                            </td>
-                            <td><code class="small">@msg.TemplateName</code></td>
-                            <td class="small">@msg.RecipientEmail</td>
-                            <td>
-                                <span class="badge @badgeClass">@msg.Status</span>
-                                @if (msg.RetryCount > 0)
-                                {
-                                    <small class="text-muted ms-1">×@msg.RetryCount</small>
-                                }
-                            </td>
-                            <td class="text-nowrap small">@msg.CreatedAt.ToInvariantTimestamp()</td>
-                            <td class="text-nowrap small">
-                                @if (msg.SentAt.HasValue)
-                                {
-                                    @msg.SentAt.Value.ToInvariantTimestamp()
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                            <td>
-                                @if (msg.Status == EmailOutboxStatus.Failed)
-                                {
-                                    <form method="post" asp-action="RetryEmailOutboxMessage" asp-route-id="@msg.Id" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">Retry</button>
-                                    </form>
-                                    <form method="post" asp-action="DiscardEmailOutboxMessage" asp-route-id="@msg.Id" class="d-inline ms-1">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                data-confirm="Discard this message? It cannot be recovered.">Discard</button>
-                                    </form>
-                                }
-                            </td>
-                            <td class="small text-danger">
-                                @if (!string.IsNullOrEmpty(msg.LastError))
-                                {
-                                    <span title="@msg.LastError">@msg.LastError[..Math.Min(80, msg.LastError.Length)]@(msg.LastError.Length > 80 ? "…" : "")</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        Func<EmailOutboxMessageDto, IHtmlContent> recipientCell = @<text>
+            @if (item.UserId.HasValue)
+            {
+                <vc:human user-id="@item.UserId.Value" />
+            }
+            else
+            {
+                @(item.RecipientName ?? "—")
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> statusCell = @<text>
+            @{
+                var badgeClass = item.Status switch
+                {
+                    EmailOutboxStatus.Queued => "bg-warning text-dark",
+                    EmailOutboxStatus.Sent => "bg-success",
+                    EmailOutboxStatus.Failed => "bg-danger",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass">@item.Status</span>
+            @if (item.RetryCount > 0)
+            {
+                <small class="text-muted ms-1">×@item.RetryCount</small>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> sentAtCell = @<text>
+            @if (item.SentAt.HasValue)
+            {
+                @item.SentAt.Value.ToInvariantTimestamp()
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> actionsCell = @<text>
+            @if (item.Status == EmailOutboxStatus.Failed)
+            {
+                <form method="post" asp-action="RetryEmailOutboxMessage" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Retry</button>
+                </form>
+                <form method="post" asp-action="DiscardEmailOutboxMessage" asp-route-id="@item.Id" class="d-inline ms-1">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            data-confirm="Discard this message? It cannot be recovered.">Discard</button>
+                </form>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> lastErrorCell = @<text>
+            @if (!string.IsNullOrEmpty(item.LastError))
+            {
+                <span class="text-danger" title="@item.LastError">@item.LastError[..Math.Min(80, item.LastError.Length)]@(item.LastError.Length > 80 ? "…" : "")</span>
+            }
+        </text>;
+        var outboxTable = TableModel.For(Model.Messages)
+            .Template("Name", recipientCell)
+            .Template("Template", templateCell)
+            .Column("Email Address", r => r.RecipientEmail, c => c.Css("small"))
+            .Template("Status", statusCell)
+            .Column("Queued At", r => r.CreatedAt.ToInvariantTimestamp(), c => c.Css("text-nowrap small"))
+            .Template("Sent At", sentAtCell, c => c.Css("text-nowrap small"))
+            .Template("Actions", actionsCell, c => c.NoSort())
+            .Template("Error", lastErrorCell)
+            .Build();
+        <partial name="_Table" model="outboxTable" />
     }
 </div>

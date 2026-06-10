@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Application.DTOs.GroupSettingsDriftResult
 @{
     ViewData["Title"] = "Google Group Settings Check";
@@ -82,26 +84,19 @@
 
             @if (report.HasDrift)
             {
+                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftSettingCell =
+                    @<text><code>@item.SettingName</code></text>;
+                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftExpectedCell =
+                    @<text><span class="badge bg-success">@item.ExpectedValue</span></text>;
+                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftActualCell =
+                    @<text><span class="badge bg-danger">@item.ActualValue</span></text>;
+                var driftTable = TableModel.For(report.Drifts)
+                    .Template("Setting", driftSettingCell)
+                    .Template("Expected", driftExpectedCell)
+                    .Template("Actual", driftActualCell)
+                    .Build();
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Setting</th>
-                                <th>Expected</th>
-                                <th>Actual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var drift in report.Drifts)
-                            {
-                                <tr>
-                                    <td><code>@drift.SettingName</code></td>
-                                    <td><span class="badge bg-success">@drift.ExpectedValue</span></td>
-                                    <td><span class="badge bg-danger">@drift.ActualValue</span></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <partial name="_Table" model="driftTable" />
                 </div>
             }
 
@@ -118,28 +113,17 @@
 
     @if (Model.ExpectedSettings.Count > 0)
     {
+        var settingRows = Model.ExpectedSettings.Select(kv => new { Setting = kv.Key, Value = kv.Value }).ToList();
+        var settingsTable = TableModel.For(settingRows)
+            .Template("Setting", item => new HtmlString($"<code>{Html.Encode(item.Setting)}</code>"))
+            .Template("Expected Value", item => new HtmlString($"<span class=\"badge bg-success\">{Html.Encode(item.Value)}</span>"))
+            .Build();
         <div class="card mt-4 mb-4">
             <div class="card-header bg-light">
                 <i class="fa-solid fa-list-check me-1"></i><strong>Expected Settings Reference</strong>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-striped mb-0">
-                    <thead>
-                        <tr>
-                            <th>Setting</th>
-                            <th>Expected Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var setting in Model.ExpectedSettings)
-                        {
-                            <tr>
-                                <td><code>@setting.Key</code></td>
-                                <td><span class="badge bg-success">@setting.Value</span></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <partial name="_Table" model="settingsTable" />
             </div>
         </div>
     }

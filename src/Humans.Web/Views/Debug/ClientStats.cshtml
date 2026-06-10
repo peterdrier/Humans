@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model ClientStatsViewModel
 @{
     ViewData["Title"] = "Client Statistics";
@@ -54,34 +55,18 @@
 }
 else
 {
-    <div class="table-responsive" style="max-width: 32rem;">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Category</th>
-                    <th class="text-end">Count</th>
-                    <th class="text-end">%</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.StatusCodes)
-                {
-                    var rowClass = row.StatusCode switch
-                    {
-                        >= 500 => "table-danger",
-                        >= 400 => "table-warning",
-                        >= 300 => "table-info",
-                        _ => ""
-                    };
-                    <tr class="@rowClass">
-                        <td>@row.StatusCode</td>
-                        <td>@row.Category</td>
-                        <td class="text-end">@row.Count.ToString("N0")</td>
-                        <td class="text-end">@row.Percent.ToString("F1")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    var statusTable = TableModel.For(Model.StatusCodes)
+        .RowCss(r => r.StatusCode switch
+        {
+            >= 500 => "table-danger",
+            >= 400 => "table-warning",
+            >= 300 => "table-info",
+            _ => null
+        })
+        .Column("Code", r => r.StatusCode, c => c.Number())
+        .Column("Category", r => r.Category)
+        .Column("Count", r => r.Count, c => c.Number().End())
+        .Column("%", r => r.Percent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Build();
+    <partial name="_Table" model="statusTable" />
 }

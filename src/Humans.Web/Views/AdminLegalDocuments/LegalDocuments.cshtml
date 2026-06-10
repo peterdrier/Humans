@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.LegalDocumentListViewModel
 @{
     ViewData["Title"] = "Legal Documents";
@@ -29,70 +31,55 @@
 
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Team</th>
-                    <th>Required</th>
-                    <th>Active</th>
-                    <th>Grace Period</th>
-                    <th>Current Version</th>
-                    <th>Last Synced</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Documents.Count == 0)
+        @{
+            Func<LegalDocumentListItemViewModel, IHtmlContent> nameCell =
+                @<text><a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@item.Id">@item.Name</a></text>;
+            Func<LegalDocumentListItemViewModel, IHtmlContent> requiredCell = @<text>
+                @if (item.IsRequired)
                 {
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No legal documents found.</td>
-                    </tr>
+                    <span class="badge bg-warning">Required</span>
                 }
-                @foreach (var doc in Model.Documents)
+                else
                 {
-                    <tr class="@(!doc.IsActive ? "table-secondary" : "")">
-                        <td>
-                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id">@doc.Name</a>
-                        </td>
-                        <td>@doc.TeamName</td>
-                        <td>
-                            @if (doc.IsRequired)
-                            {
-                                <span class="badge bg-warning">Required</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Optional</span>
-                            }
-                        </td>
-                        <td>
-                            @if (doc.IsActive)
-                            {
-                                <span class="badge bg-success">Active</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Archived</span>
-                            }
-                        </td>
-                        <td>@doc.GracePeriodDays days</td>
-                        <td>@(doc.CurrentVersion ?? "No versions")</td>
-                            <td>@(doc.LastSyncedAt?.ToDateTime() ?? "Never")</td>
-                        <td>
-                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
-                                @if (doc.IsActive)
-                                {
-                                    <form asp-controller="AdminLegalDocuments" asp-action="ArchiveLegalDocument" asp-route-id="@doc.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this document? It will no longer be required for consent.">Archive</button>
-                                    </form>
-                                }
-                        </td>
-                    </tr>
+                    <span class="badge bg-secondary">Optional</span>
                 }
-            </tbody>
-        </table>
+            </text>;
+            Func<LegalDocumentListItemViewModel, IHtmlContent> activeCell = @<text>
+                @if (item.IsActive)
+                {
+                    <span class="badge bg-success">Active</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Archived</span>
+                }
+            </text>;
+            Func<LegalDocumentListItemViewModel, IHtmlContent> lastSyncedCell =
+                @<text>@(item.LastSyncedAt?.ToDateTime() ?? "Never")</text>;
+            Func<LegalDocumentListItemViewModel, IHtmlContent> actionsCell = @<text>
+                <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">Edit</a>
+                @if (item.IsActive)
+                {
+                    <form asp-controller="AdminLegalDocuments" asp-action="ArchiveLegalDocument" asp-route-id="@item.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this document? It will no longer be required for consent.">Archive</button>
+                    </form>
+                }
+            </text>;
+            var table = TableModel.For(Model.Documents)
+                .Template("Name", nameCell)
+                .Column("Team", r => r.TeamName)
+                .Template("Required", requiredCell, c => c.NoSort())
+                .Template("Active", activeCell, c => c.NoSort())
+                .Column("Grace Period", r => $"{r.GracePeriodDays} days")
+                .Column("Current Version", r => r.CurrentVersion ?? "No versions")
+                .Template("Last Synced", lastSyncedCell)
+                .Template("Actions", actionsCell, c => c.NoSort())
+                .RowCss(r => !r.IsActive ? "table-secondary" : null)
+                .Empty("No legal documents found.")
+                .Build();
+        }
+        <partial name="_Table" model="table" />
     </div>
 </div>
 

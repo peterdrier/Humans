@@ -1,4 +1,7 @@
 @model IReadOnlyList<Humans.Application.Interfaces.Budget.BudgetAuditLogSnapshot>
+@using Humans.Application.Interfaces.Budget
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Budget Audit Log";
     var yearId = ViewBag.YearId as Guid?;
@@ -35,46 +38,33 @@
 
 @if (Model.Count > 0)
 {
+    Func<BudgetAuditLogSnapshot, IHtmlContent> whoCell =
+        @<text><vc:human user-id="@item.ActorUserId" /></text>;
+    Func<BudgetAuditLogSnapshot, IHtmlContent> entityTypeCell =
+        @<text><span class="badge bg-secondary">@item.EntityType</span></text>;
+    Func<BudgetAuditLogSnapshot, IHtmlContent> oldValueCell = @<text>
+        @if (!string.IsNullOrEmpty(item.OldValue))
+        {
+            <span class="text-danger">@item.OldValue</span>
+        }
+    </text>;
+    Func<BudgetAuditLogSnapshot, IHtmlContent> newValueCell = @<text>
+        @if (!string.IsNullOrEmpty(item.NewValue))
+        {
+            <span class="text-success">@item.NewValue</span>
+        }
+    </text>;
+    var auditTable = TableModel.For(Model)
+        .Column("Time", r => r.OccurredAt.ToDateTimeUtc().ToString("g", System.Globalization.CultureInfo.CurrentCulture), c => c.Css("text-nowrap"))
+        .Template("Who", whoCell)
+        .Template("Entity Type", entityTypeCell)
+        .Column("Description", r => r.Description)
+        .Column("Field", r => r.FieldName ?? "")
+        .Template("Old Value", oldValueCell)
+        .Template("New Value", newValueCell)
+        .Build();
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Who</th>
-                        <th>Entity Type</th>
-                        <th>Description</th>
-                        <th>Field</th>
-                        <th>Old Value</th>
-                        <th>New Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var entry in Model)
-                    {
-                        <tr>
-                            <td class="text-nowrap">@entry.OccurredAt.ToDateTimeUtc().ToString("g")</td>
-                            <td><vc:human user-id="@entry.ActorUserId" /></td>
-                            <td><span class="badge bg-secondary">@entry.EntityType</span></td>
-                            <td>@entry.Description</td>
-                            <td>@(entry.FieldName ?? "")</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(entry.OldValue))
-                                {
-                                    <span class="text-danger">@entry.OldValue</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(entry.NewValue))
-                                {
-                                    <span class="text-success">@entry.NewValue</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="auditTable" />
     </div>
 }
 else

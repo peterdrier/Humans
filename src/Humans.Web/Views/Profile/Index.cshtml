@@ -1,5 +1,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.ProfileViewModel
 @{
@@ -94,29 +96,16 @@
                     <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> No-Show History (@Model.NoShowHistory!.Count)</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Shift</th>
-                                <th>Department</th>
-                                <th>Date</th>
-                                <th>Marked By</th>
-                                <th>Marked At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in Model.NoShowHistory!)
-                            {
-                                <tr>
-                                    <td>@item.ShiftLabel</td>
-                                    <td>@item.DepartmentName</td>
-                                    <td>@item.ShiftDateLabel</td>
-                                    <td>@item.MarkedByName</td>
-                                    <td>@item.MarkedAtLabel</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    @{
+                        var noShowTable = TableModel.For(Model.NoShowHistory!)
+                            .Column("Shift", r => r.ShiftLabel)
+                            .Column("Department", r => r.DepartmentName)
+                            .Column("Date", r => r.ShiftDateLabel)
+                            .Column("Marked By", r => r.MarkedByName)
+                            .Column("Marked At", r => r.MarkedAtLabel)
+                            .Build();
+                    }
+                    <partial name="_Table" model="noShowTable" />
                 </div>
             </div>
         }
@@ -128,36 +117,26 @@
                     <h5 class="mb-0">My Codes</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Campaign</th>
-                                <th>Code</th>
-                                <th>Assigned</th>
-                                <th>Redeemed</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var grant in Model.CampaignGrants)
-                            {
-                                <tr>
-                                    <td>@grant.CampaignTitle</td>
-                                    <td><code>@grant.Code</code></td>
-                                    <td>@grant.AssignedAt.ToDate()</td>
-                                    <td>
-                                        @if (grant.RedeemedAt.HasValue)
-                                        {
-                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDate()</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">&mdash;</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    @{
+                        Func<Humans.Application.Interfaces.Campaigns.CampaignGrantSummary, IHtmlContent> redeemedCell =
+                            @<text>
+                                @if (item.RedeemedAt.HasValue)
+                                {
+                                    <span class="badge bg-success">@item.RedeemedAt.Value.ToDate()</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </text>;
+                        var grantsTable = TableModel.For(Model.CampaignGrants)
+                            .Column("Campaign", g => g.CampaignTitle)
+                            .Column("Code", g => g.Code)
+                            .Column("Assigned", g => g.AssignedAt, c => c.Date())
+                            .Template("Redeemed", redeemedCell)
+                            .Build();
+                    }
+                    <partial name="_Table" model="grantsTable" />
                 </div>
             </div>
         }

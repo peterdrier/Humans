@@ -1,5 +1,7 @@
 @using Humans.Application.Services.Cantina.Dtos
 @using NodaTime
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model WeeklyRosterDto
 
 @functions {
@@ -193,33 +195,29 @@
     <div class="card mb-4">
         <div class="card-body">
             <h6 class="card-title text-muted text-uppercase small">@Localizer["Cantina_Roster_PerDayTable_Heading"]</h6>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle day-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">@Localizer["Cantina_Roster_PerDayTable_Date"]</th>
-                            <th scope="col" class="text-end">@Localizer["Cantina_Roster_PerDayTable_Total"]</th>
-                            <th scope="col" class="text-end">@Localizer["Cantina_Roster_PerDayTable_Unanswered"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var day in Model.Days)
-                        {
-                            var isToday = todayForHighlight is not null
-                                && day.CalendarDate.HasValue
-                                && day.CalendarDate.Value == todayForHighlight.Value;
-                            var label = day.CalendarDate.HasValue
-                                ? FormatDay(day.CalendarDate.Value)
-                                : $"Day {day.DayOffset}";
-                            <tr class="@(isToday ? "table-active fw-semibold" : "")">
-                                <td><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@label</a></td>
-                                <td class="text-end"><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@day.TotalOnSite</a></td>
-                                <td class="text-end @(day.UnansweredOnDay > 0 ? "text-warning" : "text-muted")"><a asp-action="Day" asp-route-dayOffset="@day.DayOffset">@day.UnansweredOnDay</a></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            @{
+                Func<DayRosterSummaryDto, IHtmlContent> dayDateCell = @<text>
+                    <a asp-action="Day" asp-route-dayOffset="@item.DayOffset">@(item.CalendarDate.HasValue ? FormatDay(item.CalendarDate.Value) : $"Day {item.DayOffset}")</a>
+                </text>;
+                Func<DayRosterSummaryDto, IHtmlContent> dayTotalCell =
+                    @<text><a asp-action="Day" asp-route-dayOffset="@item.DayOffset">@item.TotalOnSite</a></text>;
+                Func<DayRosterSummaryDto, IHtmlContent> dayUnansweredCell =
+                    @<text><a asp-action="Day" asp-route-dayOffset="@item.DayOffset" class="@(item.UnansweredOnDay > 0 ? "text-warning" : "text-muted")">@item.UnansweredOnDay</a></text>;
+                var dayTable = TableModel.For(Model.Days)
+                    .RowCss(day =>
+                    {
+                        var isToday = todayForHighlight is not null
+                            && day.CalendarDate.HasValue
+                            && day.CalendarDate.Value == todayForHighlight.Value;
+                        return isToday ? "table-active fw-semibold" : null;
+                    })
+                    .Template(Localizer["Cantina_Roster_PerDayTable_Date"].Value, dayDateCell)
+                    .Template(Localizer["Cantina_Roster_PerDayTable_Total"].Value, dayTotalCell, c => c.End())
+                    .Template(Localizer["Cantina_Roster_PerDayTable_Unanswered"].Value, dayUnansweredCell, c => c.End())
+                    .Css("day-table")
+                    .Build();
+            }
+            <partial name="_Table" model="dayTable" />
         </div>
     </div>
 

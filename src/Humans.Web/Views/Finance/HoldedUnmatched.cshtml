@@ -1,4 +1,7 @@
 @model IReadOnlyList<Humans.Application.Services.Finance.Dtos.HoldedUnmatchedRow>
+@using Humans.Application.Services.Finance.Dtos
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Holded Unmatched Documents";
 }
@@ -30,39 +33,22 @@
 }
 else
 {
+    Func<HoldedUnmatchedRow, IHtmlContent> totalCell =
+        @<text><span class="text-danger">&euro;@item.Total.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span></text>;
+    Func<HoldedUnmatchedRow, IHtmlContent> linkCell =
+        @<text><a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded</a></text>;
+    var unmatchedTable = TableModel.For(Model)
+        .Column("Doc #", r => r.DocNumber)
+        .Column("Contact", r => r.ContactName)
+        .Template("Total", totalCell, c => c.NoSort().End())
+        .Column("Reason", r => r.Reason, c => c.Css("text-muted small"))
+        .Template("", linkCell, c => c.NoSort())
+        .Build();
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Unmatched Documents</span>
             <span class="badge bg-warning text-dark">@Model.Count unmatched</span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Doc #</th>
-                        <th>Contact</th>
-                        <th class="text-end">Total</th>
-                        <th>Reason</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model)
-                    {
-                        <tr>
-                            <td>@row.DocNumber</td>
-                            <td>@row.ContactName</td>
-                            <td class="text-end text-danger">&euro;@row.Total.ToString("N2")</td>
-                            <td class="text-muted small">@row.Reason</td>
-                            <td>
-                                <a href="@row.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="unmatchedTable" />
     </div>
 }

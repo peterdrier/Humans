@@ -1,3 +1,6 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using System.Globalization
 @model Humans.Web.Models.GuestDashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
@@ -49,29 +52,15 @@
                     </div>
                     @if (Model.TicketOrders.Count > 0)
                     {
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>@Localizer["Guest_TicketsHeader_Purchased"]</th>
-                                        <th>@Localizer["Guest_TicketsHeader_Buyer"]</th>
-                                        <th class="text-center">@Localizer["Guest_TicketsHeader_Tickets"]</th>
-                                        <th class="text-end">@Localizer["Guest_TicketsHeader_Amount"]</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var order in Model.TicketOrders)
-                                    {
-                                        <tr>
-                                            <td>@order.PurchasedAt.ToDate()</td>
-                                            <td>@order.BuyerName</td>
-                                            <td class="text-center">@order.AttendeeCount</td>
-                                            <td class="text-end">@order.TotalAmount.ToString("N2") @order.Currency</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                        Func<Humans.Web.Models.GuestTicketOrderSummary, IHtmlContent> amountCell =
+                            r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentCulture))} {Html.Encode(r.Currency)}");
+                        var ticketsTable = TableModel.For(Model.TicketOrders)
+                            .Column(Localizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDate())
+                            .Column(Localizer["Guest_TicketsHeader_Buyer"].Value, r => r.BuyerName)
+                            .Column(Localizer["Guest_TicketsHeader_Tickets"].Value, r => r.AttendeeCount, c => c.Number())
+                            .Template(Localizer["Guest_TicketsHeader_Amount"].Value, amountCell, c => c.End())
+                            .Build();
+                        <partial name="_Table" model="ticketsTable" />
                     }
                     else
                     {

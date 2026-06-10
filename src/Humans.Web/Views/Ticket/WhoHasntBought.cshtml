@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.WhoHasntBoughtViewModel
 @{
     ViewData["Title"] = "Humans & Tickets";
@@ -45,47 +47,35 @@
 
     <p class="text-muted">@Model.TotalCount humans</p>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Teams</th>
-                    <th>Tier</th>
-                    <th>Ticket</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var h in Model.Humans)
-                {
-                    <tr>
-                        <td>
-                            <vc:human user-id="@h.UserId" link="Admin" />
-                        </td>
-                        <td><small>@h.Email</small></td>
-                        <td><small>@h.Teams</small></td>
-                        <td><span class="badge bg-secondary">@h.Tier</span></td>
-                        <td>
-                            @if (h.HasTicket)
-                            {
-                                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-xmark"></i></span>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Humans.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-muted text-center">No humans match the filters</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "WhoHasntBought"); }
-    <partial name="_Pager" model="pagerModel" />
+    @{
+        Func<WhoHasntBoughtRow, IHtmlContent> humanCell =
+            @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> emailCell =
+            @<text><small>@item.Email</small></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> teamsCell =
+            @<text><small>@item.Teams</small></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> tierCell =
+            @<text><span class="badge bg-secondary">@item.Tier</span></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> ticketCell = @<text>
+            @if (item.HasTicket)
+            {
+                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-xmark"></i></span>
+            }
+        </text>;
+        var pager = new PagerViewModel(Model.TotalPages, Model.Page, "WhoHasntBought");
+        var table = TableModel.For(Model.Humans.ToList())
+            .Template("Name", humanCell)
+            .Template("Email", emailCell)
+            .Template("Teams", teamsCell)
+            .Template("Tier", tierCell)
+            .Template("Ticket", ticketCell)
+            .ServerMode(null, false, pager)
+            .Empty("No humans match the filters")
+            .Build();
+    }
+    <partial name="_Table" model="table" />
 </div>

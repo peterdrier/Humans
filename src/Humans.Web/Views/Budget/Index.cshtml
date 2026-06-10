@@ -1,3 +1,6 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Humans.Application.Interfaces.Budget
 @model Humans.Web.Models.CoordinatorBudgetViewModel
 @{
     ViewData["Title"] = $"Budget - {Model.Year.Name}";
@@ -94,60 +97,47 @@
             <div class="card-body p-0">
                 @if (group.Categories.Any())
                 {
-                    <table class="table table-sm table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th class="text-end">Allocated</th>
-                                <th class="text-end">Line Items</th>
-                                <th class="text-end">Unallocated</th>
-                                <th>Type</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
-                            {
-                                var catLineItemTotal = cat.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
-                                var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
-                                var isOwnDept = cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value);
-                                var isEditable = Model.IsFinanceAdmin || isOwnDept;
-                                var isGroupRestricted = group.IsRestricted && !Model.IsFinanceAdmin;
-                                <tr>
-                                    <td>
-                                        @cat.Name
-                                        @if (isOwnDept)
-                                        {
-                                            <span class="badge bg-success ms-1">Your dept</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">&euro;@cat.AllocatedAmount.ToString("N2")</td>
-                                    <td class="text-end">&euro;@catLineItemTotal.ToString("N2")</td>
-                                    <td class="text-end @(catUnallocated < 0 ? "text-danger" : "")">
-                                        &euro;@catUnallocated.ToString("N2")
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">
-                                            @cat.ExpenditureType
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        @if (isGroupRestricted)
-                                        {
-                                            <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
-                                        }
-                                        else
-                                        {
-                                            <a asp-action="CategoryDetail" asp-route-id="@cat.Id"
-                                               class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
-                                                @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
-                                            </a>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    Func<BudgetCategoryDetail, IHtmlContent> categoryNameCell = @<text>
+                        @item.Name
+                        @if (item.TeamId.HasValue && Model.EditableTeamIds.Contains(item.TeamId.Value))
+                        {
+                            <span class="badge bg-success ms-1">Your dept</span>
+                        }
+                    </text>;
+                    Func<BudgetCategoryDetail, IHtmlContent> unallocatedCell = @<text>
+                        @{ var cellUnallocated = item.AllocatedAmount - item.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount); }
+                        <span class="@(cellUnallocated < 0 ? "text-danger" : "")">
+                            &euro;@cellUnallocated.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                        </span>
+                    </text>;
+                    Func<BudgetCategoryDetail, IHtmlContent> expenditureTypeCell = @<text>
+                        <span class="badge bg-@(item.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">
+                            @item.ExpenditureType
+                        </span>
+                    </text>;
+                    Func<BudgetCategoryDetail, IHtmlContent> actionsCell = @<text>
+                        @if (group.IsRestricted && !Model.IsFinanceAdmin)
+                        {
+                            <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
+                        }
+                        else
+                        {
+                            var isEditable = Model.IsFinanceAdmin || (item.TeamId.HasValue && Model.EditableTeamIds.Contains(item.TeamId.Value));
+                            <a asp-action="CategoryDetail" asp-route-id="@item.Id"
+                               class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
+                                @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        }
+                    </text>;
+                    var groupTable = TableModel.For(group.Categories.OrderBy(c => c.SortOrder).ToList())
+                        .Template("Category", categoryNameCell)
+                        .Column("Allocated (€)", c => c.AllocatedAmount, c => c.Currency().End())
+                        .Column("Line Items (€)", c => c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount), c => c.Currency().End())
+                        .Template("Unallocated", unallocatedCell, c => c.End())
+                        .Template("Type", expenditureTypeCell)
+                        .Template("", actionsCell, c => c.NoSort().End())
+                        .Build();
+                    <partial name="_Table" model="groupTable" />
                 }
                 else
                 {

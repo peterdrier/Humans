@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model CacheStatsViewModel
 @{
     ViewData["Title"] = "Cache Statistics";
@@ -51,49 +53,36 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="cacheStatsTable" data-sortable-table>
-            <thead>
-                <tr>
-                    <th data-sort-col="0" data-sort-type="text">Key Type <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="1" data-sort-type="text">Type <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="3" data-sort-type="text">TTL <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="4" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="5" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="6" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var entry in Model.Entries)
-                {
-                    var rateClass = entry.HitRatePercent switch
-                    {
-                        >= 80 => "table-success",
-                        >= 50 => "",
-                        _ => "table-warning"
-                    };
-                    var typeBadge = entry.Type switch
-                    {
-                        "Static" => "bg-primary",
-                        "PerUser" => "bg-info",
-                        "PerEntity" => "bg-secondary",
-                        "RateLimit" => "bg-warning text-dark",
-                        _ => "bg-light text-dark"
-                    };
-                    <tr class="@rateClass">
-                        <td>@entry.KeyType</td>
-                        <td><span class="badge @typeBadge">@entry.Type</span></td>
-                        <td class="text-end">@entry.ActiveEntries.ToString("N0")</td>
-                        <td>@entry.Ttl</td>
-                        <td class="text-end">@entry.Hits.ToString("N0")</td>
-                        <td class="text-end">@entry.Misses.ToString("N0")</td>
-                        <td class="text-end">@entry.HitRatePercent.ToString("F1")%</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    Func<CacheStatEntryViewModel, IHtmlContent> typeBadgeCell = @<text>
+        @{
+            var badgeClass = item.Type switch
+            {
+                "Static" => "bg-primary",
+                "PerUser" => "bg-info",
+                "PerEntity" => "bg-secondary",
+                "RateLimit" => "bg-warning text-dark",
+                _ => "bg-light text-dark"
+            };
+        }
+        <span class="badge @badgeClass">@item.Type</span>
+    </text>;
+    var cacheTable = TableModel.For(Model.Entries)
+        .RowCss(r => r.HitRatePercent switch
+        {
+            >= 80 => "table-success",
+            >= 50 => null,
+            _ => "table-warning"
+        })
+        .Column("Key Type", r => r.KeyType)
+        .Template("Type", typeBadgeCell)
+        .Column("Entries", r => r.ActiveEntries, c => c.Number().End())
+        .Column("TTL", r => r.Ttl)
+        .Column("Hits", r => r.Hits, c => c.Number().End())
+        .Column("Misses", r => r.Misses, c => c.Number().End())
+        .Column("Hit Rate %", r => r.HitRatePercent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+        .Id("cacheStatsTable")
+        .Build();
+    <partial name="_Table" model="cacheTable" />
 }
 
 <h2 class="h5 mt-4">Caching Decorators</h2>
@@ -105,52 +94,34 @@ else
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="decoratorCacheStatsTable" data-sortable-table>
-            <thead>
-                <tr>
-                    <th data-sort-col="0" data-sort-type="text">Name <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="1" data-sort-type="number" class="text-center">Warmed <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="2" data-sort-type="number" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="3" data-sort-type="number" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="4" data-sort-type="number" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="5" data-sort-type="number" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="6" data-sort-type="number" class="text-end">Key Rmv <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="7" data-sort-type="number" class="text-end">Bulk Inval <i class="fa-solid fa-sort fa-xs"></i></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var entry in Model.DecoratorEntries)
-                {
-                    var rateClass = (entry.Hits + entry.Misses) == 0
-                        ? ""
-                        : entry.HitRatePercent switch
-                        {
-                            >= 80 => "table-success",
-                            >= 50 => "",
-                            _ => "table-warning"
-                        };
-                    <tr class="@rateClass">
-                        <td>@entry.Name</td>
-                        <td class="text-center" data-sort-value="@(entry.IsWarmedUp ? 1 : 0)">
-                            @if (entry.IsWarmedUp)
-                            {
-                                <i class="fa-solid fa-check text-success" title="Warmed"></i>
-                            }
-                            else
-                            {
-                                <i class="fa-solid fa-xmark text-muted" title="Cold (lazy or awaiting warmup)"></i>
-                            }
-                        </td>
-                        <td class="text-end">@entry.Entries.ToString("N0")</td>
-                        <td class="text-end">@entry.Hits.ToString("N0")</td>
-                        <td class="text-end">@entry.Misses.ToString("N0")</td>
-                        <td class="text-end">@(entry.Hits + entry.Misses == 0 ? "—" : entry.HitRatePercent.ToString("F1") + "%")</td>
-                        <td class="text-end">@entry.KeyRemovals.ToString("N0")</td>
-                        <td class="text-end">@entry.BulkInvalidations.ToString("N0")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    Func<DecoratorCacheStatEntryViewModel, IHtmlContent> warmedCell = @<text>
+        @if (item.IsWarmedUp)
+        {
+            <i class="fa-solid fa-check text-success" title="Warmed"></i>
+        }
+        else
+        {
+            <i class="fa-solid fa-xmark text-muted" title="Cold (lazy or awaiting warmup)"></i>
+        }
+    </text>;
+    var decoratorTable = TableModel.For(Model.DecoratorEntries)
+        .RowCss(r => (r.Hits + r.Misses) == 0
+            ? null
+            : r.HitRatePercent switch
+            {
+                >= 80 => "table-success",
+                >= 50 => null,
+                _ => "table-warning"
+            })
+        .Column("Name", r => r.Name)
+        .Template("Warmed", warmedCell, c => c.Css("text-center").HeaderCss("text-center"))
+        .Column("Entries", r => r.Entries, c => c.Number().End())
+        .Column("Hits", r => r.Hits, c => c.Number().End())
+        .Column("Misses", r => r.Misses, c => c.Number().End())
+        .Column("Hit Rate %", r => r.Hits + r.Misses == 0 ? "—" : r.HitRatePercent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+        .Column("Key Rmv", r => r.KeyRemovals, c => c.Number().End())
+        .Column("Bulk Inval", r => r.BulkInvalidations, c => c.Number().End())
+        .Id("decoratorCacheStatsTable")
+        .Build();
+    <partial name="_Table" model="decoratorTable" />
 }

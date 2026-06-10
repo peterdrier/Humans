@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model Humans.Web.Controllers.ProfileBackfillViewModel
 @{
     ViewData["Title"] = "Stub Profile Backfill";
@@ -38,28 +39,14 @@
 {
     <div class="card mb-4">
         <div class="card-header">Users without a Profile</div>
-        <div class="table-responsive">
-            <table class="table table-striped mb-0">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>Display name</th>
-                        <th>Created</th>
-                        <th>Source</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.MissingRows)
-                    {
-                        <tr>
-                            <td>@row.Email</td>
-                            <td>@row.DisplayName</td>
-                            <td>@row.CreatedAt.ToDateTime()</td>
-                            <td>@(row.ContactSource?.ToString() ?? "—")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            var backfillTable = TableModel.For(Model.MissingRows)
+                .Column("Email", r => r.Email)
+                .Column("Display name", r => r.DisplayName)
+                .Column("Created", r => r.CreatedAt, c => c.DateTime())
+                .Column("Source", r => (object?)r.ContactSource)
+                .Build();
+        }
+        <partial name="_Table" model="backfillTable" />
     </div>
 }

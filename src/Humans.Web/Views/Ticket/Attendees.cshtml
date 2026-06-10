@@ -68,7 +68,7 @@
             .Column("Email", a => a.AttendeeEmail, c => c.Sort("email").Css("small"))
             .Column("Ticket Type", a => a.TicketTypeName,
                 c => c.Sort("type").SelectFilter(Model.AvailableTicketTypes, "filterTicketType", Model.FilterTicketType))
-            .Template("Price", priceCell, c => c.Sort("price"))
+            .Template("Price", priceCell, c => c.Sort("price", descendingFirst: true))
             .Template("VIP Split", vipSplitCell)
             .Column("Status", a => a.Status,
                 c => c.EnumBadge().Sort("status").SelectFilter(["Valid", "Void", "CheckedIn"], "filterStatus", Model.FilterStatus))

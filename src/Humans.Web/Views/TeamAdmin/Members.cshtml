@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TeamMembersViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["TeamAdminMembers_Title"].Value, Model.TeamName);
@@ -102,51 +104,38 @@
             <span>@Localizer["TeamDetail_PendingRequests"]</span>
             <span class="badge bg-warning">@Model.PendingRequests.Count</span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@Localizer["AdminApp_Applicant"]</th>
-                        <th>@Localizer["TeamAdmin_Message"]</th>
-                        <th>@Localizer["MyTeams_Requested"]</th>
-                        <th>@Localizer["MyTeams_Actions"]</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var request in Model.PendingRequests)
-                    {
-                        <tr>
-                            <td>
-                                <vc:human user-id="@request.UserId" layout="AvatarName" size="32" />
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(request.Message))
-                                {
-                                    <span style="white-space: pre-wrap;">@request.Message</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
-                                }
-                            </td>
-                            <td>@request.RequestedAt.ToDateTime()</td>
-                            <td>
-                                <div class="d-flex gap-1">
-                                    <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@request.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-success" data-confirm="@Localizer["TeamAdmin_ApproveConfirm"].Value">@Localizer["TeamAdmin_Approve"]</button>
-                                    </form>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@request.Id">
-                                        @Localizer["TeamAdmin_Reject"]
-                                    </button>
-                                </div>
-
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+        Func<Humans.Web.Models.TeamJoinRequestViewModel, IHtmlContent> pendingApplicantCell =
+            @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="32" /></text>;
+        Func<Humans.Web.Models.TeamJoinRequestViewModel, IHtmlContent> pendingMessageCell = @<text>
+            @if (!string.IsNullOrEmpty(item.Message))
+            {
+                <span style="white-space: pre-wrap;">@item.Message</span>
+            }
+            else
+            {
+                <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
+            }
+        </text>;
+        Func<Humans.Web.Models.TeamJoinRequestViewModel, IHtmlContent> pendingActionsCell = @<text>
+            <div class="d-flex gap-1">
+                <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@item.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-success" data-confirm="@Localizer["TeamAdmin_ApproveConfirm"].Value">@Localizer["TeamAdmin_Approve"]</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                    @Localizer["TeamAdmin_Reject"]
+                </button>
+            </div>
+        </text>;
+            var pendingTable = TableModel.For(Model.PendingRequests)
+                .Template(Localizer["AdminApp_Applicant"].Value, pendingApplicantCell)
+                .Template(Localizer["TeamAdmin_Message"].Value, pendingMessageCell)
+                .Column(Localizer["MyTeams_Requested"].Value, r => r.RequestedAt.ToDateTime())
+                .Template(Localizer["MyTeams_Actions"].Value, pendingActionsCell, c => c.NoSort())
+                .Build();
+        }
+        <partial name="_Table" model="pendingTable" />
     </div>
 
     @foreach (var request in Model.PendingRequests)

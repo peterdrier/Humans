@@ -1,3 +1,6 @@
+@using Humans.Web.Controllers
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Controllers.AgentConversationsViewModel
 @{
     ViewData["Title"] = Model.IsAdminView ? "Agent Conversations" : Localizer["Agent_HistoryTitle"].Value;
@@ -32,53 +35,31 @@
 }
 else
 {
-    @* width:auto + Bootstrap's table-sm — grid sizes to content rather than spanning the full column. *@
-    <table class="table table-sm table-hover" style="width: auto;">
-        <thead>
-            <tr>
-                @if (Model.IsAdminView)
-                {
-                    <th>Human</th>
-                }
-                <th>@Localizer["Agent_HistoryStarted"]</th>
-                @if (Model.IsAdminView)
-                {
-                    <th>Locale</th>
-                }
-                <th class="text-end">@Localizer["Agent_HistoryMessages"]</th>
-                <th>@Localizer["Agent_HistoryLastMessage"]</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model.Rows)
-            {
-                var conv = row.Conversation;
-                <tr>
-                    @if (Model.IsAdminView)
-                    {
-                        <td><vc:human user-id="@conv.UserId" link="Admin" /></td>
-                    }
-                    <td class="text-nowrap">@conv.StartedAt.ToInvariantTimestamp()</td>
-                    @if (Model.IsAdminView)
-                    {
-                        <td>@conv.Locale</td>
-                    }
-                    <td class="text-end">@conv.MessageCount</td>
-                    <td class="text-nowrap">@conv.LastMessageAt.ToInvariantTimestamp()</td>
-                    @* Non-admin viewers go to the user-facing transcript (issue #632) which
-                       reuses the live-chat bubble style and surfaces the live user-context tail.
-                       Admins keep the existing token/tool-call diagnostic view. *@
-                    @if (Model.IsAdminView)
-                    {
-                        <td><a asp-action="ConversationDetail" asp-route-id="@conv.Id">View</a></td>
-                    }
-                    else
-                    {
-                        <td><a asp-action="Conversation" asp-route-id="@conv.Id">View</a></td>
-                    }
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<AgentConversationRow, IHtmlContent> humanCell =
+        @<text><vc:human user-id="@item.Conversation.UserId" link="Admin" /></text>;
+    Func<AgentConversationRow, IHtmlContent> startedCell =
+        @<text><span class="text-nowrap">@item.Conversation.StartedAt.ToInvariantTimestamp()</span></text>;
+    Func<AgentConversationRow, IHtmlContent> lastMessageCell =
+        @<text><span class="text-nowrap">@item.Conversation.LastMessageAt.ToInvariantTimestamp()</span></text>;
+    // Non-admin viewers go to the user-facing transcript (issue #632) which
+    // reuses the live-chat bubble style and surfaces the live user-context tail.
+    // Admins keep the existing token/tool-call diagnostic view.
+    Func<AgentConversationRow, IHtmlContent> viewCell = Model.IsAdminView
+        ? @<text><a asp-action="ConversationDetail" asp-route-id="@item.Conversation.Id">View</a></text>
+        : @<text><a asp-action="Conversation" asp-route-id="@item.Conversation.Id">View</a></text>;
+    var b = TableModel.For(Model.Rows);
+    if (Model.IsAdminView)
+    {
+        b = b.Template("Human", humanCell);
+    }
+    b = b.Template(Localizer["Agent_HistoryStarted"].Value, startedCell);
+    if (Model.IsAdminView)
+    {
+        b = b.Column("Locale", r => r.Conversation.Locale);
+    }
+    var table = b.Column(Localizer["Agent_HistoryMessages"].Value, r => r.Conversation.MessageCount, c => c.End())
+        .Template(Localizer["Agent_HistoryLastMessage"].Value, lastMessageCell)
+        .Template("", viewCell, c => c.NoSort())
+        .Build();
+    <partial name="_Table" model="table" />
 }
