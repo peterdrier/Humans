@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.Events.MySubmissionsViewModel
 @{
     ViewData["Title"] = "My Event Submissions";
@@ -76,52 +78,42 @@
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Event name</th>
-                            <th>Category</th>
-                            <th>Date &amp; time</th>
-                            <th>Status</th>
-                            <th style="width: 130px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var evt in Model.Personal.Events)
-                        {
-                            <tr>
-                                <td>@evt.Title</td>
-                                <td>@evt.CategoryName</td>
-                                <td>@evt.StartAt.ToMonthDayTime()</td>
-                                <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
-                                <td>
-                                    @if (evt.CanEdit)
-                                    {
-                                        <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
-                                            <i class="fa-solid fa-pen me-1"></i>Edit
-                                        </a>
-                                    }
-                                    @if (evt.CanWithdraw)
-                                    {
-                                        <form method="post" asp-action="Withdraw" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="fa-solid fa-xmark"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            Func<IndividualEventRowViewModel, IHtmlContent> personalStatusCell =
+                @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+            Func<IndividualEventRowViewModel, IHtmlContent> personalActionsCell = @<text>
+                @if (item.CanEdit)
+                {
+                    <a asp-action="Edit" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
+                        <i class="fa-solid fa-pen me-1"></i>Edit
+                    </a>
+                }
+                @if (item.CanWithdraw)
+                {
+                    <form method="post" asp-action="Withdraw" asp-route-eventId="@item.Id" class="d-inline" data-confirm="Withdraw this event?">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </form>
+                }
+            </text>;
+            var personalTable = TableModel.For(Model.Personal.Events)
+                .Column("Event name", r => r.Title)
+                .Column("Category", r => r.CategoryName)
+                .Column("Date & time", r => r.StartAt.ToMonthDayTime())
+                .Template("Status", personalStatusCell)
+                .Template("Actions", personalActionsCell, c => c.NoSort())
+                .Build();
+            <partial name="_Table" model="personalTable" />
         }
     </div>
 </div>
 
 @* ── Barrio blocks (one per led barrio) ── *@
+@{
+    Func<CampEventRowViewModel, IHtmlContent> barrioStatusCell =
+        @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+}
 @foreach (var barrio in Model.Barrios)
 {
     <div class="card mb-4">
@@ -168,49 +160,32 @@
             }
             else
             {
-                <div class="table-responsive mb-3">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Event name</th>
-                                <th>Category</th>
-                                <th>Date &amp; time</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th style="width: 130px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var evt in barrio.Events)
-                            {
-                                <tr>
-                                    <td>@evt.Title</td>
-                                    <td>@evt.CategoryName</td>
-                                    <td>@evt.StartAt.ToMonthDayTime()</td>
-                                    <td>@evt.PriorityRank</td>
-                                    <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
-                                    <td>
-                                        @if (evt.CanEdit)
-                                        {
-                                            <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fa-solid fa-pen me-1"></i>Edit
-                                            </a>
-                                        }
-                                        @if (evt.CanWithdraw)
-                                        {
-                                            <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="fa-solid fa-xmark"></i>
-                                                </button>
-                                            </form>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                Func<CampEventRowViewModel, IHtmlContent> barrioActionsCell = @<text>
+                    @if (item.CanEdit)
+                    {
+                        <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="fa-solid fa-pen me-1"></i>Edit
+                        </a>
+                    }
+                    @if (item.CanWithdraw)
+                    {
+                        <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="d-inline" data-confirm="Withdraw this event?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </form>
+                    }
+                </text>;
+                var barrioTable = TableModel.For(barrio.Events)
+                    .Column("Event name", r => r.Title)
+                    .Column("Category", r => r.CategoryName)
+                    .Column("Date & time", r => r.StartAt.ToMonthDayTime())
+                    .Column("Priority", r => r.PriorityRank)
+                    .Template("Status", barrioStatusCell)
+                    .Template("Actions", barrioActionsCell, c => c.NoSort())
+                    .Build();
+                <partial name="_Table" model="barrioTable" />
             }
 
             <hr class="my-3" />

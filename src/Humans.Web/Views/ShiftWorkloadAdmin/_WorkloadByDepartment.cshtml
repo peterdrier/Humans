@@ -1,4 +1,7 @@
 @using Humans.Application.DTOs.Shifts.Workload
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using System.Globalization
 @model IReadOnlyList<WorkloadByDepartmentRow>
 
 @if (Model.Count == 0)
@@ -7,46 +10,32 @@
     return;
 }
 
-<div class="table-responsive">
-    <table class="table table-sm table-striped table-hover workload-table" data-sortable-table>
-        <thead>
-            <tr>
-                <th data-sort>Department</th>
-                <th data-sort class="text-end">Rotas</th>
-                <th data-sort class="text-end">Shifts</th>
-                <th data-sort class="text-end">Planned slots</th>
-                <th data-sort class="text-end">Filled slots</th>
-                <th data-sort class="text-end">Coverage</th>
-                <th data-sort class="text-end">Planned hours</th>
-                <th data-sort class="text-end">Filled hours</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model)
-            {
-                var pct = row.PlannedSlots > 0
-                    ? (decimal)row.FilledSlots * 100m / row.PlannedSlots
-                    : 0m;
-                <tr>
-                    <td data-value="@row.TeamName">
-                        @if (!string.IsNullOrEmpty(row.TeamSlug))
-                        {
-                            <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@row.TeamSlug">@row.TeamName</a>
-                        }
-                        else
-                        {
-                            @row.TeamName
-                        }
-                    </td>
-                    <td class="text-end" data-value="@row.RotaCount">@row.RotaCount</td>
-                    <td class="text-end" data-value="@row.ShiftCount">@row.ShiftCount</td>
-                    <td class="text-end" data-value="@row.PlannedSlots">@row.PlannedSlots</td>
-                    <td class="text-end" data-value="@row.FilledSlots">@row.FilledSlots</td>
-                    <td class="text-end" data-value="@pct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)">@pct.ToString("0.0")%</td>
-                    <td class="text-end" data-value="@row.PlannedHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@row.PlannedHours.ToString("0.##")</td>
-                    <td class="text-end" data-value="@row.FilledHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@row.FilledHours.ToString("0.##")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@{
+    Func<WorkloadByDepartmentRow, IHtmlContent> departmentCell = @<text>
+        @if (!string.IsNullOrEmpty(item.TeamSlug))
+        {
+            <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@item.TeamSlug">@item.TeamName</a>
+        }
+        else
+        {
+            @item.TeamName
+        }
+    </text>;
+    Func<WorkloadByDepartmentRow, IHtmlContent> coverageCell = @<text>
+        @(item.PlannedSlots > 0
+            ? (item.FilledSlots * 100m / item.PlannedSlots).ToString("0.0", CultureInfo.InvariantCulture)
+            : "0.0")%
+    </text>;
+    var table = TableModel.For(Model)
+        .Template("Department", departmentCell)
+        .Column("Rotas", r => r.RotaCount, c => c.Number().End())
+        .Column("Shifts", r => r.ShiftCount, c => c.Number().End())
+        .Column("Planned slots", r => r.PlannedSlots, c => c.Number().End())
+        .Column("Filled slots", r => r.FilledSlots, c => c.Number().End())
+        .Template("Coverage", coverageCell, c => c.End())
+        .Column("Planned hours", r => r.PlannedHours, c => c.Number().End())
+        .Column("Filled hours", r => r.FilledHours, c => c.Number().End())
+        .Css("table-striped workload-table")
+        .Build();
+}
+<partial name="_Table" model="table" />

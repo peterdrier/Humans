@@ -271,7 +271,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_SyncsColaboradorTeam()
     {
         var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(userId);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -363,7 +363,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
     {
         var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(userId);
         var user = new User
         {
             Id = userId,
@@ -392,7 +392,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_ResolvesRecipientFromUserEmailsWhenUserEmailColumnIsNull()
     {
         var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(userId);
         var user = new User
         {
             Id = userId,
@@ -426,7 +426,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_SkipsEmailWhenNoNotificationTargetResolved()
     {
         var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(userId);
         var user = new User
         {
             Id = userId,
@@ -696,8 +696,8 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetFilteredApplicationsAsync_FiltersByTier()
     {
-        await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Colaborador);
-        var asociadoApp = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+        await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
 
         var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, "Asociado", 1, 10);
 

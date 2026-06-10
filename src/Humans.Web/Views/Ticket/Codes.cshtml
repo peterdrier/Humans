@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TicketCodeTrackingViewModel
 @{
     ViewData["Title"] = "Code Tracking";
@@ -81,77 +83,63 @@
         </div>
     </form>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Recipient</th>
-                    <th>Campaign</th>
-                    <th>Status</th>
-                    <th>Redeemed At</th>
-                    <th>Redeemed By</th>
-                    <th>Order</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var tc in Model.Codes)
+    @{
+        Func<CodeDetailRow, IHtmlContent> codeCell =
+            @<text><code>@item.Code</code></text>;
+        Func<CodeDetailRow, IHtmlContent> recipientCell =
+            @<text><vc:human user-id="@item.RecipientUserId" link="Admin" /></text>;
+        Func<CodeDetailRow, IHtmlContent> statusCell = @<text>
+            @{
+                var badgeClass = item.Status switch
                 {
-                    <tr>
-                        <td><code>@tc.Code</code></td>
-                        <td>
-                            <vc:human user-id="@tc.RecipientUserId" link="Admin" />
-                        </td>
-                        <td>@tc.CampaignTitle</td>
-                        <td>
-                            @{
-                                var badgeClass = tc.Status switch
-                                {
-                                    "Redeemed" => "bg-success",
-                                    "Sent" or "Delivered" => "bg-primary",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @badgeClass">@tc.Status</span>
-                        </td>
-                        <td>
-                            @if (tc.RedeemedAt.HasValue)
-                            {
-                                @tc.RedeemedAt.Value.ToDate()
-                            }
-                            else
-                            {
-                                <span class="text-muted">&mdash;</span>
-                            }
-                        </td>
-                        <td>
-                            @if (tc.RedeemedByName != null)
-                            {
-                                <text>@tc.RedeemedByName</text>
-                                <br /><small class="text-muted">@tc.RedeemedByEmail</small>
-                            }
-                            else
-                            {
-                                <span class="text-muted">&mdash;</span>
-                            }
-                        </td>
-                        <td>
-                            @if (tc.RedeemedOrderVendorId != null)
-                            {
-                                <small><code>@tc.RedeemedOrderVendorId</code></small>
-                            }
-                            else
-                            {
-                                <span class="text-muted">&mdash;</span>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Codes.Count == 0)
-                {
-                    <tr><td colspan="7" class="text-muted text-center">No codes found</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                    "Redeemed" => "bg-success",
+                    "Sent" or "Delivered" => "bg-primary",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass">@item.Status</span>
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> redeemedAtCell = @<text>
+            @if (item.RedeemedAt.HasValue)
+            {
+                @item.RedeemedAt.Value.ToDate()
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> redeemedByCell = @<text>
+            @if (item.RedeemedByName != null)
+            {
+                <text>@item.RedeemedByName</text>
+                <br /><small class="text-muted">@item.RedeemedByEmail</small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> orderCell = @<text>
+            @if (item.RedeemedOrderVendorId != null)
+            {
+                <small><code>@item.RedeemedOrderVendorId</code></small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        var table = TableModel.For(Model.Codes.ToList())
+            .Template("Code", codeCell)
+            .Template("Recipient", recipientCell)
+            .Column("Campaign", tc => tc.CampaignTitle)
+            .Template("Status", statusCell)
+            .Template("Redeemed At", redeemedAtCell)
+            .Template("Redeemed By", redeemedByCell)
+            .Template("Order", orderCell)
+            .Empty("No codes found")
+            .Build();
+    }
+    <partial name="_Table" model="table" />
 </div>

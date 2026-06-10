@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
@@ -562,7 +561,7 @@ public sealed class TicketQueryService(
         HashSet<Guid>? emailMatchUserIds = null;
         if (HasSearchTerm(search, 1))
         {
-            var term = search!.Trim();
+            var term = search.Trim();
             emailMatchUserIds = allUsers
                 .Where(u => u.UserEmails.Any(e => e.IsVerified && ContainsIgnoreCase(e.Email, term)))
                 .Select(u => u.Id)
@@ -676,6 +675,11 @@ public sealed class TicketQueryService(
             .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        // GroupBy defensive: stray duplicate pendings must not crash dashboard read.
+        var pendingByAttendee = (await ticketTransferRepository.GetBySenderAsync(userId, ct))
+            .Where(r => r.Status == TicketTransferStatus.Pending)
+            .GroupBy(r => r.OriginalTicketAttendeeId)
+            .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
             .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
@@ -686,7 +690,11 @@ public sealed class TicketQueryService(
                 a.AttendeeEmail,
                 a.VendorTicketId,
                 a.TicketTypeName,
-                a.Status))
+                a.Status,
+                HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
+                PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
+                    ? transferId
+                    : null))
             .ToList();
 
         var ticketCount = await ComputeUserTicketCountAsync(userId);
@@ -695,7 +703,7 @@ public sealed class TicketQueryService(
             && !string.IsNullOrEmpty(syncState.VendorEventId)
             && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
         var postEventHoldDate = hasCurrentEventTicket
-            ? await GetPostEventHoldDateAsync(ct)
+            ? await GetPostEventHoldDateAsync()
             : null;
 
         return new UserTicketHoldings(
@@ -710,7 +718,7 @@ public sealed class TicketQueryService(
         };
     }
 
-    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
+    private async Task<Instant?> GetPostEventHoldDateAsync()
     {
         var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)

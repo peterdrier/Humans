@@ -17,7 +17,6 @@ public class Camp
     public int TimesAtNowhere { get; set; }
 
     public Guid CreatedByUserId { get; init; }
-    public User CreatedByUser { get; set; } = null!;
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }

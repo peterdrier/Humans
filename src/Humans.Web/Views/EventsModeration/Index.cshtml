@@ -86,6 +86,11 @@ else
                 </h2>
                 <div id="@collapseId" class="accordion-collapse collapse" data-bs-parent="#moderationAccordion">
                     <div class="accordion-body">
+                        <div class="d-flex justify-content-end mb-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-eventId="@evt.Id">
+                                <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                            </a>
+                        </div>
                         <div class="row">
                             <div class="col-md-8">
                                 <dl class="row mb-0">

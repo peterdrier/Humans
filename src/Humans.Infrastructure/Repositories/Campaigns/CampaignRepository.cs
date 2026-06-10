@@ -303,7 +303,7 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
                 continue;
 
             var grant = unredeemed
-                .Where(g => string.Equals(g.Code!.Code, redemption.Code, StringComparison.OrdinalIgnoreCase))
+                .Where(g => string.Equals(g.Code.Code, redemption.Code, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(g => g.Campaign.CreatedAt)
                 .FirstOrDefault();
 

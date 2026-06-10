@@ -597,7 +597,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.SetAvailabilityDay), StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull("SetAvailabilityDay must require VolunteerTrackingWrite");
-        attr!.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
 
     [HumansFact]
@@ -608,7 +608,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.ClearAvailabilityDay), StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>();
         attr.Should().NotBeNull("ClearAvailabilityDay must require VolunteerTrackingWrite");
-        attr!.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
 
     [HumansFact]
@@ -617,7 +617,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var esId = Guid.NewGuid();
-        var es = new Humans.Domain.Entities.EventSettings { Id = esId };
+        var es = new EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
         _service
             .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>())
@@ -643,7 +643,7 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        var es = new EventSettings { Id = Guid.NewGuid() };
         _shiftMgmt.GetActiveAsync().Returns(es);
         // Default: SetDayAvailabilityAsync returns false → no audit row (service short-circuited).
         var ctrl = BuildSut(current);
@@ -664,7 +664,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         var esId = Guid.NewGuid();
-        var es = new Humans.Domain.Entities.EventSettings { Id = esId };
+        var es = new EventSettings { Id = esId };
         _shiftMgmt.GetActiveAsync().Returns(es);
         _service
             .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>())
@@ -690,7 +690,7 @@ public class VolunteerTrackingControllerTests
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
-        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        var es = new EventSettings { Id = Guid.NewGuid() };
         _shiftMgmt.GetActiveAsync().Returns(es);
         // Default: SetDayAvailabilityAsync returns false → no audit row.
         var ctrl = BuildSut(current);
@@ -709,7 +709,7 @@ public class VolunteerTrackingControllerTests
     public async Task SetAvailabilityDay_LocalReturnUrl_RedirectsToReturnUrl()
     {
         var current = new User { Id = Guid.NewGuid() };
-        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        var es = new EventSettings { Id = Guid.NewGuid() };
         _shiftMgmt.GetActiveAsync().Returns(es);
         var ctrl = BuildSut(current);
         var localUrl = $"/Profile/{Guid.NewGuid()}";
@@ -725,7 +725,7 @@ public class VolunteerTrackingControllerTests
     public async Task SetAvailabilityDay_ExternalReturnUrl_RedirectsToIndex()
     {
         var current = new User { Id = Guid.NewGuid() };
-        var es = new Humans.Domain.Entities.EventSettings { Id = Guid.NewGuid() };
+        var es = new EventSettings { Id = Guid.NewGuid() };
         _shiftMgmt.GetActiveAsync().Returns(es);
         var ctrl = BuildSut(current);
         const string externalUrl = "https://evil.test/steal";
@@ -741,10 +741,10 @@ public class VolunteerTrackingControllerTests
     public async Task SetAvailabilityDay_NoActiveEvent_RedirectsWithError()
     {
         var current = new User { Id = Guid.NewGuid() };
-        _shiftMgmt.GetActiveAsync().Returns((Humans.Domain.Entities.EventSettings?)null);
+        _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, CancellationToken.None);
+        await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, CancellationToken.None);
 
         await _service.DidNotReceive()
             .SetDayAvailabilityAsync(

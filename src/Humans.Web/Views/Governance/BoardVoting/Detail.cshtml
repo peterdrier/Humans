@@ -1,4 +1,6 @@
 @model Humans.Web.Models.BoardVotingDetailViewModel
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Localizer["BoardVoting_Title"].Value;
 }
@@ -73,38 +75,22 @@
 
         @if (Model.Votes.Count > 0)
         {
+            Func<BoardVoteDetailItemViewModel, IHtmlContent> boardMemberCell =
+                @<text><vc:human user-id="@item.BoardMemberUserId" /></text>;
+            Func<BoardVoteDetailItemViewModel, IHtmlContent> votedAtCell =
+                @<text><small>@item.VotedAt.ToDate()</small></text>;
+            Func<BoardVoteDetailItemViewModel, IHtmlContent> noteCell =
+                @<text><small class="text-muted">@item.Note</small></text>;
+            var votesTable = TableModel.For(Model.Votes)
+                .Template(Localizer["BoardVoting_BoardMember"].Value, boardMemberCell)
+                .Column(Localizer["BoardVoting_Vote"].Value, r => r.Vote, c => c.EnumBadge())
+                .Template(Localizer["BoardVoting_Date"].Value, votedAtCell)
+                .Template(Localizer["BoardVoting_Note"].Value, noteCell)
+                .Build();
             <div class="card mb-4">
                 <div class="card-header">@Localizer["BoardVoting_VotesSoFar"]</div>
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>@Localizer["BoardVoting_BoardMember"]</th>
-                                <th>@Localizer["BoardVoting_Vote"]</th>
-                                <th>@Localizer["BoardVoting_Date"]</th>
-                                <th>@Localizer["BoardVoting_Note"]</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var v in Model.Votes)
-                            {
-                                var badgeClass = v.Vote switch
-                                {
-                                    VoteChoice.Yay => "bg-success",
-                                    VoteChoice.Maybe => "bg-warning text-dark",
-                                    VoteChoice.No => "bg-danger",
-                                    VoteChoice.Abstain => "bg-secondary",
-                                    _ => "bg-secondary"
-                                };
-                                <tr>
-                                    <td><vc:human user-id="@v.BoardMemberUserId" /></td>
-                                    <td><span class="badge @badgeClass">@v.Vote</span></td>
-                                <td><small>@v.VotedAt.ToDate()</small></td>
-                                    <td><small class="text-muted">@v.Note</small></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <partial name="_Table" model="votesTable" />
                 </div>
             </div>
         }
@@ -130,7 +116,6 @@
                                     VoteChoice.Yay => "btn-outline-success",
                                     VoteChoice.Maybe => "btn-outline-warning",
                                     VoteChoice.No => "btn-outline-danger",
-                                    VoteChoice.Abstain => "btn-outline-secondary",
                                     _ => "btn-outline-secondary"
                                 };
                                 var isActive = Model.CurrentUserVote == choice;

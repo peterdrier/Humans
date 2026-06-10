@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -22,7 +23,7 @@ public sealed class EventServiceTests
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _clock);
+        _service = new EventService(_repo, _burnSettings, _clock, NullLogger<EventService>.Instance);
     }
 
     [HumansFact]
@@ -257,6 +258,51 @@ public sealed class EventServiceTests
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task AdminUpdateAsync_ApprovedEvent_PreservesStatusAndAppendsEditedAction()
+    {
+        var submittedAt = Instant.FromUtc(2026, 5, 1, 12, 0);
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            Title = "Fixed title",
+            Status = EventStatus.Approved,
+            SubmittedAt = submittedAt,
+            LastUpdatedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
+        };
+        _repo.Events.Add(guideEvent);
+        var actorUserId = Guid.NewGuid();
+
+        await _service.AdminUpdateAsync(guideEvent, actorUserId, "fixed the start time");
+
+        guideEvent.Status.Should().Be(EventStatus.Approved); // never re-queued to Pending
+        guideEvent.SubmittedAt.Should().Be(submittedAt);     // submission timestamp untouched
+        guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        _repo.EventModerationActions.Should().ContainSingle(action =>
+            action.GuideEventId == guideEvent.Id
+            && action.ActorUserId == actorUserId
+            && action.Action == EventModerationActionType.Edited
+            && action.Reason == "fixed the start time"
+            && action.CreatedAt == _clock.GetCurrentInstant());
+        _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AdminUpdateAsync_BlankNote_AppendsEditedActionWithNullReason_AnyStatePreserved(string note)
+    {
+        var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Withdrawn };
+        _repo.Events.Add(guideEvent);
+
+        await _service.AdminUpdateAsync(guideEvent, Guid.NewGuid(), note);
+
+        guideEvent.Status.Should().Be(EventStatus.Withdrawn); // any state edited in place
+        _repo.EventModerationActions.Should().ContainSingle(a =>
+            a.Action == EventModerationActionType.Edited && a.Reason == null);
         _repo.SaveChangesCount.Should().Be(1);
     }
 

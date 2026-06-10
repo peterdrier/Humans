@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.Events.GuideVenueListViewModel
 @{
     ViewData["Title"] = "Communal Venues";
@@ -19,74 +21,61 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">Order</th>
-                    <th>Name</th>
-                    <th>Location</th>
-                    <th>Active</th>
-                    <th>Events</th>
-                    <th style="width: 200px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Venues.Count; i++)
-                {
-                    var venue = Model.Venues[i];
-                    <tr class="@(!venue.IsActive ? "table-secondary" : "")">
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                @if (i > 0)
-                                {
-                                    <form method="post" asp-controller="EventsAdmin" asp-action="MoveVenueUp" asp-route-id="@venue.Id" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
-                                            <i class="fa-solid fa-arrow-up"></i>
-                                        </button>
-                                    </form>
-                                }
-                                @if (i < Model.Venues.Count - 1)
-                                {
-                                    <form method="post" asp-controller="EventsAdmin" asp-action="MoveVenueDown" asp-route-id="@venue.Id" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
-                                            <i class="fa-solid fa-arrow-down"></i>
-                                        </button>
-                                    </form>
-                                }
-                            </div>
-                        </td>
-                        <td>@venue.Name</td>
-                        <td>@(venue.LocationDescription ?? "—")</td>
-                        <td>
-                            @if (venue.IsActive)
-                            {
-                                <span class="badge bg-success">Active</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Inactive</span>
-                            }
-                        </td>
-                        <td>@venue.EventCount</td>
-                        <td>
-                            <a asp-controller="EventsAdmin" asp-action="EditVenue" asp-route-id="@venue.Id" class="btn btn-sm btn-outline-primary me-1">
-                                <i class="fa-solid fa-pen me-1"></i>Edit
-                            </a>
-                            <form method="post" asp-controller="EventsAdmin" asp-action="DeleteVenue" asp-route-id="@venue.Id" class="d-inline" data-confirm="Delete this venue?">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fa-solid fa-trash me-1"></i>Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    var venueList = Model.Venues;
+    Func<GuideVenueRowViewModel, IHtmlContent> venueOrderCell = @<text>
+        <div class="btn-group btn-group-sm">
+            @{ var venueIdx = venueList.IndexOf(item); }
+            @if (venueIdx > 0)
+            {
+                <form method="post" asp-controller="EventsAdmin" asp-action="MoveVenueUp" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </form>
+            }
+            @if (venueIdx < venueList.Count - 1)
+            {
+                <form method="post" asp-controller="EventsAdmin" asp-action="MoveVenueDown" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                </form>
+            }
+        </div>
+    </text>;
+    Func<GuideVenueRowViewModel, IHtmlContent> venueActiveCell = @<text>
+        @if (item.IsActive)
+        {
+            <span class="badge bg-success">Active</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Inactive</span>
+        }
+    </text>;
+    Func<GuideVenueRowViewModel, IHtmlContent> venueActionsCell = @<text>
+        <a asp-controller="EventsAdmin" asp-action="EditVenue" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary me-1">
+            <i class="fa-solid fa-pen me-1"></i>Edit
+        </a>
+        <form method="post" asp-controller="EventsAdmin" asp-action="DeleteVenue" asp-route-id="@item.Id" class="d-inline" data-confirm="Delete this venue?">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fa-solid fa-trash me-1"></i>Delete
+            </button>
+        </form>
+    </text>;
+    var venueTable = TableModel.For(Model.Venues)
+        .Template("Order", venueOrderCell, c => c.NoSort())
+        .Column("Name", r => r.Name)
+        .Column("Location", r => r.LocationDescription)
+        .Template("Active", venueActiveCell)
+        .Column("Events", r => r.EventCount)
+        .Template("Actions", venueActionsCell, c => c.NoSort())
+        .RowCss(r => !r.IsActive ? "table-secondary" : null)
+        .Build();
+    <partial name="_Table" model="venueTable" />
 }
 
 <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">

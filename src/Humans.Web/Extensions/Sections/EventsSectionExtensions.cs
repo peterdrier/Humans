@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Events;
 using Humans.Infrastructure.Repositories.Events;
@@ -32,6 +33,7 @@ internal static class EventsSectionExtensions
         services.AddScoped<EventService>(sp =>
             (EventService)sp.GetRequiredKeyedService<IEventService>(CachingEventService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EventService>());
+        services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventService>());
 
         // CachingEventService — Singleton so the cache persists across
         // requests. Resolves IEventRepository directly (Singleton via

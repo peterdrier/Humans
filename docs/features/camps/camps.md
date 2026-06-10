@@ -55,6 +55,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Contact email is hidden — replaced with facilitated "Contact this camp" button (login required)
 - Displays current season data (vibes, kids policy, performance space, etc.)
 - Shows leads with display names (authenticated users only)
+- Signed-in users see an **Events** card (between the roster and the description) listing the camp's approved events for the edition — title, category, time/duration, venue, host, description — with a per-row favourite heart that posts to `/Events/Barrio/{slug}/Favourite/{eventId}` and redirects back to the camp page. Hidden for anonymous visitors, when the camp has no approved events, or when the Events feature is off.
 - Shows historical names if any (hidden when camp has `HideHistoricalNames` enabled)
 - Leads and admins see edit link
 

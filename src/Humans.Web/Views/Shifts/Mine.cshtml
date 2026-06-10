@@ -1,5 +1,7 @@
 @model Humans.Web.Models.MyShiftsViewModel
 @using NodaTime
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 
 @{
     ViewData["Title"] = Localizer["Shifts_MyShiftsTitle"].Value;
@@ -26,7 +28,6 @@
         {
             ShiftPeriod.Build => "bg-info",
             ShiftPeriod.Event => "bg-success",
-            ShiftPeriod.Strike => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -114,34 +115,26 @@
 
                     @if (individualItems.Count > 0)
                     {
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in individualItems)
-                                    {
-                                        var shift = item.Signup.Shift;
-                                        <tr>
-                                            <td>@item.DepartmentName</td>
-                                            <td>@shift.Rota.Name</td>
-                                            <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                            <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
-                                            <td>@item.AbsoluteStart.ToTime(tz!)</td>
-                                            <td>@(shift.Duration.TotalHours)h</td>
-                                            <td>
-                                                <form asp-action="Bail" method="post" class="d-inline">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                        Func<MySignupItem, IHtmlContent> upcomingPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> upcomingActionCell = @<text>
+                            <form asp-action="Bail" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
+                            </form>
+                        </text>;
+                        var upcomingTable = TableModel.For(individualItems)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, upcomingPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template("", upcomingActionCell, c => c.NoSort())
+                            .Build();
+                        <partial name="_Table" model="upcomingTable" />
                     }
                 </div>
                 </div>
@@ -158,34 +151,28 @@
                 </button>
                 <div id="mine-pending" class="collapse show">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th></th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.Pending)
-                                {
-                                    var shift = item.Signup.Shift;
-                                    <tr>
-                                        <td>@item.DepartmentName</td>
-                                        <td>@shift.Rota.Name</td>
-                                        <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
-                                        <td>@item.AbsoluteStart.ToTime(tz!)</td>
-                                        <td>@(shift.Duration.TotalHours)h</td>
-                                        <td>
-                                            <form asp-action="Bail" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    @{
+                        Func<MySignupItem, IHtmlContent> pendingPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> pendingActionCell = @<text>
+                            <form asp-action="Bail" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
+                            </form>
+                        </text>;
+                        var pendingTable = TableModel.For(Model.Pending)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, pendingPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template("", pendingActionCell, c => c.NoSort())
+                            .Build();
+                    }
+                    <partial name="_Table" model="pendingTable" />
                 </div>
                 </div>
             </div>
@@ -201,28 +188,24 @@
                 </button>
                 <div id="mine-past" class="collapse">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th>@Localizer["Common_Status"]</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.Past)
-                                {
-                                    var shift = item.Signup.Shift;
-                                    <tr>
-                                        <td>@item.DepartmentName</td>
-                                        <td>@shift.Rota.Name</td>
-                                        <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
-                                        <td>@item.AbsoluteStart.ToTime(tz!)</td>
-                                        <td>@(shift.Duration.TotalHours)h</td>
-                                        <td><span class="badge bg-secondary">@item.Signup.Status</span></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    @{
+                        Func<MySignupItem, IHtmlContent> pastPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> pastStatusCell = @<text>
+                            <span class="badge bg-secondary">@item.Signup.Status</span>
+                        </text>;
+                        var pastTable = TableModel.For(Model.Past)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, pastPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template(Localizer["Common_Status"].Value, pastStatusCell)
+                            .Build();
+                    }
+                    <partial name="_Table" model="pastTable" />
                 </div>
                 </div>
             </div>
@@ -298,13 +281,12 @@
             </div>
         </div>
 
-        @* TODO: Re-enable iCal feed widget when the /ICal/{token}.ics endpoint is implemented.
         @if (Model.ICalUrl != null)
         {
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">iCal Feed</h5></div>
                 <div class="card-body">
-                    <p class="text-muted">Subscribe to your shifts in your calendar app:</p>
+                    <p class="text-muted">Subscribe to your shifts and saved events in your calendar app:</p>
                     <div class="input-group mb-2">
                         <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
                         <button class="btn btn-outline-secondary" type="button" id="copyIcalBtn">Copy</button>
@@ -317,7 +299,6 @@
                 </div>
             </div>
         }
-        *@
     }
 </div>
 

@@ -59,7 +59,7 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
         builder.HasIndex(s => new { s.CampId, s.Year }).IsUnique();
         builder.HasIndex(s => s.Status);
 
-        builder.HasOne(s => s.ReviewedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(s => s.ReviewedByUserId)
             .OnDelete(DeleteBehavior.SetNull);

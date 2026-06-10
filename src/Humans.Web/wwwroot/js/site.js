@@ -145,6 +145,74 @@ document.addEventListener('click', function (e) {
     });
 })();
 
+// Declarative client-side table filtering (companion to data-sortable-table).
+// _Table.cshtml emits a .table-component wrapper; inside it:
+//   input[data-table-search]      — global contains-search across all cells
+//   [data-filter-col="<index>"]   — per-column filter (input = contains, select = exact)
+// Selects rendered with no options are auto-populated from distinct column values.
+(function () {
+    function norm(value) {
+        return (value || '').trim().toLowerCase();
+    }
+
+    function applyFilters(table, search, filters) {
+        var term = norm(search && search.value);
+        Array.from(table.tBodies[0].rows).forEach(function (row) {
+            var visible = !term || norm(row.textContent).indexOf(term) !== -1;
+            filters.forEach(function (filter) {
+                if (!visible) return;
+                var wanted = norm(filter.input.value);
+                if (!wanted) return;
+                var cell = row.cells[filter.col];
+                var text = norm(cell && cell.textContent);
+                visible = filter.exact ? text === wanted : text.indexOf(wanted) !== -1;
+            });
+            row.style.display = visible ? '' : 'none';
+        });
+    }
+
+    document.querySelectorAll('.table-component').forEach(function (root) {
+        var table = root.querySelector('table');
+        if (!table || !table.tBodies[0]) return;
+
+        var search = root.querySelector('input[data-table-search]');
+        var filters = [];
+
+        root.querySelectorAll('[data-filter-col]').forEach(function (input) {
+            var col = parseInt(input.dataset.filterCol, 10);
+            if (isNaN(col)) return;
+            var exact = input.tagName === 'SELECT';
+
+            if (exact && input.options.length <= 1) {
+                var seen = {};
+                Array.from(table.tBodies[0].rows).forEach(function (row) {
+                    var text = (row.cells[col] ? row.cells[col].textContent : '').trim();
+                    if (text && text !== '—' && !seen[text]) {
+                        seen[text] = true;
+                        var option = document.createElement('option');
+                        option.value = text;
+                        option.textContent = text;
+                        input.appendChild(option);
+                    }
+                });
+            }
+
+            filters.push({ input: input, col: col, exact: exact });
+            input.addEventListener(exact ? 'change' : 'input', function () {
+                applyFilters(table, search, filters);
+            });
+        });
+
+        if (search) {
+            var debounce;
+            search.addEventListener('input', function () {
+                clearTimeout(debounce);
+                debounce = setTimeout(function () { applyFilters(table, search, filters); }, 150);
+            });
+        }
+    });
+})();
+
 // Timezone detection — send browser IANA timezone to server session (once per session)
 (function () {
     try {

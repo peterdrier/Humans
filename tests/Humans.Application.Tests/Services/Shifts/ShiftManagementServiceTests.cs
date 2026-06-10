@@ -12,7 +12,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -64,7 +63,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             });
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamServiceRead>(_teamService)
+            .With(_teamService)
             .With(_userService)
             .With<IUserServiceRead>(_userService)
             .With(_roleAssignmentService)
@@ -79,8 +78,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -120,8 +118,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             new ServiceLocatorBuilder().Build(),
             cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
 
         var deleted = await service.DeleteEventAsync(eventId);
 
@@ -141,7 +138,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
     {
         // Arrange: rota with Period=Build, staffing grid for days -3 to -1
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
@@ -297,7 +294,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_SetsCorrectMinMaxPerDay()
     {
         // Arrange: staffing grid with varying min/max per day
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
@@ -333,7 +330,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_RejectsEventPeriodRota()
     {
         // Arrange: rota with Period=Event
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync();
 
         var staffing = new List<DayStaffingInput>
@@ -359,7 +356,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task GenerateEventShifts_CreatesCartesianProduct()
     {
         // Arrange: event rota, days 0-2, slots [(08:00, 4h), (14:00, 4h)]
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync();
 
         var timeSlots = new List<ShiftTimeSlotInput>
@@ -400,7 +397,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task GenerateEventShifts_RejectsBuildPeriodRota()
     {
         // Arrange: rota with Period=Build
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync();
 
         var timeSlots = new List<ShiftTimeSlotInput>
@@ -548,7 +545,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedSignup(importantShift, SeedUser("ImpB"), SignupStatus.Confirmed);
 
         // Normal+understaffed: zero confirmed signups, MinVolunteers=2 → understaffed → INCLUDED.
-        var understaffedShift = SeedShift(understaffedRota, dayOffset: 1);
+        SeedShift(understaffedRota, dayOffset: 1);
 
         await Db.SaveChangesAsync();
 
@@ -954,7 +951,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task GetOverallCoverageAsync_ReturnsCorrectFilledTotalRatio()
     {
         // Arrange: active event with 10 slots across 10 shifts, 7 confirmed signups
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
 
         var shifts = Enumerable.Range(0, 10).Select(_ => new Shift
         {
@@ -1113,7 +1110,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task DeleteRotaAsync_WithConfirmedSignup_Throws()
     {
         // Arrange: rota with one Confirmed signup
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
@@ -1129,7 +1126,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task DeleteRotaAsync_WithOnlyPendingSignups_CancelsThemAndDeletes()
     {
         // Arrange: rota with two Pending signups (no Confirmed)
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var user1 = SeedUser("Bob");
         var user2 = SeedUser("Carol");
@@ -1176,7 +1173,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     public async Task MoveRotaToTeamAsync_WritesRotaMovedToTeamAuditEntry()
     {
         // Arrange: rota currently on team A, target team B (no parent).
-        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync();
 
         var targetTeamId = Guid.NewGuid();
@@ -1271,6 +1268,5 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             new ServiceLocatorBuilder().Build(),
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
 }

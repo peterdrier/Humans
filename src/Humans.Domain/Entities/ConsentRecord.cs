@@ -19,11 +19,6 @@ public class ConsentRecord
     public Guid UserId { get; init; }
 
     /// <summary>
-    /// Navigation property to the user.
-    /// </summary>
-    public User User { get; set; } = null!;
-
-    /// <summary>
     /// Foreign key to the document version being consented to.
     /// </summary>
     public Guid DocumentVersionId { get; init; }

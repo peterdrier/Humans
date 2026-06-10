@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TicketDashboardViewModel
 @{
     ViewData["Title"] = "Tickets";
@@ -114,36 +116,29 @@
 
     @if (Model.FeesByPaymentMethod.Count > 0)
     {
+        var currency = Model.Currency;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> grossAmountCell =
+            @<text>@currency @item.TotalAmount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> stripeFeeCell =
+            @<text>@currency @item.TotalStripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> ttFeeCell =
+            @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> effectiveRateCell =
+            @<text>@item.EffectiveRate%</text>;
+        var feesTable = TableModel.For(Model.FeesByPaymentMethod.ToList())
+            .Column("Payment Method", pm => pm.PaymentMethod)
+            .Column("Orders", pm => pm.OrderCount, c => c.Number().End())
+            .Template("Gross Amount", grossAmountCell, c => c.End())
+            .Template("Stripe Fee", stripeFeeCell, c => c.End())
+            .Template("TT Fee", ttFeeCell, c => c.End())
+            .Template("Effective Rate", effectiveRateCell, c => c.End())
+            .Build();
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-credit-card"></i> Fees by Payment Method
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Payment Method</th>
-                            <th class="text-end">Orders</th>
-                            <th class="text-end">Gross Amount</th>
-                            <th class="text-end">Stripe Fee</th>
-                            <th class="text-end">TT Fee</th>
-                            <th class="text-end">Effective Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var pm in Model.FeesByPaymentMethod)
-                        {
-                            <tr>
-                                <td>@pm.PaymentMethod</td>
-                                <td class="text-end">@pm.OrderCount</td>
-                                <td class="text-end">@Model.Currency @pm.TotalAmount.ToString("N0")</td>
-                                <td class="text-end">@Model.Currency @pm.TotalStripeFees.ToString("N2")</td>
-                                <td class="text-end">@Model.Currency @pm.TotalApplicationFees.ToString("N2")</td>
-                                <td class="text-end">@pm.EffectiveRate%</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <partial name="_Table" model="feesTable" />
             </div>
         </div>
     }
@@ -196,56 +191,30 @@
                     <a asp-action="Orders" class="btn btn-sm btn-outline-primary">View all orders &rarr;</a>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Purchaser</th>
-                                <th>Tickets</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Matched</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var order in Model.RecentOrders)
+                    @{
+                        Func<TicketOrderSummary, IHtmlContent> recentAmountCell =
+                            @<text>@item.Currency @item.Amount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+                        Func<TicketOrderSummary, IHtmlContent> recentMatchedCell = @<text>
+                            @if (item.IsMatched)
                             {
-                                <tr>
-                                    <td>@order.PurchasedAt.ToDate()</td>
-                                    <td>@order.BuyerName</td>
-                                    <td>@order.TicketCount</td>
-                                    <td>@order.Currency @order.Amount.ToString("N0")</td>
-                                    <td>
-                                        @{
-                                            var statusBadgeClass = order.PaymentStatus switch
-                                            {
-                                                TicketPaymentStatus.Paid => "bg-success",
-                                                TicketPaymentStatus.Pending => "bg-warning text-dark",
-                                                TicketPaymentStatus.Refunded => "bg-secondary",
-                                                TicketPaymentStatus.Cancelled => "bg-danger",
-                                                _ => "bg-secondary",
-                                            };
-                                        }
-                                        <span class="badge @statusBadgeClass">@order.PaymentStatus</span>
-                                    </td>
-                                    <td>
-                                        @if (order.IsMatched)
-                                        {
-                                            <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
-                                        }
-                                    </td>
-                                </tr>
+                                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
                             }
-                            @if (Model.RecentOrders.Count == 0)
+                            else
                             {
-                                <tr><td colspan="6" class="text-muted text-center">No orders synced yet</td></tr>
+                                <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
                             }
-                        </tbody>
-                    </table>
+                        </text>;
+                        var recentOrdersTable = TableModel.For(Model.RecentOrders.ToList())
+                            .Column("Date", o => o.PurchasedAt, c => c.Date())
+                            .Column("Purchaser", o => o.BuyerName)
+                            .Column("Tickets", o => o.TicketCount, c => c.Number())
+                            .Template("Amount", recentAmountCell)
+                            .Column("Status", o => o.PaymentStatus, c => c.EnumBadge())
+                            .Template("Matched", recentMatchedCell, c => c.NoSort())
+                            .Empty("No orders synced yet")
+                            .Build();
+                    }
+                    <partial name="_Table" model="recentOrdersTable" />
                 </div>
             </div>
         </div>

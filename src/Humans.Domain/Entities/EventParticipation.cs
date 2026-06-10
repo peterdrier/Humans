@@ -47,9 +47,4 @@ public class EventParticipation
     /// How the status was set.
     /// </summary>
     public ParticipationSource Source { get; set; }
-
-    /// <summary>
-    /// Navigation property to the user.
-    /// </summary>
-    public User User { get; set; } = null!;
 }

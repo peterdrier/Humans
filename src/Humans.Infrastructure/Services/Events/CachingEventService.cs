@@ -266,6 +266,16 @@ public sealed class CachingEventService(
         _eventCache.Invalidate(guideEvent.Id);
     }
 
+    public async Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default)
+    {
+        await WithInner(inner => inner.AdminUpdateAsync(guideEvent, actorUserId, note, ct));
+        // Status is preserved, so an edited Approved event stays approved but its
+        // flattened fields changed — re-project the single entry (sets the fresh
+        // view if still approved, no-op for any non-approved status). Mirrors the
+        // ApplyModerationAsync invalidation contract.
+        await RefreshEventEntryAsync(guideEvent.Id, ct);
+    }
+
     public async Task<BulkImportResult> BulkImportAsync(
         Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,

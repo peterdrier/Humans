@@ -56,7 +56,7 @@ public class TicketAttendeeConfiguration : IEntityTypeConfiguration<TicketAttend
         builder.Property(a => a.SyncedAt)
             .IsRequired();
 
-        builder.HasOne(a => a.MatchedUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(a => a.MatchedUserId)
             .OnDelete(DeleteBehavior.SetNull);

@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -244,33 +243,6 @@ public sealed class GoogleWorkspaceSyncService(
                 userEmail, resource.GoogleId);
         }
     }
-
-    /// <summary>Derive Group email from URL (groups.google.com/a/{domain}/g/{prefix}); null on parse fail (#639).</summary>
-    private string? TryDeriveGroupEmail(GoogleResource resource)
-    {
-        if (resource.ResourceType != GoogleResourceType.Group)
-        {
-            return null;
-        }
-        if (string.IsNullOrWhiteSpace(resource.Url))
-        {
-            return null;
-        }
-
-        const string marker = "/g/";
-        var idx = resource.Url.IndexOf(marker, StringComparison.Ordinal);
-        if (idx < 0)
-        {
-            return null;
-        }
-        var prefix = resource.Url[(idx + marker.Length)..].TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(prefix) || string.IsNullOrWhiteSpace(_options.Domain))
-        {
-            return null;
-        }
-        return $"{prefix}@{_options.Domain}";
-    }
-
 
     /// <inheritdoc />
     public async Task AddUserToTeamResourcesAsync(
@@ -598,242 +570,48 @@ public sealed class GoogleWorkspaceSyncService(
     {
         var primary = resources[0];
 
-        // Build a lookup from team slug to permission level.
-        var levelByTeamSlug = new Dictionary<string, DrivePermissionLevel>(StringComparer.Ordinal);
-        foreach (var resource in resources)
-        {
-            var slug = teamsById[resource.TeamId].Slug;
-            if (!levelByTeamSlug.TryGetValue(slug, out var existing) || resource.DrivePermissionLevel > existing)
-                levelByTeamSlug[slug] = resource.DrivePermissionLevel;
-        }
+        var levelByTeamSlug = BuildDriveLevelByTeamSlug(resources, teamsById);
 
         try
         {
             // Expected: union of all linked teams' active members + child team rollup.
-            var membersByEmail = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl, List<TeamLink> TeamLinks)>(
-                NormalizingEmailComparer.Instance);
+            var membersByEmail = await BuildExpectedDriveMembersByEmailAsync(
+                resources,
+                teamsById,
+                membersByTeam,
+                childMembersByTeam,
+                cancellationToken);
 
-            // Issue #635 (§15i): bulk-fetch UserEmails once for all members
-            // across the team union so TryGetGoogleEmail does not traverse
-            // user.UserEmails cross-domain.
-            var allMemberUserIds = membersByTeam.Values.SelectMany(v => v.Select(m => m.UserId))
-                .Concat(childMembersByTeam.Values.SelectMany(v => v.Select(m => m.UserId)))
-                .Distinct()
-                .ToList();
-            var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allMemberUserIds, cancellationToken);
-
-            foreach (var resource in resources)
-            {
-                var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
-                    ? null : resource.DrivePermissionLevel.ToString();
-                var resourceTeam = teamsById[resource.TeamId];
-                var teamLink = new TeamLink(resourceTeam.Name, resourceTeam.Slug, level);
-
-                var teamMembers = membersByTeam.GetValueOrDefault(resource.TeamId, []);
-                foreach (var tm in teamMembers)
-                {
-                    var memberEmail = TryGetGoogleEmail(tm.UserId, tm.GoogleEmailStatus, emailsByUserId);
-                    if (memberEmail is null) continue;
-
-                    if (membersByEmail.TryGetValue(memberEmail, out var existing))
-                    {
-                        if (!existing.TeamLinks.Any(tl => string.Equals(tl.Name, teamLink.Name, StringComparison.Ordinal)))
-                            existing.TeamLinks.Add(teamLink);
-                    }
-                    else
-                    {
-                        membersByEmail[memberEmail] = (tm.DisplayName, tm.UserId, tm.ProfilePictureUrl, [teamLink]);
-                    }
-                }
-
-                var childMembers = childMembersByTeam.GetValueOrDefault(resource.TeamId, []);
-                foreach (var cm in childMembers)
-                {
-                    var memberEmail = TryGetGoogleEmail(cm.UserId, cm.GoogleEmailStatus, emailsByUserId);
-                    if (memberEmail is null) continue;
-
-                    var childTeam = teamsById[cm.TeamId];
-                    var childTeamLink = new TeamLink(childTeam.Name, childTeam.Slug, level);
-                    if (membersByEmail.TryGetValue(memberEmail, out var existing2))
-                    {
-                        if (!existing2.TeamLinks.Any(tl => string.Equals(tl.Name, childTeamLink.Name, StringComparison.Ordinal)))
-                            existing2.TeamLinks.Add(childTeamLink);
-                    }
-                    else
-                    {
-                        membersByEmail[memberEmail] = (cm.DisplayName, cm.UserId, cm.ProfilePictureUrl, [childTeamLink]);
-                    }
-                }
-            }
-
-            var linkedTeams = resources.Select(r =>
-                {
-                    var t = teamsById[r.TeamId];
-                    return new TeamLink(t.Name, t.Slug,
-                        r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString());
-                })
-                .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
+            var linkedTeams = BuildDriveLinkedTeams(resources, teamsById);
 
             // Current: Drive permissions.
             var permsResult = await drivePermissions.ListPermissionsAsync(primary.GoogleId, cancellationToken);
             if (permsResult.Permissions is null)
             {
-                var code = permsResult.Error?.StatusCode ?? 0;
-                var msg = $"Google API error: {code} — {permsResult.Error?.RawMessage}";
-                logger.LogWarning(
-                    "Failed to list permissions for {GoogleId}: {Message}", primary.GoogleId, msg);
-                if (action == SyncAction.Execute)
-                {
-                    await resourceRepository.SetErrorMessageManyAsync(
-                        resources.Select(r => r.Id).ToList(), msg, cancellationToken);
-                }
-                return new ResourceSyncDiff
-                {
-                    ResourceId = primary.Id,
-                    ResourceName = primary.Name,
-                    ResourceType = primary.ResourceType.ToString(),
-                    GoogleId = primary.GoogleId,
-                    Url = primary.Url,
-                    PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                    LinkedTeams = linkedTeams,
-                    ErrorMessage = msg
-                };
+                return await BuildDrivePermissionListErrorDiffAsync(
+                    primary,
+                    resources,
+                    linkedTeams,
+                    permsResult,
+                    action,
+                    cancellationToken);
             }
 
             var permissions = permsResult.Permissions;
-            var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-            var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
-            var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
+            var permissionSnapshot = BuildDrivePermissionSnapshot(permissions);
 
-            foreach (var perm in permissions)
-            {
-                if (IsAnyUserPermission(perm))
-                {
-                    allEmails.Add(perm.EmailAddress!);
-                    if (!string.IsNullOrEmpty(perm.Role))
-                        roleByEmail[perm.EmailAddress!] = perm.Role;
-                }
-                if (IsDirectManagedPermission(perm))
-                    directEmails.Add(perm.EmailAddress!);
-            }
-
-            var members = new List<MemberSyncStatus>();
-
-            foreach (var (email, (displayName, userId, profilePictureUrl, teamLinks)) in membersByEmail)
-            {
-                var memberMaxLevel = DrivePermissionLevel.None;
-                foreach (var tl in teamLinks)
-                {
-                    if (levelByTeamSlug.TryGetValue(tl.Slug, out var tlLevel) && tlLevel > memberMaxLevel)
-                        memberMaxLevel = tlLevel;
-                }
-                var memberExpectedRole = memberMaxLevel > DrivePermissionLevel.None
-                    ? memberMaxLevel.ToApiRole() : null;
-
-                MemberSyncState state;
-                roleByEmail.TryGetValue(email, out var currentRole);
-
-                if (!allEmails.Contains(email))
-                {
-                    state = MemberSyncState.Missing;
-                }
-                else if (!directEmails.Contains(email))
-                {
-                    state = MemberSyncState.Inherited;
-                }
-                else
-                {
-                    var currentLevel = ParseApiRole(currentRole);
-                    state = currentLevel.HasValue && currentLevel.Value < memberMaxLevel
-                        ? MemberSyncState.WrongRole
-                        : MemberSyncState.Correct;
-                }
-
-                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, memberExpectedRole,
-                    UserId: userId, ProfilePictureUrl: profilePictureUrl));
-            }
-
-            var saEmail = await teamResourceClient.GetServiceAccountEmailAsync(cancellationToken);
-            var nonMemberEmails = allEmails
-                .Where(e => !membersByEmail.ContainsKey(e) &&
-                    !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(nonMemberEmails, cancellationToken);
-
-            foreach (var email in nonMemberEmails)
-            {
-                var state = directEmails.Contains(email)
-                    ? MemberSyncState.Extra
-                    : MemberSyncState.Inherited;
-                roleByEmail.TryGetValue(email, out var extraRole);
-
-                if (extraIdentities.TryGetValue(email, out var identity))
-                {
-                    members.Add(new MemberSyncStatus(email, identity.DisplayName, state, [], extraRole,
-                        UserId: identity.UserId, ProfilePictureUrl: identity.ProfilePictureUrl));
-                }
-                else
-                {
-                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
-                }
-            }
+            var members = await BuildDriveMemberStatusesAsync(
+                membersByEmail,
+                levelByTeamSlug,
+                permissionSnapshot,
+                cancellationToken);
 
             if (action == SyncAction.Execute)
             {
-                foreach (var member in members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
-                {
-                    try
-                    {
-                        var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
-                        await AddUserToDriveAsync(primary, member.Email, memberLevel, cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to grant Drive access to {Email} on {GoogleId}",
-                            member.Email, primary.GoogleId);
-                    }
-                }
-
-                foreach (var member in members.Where(m => m.State == MemberSyncState.Extra))
-                {
-                    try
-                    {
-                        var permToRemove = permissions.FirstOrDefault(p =>
-                            IsDirectManagedPermission(p) &&
-                            NormalizingEmailComparer.Instance.Equals(p.EmailAddress, member.Email));
-
-                        if (permToRemove?.Id is null)
-                        {
-                            logger.LogInformation(
-                                "Skipping removal of {Email} from {GoogleId} — permission is inherited, not direct",
-                                member.Email, primary.GoogleId);
-                            continue;
-                        }
-
-                        await RemoveUserFromDriveAsync(primary, permToRemove.Id, member.Email, cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to remove Drive access for {Email} on {GoogleId}",
-                            member.Email, primary.GoogleId);
-                    }
-                }
-
-                await resourceRepository.MarkSyncedManyAsync(
-                    resources.Select(r => r.Id).ToList(), now, cancellationToken);
+                await ApplyDriveResourceChangesAsync(primary, resources, permissions, members, now, cancellationToken);
             }
 
-            return new ResourceSyncDiff
-            {
-                ResourceId = primary.Id,
-                ResourceName = primary.Name,
-                ResourceType = primary.ResourceType.ToString(),
-                GoogleId = primary.GoogleId,
-                Url = primary.Url,
-                PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                LinkedTeams = linkedTeams,
-                Members = members
-            };
+            return BuildDriveSyncDiff(primary, linkedTeams, members);
         }
         catch (Exception ex)
         {
@@ -843,25 +621,367 @@ public sealed class GoogleWorkspaceSyncService(
                 await resourceRepository.SetErrorMessageManyAsync(
                     resources.Select(r => r.Id).ToList(), ex.Message, cancellationToken);
             }
-            return new ResourceSyncDiff
-            {
-                ResourceId = primary.Id,
-                ResourceName = primary.Name,
-                ResourceType = primary.ResourceType.ToString(),
-                GoogleId = primary.GoogleId,
-                Url = primary.Url,
-                PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                LinkedTeams = resources.Select(r =>
-                    {
-                        var t = teamsById[r.TeamId];
-                        return new TeamLink(t.Name, t.Slug,
-                            r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString());
-                    })
-                    .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList(),
-                ErrorMessage = ex.Message
-            };
+            return BuildDriveSyncDiff(
+                primary,
+                BuildDriveLinkedTeams(resources, teamsById),
+                members: [],
+                errorMessage: ex.Message);
         }
     }
+
+    private static Dictionary<string, DrivePermissionLevel> BuildDriveLevelByTeamSlug(
+        IEnumerable<GoogleResource> resources,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById)
+    {
+        var levelByTeamSlug = new Dictionary<string, DrivePermissionLevel>(StringComparer.Ordinal);
+        foreach (var resource in resources)
+        {
+            var slug = teamsById[resource.TeamId].Slug;
+            if (!levelByTeamSlug.TryGetValue(slug, out var existing) || resource.DrivePermissionLevel > existing)
+                levelByTeamSlug[slug] = resource.DrivePermissionLevel;
+        }
+
+        return levelByTeamSlug;
+    }
+
+    private async Task<Dictionary<string, DriveExpectedMember>> BuildExpectedDriveMembersByEmailAsync(
+        IEnumerable<GoogleResource> resources,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        Dictionary<Guid, List<TeamActiveMemberSnapshot>> membersByTeam,
+        Dictionary<Guid, List<TeamActiveMemberSnapshot>> childMembersByTeam,
+        CancellationToken cancellationToken)
+    {
+        var allMemberUserIds = membersByTeam.Values.SelectMany(v => v.Select(m => m.UserId))
+            .Concat(childMembersByTeam.Values.SelectMany(v => v.Select(m => m.UserId)))
+            .Distinct()
+            .ToList();
+        var emailsByUserId = await userEmailService.GetEntitiesByUserIdsAsync(allMemberUserIds, cancellationToken);
+        var membersByEmail = new Dictionary<string, DriveExpectedMember>(NormalizingEmailComparer.Instance);
+
+        foreach (var resource in resources)
+        {
+            AddExpectedTeamMembers(resource, teamsById, membersByTeam, emailsByUserId, membersByEmail);
+            AddExpectedChildTeamMembers(resource, teamsById, childMembersByTeam, emailsByUserId, membersByEmail);
+        }
+
+        return membersByEmail;
+    }
+
+    private static void AddExpectedTeamMembers(
+        GoogleResource resource,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IReadOnlyDictionary<Guid, List<TeamActiveMemberSnapshot>> membersByTeam,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId,
+        Dictionary<string, DriveExpectedMember> membersByEmail)
+    {
+        var resourceTeam = teamsById[resource.TeamId];
+        var teamLink = BuildDriveTeamLink(resourceTeam, resource.DrivePermissionLevel);
+        foreach (var member in membersByTeam.GetValueOrDefault(resource.TeamId, []))
+        {
+            AddExpectedDriveMember(member, teamLink, emailsByUserId, membersByEmail);
+        }
+    }
+
+    private static void AddExpectedChildTeamMembers(
+        GoogleResource resource,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IReadOnlyDictionary<Guid, List<TeamActiveMemberSnapshot>> childMembersByTeam,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId,
+        Dictionary<string, DriveExpectedMember> membersByEmail)
+    {
+        var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
+            ? null
+            : resource.DrivePermissionLevel.ToString();
+        foreach (var member in childMembersByTeam.GetValueOrDefault(resource.TeamId, []))
+        {
+            var childTeam = teamsById[member.TeamId];
+            AddExpectedDriveMember(member, new TeamLink(childTeam.Name, childTeam.Slug, level), emailsByUserId, membersByEmail);
+        }
+    }
+
+    private static void AddExpectedDriveMember(
+        TeamActiveMemberSnapshot member,
+        TeamLink teamLink,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId,
+        Dictionary<string, DriveExpectedMember> membersByEmail)
+    {
+        var memberEmail = TryGetGoogleEmail(member.UserId, member.GoogleEmailStatus, emailsByUserId);
+        if (memberEmail is null)
+            return;
+
+        if (membersByEmail.TryGetValue(memberEmail, out var existing))
+        {
+            AddDriveTeamLink(existing.TeamLinks, teamLink);
+            return;
+        }
+
+        membersByEmail[memberEmail] = new DriveExpectedMember(
+            member.DisplayName,
+            member.UserId,
+            member.ProfilePictureUrl,
+            [teamLink]);
+    }
+
+    private static void AddDriveTeamLink(List<TeamLink> links, TeamLink teamLink)
+    {
+        if (!links.Any(link => string.Equals(link.Name, teamLink.Name, StringComparison.Ordinal)))
+            links.Add(teamLink);
+    }
+
+    private static List<TeamLink> BuildDriveLinkedTeams(
+        IEnumerable<GoogleResource> resources,
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById)
+        => resources
+            .Select(resource => BuildDriveTeamLink(teamsById[resource.TeamId], resource.DrivePermissionLevel))
+            .DistinctBy(teamLink => teamLink.Slug, StringComparer.Ordinal)
+            .ToList();
+
+    private static TeamLink BuildDriveTeamLink(TeamInfo team, DrivePermissionLevel level)
+        => new(team.Name, team.Slug, level is DrivePermissionLevel.None ? null : level.ToString());
+
+    private async Task<ResourceSyncDiff> BuildDrivePermissionListErrorDiffAsync(
+        GoogleResource primary,
+        IReadOnlyList<GoogleResource> resources,
+        IReadOnlyList<TeamLink> linkedTeams,
+        DrivePermissionListResult permsResult,
+        SyncAction action,
+        CancellationToken cancellationToken)
+    {
+        var code = permsResult.Error?.StatusCode ?? 0;
+        var message = $"Google API error: {code} - {permsResult.Error?.RawMessage}";
+        logger.LogWarning("Failed to list permissions for {GoogleId}: {Message}", primary.GoogleId, message);
+
+        if (action == SyncAction.Execute)
+        {
+            await resourceRepository.SetErrorMessageManyAsync(
+                resources.Select(r => r.Id).ToList(),
+                message,
+                cancellationToken);
+        }
+
+        return BuildDriveSyncDiff(primary, linkedTeams, members: [], errorMessage: message);
+    }
+
+    private static DrivePermissionSnapshot BuildDrivePermissionSnapshot(IEnumerable<DrivePermission> permissions)
+    {
+        var snapshot = new DrivePermissionSnapshot(
+            new HashSet<string>(NormalizingEmailComparer.Instance),
+            new HashSet<string>(NormalizingEmailComparer.Instance),
+            new Dictionary<string, string>(NormalizingEmailComparer.Instance));
+
+        foreach (var permission in permissions)
+        {
+            if (IsAnyUserPermission(permission))
+            {
+                snapshot.AllEmails.Add(permission.EmailAddress!);
+                if (!string.IsNullOrEmpty(permission.Role))
+                    snapshot.RoleByEmail[permission.EmailAddress!] = permission.Role;
+            }
+
+            if (IsDirectManagedPermission(permission))
+                snapshot.DirectEmails.Add(permission.EmailAddress!);
+        }
+
+        return snapshot;
+    }
+
+    private async Task<List<MemberSyncStatus>> BuildDriveMemberStatusesAsync(
+        IReadOnlyDictionary<string, DriveExpectedMember> membersByEmail,
+        IReadOnlyDictionary<string, DrivePermissionLevel> levelByTeamSlug,
+        DrivePermissionSnapshot permissionSnapshot,
+        CancellationToken cancellationToken)
+    {
+        var members = membersByEmail
+            .Select(entry => BuildExpectedDriveMemberStatus(
+                entry.Key,
+                entry.Value,
+                levelByTeamSlug,
+                permissionSnapshot))
+            .ToList();
+
+        await AddExtraDriveMemberStatusesAsync(members, membersByEmail, permissionSnapshot, cancellationToken);
+        return members;
+    }
+
+    private static MemberSyncStatus BuildExpectedDriveMemberStatus(
+        string email,
+        DriveExpectedMember expectedMember,
+        IReadOnlyDictionary<string, DrivePermissionLevel> levelByTeamSlug,
+        DrivePermissionSnapshot permissionSnapshot)
+    {
+        var memberMaxLevel = ResolveMemberMaxDriveLevel(expectedMember.TeamLinks, levelByTeamSlug);
+        var memberExpectedRole = memberMaxLevel > DrivePermissionLevel.None
+            ? memberMaxLevel.ToApiRole()
+            : null;
+        var state = ResolveExpectedDriveMemberState(email, memberMaxLevel, permissionSnapshot);
+        permissionSnapshot.RoleByEmail.TryGetValue(email, out var currentRole);
+
+        return new MemberSyncStatus(
+            email,
+            expectedMember.DisplayName,
+            state,
+            expectedMember.TeamLinks,
+            currentRole,
+            memberExpectedRole,
+            UserId: expectedMember.UserId,
+            ProfilePictureUrl: expectedMember.ProfilePictureUrl);
+    }
+
+    private static DrivePermissionLevel ResolveMemberMaxDriveLevel(
+        IEnumerable<TeamLink> teamLinks,
+        IReadOnlyDictionary<string, DrivePermissionLevel> levelByTeamSlug)
+    {
+        var memberMaxLevel = DrivePermissionLevel.None;
+        foreach (var teamLink in teamLinks)
+        {
+            if (levelByTeamSlug.TryGetValue(teamLink.Slug, out var teamLevel) && teamLevel > memberMaxLevel)
+                memberMaxLevel = teamLevel;
+        }
+
+        return memberMaxLevel;
+    }
+
+    private static MemberSyncState ResolveExpectedDriveMemberState(
+        string email,
+        DrivePermissionLevel memberMaxLevel,
+        DrivePermissionSnapshot permissionSnapshot)
+    {
+        if (!permissionSnapshot.AllEmails.Contains(email))
+            return MemberSyncState.Missing;
+
+        if (!permissionSnapshot.DirectEmails.Contains(email))
+            return MemberSyncState.Inherited;
+
+        permissionSnapshot.RoleByEmail.TryGetValue(email, out var currentRole);
+        var currentLevel = ParseApiRole(currentRole);
+        return currentLevel.HasValue && currentLevel.Value < memberMaxLevel
+            ? MemberSyncState.WrongRole
+            : MemberSyncState.Correct;
+    }
+
+    private async Task AddExtraDriveMemberStatusesAsync(
+        List<MemberSyncStatus> members,
+        IReadOnlyDictionary<string, DriveExpectedMember> membersByEmail,
+        DrivePermissionSnapshot permissionSnapshot,
+        CancellationToken cancellationToken)
+    {
+        var serviceAccountEmail = await teamResourceClient.GetServiceAccountEmailAsync(cancellationToken);
+        var nonMemberEmails = permissionSnapshot.AllEmails
+            .Where(email => !membersByEmail.ContainsKey(email) &&
+                !string.Equals(email, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var extraIdentities = await ResolveExtraEmailIdentitiesAsync(nonMemberEmails, cancellationToken);
+
+        foreach (var email in nonMemberEmails)
+        {
+            var state = permissionSnapshot.DirectEmails.Contains(email)
+                ? MemberSyncState.Extra
+                : MemberSyncState.Inherited;
+            permissionSnapshot.RoleByEmail.TryGetValue(email, out var extraRole);
+
+            members.Add(extraIdentities.TryGetValue(email, out var identity)
+                ? new MemberSyncStatus(email, identity.DisplayName, state, [], extraRole,
+                    UserId: identity.UserId, ProfilePictureUrl: identity.ProfilePictureUrl)
+                : new MemberSyncStatus(email, email, state, [], extraRole));
+        }
+    }
+
+    private async Task ApplyDriveResourceChangesAsync(
+        GoogleResource primary,
+        IReadOnlyList<GoogleResource> resources,
+        IReadOnlyList<DrivePermission> permissions,
+        IReadOnlyList<MemberSyncStatus> members,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        foreach (var member in members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
+        {
+            await GrantDriveAccessAsync(primary, member, cancellationToken);
+        }
+
+        foreach (var member in members.Where(m => m.State == MemberSyncState.Extra))
+        {
+            await RemoveExtraDriveAccessAsync(primary, permissions, member, cancellationToken);
+        }
+
+        await resourceRepository.MarkSyncedManyAsync(resources.Select(r => r.Id).ToList(), now, cancellationToken);
+    }
+
+    private async Task GrantDriveAccessAsync(
+        GoogleResource primary,
+        MemberSyncStatus member,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
+            await AddUserToDriveAsync(primary, member.Email, memberLevel, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to grant Drive access to {Email} on {GoogleId}",
+                member.Email, primary.GoogleId);
+        }
+    }
+
+    private async Task RemoveExtraDriveAccessAsync(
+        GoogleResource primary,
+        IEnumerable<DrivePermission> permissions,
+        MemberSyncStatus member,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var permissionToRemove = permissions.FirstOrDefault(permission =>
+                IsDirectManagedPermission(permission) &&
+                NormalizingEmailComparer.Instance.Equals(permission.EmailAddress, member.Email));
+
+            if (permissionToRemove?.Id is null)
+            {
+                logger.LogInformation(
+                    "Skipping removal of {Email} from {GoogleId} - permission is inherited, not direct",
+                    member.Email,
+                    primary.GoogleId);
+                return;
+            }
+
+            await RemoveUserFromDriveAsync(primary, permissionToRemove.Id, member.Email, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to remove Drive access for {Email} on {GoogleId}",
+                member.Email, primary.GoogleId);
+        }
+    }
+
+    private static ResourceSyncDiff BuildDriveSyncDiff(
+        GoogleResource primary,
+        IEnumerable<TeamLink> linkedTeams,
+        IEnumerable<MemberSyncStatus> members,
+        string? errorMessage = null)
+        => new()
+        {
+            ResourceId = primary.Id,
+            ResourceName = primary.Name,
+            ResourceType = primary.ResourceType.ToString(),
+            GoogleId = primary.GoogleId,
+            Url = primary.Url,
+            PermissionLevel = primary.DrivePermissionLevel.ToString(),
+            LinkedTeams = linkedTeams.ToList(),
+            Members = members.ToList(),
+            ErrorMessage = errorMessage
+        };
+
+    private sealed record DriveExpectedMember(
+        string DisplayName,
+        Guid UserId,
+        string? ProfilePictureUrl,
+        List<TeamLink> TeamLinks);
+
+    private sealed record DrivePermissionSnapshot(
+        HashSet<string> AllEmails,
+        HashSet<string> DirectEmails,
+        Dictionary<string, string> RoleByEmail);
 
     /// <inheritdoc />
     public async Task<GroupLinkResult> EnsureTeamGroupAsync(
@@ -1680,23 +1800,6 @@ public sealed class GoogleWorkspaceSyncService(
                 .FirstOrDefault();
     }
 
-    private static string? TryGetGoogleEmail(
-        TeamActiveMemberSnapshot tm,
-        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
-    {
-        if (tm.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-            return null;
-
-        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
-            ? list
-            : [];
-
-        return emails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault();
-    }
-
     private static bool IsAnyUserPermission(DrivePermission perm)
     {
         if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
@@ -1859,6 +1962,4 @@ public sealed class GoogleWorkspaceSyncService(
             drifts.Add(new GroupSettingDrift(settingName, expectedValue, actualValue));
         }
     }
-
-    private sealed record ExpectedMember(string Email, string DisplayName, Guid UserId, string? ProfilePictureUrl);
 }

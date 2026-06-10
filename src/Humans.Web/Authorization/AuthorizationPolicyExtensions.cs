@@ -87,6 +87,17 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.TicketAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.TicketAdmin, RoleNames.Admin));
 
+            // Ticket-admin roles OR the shared gate-terminal account (by well-known
+            // id — it holds no roles). The OR lives in one assertion so the policy
+            // stays a single requirement (policy requirements AND together).
+            options.AddPolicy(PolicyNames.ScannerAccess, policy =>
+                policy.RequireAssertion(ctx =>
+                    ctx.User.IsInRole(RoleNames.TicketAdmin)
+                    || ctx.User.IsInRole(RoleNames.Board)
+                    || ctx.User.IsInRole(RoleNames.Admin)
+                    || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier,
+                        SystemUserIds.GateTerminal.ToString())));
+
             options.AddPolicy(PolicyNames.FeedbackAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FeedbackAdmin, RoleNames.Admin));
 

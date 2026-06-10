@@ -26,7 +26,7 @@ public class CampPolygonConfiguration : IEntityTypeConfiguration<CampPolygon>
             .HasForeignKey(p => p.CampSeasonId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(p => p.LastModifiedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(p => p.LastModifiedByUserId)
             .OnDelete(DeleteBehavior.Restrict);

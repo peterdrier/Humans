@@ -22,7 +22,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         // this Application-owned options type. Same appsettings section as
         // GoogleWorkspaceSettings so a single config surface drives both.
         services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
-        services.AddSingleton(sp =>
+        services.AddSingleton(_ =>
         {
             var opts = new TeamResourceManagementOptions();
             configuration.GetSection(TeamResourceManagementOptions.SectionName).Bind(opts);
@@ -62,6 +62,9 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddScoped<IGoogleGroupProvisioningClient, GoogleGroupProvisioningClient>();
             services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
             services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
+
+            // Cloud Translation (REST, same service account) — Survey's "pre-fill translations".
+            services.AddHttpClient<IGoogleTranslationClient, GoogleTranslationClient>();
         }
         else if (environment.IsProduction())
         {
@@ -88,10 +91,12 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
             services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
             services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
+            services.AddSingleton<IGoogleTranslationClient, StubGoogleTranslationClient>();
         }
 
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
+        services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
 
 
         services.AddScoped<GoogleResourceReconciliationJob>();

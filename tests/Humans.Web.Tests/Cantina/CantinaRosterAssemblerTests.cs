@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Services.Cantina.Dtos;
-using Humans.Testing;
 using Humans.Web.Cantina;
 using NodaTime;
 

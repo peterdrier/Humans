@@ -29,7 +29,7 @@ public class LanguageController(IUserService userService) : Controller
         }
 
         return Url.IsLocalUrl(returnUrl)
-            ? LocalRedirect(returnUrl!)
+            ? LocalRedirect(returnUrl)
             : Redirect(Url.Content("~/"));
     }
 }

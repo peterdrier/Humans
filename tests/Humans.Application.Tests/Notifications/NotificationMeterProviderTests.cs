@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
@@ -11,7 +10,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -189,7 +187,7 @@ public class NotificationMeterProviderTests : IDisposable
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2027], null));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([MakeCampInfoWithPendingRequest(Guid.NewGuid(), 2026)]);
+            .Returns([MakeCampInfoWithPendingRequest(Guid.NewGuid())]);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(leadUserId, 2027)]);
 

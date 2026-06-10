@@ -1,9 +1,7 @@
 @using Humans.Application.DTOs.Shifts.Workload
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model IReadOnlyList<WorkloadByPersonRow>
-
-@{
-    var inv = System.Globalization.CultureInfo.InvariantCulture;
-}
 
 @if (Model.Count == 0)
 {
@@ -11,34 +9,19 @@
     return;
 }
 
-<div class="table-responsive">
-    <table class="table table-sm table-striped table-hover workload-table" data-sortable-table>
-        <thead>
-            <tr>
-                <th data-sort>Human</th>
-                <th data-sort class="text-end">Confirmed signups</th>
-                <th data-sort class="text-end">Pending signups</th>
-                <th data-sort class="text-end" title="Estimated hours from year-round team roles">Year-round</th>
-                <th data-sort class="text-end">Build</th>
-                <th data-sort class="text-end">Event</th>
-                <th data-sort class="text-end">Strike</th>
-                <th data-sort class="text-end">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model)
-            {
-                <tr>
-                    <td data-value="@row.DisplayName"><vc:human user-id="@row.UserId" layout="Text" link="Admin" /></td>
-                    <td class="text-end" data-value="@row.ConfirmedSignupCount">@row.ConfirmedSignupCount</td>
-                    <td class="text-end" data-value="@row.PendingSignupCount">@row.PendingSignupCount</td>
-                    <td class="text-end" data-value="@row.YearRoundHours.ToString("0.##", inv)">@row.YearRoundHours.ToString("0.##")</td>
-                    <td class="text-end" data-value="@row.BuildHours.ToString("0.##", inv)">@row.BuildHours.ToString("0.##")</td>
-                    <td class="text-end" data-value="@row.EventHours.ToString("0.##", inv)">@row.EventHours.ToString("0.##")</td>
-                    <td class="text-end" data-value="@row.StrikeHours.ToString("0.##", inv)">@row.StrikeHours.ToString("0.##")</td>
-                    <td class="text-end fw-semibold" data-value="@row.TotalHours.ToString("0.##", inv)">@row.TotalHours.ToString("0.##")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@{
+    Func<WorkloadByPersonRow, IHtmlContent> humanCell =
+        @<text><vc:human user-id="@item.UserId" layout="Text" link="Admin" /></text>;
+    var table = TableModel.For(Model)
+        .Template("Human", humanCell)
+        .Column("Confirmed signups", r => r.ConfirmedSignupCount, c => c.Number().End())
+        .Column("Pending signups", r => r.PendingSignupCount, c => c.Number().End())
+        .Column("Year-round", r => r.YearRoundHours, c => c.Number().End())
+        .Column("Build", r => r.BuildHours, c => c.Number().End())
+        .Column("Event", r => r.EventHours, c => c.Number().End())
+        .Column("Strike", r => r.StrikeHours, c => c.Number().End())
+        .Column("Total", r => r.TotalHours, c => c.Number().End().Css("fw-semibold"))
+        .Css("table-striped workload-table")
+        .Build();
+}
+<partial name="_Table" model="table" />

@@ -1,0 +1,185 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.WebUtilities
+@model ITableModel
+@{
+    var cols = Model.Columns;
+    var clientSort = Model.Mode == TableMode.Client && cols.Any(c => c.ClientSortable);
+    var anyFilter = cols.Any(c => c.FilterKind != ColumnFilterKind.None);
+    var tableClass = string.IsNullOrEmpty(Model.ExtraCssClass)
+        ? "table table-sm table-hover mb-0"
+        : $"table table-sm table-hover mb-0 {Model.ExtraCssClass}";
+
+    // Server-mode sort link: preserve every current query param except page,
+    // toggle sortDesc when re-clicking the active column. Same technique as _Pager.cshtml.
+    // First click on an inactive column honors the column's SortDescFirst convention.
+    string SortHref(ITableColumn col)
+    {
+        var query = Context.Request.Query
+            .Where(p => !string.Equals(p.Key, "page", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(p => p.Key, p => p.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+        var isActive = string.Equals(Model.SortBy, col.SortKey, StringComparison.OrdinalIgnoreCase);
+        query["sortBy"] = col.SortKey!;
+        query["sortDesc"] = (isActive ? !Model.SortDesc : col.SortDescFirst).ToString();
+        return QueryHelpers.AddQueryString(Context.Request.Path, query!);
+    }
+
+    // Razor's null-attribute suppression skips data-* attributes, so a row without an
+    // href must branch around the attribute entirely — data-href="" would make site.js
+    // navigate to "" (page reload) on any row click.
+    void RenderCells(object row)
+    {
+        foreach (var col in cols)
+        {
+            <td class="@col.CellCssClass" data-sort-value="@col.SortValue(row)">@col.Cell(row)</td>
+        }
+    }
+}
+
+@if (Model.Mode == TableMode.Server && (Model.HasSearchBox || anyFilter || Model.ExtraFilterContent is not null))
+{
+    <form method="get" class="row g-2 mb-3">
+        @if (Model.HasSearchBox)
+        {
+            <div class="col-md-3">
+                <input type="text" name="@Model.SearchParamName" value="@Model.SearchValue"
+                       class="form-control" placeholder="@Model.SearchPlaceholder" />
+            </div>
+        }
+        @foreach (var col in cols.Where(c => c.FilterKind == ColumnFilterKind.Select))
+        {
+            <div class="col-md-2">
+                <select name="@col.FilterParamName" class="form-select js-auto-submit" aria-label="Filter by @col.Header">
+                    <option value="">All</option>
+                    @foreach (var opt in col.FilterOptions)
+                    {
+                        <option value="@opt" selected="@(col.FilterValue == opt ? "selected" : null)">@opt</option>
+                    }
+                </select>
+            </div>
+        }
+        @foreach (var col in cols.Where(c => c.FilterKind == ColumnFilterKind.Text))
+        {
+            <div class="col-md-2">
+                <input type="text" name="@col.FilterParamName" value="@col.FilterValue"
+                       class="form-control" placeholder="@col.Header" />
+            </div>
+        }
+        @if (Model.ExtraFilterContent is not null)
+        {
+            @Model.ExtraFilterContent(null)
+        }
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
+        </div>
+        @if (Model.SortBy is not null)
+        {
+            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+            <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
+        }
+        @foreach (var hidden in Model.HiddenFields)
+        {
+            <input type="hidden" name="@hidden.Key" value="@hidden.Value" />
+        }
+    </form>
+}
+
+<div class="table-component">
+    @if (Model.Mode == TableMode.Client && Model.HasSearchBox)
+    {
+        <input type="search" class="form-control form-control-sm mb-2" style="max-width: 20rem;"
+               placeholder="@Model.SearchPlaceholder" data-table-search />
+    }
+    <div class="table-responsive">
+        <table id="@Model.Id" class="@tableClass" data-sortable-table="@(clientSort ? "" : null)">
+            <thead>
+                <tr>
+                    @foreach (var col in cols)
+                    {
+                        if (Model.Mode == TableMode.Client && col.ClientSortable)
+                        {
+                            <th scope="col" class="@col.HeaderCssClass" data-sort data-sort-type="@col.SortType">
+                                @col.Header <span class="sort-indicator" aria-hidden="true"></span>
+                            </th>
+                        }
+                        else if (Model.Mode == TableMode.Server && col.SortKey is not null)
+                        {
+                            var isActive = string.Equals(Model.SortBy, col.SortKey, StringComparison.OrdinalIgnoreCase);
+                            <th scope="col" class="@col.HeaderCssClass"
+                                aria-sort="@(isActive ? (Model.SortDesc ? "descending" : "ascending") : null)">
+                                <a href="@SortHref(col)">@col.Header</a>@(isActive ? (Model.SortDesc ? " ▼" : " ▲") : null)
+                            </th>
+                        }
+                        else
+                        {
+                            <th scope="col" class="@col.HeaderCssClass">@col.Header</th>
+                        }
+                    }
+                </tr>
+                @if (Model.Mode == TableMode.Client && anyFilter)
+                {
+                    <tr data-table-filter-row>
+                        @for (var i = 0; i < cols.Count; i++)
+                        {
+                            <th class="@cols[i].HeaderCssClass">
+                                @if (cols[i].FilterKind == ColumnFilterKind.Text)
+                                {
+                                    <input type="search" class="form-control form-control-sm fw-normal"
+                                           data-filter-col="@i" placeholder="Filter..." aria-label="Filter @cols[i].Header" />
+                                }
+                                else if (cols[i].FilterKind == ColumnFilterKind.Select)
+                                {
+                                    <select class="form-select form-select-sm fw-normal" data-filter-col="@i"
+                                            aria-label="Filter @cols[i].Header">
+                                        <option value="">All</option>
+                                        @foreach (var opt in cols[i].FilterOptions)
+                                        {
+                                            <option value="@opt">@opt</option>
+                                        }
+                                    </select>
+                                }
+                            </th>
+                        }
+                    </tr>
+                }
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    var rowHref = Model.RowHref(row);
+                    if (!string.IsNullOrEmpty(rowHref))
+                    {
+                        <tr data-href="@rowHref" class="@Model.RowCss(row)">
+                            @{ RenderCells(row); }
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr class="@Model.RowCss(row)">
+                            @{ RenderCells(row); }
+                        </tr>
+                    }
+                }
+                @if (Model.RowCount == 0)
+                {
+                    <tr><td colspan="@cols.Count" class="text-muted text-center">@Model.EmptyMessage</td></tr>
+                }
+            </tbody>
+            @if (Model.FooterCells.Count > 0)
+            {
+                <tfoot class="table-group-divider">
+                    <tr class="fw-semibold">
+                        @foreach (var cell in Model.FooterCells)
+                        {
+                            <td class="@cell.CssClass">@cell.Text</td>
+                        }
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+</div>
+
+@if (Model.Pager is not null)
+{
+    <partial name="_Pager" model="Model.Pager" />
+}

@@ -4,14 +4,11 @@ using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -382,7 +379,7 @@ public class ProfileControllerEditTests
             Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
             Arg.Any<CancellationToken>());
         await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!, default);
+            .SaveDietaryMedicalAsync(default, default!);
     }
 
     [HumansFact]
@@ -401,7 +398,7 @@ public class ProfileControllerEditTests
         _controller.ModelState.IsValid.Should().BeFalse();
         _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
         await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(default, default!, default!, default);
+            .SaveProfileAsync(default, default!, default!);
     }
 
     [HumansFact]

@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Humans.Integration.Tests;
 

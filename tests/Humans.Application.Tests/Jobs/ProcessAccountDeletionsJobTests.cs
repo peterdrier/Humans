@@ -67,7 +67,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
             .AnonymizeExpiredAccountAsync(Guid.Empty, CancellationToken.None);
         _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
-            null!, null!, null);
+            null!, null!);
     }
 
     [HumansFact]
@@ -148,7 +148,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _job.ExecuteAsync();
 
         _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
-            null!, null!, null);
+            null!, null!);
 
         // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(

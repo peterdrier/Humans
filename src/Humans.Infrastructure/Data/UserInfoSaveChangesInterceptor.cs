@@ -74,36 +74,36 @@ public sealed class UserInfoSaveChangesInterceptor(
     {
         foreach (var userId in affected.DeletedUserIds)
         {
-            await RunAsync("Remove", userId, () => refresher.RemoveAsync(userId, ct), ct);
+            await RunAsync("Remove", userId, () => refresher.RemoveAsync(userId, ct));
         }
 
         foreach (var user in affected.Users.Values.Where(u => !affected.DeletedUserIds.Contains(u.Id)))
         {
-            await RunAsync("RefreshUserFields", user.Id, () => refresher.RefreshUserFieldsAsync(user, ct), ct);
+            await RunAsync("RefreshUserFields", user.Id, () => refresher.RefreshUserFieldsAsync(user, ct));
         }
 
         foreach (var userId in affected.UserEmailUserIds.Except(affected.DeletedUserIds))
         {
-            await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct), ct);
+            await RunAsync("RefreshUserEmails", userId, () => refresher.RefreshUserEmailsAsync(userId, ct));
         }
 
         foreach (var userId in affected.EventParticipationUserIds.Except(affected.DeletedUserIds))
         {
-            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct), ct);
+            await RunAsync("RefreshEventParticipations", userId, () => refresher.RefreshEventParticipationsAsync(userId, ct));
         }
 
         foreach (var userId in affected.ExternalLoginUserIds.Except(affected.DeletedUserIds))
         {
-            await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct), ct);
+            await RunAsync("RefreshExternalLogins", userId, () => refresher.RefreshExternalLoginsAsync(userId, ct));
         }
 
         foreach (var userId in affected.CommunicationPreferenceUserIds.Except(affected.DeletedUserIds))
         {
-            await RunAsync("RefreshCommunicationPreferences", userId, () => refresher.RefreshCommunicationPreferencesAsync(userId, ct), ct);
+            await RunAsync("RefreshCommunicationPreferences", userId, () => refresher.RefreshCommunicationPreferencesAsync(userId, ct));
         }
     }
 
-    private async Task RunAsync(string operation, Guid userId, Func<Task> work, CancellationToken ct)
+    private async Task RunAsync(string operation, Guid userId, Func<Task> work)
     {
         try
         {

@@ -67,8 +67,16 @@
           A new *Invalidator (no [Grandfathered]) fires Error. Exit condition:
           remove this entry once the last [Grandfathered("HUM0028", ...)] is
           gone (i.e., every cross-section invalidator has been absorbed).
+        - HUM0031: controller business-logic thresholds. Error by default;
+          the worst pre-existing offender methods carry
+          [Grandfathered("HUM0031", ...)] to downgrade to warning until they
+          are refactored into their section's application service. A new
+          breach (no [Grandfathered]) fires Error. The thresholds are
+          hardcoded in ControllerBusinessLogicAnalyzer and ratchet DOWN over
+          time. Exit condition: remove this entry once the last
+          [Grandfathered("HUM0031", ...)] is gone.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM0028;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0014;HUM0017;HUM0018;HUM0019;HUM0024;HUM0025;HUM0028;HUM0031;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

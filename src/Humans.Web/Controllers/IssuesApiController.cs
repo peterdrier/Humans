@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
@@ -97,12 +96,12 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         var thread = await issues.GetThreadAsync(id);
         var comments = thread.OfType<IssueCommentEvent>().Select(c => new
         {
-            CommentId = c.CommentId,
+            c.CommentId,
             At = c.At.ToDateTimeUtc(),
-            ActorUserId = c.ActorUserId,
+            c.ActorUserId,
             ActorName = c.ActorDisplayName,
-            ActorIsReporter = c.ActorIsReporter,
-            Content = c.Content
+            c.ActorIsReporter,
+            c.Content
         });
 
         return Ok(comments);
@@ -248,9 +247,9 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         ReporterName = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.BurnerName,
         // ReporterEmail from UserInfo (not User.Email) for shape parity with list endpoint.
         ReporterEmail = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.Email,
-        ReporterUserId = i.ReporterUserId,
+        i.ReporterUserId,
         ReporterLanguage = displayUsers?.GetValueOrDefault(i.ReporterUserId)?.PreferredLanguage,
-        AssigneeUserId = i.AssigneeUserId,
+        i.AssigneeUserId,
         AssigneeName = i.AssigneeUserId is { } assigneeId
             ? displayUsers?.GetValueOrDefault(assigneeId)?.BurnerName
             : null,
@@ -260,7 +259,7 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         CreatedAt = i.CreatedAt.ToDateTimeUtc(),
         UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
         ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-        CommentCount = i.CommentCount
+        i.CommentCount
     };
 
     private static object MapList(IssueListSnapshot i) => new
@@ -275,10 +274,10 @@ public class IssuesApiController(IIssuesService issues, IUserServiceRead users, 
         i.UserAgent,
         i.AdditionalContext,
         ReporterName = i.ReporterDisplayName,
-        ReporterEmail = i.ReporterEmail,
-        ReporterUserId = i.ReporterUserId,
+        i.ReporterEmail,
+        i.ReporterUserId,
         ReporterLanguage = i.ReporterPreferredLanguage,
-        AssigneeUserId = i.AssigneeUserId,
+        i.AssigneeUserId,
         AssigneeName = i.AssigneeDisplayName,
         i.GitHubIssueNumber,
         i.DueDate,

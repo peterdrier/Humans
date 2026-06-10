@@ -16,7 +16,8 @@ public static class AdminNavTree
             new("Tickets",            "Ticket",         "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin),
             new("Transfer requests",  "TicketTransferAdmin", "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin,
                  PillCount: PillCounts.TransferQueue),
-            new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.TicketAdminBoardOrAdmin)
+            new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.ScannerAccess),
+            new("Gate terminal",      "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",       PolicyNames.TicketAdminOrAdmin)
         ]),
         new("Members", [
             new("Humans", "UsersAdmin", "AdminList",    null, null, "fa-solid fa-users",            PolicyNames.HumanAdminBoardOrAdmin),
@@ -62,7 +63,8 @@ public static class AdminNavTree
         new("Governance", [
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
-            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin)
+            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
+            new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin)
         ]),
         new("Google", [
             new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),

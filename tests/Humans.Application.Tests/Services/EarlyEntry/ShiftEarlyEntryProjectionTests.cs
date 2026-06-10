@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Services.Shifts;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Application.Tests.Services.EarlyEntry;
 

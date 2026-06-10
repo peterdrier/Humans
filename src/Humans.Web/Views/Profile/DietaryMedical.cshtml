@@ -26,7 +26,7 @@
             <input type="hidden" asp-for="StartDayOffset" />
             <input type="hidden" asp-for="EndDayOffset" />
 
-            @if (ViewData.ModelState!.ErrorCount > 0)
+            @if (ViewData.ModelState.ErrorCount > 0)
             {
                 <div class="alert alert-danger mb-3" id="validationSummary">
                     <div asp-validation-summary="All"></div>

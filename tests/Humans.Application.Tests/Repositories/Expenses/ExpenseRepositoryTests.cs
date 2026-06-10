@@ -6,7 +6,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Expenses;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 
 namespace Humans.Application.Tests.Repositories.Expenses;
@@ -22,7 +21,7 @@ public class ExpenseRepositoryTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _factory = new TestDbContextFactory(options);
-        _sut = new ExpenseRepository(_factory, NullLogger<ExpenseRepository>.Instance);
+        _sut = new ExpenseRepository(_factory);
     }
 
     [HumansFact]

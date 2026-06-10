@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
@@ -15,23 +14,20 @@ namespace Humans.Application.Services.Tickets;
 /// governance-role names and applies filters. Pure orchestration over existing
 /// section services — no DB access.
 /// </summary>
-public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationService
+public sealed class OnsiteRosterService : IOnsiteRosterService
 {
     private readonly IUserServiceRead _users;
-    private readonly IShiftManagementService _shifts;
     private readonly ICampServiceRead _camps;
     private readonly ITeamServiceRead _teams;
     private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
         IUserServiceRead users,
-        IShiftManagementService shifts,
         ICampServiceRead camps,
         ITeamServiceRead teams,
         IRoleAssignmentService roles)
     {
         _users = users;
-        _shifts = shifts;
         _camps = camps;
         _teams = teams;
         _roles = roles;
@@ -67,11 +63,11 @@ public sealed class OnsiteRosterService : IOnsiteRosterService, IApplicationServ
                 Roles: NamesFor(roleNamesByUserId, o.UserId)));
 
         if (!string.IsNullOrWhiteSpace(campFilter))
-            joined = joined.Where(x => x.Camps.Contains(campFilter!, StringComparer.OrdinalIgnoreCase));
+            joined = joined.Where(x => x.Camps.Contains(campFilter, StringComparer.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(teamFilter))
-            joined = joined.Where(x => x.Teams.Contains(teamFilter!, StringComparer.OrdinalIgnoreCase));
+            joined = joined.Where(x => x.Teams.Contains(teamFilter, StringComparer.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(roleFilter))
-            joined = joined.Where(x => x.Roles.Contains(roleFilter!, StringComparer.OrdinalIgnoreCase));
+            joined = joined.Where(x => x.Roles.Contains(roleFilter, StringComparer.OrdinalIgnoreCase));
 
         var rows = joined
             .Select(x => new OnsiteRosterRow(

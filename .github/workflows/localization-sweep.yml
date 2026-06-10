@@ -1,0 +1,95 @@
+name: Localization coverage sweep
+
+# Renders the app through the pseudo-localizer and reports hard-coded strings on
+# public pages + localized strings on admin pages. Report-only — a maintenance
+# signal, never a gate. The sweep itself is gated out of normal CI (the build
+# job excludes ~Integration and this test SkipUnless RUN_LOCALIZATION_SWEEP=1),
+# so it only runs here, on this schedule or on demand.
+#
+# Runs on GitHub-hosted ubuntu-latest: Docker is present there, so Testcontainers
+# (the seeded Postgres the integration host spins up) works without the
+# container-in-container networking the self-hosted devbox runners need.
+#
+# NOTE: scheduled triggers only fire once this file is on the default branch
+# (main). Until then, run it from the Actions tab via "Run workflow".
+
+on:
+  schedule:
+    # cron has no true "every two weeks"; 1st & 15th at 06:00 UTC is the standard
+    # twice-monthly approximation.
+    - cron: '0 6 1,15 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run localization sweep
+        env:
+          RUN_LOCALIZATION_SWEEP: '1'
+        run: |
+          dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
+            --configuration Release \
+            --filter "FullyQualifiedName~LocalizationCoverageSweep" \
+            --logger "console;verbosity=minimal"
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          if [ -f localization-sweep-report.md ]; then
+            cat localization-sweep-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No report produced — the sweep did not complete (see the test step)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: localization-sweep-report
+          path: localization-sweep-report.md
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Update tracking issue
+        if: always() && hashFiles('localization-sweep-report.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          {
+            sed -n '/^## Summary/,/^## Public pages/p' localization-sweep-report.md | sed '$d'
+            echo ""
+            echo "_Updated $(date -u +'%Y-%m-%d %H:%M UTC') by the scheduled sweep ([run]($RUN_URL))._"
+            echo ""
+            echo "Full report: the **localization-sweep-report** artifact on that run, and the run's job summary."
+            echo ""
+            echo "Report-only — a maintenance signal, not a gate."
+          } > issue-body.md
+
+          NUM="$(gh issue list --repo "$REPO" --state open --search 'Localization coverage sweep in:title' \
+            --json number,title --jq 'first(.[] | select(.title | startswith("Localization coverage sweep")) | .number) // empty')"
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --repo "$REPO" --body-file issue-body.md
+          else
+            gh issue create --repo "$REPO" \
+              --title "Localization coverage sweep — latest report" \
+              --body-file issue-body.md
+          fi

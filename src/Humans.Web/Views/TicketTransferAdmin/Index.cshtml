@@ -1,3 +1,6 @@
+@using Humans.Application.DTOs
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TicketTransferIndexViewModel
 @{
     ViewData["Title"] = "Ticket transfer requests";
@@ -51,38 +54,27 @@
 }
 else
 {
-    <table class="table align-middle">
-        <thead>
-            <tr>
-                <th>Requested</th>
-                <th>Requester</th>
-                <th>Ticket</th>
-                <th>Recipient</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var r in Model.Rows)
-            {
-                <tr>
-                    <td>@r.RequestedAt.ToDateTime()</td>
-                    <td><vc:human user-id="@r.SenderUserId" layout="AvatarName" link="Admin" /></td>
-                    <td>
-                        @r.OriginalAttendeeName
-                        <br/><small class="text-muted">@r.TicketTypeName</small>
-                    </td>
-                    <td><vc:human user-id="@r.ReceiverUserId" layout="AvatarName" link="Admin" /></td>
-                    <td>@r.SenderReason</td>
-                    <td>
-                        <span class="badge bg-secondary">@r.Status</span>
-                    </td>
-                    <td>
-                        <a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@r.Id">Review</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<TicketTransferRowDto, IHtmlContent> requesterCell =
+        @<text><vc:human user-id="@item.SenderUserId" layout="AvatarName" link="Admin" /></text>;
+    Func<TicketTransferRowDto, IHtmlContent> ticketCell = @<text>
+        @item.OriginalAttendeeName
+        <br /><small class="text-muted">@item.TicketTypeName</small>
+    </text>;
+    Func<TicketTransferRowDto, IHtmlContent> recipientCell =
+        @<text><vc:human user-id="@item.ReceiverUserId" layout="AvatarName" link="Admin" /></text>;
+    Func<TicketTransferRowDto, IHtmlContent> statusCell =
+        @<text><span class="badge bg-secondary">@item.Status</span></text>;
+    Func<TicketTransferRowDto, IHtmlContent> reviewCell =
+        @<text><a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@item.Id">Review</a></text>;
+    var table = TableModel.For(Model.Rows.ToList())
+        .Column("Requested", r => r.RequestedAt, c => c.DateTime())
+        .Template("Requester", requesterCell)
+        .Template("Ticket", ticketCell)
+        .Template("Recipient", recipientCell)
+        .Column("Reason", r => r.SenderReason)
+        .Template("Status", statusCell)
+        .Template("", reviewCell, c => c.NoSort())
+        .Css("align-middle")
+        .Build();
+    <partial name="_Table" model="table" />
 }

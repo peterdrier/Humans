@@ -1,11 +1,7 @@
 @model Humans.Web.Models.VolunteerTrackingPageViewModel
-@using Humans.Web.Authorization
-@using Microsoft.AspNetCore.Authorization
-@inject IAuthorizationService AuthService
 
 @{
     ViewData["Title"] = Localizer["VolTrack_Title"].Value;
-    var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
 
     var mainTotal = Model.MainCohort.Count;
     var mainWithGaps = Model.MainCohort.Count(r => r.GapCount > 0);

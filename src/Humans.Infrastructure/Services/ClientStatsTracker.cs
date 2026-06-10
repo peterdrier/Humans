@@ -6,11 +6,13 @@ namespace Humans.Infrastructure.Services;
 /// <inheritdoc cref="IClientStatsTracker"/>
 public sealed class ClientStatsTracker : IClientStatsTracker
 {
-    // OS / browser / device labels come from UserAgentClassifier's bounded
-    // vocabulary, so these dictionaries cannot grow without limit.
+    // OS / browser / device / bot labels come from UserAgentClassifier's bounded
+    // vocabulary, so these dictionaries cannot grow without limit. _bots breaks the
+    // collapsed "Bot" bucket down by the specific crawler name.
     private readonly ConcurrentDictionary<string, long> _operatingSystems = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, long> _browsers = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, long> _deviceTypes = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, long> _bots = new(StringComparer.Ordinal);
 
     // Resolution is fed by an anonymous beacon, so distinct buckets are soft-capped
     // to bound memory; once the cap is reached new keys fold into an "Other" bucket.
@@ -27,6 +29,8 @@ public sealed class ClientStatsTracker : IClientStatsTracker
         Bump(_operatingSystems, c.Os);
         Bump(_browsers, c.Browser);
         Bump(_deviceTypes, c.Device);
+        if (c.BotName is { } bot)
+            Bump(_bots, bot);
     }
 
     public void RecordResolution(int screenWidth, int screenHeight)
@@ -54,6 +58,7 @@ public sealed class ClientStatsTracker : IClientStatsTracker
         OperatingSystems: Rank(_operatingSystems),
         Browsers: Rank(_browsers),
         DeviceTypes: Rank(_deviceTypes),
+        Bots: Rank(_bots),
         TotalResolutionSamples: Interlocked.Read(ref _totalResolutionSamples),
         Resolutions: Rank(_resolutions));
 

@@ -185,4 +185,11 @@ public enum AuditAction
     EarlyEntryUpdated,
     EarlyEntryRevoked,
     StorePaymentsReconciled,
+    GateTerminalPasswordSet,
+    SurveyCreated,
+    SurveyUpdated,
+    SurveyOpened,
+    SurveyClosed,
+    SurveyInvitesSent,
+    SurveyReminderSent,
 }

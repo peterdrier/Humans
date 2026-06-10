@@ -1,6 +1,7 @@
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Html
+@using Humans.Web.Models.Tables
 @{
     ViewData["Title"] = "Widget Gallery";
     Layout = "_Layout";
@@ -233,6 +234,7 @@
                 <a href="#layout">Layout Bits</a>
                 <a href="#skipped">Skipped (with reason)</a>
                 <a href="#choosing">Choosing between them</a>
+                <a href="#wg-tables">Tables</a>
             </nav>
         </div>
 
@@ -449,7 +451,7 @@
                         @if (Model.SampleVolunteerProfile is not null)
                         {
                             @await Html.PartialAsync("_VolunteerProfileBadges",
-                                new Humans.Web.Models.VolunteerBadgesViewModel(
+                                new VolunteerBadgesViewModel(
                                     Model.SampleVolunteerProfile.Skills,
                                     Model.SampleVolunteerProfile.Quirks,
                                     Model.SampleVolunteerProfile.Languages,
@@ -482,9 +484,9 @@
                         ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketServiceRead</code>")
                     )
                     <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null, null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
                     </div>
                 </div>
 
@@ -565,6 +567,23 @@
                         <vc:shift-signups user-id="@Model.CurrentUserId"
                                           view-mode="@ShiftSignupsViewMode.Self"
                                           display-name="@Model.CurrentUserDisplayName" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-calendar user-id="@Model.CurrentUserId" />
                     </div>
                 </div>
 
@@ -1199,9 +1218,9 @@
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                     <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>: accepts a <code>HeatmapPartialModel</code>; can render in isolation via <code>&lt;vc:volunteer-build-strip&gt;</code> on the profile page (single-user mode, <code>ShowAvailabilityControls=true</code>). <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.</li>
                     <li><strong>Container card fragments</strong> — <code>_ContainerCardRow</code>, <code>_ContainerCardModals</code>, <code>_ContainerFormFields</code>: context-bound — render only as part of a populated <code>ContainerCardModel</code> on the container list/admin pages, with route values, placement state, and the parent modal-target form action. See <a href="/CityPlanning/BarrioMap/Admin/Containers/2026">/CityPlanning/BarrioMap/Admin/Containers/{year}</a>.</li>
-                    <li><strong>My ticket stubs</strong> — <code>MyTicketStubsViewComponent</code> (<code>&lt;vc:my-ticket-stubs&gt;</code>): can't render standalone — fetches the viewer's live visible attendees (<code>GetMyAttendeesAsync</code>) plus their cross-source Early Entry date, and renders nothing without them. The stub it draws is the <code>vc:ticket-stub</code> card above. See the homepage <a href="/">dashboard</a>.</li>
+                    <li><strong>My ticket stubs</strong> — <code>MyTicketStubsViewComponent</code> (<code>&lt;vc:my-ticket-stubs&gt;</code>): can't render standalone — fetches the viewer's owned-ticket holdings (<code>GetUserTicketHoldingsAsync</code>) plus their cross-source Early Entry date, and renders nothing without them. The stub it draws is the <code>vc:ticket-stub</code> card above. See the homepage <a href="/">dashboard</a>.</li>
                     <li><strong>Public coordinator popover</strong> — <code>_HumanPopoverPublic.cshtml</code>: context-bound — takes a <code>PublicPopoverViewModel</code> built by <code>ProfileController.PublicPopover</code> after gating that the target user is an active coordinator on a team where <code>IsPublicPage &amp;&amp; ShowCoordinatorsOnPublicPage</code>. The reduced popover (avatar + BurnerName + role labels) is served only via <code>[AllowAnonymous] /Profile/{id}/PublicPopover</code> on the public team page. See <code>_HumanPopover.cshtml</code> above for the authenticated equivalent.</li>
-                    <li><strong>Camp events card</strong> — <code>CampEventsViewComponent</code> (<code>&lt;vc:camp-events&gt;</code>): can't render standalone — needs a live camp id whose approved events exist in the current edition, self-gates to authenticated viewers, and hides entirely when the <code>Features:Events</code> flag is off. Renders nothing without all three. See a barrio detail page under <a href="/Barrios">/Barrios</a>.</li>
+                    <li><strong>Events card</strong> — <code>EventsCardViewComponent</code> (<code>&lt;vc:events-card&gt;</code>): can't render standalone — needs a live camp id (or user id) whose approved events exist in the current edition, self-gates to authenticated viewers, and hides entirely when the <code>Features:Events</code> flag is off. Renders nothing without all three. See a barrio detail page under <a href="/Barrios">/Barrios</a> or a <a href="/Profile/Me">profile</a>.</li>
                 </ul>
             </section>
 
@@ -1309,6 +1328,43 @@
                     <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> is the canonical floating-widget example.</li>
                     <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
+            </section>
+
+
+            @* ============== TABLES ============== *@
+            <section class="wg-section" id="wg-tables">
+                <h2>Tables</h2>
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_Table.cshtml (TableModel)</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_Table.cshtml · src/Humans.Web/Models/Tables/</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Column-model table component — the single authority for list tables. Sorting, filtering,
+                        and formatting are per-column config. Client mode shown here (sort: click headers;
+                        filter row + search box). Server mode (query-param sort links, GET filter form, _Pager)
+                        is live on /Ticket/Attendees. Spec: docs/superpowers/specs/2026-06-10-table-component-design.md
+                    </div>
+                    <div class="wg-card-example">
+                        @{
+                            var demoTable = TableModel.For(Model.SampleTableRows)
+                                .Column("Name", r => r.Name, c => c.TextFilter())
+                                .Column("Joined", r => r.JoinedAt, c => c.Date())
+                                .Column("Amount", r => r.Amount, c => c.Currency().End())
+                                .Column("Status", r => r.Status, c => c.EnumBadge().SelectFilter())
+                                .Column("VIP", r => r.IsVip, c => c.BoolIcon())
+                                .SearchBox(placeholder: "Search demo rows...")
+                                .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
+                                        new TableFooterCell(Model.SampleTableRows.Sum(r => r.Amount).ToString("N2", System.Globalization.CultureInfo.CurrentCulture), "text-end"),
+                                        new TableFooterCell(""), new TableFooterCell(""))
+                                .Build();
+                        }
+                        <partial name="_Table" model="demoTable" />
+                    </div>
+                </div>
             </section>
 
         </div>

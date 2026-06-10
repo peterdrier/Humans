@@ -128,6 +128,19 @@ public class EmailRenderer(
             Lf("Email_TermRenewalReminder_Subject", tierName),
             Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
+    public EmailContent RenderSurveyInvitation(string userName, string surveyTitle, string answerToken, string? culture = null)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_SurveyInvitation_Subject", surveyTitle),
+            Lf("Email_SurveyInvitation_Body", HtmlEncode(userName), HtmlEncode(surveyTitle), BuildSurveyAnswerUrl(answerToken))));
+
+    public EmailContent RenderSurveyReminder(string userName, string surveyTitle, string answerToken, string? culture = null)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_SurveyReminder_Subject", surveyTitle),
+            Lf("Email_SurveyReminder_Body", HtmlEncode(userName), HtmlEncode(surveyTitle), BuildSurveyAnswerUrl(answerToken))));
+
+    private string BuildSurveyAnswerUrl(string token)
+        => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
+
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
         => RenderLocalized(culture, () =>
         {

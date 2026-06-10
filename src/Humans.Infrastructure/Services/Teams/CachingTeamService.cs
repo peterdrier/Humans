@@ -205,7 +205,7 @@ public sealed class CachingTeamService(
 
         var currentUserId = userId.Value;
         var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
-        var isCurrentUserCoordinator = IsUserCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
+        var isCurrentUserCoordinator = TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
@@ -420,7 +420,7 @@ public sealed class CachingTeamService(
             // team (matches CanUserApproveRequestsForTeamAsync's recursive
             // parent walk via IsUserCoordinatorOfActiveTeam).
             var canManage =
-                (isBoardMember || IsUserCoordinatorOfActiveTeam(teamsById, team.Id, userId))
+                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;
 
             var pendingCount = 0;
@@ -590,7 +590,7 @@ public sealed class CachingTeamService(
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return IsUserCoordinatorOfActiveTeam(teamsById, teamId, userId);
+        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(
@@ -1018,106 +1018,6 @@ public sealed class CachingTeamService(
             }
         }
     }
-
-    private bool IsUserCoordinatorOfActiveTeam(
-        IReadOnlyDictionary<Guid, TeamInfo> teams,
-        Guid teamId,
-        Guid userId)
-    {
-        if (!teams.TryGetValue(teamId, out var team) || !team.IsActive)
-        {
-            logger.LogDebug("Coordinator check: team {TeamId} not found in team cache for user {UserId}", teamId, userId);
-            return false;
-        }
-
-        if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
-            return true;
-
-        // Mirror GetUserCoordinatorTeamIdsAsync: the "by management role assignment"
-        // path was filtered to non-system teams.
-        if (!team.IsSystemTeam && team.ManagementRoleHolderUserIds?.Contains(userId) == true)
-            return true;
-
-        return team.ParentTeamId.HasValue
-            && IsUserCoordinatorOfActiveTeam(teams, team.ParentTeamId.Value, userId);
-    }
-
-    private static TeamInfo BuildTeamInfo(
-        Team team,
-        IReadOnlyDictionary<Guid, Application.UserInfo> users,
-        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
-        IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
-        IReadOnlyDictionary<Guid, int> pendingCounts) => new(
-        Id: team.Id,
-        Name: team.Name,
-        Description: team.Description,
-        Slug: team.Slug,
-        IsActive: team.IsActive,
-        IsSystemTeam: team.IsSystemTeam,
-        SystemTeamType: team.SystemTeamType,
-        RequiresApproval: team.RequiresApproval,
-        IsPublicPage: team.IsPublicPage,
-        IsHidden: team.IsHidden,
-        IsPromotedToDirectory: team.IsPromotedToDirectory,
-        CreatedAt: team.CreatedAt,
-        Members: team.Members
-            .Where(m => m.LeftAt is null)
-            .Select(m =>
-            {
-                users.TryGetValue(m.UserId, out var u);
-                return new TeamMemberInfo(
-                    TeamMemberId: m.Id,
-                    UserId: m.UserId,
-                    DisplayName: u?.BurnerName ?? string.Empty,
-                    Email: u?.Email,
-                    ProfilePictureUrl: u?.ProfilePictureUrl,
-                    Role: m.Role,
-                    JoinedAt: m.JoinedAt,
-                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
-            })
-            .ToList(),
-        ParentTeamId: team.ParentTeamId,
-        GoogleGroupPrefix: team.GoogleGroupPrefix,
-        HasBudget: team.HasBudget,
-        IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt,
-        CustomSlug: team.CustomSlug,
-        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
-        RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
-            ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
-            : null,
-        ChildTeamIds: childIdsByParent.TryGetValue(team.Id, out var childIds) ? childIds : null,
-        ShowCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
-        PageContent: team.PageContent,
-        CallsToAction: team.CallsToAction,
-        PageContentUpdatedAt: team.PageContentUpdatedAt,
-        PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
-        EarlyEntryEnabled: team.EarlyEntryEnabled);
-
-    private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
-        new(
-            d.Id,
-            d.TeamId,
-            team.Name,
-            team.Slug,
-            d.Name,
-            d.Description,
-            d.SlotCount,
-            d.EstimatedHours,
-            d.Priorities,
-            d.SortOrder,
-            d.IsManagement,
-            d.Period,
-            d.IsPublic,
-            d.Assignments
-                .Select(a => new TeamRoleAssignmentSnapshot(
-                    a.Id,
-                    a.TeamMemberId,
-                    a.SlotIndex,
-                    a.TeamMember?.UserId))
-                .ToList());
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {

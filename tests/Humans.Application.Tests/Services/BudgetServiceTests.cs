@@ -78,7 +78,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         var persisted = await _service.GetLineItemByIdAsync(created.Id);
         persisted.Should().NotBeNull();
-        persisted!.Description.Should().Be("Test line item");
+        persisted.Description.Should().Be("Test line item");
         persisted.Amount.Should().Be(100m);
     }
 
@@ -149,7 +149,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         var persisted = await _service.GetLineItemByIdAsync(lineItem.Id);
         persisted.Should().NotBeNull();
-        persisted!.Description.Should().Be("Updated");
+        persisted.Description.Should().Be("Updated");
         persisted.Amount.Should().Be(150m);
     }
 
@@ -535,7 +535,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SyncTicketingActualsAsync_upserts_weekly_actuals_and_updates_projection_params()
     {
-        var (groupId, projectionId, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var (_, projectionId, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
 
         var actuals = new List<DTOs.TicketingWeeklyActuals>
         {
@@ -593,7 +593,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
     {
-        var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
             startDate: new LocalDate(2026, 3, 15),
             eventDate: new LocalDate(2026, 4, 15),

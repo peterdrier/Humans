@@ -26,7 +26,7 @@ public sealed class MetersService(ILogger<MetersService> logger) : IMeters, IDis
 
         var registration = _registrations.GetOrAdd(name, n =>
         {
-            var reg = new Registration(n, metadata);
+            var reg = new Registration(metadata);
 
             _otelMeter.CreateObservableGauge(
                 n,
@@ -60,11 +60,10 @@ public sealed class MetersService(ILogger<MetersService> logger) : IMeters, IDis
         _otelMeter.Dispose();
     }
 
-    private sealed class Registration(string name, MeterMetadata metadata) : IMeter
+    private sealed class Registration(MeterMetadata metadata) : IMeter
     {
         private int _current;
 
-        public string Name { get; } = name;
         public MeterMetadata Metadata { get; } = metadata;
         public int Current => Volatile.Read(ref _current);
 

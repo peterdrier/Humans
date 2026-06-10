@@ -23,9 +23,6 @@ public class TicketOrder
     /// <summary>Auto-matched user by email. Null if no match found.</summary>
     public Guid? MatchedUserId { get; set; }
 
-    /// <summary>Navigation to matched user.</summary>
-    public User? MatchedUser { get; set; }
-
     /// <summary>Order total amount.</summary>
     public decimal TotalAmount { get; set; }
 

@@ -13,8 +13,6 @@ namespace Humans.Infrastructure.Services.Mailer;
 /// </summary>
 public sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSubscriber>
 {
-    private static readonly MailerLiteDateConverter DateConverter = new();
-
     public override MailerLiteSubscriber Read(
         ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

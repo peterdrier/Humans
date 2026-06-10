@@ -13,9 +13,11 @@ namespace Humans.Application.Tests.Authorization;
 
 public sealed class TeamAuthorizationHandlerTests
 {
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly TeamAuthorizationHandler _handler;
 
+    private static readonly Guid ParentTeamId = Guid.NewGuid();
+    private static readonly Guid ChildTeamId = Guid.NewGuid();
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
     private static readonly Guid OtherTeamId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
@@ -23,8 +25,7 @@ public sealed class TeamAuthorizationHandlerTests
     public TeamAuthorizationHandlerTests()
     {
         _handler = new TeamAuthorizationHandler(_teamService);
-        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, UserId).Returns(true);
-        _teamService.IsUserCoordinatorOfTeamAsync(OtherTeamId, UserId).Returns(false);
+        _teamService.GetTeamsAsync().Returns(CreateTeamMap());
     }
 
     public static TheoryData<string, string, bool> TeamAuthorizationCases => new()
@@ -47,8 +48,6 @@ public sealed class TeamAuthorizationHandlerTests
         bool expected)
     {
         var regularUserId = Guid.NewGuid();
-        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, regularUserId).Returns(false);
-
         var user = CreateUser(userKind, regularUserId);
         var team = CreateTeam(teamKind);
 
@@ -81,6 +80,17 @@ public sealed class TeamAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
+    [HumansFact]
+    public async Task Parent_coordinator_can_manage_child_team()
+    {
+        var user = CreateUserWithId(UserId);
+        var team = CreateTeam("child");
+
+        var result = await EvaluateAsync(user, team, TeamOperationRequirement.ManageCoordinators);
+
+        result.Should().BeTrue();
+    }
+
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, TeamInfo resource, TeamOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, resource);
@@ -93,6 +103,8 @@ public sealed class TeamAuthorizationHandlerTests
         new(
             Id: kind switch
             {
+                "parent" => ParentTeamId,
+                "child" => ChildTeamId,
                 "coordinator" => CoordinatorTeamId,
                 "other" => OtherTeamId,
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
@@ -108,7 +120,17 @@ public sealed class TeamAuthorizationHandlerTests
             IsHidden: false,
             IsPromotedToDirectory: false,
             CreatedAt: Instant.MinValue,
-            Members: []);
+            Members: string.Equals(kind, "coordinator", StringComparison.Ordinal)
+                || string.Equals(kind, "parent", StringComparison.Ordinal)
+                ? [new TeamMemberInfo(Guid.NewGuid(), UserId, "Coordinator", null, null, TeamMemberRole.Coordinator, Instant.MinValue)]
+                : [],
+            ParentTeamId: string.Equals(kind, "child", StringComparison.Ordinal) ? ParentTeamId : null);
+
+    private static IReadOnlyDictionary<Guid, TeamInfo> CreateTeamMap()
+    {
+        var teams = new[] { CreateTeam("parent"), CreateTeam("child"), CreateTeam("coordinator"), CreateTeam("other") };
+        return teams.ToDictionary(team => team.Id);
+    }
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
         kind switch

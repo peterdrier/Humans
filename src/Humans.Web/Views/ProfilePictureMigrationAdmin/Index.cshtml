@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model Humans.Web.Controllers.ProfilePictureMigrationViewModel
 @{
     ViewData["Title"] = "Profile Picture DB→FS Migration";
@@ -81,28 +82,17 @@
 {
     <div class="card mb-4">
         <div class="card-header">DB-only profile pictures</div>
-        <div class="table-responsive">
-            <table class="table table-striped mb-0">
-                <thead>
-                    <tr>
-                        <th>Profile id</th>
-                        <th>Owning user</th>
-                        <th>Content type</th>
-                        <th>Updated</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in snapshot.DbOnlyRows.OrderByDescending(r => r.UpdatedAt))
-                    {
-                        <tr>
-                            <td><code>@row.ProfileId</code></td>
-                            <td>@row.DisplayName</td>
-                            <td>@row.ContentType</td>
-                            <td>@row.UpdatedAt.ToDateTime()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            var dbOnlyRows = snapshot.DbOnlyRows.OrderByDescending(r => r.UpdatedAt).ToList();
+            Func<Humans.Application.DTOs.ProfilePictureMigrationRow, Microsoft.AspNetCore.Html.IHtmlContent> profileIdCell =
+                @<text><code>@item.ProfileId</code></text>;
+            var migrationTable = TableModel.For(dbOnlyRows)
+                .Template("Profile id", profileIdCell, c => c.NoSort())
+                .Column("Owning user", r => r.DisplayName)
+                .Column("Content type", r => r.ContentType)
+                .Column("Updated", r => r.UpdatedAt, c => c.DateTime())
+                .Build();
+        }
+        <partial name="_Table" model="migrationTable" />
     </div>
 }

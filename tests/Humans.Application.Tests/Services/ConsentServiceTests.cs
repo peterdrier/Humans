@@ -12,7 +12,6 @@ using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;

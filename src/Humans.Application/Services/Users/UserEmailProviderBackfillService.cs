@@ -58,7 +58,7 @@ public sealed class UserEmailProviderBackfillService(
             foreach (var login in logins)
             {
                 var matchSnapshot = ResolveProviderTargetRow(
-                    user, snapshots, login, legacyGoogleEmail);
+                    user, snapshots, legacyGoogleEmail);
                 if (matchSnapshot is null)
                     continue;
 
@@ -134,7 +134,6 @@ public sealed class UserEmailProviderBackfillService(
     private static UserEmailLegacyBackfillSnapshot? ResolveProviderTargetRow(
         User user,
         IReadOnlyList<UserEmailLegacyBackfillSnapshot> emails,
-        UserLoginInfo login,
         string? legacyGoogleEmail)
     {
         // 1. Legacy IsOAuth=true row whose Email matches the legacy GoogleEmail (most precise).

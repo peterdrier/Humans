@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TicketAttendeesViewModel
 @{
     ViewData["Title"] = "Ticket Attendees";
@@ -7,127 +9,81 @@
     <h1 class="mt-4">Ticket Attendees</h1>
     <partial name="_TicketNav" />
 
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-md-3">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name, email, or barcode..." />
-        </div>
-        <div class="col-md-2">
-            <select name="filterTicketType" class="form-select">
-                <option value="">All Types</option>
-                @foreach (var tt in Model.AvailableTicketTypes)
-                {
-                    <option value="@tt" selected="@(Model.FilterTicketType == tt ? "selected" : null)">@tt</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="filterStatus" class="form-select">
-                <option value="">All Statuses</option>
-                <option value="Valid" selected="@(Model.FilterStatus == "Valid" ? "selected" : null)">Valid</option>
-                <option value="Void" selected="@(Model.FilterStatus == "Void" ? "selected" : null)">Void</option>
-                <option value="CheckedIn" selected="@(Model.FilterStatus == "CheckedIn" ? "selected" : null)">Checked In</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="filterMatched" class="form-select">
-                <option value="">All</option>
-                <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
-                <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
-            </select>
-        </div>
-        <div class="col-md-auto">
-            <div class="form-check mt-2">
-                <input class="form-check-input" type="checkbox" name="filterMultipleTickets" value="true" id="filterMultipleTickets" checked="@(Model.FilterMultipleTickets ? "checked" : null)" />
-                <label class="form-check-label" for="filterMultipleTickets" title="Buyers (matched human or unmatched email) with more than one ticket">
-                    Buyers with &gt;1 ticket
-                </label>
+    @{
+        Func<TicketAttendeeRow, IHtmlContent> priceCell = @<text>
+            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+            @if (item.IsVip)
+            {
+                <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> vipSplitCell = @<text>
+            @if (item.IsVip)
+            {
+                <small>
+                    <span title="Taxable portion">@item.TaxableAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                    + <span class="text-muted" title="VIP donation (VAT-free)">@item.VipDonation.ToString("N2", System.Globalization.CultureInfo.CurrentCulture) donation</span>
+                </small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> matchedCell = @<text>
+            @if (item.MatchedUserId.HasValue)
+            {
+                <vc:human user-id="@item.MatchedUserId.Value" link="Admin" />
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> orderCell = @<text>
+            <small><a asp-action="Orders" asp-route-search="@item.VendorOrderId"><code>@item.VendorOrderId</code></a></small>
+        </text>;
+        Func<object?, IHtmlContent> extraFilters = @<text>
+            <div class="col-md-2">
+                <select name="filterMatched" class="form-select js-auto-submit" aria-label="Filter by matched">
+                    <option value="">All</option>
+                    <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                    <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
+                </select>
             </div>
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
-        </div>
-        <input type="hidden" name="sortBy" value="@Model.SortBy" />
-        <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
-        <input type="hidden" name="pageSize" value="@Model.PageSize" />
-        <input type="hidden" name="filterOrderId" value="@Model.FilterOrderId" />
-    </form>
+            <div class="col-md-auto">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="filterMultipleTickets" value="true"
+                           id="filterMultipleTickets" checked="@(Model.FilterMultipleTickets ? "checked" : null)" />
+                    <label class="form-check-label" for="filterMultipleTickets"
+                           title="Buyers (matched human or unmatched email) with more than one ticket">
+                        Buyers with &gt;1 ticket
+                    </label>
+                </div>
+            </div>
+        </text>;
+
+        var table = TableModel.For(Model.Attendees)
+            .Column("Name", a => a.AttendeeName, c => c.Sort("name"))
+            .Column("Email", a => a.AttendeeEmail, c => c.Sort("email").Css("small"))
+            .Column("Ticket Type", a => a.TicketTypeName,
+                c => c.Sort("type").SelectFilter(Model.AvailableTicketTypes, "filterTicketType", Model.FilterTicketType))
+            .Template("Price", priceCell, c => c.Sort("price", descendingFirst: true))
+            .Template("VIP Split", vipSplitCell)
+            .Column("Status", a => a.Status,
+                c => c.EnumBadge().Sort("status").SelectFilter(["Valid", "Void", "CheckedIn"], "filterStatus", Model.FilterStatus))
+            .Template("Matched Human", matchedCell)
+            .Template("Order", orderCell)
+            .SearchBox("search", Model.Search, "Search name, email, or barcode...")
+            .ServerMode(Model.SortBy, Model.SortDesc, new PagerViewModel(Model.TotalPages, Model.Page, "Attendees"))
+            .HiddenField("pageSize", Model.PageSize.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .HiddenField("filterOrderId", Model.FilterOrderId)
+            .ExtraFilters(extraFilters)
+            .Empty("No attendees found")
+            .Build();
+    }
 
     <p class="text-muted">@Model.TotalCount attendees found</p>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th><a asp-action="Attendees" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Name</a></th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="email" asp-route-sortDesc="@(string.Equals(Model.SortBy, "email", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Email</a></th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="type" asp-route-sortDesc="@(string.Equals(Model.SortBy, "type", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Ticket Type</a></th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="price" asp-route-sortDesc="@(string.Equals(Model.SortBy, "price", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Price</a></th>
-                    <th>VIP Split</th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="status" asp-route-sortDesc="@(string.Equals(Model.SortBy, "status", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Status</a></th>
-                    <th>Matched Human</th>
-                    <th>Order</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var a in Model.Attendees)
-                {
-                    <tr>
-                        <td>@a.AttendeeName</td>
-                        <td><small>@(a.AttendeeEmail ?? "\u2014")</small></td>
-                        <td>@a.TicketTypeName</td>
-                        <td>
-                            @a.Price.ToString("N2")
-                            @if (a.IsVip)
-                            {
-                                <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
-                            }
-                        </td>
-                        <td>
-                            @if (a.IsVip)
-                            {
-                                <small>
-                                    <span title="Taxable portion">@a.TaxableAmount.ToString("N2")</span>
-                                    + <span class="text-muted" title="VIP donation (VAT-free)">@a.VipDonation.ToString("N2") donation</span>
-                                </small>
-                            }
-                            else
-                            {
-                                <span class="text-muted">&mdash;</span>
-                            }
-                        </td>
-                        <td>
-                            @{
-                                var statusClass = a.Status switch
-                                {
-                                    TicketAttendeeStatus.Valid => "bg-success",
-                                    TicketAttendeeStatus.CheckedIn => "bg-info",
-                                    TicketAttendeeStatus.Void => "bg-danger",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @statusClass">@a.Status</span>
-                        </td>
-                        <td>
-                            @if (a.MatchedUserId.HasValue)
-                            {
-                                <vc:human user-id="@a.MatchedUserId.Value" link="Admin" />
-                            }
-                            else
-                            {
-                                <span class="text-muted">&mdash;</span>
-                            }
-                        </td>
-                        <td><small><a asp-action="Orders" asp-route-search="@a.VendorOrderId"><code>@a.VendorOrderId</code></a></small></td>
-                    </tr>
-                }
-                @if (Model.Attendees.Count == 0)
-                {
-                    <tr><td colspan="8" class="text-muted text-center">No attendees found</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Attendees"); }
-    <partial name="_Pager" model="pagerModel" />
+    <partial name="_Table" model="table" />
 </div>

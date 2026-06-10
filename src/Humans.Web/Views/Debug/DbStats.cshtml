@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model DbStatsViewModel
 @{
     ViewData["Title"] = "Database Query Statistics";
@@ -31,39 +32,22 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="dbStatsTable" data-sortable-table>
-            <thead>
-                <tr>
-                    <th data-sort-col="0" data-sort-type="text">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="1" data-sort-type="text">Table <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="2" data-sort-type="number" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="3" data-sort-type="number" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="4" data-sort-type="number" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th data-sort-col="5" data-sort-type="number" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var entry in Model.Entries)
-                {
-                    var opClass = entry.Operation switch
-                    {
-                        "SELECT" => "",
-                        "INSERT" => "table-success",
-                        "UPDATE" => "table-info",
-                        "DELETE" => "table-warning",
-                        _ => ""
-                    };
-                    <tr class="@opClass">
-                        <td>@entry.Operation</td>
-                        <td>@entry.Table</td>
-                        <td class="text-end">@entry.Count.ToString("N0")</td>
-                        <td class="text-end">@entry.AverageMs.ToString("F2")</td>
-                        <td class="text-end">@entry.MaxMs.ToString("F2")</td>
-                        <td class="text-end">@entry.TotalMs.ToString("F2")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    var dbTable = TableModel.For(Model.Entries)
+        .RowCss(r => r.Operation switch
+        {
+            var op when string.Equals(op, "SELECT", StringComparison.Ordinal) => null,
+            var op when string.Equals(op, "INSERT", StringComparison.Ordinal) => "table-success",
+            var op when string.Equals(op, "UPDATE", StringComparison.Ordinal) => "table-info",
+            var op when string.Equals(op, "DELETE", StringComparison.Ordinal) => "table-warning",
+            _ => null
+        })
+        .Column("Operation", r => r.Operation)
+        .Column("Table", r => r.Table)
+        .Column("Count", r => r.Count, c => c.Number().End())
+        .Column("Avg (ms)", r => r.AverageMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Max (ms)", r => r.MaxMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Total (ms)", r => r.TotalMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Id("dbStatsTable")
+        .Build();
+    <partial name="_Table" model="dbTable" />
 }

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 /// <summary>Scanner section — in-browser barcode/QR decoders; no server-side writes. See nobodies-collective/Humans#525.</summary>
-[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
+[Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Scanner")]
 public class ScannerController(ITicketServiceRead tickets) : Controller
 {

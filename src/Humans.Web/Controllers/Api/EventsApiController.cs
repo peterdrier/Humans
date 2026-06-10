@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Web.Filters;
 using Humans.Web.Helpers;
 using Humans.Web.Models.Events;

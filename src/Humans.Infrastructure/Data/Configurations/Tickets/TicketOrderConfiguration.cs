@@ -61,7 +61,7 @@ public class TicketOrderConfiguration : IEntityTypeConfiguration<TicketOrder>
         builder.Property(o => o.SyncedAt)
             .IsRequired();
 
-        builder.HasOne(o => o.MatchedUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(o => o.MatchedUserId)
             .OnDelete(DeleteBehavior.SetNull);

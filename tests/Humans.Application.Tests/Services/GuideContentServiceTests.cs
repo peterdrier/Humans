@@ -23,6 +23,9 @@ public class GuideContentServiceTests
             if (fail is not null) throw fail;
             return Task.FromResult(MarkdownFor(fileStem));
         }
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
+            GetMarkdownAsync(fileStem, cancellationToken);
     }
 
     private sealed class StubRenderer : IGuideRenderer
@@ -106,7 +109,7 @@ public class GuideContentServiceTests
     public async Task GetRenderedAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();
-        var service = CreateService(source, out var cache);
+        var service = CreateService(source, out _);
         await service.GetRenderedAsync("Profiles", CancellationToken.None);
 
         // Simulate TTL-expired warm cache by clearing only the sentinel, leaving stale entries.

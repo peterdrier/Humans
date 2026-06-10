@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.TicketOrdersViewModel
 @{
     ViewData["Title"] = "Ticket Orders";
@@ -7,148 +9,125 @@
     <h1 class="mt-4">Ticket Orders</h1>
     <partial name="_TicketNav" />
 
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-md-3">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name, email, or code..." />
-        </div>
-        <div class="col-md-2">
-            <select name="filterPaymentStatus" class="form-select">
-                <option value="">All Statuses</option>
-                <option value="Paid" selected="@(Model.FilterPaymentStatus == "Paid" ? "selected" : null)">Paid</option>
-                <option value="Pending" selected="@(Model.FilterPaymentStatus == "Pending" ? "selected" : null)">Pending</option>
-                <option value="Refunded" selected="@(Model.FilterPaymentStatus == "Refunded" ? "selected" : null)">Refunded</option>
-                <option value="Cancelled" selected="@(Model.FilterPaymentStatus == "Cancelled" ? "selected" : null)">Cancelled</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="filterMatched" class="form-select">
-                <option value="">All</option>
-                <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
-                <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <select name="pageSize" class="form-select">
-                <option value="25" selected="@(Model.PageSize == 25 ? "selected" : null)">25 per page</option>
-                <option value="50" selected="@(Model.PageSize == 50 ? "selected" : null)">50 per page</option>
-                <option value="100" selected="@(Model.PageSize == 100 ? "selected" : null)">100 per page</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
-        </div>
-        <input type="hidden" name="sortBy" value="@Model.SortBy" />
-        <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
-        <input type="hidden" name="filterTicketType" value="@Model.FilterTicketType" />
-    </form>
-
     <p class="text-muted">@Model.TotalCount orders found</p>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th><a asp-action="Orders" asp-route-sortBy="date" asp-route-sortDesc="@(string.Equals(Model.SortBy, "date", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Date</a></th>
-                    <th><a asp-action="Orders" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Purchaser</a></th>
-                    <th>Email</th>
-                    <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(string.Equals(Model.SortBy, "tickets", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Tickets</a></th>
-                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount (€)</a></th>
-                    <th>Discount</th>
-                    <th>Donation</th>
-                    <th>VAT</th>
-                    <th>Method</th>
-                    <th>Stripe Fee</th>
-                    <th>TT Fee</th>
-                    <th>Status</th>
-                    <th>Matched</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var order in Model.Orders)
-                {
-                    <tr>
-                        <td><small><code>@order.VendorOrderId</code></small></td>
-                        <td>@order.PurchasedAt.ToWeekdayDayMonth()</td>
-                        <td>@order.BuyerName</td>
-                        <td><small>@order.BuyerEmail</small></td>
-                        <td><a asp-action="Attendees" asp-route-filterOrderId="@order.VendorOrderId">@order.AttendeeCount</a></td>
-                        <td>@order.TotalAmount.ToString("N2")</td>
-                        <td>
-                            @if (order.DiscountAmount.HasValue)
-                            {
-                                <span title="@(order.DiscountCode ?? "")">-@order.DiscountAmount.Value.ToString("N2")</span>
-                            }
-                            else
-                            {
-                                <text>&mdash;</text>
-                            }
-                        </td>
-                        <td>
-                            @if (order.DonationAmount > 0)
-                            {
-                                <span>@order.DonationAmount.ToString("N2")</span>
-                            }
-                            else
-                            {
-                                <text>&mdash;</text>
-                            }
-                        </td>
-                        <td>
-                            @if (order.VatAmount > 0)
-                            {
-                                <span>@order.VatAmount.ToString("N2")</span>
-                            }
-                            else
-                            {
-                                <text>&mdash;</text>
-                            }
-                        </td>
-                        <td>
-                            @if (order.PaymentMethod != null)
-                            {
-                                <small>@(order.PaymentMethodDetail != null ? $"{order.PaymentMethod}/{order.PaymentMethodDetail}" : order.PaymentMethod)</small>
-                            }
-                            else
-                            {
-                                <text>&mdash;</text>
-                            }
-                        </td>
-                        <td>@(order.StripeFee.HasValue ? order.StripeFee.Value.ToString("N2") : "\u2014")</td>
-                        <td>@(order.ApplicationFee.HasValue ? order.ApplicationFee.Value.ToString("N2") : "\u2014")</td>
-                        <td>
-                            @{
-                                var statusClass = order.PaymentStatus switch
-                                {
-                                    TicketPaymentStatus.Paid => "bg-success",
-                                    TicketPaymentStatus.Pending => "bg-warning text-dark",
-                                    TicketPaymentStatus.Refunded => "bg-danger",
-                                    TicketPaymentStatus.Cancelled => "bg-secondary",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @statusClass">@order.PaymentStatus</span>
-                        </td>
-                        <td>
-                            @if (order.MatchedUserId.HasValue)
-                            {
-                                <vc:human user-id="@order.MatchedUserId.Value" link="Admin" />
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
-                            }
-                        </td>
-                    </tr>
-                }
-                @if (Model.Orders.Count == 0)
-                {
-                    <tr><td colspan="14" class="text-muted text-center">No orders found</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Orders"); }
-    <partial name="_Pager" model="pagerModel" />
+    @{
+        Func<TicketOrderRow, IHtmlContent> orderIdCell =
+            @<text><small><code>@item.VendorOrderId</code></small></text>;
+        Func<TicketOrderRow, IHtmlContent> dateCell =
+            @<text>@item.PurchasedAt.ToWeekdayDayMonth()</text>;
+        Func<TicketOrderRow, IHtmlContent> attendeesCell =
+            @<text><a asp-action="Attendees" asp-route-filterOrderId="@item.VendorOrderId">@item.AttendeeCount</a></text>;
+        Func<TicketOrderRow, IHtmlContent> emailCell =
+            @<text><small>@item.BuyerEmail</small></text>;
+        Func<TicketOrderRow, IHtmlContent> discountCell = @<text>
+            @if (item.DiscountAmount.HasValue)
+            {
+                <span title="@(item.DiscountCode ?? "")">-@item.DiscountAmount.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> donationCell = @<text>
+            @if (item.DonationAmount > 0)
+            {
+                <span>@item.DonationAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> vatCell = @<text>
+            @if (item.VatAmount > 0)
+            {
+                <span>@item.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> methodCell = @<text>
+            @if (item.PaymentMethod != null)
+            {
+                <small>@(item.PaymentMethodDetail != null ? $"{item.PaymentMethod}/{item.PaymentMethodDetail}" : item.PaymentMethod)</small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> stripeFeeCell = @<text>
+            @if (item.StripeFee.HasValue)
+            {
+                @item.StripeFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> ttFeeCell = @<text>
+            @if (item.ApplicationFee.HasValue)
+            {
+                @item.ApplicationFee.Value.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketOrderRow, IHtmlContent> matchedCell = @<text>
+            @if (item.MatchedUserId.HasValue)
+            {
+                <vc:human user-id="@item.MatchedUserId.Value" link="Admin" />
+            }
+            else
+            {
+                <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
+            }
+        </text>;
+        Func<object?, IHtmlContent> extraFilters = @<text>
+            <div class="col-md-2">
+                <select name="filterMatched" class="form-select js-auto-submit" aria-label="Filter by matched">
+                    <option value="">All</option>
+                    <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                    <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="pageSize" class="form-select js-auto-submit" aria-label="Page size">
+                    <option value="25" selected="@(Model.PageSize == 25 ? "selected" : null)">25 per page</option>
+                    <option value="50" selected="@(Model.PageSize == 50 ? "selected" : null)">50 per page</option>
+                    <option value="100" selected="@(Model.PageSize == 100 ? "selected" : null)">100 per page</option>
+                </select>
+            </div>
+        </text>;
+        var table = TableModel.For(Model.Orders.ToList())
+            .Template("Order ID", orderIdCell)
+            .Template("Date", dateCell, c => c.Sort("date", descendingFirst: true))
+            .Column("Purchaser", o => o.BuyerName, c => c.Sort("name"))
+            .Template("Email", emailCell)
+            .Template("Tickets", attendeesCell, c => c.Sort("tickets", descendingFirst: true))
+            .Column("Amount (€)", o => o.TotalAmount, c => c.Currency().Sort("amount", descendingFirst: true).End())
+            .Template("Discount", discountCell)
+            .Template("Donation", donationCell)
+            .Template("VAT", vatCell)
+            .Template("Method", methodCell)
+            .Template("Stripe Fee", stripeFeeCell)
+            .Template("TT Fee", ttFeeCell)
+            .Column("Status", o => o.PaymentStatus, c => c.EnumBadge()
+                .SelectFilter(["Paid", "Pending", "Refunded", "Cancelled"], "filterPaymentStatus", Model.FilterPaymentStatus))
+            .Template("Matched", matchedCell)
+            .SearchBox("search", Model.Search, "Search name, email, or code...")
+            .ServerMode(Model.SortBy, Model.SortDesc, new PagerViewModel(Model.TotalPages, Model.Page, "Orders"))
+            .HiddenField("filterTicketType", Model.FilterTicketType)
+            .ExtraFilters(extraFilters)
+            .Empty("No orders found")
+            .Build();
+    }
+    <partial name="_Table" model="table" />
 </div>

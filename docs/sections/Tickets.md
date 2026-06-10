@@ -81,7 +81,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 |-------|--------------|
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
-| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`) |
+| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `docs/features/scanner/gate-terminal-login.md`) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`) |
 
 ## Invariants
@@ -104,6 +104,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - Board **cannot** trigger any sync (incremental or full), export CSV, or open the participation backfill page.
 - Board **cannot** approve or reject transfer requests — transfer review is gated by `TicketAdminOrAdmin`. Board can view ticket data but the transfer side-effects (vendor void+reissue, local attendee mutation) are admin-only.
 - Board **cannot** trigger attendee contact import — same `TicketAdminOrAdmin` gate as the sync.
+- Board **cannot** set or rotate the gate-terminal password (`/Tickets/Admin/Gate` is `TicketAdminOrAdmin`).
+- The gate-terminal account **cannot** reach any `/Tickets/*` page — it holds no roles; only the Scanner section's `ScannerAccess` policy admits it.
 - TicketAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketAdminBoardOrAdmin`.
@@ -124,6 +126,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/FullResync` | POST | `AdminOnly` | Trigger full re-sync |
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview attendee-contact-import plan |
 | `/Tickets/Admin/Contacts/Apply` | POST | `TicketAdminOrAdmin` | Apply selected attendees |
+| `/Tickets/Admin/Gate` | GET | `TicketAdminOrAdmin` | Gate-terminal account status card |
+| `/Tickets/Admin/Gate/SetPassword` | POST | `TicketAdminOrAdmin` | Set/rotate the gate-terminal password (provisions the account on first set) |
 | `/Tickets/Participation/Backfill` | GET + POST | `AdminOnly` | CSV import of participation records |
 | `/Tickets/Export/Attendees` | GET | `TicketAdminOrAdmin` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
@@ -137,13 +141,13 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - `EventParticipation` derivation (Ticket Tailor's active vendor event only, scoped to `EventSettings.Year` from `IShiftManagementService.GetActiveAsync`):
   - For each user with at least one matched attendee: any `CheckedIn` ticket → `ParticipationStatus.Attended`; otherwise any `Valid` ticket → `ParticipationStatus.Ticketed`. Both write through `IUserService.SetParticipationFromTicketSyncAsync` with `ParticipationSource.TicketSync`.
   - For each prior `(TicketSync, Ticketed)` row in the year: if the user no longer has any `Valid`/`CheckedIn` matched ticket, the row is removed via `IUserService.RemoveTicketSyncParticipationAsync`. `Attended` rows are never removed by sync — being checked in is permanent.
-  - Self-declared `NotAttending` rows are owned by the User section and are never overwritten or removed by ticket sync; ticket purchase does not flip a user's prior `NotAttending` declaration in this section's code path.
+  - Self-declared `NotAttending` rows are owned by the User section, but a matched ticket overrides the declaration: a ticket is a physical thing, so sync flips a prior `NotAttending` to `Ticketed` (via the same `SetParticipationFromTicketSyncAsync` path) when the user holds a `Valid`/`CheckedIn` ticket. Only `Attended` rows are never overwritten.
 - "Who Hasn't Bought" lists active Volunteers-team members (via `ITeamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers)`) minus those whose current-year `EventParticipation.Status` is `NotAttending`. `HasTicket` is true when the user appears in the union of matched attendee user-ids and matched order user-ids.
 - The Volunteer Ticket Coverage card on `/Tickets` divides current-event matched-attendee Volunteers by total active Volunteers — buyer-only matches are excluded by construction.
 - Code redemption: vendor discount codes attached to orders are pushed back to Campaigns via `ICampaignService.MarkGrantsRedeemedAsync` so each `CampaignGrant.RedeemedAt` reflects the order's `PurchasedAt`.
 - When an account merge accepts, `TicketSyncService.ReassignAsync` (via `IUserMerge`) re-FKs `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and the new `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId` columns from source to target, then calls `ITicketCacheInvalidator.InvalidateAfterUserMerge(sourceUserId, targetUserId)` to drop the order projection and both users' `UserTicketHoldings` tracked entries. The per-user eviction is the T-07 fix for an earlier gap where merged users' homepage tickets card and ticket-holdings widget could lag up to 5 minutes after the fold. `AccountMergeService.FoldAsync` fans out across all `IUserMerge` registrations; the Tickets section participates because `TicketSyncService` implements `IUserMerge`.
-- Audit actions written by ticket transfer: `TicketTransferRequested` (on `CreateRequestAsync`), `TicketTransferCancelled` (on `CancelAsync`), `TicketTransferApproved` (on `ApproveAsync` — includes vendor outcome in metadata), `TicketTransferRejected` (on `RejectAsync`).
-- On transfer decision (approve = mark successful, or cancel with reason): only the request row changes (`Status`, `DecidedByUserId`, `DecidedAt`, `AdminNotes`) and Sender + Receiver are emailed. No vendor call, no attendee mutation — the team's manual TicketTailor void/reissue is reconciled by the next ticket sync.
+- Audit actions written by ticket transfer: `TicketTransferRequested` (on `CreateRequestAsync`), `TicketTransferCancelled` (on `CancelAsync`), `TicketTransferApproved` (on `ApproveAsync`), `TicketTransferRejected` (on `RejectAsync`).
+- On transfer decision (approve = mark successful, or cancel with reason): only the request row changes (`Status`, `DecidedByUserId`, `DecidedAt`, `AdminNotes`) and Sender + Receiver are emailed. No vendor call, no attendee mutation — the team's manual TicketTailor void/reissue is reconciled by the next ticket sync. Approval additionally evicts the cached order projection via `ITicketCacheInvalidator.InvalidateAfterTransfer(senderUserId, receiverUserId)`, because the projection carries `TransferredToName`/`TransferredAt` for void attendees and the decision just changed them.
 - On attendee contact import apply: for selected unmatched attendees, `MatchedUserId` is set (via `UpsertAttendeesAsync`), new users are provisioned (via `IAccountProvisioningService` with `ContactSource.TicketTailor`, Stub Profile + verified `UserEmail`), squatter unverified rows are deleted first, `EventParticipation(Ticketed, TicketSync)` is written for each newly-matched user, ticket caches are invalidated via `ITicketCacheInvalidator.InvalidateAfterContactImport`, and a single `AuditAction.TicketContactsImported` row records the summary.
 
 ### TicketDashboardStats cache (ghost cache key)

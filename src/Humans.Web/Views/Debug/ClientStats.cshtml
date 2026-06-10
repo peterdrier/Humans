@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model ClientStatsViewModel
 @{
     ViewData["Title"] = "Client Statistics";
@@ -20,19 +21,23 @@
 <div class="row g-4">
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Operating system", "fa-solid fa-desktop", Model.TotalPageViews, Model.OperatingSystems))" />
+                 model="@(new ClientStatTableModel("Operating system", "fa-solid fa-desktop", Model.TotalPageViews, Model.OperatingSystems))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Browser", "fa-solid fa-globe", Model.TotalPageViews, Model.Browsers))" />
+                 model="@(new ClientStatTableModel("Browser", "fa-solid fa-globe", Model.TotalPageViews, Model.Browsers))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Device type", "fa-solid fa-mobile-screen", Model.TotalPageViews, Model.DeviceTypes))" />
+                 model="@(new ClientStatTableModel("Device type", "fa-solid fa-mobile-screen", Model.TotalPageViews, Model.DeviceTypes))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
+                 model="@(new ClientStatTableModel("Bots / crawlers", "fa-solid fa-robot", Model.TotalBotPageViews, Model.Bots))" />
+    </div>
+    <div class="col-lg-6">
+        <partial name="_ClientStatTable"
+                 model="@(new ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
     </div>
 </div>
 
@@ -50,34 +55,18 @@
 }
 else
 {
-    <div class="table-responsive" style="max-width: 32rem;">
-        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;">
-            <thead>
-                <tr>
-                    <th>Code</th>
-                    <th>Category</th>
-                    <th class="text-end">Count</th>
-                    <th class="text-end">%</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.StatusCodes)
-                {
-                    var rowClass = row.StatusCode switch
-                    {
-                        >= 500 => "table-danger",
-                        >= 400 => "table-warning",
-                        >= 300 => "table-info",
-                        _ => ""
-                    };
-                    <tr class="@rowClass">
-                        <td>@row.StatusCode</td>
-                        <td>@row.Category</td>
-                        <td class="text-end">@row.Count.ToString("N0")</td>
-                        <td class="text-end">@row.Percent.ToString("F1")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    var statusTable = TableModel.For(Model.StatusCodes)
+        .RowCss(r => r.StatusCode switch
+        {
+            >= 500 => "table-danger",
+            >= 400 => "table-warning",
+            >= 300 => "table-info",
+            _ => null
+        })
+        .Column("Code", r => r.StatusCode, c => c.Number())
+        .Column("Category", r => r.Category)
+        .Column("Count", r => r.Count, c => c.Number().End())
+        .Column("%", r => r.Percent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Build();
+    <partial name="_Table" model="statusTable" />
 }

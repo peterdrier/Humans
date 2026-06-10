@@ -1,4 +1,6 @@
-@model Humans.Web.Models.EarlyEntry.EarlyEntryRosterViewModel
+@using Humans.Web.Models.Tables
+@using Humans.Web.Models.EarlyEntry
+@model EarlyEntryRosterViewModel
 @{
     ViewData["Title"] = "Early Entry Roster";
 }
@@ -13,23 +15,15 @@
 }
 else
 {
-    <table class="table table-sm">
-        <thead>
-            <tr><th class="text-end">#</th><th>Human</th><th>Enters</th><th>Source(s)</th><th></th></tr>
-        </thead>
-        <tbody>
-        @{ var count = 0; }
-        @foreach (var row in Model.Rows)
-        {
-            count++;
-            <tr class="@(row.HasMultiple ? "table-warning" : "")">
-                <td class="text-end text-muted">@count</td>
-                <td><vc:human user-id="@row.UserId" layout="AvatarName" size="32" /></td>
-                <td>@row.EarliestEntryDate.ToWeekdayDayMonth()</td>
-                <td>@string.Join(", ", row.Sources)</td>
-                <td>@if (row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    var numbered = Model.Rows.Select((r, i) => new { Row = r, Num = i + 1 }).ToList();
+    var rosterTable = TableModel.For(numbered)
+        .RowCss(x => x.Row.HasMultiple ? "table-warning" : null)
+        .Column("#", x => x.Num, c => c.End())
+        .Template("Human", @<text><vc:human user-id="@item.Row.UserId" layout="AvatarName" size="32" /></text>)
+        .Column("Enters", x => x.Row.EarliestEntryDate.ToWeekdayDayMonth())
+        .Column("Source(s)", x => string.Join(", ", x.Row.Sources))
+        .Template("", @<text>@if (item.Row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</text>, c => c.NoSort())
+        .Empty("No early entry grants for the active event.")
+        .Build();
+    <partial name="_Table" model="rosterTable" />
 }

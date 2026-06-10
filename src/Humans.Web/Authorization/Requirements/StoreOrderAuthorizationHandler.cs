@@ -37,33 +37,15 @@ public class StoreOrderAuthorizationHandler(
             .ToList();
         if (pending.Count == 0) return;
 
-        Guid? campSeasonId;
-        Guid? teamId;
-        StoreOrderState? orderState;
-        switch (context.Resource)
-        {
-            case OrderDto order:
-                campSeasonId = order.CampSeasonId;
-                teamId = order.TeamId;
-                orderState = order.State;
-                break;
-            case StoreOrderCreateContext create:
-                campSeasonId = create.CampSeasonId;
-                teamId = create.TeamId;
-                orderState = null;
-                break;
-            default:
-                return;
-        }
+        if (!TryResolveResource(context.Resource, out var resource))
+            return;
 
         if (RoleChecks.CanAdministerStore(context.User))
         {
             foreach (var req in pending)
             {
                 // Even admins can't Pay/EditCounterparty a team order — it has no billing.
-                if (teamId is not null &&
-                    (req == StoreOrderOperationRequirement.EditCounterparty ||
-                     req == StoreOrderOperationRequirement.Pay))
+                if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                     continue;
                 context.Succeed(req);
             }
@@ -82,16 +64,13 @@ public class StoreOrderAuthorizationHandler(
                     context.Succeed(req);
                     continue;
                 }
-                if (teamId is null) continue; // camp orders are view-only for TeamsAdmin
+                if (!resource.IsTeamOrder) continue; // camp orders are view-only for TeamsAdmin
                 // Team orders are non-billable — never Pay/EditCounterparty.
-                if (req == StoreOrderOperationRequirement.EditCounterparty ||
-                    req == StoreOrderOperationRequirement.Pay)
+                if (IsTeamBillingBlocked(req))
                     continue;
                 // Line edits require an Open order, matching the coordinator path and the
                 // StoreService guard ("Cannot add/remove lines from an issued order").
-                var isLineEdit = req == StoreOrderOperationRequirement.AddLine
-                    || req == StoreOrderOperationRequirement.RemoveLine;
-                if (isLineEdit && orderState is not null and not StoreOrderState.Open)
+                if (IsLineEdit(req) && !IsOpenOrCreate(resource))
                     continue;
                 context.Succeed(req);
             }
@@ -102,7 +81,7 @@ public class StoreOrderAuthorizationHandler(
             return;
 
         bool authorized = false;
-        if (campSeasonId is { } sid)
+        if (resource.CampSeasonId is { } sid)
         {
             var season = await campService.GetCampSeasonByIdAsync(sid);
             if (season is not null)
@@ -115,7 +94,7 @@ public class StoreOrderAuthorizationHandler(
                 }
             }
         }
-        else if (teamId is { } tid)
+        else if (resource.TeamId is { } tid)
         {
             var team = await teamService.GetTeamAsync(tid);
             if (team is not null
@@ -129,22 +108,64 @@ public class StoreOrderAuthorizationHandler(
         foreach (var req in pending)
         {
             // Team orders never allow EditCounterparty or Pay regardless of role.
-            if (teamId is not null &&
-                (req == StoreOrderOperationRequirement.EditCounterparty ||
-                 req == StoreOrderOperationRequirement.Pay))
+            if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                 continue;
 
             // Delete is admin-only; camp leads and team coordinators never delete their own orders.
             if (req == StoreOrderOperationRequirement.Delete) continue;
 
-            var isMutating = req == StoreOrderOperationRequirement.AddLine
-                || req == StoreOrderOperationRequirement.RemoveLine
-                || req == StoreOrderOperationRequirement.EditCounterparty;
-            if (isMutating && orderState is not null and not StoreOrderState.Open)
+            if (IsMutating(req) && !IsOpenOrCreate(resource))
             {
                 continue;
             }
             context.Succeed(req);
         }
+    }
+
+    private static bool TryResolveResource(
+        object? candidate,
+        out StoreOrderAuthorizationResource resource)
+    {
+        switch (candidate)
+        {
+            case OrderDto order:
+                resource = new StoreOrderAuthorizationResource(
+                    order.CampSeasonId,
+                    order.TeamId,
+                    order.State);
+                return true;
+            case StoreOrderCreateContext create:
+                resource = new StoreOrderAuthorizationResource(
+                    create.CampSeasonId,
+                    create.TeamId,
+                    State: null);
+                return true;
+            default:
+                resource = new StoreOrderAuthorizationResource(null, null, null);
+                return false;
+        }
+    }
+
+    private static bool IsTeamBillingBlocked(StoreOrderOperationRequirement requirement)
+        => requirement == StoreOrderOperationRequirement.EditCounterparty
+            || requirement == StoreOrderOperationRequirement.Pay;
+
+    private static bool IsLineEdit(StoreOrderOperationRequirement requirement)
+        => requirement == StoreOrderOperationRequirement.AddLine
+            || requirement == StoreOrderOperationRequirement.RemoveLine;
+
+    private static bool IsMutating(StoreOrderOperationRequirement requirement)
+        => IsLineEdit(requirement)
+            || requirement == StoreOrderOperationRequirement.EditCounterparty;
+
+    private static bool IsOpenOrCreate(StoreOrderAuthorizationResource resource)
+        => resource.State is null or StoreOrderState.Open;
+
+    private sealed record StoreOrderAuthorizationResource(
+        Guid? CampSeasonId,
+        Guid? TeamId,
+        StoreOrderState? State)
+    {
+        public bool IsTeamOrder => TeamId is not null;
     }
 }

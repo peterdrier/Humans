@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -53,43 +52,15 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // to highlight the current row in the per-day mini-table. Falling back
         // to view-side DateTime.UtcNow caused a Madrid coordinator to see
         // tomorrow highlighted late in the evening (CET is ahead of UTC).
-        LocalDate? eventTodayDate = null;
-        if (eventSettings is not null)
-        {
-            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-                ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-            eventTodayDate = _clock.GetCurrentInstant().InZone(zone).Date;
-        }
+        var eventTodayDate = GetEventTodayDate(eventSettings);
 
         // Per-day cohort: 7 sequential queries for the on-site user ids. At ~500
         // users this is fine (see CLAUDE.md scale notes).
-        var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds)>(DaysPerWeek);
-        for (var i = 0; i < DaysPerWeek; i++)
-        {
-            var dayOffset = weekStartOffset + i;
-            var userIds = eventSettings is null
-                ? Array.Empty<Guid>()
-                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct).ConfigureAwait(false);
-            perDay.Add((dayOffset, userIds));
-        }
+        var perDay = await LoadWeeklyOnSiteUsersAsync(eventSettings, weekStartOffset, ct).ConfigureAwait(false);
 
         // Build the union of unique on-site user IDs across the week, and
         // map each user id to the set of calendar dates they were on-site.
-        var daysOnSiteByUserId = new Dictionary<Guid, List<LocalDate>>();
-        foreach (var (dayOffset, userIds) in perDay)
-        {
-            var calendarDate = weekStartDate?.PlusDays(dayOffset - weekStartOffset);
-            foreach (var id in userIds)
-            {
-                if (!daysOnSiteByUserId.TryGetValue(id, out var list))
-                {
-                    list = new List<LocalDate>(capacity: DaysPerWeek);
-                    daysOnSiteByUserId[id] = list;
-                }
-                if (calendarDate is not null)
-                    list.Add(calendarDate.Value);
-            }
-        }
+        var daysOnSiteByUserId = BuildDaysOnSiteByUserId(perDay, weekStartOffset, weekStartDate);
 
         var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
 
@@ -102,22 +73,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
         // Build per-day summaries (counts only). Dietary is per-user, so a day's
         // "unanswered" count is over that day's user ids.
-        var days = new List<DayRosterSummaryDto>(DaysPerWeek);
-        for (var i = 0; i < DaysPerWeek; i++)
-        {
-            var (dayOffset, userIds) = perDay[i];
-            var unanswered = 0;
-            foreach (var id in userIds)
-            {
-                if (!profileByUserId.TryGetValue(id, out var p) || string.IsNullOrEmpty(p.DietaryPreference))
-                    unanswered++;
-            }
-            days.Add(new DayRosterSummaryDto(
-                DayOffset: dayOffset,
-                CalendarDate: weekStartDate?.PlusDays(i),
-                TotalOnSite: userIds.Count,
-                UnansweredOnDay: unanswered));
-        }
+        var days = BuildDaySummaries(perDay, weekStartDate, profileByUserId);
 
         if (uniqueUserIds.Count == 0)
         {
@@ -140,68 +96,18 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
         // Unique-humans dietary cohort — every aggregate below is computed over
         // this list so a person on-site multiple days contributes exactly once.
-        var uniqueProfiles = new List<ProfileInfo>(uniqueUserIds.Count);
-        foreach (var id in uniqueUserIds)
-        {
-            if (profileByUserId.TryGetValue(id, out var p))
-                uniqueProfiles.Add(p);
-        }
+        var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, profileByUserId);
 
         // The 7 calendar dates of the week, used to compute NoShift as the
         // complement of each person's on-site days. Empty when the week
         // has no anchor date (no active event) — in that branch we don't
         // reach this code path anyway since uniqueUserIds.Count == 0.
-        var weekDays = weekStartDate is null
-            ? Array.Empty<LocalDate>()
-            : Enumerable.Range(0, DaysPerWeek)
-                .Select(i => weekStartDate.Value.PlusDays(i))
-                .ToArray();
+        var weekDays = BuildWeekDays(weekStartDate);
 
         // People are returned in unspecified order. Display sort happens at
         // the Web layer in CantinaRosterAssembler (see
         // memory/architecture/display-sort-in-controllers.md).
-        var people = new List<RosterPersonDto>(uniqueUserIds.Count);
-        foreach (var id in uniqueUserIds)
-        {
-            profileByUserId.TryGetValue(id, out var profile);
-            var daysList = daysOnSiteByUserId[id];
-            daysList.Sort();
-
-            // ArrivesOn is non-nullable by cohort invariant: every user
-            // in daysOnSiteByUserId got there by appearing on at least
-            // one day. If weekStartDate is null we never enter this
-            // branch (early-return above), so daysList is non-empty.
-            var arrivesOn = daysList[0];
-
-            // NoShift = weekDays \ on-site days. HashSet for O(1) lookup.
-            IReadOnlyList<LocalDate> noShift;
-            if (weekDays.Length == 0)
-            {
-                noShift = Array.Empty<LocalDate>();
-            }
-            else
-            {
-                var onSiteSet = new HashSet<LocalDate>(daysList);
-                var offList = new List<LocalDate>(DaysPerWeek);
-                foreach (var day in weekDays)
-                {
-                    if (!onSiteSet.Contains(day))
-                        offList.Add(day);
-                }
-                noShift = offList;
-            }
-
-            people.Add(new RosterPersonDto(
-                UserId: id,
-                BurnerName: ResolveBurnerName(profile),
-                ArrivesOn: arrivesOn,
-                NoShift: noShift,
-                DietaryPreference: profile?.DietaryPreference,
-                Allergies: profile?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
-                AllergyOtherText: profile?.AllergyOtherText,
-                Intolerances: profile?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
-                IntoleranceOtherText: profile?.IntoleranceOtherText));
-        }
+        var people = BuildWeeklyPeople(uniqueUserIds, profileByUserId, daysOnSiteByUserId, weekDays);
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueProfiles, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -268,13 +174,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
         // "Today" must be in event timezone (same rationale as the weekly view —
         // a Madrid coordinator late in the evening must not see tomorrow flagged).
-        LocalDate? eventTodayDate = null;
-        if (eventSettings is not null)
-        {
-            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-                ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-            eventTodayDate = _clock.GetCurrentInstant().InZone(zone).Date;
-        }
+        var eventTodayDate = GetEventTodayDate(eventSettings);
 
         // Monday-of-week containing this day. With active event use NodaTime
         // day-of-week so the result respects ISO Monday=1. Fallback when no
@@ -383,6 +283,154 @@ public sealed class CantinaRosterService : ICantinaRosterService
             IntoleranceRollup: intoleranceRollup,
             IntoleranceOtherEntries: intoleranceOther,
             People: people);
+    }
+
+    private async Task<List<(int DayOffset, IReadOnlyList<Guid> UserIds)>> LoadWeeklyOnSiteUsersAsync(
+        EventSettings? eventSettings,
+        int weekStartOffset,
+        CancellationToken ct)
+    {
+        var perDay = new List<(int DayOffset, IReadOnlyList<Guid> UserIds)>(DaysPerWeek);
+        for (var i = 0; i < DaysPerWeek; i++)
+        {
+            var dayOffset = weekStartOffset + i;
+            var userIds = eventSettings is null
+                ? Array.Empty<Guid>()
+                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct)
+                    .ConfigureAwait(false);
+            perDay.Add((dayOffset, userIds));
+        }
+
+        return perDay;
+    }
+
+    private static Dictionary<Guid, List<LocalDate>> BuildDaysOnSiteByUserId(
+        IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
+        int weekStartOffset,
+        LocalDate? weekStartDate)
+    {
+        var daysOnSiteByUserId = new Dictionary<Guid, List<LocalDate>>();
+        foreach (var (dayOffset, userIds) in perDay)
+        {
+            var calendarDate = weekStartDate?.PlusDays(dayOffset - weekStartOffset);
+            foreach (var id in userIds)
+            {
+                if (!daysOnSiteByUserId.TryGetValue(id, out var list))
+                {
+                    list = new List<LocalDate>(capacity: DaysPerWeek);
+                    daysOnSiteByUserId[id] = list;
+                }
+
+                if (calendarDate is not null)
+                    list.Add(calendarDate.Value);
+            }
+        }
+
+        return daysOnSiteByUserId;
+    }
+
+    private static List<DayRosterSummaryDto> BuildDaySummaries(
+        IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
+        LocalDate? weekStartDate,
+        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId)
+    {
+        var days = new List<DayRosterSummaryDto>(DaysPerWeek);
+        for (var i = 0; i < DaysPerWeek; i++)
+        {
+            var (dayOffset, userIds) = perDay[i];
+            var unanswered = 0;
+            foreach (var id in userIds)
+            {
+                if (!profileByUserId.TryGetValue(id, out var profile)
+                    || string.IsNullOrEmpty(profile.DietaryPreference))
+                    unanswered++;
+            }
+
+            days.Add(new DayRosterSummaryDto(
+                DayOffset: dayOffset,
+                CalendarDate: weekStartDate?.PlusDays(i),
+                TotalOnSite: userIds.Count,
+                UnansweredOnDay: unanswered));
+        }
+
+        return days;
+    }
+
+    private static List<ProfileInfo> BuildUniqueProfiles(
+        IReadOnlyList<Guid> uniqueUserIds,
+        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId)
+    {
+        var uniqueProfiles = new List<ProfileInfo>(uniqueUserIds.Count);
+        foreach (var id in uniqueUserIds)
+        {
+            if (profileByUserId.TryGetValue(id, out var profile))
+                uniqueProfiles.Add(profile);
+        }
+
+        return uniqueProfiles;
+    }
+
+    private static LocalDate[] BuildWeekDays(LocalDate? weekStartDate)
+        => weekStartDate is null
+            ? Array.Empty<LocalDate>()
+            : Enumerable.Range(0, DaysPerWeek)
+                .Select(i => weekStartDate.Value.PlusDays(i))
+                .ToArray();
+
+    private static List<RosterPersonDto> BuildWeeklyPeople(
+        IReadOnlyList<Guid> uniqueUserIds,
+        IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId,
+        IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
+        IReadOnlyList<LocalDate> weekDays)
+    {
+        var people = new List<RosterPersonDto>(uniqueUserIds.Count);
+        foreach (var id in uniqueUserIds)
+        {
+            profileByUserId.TryGetValue(id, out var profile);
+            var daysList = daysOnSiteByUserId[id];
+            daysList.Sort();
+
+            people.Add(new RosterPersonDto(
+                UserId: id,
+                BurnerName: ResolveBurnerName(profile),
+                ArrivesOn: daysList[0],
+                NoShift: BuildNoShiftDays(daysList, weekDays),
+                DietaryPreference: profile?.DietaryPreference,
+                Allergies: profile?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
+                AllergyOtherText: profile?.AllergyOtherText,
+                Intolerances: profile?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
+                IntoleranceOtherText: profile?.IntoleranceOtherText));
+        }
+
+        return people;
+    }
+
+    private static IReadOnlyList<LocalDate> BuildNoShiftDays(
+        IReadOnlyCollection<LocalDate> daysOnSite,
+        IReadOnlyCollection<LocalDate> weekDays)
+    {
+        if (weekDays.Count == 0)
+            return Array.Empty<LocalDate>();
+
+        var onSiteSet = new HashSet<LocalDate>(daysOnSite);
+        var noShift = new List<LocalDate>(DaysPerWeek);
+        foreach (var day in weekDays)
+        {
+            if (!onSiteSet.Contains(day))
+                noShift.Add(day);
+        }
+
+        return noShift;
+    }
+
+    private LocalDate? GetEventTodayDate(EventSettings? eventSettings)
+    {
+        if (eventSettings is null)
+            return null;
+
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        return _clock.GetCurrentInstant().InZone(zone).Date;
     }
 
     private static Dictionary<Guid, ProfileInfo> BuildProfileMap(IReadOnlyDictionary<Guid, UserInfo> userInfos)

@@ -59,8 +59,6 @@ public sealed class CachingConsentService(
     /// </summary>
     public const string InnerServiceKey = "consent-inner";
 
-    private readonly ILogger<CachingConsentService> _logger = logger;
-
     // ILegalDocumentSyncService and IClock are Singletons — inject directly.
     // _scopeFactory is still needed to resolve the keyed Scoped inner
     // IConsentService and Scoped IUserService for the SubmitConsent /
@@ -124,7 +122,7 @@ public sealed class CachingConsentService(
                 // for cache storage — same invariant LoadRowAsync upholds.
                 var versions = bulk.TryGetValue(userId, out var v)
                     ? v
-                    : (IReadOnlySet<Guid>)new HashSet<Guid>();
+                    : new HashSet<Guid>();
                 var frozen = new HashSet<Guid>(versions);
                 Set(userId, new UserConsentInfo(userId, frozen));
                 result[userId] = frozen;

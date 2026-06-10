@@ -1,5 +1,7 @@
 @model Humans.Web.Models.ExpensesIndexViewModel
-@using Humans.Domain.Enums
+@using Humans.Application.Services.Expenses.Dtos
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "My Expense Reports";
 }
@@ -45,44 +47,33 @@
         </div>
         @if (Model.Ledger.Count > 0)
         {
-            <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Item</th>
-                            <th class="text-end">Amount</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.Ledger)
-                        {
-                            <tr class="@(row.IsPayment ? "table-success" : "")">
-                                <td>@row.Date.ToInvariantDate()</td>
-                                <td>
-                                    @if (row.IsPayment)
-                                    {
-                                        <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
-                                    }
-                                    @row.Label
-                                    @if (row.Status is { } st)
-                                    {
-                                        <span class="badge bg-secondary ms-1">@st</span>
-                                    }
-                                </td>
-                                <td class="text-end">@(row.IsPayment ? "−" : "")&euro;@row.Amount.ToString("N2")</td>
-                                <td class="text-end">
-                                    @if (row.ReportId is { } rid)
-                                    {
-                                        <a asp-action="Detail" asp-route-id="@rid" class="btn btn-sm btn-outline-secondary">View</a>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            Func<ExpenseLedgerRow, IHtmlContent> ledgerItemCell = @<text>
+                @if (item.IsPayment)
+                {
+                    <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
+                }
+                @item.Label
+                @if (item.Status is { } st)
+                {
+                    <span class="badge bg-secondary ms-1">@st</span>
+                }
+            </text>;
+            Func<ExpenseLedgerRow, IHtmlContent> ledgerAmountCell =
+                @<text><span class="text-end d-block">@(item.IsPayment ? "−" : "")&euro;@item.Amount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span></text>;
+            Func<ExpenseLedgerRow, IHtmlContent> ledgerActionCell = @<text>
+                @if (item.ReportId is { } rid)
+                {
+                    <a asp-action="Detail" asp-route-id="@rid" class="btn btn-sm btn-outline-secondary">View</a>
+                }
+            </text>;
+            var ledgerTable = TableModel.For(Model.Ledger)
+                .Column("Date", r => r.Date.ToInvariantDate())
+                .Template("Item", ledgerItemCell)
+                .Template("Amount", ledgerAmountCell, c => c.NoSort().End())
+                .Template("", ledgerActionCell, c => c.NoSort().End())
+                .RowCss(r => r.IsPayment ? "table-success" : null)
+                .Build();
+            <partial name="_Table" model="ledgerTable" />
         }
     </div>
 }
@@ -116,42 +107,15 @@ else if (!Model.HasIban)
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Created</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th class="text-end">Total</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var r in Model.Reports.OrderByDescending(x => x.CreatedAt))
-                {
-                    var badgeClass = r.Status switch
-                    {
-                        ExpenseReportStatus.Draft => "bg-secondary",
-                        ExpenseReportStatus.Submitted => "bg-primary",
-                        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-                        ExpenseReportStatus.Approved => "bg-success",
-                        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-                        ExpenseReportStatus.Paid => "bg-success",
-                        ExpenseReportStatus.Withdrawn => "bg-secondary",
-                        _ => "bg-secondary"
-                    };
-                    <tr>
-                        <td>@r.CreatedAt.ToDate()</td>
-                        <td><small class="text-muted">@(Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())</small></td>
-                        <td><span class="badge @badgeClass">@r.Status</span></td>
-                        <td class="text-end">&euro;@r.Total.ToString("N2")</td>
-                        <td class="text-end">
-                            <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">View</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    Func<ExpenseReportDto, IHtmlContent> reportActionCell =
+        @<text><a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">View</a></text>;
+    var reportRows = Model.Reports.OrderByDescending(x => x.CreatedAt).ToList();
+    var reportsTable = TableModel.For(reportRows)
+        .Column("Created", r => r.CreatedAt, c => c.Date())
+        .Column("Category", r => Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())
+        .Column("Status", r => r.Status, c => c.EnumBadge())
+        .Column("Total", r => r.Total, c => c.Currency().End())
+        .Template("", reportActionCell, c => c.NoSort().End())
+        .Build();
+    <partial name="_Table" model="reportsTable" />
 }

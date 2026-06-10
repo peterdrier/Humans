@@ -1,6 +1,5 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina;

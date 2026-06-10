@@ -70,11 +70,6 @@ public class Notification
     public Guid? ResolvedByUserId { get; set; }
 
     /// <summary>
-    /// Navigation to the user who resolved this notification.
-    /// </summary>
-    public User? ResolvedByUser { get; set; }
-
-    /// <summary>
     /// Recipients who can see this notification.
     /// </summary>
     public ICollection<NotificationRecipient> Recipients { get; init; } = new List<NotificationRecipient>();

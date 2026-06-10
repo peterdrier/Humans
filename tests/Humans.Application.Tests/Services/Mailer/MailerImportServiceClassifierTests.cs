@@ -243,7 +243,7 @@ internal sealed class ClassifierHarness
             {
                 var email = (string)ci[0];
                 if (VerifiedOwners.TryGetValue(email, out var owners))
-                    return Task.FromResult<IReadOnlyList<Guid>>(owners);
+                    return Task.FromResult(owners);
                 if (VerifiedMatches.TryGetValue(email, out var uid))
                     return Task.FromResult<IReadOnlyList<Guid>>([uid]);
                 return Task.FromResult<IReadOnlyList<Guid>>([]);

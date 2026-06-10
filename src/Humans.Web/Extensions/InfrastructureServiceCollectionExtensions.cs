@@ -53,11 +53,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddTicketsSection();
         services.AddFeedbackSection();
         services.AddIssuesSection();
+        services.AddSurveySection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();
         services.AddCampaignsSection();
         services.AddAuditLogSection();
         services.AddGdprSection();
+        services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
         services.AddGuideSection(configuration);

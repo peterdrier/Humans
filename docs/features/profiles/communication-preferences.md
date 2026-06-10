@@ -65,6 +65,6 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 ## Related Features
 
-- [Notification Inbox (#292-295)](notification-inbox.md) — in-app alerts controlled by the Alert column
+- [Notification Inbox (#292-295)](../notifications/notification-inbox.md) — in-app alerts controlled by the Alert column
 - Unsubscribe flow — RFC 8058 one-click + browser-based unsubscribe using category-aware tokens
 - Facilitated Messaging — user-to-user email via Humans, gated by FacilitatedMessages preference

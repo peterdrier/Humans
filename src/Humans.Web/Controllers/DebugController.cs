@@ -73,7 +73,6 @@ public class DebugController(
                 displayValue = e.Value switch
                 {
                     { Length: > 4 } v => v[..4] + "******",
-                    not null => "******",
                     _ => "******"
                 };
             }
@@ -262,11 +261,15 @@ public class DebugController(
                 statusTotal > 0 ? Math.Round(kv.Value * 100.0 / statusTotal, 1) : 0))
             .ToList();
 
+        var totalBotPageViews = snapshot.Bots.Sum(b => b.Count);
+
         var vm = new ClientStatsViewModel(
             TotalPageViews: snapshot.TotalPageViews,
             OperatingSystems: ToRows(snapshot.OperatingSystems, snapshot.TotalPageViews),
             Browsers: ToRows(snapshot.Browsers, snapshot.TotalPageViews),
             DeviceTypes: ToRows(snapshot.DeviceTypes, snapshot.TotalPageViews),
+            TotalBotPageViews: totalBotPageViews,
+            Bots: ToRows(snapshot.Bots, totalBotPageViews),
             TotalResolutionSamples: snapshot.TotalResolutionSamples,
             Resolutions: ToRows(snapshot.Resolutions, snapshot.TotalResolutionSamples),
             TotalResponses: statusTotal,

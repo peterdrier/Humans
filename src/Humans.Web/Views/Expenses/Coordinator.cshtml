@@ -1,11 +1,9 @@
 @model Humans.Web.Models.ExpenseCoordinatorViewModel
+@using Humans.Application.Services.Expenses.Dtos
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Expense Reports — Coordinator Queue";
-    var badgeClass = (ExpenseReportStatus s) => s switch
-    {
-        ExpenseReportStatus.Submitted => "bg-primary",
-        _ => "bg-secondary"
-    };
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -27,66 +25,41 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Report</th>
-                    <th>Submitted by</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var r in Model.Reports)
-                {
-                    <tr>
-                        <td>
-                            <a asp-action="Detail" asp-route-id="@r.Id">
-                                @r.Id.ToString()[..8]…
-                            </a>
-                        </td>
-                        <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                        <td>€@r.Total.ToString("N2")</td>
-                        <td>
-                            <span class="badge @badgeClass(r.Status)">@r.Status</span>
-                        </td>
-                        <td>
-                            @if (r.SubmittedAt.HasValue)
-                            {
-                                @r.SubmittedAt.Value.ToDate()
-                            }
-                        </td>
-                        <td class="text-end">
-                            <div class="d-flex gap-2 justify-content-end">
-                                <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">
-                                    <i class="fa-solid fa-eye me-1"></i>View
-                                </a>
-                                @if (r.Status == ExpenseReportStatus.Submitted)
-                                {
-                                    <form asp-action="Endorse" asp-route-id="@r.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-success"
-                                                data-confirm="Endorse this expense report?">
-                                            <i class="fa-solid fa-check me-1"></i>Endorse
-                                        </button>
-                                    </form>
-
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#rejectModal-@r.Id">
-                                        <i class="fa-solid fa-xmark me-1"></i>Reject
-                                    </button>
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    Func<ExpenseReportDto, IHtmlContent> reportCell =
+        @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
+    Func<ExpenseReportDto, IHtmlContent> submittedAtCell =
+        @<text>@(item.SubmittedAt.HasValue ? item.SubmittedAt.Value.ToDate() : "")</text>;
+    Func<ExpenseReportDto, IHtmlContent> actionsCell = @<text>
+        <div class="d-flex gap-2 justify-content-end">
+            <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
+                <i class="fa-solid fa-eye me-1"></i>View
+            </a>
+            @if (item.Status == ExpenseReportStatus.Submitted)
+            {
+                <form asp-action="Endorse" asp-route-id="@item.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-success"
+                            data-confirm="Endorse this expense report?">
+                        <i class="fa-solid fa-check me-1"></i>Endorse
+                    </button>
+                </form>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#rejectModal-@item.Id">
+                    <i class="fa-solid fa-xmark me-1"></i>Reject
+                </button>
+            }
+        </div>
+    </text>;
+    var table = TableModel.For(Model.Reports)
+        .Template("Report", reportCell)
+        .Column("Submitted by", r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")
+        .Column("Total", r => r.Total, c => c.Currency().End())
+        .Column("Status", r => r.Status, c => c.EnumBadge())
+        .Template("Submitted", submittedAtCell)
+        .Template("Actions", actionsCell, c => c.NoSort().End())
+        .Build();
+    <partial name="_Table" model="table" />
 
     @foreach (var r in Model.Reports.Where(x => x.Status == ExpenseReportStatus.Submitted))
     {

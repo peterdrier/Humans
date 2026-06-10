@@ -3,16 +3,13 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Finance;
 
-internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factory, ILogger<HoldedRepository> logger)
+internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factory)
     : IHoldedRepository
 {
-    private readonly ILogger<HoldedRepository> _logger = logger;
-
     // ── Category map ─────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default)

@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

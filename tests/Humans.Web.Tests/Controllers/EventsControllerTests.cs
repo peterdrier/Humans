@@ -109,27 +109,37 @@ public class EventsControllerTests
     }
 
     [HumansFact]
-    public async Task ToggleCampFavourite_Authenticated_TogglesAndRedirectsToCampDetails()
+    public async Task ToggleCardFavourite_Authenticated_TogglesAndRedirectsToReturnUrl()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var controller = BuildController(userId);
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.IsLocalUrl("/Barrios/shenanicamp").Returns(true);
 
-        var result = await controller.ToggleCampFavourite("shenanicamp", eventId);
+        var result = await controller.ToggleCardFavourite(eventId, "/Barrios/shenanicamp");
 
         await _guide.Received(1).ToggleFavouriteAsync(userId, eventId, Arg.Any<CancellationToken>());
-        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.ActionName.Should().Be("Details");
-        redirect.ControllerName.Should().Be("Camp");
-        redirect.RouteValues!["slug"].Should().Be("shenanicamp");
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Barrios/shenanicamp");
     }
 
     [HumansFact]
-    public async Task ToggleCampFavourite_Unauthenticated_ReturnsChallenge()
+    public async Task ToggleCardFavourite_NonLocalReturnUrl_RedirectsToBrowse()
+    {
+        var controller = BuildController(Guid.NewGuid());
+        controller.Url = Substitute.For<IUrlHelper>(); // IsLocalUrl → false by default
+
+        var result = await controller.ToggleCardFavourite(Guid.NewGuid(), "https://evil.example/phish");
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Browse");
+    }
+
+    [HumansFact]
+    public async Task ToggleCardFavourite_Unauthenticated_ReturnsChallenge()
     {
         var controller = BuildAnonymousController();
 
-        var result = await controller.ToggleCampFavourite("shenanicamp", Guid.NewGuid());
+        var result = await controller.ToggleCardFavourite(Guid.NewGuid(), "/Barrios/shenanicamp");
 
         result.Should().BeOfType<ChallengeResult>();
         await _guide.DidNotReceive().ToggleFavouriteAsync(
@@ -170,9 +180,9 @@ public class EventsControllerTests
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>())
             .Returns(MakeBurnSettings());
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventCategoryView>)[]);
+            .Returns([]);
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventVenueView>)[]);
+            .Returns([]);
     }
 
     private EventsController BuildController(Guid currentUserId, params string[] roles)

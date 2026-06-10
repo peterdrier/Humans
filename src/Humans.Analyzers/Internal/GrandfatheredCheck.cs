@@ -38,18 +38,19 @@ internal static class GrandfatheredCheck
         compilation.GetTypeByMetadataName(AttributeFullName);
 
     /// <summary>
-    /// Returns <c>true</c> if <paramref name="type"/> carries
-    /// <c>[Grandfathered("<paramref name="ruleId"/>", ...)]</c>.
+    /// Returns <c>true</c> if <paramref name="symbol"/> (a type for
+    /// type-level rules, a method for method-level rules like HUM0031)
+    /// carries <c>[Grandfathered("<paramref name="ruleId"/>", ...)]</c>.
     /// </summary>
     public static bool HasGrandfatherFor(
-        INamedTypeSymbol type,
+        ISymbol symbol,
         INamedTypeSymbol? attributeSymbol,
         string ruleId)
     {
         if (attributeSymbol is null)
             return false;
 
-        foreach (var attr in type.GetAttributes())
+        foreach (var attr in symbol.GetAttributes())
         {
             if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeSymbol))
                 continue;
@@ -70,14 +71,14 @@ internal static class GrandfatheredCheck
 
     /// <summary>
     /// Convenience: returns <see cref="DiagnosticSeverity.Warning"/> when
-    /// the type is grandfathered for <paramref name="ruleId"/>, otherwise
+    /// the symbol is grandfathered for <paramref name="ruleId"/>, otherwise
     /// <see cref="DiagnosticSeverity.Error"/>.
     /// </summary>
     public static DiagnosticSeverity EffectiveSeverity(
-        INamedTypeSymbol type,
+        ISymbol symbol,
         INamedTypeSymbol? attributeSymbol,
         string ruleId) =>
-        HasGrandfatherFor(type, attributeSymbol, ruleId)
+        HasGrandfatherFor(symbol, attributeSymbol, ruleId)
             ? DiagnosticSeverity.Warning
             : DiagnosticSeverity.Error;
 

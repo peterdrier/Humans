@@ -1,0 +1,82 @@
+@model Humans.Web.Infrastructure.GateTerminalStatus
+@{
+    ViewData["Title"] = "Gate Terminal";
+}
+
+<h1>Gate Terminal</h1>
+
+<p class="text-muted">
+    The laptop at gate signs in with a shared account to use the
+    <a asp-controller="Scanner" asp-action="Tickets">ticket lookup tool</a>.
+    It holds no admin roles and can't change anything — it only reads.
+    Set the password here, then sign the laptop in at
+    <a asp-controller="Account" asp-action="GateLogin">/Account/GateLogin</a>
+    with username <code>@Humans.Domain.Constants.SystemUserIds.GateTerminalLoginName</code>.
+    The session sticks across restarts; rotating the password signs out any
+    existing gate sessions within half an hour.
+</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Status</div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li>
+                        @if (Model.Provisioned)
+                        {
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>
+                            <span>Account provisioned</span>
+                        }
+                        else
+                        {
+                            <i class="fa-solid fa-circle-minus text-muted me-1"></i>
+                            <span>Not provisioned yet — set a password below to create it</span>
+                        }
+                    </li>
+                    <li>
+                        @if (Model.HasPassword)
+                        {
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>
+                            <span>Password set</span>
+                        }
+                        else
+                        {
+                            <i class="fa-solid fa-circle-minus text-muted me-1"></i>
+                            <span>No password set</span>
+                        }
+                    </li>
+                    @if (Model.LastLoginAt is { } lastLogin)
+                    {
+                        <li>
+                            <i class="fa-solid fa-clock text-muted me-1"></i>
+                            <span>Last signed in @lastLogin.ToInvariantTimestamp() UTC</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">@(Model.HasPassword ? "Rotate password" : "Set password")</div>
+            <div class="card-body">
+                <form asp-controller="TicketsGateAdmin" asp-action="SetPassword" method="post"
+                      class="d-flex gap-2">
+                    <input type="password" name="password" class="form-control" style="max-width: 280px;"
+                           placeholder="New password" autocomplete="new-password" required />
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-key me-1"></i>
+                        @(Model.HasPassword ? "Rotate" : "Set")
+                    </button>
+                </form>
+                <p class="text-muted small mt-2 mb-0">
+                    Pick something gate staff can type on a laptop keyboard. Anyone with this
+                    password can see attendee names, emails, and ticket status.
+                    The account never locks out — wrong-password attempts are throttled per
+                    source IP instead (@Humans.Web.Infrastructure.GateLoginThrottle.MaxFailuresPerWindow
+                    failures per minute), so nobody can deny the gate by hammering the login.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

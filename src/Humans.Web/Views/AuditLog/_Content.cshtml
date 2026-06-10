@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.AuditLogListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -59,61 +61,47 @@
 }
 else
 {
+    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> whenCell =
+        @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actorCell = @<text>
+        @if (!item.ActorUserId.HasValue)
+        {
+            <span class="badge bg-info">System</span>
+        }
+        else
+        {
+            <vc:human user-id="@item.ActorUserId.Value" />
+        }
+    </text>;
+    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actionCell =
+        @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel()</span></text>;
+    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> subjectCell = @<text>
+        @if (item.SubjectUserId.HasValue)
+        {
+            <vc:human user-id="@item.SubjectUserId.Value" />
+        }
+    </text>;
+    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> targetCell = @<text>
+        @if (item.TargetTeamId.HasValue && !string.IsNullOrEmpty(item.TargetTeamName))
+        {
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none">@item.TargetTeamName</a>
+        }
+    </text>;
+    var pager = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Index") { NavCssClass = "mt-3" };
+    var table = TableModel.For(Model.Events)
+        .Template("When", whenCell)
+        .Template("Actor", actorCell)
+        .Template("Action", actionCell)
+        .Template("Subject", subjectCell)
+        .Column("Description", ev => ev.Description)
+        .Template("Target", targetCell)
+        .RowCss(ev => ev.Action.ToAuditEntryRowClass())
+        .ServerMode(null, false, pager)
+        .Build();
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>When</th>
-                        <th>Actor</th>
-                        <th>Action</th>
-                        <th>Subject</th>
-                        <th>Description</th>
-                        <th>Target</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var ev in Model.Events)
-                    {
-                        var rowClass = ev.Action.ToAuditEntryRowClass();
-                        <tr class="@rowClass">
-                            <td class="text-nowrap">@ev.OccurredAt.ToInvariantTimestamp()</td>
-                            <td>
-                                @if (!ev.ActorUserId.HasValue)
-                                {
-                                    <span class="badge bg-info">System</span>
-                                }
-                                else
-                                {
-                                    <vc:human user-id="@ev.ActorUserId.Value" />
-                                }
-                            </td>
-                            <td>
-                                <span class="badge @ev.Action.ToAuditBadgeClass()">@ev.Action.ToAuditBadgeLabel()</span>
-                            </td>
-                            <td>
-                                @if (ev.SubjectUserId.HasValue)
-                                {
-                                    <vc:human user-id="@ev.SubjectUserId.Value" />
-                                }
-                            </td>
-                            <td>@ev.Description</td>
-                            <td>
-                                @if (ev.TargetTeamId.HasValue && !string.IsNullOrEmpty(ev.TargetTeamName))
-                                {
-                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@ev.TargetTeamSlug" class="text-decoration-none">@ev.TargetTeamName</a>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="table" />
     </div>
 }
-
-@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Index") { NavCssClass = "mt-3" }; }
-<partial name="_Pager" model="pagerModel" />
 
 <div class="mt-3">
     <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>

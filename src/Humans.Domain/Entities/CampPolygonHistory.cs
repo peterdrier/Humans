@@ -13,7 +13,6 @@ public class CampPolygonHistory
     public double AreaSqm { get; init; }
 
     public Guid ModifiedByUserId { get; init; }
-    public User ModifiedByUser { get; set; } = null!;
 
     public Instant ModifiedAt { get; init; }
 

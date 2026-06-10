@@ -1,7 +1,8 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model IList<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot>
 @{
     var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
-    var displayNameLookup = (Dictionary<Guid, string>)ViewData["DisplayNameLookup"]!;
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
     var resourceLookup = (Dictionary<Guid, List<string>>)ViewData["ResourceLookup"]!;
     var showError = (bool)ViewData["ShowError"]!;
@@ -13,70 +14,50 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>Event Type</th>
-                    <th>Human</th>
-                    <th>Google Email</th>
-                    <th>Team</th>
-                    <th>Resource</th>
-                    <th>Occurred</th>
-                    <th>Retries</th>
-                    @if (showError)
-                    {
-                        <th>Last Error</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var evt in Model)
-                {
-                    var googleEmail = googleEmailLookup.GetValueOrDefault(evt.UserId, "unknown");
-                    var teamName = teamLookup.GetValueOrDefault(evt.TeamId, evt.TeamId.ToString());
-                    var resources = resourceLookup.GetValueOrDefault(evt.TeamId);
-                    <tr>
-                        <td><code>@evt.EventType</code></td>
-                        <td>
-                            <vc:human user-id="@evt.UserId" link="Admin" />
-                        </td>
-                        <td><small class="text-muted">@googleEmail</small></td>
-                        <td>@teamName</td>
-                        <td>
-                            @if (resources is { Count: > 0 })
-                            {
-                                @foreach (var resource in resources)
-                                {
-                                    <div><small>@resource</small></div>
-                                }
-                            }
-                            else
-                            {
-                                <small class="text-muted">-</small>
-                            }
-                        </td>
-                        <td class="text-nowrap">@evt.OccurredAt.ToDateTime()</td>
-                        <td>
-                            @if (evt.RetryCount > 0)
-                            {
-                                <span class="badge bg-secondary">@evt.RetryCount</span>
-                            }
-                        </td>
-                        @if (showError)
-                        {
-                            <td>
-                                @if (!string.IsNullOrEmpty(evt.LastError))
-                                {
-                                    <small class="text-danger" title="@evt.LastError">
-                                        @(evt.LastError.Length > 120 ? evt.LastError[..120] + "..." : evt.LastError)
-                                    </small>
-                                }
-                            </td>
-                        }
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
+        @<text><code>@item.EventType</code></text>;
+    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
+        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
+        @<text><small class="text-muted">@googleEmailLookup.GetValueOrDefault(item.UserId, "unknown")</small></text>;
+    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
+    {
+        var resources = resourceLookup.GetValueOrDefault(evt.TeamId);
+        if (resources is { Count: > 0 })
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var resource in resources)
+                sb.Append($"<div><small>{Html.Encode(resource)}</small></div>");
+            return new HtmlString(sb.ToString());
+        }
+        return new HtmlString("<small class=\"text-muted\">-</small>");
+    };
+    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> retriesCell = @<text>
+        @if (item.RetryCount > 0)
+        {
+            <span class="badge bg-secondary">@item.RetryCount</span>
+        }
+    </text>;
+    var builder = TableModel.For(Model.ToList())
+        .Template("Event Type", eventTypeCell)
+        .Template("Human", humanCell)
+        .Template("Google Email", googleEmailCell)
+        .Column("Team", r => teamLookup.GetValueOrDefault(r.TeamId, r.TeamId.ToString()))
+        .Template("Resource", resourceCell)
+        .Column("Occurred", r => r.OccurredAt, c => c.DateTime())
+        .Template("Retries", retriesCell);
+    if (showError)
+    {
+        Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> errorCell = @<text>
+            @if (!string.IsNullOrEmpty(item.LastError))
+            {
+                <small class="text-danger" title="@item.LastError">
+                    @(item.LastError.Length > 120 ? item.LastError[..120] + "..." : item.LastError)
+                </small>
+            }
+        </text>;
+        builder = builder.Template("Last Error", errorCell);
+    }
+    var table = builder.Build();
+    <partial name="_Table" model="table" />
 }

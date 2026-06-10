@@ -8,6 +8,23 @@ public class ClientStatsTrackerTests
 {
     private const string WinChrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private const string IPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1";
+    private const string Googlebot = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+
+    [HumansFact]
+    public void RecordPageView_TalliesBotsByName()
+    {
+        var tracker = new ClientStatsTracker();
+
+        tracker.RecordPageView(Googlebot);
+        tracker.RecordPageView(Googlebot);
+        tracker.RecordPageView(WinChrome);
+
+        var snap = tracker.GetSnapshot();
+        // Only the crawler is broken out by name; human traffic stays out of the bot tally.
+        snap.Bots.Should().ContainSingle().Which.Count.Should().Be(2);
+        snap.Bots[0].Label.Should().NotBe("Bot");
+        snap.Bots.Should().NotContain(b => b.Label == "Windows" || b.Label == "Chrome");
+    }
 
     [HumansFact]
     public void RecordPageView_TalliesOsAndDevice()

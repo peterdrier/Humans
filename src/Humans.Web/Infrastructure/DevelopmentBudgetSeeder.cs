@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -254,7 +253,7 @@ public sealed class DevelopmentBudgetSeeder(
                 categoriesCreated++;
             }
 
-            await SeedLineItemsAsync(category, teamSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
+            await SeedLineItemsAsync(category, teamSeed.LineItems, actorUserId, () => lineItemsCreated++);
         }
 
         foreach (var sharedSeed in SharedServicesCategories)
@@ -269,7 +268,7 @@ public sealed class DevelopmentBudgetSeeder(
                 categoriesCreated++;
             }
 
-            await SeedLineItemsAsync(category, sharedSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
+            await SeedLineItemsAsync(category, sharedSeed.LineItems, actorUserId, () => lineItemsCreated++);
         }
 
         foreach (var ticketSeed in TicketingCategories)
@@ -284,7 +283,7 @@ public sealed class DevelopmentBudgetSeeder(
                 categoriesCreated++;
             }
 
-            await SeedLineItemsAsync(category, ticketSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
+            await SeedLineItemsAsync(category, ticketSeed.LineItems, actorUserId, () => lineItemsCreated++);
         }
 
         await budgetService.UpdateTicketingProjectionAsync(
@@ -349,7 +348,6 @@ public sealed class DevelopmentBudgetSeeder(
         BudgetCategoryDetail category,
         IReadOnlyList<BudgetLineItemSeed> lineItems,
         Guid actorUserId,
-        CancellationToken cancellationToken,
         Action onLineItemCreated)
     {
         await budgetService.UpdateCategoryAsync(category.Id, category.Name,

@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.CampAdminViewModel
 @{
     ViewData["Title"] = Localizer["Camp_AdminTitle"];
@@ -169,42 +171,31 @@
 @* Withdrawn Camps *@
 @if (Model.WithdrawnCamps.Count > 0)
 {
+    Func<Humans.Web.Models.CampCardViewModel, IHtmlContent> withdrawnNameCell =
+        @<text>
+            <a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.Slug">
+                @item.Name
+            </a>
+        </text>;
+    Func<Humans.Web.Models.CampCardViewModel, IHtmlContent> withdrawnReactivateCell =
+        @<text>
+            <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@item.SeasonId" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-warning btn-sm" title="Move back to pending approval">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Move to Pending
+                </button>
+            </form>
+        </text>;
+    var withdrawnTable = TableModel.For(Model.WithdrawnCamps)
+        .Template("Name", withdrawnNameCell)
+        .Column("Description", r => r.BlurbShort.Length > 100 ? r.BlurbShort[..100] + "..." : r.BlurbShort)
+        .Template("Actions", withdrawnReactivateCell, c => c.NoSort().End())
+        .Build();
     <div class="card mb-4">
         <div class="card-header">
             <i class="fa-solid fa-circle-pause me-2"></i>Withdrawn (@Model.WithdrawnCamps.Count)
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var camp in Model.WithdrawnCamps)
-                    {
-                        <tr>
-                            <td>
-                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@camp.Slug">
-                                    @camp.Name
-                                </a>
-                            </td>
-                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
-                            <td class="text-end">
-                                <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="Move back to pending approval">
-                                        <i class="fa-solid fa-rotate-left me-1"></i>Move to Pending
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="withdrawnTable" />
     </div>
 }
 

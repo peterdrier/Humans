@@ -21,7 +21,6 @@ namespace Humans.Application.Tests.Services;
 public sealed class CampServiceTests : ServiceTestHarness
 {
     private readonly CampService _service;
-    private readonly IUserService _userService;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
 
@@ -32,15 +31,12 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         var repo = new CampRepository(DbFactory);
 
-        _userService = NewDbBackedUserService();
-
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
         _service = new CampService(
             repo,
-            _userService,
             AuditLog,
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
@@ -82,12 +78,12 @@ public sealed class CampServiceTests : ServiceTestHarness
         var member = await Db.CampMembers.AsNoTracking()
             .FirstOrDefaultAsync(m => m.CampSeasonId == season.Id && m.UserId == userId);
         member.Should().NotBeNull();
-        member!.Status.Should().Be(CampMemberStatus.Active);
+        member.Status.Should().Be(CampMemberStatus.Active);
 
         var assignment = await Db.CampRoleAssignments.AsNoTracking()
             .FirstOrDefaultAsync(a => a.CampMemberId == member.Id);
         assignment.Should().NotBeNull();
-        assignment!.CampRoleDefinitionId.Should().Be(leadDef.Id);
+        assignment.CampRoleDefinitionId.Should().Be(leadDef.Id);
     }
 
     [HumansFact]
@@ -295,7 +291,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         });
         await Db.SaveChangesAsync();
 
-        var slices = await ((IUserDataContributor)_service).ContributeForUserAsync(userId, CancellationToken.None);
+        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
 
         var leadSlice = slices.Should()
             .ContainSingle(s => s.SectionName == GdprExportSections.CampLeadAssignments).Subject;
@@ -637,7 +633,7 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         var seasonInfo = detail.GetSeasonForYear(2027, fallbackToLatestSeason: true);
         seasonInfo.Should().NotBeNull();
-        seasonInfo!.Year.Should().Be(2026);
+        seasonInfo.Year.Should().Be(2026);
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
         seasonInfo.KidsVisiting.Should().Be(KidsVisitingPolicy.DaytimeOnly);
         seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
@@ -668,7 +664,7 @@ public sealed class CampServiceTests : ServiceTestHarness
         var detail = await _service.GetCampBySlugAsync(camp.Slug);
 
         detail.Should().NotBeNull();
-        detail!.GetSeasonForYear(2027).Should().BeNull();
+        detail.GetSeasonForYear(2027).Should().BeNull();
     }
 
     [HumansFact]
