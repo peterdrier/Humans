@@ -27,6 +27,12 @@ public class AgentApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
+public class SurveyApiSettings
+{
+    public const string SectionName = "SurveyApi";
+    public string ApiKey { get; set; } = string.Empty;
+}
+
 public abstract class ApiKeyAuthFilterBase(string apiKey) : IAuthorizationFilter
 {
     private const string ApiKeyHeaderName = "X-Api-Key";
@@ -57,4 +63,7 @@ public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);
 
 public class AgentApiKeyAuthFilter(IOptions<AgentApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);
+
+public class SurveyApiKeyAuthFilter(IOptions<SurveyApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);

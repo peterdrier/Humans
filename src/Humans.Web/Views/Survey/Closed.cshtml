@@ -1,0 +1,21 @@
+@model Humans.Web.Models.SurveyClosedViewModel
+
+@{
+    ViewData["Title"] = Localizer["Survey_Closed_Title"].Value;
+
+    var isClosed = string.Equals(Model.Reason, "closed", StringComparison.Ordinal);
+    var heading = isClosed ? Localizer["Survey_Closed_Heading"] : Localizer["Survey_InvalidLink_Heading"];
+    var body = isClosed ? Localizer["Survey_Closed_Body"] : Localizer["Survey_InvalidLink_Body"];
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card mt-4">
+            <div class="card-body text-center py-5">
+                <i class="fa-solid fa-circle-info fa-2x text-muted mb-3"></i>
+                <h1 class="h4 mb-2">@heading</h1>
+                <p class="text-muted mb-0">@body</p>
+            </div>
+        </div>
+    </div>
+</div>

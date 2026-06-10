@@ -280,6 +280,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
 | **Event Guide** | `EventService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
+| **Survey** | `SurveyService` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 
 **`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 

@@ -40,6 +40,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [typeof(IStoreRepository)] = "Store",
+            [typeof(ISurveyRepository)] = "Surveys",
             [typeof(ISystemSettingsRepository)] = "SystemSettings",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",

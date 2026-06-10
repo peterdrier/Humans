@@ -48,6 +48,12 @@ public interface IEmailMessageFactory
     /// <summary>Term renewal reminder (Governance).</summary>
     EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null);
 
+    /// <summary>Survey invitation — operational (System category, always-send). <paramref name="answerToken"/> is the invite token; the URL is built by the renderer.</summary>
+    EmailMessage SurveyInvitation(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null);
+
+    /// <summary>Survey reminder — single nudge for an unfinished invitation (System category).</summary>
+    EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null);
+
     /// <summary>Feedback response notification (System).</summary>
     EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
 

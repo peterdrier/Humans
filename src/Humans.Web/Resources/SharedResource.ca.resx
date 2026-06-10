@@ -5912,6 +5912,37 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Les teves respostes poden ser revisades i analitzades, fins i tot mitjançant eines automatitzades, per millorar el col·lectiu.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Enquesta</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>Tens respostes en curs — continua on ho vas deixar.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>Com vols respondre?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identificat</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>vinculat a tu; pots aturar-te i continuar més tard.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Participació registrada</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>les teves respostes no es vinculen a tu, però la teva participació es registra.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anònim</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>sense cap vincle amb tu.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Les respostes anònimes i amb participació registrada no es poden reprendre, i encara podries rebre un recordatori. Només una resposta identificada es pot pausar i continuar més tard.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Començar</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Pàgina {0} de {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Si us plau, respon les preguntes obligatòries abans de continuar.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>Aquesta pregunta és obligatòria.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Enrere</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Següent</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Enquesta no disponible</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>Aquesta enquesta està tancada</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Gràcies pel teu interès — aquesta enquesta ja no accepta respostes.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Aquest enllaç ja no és vàlid</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>L'enllaç de l'enquesta no és vàlid o ha caducat. Si creus que és un error, demana un enllaç nou.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Gràcies</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Gràcies per la teva resposta.</value></data>
   <data name="AccountStatus_Title" xml:space="preserve"><value>Estat del compte</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>El teu compte ha estat suspès</value></data>
   <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>El teu compte ha estat rebutjat</value></data>

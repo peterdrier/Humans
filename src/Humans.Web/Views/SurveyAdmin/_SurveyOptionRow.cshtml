@@ -1,0 +1,22 @@
+@model SurveyOptionRowModel
+@{
+    var prefix = $"Questions[{Model.QuestionKey}].Options[{Model.OptionKey}]";
+}
+<div class="option-row border rounded p-2 mb-2">
+    <input type="hidden" name="Questions[@Model.QuestionKey].Options.Index" value="@Model.OptionKey" />
+    @if (Model.Option.Id is { } oid)
+    {
+        <input type="hidden" name="@(prefix).Id" value="@oid" />
+    }
+    <div class="d-flex gap-2 align-items-start">
+        <div class="flex-grow-1">
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text">Value</span>
+                <input type="text" name="@(prefix).Value" class="form-control" value="@Model.Option.Value"
+                       placeholder="stable key, e.g. yes" />
+            </div>
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Label", "Label", Model.Option.Label))" />
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-option" title="Remove option">&times;</button>
+    </div>
+</div>

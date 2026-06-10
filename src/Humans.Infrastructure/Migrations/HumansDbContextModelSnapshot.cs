@@ -4050,6 +4050,293 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("store_treasury_sync_state", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Survey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("AudienceTeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AudienceType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Instant?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefaultCulture")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Intro")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<Instant?>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PublicSlug")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("PublicStartedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ThankYou")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicSlug")
+                        .IsUnique()
+                        .HasFilter("\"PublicSlug\" IS NOT NULL");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("surveys", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("RatingValue")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ResponseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SelectedOptionValues")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TextValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("ResponseId");
+
+                    b.ToTable("survey_answers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LatestEmailStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Instant?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Started")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SurveyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SurveyId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("SurveyId", "Completed", "SentAt");
+
+                    b.ToTable("survey_invitations", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("HelpText")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PageNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<int?>("RatingMax")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RatingMaxLabel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<int?>("RatingMin")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RatingMinLabel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("ShowIf")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("SurveyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SurveyId", "PageNumber", "Order");
+
+                    b.ToTable("survey_questions", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestionOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId", "Order");
+
+                    b.ToTable("survey_question_options", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Anonymity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Culture")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("InputMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("InvitationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SurveyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitationId");
+
+                    b.HasIndex("SurveyId");
+
+                    b.HasIndex("SurveyId", "UserId");
+
+                    b.ToTable("survey_responses", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.SyncServiceSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5566,7 +5853,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.AuditLogEntry", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "ActorUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -5575,8 +5862,6 @@ namespace Humans.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ResourceId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ActorUser");
 
                     b.Navigation("Resource");
                 });
@@ -5686,13 +5971,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "CreatedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampHistoricalName", b =>
@@ -5753,15 +6036,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "LastModifiedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("LastModifiedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CampSeason");
-
-                    b.Navigation("LastModifiedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygonHistory", b =>
@@ -5772,15 +6053,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "ModifiedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ModifiedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CampSeason");
-
-                    b.Navigation("ModifiedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
@@ -5818,14 +6097,12 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "ReviewedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Camp");
-
-                    b.Navigation("ReviewedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>
@@ -5894,15 +6171,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("DocumentVersion");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ContactField", b =>
@@ -5991,13 +6266,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany("EventParticipations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ExpenseLine", b =>
@@ -6161,12 +6434,10 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ResolvedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ResolvedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.NotificationRecipient", b =>
@@ -6177,15 +6448,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Notification");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
@@ -6319,14 +6588,59 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyAnswer", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.SurveyQuestion", null)
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.SurveyResponse", "Response")
+                        .WithMany("Answers")
+                        .HasForeignKey("ResponseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Response");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Survey", "Survey")
+                        .WithMany("Questions")
+                        .HasForeignKey("SurveyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Survey");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestionOption", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.SurveyQuestion", "Question")
+                        .WithMany("Options")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.SurveyInvitation", null)
+                        .WithMany()
+                        .HasForeignKey("InvitationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.SyncServiceSettings", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "UpdatedByUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
@@ -6454,7 +6768,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketAttendee", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "MatchedUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("MatchedUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -6465,19 +6779,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("MatchedUser");
-
                     b.Navigation("TicketOrder");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketOrder", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "MatchedUser")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("MatchedUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("MatchedUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketTransferRequest", b =>
@@ -6786,6 +7096,21 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Lines");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.Survey", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyQuestion", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.SurveyResponse", b =>
+                {
+                    b.Navigation("Answers");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
