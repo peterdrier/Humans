@@ -97,10 +97,7 @@ public class EmailProvisioningServiceTests
         IUserService UserService,
         IGoogleWorkspaceUserService WorkspaceUserService,
         IUserEmailService UserEmailService,
-        ITeamService TeamService,
-        IEmailService EmailService,
-        INotificationEmitter NotificationService,
-        IAuditLogService AuditLogService);
+        ITeamService TeamService);
 
     private static ProvisioningFixture BuildFixture()
     {
@@ -120,7 +117,7 @@ public class EmailProvisioningServiceTests
 
         return new ProvisioningFixture(
             service, userService, workspace, userEmail,
-            teamService, email, notify, audit);
+            teamService);
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, Profile profile) => UserInfo.Create(
@@ -141,7 +138,7 @@ public class EmailProvisioningServiceTests
         volunteerHistory: [],
         communicationPreferences: []);
 
-    private static void StubTargetUser(ProvisioningFixture f, Guid userId, string? oauthEmail = "target@example.com")
+    private static void StubTargetUser(ProvisioningFixture f, Guid userId)
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Target", LastName = "Two" }));
@@ -221,7 +218,7 @@ public class EmailProvisioningServiceTests
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();
-        StubTargetUser(f, userId, oauthEmail: "person@example.com");
+        StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
@@ -262,7 +259,7 @@ public class EmailProvisioningServiceTests
 
         var userId = Guid.NewGuid();
         var existingRowId = Guid.NewGuid();
-        StubTargetUser(f, userId, oauthEmail: "person@example.com");
+        StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
 

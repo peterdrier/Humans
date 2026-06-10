@@ -1,7 +1,6 @@
 @model IList<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot>
 @{
     var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
-    var displayNameLookup = (Dictionary<Guid, string>)ViewData["DisplayNameLookup"]!;
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
     var resourceLookup = (Dictionary<Guid, List<string>>)ViewData["ResourceLookup"]!;
     var showError = (bool)ViewData["ShowError"]!;

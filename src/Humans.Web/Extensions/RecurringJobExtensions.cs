@@ -93,6 +93,10 @@ public static class RecurringJobExtensions
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
 
+            // Send the one-time 7-day survey reminder to invitees who haven't completed — daily at 09:00 UTC.
+            ("survey-reminder", () => RecurringJob.AddOrUpdate<SendSurveyReminderJob>(
+                "survey-reminder", job => job.ExecuteAsync(CancellationToken.None), "0 9 * * *")),
+
         };
 
         if (!string.IsNullOrWhiteSpace(mailerAudienceCron))

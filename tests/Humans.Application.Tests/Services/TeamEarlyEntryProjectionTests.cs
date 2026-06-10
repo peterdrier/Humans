@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.Teams;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using NodaTime;
 
 namespace Humans.Application.Tests.Services;

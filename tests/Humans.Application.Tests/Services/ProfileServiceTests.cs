@@ -8,12 +8,10 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
 using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using ProfilePictureStorageKeys = Humans.Application.Services.Profiles.ProfilePictureStorageKeys;
@@ -414,7 +412,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     // --- Helpers ---
 
-    private async Task<User> SeedUserAsync(Guid userId,
+    private async Task SeedUserAsync(Guid userId,
         string displayName = "Test User", string? profilePictureUrl = null)
     {
         var user = new User
@@ -428,7 +426,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         };
         Db.Users.Add(user);
         await Db.SaveChangesAsync();
-        return user;
     }
 
     private async Task<Guid> SeedUserWithProfileAsync(Guid userId,
@@ -475,24 +472,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             NoPriorBurnExperience: false,
             ProfilePictureData: pictureData, ProfilePictureContentType: pictureContentType,
             RemoveProfilePicture: removeProfilePicture);
-    }
-
-    private Profile MakeProfile(Guid userId, MembershipTier tier = MembershipTier.Volunteer,
-        bool isApproved = false, bool isSuspended = false)
-    {
-        return new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Test",
-            FirstName = "First",
-            LastName = "Last",
-            MembershipTier = tier,
-            IsApproved = isApproved,
-            IsSuspended = isSuspended,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
     }
 
 }

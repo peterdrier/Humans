@@ -698,6 +698,8 @@
   <data name="Email_ApplicationApproved_Heading" xml:space="preserve"><value>Your Application Has Been Approved!</value></data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve"><value>Regarding Your Membership Application</value></data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Reminder: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve"><value>Action Required: Updated {0}</value><comment>{0} = document name</comment></data>
   <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve"><value>Action Required: Multiple Legal Documents Updated</value></data>
   <data name="Email_ReConsentReminder_Subject" xml:space="preserve"><value>Reminder: {0} days to review updated documents</value><comment>{0} = days remaining</comment></data>
@@ -1131,6 +1133,19 @@
 {1}
 &lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
+
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;You're invited to complete the survey &lt;strong&gt;{1}&lt;/strong&gt;. It only takes a few minutes.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
+
+  <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Just a reminder that the survey &lt;strong&gt;{1}&lt;/strong&gt; is still waiting for your response.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
+
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Legal Document Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have updated the following required documents:&lt;/p&gt;
@@ -2401,6 +2416,37 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Your responses may be reviewed and analysed, including by automated tooling, to improve the collective.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Survey</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>You have answers in progress — continue where you left off.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>How would you like to respond?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identified</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>linked to you; you can stop and resume later.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Completion tracked</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>your answers are not linked to you, but participation is counted.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anonymous</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>no link to you at all.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Anonymous and completion-tracked responses can't be resumed, and you may still receive one reminder. Only an identified response can be paused and continued later.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Please answer the required questions before continuing.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>This question is required.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Submit</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Survey unavailable</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>This survey is closed</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Thanks for your interest — this survey is no longer accepting responses.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>This link is no longer valid</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>The survey link you used is invalid or has expired. If you think this is a mistake, please request a new link.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Thank you</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Thank you for your response.</value></data>
   <data name="AccountStatus_Title" xml:space="preserve"><value>Account status</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Your account has been suspended</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Your account has been suspended by an administrator</value></data>

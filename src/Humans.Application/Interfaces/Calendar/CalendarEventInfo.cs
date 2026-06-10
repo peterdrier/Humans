@@ -26,10 +26,11 @@ namespace Humans.Application.Interfaces.Calendar;
 /// list) through <see cref="ICalendarServiceRead.GetEventInfoAsync"/>.
 /// </para>
 /// <para>
-/// Future load: an iCal feed endpoint (planned — <c>User.ICalToken</c> already
-/// exists on <c>UserInfo</c> but is currently unused) will read the same
-/// window expansion path that this cache backs, so the snapshot-scan design
-/// absorbs that traffic without a second cache.
+/// Future load: the personal iCal feed (<c>/api/ical</c>, keyed by
+/// <c>User.ICalToken</c>) ships with Shifts + Events contributors today; if the
+/// Calendar section joins the fanout it will read the same window expansion
+/// path that this cache backs, so the snapshot-scan design absorbs that
+/// traffic without a second cache.
 /// </para>
 /// <para>
 /// Memory budget: ~500-user nonprofit with low calendar write volume; at any

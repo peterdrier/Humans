@@ -151,7 +151,8 @@ public sealed class ContactFieldService(
             var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
             var viewerMemberships = allTeams
                 .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == viewerUserId) })
-                .Where(x => x.Membership is not null);
+                .Where(x => x.Membership is not null)
+                .ToList();
             _cachedIsAnyCoordinator = viewerMemberships.Any(x => x.Membership!.Role == TeamMemberRole.Coordinator);
             _cachedViewerTeamIds = viewerMemberships
                 .Where(x => x.TeamInfo.SystemTeamType != SystemTeamType.Volunteers)

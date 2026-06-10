@@ -14,7 +14,7 @@ public static class ShiftSignupBucketer
     public static IReadOnlyList<Guid> GetTeamIds(IReadOnlyList<ShiftSignup> signups) =>
         signups
             .Where(s => s.Shift?.Rota is not null)
-            .Select(s => s.Shift!.Rota!.TeamId)
+            .Select(s => s.Shift.Rota.TeamId)
             .Distinct()
             .ToList();
 

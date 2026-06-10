@@ -5934,6 +5934,37 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Vos réponses peuvent être examinées et analysées, y compris par des outils automatisés, afin d'améliorer le collectif.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Enquête</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>Vous avez des réponses en cours — reprenez là où vous vous étiez arrêté·e.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Langue</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>Comment souhaitez-vous répondre ?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identifié</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>lié à vous ; vous pouvez vous arrêter et reprendre plus tard.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Participation enregistrée</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>vos réponses ne sont pas liées à vous, mais votre participation est comptée.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anonyme</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>aucun lien avec vous.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Les réponses anonymes et à participation enregistrée ne peuvent pas être reprises, et vous pourriez tout de même recevoir un rappel. Seule une réponse identifiée peut être mise en pause et reprise plus tard.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Commencer</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continuer</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Page {0} sur {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Veuillez répondre aux questions obligatoires avant de continuer.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>Cette question est obligatoire.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Retour</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Suivant</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Enquête indisponible</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>Cette enquête est fermée</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Merci de votre intérêt — cette enquête n'accepte plus de réponses.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Ce lien n'est plus valide</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>Le lien de l'enquête est invalide ou a expiré. Si vous pensez qu'il s'agit d'une erreur, demandez un nouveau lien.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Merci</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Merci pour votre réponse.</value></data>
   <data name="AccountStatus_Title" xml:space="preserve"><value>Statut du compte</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Votre compte a été suspendu</value></data>
   <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Votre compte a été rejeté</value></data>

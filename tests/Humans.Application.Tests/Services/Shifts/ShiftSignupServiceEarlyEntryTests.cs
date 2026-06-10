@@ -8,14 +8,12 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Constants;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -48,8 +46,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
 
         _repo = new ShiftRepository(DbFactory, Db, Clock);
         _service = new ShiftSignupService(
@@ -70,7 +67,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
     [HumansFact]
     public async Task SignUpAsync_IgnoresCapacityUsageFromDifferentEarlyEntryDay()
     {
-        var (eventSettings, rota, _) = SeedBuildScenario();
+        var (eventSettings, rota) = SeedBuildScenario();
         eventSettings.EarlyEntryCapacity = new Dictionary<int, int>
         {
             [-3] = 2,
@@ -91,7 +88,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
     [HumansFact(Timeout = 10000)]
     public async Task SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull()
     {
-        var (eventSettings, rota, _) = SeedBuildScenario();
+        var (eventSettings, rota) = SeedBuildScenario();
         eventSettings.EarlyEntryCapacity = new Dictionary<int, int>
         {
             [-3] = 2,
@@ -111,7 +108,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         result.Warning.Should().Contain("Tue Jun 30");
     }
 
-    private (EventSettings eventSettings, Rota rota, Team team) SeedBuildScenario()
+    private (EventSettings eventSettings, Rota rota) SeedBuildScenario()
     {
         var eventSettings = new EventSettings
         {
@@ -155,7 +152,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         };
         Db.Rotas.Add(rota);
 
-        return (eventSettings, rota, team);
+        return (eventSettings, rota);
     }
 
     private Shift SeedAllDayShift(Rota rota, int dayOffset)

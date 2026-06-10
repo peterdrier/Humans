@@ -192,8 +192,8 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetFeedbackListAsync_FiltersByStatus()
     {
-        await CreateTestReport(FeedbackStatus.Open);
-        await CreateTestReport(FeedbackStatus.Open);
+        await CreateTestReport();
+        await CreateTestReport();
         await CreateTestReport(FeedbackStatus.Resolved);
 
         var results = await _service.GetFeedbackListAsync(status: FeedbackStatus.Open);

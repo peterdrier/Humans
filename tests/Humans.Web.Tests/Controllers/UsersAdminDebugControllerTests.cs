@@ -118,10 +118,10 @@ public class UsersAdminDebugControllerTests
 
         var controller = new UsersAdminDebugController(userService);
 
-        var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1, "displayName", "asc")).Model!;
+        var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1)).Model!;
         tooSmall.PageSize.Should().Be(10);
 
-        var tooBig = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 9999, "displayName", "asc")).Model!;
+        var tooBig = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 9999)).Model!;
         tooBig.PageSize.Should().Be(200);
     }
 }

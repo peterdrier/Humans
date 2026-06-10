@@ -104,6 +104,22 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
     }
 
     /// <inheritdoc />
+    public EmailMessage SurveyInvitation(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
+    {
+        var content = renderer.RenderSurveyInvitation(userName, surveyTitle, answerToken, culture);
+        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
+            "survey_invitation", MessageCategory.System);
+    }
+
+    /// <inheritdoc />
+    public EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
+    {
+        var content = renderer.RenderSurveyReminder(userName, surveyTitle, answerToken, culture);
+        return new EmailMessage(userEmail, userName, content.Subject, content.HtmlBody,
+            "survey_reminder", MessageCategory.System);
+    }
+
+    /// <inheritdoc />
     public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
     {
         var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);

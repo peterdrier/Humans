@@ -124,7 +124,7 @@ public class DevLoginController(
 
     private IActionResult RedirectToLocalOrHome(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl)
-            ? LocalRedirect(returnUrl!)
+            ? LocalRedirect(returnUrl)
             : RedirectToAction(nameof(HomeController.Index), "Home");
 
     private bool IsDevAuthEnabled()

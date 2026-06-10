@@ -1,0 +1,162 @@
+@using Humans.Domain.Enums
+@model Humans.Web.Models.Survey.SurveyPageViewModel
+
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card mt-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h1 class="h4 mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title)</h1>
+                    @if (Model.TotalSteps > 0)
+                    {
+                        <span class="badge text-bg-secondary">@Localizer["Survey_PageOf", Model.StepNumber, Model.TotalSteps]</span>
+                    }
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @Localizer["Survey_RequiredAlert"]
+                    </div>
+                }
+
+                @{
+                    // Public-slug path posts to PublicSubmitPage with the slug in the route; the invited
+                    // path posts to SubmitPage with the token in a hidden field.
+                    var submitAction = Model.IsPublic ? "PublicSubmitPage" : "SubmitPage";
+                }
+                <form asp-controller="Survey" asp-action="@submitAction" asp-route-slug="@(Model.IsPublic ? Model.Slug : null)" method="post">
+                    @Html.AntiForgeryToken()
+                    @if (!Model.IsPublic)
+                    {
+                        <input type="hidden" name="Token" value="@Model.Token" />
+                    }
+                    <input type="hidden" name="Page" value="@Model.Page" />
+
+                    @for (var i = 0; i < Model.Questions.Count; i++)
+                    {
+                        var q = Model.Questions[i];
+                        var hasError = !ViewData.ModelState.IsValid
+                            && ViewData.ModelState.TryGetValue(q.Id.ToString(), out var entry)
+                            && entry.Errors.Count > 0;
+
+                        <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
+                            <legend class="form-label fw-semibold">
+                                @q.Prompt
+                                @if (q.IsRequired)
+                                {
+                                    <span class="text-danger" aria-hidden="true">*</span>
+                                }
+                            </legend>
+
+                            @if (!string.IsNullOrWhiteSpace(q.HelpText))
+                            {
+                                <p class="form-text mt-0 mb-2">@q.HelpText</p>
+                            }
+
+                            <input type="hidden" name="Answers[@i].QuestionId" value="@q.Id" />
+
+                            @switch (q.Type)
+                            {
+                                case SurveyQuestionType.SingleChoice:
+                                    foreach (var opt in q.Options)
+                                    {
+                                        var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio"
+                                                   id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                                                   value="@opt.Value" @(sel ? "checked" : null) />
+                                            <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                                        </div>
+                                    }
+                                    break;
+
+                                case SurveyQuestionType.MultiChoice:
+                                    foreach (var opt in q.Options)
+                                    {
+                                        var sel = q.SelectedOptionValues.Contains(opt.Value, StringComparer.Ordinal);
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="q@(i)_@opt.Value" name="Answers[@i].SelectedOptionValues"
+                                                   value="@opt.Value" @(sel ? "checked" : null) />
+                                            <label class="form-check-label" for="q@(i)_@opt.Value">@opt.Label</label>
+                                        </div>
+                                    }
+                                    break;
+
+                                case SurveyQuestionType.ShortText:
+                                    <input class="form-control" type="text"
+                                           name="Answers[@i].TextValue" value="@q.TextValue" />
+                                    break;
+
+                                case SurveyQuestionType.LongText:
+                                    <textarea class="form-control" rows="4" name="Answers[@i].TextValue">@q.TextValue</textarea>
+                                    break;
+
+                                case SurveyQuestionType.Rating:
+                                {
+                                    var min = q.RatingMin ?? 1;
+                                    var max = q.RatingMax ?? 5;
+                                    <div class="d-flex flex-wrap align-items-center gap-3">
+                                        @if (!string.IsNullOrWhiteSpace(q.RatingMinLabel))
+                                        {
+                                            <span class="form-text mb-0">@q.RatingMinLabel</span>
+                                        }
+                                        <div class="btn-group" role="group" aria-label="Rating">
+                                            @for (var n = min; n <= max; n++)
+                                            {
+                                                var checkedRating = q.RatingValue == n;
+                                                <input type="radio" class="btn-check"
+                                                       id="q@(i)_r@(n)" name="Answers[@i].RatingValue"
+                                                       value="@n" autocomplete="off" @(checkedRating ? "checked" : null) />
+                                                <label class="btn btn-outline-primary" for="q@(i)_r@(n)">@n</label>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(q.RatingMaxLabel))
+                                        {
+                                            <span class="form-text mb-0">@q.RatingMaxLabel</span>
+                                        }
+                                    </div>
+                                    break;
+                                }
+                            }
+
+                            @if (hasError)
+                            {
+                                <div class="text-danger small mt-1">@Localizer["Survey_QuestionRequired"]</div>
+                            }
+                        </fieldset>
+                    }
+
+                    <div class="d-flex justify-content-between mt-4">
+                        @if (Model.CanGoBack)
+                        {
+                            <button type="submit" name="Back" value="true" class="btn btn-outline-secondary" formnovalidate>
+                                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Survey_Back"]
+                            </button>
+                        }
+                        else
+                        {
+                            <span></span>
+                        }
+
+                        <button type="submit" class="btn btn-primary">
+                            @if (Model.IsLastStep)
+                            {
+                                <span>@Localizer["Survey_Submit"]<i class="fa-solid fa-paper-plane ms-1"></i></span>
+                            }
+                            else
+                            {
+                                <span>@Localizer["Survey_Next"]<i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            }
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

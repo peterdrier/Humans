@@ -560,7 +560,7 @@ public class VolunteerTrackingServiceTests
 
         strip.Should().NotBeNull();
         // Declared flag set on exactly the declared days:
-        strip!.Row.Cells.Where(c => c.DeclaredAvailable).Select(c => c.DayOffset)
+        strip.Row.Cells.Where(c => c.DeclaredAvailable).Select(c => c.DayOffset)
             .Should().BeEquivalentTo(new[] { -2, -1 });
         // Precedence: -2 is before today → AvailableUnbooked; -1 is today/future → AvailableExpected.
         strip.Row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.AvailableUnbooked);
@@ -591,7 +591,7 @@ public class VolunteerTrackingServiceTests
         var strip = await sut.GetUserBuildStripAsync(userId);
 
         strip.Should().NotBeNull();
-        strip!.Row.Cells.Should().OnlyContain(c => c.DeclaredAvailable == false);
+        strip.Row.Cells.Should().OnlyContain(c => c.DeclaredAvailable == false);
     }
 
     [HumansFact]
@@ -731,7 +731,7 @@ public class VolunteerTrackingServiceTests
 
         var userService = Substitute.For<IUserServiceRead>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 var users = (participations ?? [])
                     .GroupBy(p => p.UserId)

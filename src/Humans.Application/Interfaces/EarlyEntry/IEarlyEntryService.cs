@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.EarlyEntry;

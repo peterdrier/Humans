@@ -9,7 +9,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -102,9 +101,9 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
                 _campByUser.GetValueOrDefault(ci.Arg<Guid>(), CampUserInfo.None)));
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamServiceRead>(_teamService)
+            .With(_teamService)
             .With<IUserServiceRead>(_userService)
-            .With<ICampServiceRead>(_campService)
+            .With(_campService)
             .Build();
 
         var repo = new ShiftRepository(DbFactory, Db, Clock);
@@ -116,8 +115,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
     }
 
     [HumansFact]
@@ -126,7 +124,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         var summary = await _service.BuildSummaryAsync(_event);
 
         summary.Should().NotBeNull();
-        summary!.Scope.Should().Be(ShiftSummaryScope.Global);
+        summary.Scope.Should().Be(ShiftSummaryScope.Global);
 
         var byUser = summary.Humans.ToDictionary(h => h.UserId);
         byUser.Keys.Should().BeEquivalentTo([_userA, _userB, _userC]);
@@ -188,7 +186,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power");
 
         summary.Should().NotBeNull();
-        summary!.Scope.Should().Be(ShiftSummaryScope.Team);
+        summary.Scope.Should().Be(ShiftSummaryScope.Team);
         summary.TeamName.Should().Be("Power");
         summary.TeamSlug.Should().Be("power");
 
@@ -213,7 +211,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", rotaId: _rPower);
 
         summary.Should().NotBeNull();
-        summary!.Scope.Should().Be(ShiftSummaryScope.Rota);
+        summary.Scope.Should().Be(ShiftSummaryScope.Rota);
         summary.RotaId.Should().Be(_rPower);
         summary.RotaName.Should().NotBeNullOrEmpty();
 
@@ -246,7 +244,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     {
         Db.EventSettings.Add(_event);
 
-        var power = SeedTeam(_powerId, "Power");
+        SeedTeam(_powerId, "Power");
         var sub = SeedTeam(_subId, "Sub");
         sub.ParentTeamId = _powerId;          // non-promoted sub-team of Power
         sub.IsPromotedToDirectory = false;

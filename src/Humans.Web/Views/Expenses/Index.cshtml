@@ -1,5 +1,4 @@
 @model Humans.Web.Models.ExpensesIndexViewModel
-@using Humans.Domain.Enums
 @{
     ViewData["Title"] = "My Expense Reports";
 }
@@ -138,7 +137,6 @@ else
                         ExpenseReportStatus.Approved => "bg-success",
                         ExpenseReportStatus.SepaSent => "bg-warning text-dark",
                         ExpenseReportStatus.Paid => "bg-success",
-                        ExpenseReportStatus.Withdrawn => "bg-secondary",
                         _ => "bg-secondary"
                     };
                     <tr>

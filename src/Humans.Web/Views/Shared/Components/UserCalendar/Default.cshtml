@@ -1,0 +1,50 @@
+@model Humans.Web.ViewComponents.UserCalendarViewModel
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-calendar-days me-2"></i>Calendar Feed</span>
+        @if (!Model.LoadFailed)
+        {
+            <small class="text-muted">
+                @Model.Items.Count @(Model.Items.Count == 1 ? "item" : "items")
+                &middot; feed @(Model.HasFeedToken ? "provisioned" : "not provisioned")
+            </small>
+        }
+    </div>
+    @if (Model.LoadFailed)
+    {
+        <div class="card-body text-danger">Failed to load calendar feed items.</div>
+    }
+    else if (Model.Items.Count == 0)
+    {
+        <div class="card-body text-muted">No calendar items.</div>
+    }
+    else
+    {
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Summary</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="badge bg-secondary">@item.Source</span></td>
+                            <td>@item.Summary</td>
+                            <td>@item.Start.ToDateTime()</td>
+                            <td>@item.End.ToDateTime()</td>
+                            <td class="text-muted">@item.Location</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

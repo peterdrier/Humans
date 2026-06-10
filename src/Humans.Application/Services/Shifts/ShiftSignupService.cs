@@ -3,12 +3,12 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +32,7 @@ public sealed class ShiftSignupService(
     IEarlyEntryInvalidator earlyEntryInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
-    ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge
+    ILogger<ShiftSignupService> logger) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
 {
     // Lazy-resolved for notification coordinator / team-name lookups.
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();
@@ -517,47 +517,161 @@ public sealed class ShiftSignupService(
         var now = clock.GetCurrentInstant();
         isPrivileged = isPrivileged || await IsPrivilegedAsync(userId, rota.TeamId);
 
-        if (!es.IsShiftBrowsingOpen && !isPrivileged)
-            return SignupResult.Fail("Shift browsing is not currently open.");
-
-        if (rota.Period == RotaPeriod.Build && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
-            return SignupResult.Fail("Early entry signups are closed.");
+        var gateFailure = ValidateRangeSignupGate(rota, es, now, isPrivileged);
+        if (gateFailure is not null)
+            return gateFailure;
 
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
 
-        // Fetched upfront — used for both duplicate-check and time-overlap check.
-        var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
         var existingSignups = await GetActiveUserSignupsAsync(userId);
+
+        var duplicateSelection = PruneDuplicateRangeShifts(shiftsInRange, existingSignups, es, skipConflicts);
+        if (duplicateSelection.Failure is not null)
+            return duplicateSelection.Failure;
+
+        var conflictSelection = PruneConflictingRangeShifts(
+            duplicateSelection.Shifts,
+            existingSignups,
+            es,
+            duplicateSelection.Warnings,
+            skipConflicts);
+        if (conflictSelection.Failure is not null)
+            return conflictSelection.Failure;
+
+        shiftsInRange = conflictSelection.Shifts;
+        if (shiftsInRange.Count == 0)
+            return BuildEmptyRangeSignupResult(conflictSelection.Warnings);
+
+        var capacitySelection = await SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
+        if (capacitySelection.AvailableShifts.Count == 0)
+            return SignupResult.Fail("All shifts in this range are at capacity.");
+
+        string? warning = CombineRangeWarnings(conflictSelection.Warnings);
+        warning = AppendFullDayRangeWarning(warning, capacitySelection.FullDayOffsets, es);
+
+        var availableShifts = capacitySelection.AvailableShifts;
+
+        if (rota.Period == RotaPeriod.Build)
+            warning = await AppendEarlyEntryRangeWarningAsync(warning, availableShifts, es);
+
+        var blockId = Guid.NewGuid();
+
+        // Public rotas auto-confirm at signup regardless of the volunteer's admission/consent
+        // status; only RequireApproval rotas park signups as Pending for coordinator review.
+        var autoConfirm = rota.Policy == SignupPolicy.Public ||
+                           await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
+        var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
+
+        await repo.SaveChangesAsync();
+        viewInvalidator.InvalidateUser(userId);
+        viewInvalidator.InvalidateRota(rotaId);
+        if (autoConfirm && availableShifts.Any(s => s.IsEarlyEntry))
+            earlyEntryInvalidator.InvalidateUser(userId);
+
+        await AuditRangeSignupsAsync(userId, rota, es, createdSignups.SignupsForAudit, autoConfirm);
+
+        if (autoConfirm)
+        {
+            await DispatchSignupChangeNotificationAsync(createdSignups.LastSignup, availableShifts[^1], rota,
+                $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
+        }
+
+        return SignupResult.Ok(createdSignups.LastSignup, warning);
+    }
+
+    private static SignupResult? ValidateRangeSignupGate(
+        Rota rota,
+        EventSettings eventSettings,
+        Instant now,
+        bool isPrivileged)
+    {
+        if (!eventSettings.IsShiftBrowsingOpen && !isPrivileged)
+            return SignupResult.Fail("Shift browsing is not currently open.");
+
+        if (rota.Period == RotaPeriod.Build
+            && eventSettings.EarlyEntryClose.HasValue
+            && now >= eventSettings.EarlyEntryClose.Value
+            && !isPrivileged)
+        {
+            return SignupResult.Fail("Early entry signups are closed.");
+        }
+
+        return null;
+    }
+
+    private static RangeSignupCandidateSelection PruneDuplicateRangeShifts(
+        List<Shift> shiftsInRange,
+        IReadOnlyCollection<ShiftSignup> existingSignups,
+        EventSettings eventSettings,
+        bool skipConflicts)
+    {
+        var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
         var activeShiftIds = existingSignups
             .Where(s => shiftIdsInRange.Contains(s.ShiftId))
             .Select(s => s.ShiftId)
             .ToHashSet();
 
-        var skipMessages = new List<string>();
-        if (activeShiftIds.Count > 0)
-        {
-            if (!skipConflicts)
-                return SignupResult.Fail("Already signed up for one or more shifts in this range.");
+        if (activeShiftIds.Count == 0)
+            return new RangeSignupCandidateSelection(shiftsInRange, [], null);
 
-            var alreadySignedUpDays = shiftsInRange
-                .Where(s => activeShiftIds.Contains(s.Id))
-                .Select(s => s.DayOffset)
-                .ToList();
-            var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
-            skipMessages.Add($"Already signed up for day(s): {dayList}.");
+        if (!skipConflicts)
+            return new RangeSignupCandidateSelection(
+                shiftsInRange,
+                [],
+                SignupResult.Fail("Already signed up for one or more shifts in this range."));
 
-            shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
-        }
+        var alreadySignedUpDays = shiftsInRange
+            .Where(s => activeShiftIds.Contains(s.Id))
+            .Select(s => s.DayOffset)
+            .ToList();
+        var dayList = FormatRangeDayList(eventSettings, alreadySignedUpDays);
+        var warnings = new List<string> { $"Already signed up for day(s): {dayList}." };
+        var remainingShifts = shiftsInRange
+            .Where(s => !activeShiftIds.Contains(s.Id))
+            .ToList();
 
+        return new RangeSignupCandidateSelection(remainingShifts, warnings, null);
+    }
+
+    private static RangeSignupCandidateSelection PruneConflictingRangeShifts(
+        List<Shift> shiftsInRange,
+        IReadOnlyCollection<ShiftSignup> existingSignups,
+        EventSettings eventSettings,
+        IReadOnlyList<string> existingWarnings,
+        bool skipConflicts)
+    {
+        var conflictingDays = GetConflictingRangeDays(shiftsInRange, existingSignups, eventSettings);
+        if (conflictingDays.Count == 0)
+            return new RangeSignupCandidateSelection(shiftsInRange, existingWarnings.ToList(), null);
+
+        var dayList = FormatRangeDayList(eventSettings, conflictingDays);
+        if (!skipConflicts)
+            return new RangeSignupCandidateSelection(
+                shiftsInRange,
+                existingWarnings.ToList(),
+                SignupResult.Fail($"Time conflict on day(s): {dayList}."));
+
+        var warnings = existingWarnings.Append($"Time conflict on day(s): {dayList}.").ToList();
+        var remainingShifts = shiftsInRange
+            .Where(s => !conflictingDays.Contains(s.DayOffset))
+            .ToList();
+
+        return new RangeSignupCandidateSelection(remainingShifts, warnings, null);
+    }
+
+    private static List<int> GetConflictingRangeDays(
+        IReadOnlyList<Shift> shiftsInRange,
+        IEnumerable<ShiftSignup> existingSignups,
+        EventSettings eventSettings)
+    {
         var conflictingDays = new List<int>();
         foreach (var shift in shiftsInRange)
         {
-            var shiftStart = shift.GetAbsoluteStart(es);
-            var shiftEnd = shift.GetAbsoluteEnd(es);
+            var shiftStart = shift.GetAbsoluteStart(eventSettings);
+            var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
             foreach (var existing in existingSignups)
             {
@@ -573,28 +687,17 @@ public sealed class ShiftSignupService(
             }
         }
 
-        if (conflictingDays.Count > 0)
-        {
-            var dayList = string.Join(", ", conflictingDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
+        return conflictingDays;
+    }
 
-            if (!skipConflicts)
-                return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
+    private static SignupResult BuildEmptyRangeSignupResult(IReadOnlyList<string> warnings)
+        => warnings.Count > 0
+            ? SignupResult.Fail(string.Join(" ", warnings) + " Nothing to add.")
+            : SignupResult.Fail("No shifts found in the specified date range.");
 
-            skipMessages.Add($"Time conflict on day(s): {dayList}.");
-            shiftsInRange = shiftsInRange.Where(s => !conflictingDays.Contains(s.DayOffset)).ToList();
-        }
-
-        if (shiftsInRange.Count == 0)
-        {
-            return skipMessages.Count > 0
-                ? SignupResult.Fail(string.Join(" ", skipMessages) + " Nothing to add.")
-                : SignupResult.Fail("No shifts found in the specified date range.");
-        }
-
-        shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-
-        string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
+    private async Task<RangeCapacitySelection> SelectCapacityAvailableRangeShiftsAsync(List<Shift> shiftsInRange)
+    {
+        var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
         var signupCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)
@@ -605,48 +708,64 @@ public sealed class ShiftSignupService(
             .Where(s => signupCounts.GetValueOrDefault(s.Id) < s.MaxVolunteers)
             .ToList();
 
-        if (availableShifts.Count == 0)
-            return SignupResult.Fail("All shifts in this range are at capacity.");
+        return new RangeCapacitySelection(availableShifts, fullDays);
+    }
 
-        if (fullDays.Count > 0)
+    private static string? CombineRangeWarnings(IReadOnlyList<string> warnings)
+        => warnings.Count > 0 ? string.Join(" ", warnings) : null;
+
+    private static string? AppendFullDayRangeWarning(
+        string? warning,
+        IReadOnlyCollection<int> fullDays,
+        EventSettings eventSettings)
+    {
+        if (fullDays.Count == 0)
+            return warning;
+
+        var dayList = FormatRangeDayList(eventSettings, fullDays);
+        return AppendRangeWarning(warning, $"Day(s) {dayList} are at capacity.");
+    }
+
+    private async Task<string?> AppendEarlyEntryRangeWarningAsync(
+        string? warning,
+        IReadOnlyList<Shift> availableShifts,
+        EventSettings eventSettings)
+    {
+        var fullEeDays = new List<int>();
+        foreach (var dayOffset in availableShifts
+                     .Where(shift => shift.IsEarlyEntry)
+                     .Select(shift => shift.DayOffset)
+                     .Distinct()
+                     .OrderBy(day => day))
         {
-            var dayList = string.Join(", ", fullDays.Select(offset =>
-                es.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
-            var capacityWarning = $"Day(s) {dayList} are at capacity.";
-            warning = warning is null ? capacityWarning : $"{warning} {capacityWarning}";
+            var eeWarning = await CheckEeCapAsync(eventSettings, dayOffset);
+            if (eeWarning is not null)
+                fullEeDays.Add(dayOffset);
         }
 
-        if (rota.Period == RotaPeriod.Build)
-        {
-            var fullEeDays = new List<int>();
-            foreach (var dayOffset in availableShifts
-                         .Where(shift => shift.IsEarlyEntry)
-                         .Select(shift => shift.DayOffset)
-                         .Distinct()
-                         .OrderBy(day => day))
-            {
-                var eeWarning = await CheckEeCapAsync(es, dayOffset);
-                if (eeWarning is not null)
-                    fullEeDays.Add(dayOffset);
-            }
+        if (fullEeDays.Count == 0)
+            return warning;
 
-            if (fullEeDays.Count > 0)
-            {
-                var eeDayList = string.Join(", ", fullEeDays.Select(offset =>
-                    es.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
-                var eeWarning = $"Early entry capacity reached for day(s): {eeDayList}.";
-                warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
-            }
-        }
+        var eeDayList = FormatRangeDayList(eventSettings, fullEeDays);
+        return AppendRangeWarning(warning, $"Early entry capacity reached for day(s): {eeDayList}.");
+    }
 
-        var blockId = Guid.NewGuid();
+    private static string AppendRangeWarning(string? warning, string nextWarning)
+        => warning is null ? nextWarning : $"{warning} {nextWarning}";
 
-        // Public rotas auto-confirm at signup regardless of the volunteer's admission/consent
-        // status; only RequireApproval rotas park signups as Pending for coordinator review.
-        var autoConfirm = rota.Policy == SignupPolicy.Public ||
-                          await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
+    private static string FormatRangeDayList(EventSettings eventSettings, IEnumerable<int> dayOffsets)
+        => string.Join(", ", dayOffsets.Select(offset =>
+            eventSettings.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
+
+    private RangeSignupCreation StageRangeSignups(
+        Guid userId,
+        Guid? actorUserId,
+        Guid blockId,
+        Instant now,
+        IReadOnlyList<Shift> availableShifts,
+        bool autoConfirm)
+    {
         ShiftSignup? lastSignup = null;
-
         var rangeSignupsForAudit = new List<(ShiftSignup Signup, int DayOffset)>();
         foreach (var shift in availableShifts)
         {
@@ -672,30 +791,26 @@ public sealed class ShiftSignupService(
             rangeSignupsForAudit.Add((signup, shift.DayOffset));
         }
 
-        await repo.SaveChangesAsync();
-        viewInvalidator.InvalidateUser(userId);
-        viewInvalidator.InvalidateRota(rotaId);
-        if (autoConfirm && availableShifts.Any(s => s.IsEarlyEntry))
-            earlyEntryInvalidator.InvalidateUser(userId);
+        return new RangeSignupCreation(lastSignup!, rangeSignupsForAudit);
+    }
 
+    private async Task AuditRangeSignupsAsync(
+        Guid userId,
+        Rota rota,
+        EventSettings eventSettings,
+        IEnumerable<(ShiftSignup Signup, int DayOffset)> rangeSignupsForAudit,
+        bool autoConfirm)
+    {
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         foreach (var (auditedSignup, dayOffset) in rangeSignupsForAudit)
         {
             await auditLogService.LogAsync(
                 AuditAction.ShiftSignupCreated,
                 nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' on {es.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()} (range, {statusSuffix})",
+                $"'{rota.Name}' on {eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth()} (range, {statusSuffix})",
                 userId,
                 userId, nameof(User));
         }
-
-        if (autoConfirm)
-        {
-            await DispatchSignupChangeNotificationAsync(lastSignup!, availableShifts[^1], rota,
-                $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
-        }
-
-        return SignupResult.Ok(lastSignup!, warning);
     }
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
@@ -1107,7 +1222,7 @@ public sealed class ShiftSignupService(
 
         var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
         {
-            EventName = ss.Shift.Rota.EventSettings.EventName,
+            ss.Shift.Rota.EventSettings.EventName,
             Department = teamNamesById.TryGetValue(ss.Shift.Rota.TeamId, out var teamName) ? teamName : null,
             RotaName = ss.Shift.Rota.Name,
             ss.Shift.DayOffset,
@@ -1143,6 +1258,42 @@ public sealed class ShiftSignupService(
         }).ToList());
 
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
+    }
+
+    public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Active commitments only — Confirmed + Pending. Cancelled/bailed/noshow
+        // history is deliberately out of feed scope (spec 2026-06-09-ical-feed).
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToList();
+        if (signups.Count == 0) return [];
+
+        // Team names cross-section via ITeamServiceRead (same as the GDPR contributor).
+        var teamsById = await TeamService.GetTeamsAsync(ct);
+
+        return signups.Select(ss =>
+        {
+            var es = ss.Shift.Rota.EventSettings;
+            var summary = teamsById.TryGetValue(ss.Shift.Rota.TeamId, out var team)
+                ? $"{team.Name}: {ss.Shift.Rota.Name}"
+                : ss.Shift.Rota.Name;
+            if (ss.Status == SignupStatus.Pending)
+                summary += " (pending)";
+
+            var description = string.Join("\n\n", new[] { ss.Shift.Description, ss.Shift.Rota.PracticalInfo }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            return new CalendarFeedItem(
+                Uid: $"shift-{ss.Id}@humans.nobodies.team",
+                Source: "Shifts",
+                Summary: summary,
+                Description: description.Length == 0 ? null : description,
+                Start: ss.Shift.GetAbsoluteStart(es),
+                End: ss.Shift.GetAbsoluteEnd(es),
+                Location: null,
+                Url: $"{CalendarFeedItem.BaseUrl}/Shifts/Mine");
+        }).ToList();
     }
 
     public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
@@ -1217,4 +1368,17 @@ public sealed class ShiftSignupService(
                 targetUserId, nameof(User));
         }
     }
+
+    private sealed record RangeSignupCandidateSelection(
+        List<Shift> Shifts,
+        List<string> Warnings,
+        SignupResult? Failure);
+
+    private sealed record RangeCapacitySelection(
+        List<Shift> AvailableShifts,
+        List<int> FullDayOffsets);
+
+    private sealed record RangeSignupCreation(
+        ShiftSignup LastSignup,
+        List<(ShiftSignup Signup, int DayOffset)> SignupsForAudit);
 }

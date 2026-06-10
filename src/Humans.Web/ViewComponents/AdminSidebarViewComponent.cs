@@ -7,11 +7,8 @@ public sealed class AdminSidebarViewComponent(
     IAuthorizationService authorization,
     IWebHostEnvironment environment,
     IServiceProvider serviceProvider,
-    IHttpContextAccessor httpContext,
     ILogger<AdminSidebarViewComponent> logger) : ViewComponent
 {
-    private readonly IHttpContextAccessor _httpContext = httpContext;
-
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var activeController = (string?)RouteData.Values["controller"];

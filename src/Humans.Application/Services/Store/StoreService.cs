@@ -854,7 +854,7 @@ public class StoreService(
         var products = await repo.GetAllProductsForYearAsync(year, ct);
 
         var campOrders = seasonsForYear.Count == 0
-            ? (IReadOnlyList<StoreOrder>)Array.Empty<StoreOrder>()
+            ? Array.Empty<StoreOrder>()
             : await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
                 seasonsForYear.Keys.ToList(), ct);
 

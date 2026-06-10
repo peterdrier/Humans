@@ -83,7 +83,7 @@ public class AdminHumanListAssemblerTests
     [HumansFact]
     public void Null_filter_returns_all_candidates()
     {
-        var users = new[] { Build(UserState.Active), Build(UserState.Bare), Build(UserState.Rejected) };
+        var users = new[] { Build(), Build(UserState.Bare), Build(UserState.Rejected) };
 
         var rows = AdminHumanListAssembler.Assemble(users, NoEmails, searchUserIds: null, statusFilter: null);
 
@@ -93,8 +93,8 @@ public class AdminHumanListAssemblerTests
     [HumansFact]
     public void SearchUserIds_prefilters_before_status()
     {
-        var keep = Build(UserState.Active);
-        var drop = Build(UserState.Active);
+        var keep = Build();
+        var drop = Build();
 
         var rows = AdminHumanListAssembler.Assemble(
             [keep, drop], NoEmails, searchUserIds: new HashSet<Guid> { keep.Id }, statusFilter: null);

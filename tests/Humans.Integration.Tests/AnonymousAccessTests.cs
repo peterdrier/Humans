@@ -39,6 +39,16 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [HumansFact(Timeout = 30000)]
+    public async Task ICalFeed_UnknownUserAndToken_Returns404NotLoginRedirect()
+    {
+        // Proves the route binds with the .ics literal suffix and that
+        // AllowAnonymous holds — a bad token must 404, never bounce to login.
+        var response = await Client.GetAsync($"/api/ical/{Guid.NewGuid()}/{Guid.NewGuid()}.ics");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     [HumansTheory(Timeout = 30000)]
     [InlineData("/Profile")]
     [InlineData("/Admin")]

@@ -30,7 +30,7 @@
             @foreach (var row in Model)
             {
                 var pct = row.PlannedSlots > 0
-                    ? (decimal)row.FilledSlots * 100m / row.PlannedSlots
+                    ? row.FilledSlots * 100m / row.PlannedSlots
                     : 0m;
                 <tr>
                     <td data-value="@row.TeamName">@row.TeamName</td>

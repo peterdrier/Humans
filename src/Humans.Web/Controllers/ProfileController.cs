@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using Humans.Application.Architecture;
-using Humans.Application.Authorization;
 using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
@@ -137,7 +136,7 @@ public class ProfileController(
             CampaignGrants = campaignGrants,
             // Onsite chip — own profile, always visible. Issue
             // nobodies-collective/Humans#736.
-            OnsiteSince = await ResolveOnsiteSinceAsync(info, ct),
+            OnsiteSince = await ResolveOnsiteSinceAsync(info),
             CanViewOnsiteChip = true,
         };
 
@@ -158,7 +157,7 @@ public class ProfileController(
     /// from the cached <see cref="UserInfo"/> snapshot — no extra DB hit. Issue
     /// nobodies-collective/Humans#736.
     /// </summary>
-    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info, CancellationToken ct)
+    private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
     {
         var active = await shiftMgmt.GetActiveAsync();
         if (active is null || active.Year == 0) return null;
@@ -488,7 +487,7 @@ public class ProfileController(
 
         using var uploadStream = new MemoryStream();
         await upload.CopyToAsync(uploadStream);
-        var result = ResizeProfilePicture(uploadStream.ToArray(), uploadContentType);
+        var result = ResizeProfilePicture(uploadStream.ToArray());
         if (result is null)
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
@@ -1795,13 +1794,13 @@ public class ProfileController(
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileInfo!.BurnerName,
+            DisplayName = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
             OnsiteSince = canViewOnsiteChip
-                ? await ResolveOnsiteSinceAsync(profileInfo, ct)
+                ? await ResolveOnsiteSinceAsync(profileInfo)
                 : null,
             CanViewOnsiteChip = canViewOnsiteChip,
         };
@@ -1845,7 +1844,7 @@ public class ProfileController(
             .Distinct()
             .ToList();
         var reviewers = reviewerIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await _userService.GetUserInfosAsync(reviewerIds, ct);
 
         return (true, noShows.Select(s =>
@@ -2037,7 +2036,7 @@ public class ProfileController(
         // Uncapped: return the full match set so relevance ranking surfaces the right person
         // (a hard cap returned an arbitrary subset before sorting). Cheap at ~500 users.
         var results = await _userService.SearchUsersAsync(
-            q!, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
+            q, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
 
         // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
@@ -2050,7 +2049,7 @@ public class ProfileController(
 
     // ─── Helpers ─────────────────────────────────────────────────────
 
-    private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
+    private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
 
     [Grandfathered(
@@ -2158,7 +2157,7 @@ public class ProfileController(
             .ToList();
 
         bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Humans.Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
+            ticketEmails.Any(ticketEmail => Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
@@ -2216,11 +2215,11 @@ public class ProfileController(
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext
-                && User.IsInRole(Domain.Constants.RoleNames.Admin)
+                && User.IsInRole(RoleNames.Admin)
                 ? user.IdentityEmailColumn
                 : null,
             TargetUserInfo = isAdminContext
-                && User.IsInRole(Domain.Constants.RoleNames.Admin)
+                && User.IsInRole(RoleNames.Admin)
                     ? info
                     : null,
         };

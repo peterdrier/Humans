@@ -35,7 +35,7 @@ public class NotificationRepositoryTests : IDisposable
     public async Task AddAsync_PersistsNotificationWithRecipients()
     {
         var userId = Guid.NewGuid();
-        var notification = CreateNotification(userId, NotificationClass.Informational);
+        var notification = CreateNotification(userId);
 
         await _repo.AddAsync(notification);
 
@@ -118,7 +118,7 @@ public class NotificationRepositoryTests : IDisposable
     public async Task DismissAsync_PermitsInformational()
     {
         var userId = Guid.NewGuid();
-        var n = CreateNotification(userId, NotificationClass.Informational);
+        var n = CreateNotification(userId);
         await _repo.AddAsync(n);
 
         var outcome = await _repo.DismissAsync(n.Id, userId, _now);
@@ -149,15 +149,15 @@ public class NotificationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        var old = CreateNotification(userId, NotificationClass.Informational);
+        var old = CreateNotification(userId);
         old.ResolvedAt = _now - Duration.FromDays(8);
         old.ResolvedByUserId = userId;
 
-        var recent = CreateNotification(userId, NotificationClass.Informational);
+        var recent = CreateNotification(userId);
         recent.ResolvedAt = _now - Duration.FromHours(1);
         recent.ResolvedByUserId = userId;
 
-        var unresolved = CreateNotification(userId, NotificationClass.Informational);
+        var unresolved = CreateNotification(userId);
 
         await _repo.AddRangeAsync([old, recent, unresolved]);
 
@@ -173,7 +173,7 @@ public class NotificationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         var cutoff = _now - Duration.FromDays(30);
 
-        var staleInfo = CreateNotification(userId, NotificationClass.Informational, createdAt: _now - Duration.FromDays(40));
+        var staleInfo = CreateNotification(userId, createdAt: _now - Duration.FromDays(40));
         var staleActionable = CreateNotification(userId, NotificationClass.Actionable, createdAt: _now - Duration.FromDays(40));
 
         await _repo.AddRangeAsync([staleInfo, staleActionable]);
@@ -191,7 +191,7 @@ public class NotificationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         await _repo.AddAsync(CreateNotification(userId, NotificationClass.Actionable));
         await _repo.AddAsync(CreateNotification(userId, NotificationClass.Actionable));
-        await _repo.AddAsync(CreateNotification(userId, NotificationClass.Informational));
+        await _repo.AddAsync(CreateNotification(userId));
 
         var (actionable, informational) = await _repo.GetUnreadBadgeCountsAsync(userId);
 

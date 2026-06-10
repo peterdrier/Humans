@@ -20,7 +20,7 @@ namespace Humans.Application.Tests.Authorization;
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 
     private static readonly Guid SubmitterId = Guid.NewGuid();
@@ -39,15 +39,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
-        // CoordinatorId is a coordinator of TeamId; OtherCoordinatorId is not
-        _teamService.IsUserCoordinatorOfTeamAsync(TeamId, CoordinatorId)
-            .Returns(true);
-        _teamService.IsUserCoordinatorOfTeamAsync(TeamId, OtherCoordinatorId)
-            .Returns(false);
-        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), RandomUserId)
-            .Returns(false);
-        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), SubmitterId)
-            .Returns(false);
+        _teamService.GetTeamsAsync().Returns(CreateTeamMap());
     }
 
     // ─── Submitter × View ────────────────────────────────────────────────────
@@ -380,6 +372,36 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             0,
             null,
             []);
+
+    private static IReadOnlyDictionary<Guid, TeamInfo> CreateTeamMap()
+    {
+        var teams = new[]
+        {
+            CreateTeamInfo(TeamId, CoordinatorId),
+            CreateTeamInfo(OtherTeamId, OtherCoordinatorId),
+        };
+
+        return teams.ToDictionary(team => team.Id);
+    }
+
+    private static TeamInfo CreateTeamInfo(Guid teamId, Guid coordinatorId) =>
+        new(
+            Id: teamId,
+            Name: "Team",
+            Description: null,
+            Slug: "team",
+            IsActive: true,
+            IsSystemTeam: false,
+            SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            CreatedAt: Instant.MinValue,
+            Members:
+            [
+                new TeamMemberInfo(Guid.NewGuid(), coordinatorId, "Coordinator", null, null, TeamMemberRole.Coordinator, Instant.MinValue)
+            ]);
 
     private static ClaimsPrincipal CreateUser(Guid userId)
     {

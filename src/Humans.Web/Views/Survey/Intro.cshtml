@@ -1,0 +1,104 @@
+@using Humans.Domain.Enums
+@model Humans.Web.Models.SurveyIntroViewModel
+
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card mt-4">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">@(string.IsNullOrWhiteSpace(Model.Title) ? Localizer["Survey_TitleFallback"].Value : Model.Title)</h1>
+
+                @if (Model.HasResumableDraft)
+                {
+                    <div class="alert alert-info" role="alert">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                        @Localizer["Survey_ResumeNotice"]
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.Intro))
+                {
+                    <div class="mb-4">@Model.Intro</div>
+                }
+
+                @{
+                    // The public-slug path posts to PublicStart with the slug; the invited path posts to
+                    // Start with the token. The form body (language picker, anonymity, transparency) is shared.
+                    var formAction = Model.IsPublic ? "PublicStart" : "Start";
+                }
+                <form asp-controller="Survey" asp-action="@formAction" asp-route-slug="@(Model.IsPublic ? Model.Slug : null)" method="post">
+                    @Html.AntiForgeryToken()
+                    @if (!Model.IsPublic)
+                    {
+                        <input type="hidden" name="Token" value="@Model.Token" />
+                    }
+
+                    <div class="mb-3">
+                        <label for="Culture" class="form-label">@Localizer["Survey_Language"]</label>
+                        <select id="Culture" name="Culture" class="form-select">
+                            @foreach (var code in Model.Cultures)
+                            {
+                                if (string.Equals(code, Model.Culture, StringComparison.Ordinal))
+                                {
+                                    <option value="@code" selected>@code.ToDisplayLanguageName()</option>
+                                }
+                                else
+                                {
+                                    <option value="@code">@code.ToDisplayLanguageName()</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @if (Model.ShowAnonymitySelector)
+                    {
+                        <fieldset class="mb-3">
+                            <legend class="form-label">@Localizer["Survey_AnonymityLegend"]</legend>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonIdentified" value="@nameof(ResponseAnonymity.Identified)" checked />
+                                <label class="form-check-label" for="anonIdentified">
+                                    <strong>@Localizer["Survey_Anonymity_Identified"]</strong> — @Localizer["Survey_Anonymity_IdentifiedHelp"]
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonCompletion" value="@nameof(ResponseAnonymity.CompletionTracked)" />
+                                <label class="form-check-label" for="anonCompletion">
+                                    <strong>@Localizer["Survey_Anonymity_CompletionTracked"]</strong> — @Localizer["Survey_Anonymity_CompletionTrackedHelp"]
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="Anonymity"
+                                       id="anonAnonymous" value="@nameof(ResponseAnonymity.Anonymous)" />
+                                <label class="form-check-label" for="anonAnonymous">
+                                    <strong>@Localizer["Survey_Anonymity_Anonymous"]</strong> — @Localizer["Survey_Anonymity_AnonymousHelp"]
+                                </label>
+                            </div>
+
+                            <p class="form-text mb-0">
+                                @Localizer["Survey_AnonymityFootnote"]
+                            </p>
+                        </fieldset>
+                    }
+                    else if (!Model.IsPublic)
+                    {
+                        <input type="hidden" name="Anonymity" value="@nameof(ResponseAnonymity.Identified)" />
+                    }
+
+                    <div class="alert alert-secondary small" role="note">
+                        <i class="fa-solid fa-shield-halved me-1"></i>@Localizer["Survey_TransparencyNote"]
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        @(Model.HasResumableDraft ? Localizer["Survey_Continue"] : Localizer["Survey_Start"])
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

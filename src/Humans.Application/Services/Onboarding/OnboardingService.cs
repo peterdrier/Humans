@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;

@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -22,7 +23,7 @@ public sealed class EventServiceTests
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _clock);
+        _service = new EventService(_repo, _burnSettings, _clock, NullLogger<EventService>.Instance);
     }
 
     [HumansFact]

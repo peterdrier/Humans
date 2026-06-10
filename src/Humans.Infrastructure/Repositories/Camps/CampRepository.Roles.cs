@@ -1,7 +1,5 @@
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -256,7 +254,7 @@ internal sealed partial class CampRepository
             .Include(a => a.Definition)
             .Where(a => yearList.Contains(a.CampSeason.Year)
                      && a.Definition.DeactivatedAt == null
-                     && a.CampMember.Status == Humans.Domain.Enums.CampMemberStatus.Active)
+                     && a.CampMember.Status == CampMemberStatus.Active)
             .ToListAsync(ct);
     }
 

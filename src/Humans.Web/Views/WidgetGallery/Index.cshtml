@@ -451,7 +451,7 @@
                         @if (Model.SampleVolunteerProfile is not null)
                         {
                             @await Html.PartialAsync("_VolunteerProfileBadges",
-                                new Humans.Web.Models.VolunteerBadgesViewModel(
+                                new VolunteerBadgesViewModel(
                                     Model.SampleVolunteerProfile.Skills,
                                     Model.SampleVolunteerProfile.Quirks,
                                     Model.SampleVolunteerProfile.Languages,
@@ -484,9 +484,9 @@
                         ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketServiceRead</code>")
                     )
                     <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null, null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
                     </div>
                 </div>
 
@@ -567,6 +567,23 @@
                         <vc:shift-signups user-id="@Model.CurrentUserId"
                                           view-mode="@ShiftSignupsViewMode.Self"
                                           display-name="@Model.CurrentUserDisplayName" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-calendar user-id="@Model.CurrentUserId" />
                     </div>
                 </div>
 

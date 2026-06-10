@@ -96,7 +96,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     [HumansFact]
     public async Task ExecuteAsync_HandlesFailure()
     {
-        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        await SeedMessageAsync(EmailOutboxStatus.Queued);
 
         _transport.SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),

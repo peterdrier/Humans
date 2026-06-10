@@ -135,7 +135,7 @@ public class ProcessGoogleSyncOutboxJob(
                 {
                     metrics.RecordSyncOperation("failure");
 
-                    var (exhausted, retryCount) = await outboxRepository.IncrementRetryAsync(
+                    var (_, retryCount) = await outboxRepository.IncrementRetryAsync(
                         outboxEvent.Id,
                         clock.GetCurrentInstant(),
                         ex.Message,

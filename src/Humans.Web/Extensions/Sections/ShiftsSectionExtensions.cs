@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;
 using CantinaRosterServiceImpl = Humans.Application.Services.Cantina.CantinaRosterService;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
@@ -46,6 +47,7 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
+        services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
         // VolunteerTracking - scoped user-oriented repository for build status and availability mutations.

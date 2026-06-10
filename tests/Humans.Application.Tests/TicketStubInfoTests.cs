@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using NodaTime;
 
 namespace Humans.Application.Tests;

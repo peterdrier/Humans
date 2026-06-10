@@ -85,7 +85,7 @@ public class ShiftBrowsePageBuilderRowTests
             shiftId, userSignups, isPrivileged: false, CancellationToken.None);
 
         result.Should().NotBeNull();
-        var (item, isSignedUp, status) = result!.Value;
+        var (item, isSignedUp, status) = result.Value;
         item.Shift.Id.Should().Be(shiftId);
         item.ConfirmedCount.Should().Be(3);
         isSignedUp.Should().BeTrue();

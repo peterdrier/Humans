@@ -1,10 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.Interfaces.Issues;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -21,11 +19,8 @@ public class IssuesController(
     IAuthorizationService authorization,
     IUserServiceRead users,
     IUserServiceRead userService,
-    IStringLocalizer<SharedResource> localizer,
     ILogger<IssuesController> logger) : HumansControllerBase(userService)
 {
-    private readonly IStringLocalizer<SharedResource> _localizer = localizer;
-
     // Roles from claims (RoleAssignment → claims-transformation), NOT UserManager.GetRolesAsync (misses CampAdmin etc.).
     private List<string> ClaimsRoles() => User.Claims
         .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))

@@ -203,7 +203,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var campaign = await SeedCampaignAsync();
         _ticketVendorService
             .GenerateDiscountCodesAsync(Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<string>)["CODE-A", "CODE-B"]);
+            .Returns(["CODE-A", "CODE-B"]);
 
         var result = await _service.GenerateAndImportDiscountCodesAsync(
             campaign.Id, 2, "Fixed", 10m);
@@ -353,7 +353,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["A1", "A2"]);
         var user = SeedUser(displayName: "Wave User");
-        var beta = SeedTeam("Beta Team");
+        SeedTeam("Beta Team");
         var alpha = SeedTeam("Alpha Team");
         SeedTeamMember(alpha.Id, user.Id);
         await Db.SaveChangesAsync();
@@ -402,7 +402,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task CompleteAsync_NotActive_Throws()
     {
-        var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
+        var campaign = await SeedCampaignAsync();
 
         var act = () => _service.CompleteAsync(campaign.Id);
 

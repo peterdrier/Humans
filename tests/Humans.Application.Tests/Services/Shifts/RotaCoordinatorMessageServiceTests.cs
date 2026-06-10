@@ -66,7 +66,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenNoActiveSignups()
     {
-        var rota = MakeRota(out var eventSettings);
+        var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello");
@@ -78,7 +78,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser()
     {
-        var rota = MakeRota(out var es);
+        var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -108,7 +108,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_PersonalisesShiftListPerRecipient()
     {
-        var rota = MakeRota(out var es);
+        var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -195,12 +195,6 @@ public sealed class RotaCoordinatorMessageServiceTests
         ]);
 
         // sender + withEmail have addresses; noEmail's UserInfo has an empty email.
-        var dict = new Dictionary<Guid, UserInfo>
-        {
-            [sender] = UserInfoStubHelpers.MakeUserInfo(sender, displayName: "Sender"),
-            [withEmail] = MakeUserInfoWithEmail(withEmail, "with@example.com", "WithEmail"),
-            [noEmail] = UserInfoStubHelpers.MakeUserInfo(noEmail, displayName: "NoEmail"),
-        };
         // Need to make sender resolvable too.
         _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(sender)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -337,7 +331,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventSettings?)null);
 
@@ -350,7 +344,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_ExcludesRotasWithNoFutureShifts()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
 
         var pastShift = MakeShift(Guid.Empty, dayOffset: -30, startHour: 10);
@@ -382,7 +376,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_FiltersInactiveSignupStatuses()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
 
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
@@ -415,7 +409,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_DedupesRecipient_AcrossMultipleRotas()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
 
         var userA = Guid.NewGuid();
@@ -449,7 +443,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_GroupsShiftsByRota_InAlphabeticalRotaOrder()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
         var sender = Guid.NewGuid();
@@ -479,7 +473,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
         var sender = Guid.NewGuid();
@@ -506,7 +500,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_IsolatesPerRecipientFailures()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -535,7 +529,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task GetTeamRotasRecipientPreviewAsync_ReturnsDedupedNamesAndRotaCount()
     {
-        var (teamId, _) = StubTeam();
+        var teamId = StubTeam();
         var es = StubEvent();
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -564,7 +558,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         preview.RecipientNames.Should().BeEquivalentTo(["Alice", "Bob"]);
     }
 
-    private (Guid TeamId, TeamInfo Team) StubTeam()
+    private Guid StubTeam()
     {
         var teamId = Guid.NewGuid();
         var team = new TeamInfo(
@@ -574,7 +568,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: []);
         _teamService.GetTeamAsync(teamId).Returns(team);
-        return (teamId, team);
+        return teamId;
     }
 
     private EventSettings StubEvent()

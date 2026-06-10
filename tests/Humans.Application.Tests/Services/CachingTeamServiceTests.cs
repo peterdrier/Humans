@@ -94,7 +94,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         });
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetTeamAsync(team.Id);
@@ -109,7 +109,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var user = SeedUser("Alice");
         var team1 = SeedTeam("Alpha");
         var team2 = SeedTeam("Beta");
-        SeedTeamMember(team1.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team1.Id, user.Id);
         SeedTeamMember(team2.Id, user.Id, TeamMemberRole.Coordinator);
         await Db.SaveChangesAsync();
 
@@ -126,7 +126,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
-        var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        var member = SeedTeamMember(team.Id, user.Id);
         member.LeftAt = Clock.GetCurrentInstant();
         await Db.SaveChangesAsync();
 
@@ -142,7 +142,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var parent = SeedTeam("Comms");
         var child = SeedTeam("Logo");
         child.ParentTeamId = parent.Id;
-        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(child.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(user.Id);
@@ -161,7 +161,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         // Warm the cache + inverse index.
@@ -190,10 +190,10 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var t1 = SeedTeam("Alpha");
         var t2 = SeedTeam("Beta");
         var t3 = SeedTeam("Gamma");
-        SeedTeamMember(t1.Id, alice.Id, TeamMemberRole.Member);
-        SeedTeamMember(t1.Id, bob.Id, TeamMemberRole.Member);
+        SeedTeamMember(t1.Id, alice.Id);
+        SeedTeamMember(t1.Id, bob.Id);
         SeedTeamMember(t2.Id, alice.Id, TeamMemberRole.Coordinator);
-        SeedTeamMember(t3.Id, carol.Id, TeamMemberRole.Member);
+        SeedTeamMember(t3.Id, carol.Id);
         await Db.SaveChangesAsync();
 
         var aliceTeams = (await _service.GetUserTeamsAsync(alice.Id))
@@ -213,7 +213,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser("Alice");
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         // First call drives warmup (which uses repository, not inner service).
@@ -233,7 +233,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetUserTeamsAsync_UnknownUser_ReturnsEmptyWithoutInnerCall()
     {
-        var team = SeedTeam("Alpha");
+        SeedTeam("Alpha");
         await Db.SaveChangesAsync();
 
         var result = await _service.GetUserTeamsAsync(Guid.NewGuid());
@@ -245,7 +245,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // GetMyTeamMembershipsAsync — cache-served (issue nobodies-collective/Humans#748)
+    // GetMyTeamMembershipsAsync â€” cache-served (issue nobodies-collective/Humans#748)
     // ==========================================================================
 
     [HumansFact]
@@ -278,7 +278,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
             .IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(true);
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         SeedJoinRequest(team.Id, SeedUser("Requester").Id);
         await Db.SaveChangesAsync();
 
@@ -321,7 +321,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var child = SeedTeam("Child");
         child.ParentTeamId = parent.Id;
         SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
-        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(child.Id, user.Id);
         SeedJoinRequest(child.Id, SeedUser("Child Requester").Id);
         await Db.SaveChangesAsync();
 
@@ -337,7 +337,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser("Regular Member");
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         SeedJoinRequest(team.Id, SeedUser("Requester").Id);
         await Db.SaveChangesAsync();
 
@@ -354,7 +354,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var parent = SeedTeam("Comms");
         var child = SeedTeam("Logo");
         child.ParentTeamId = parent.Id;
-        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(child.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetMyTeamMembershipsAsync(user.Id);
@@ -381,7 +381,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var inner = _serviceProvider.GetRequiredKeyedService<ITeamService>(
             CachingTeamService.InnerServiceKey);
 
-        // A warm-cache second call must NOT touch the inner ITeamService — the
+        // A warm-cache second call must NOT touch the inner ITeamService â€” the
         // T-01 zero-EF-on-warm assertion for GetMyTeamMembershipsAsync.
         var second = await _service.GetMyTeamMembershipsAsync(user.Id);
         second.Should().ContainSingle();
@@ -391,7 +391,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // Join-lifecycle invalidation — issue nobodies-collective/Humans#748
+    // Join-lifecycle invalidation â€” issue nobodies-collective/Humans#748
     // ==========================================================================
 
     [HumansFact]
@@ -444,7 +444,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         var before = _service.BulkInvalidations;
 
         // Inner is an unconfigured NSubstitute mock; ApproveJoinRequestAsync
-        // returns default (null TeamMember) — that's fine for this assertion.
+        // returns default (null TeamMember) â€” that's fine for this assertion.
         await _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null);
 
         _service.BulkInvalidations.Should().BeGreaterThan(before);
@@ -483,7 +483,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
-    private TeamJoinRequest SeedJoinRequest(Guid teamId, Guid userId)
+    private void SeedJoinRequest(Guid teamId, Guid userId)
     {
         var request = new TeamJoinRequest
         {
@@ -494,7 +494,6 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
             RequestedAt = Clock.GetCurrentInstant()
         };
         Db.TeamJoinRequests.Add(request);
-        return request;
     }
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> BuildTeamInfosAsync()

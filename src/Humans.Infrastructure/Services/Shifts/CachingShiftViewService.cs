@@ -40,8 +40,6 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
     /// </summary>
     public const string InnerServiceKey = "shift-view-inner";
 
-    private readonly ILogger<CachingShiftViewService> _logger = logger;
-
     private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView", warmOnStartup: false, logger);
     private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache = new("ShiftView.RotaView", warmOnStartup: false, logger);
 

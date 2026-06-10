@@ -58,8 +58,7 @@ public sealed class TeamPageService(
             detail.ChildTeams,
             userId,
             detail.IsAuthenticated,
-            canManageShiftsByRole,
-            cancellationToken);
+            canManageShiftsByRole);
 
         return new TeamPageDetailResult(
             detail.Team,
@@ -98,8 +97,7 @@ public sealed class TeamPageService(
         IReadOnlyList<TeamPageTeamLink> childTeams,
         Guid? userId,
         bool isAuthenticated,
-        bool canManageShiftsByRole,
-        CancellationToken cancellationToken)
+        bool canManageShiftsByRole)
     {
         if (!isAuthenticated ||
             !userId.HasValue ||

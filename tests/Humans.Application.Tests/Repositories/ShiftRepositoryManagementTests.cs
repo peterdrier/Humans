@@ -66,7 +66,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     [HumansFact(Timeout = 10000)]
     public async Task GetShiftDayOffsetsForRotaAsync_ReturnsDistinctDays()
     {
-        var (es, rota) = await SeedRotaAsync(RotaPeriod.Build);
+        var (_, rota) = await SeedRotaAsync(RotaPeriod.Build);
         await _dbContext.Shifts.AddRangeAsync(
             NewShift(rota, dayOffset: -3),
             NewShift(rota, dayOffset: -2),

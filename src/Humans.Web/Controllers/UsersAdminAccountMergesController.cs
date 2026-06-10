@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
-using Humans.Application;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;

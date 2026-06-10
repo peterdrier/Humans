@@ -99,7 +99,7 @@ public sealed class TicketTransferServiceTests
         var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId);
 
         confirm.Should().NotBeNull();
-        confirm!.ReceiverLegalName.Should().Be("Alice Smith");
+        confirm.ReceiverLegalName.Should().Be("Alice Smith");
         confirm.ReceiverEmail.Should().Be("alice@example.com");
         confirm.VendorTicketId.Should().Be("tkt_original");
     }

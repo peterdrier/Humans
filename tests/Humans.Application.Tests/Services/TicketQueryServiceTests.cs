@@ -604,7 +604,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
                     Id = Guid.NewGuid(),
                     UserId = u.Id,
                     MembershipTier = MembershipTier.Volunteer,
-                })).ToList<UserInfo>()));
+                })).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

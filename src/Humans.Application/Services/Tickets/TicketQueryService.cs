@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
@@ -562,7 +561,7 @@ public sealed class TicketQueryService(
         HashSet<Guid>? emailMatchUserIds = null;
         if (HasSearchTerm(search, 1))
         {
-            var term = search!.Trim();
+            var term = search.Trim();
             emailMatchUserIds = allUsers
                 .Where(u => u.UserEmails.Any(e => e.IsVerified && ContainsIgnoreCase(e.Email, term)))
                 .Select(u => u.Id)
@@ -704,7 +703,7 @@ public sealed class TicketQueryService(
             && !string.IsNullOrEmpty(syncState.VendorEventId)
             && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
         var postEventHoldDate = hasCurrentEventTicket
-            ? await GetPostEventHoldDateAsync(ct)
+            ? await GetPostEventHoldDateAsync()
             : null;
 
         return new UserTicketHoldings(
@@ -719,7 +718,7 @@ public sealed class TicketQueryService(
         };
     }
 
-    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
+    private async Task<Instant?> GetPostEventHoldDateAsync()
     {
         var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null)

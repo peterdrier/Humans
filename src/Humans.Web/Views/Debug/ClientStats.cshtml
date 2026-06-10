@@ -20,23 +20,23 @@
 <div class="row g-4">
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Operating system", "fa-solid fa-desktop", Model.TotalPageViews, Model.OperatingSystems))" />
+                 model="@(new ClientStatTableModel("Operating system", "fa-solid fa-desktop", Model.TotalPageViews, Model.OperatingSystems))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Browser", "fa-solid fa-globe", Model.TotalPageViews, Model.Browsers))" />
+                 model="@(new ClientStatTableModel("Browser", "fa-solid fa-globe", Model.TotalPageViews, Model.Browsers))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Device type", "fa-solid fa-mobile-screen", Model.TotalPageViews, Model.DeviceTypes))" />
+                 model="@(new ClientStatTableModel("Device type", "fa-solid fa-mobile-screen", Model.TotalPageViews, Model.DeviceTypes))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Bots / crawlers", "fa-solid fa-robot", Model.TotalBotPageViews, Model.Bots))" />
+                 model="@(new ClientStatTableModel("Bots / crawlers", "fa-solid fa-robot", Model.TotalBotPageViews, Model.Bots))" />
     </div>
     <div class="col-lg-6">
         <partial name="_ClientStatTable"
-                 model="@(new Humans.Web.Models.ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
+                 model="@(new ClientStatTableModel("Screen resolution", "fa-solid fa-ruler-combined", Model.TotalResolutionSamples, Model.Resolutions))" />
     </div>
 </div>
 
