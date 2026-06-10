@@ -23,8 +23,8 @@
 
 ## Business context
 
-The Humans app has a comprehensive end-user guide under `docs/guide/` (17
-files covering every section of the app). Before this feature, humans read
+The Humans app has a comprehensive end-user guide under `docs/guide/` (28
+files covering every section of the app plus plain-language common-question pages). Before this feature, humans read
 it on GitHub — one click away from the app itself. Embedding the guide at
 `/Guide` makes it immediately available from the nav bar and lets links
 inside the guide navigate in-app to the pages they describe.
@@ -59,14 +59,14 @@ cached in-memory from GitHub. No migrations, no new tables.
 2. `GuideRoleResolver` builds a `GuideRoleContext` from claims +
    `TeamMember` check.
 3. `GuideContentService` returns the fully rendered HTML for the page,
-   fetching and rendering the 17 files on cache miss.
+   fetching and rendering the 28 files on cache miss.
 4. `GuideFilter` strips role-scoped `<div>` blocks the user can't see.
 5. Filtered HTML rendered inside `_GuideLayout.cshtml` with sidebar.
 
 ### Refreshing from GitHub (Admin)
 
 1. Admin submits `POST /Guide/Refresh` (CSRF-protected).
-2. `GuideContentService.RefreshAllAsync` re-fetches all 17 files and
+2. `GuideContentService.RefreshAllAsync` re-fetches all 28 files and
    re-renders; existing cache entries are overwritten.
 3. Admin is redirected back to `/Guide` with a status flash.
 

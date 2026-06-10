@@ -45,7 +45,7 @@ Core entity: contact info, slug, flags.
 
 **Table:** `camps`
 
-Cross-domain nav `Camp.CreatedByUser` is declared on the entity but never read by Camps code. Pre-existing; tracked for cross-cutting cleanup with the User nav strip in design-rules §15i.
+Cross-domain nav `Camp.CreatedByUser` has been stripped from the entity (PR for issue nobodies-collective/Humans#934); the FK scalar `CreatedByUserId` remains.
 
 ### CampSeason
 
@@ -53,7 +53,7 @@ Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (i
 
 **Table:** `camp_seasons`
 
-Cross-domain nav `CampSeason.ReviewedByUser` is declared on the entity but never read by Camps code. Pre-existing; tracked for cross-cutting cleanup.
+Cross-domain nav `CampSeason.ReviewedByUser` has been stripped from the entity (PR for issue nobodies-collective/Humans#934); the FK scalar `ReviewedByUserId` remains.
 
 ### CampLead
 
@@ -221,6 +221,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - A human cannot hold the same role twice in the same season — enforced by unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`.
 - All role-assignment *identity* data is private (no anonymous render). The public Camp Details page does not expose role assignments. The directory's opt-in "Show lead positions" toggle (`/Camps`, issue nobodies-collective/Humans#821) renders per-camp role-coverage **counts only** (filled/slots per active definition via `GetDirectoryRoleSummariesAsync`) — never assignee identities — so no private data leaks to anonymous viewers.
 - Leave/Withdraw/Remove cascades clear role assignments via `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete. Hard-delete of a `CampMember` row cascades through the FK directly.
+<!-- wheat: docs/superpowers/plans/2026-05-10-early-entry-camps.md §Task 11 -->
+- `RejectCampMemberAsync` does **not** cascade role assignments (`cascadeRoleAssignments: false`). Reject targets `Pending` members only; a `Pending` member has never been `Active` and therefore holds no `CampRoleAssignment` rows. Cascading on Reject would be a no-op and is intentionally omitted.
 - Camp Lead authz flows **solely** through `CampRoleAssignment` against the Camp Lead role definition (`SpecialRole = Lead`), surfaced on the read model as `CampSeasonInfo.LeadUserIds` and checked via `CampInfo.IsLead(userId)` (the `CampAuthorizationHandler` resolves the public-year `CampInfo` and calls `IsLead`). The legacy `CampLead` entity is no longer consulted for authorization.
 - Camp-event submission authz (`BarrioEventsController` at `/Barrios/{slug}/Events/*`) flows through `CampInfo.IsEventManager(userId)` — true when the user holds a `CampRoleAssignment` whose `CampRoleDefinition.SpecialRole` is `Lead` OR `Workshop` (i.e. the user is in `LeadUserIds` ∪ `WorkshopLeadUserIds`; CampAdmin / Admin retain blanket authority). Camp Leads automatically satisfy the check; Workshop Leads do not gain general camp-management authority. Moderation of submitted events remains global GuideModerator / Admin.
 - The `/Camps ↔ /Barrios` and `/api/camps ↔ /api/barrios` dual-route aliases are the **only sanctioned URL aliases in the codebase**. No other section may add URL aliases without explicit owner approval.
@@ -291,7 +293,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **Cache size budget.** ~5 MB at the 100-camp / 500-user steady state — comfortably under the §15 50-MB ceiling. Per-entry footprint dominated by season blurbs (~2 KB/season); warmup loads only the seasons referenced by `CampSettings.PublicYear` + `OpenSeasons` + the current real-world year — typically 1–3 seasons per camp, not full history.
 - **Leads invariant (T-06).** Lead identities live on the read model as `CampSeasonInfo.LeadUserIds` / `WorkshopLeadUserIds` (non-null, empty when none), populated from `CampRoleAssignment` special roles. There is no separate `GetCampsWithLeadsForYearAsync` service method — callers use `GetCampsForYearAsync` and read leads off the returned `CampInfo` seasons.
 - Filesystem I/O for camp images is abstracted behind the shared `IFileStorage` abstraction (Application interface + `FileSystemFileStorage` implementation in `Humans.Infrastructure`, rooted at `wwwroot/`); the service never touches `System.IO`.
-- **Cross-domain navs stripped:** `CampLead.User` (issue nobodies-collective/Humans#542) — consumers route through `IUserService.GetByIdsAsync(...)`.
+- **Cross-domain navs stripped:** `CampLead.User` (issue nobodies-collective/Humans#542), `Camp.CreatedByUser`, and `CampSeason.ReviewedByUser` (nobodies-collective/Humans#934) — consumers route through `IUserService.GetByIdsAsync(...)`.
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
 - `CampRoleService` lives in `Humans.Application.Services.Camps.CampRoleService` and goes through `ICampRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. The role-heavy methods are grouped in `CampRepository.Roles.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables and never imports `Microsoft.EntityFrameworkCore` into Application. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetByIdsAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CampsArchitectureTests.cs`.
@@ -299,7 +301,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ### Touch-and-clean guidance
 
-- `Camp.CreatedByUser` and `CampSeason.ReviewedByUser` are declared but never read. Safe targets for the cross-cutting User nav strip when the wider effort lands.
+- `Camp.CreatedByUser` and `CampSeason.ReviewedByUser` have been stripped (nobodies-collective/Humans#934). The FK scalars remain in place.
 - The legacy `CampLead` entity, `CampLeadRole` enum, `CampLeadConfiguration`, and the remaining `camp_leads` reads (the seed-migration snapshot and the GDPR Article-15 export slice in `ContributeForUserAsync`) are pending removal in the follow-up PR to issue nobodies-collective/Humans#774. The lead mutation/query methods and the dual-source authorization fallback have already been retired — lead authority is now resolved entirely from `CampRoleAssignment`. Drop the rest once every environment has run the "Seed system roles" admin button on `/Camps/Admin` and the role-side data is verified.
 - `CampMemberConfiguration.cs` is now located in
   `src/Humans.Infrastructure/Data/Configurations/Camps/` with other Camps entity configuration.

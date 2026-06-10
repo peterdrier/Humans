@@ -48,6 +48,7 @@ graph LR
     classDef agent fill:#e879f9,color:#000
     classDef systemsettings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
+    classDef icalfeed fill:#38bdf8,color:#000
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -161,6 +162,8 @@ graph LR
     Agent[AgentService]:::agent
     Survey[SurveyService]:::surveys
     SysSettings[SystemSettingsService]:::systemsettings
+    ICalFeed[ICalFeedService]:::icalfeed
+    GTrans[GoogleTranslationService]:::google
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -490,6 +493,12 @@ graph LR
     Survey --> UEmail
     Survey --> Email
     Survey --> Audit
+    Survey --> GTrans
+
+    %% ── ICalFeed ──
+    %% ICalFeedService fans IEnumerable<ICalendarFeedContributor> — no eager edges to the contributors.
+    %% Implemented by: EventService (favourited approved events) + ShiftSignupService (signed-up shifts).
+    ICalFeed --> User
 
     ExpenseReport --> Budget
     ExpenseReport --> Team
@@ -550,13 +559,11 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 265 eager links, indices 0..264. (Net +4 vs the prior sweep's 261:
-    %% +5 OnboardWidget → User/ShiftView/MembershipCalc/ShiftMgmt/Consent (OnboardingWidgetState,
-    %% registered as IOnboardingWidgetState, was missing from the diagram); −NotifResolver → Team
-    %% (#852 narrowed NotificationRecipientResolver to a pass-through over IRoleAssignmentService).
-    %% GenAvail node also removed (#820 deleted GeneralAvailabilityService) — no edge impact.
-    %% The 18 lazy edges are indices 265..282 (set unchanged since the prior sweep).
-    linkStyle 265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 274 eager links, indices 0..273. (Net +2 vs prior sweep's 272:
+    %% +Survey → GTrans (GoogleTranslationService cross-section for survey translation pre-fill);
+    %% +ICalFeed → User (ICalFeedService fan-out orchestrator validates token via IUserServiceRead).)
+    %% The 18 lazy edges are indices 274..291.
+    linkStyle 274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290,291 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -586,7 +593,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 
 | Service | Eager dependents | Lazy dependents | Notes |
 |---------|-----------------:|----------------:|-------|
-| `UserService` | 55 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). |
+| `UserService` | 56 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `ICalFeedService` added as a new eager consumer (token-validation path). |
 | `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
 | `TeamService` | 27 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
 | `UserEmailService` | 20 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
@@ -633,5 +640,7 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
 - **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge; CampService lazy-in 1 → 2). The ctor is unchanged — no new eager edges.
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
+- **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
+- **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
 - **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.

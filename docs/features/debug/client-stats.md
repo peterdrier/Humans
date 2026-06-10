@@ -32,9 +32,9 @@ Constraint shaping the design (shared with [active-user-metrics](../active-user-
 **I want** `/Debug/ClientStats` to show OS, browser, device-type and screen-resolution counts
 **So that** I can answer "what do our visitors use" without standing up analytics
 **Acceptance:**
-- Four ranked tables: Operating system, Browser, Device type, Screen resolution, each with counts and % share
+- Five ranked tables: Operating system, Browser, Device type, Bots (breakdown by crawler name), Screen resolution, each with counts and % share
 - Counts are since process start; the screen states they reset on restart/redeploy
-- OS/browser/device come from the User-Agent; resolution comes from the browser beacon
+- OS/browser/device come from the User-Agent; bot names come from the parser's known-bot list; resolution comes from the browser beacon
 
 ### US-CS.2: Admin sees the status-code mix
 **As an** Admin
@@ -56,9 +56,9 @@ Constraint shaping the design (shared with [active-user-metrics](../active-user-
 
 Three new types, no DB schema:
 
-- `IClientStatsTracker` (Application) — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`. Impl `ClientStatsTracker` (Infrastructure, singleton): `ConcurrentDictionary` tallies for OS / browser / device / resolution.
+- `IClientStatsTracker` (Application) — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`. Impl `ClientStatsTracker` (Infrastructure, singleton): `ConcurrentDictionary` tallies for OS / browser / device / bots / resolution.
 - `IHttpStatusTracker` (Application) — `Total`, `GetCounts()`. Impl `HttpStatusTracker` (Infrastructure, singleton + `IHostedService`).
-- `UserAgentClassifier` (Infrastructure, static) — maps a UA to coarse `(Os, Browser, Device)` via `MyCSharp.HttpUserAgentParser`.
+- `UserAgentClassifier` (Infrastructure, static) — maps a UA to coarse `(Os, Browser, Device, BotName?)` via `MyCSharp.HttpUserAgentParser`. `BotName` is non-null only for recognised crawlers; OS/Browser/Device still collapse to `"Bot"` so the main device-type table stays bounded.
 
 No persistence, no EF entity, no table.
 
@@ -98,7 +98,7 @@ every request → ASP.NET Core records http.server.request.duration
 
 - **No persistence / longer windows.** Counts are since-deploy; week/month trends would need a side-table, out of scope for a debug aid.
 - **No 5xx detail buffer (yet).** Only counts today. A circular buffer of recent server-error detail is the natural future addition if errors become a concern.
-- **No tablet class.** Device type is Mobile / Desktop / Bot — sufficient for "pc/mac/phone".
+- **No tablet class.** Device type is Mobile / Desktop / Bot (collapsed) — sufficient for "pc/mac/phone". The separate Bots table breaks the collapsed Bot bucket down by crawler name.
 
 ## Related Features
 

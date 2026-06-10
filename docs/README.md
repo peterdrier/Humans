@@ -56,6 +56,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Profiles](features/profiles/profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
 | [Public Coordinator Popover](features/profiles/public-coordinator-popover.md) | Anonymous-visible reduced popover on public team pages surfacing only avatar, BurnerName, and coordinator role labels via an `AllowAnonymous` `/Profile/{id}/PublicPopover` endpoint |
 | [Scanner — Barcode (Phase 1)](features/scanner/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
+| [Scanner — Gate Terminal Login](features/scanner/gate-terminal-login.md) | Shared gate-terminal account (well-known GUID, no email or roles) so any shift volunteer can operate the ticket-lookup kiosk without tying the device to a personal login or granting admin powers |
 | [Coordinator Roles](features/shifts/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
 | [Department Coverage Pies](features/shifts/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
 | [Email a Rota](features/shifts/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
@@ -106,9 +107,10 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Notifications](sections/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](sections/Onboarding.md) | Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance — owns no tables |
 | [Profiles](sections/Profiles.md) | Per-human personal data: profile, contact fields, emails, communication preferences — reference implementation for §15 caching |
-| [Scanner](sections/Scanner.md) | In-browser camera tools (currently `/Scanner/Barcode`); no server-side state, no owned tables |
+| [Scanner](sections/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Shifts](sections/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](sections/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
+| [Survey](sections/survey.md) | First-party, GDPR-compliant surveys: author typed/branching multi-language surveys, send tokenised email invitations to a resolved audience, collect responses across three anonymity tiers, and read results in-app or via export |
 | [Teams](sections/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |
 | [Tickets](sections/Tickets.md) | External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching by email, event-participation derivation |
 | [Users/Identity](sections/Users.md) | The User aggregate, identity-framework extensions, account provisioning, unsubscribe surface, and event participation |

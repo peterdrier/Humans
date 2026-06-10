@@ -1,16 +1,16 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-09 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-10 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 82 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 87 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-09) is a small delta. `ScannerController` gained the ticket-scanning pair (#916): `Tickets` (in-browser ticket barcode scanner page) and `Card` (current-event attendee ticket-card partial looked up by barcode). `ExpensesController` gained the travel line types `AddMileage` and `AddPerDiem` (#900). `EventsController` gained `ToggleCampFavourite` (favourite toggle on the barrio event pages). On the removals side — both missed by the prior regen — `ProfileController.ImportGooglePhoto` is gone (removed when profile-picture storage was consolidated into `UserService`, #745), and `ProfileAdminController` lost `EmailProblemsCompare` and `Merge` (the compare-and-merge surface was absorbed by `UsersAdminAccountMergesController`, #899, leaving `/Profile/Admin/EmailProblems` with the queue plus orphan-email/backfill levers). All other controllers carry forward unchanged.
+This regeneration (2026-06-10) adds five new controllers. `SurveyController` is the anonymous public survey-answering wizard with two entry paths: the tokenised invite link (`/Survey/Answer?t=…`) and the public slug link (`/Survey/{slug}`) (#884). `SurveyAdminController` is the Board/Admin survey authoring surface at `/Survey/Admin` (#884). `SurveysApiController` is the key-authed agent-facing read-only survey analysis API at `/api/surveys` (#884). `ICalFeedApiController` is the anonymous personal iCal feed endpoint at `/api/ical/{userId}/{token}.ics` (#931). `TicketsGateAdminController` is the gate-terminal credential management surface at `/Tickets/Admin/Gate` (#930). `AccountController` gained two new actions: `GateLogin` GET (form) and `GateLogin` POST (authenticate and redirect to `/Scanner/Tickets`) for the shared kiosk account (#930). All other controllers carry forward from the 2026-06-09 regeneration unchanged.
 
 The changes captured in the 2026-06-07 sweep — now all stable in the tables below — were: the account-merge consolidation (#899: deleted `AdminMergeController` / `AdminDuplicateAccountsController`, new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`), the legacy-`/Admin` route relocations (#901: `AdminController` reduced to its dashboard `Index`, debug pages onto `DebugController` and the new `UsersAdminDebugController`), the Profile-section retirement (#881: per-human admin surface onto `UsersAdminController`, account-status wall + cancel-deletion onto the new `UserController`), and the read-only Shift Summary by Camp on `ShiftsController` (#898: `Summary` / `SummaryTeam` / `SummaryRota`, with the old `SignUp` / `SignUpRange` form actions replaced by `ToggleDay`).
 
@@ -35,6 +35,8 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | MagicLink | /Account/MagicLink | POST | Verify magic link token and sign in | OK |
 | MagicLinkSignup | /Account/MagicLinkSignup | GET | New user signup landing via magic link | OK |
 | CompleteSignup | /Account/CompleteSignup | POST | Finalize magic link signup | OK |
+| GateLogin | /Account/GateLogin | GET | Gate-terminal shared-account login form | OK |
+| GateLogin | /Account/GateLogin | POST | Authenticate gate-terminal account and redirect to Scanner | OK |
 | Logout | /Account/Logout | POST | Sign out | OK |
 | AccessDenied | /Account/AccessDenied | GET | Access denied page | OK |
 
@@ -598,6 +600,14 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Privacy | /Home/Privacy | GET | Privacy policy page | OK |
 | Error | /Home/Error/{statusCode?} | GET | Error page | OK |
 
+## ICalFeedApiController
+
+(`Controllers/Api/ICalFeedApiController.cs`)
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| GetFeed | /api/ical/{userId:guid}/{token:guid}.ics | GET | Serve the authenticated user's personal iCal feed (shifts + events); anonymous, validated by secret token in URL | OK |
+
 ## IssuesApiController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -889,6 +899,46 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 |--------|-------|------|---------|------------|
 | Receive | /Store/StripeWebhook | POST | Receive Stripe webhook events | OK |
 
+## SurveyAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Survey/Admin | GET | List all surveys (Board/Admin) | OK |
+| Create | /Survey/Admin/Create | GET | New survey builder form | OK |
+| Edit | /Survey/Admin/Edit/{id:guid} | GET | Edit survey builder form | OK |
+| Save | /Survey/Admin/Save | POST | Create or update a survey (handles save + save-translate submit actions) | OK |
+| Open | /Survey/Admin/Open/{id:guid} | POST | Open a survey for responses | OK |
+| Close | /Survey/Admin/Close/{id:guid} | POST | Close a survey | OK |
+| Send | /Survey/Admin/Send/{id:guid} | GET | Send invitations preview page | OK |
+| Send | /Survey/Admin/Send/{id:guid} | POST | Dispatch invitations to the survey audience | OK |
+| Results | /Survey/Admin/Results/{id:guid} | GET | Survey results and aggregates page | OK |
+| ExportCsv | /Survey/Admin/Results/{id:guid}/Export.csv | GET | Download survey responses as CSV | OK |
+| ExportJson | /Survey/Admin/Results/{id:guid}/Export.json | GET | Download survey responses as JSON | OK |
+
+## SurveyController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Answer | /Survey/Answer | GET | Invited-link survey intro / resume-draft page | OK |
+| Start | /Survey/Answer/Start | POST | Start or resume the invited-link wizard session | OK |
+| Page | /Survey/Answer/Page | GET | Render the current wizard page (invited path) | OK |
+| SubmitPage | /Survey/Answer/Page | POST | Save answers and advance/back the invited-path wizard | OK |
+| ThankYou | /Survey/Answer/ThankYou | GET | Thank-you page (invited path) | OK |
+| Public | /Survey/{slug} | GET | Public slug survey intro page | OK |
+| PublicStart | /Survey/{slug}/Start | POST | Start the public-slug wizard session | OK |
+| PublicPage | /Survey/{slug}/Page | GET | Render the current wizard page (public-slug path) | OK |
+| PublicSubmitPage | /Survey/{slug}/Page | POST | Save answers and advance/back the public-slug wizard | OK |
+| PublicThankYou | /Survey/{slug}/ThankYou | GET | Thank-you page (public-slug path) | OK |
+
+## SurveysApiController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| List | /api/surveys | GET | List all surveys with participation counts (API key–authed) | OK |
+| Definition | /api/surveys/{id:guid} | GET | Survey definition: status, default culture, ordered question graph | OK |
+| Responses | /api/surveys/{id:guid}/responses | GET | Raw per-response export, filterable by anonymity/since, paged by cursor | OK |
+| Aggregates | /api/surveys/{id:guid}/aggregates | GET | Per-question aggregates and participation funnel | OK |
+
 ## TeamAdminController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -968,6 +1018,13 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 |--------|-------|------|---------|------------|
 | Index | /Tickets/Admin/Contacts | GET | Ticket contacts admin landing | OK |
 | Apply | /Tickets/Admin/Contacts/Apply | POST | Apply contact matching | OK |
+
+## TicketsGateAdminController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Tickets/Admin/Gate | GET | Gate-terminal account status and password management page | OK |
+| SetPassword | /Tickets/Admin/Gate/SetPassword | POST | Set or rotate the shared gate-terminal account password | OK |
 
 ## TicketsOnsiteAdminController
 

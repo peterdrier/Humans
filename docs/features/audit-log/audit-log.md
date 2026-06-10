@@ -112,6 +112,8 @@ Stored as string in the database. New values can be appended without migration.
 - `CampCreated/Updated/Deleted`, `CampSeasonCreated/Approved/Rejected/Withdrawn/StatusChanged`, etc. — Camp management
 - `ShiftSignupConfirmed/Refused/Voluntold/Bailed/NoShow/Cancelled` — Shift lifecycle
 - `RotaMovedToTeam` — Shift rota reassigned to a different department
+- `GateTerminalPasswordSet` — Gate-terminal shared kiosk password set (Scanner section)
+- `SurveyCreated/Updated/Opened/Closed/InvitesSent/ReminderSent` — Survey lifecycle (Survey section)
 
 ## Service Design
 

@@ -56,7 +56,7 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
-- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to names-only: the orchestrator reuses `IEventService.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
+- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to names-only: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
 - Humans, Teams, and Camps match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these buckets. Shifts and Events still run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: Search surfaces the public-visibility set, never more
@@ -93,7 +93,7 @@ SearchController
          ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
          ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
          ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
-         └── IEventService.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
+         └── IEventServiceRead.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
 ```
 
 Humans, Teams, and Camps are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. Shifts and Events still run the case-insensitive Postgres `ILike` filter against the name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.

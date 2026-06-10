@@ -31,7 +31,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 
 **Table:** `sync_service_settings`
 
-Per-service sync-mode configuration. Holds `UpdatedByUserId` (FK to `User`); the `UpdatedByUser` nav is still defined on the entity for EF cascade wiring (`OnDelete(DeleteBehavior.SetNull)`) but is not used by `SyncSettingsService` — display names are resolved via `IUserService.GetByIdsAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
+Per-service sync-mode configuration. Holds `UpdatedByUserId` (FK to `User`); the nav property was removed — the EF config uses typed-FK form (`HasOne<User>()`) with `OnDelete(DeleteBehavior.SetNull)`. Display names are resolved via `IUserService.GetByIdsAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
 
 ### GoogleSyncOutboxEvent
 
@@ -45,7 +45,7 @@ Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two
 
 ### External-API surfaces
 
-`IGoogleSyncService` (`GoogleWorkspaceSyncService`), `IGoogleAdminService`, `IGoogleWorkspaceUserService`, and `IDriveActivityMonitorService` wrap Google Drive / Groups / Admin SDK / Drive Activity HTTP APIs. They own no persistent tables beyond the two above; their "repository" surface is the Google HTTP client (via the connector interfaces listed under [Connector clients](#connector-clients) below), not EF Core.
+`IGoogleSyncService` (`GoogleWorkspaceSyncService`), `IGoogleAdminService`, `IGoogleWorkspaceUserService`, `IDriveActivityMonitorService`, and `IGoogleTranslationService` (`GoogleTranslationService`) wrap Google Drive / Groups / Admin SDK / Drive Activity / Cloud Translation HTTP APIs. They own no persistent tables beyond the two above; their "repository" surface is the Google HTTP client (via the connector interfaces listed under [Connector clients](#connector-clients) below), not EF Core.
 
 ## Routing
 
@@ -147,14 +147,14 @@ Three sections have cross-domain drift that must be resolved on their side (not 
 
 ## Architecture
 
-**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`
+**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
 **Owned tables:** `sync_service_settings`, `google_sync_outbox`
 **Status:** (A) Fully migrated. Three consumer-side cross-domain gaps remain on other sections (AuditLog, Teams, Users/Profiles) — see [Pending consumer-side `/section-align` targets](#pending-consumer-side-section-align-targets) above. All Google Integration business services live in `Humans.Application.Services.GoogleIntegration`. Migration completed under umbrella issue nobodies-collective/Humans#554 across multiple parts: `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` in peterdrier/Humans PR #267 (issue nobodies-collective/Humans#289); `IGoogleSyncOutboxRepository` extracted in Part 1 (2026-04-23); SDK bridge interfaces (`IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`) extracted in Part 2a (issue nobodies-collective/Humans#574, PR #302); `GoogleWorkspaceSyncService` moved to Application in Part 2b (issue nobodies-collective/Humans#575, 2026-04-23); and the last direct-DbContext consumers (`ProcessGoogleSyncOutboxJob`, `GoogleController.SyncOutbox`) flipped onto the repository surface in Part 2c (issue nobodies-collective/Humans#576, 2026-04-23). The section now has zero non-repository direct `DbSet<GoogleSyncOutboxEvent>` / `DbSet<GoogleResource>` / `DbSet<SyncServiceSettings>` reads or writes across Application + Web layers. Surface alignment completed in PR #500 (2026-05-12): DI registrations consolidated into `GoogleIntegrationSectionExtensions`; `GoogleSyncAuditView` / `BuildGoogleSyncAuditViewModel` helpers moved from `HumansControllerBase` into `GoogleController`; Google-owned ViewModels regrouped under `Models/Google/`; service and repository tests relocated to `tests/Humans.Application.Tests/GoogleIntegration/`.
 
 - Service(s) live in `Humans.Application.Services.GoogleIntegration/` and never import `Microsoft.EntityFrameworkCore`.
 - `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleResourceRepository` (all in `Humans.Application/Interfaces/Repositories/`) are the only code paths that touch this section's tables via `DbContext`.
 - **Decorator decision** — no caching decorator. All Google Integration services are either request-scoped admin operations or background-job processors; no hot bulk-read path warrants a `ConcurrentDictionary` projection.
-- **Cross-domain navs** — `SyncServiceSettings.UpdatedByUser` (`User`) is retained on the entity for EF cascade wiring (`OnDelete(DeleteBehavior.SetNull)`) but is never read by `SyncSettingsService`; display names are resolved in-memory via `IUserService.GetByIdsAsync` at the controller. `GoogleResource.Team` (`GoogleResource.cs:44`) is a live cross-domain nav property not yet stripped or `[Obsolete]`-marked — it is owned by the Teams section and the EF configuration should be updated to use the typed-FK form. This is the one remaining cross-domain nav in the section.
+- **Cross-domain navs** — `SyncServiceSettings.UpdatedByUser` nav was removed; the EF config was updated to the typed-FK form (`HasOne<User>()`). `GoogleResource.Team` (`GoogleResource.cs:44`) is a live cross-domain nav property not yet stripped or `[Obsolete]`-marked — it is owned by the Teams section and the EF configuration should be updated to use the typed-FK form. This is the one remaining cross-domain nav in the section.
 - **Cross-section calls** — `ITeamService`, `ITeamResourceService`, `IUserService`, `IUserEmailService`, `IProfileService`, `IEmailService`, `ISystemSettingsService` (Drive monitor `DriveActivityMonitor:LastRunAt` marker in `system_settings`), `IAuditLogRepository` (read path via `IAuditViewerService`).
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/GoogleIntegrationArchitectureTests.cs` (pins `EmailProvisioningService` + `GoogleWorkspaceSyncService`: namespace, no-DbContext, no-Google.Apis, sealed); `GoogleAdminArchitectureTests.cs` (pins `GoogleAdminService`); `GoogleWorkspaceUserArchitectureTests.cs` (pins `GoogleWorkspaceUserService` + `IWorkspaceUserDirectoryClient` shape-neutrality + `Humans.Application` assembly-level no-Google.Apis assertion); `GoogleWorkspaceSyncBridgeArchitectureTests.cs` (pins all four Part 2a bridge interfaces for namespace, shape-neutrality, and no-Google.Apis at the assembly level).
 
@@ -168,7 +168,7 @@ Three sections have cross-domain drift that must be resolved on their side (not 
 
 ### Connector clients
 
-Application-layer services depend only on shape-neutral connector interfaces in `Humans.Application.Interfaces.GoogleIntegration/` — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live in `Humans.Infrastructure/Services/GoogleWorkspace/`.
+Application-layer services depend only on shape-neutral connector interfaces in `Humans.Application.Interfaces.GoogleIntegration/` — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live in `Humans.Infrastructure/Services/GoogleWorkspace/`.
 
 ### Touch-and-clean guidance
 

@@ -30,9 +30,9 @@ Sidebar groups: Tickets, Members, Shifts, Barrios, Cantina, Expenses, Finance, S
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Scanner), Members (Humans, Roles), Governance (Voting, Applications), Audit (Audit log) |
+| Board | Tickets (Tickets, Scanner), Members (Humans, Roles), Governance (Voting, Applications, Surveys), Audit (Audit log) |
 | HumanAdmin | Members (Humans, Roles) |
-| TicketAdmin | Tickets (Tickets, Transfer requests, Scanner) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Scanner, Gate terminal) |
 | FinanceAdmin | Expenses (Expense Review), Finance (Finance) |
 | StoreAdmin | Store (Store catalog, Store summary, Store payments) |
 | ConsentCoordinator | Members (Review) |

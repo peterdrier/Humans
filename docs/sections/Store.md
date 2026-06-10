@@ -175,7 +175,7 @@ Stored as int via `HasConversion<int>()`.
 - `/Store/Admin/Catalog/Save` — POST save product.
 - `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
 - `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
-- `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. Reuses `PolicyNames.StoreCatalogAdmin`.
+- `/Store/Admin/Summary` — FinanceAdmin/StoreAdmin/Admin aggregate report: by-counterparty (with Type column distinguishing Camp / Team), by-item (sums lines from both camp and team orders for supplier aggregation), counterparties × products cross-tab for a given year. **Totals use effective pricing** — Open orders are repriced to the live catalog (matching the order-page behavior), InvoiceIssued orders use their frozen snapshots. Reuses `PolicyNames.StoreCatalogAdmin`.
 - `/Store/Admin/Payments` — FinanceAdmin/StoreAdmin/Admin Stripe payment reconciliation screen: webhook/checkout health banner, every Store Checkout Session matched to its order with a status (Recorded / Missing / Unmatched / Unpaid), and orphan recorded payments. Reuses `PolicyNames.StoreCatalogAdmin`. Linked from the Store-admin button group on `/Store` and the admin sidebar (**Store → Store payments**).
 - `/Store/Admin/Payments/RecordMissing` — POST: records every paid, order-matched, not-yet-recorded session via the idempotent `RecordStripePaymentAsync` path.
 - `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
