@@ -689,15 +689,26 @@ Skip if any of `logs`/`close`/`open`/`issues` is specified without `agent`.
 
 The agent (chat assistant) reads hardcoded markdown from `src/Humans.Web/Models/SectionHelpContent.cs` via the `fetch_section_guide` tool. When the user's question isn't covered, the agent either refuses or hands off to the issues queue. Both signals point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
 
+## Step 5.0: Determine target environment
+
+| Arguments | Base URL | API Key |
+|-----------|----------|---------|
+| *(none)* or `agent` | `$HUMANS_API_URL` | `$HUMANS_AGENT_API_KEY` or `$HUMANS_API_KEY` |
+| `qa` or `agent qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_AGENT_API_KEY` or `$HUMANS_QA_API_KEY` |
+
+Always note the environment in output (e.g., "Agent phase from **QA**").
+
 ## Step 5.1: Fetch refusals and handoffs
 
+> **Note on handoffs:** `handoffsOnly=true` filters by `HandedOffToFeedbackId != null` in the DB. Current `route_to_issue` tool calls do **not** set this field — the proposal is streamed to the client and the saved assistant message retains `HandedOffToFeedbackId = null`. This means `handoffsOnly` returns only legacy feedback-based handoffs (likely none). Omit that fetch unless you see results; rely on refusals as the primary signal. Issue handoffs surface instead through Phase 4 (in-app Issues with KB-gap flags).
+
 ```bash
-AGENT_KEY="${HUMANS_AGENT_API_KEY:-$HUMANS_API_KEY}"       # QA: HUMANS_QA_AGENT_API_KEY / HUMANS_QA_API_KEY
 curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?refusalsOnly=true&take=100"
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?handoffsOnly=true&take=100"
+# handoffsOnly currently returns only legacy feedback handoffs (HandedOffToFeedbackId != null);
+# route_to_issue turns are not flagged this way — omit unless debugging legacy data.
 ```
 
-Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-{refusals,handoffs}.json`.
+Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-refusals.json`.
 
 503 → server key not configured; skip phase with note ("Agent phase skipped — `AgentApi:ApiKey` not wired on server."). 401 → wrong key; try the dedicated env var.
 
@@ -709,15 +720,15 @@ curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations/{id}/mess
 
 ## Step 5.2: Cluster repeated questions
 
-For each conversation, `lastUserMessagePreview` (200 chars) is the question the agent failed. Cluster by intent across both refusals and handoffs:
+For each conversation, `lastUserMessagePreview` (200 chars) is the question the agent failed. Cluster by intent across refusals (and any legacy handoffs returned):
 
 - Same section + same question pattern → one cluster
 - Different sections but same root concept (e.g., "how do I cancel X" across Shifts + Tickets) → one cluster, multi-section FAQ
 - Singletons are fine to skip unless the question is high-value (GDPR, payments, accessibility)
 
-Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster.
+Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster. Current `route_to_issue` handoffs surface here via Phase 4, not via `handoffsOnly`.
 
-Subagents are useful here: dispatch one to cluster refusals, one to cluster handoffs, then merge.
+Subagents are useful here if the refusal set is large: dispatch one per cluster candidate, then merge.
 
 ## Step 5.3: Propose FAQ entries
 
