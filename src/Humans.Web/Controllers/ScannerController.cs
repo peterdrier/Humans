@@ -1,5 +1,6 @@
 using Humans.Application;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Events;
@@ -76,7 +77,7 @@ public class ScannerController(
                     .FirstOrDefault(p => p.Year == burn.Year)?.CheckedInAt;
             }
 
-            provideItems = await GetProvideItemsAsync(userId, ct);
+            provideItems = await GetProvideItemsAsync(userId, burn, burnTz, ct);
         }
 
         var stub = new TicketStubInfo(
@@ -101,24 +102,38 @@ public class ScannerController(
     /// are offering, merged and sorted by start. Shifts reuse the iCal feed's
     /// items (its Events half is favourites — the wrong signal at the door, so
     /// those are filtered out); offered events use the same personal filter as
-    /// the profile events card (SubmitterUserId match, non-camp — see #935).
+    /// the profile events card (SubmitterUserId match, non-camp — see #935),
+    /// with recurring events expanded into one item per occurrence the same way
+    /// the Events feed contributor does.
     /// </summary>
-    private async Task<IReadOnlyList<CalendarFeedItem>> GetProvideItemsAsync(Guid userId, CancellationToken ct)
+    private async Task<IReadOnlyList<CalendarFeedItem>> GetProvideItemsAsync(
+        Guid userId, BurnSettingsInfo? burn, DateTimeZone? tz, CancellationToken ct)
     {
         var shiftItems = (await calendarFeed.GetFeedItemsAsync(userId, ct))
             .Where(i => string.Equals(i.Source, "Shifts", StringComparison.Ordinal));
 
         var offered = (await events.GetApprovedEventsAsync(null, null, null, null, [], ct))
             .Where(e => e.SubmitterUserId == userId && e.CampId is null)
-            .Select(e => new CalendarFeedItem(
-                Uid: $"event-{e.Id}@humans.nobodies.team",
-                Source: "Events",
-                Summary: e.IsRecurring ? $"{e.Title} ({e.RecurrenceDays})" : e.Title,
-                Description: null,
-                Start: e.StartAt,
-                End: e.StartAt.Plus(Duration.FromMinutes(e.DurationMinutes)),
-                Location: e.VenueName ?? e.LocationNote,
-                Url: null));
+            .SelectMany(e =>
+            {
+                // tz non-null implies burn non-null (tz is derived from burn in Card).
+                IReadOnlyList<Instant> occurrences = tz is not null
+                    ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz)
+                    : [e.StartAt];
+                return occurrences.Select(start =>
+                {
+                    var dateKey = DateFormattingExtensions.IcalBasicDatePattern.Format(start.InZone(tz ?? DateTimeZone.Utc).Date);
+                    return new CalendarFeedItem(
+                        Uid: $"event-{e.Id}-{dateKey}@humans.nobodies.team",
+                        Source: "Events",
+                        Summary: e.Title,
+                        Description: null,
+                        Start: start,
+                        End: start.Plus(Duration.FromMinutes(e.DurationMinutes)),
+                        Location: e.VenueName ?? e.LocationNote,
+                        Url: null);
+                });
+            });
 
         return shiftItems.Concat(offered).OrderBy(i => i.Start).ToList();
     }

@@ -106,7 +106,8 @@ public class ScannerControllerTests
         EarlyEntryClose: null);
 
     private static ApprovedEventView OfferedEvent(
-        Guid submitterUserId, Guid? campId, string title, Instant startAt) => new(
+        Guid submitterUserId, Guid? campId, string title, Instant startAt,
+        bool isRecurring = false, string? recurrenceDays = null) => new(
         Id: Guid.NewGuid(),
         CampId: campId,
         GuideSharedVenueId: null,
@@ -122,8 +123,8 @@ public class ScannerControllerTests
         Host: "Ada",
         StartAt: startAt,
         DurationMinutes: 90,
-        IsRecurring: false,
-        RecurrenceDays: null,
+        IsRecurring: isRecurring,
+        RecurrenceDays: recurrenceDays,
         PriorityRank: 0,
         SubmittedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
         LastUpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0));
@@ -267,6 +268,10 @@ public class ScannerControllerTests
             .Returns(new[]
             {
                 OfferedEvent(userId, campId: null, "Intro to Soldering", Instant.FromUtc(2026, 6, 17, 16, 0)),
+                // Recurring on gate-opening day offsets 0 and 2 (gate opens 2026-06-17):
+                // expands to 2026-06-17 and 2026-06-19 at 08:00 Madrid (06:00 UTC).
+                OfferedEvent(userId, campId: null, "Daily Yoga", Instant.FromUtc(2026, 6, 18, 6, 0),
+                    isRecurring: true, recurrenceDays: "0,2"),
                 OfferedEvent(userId, campId: Guid.NewGuid(), "Camp Workshop", Instant.FromUtc(2026, 6, 18, 16, 0)),
                 OfferedEvent(Guid.NewGuid(), campId: null, "Other Human's Talk", Instant.FromUtc(2026, 6, 18, 17, 0)),
             });
@@ -284,11 +289,15 @@ public class ScannerControllerTests
         vm.BurnTimeZone.Should().NotBeNull();
         vm.BurnTimeZone!.Id.Should().Be("Europe/Madrid");
 
-        // Provide list: offered workshop + shift commitment, sorted by start;
-        // favourited feed events, camp submissions, and other humans' events excluded.
+        // Provide list: offered workshop + recurring occurrences + shift commitment,
+        // sorted by start; favourited feed events, camp submissions, and other
+        // humans' events excluded.
         vm.ProvideItems.Should().NotBeNull();
-        vm.ProvideItems!.Select(i => i.Summary).Should().Equal("Intro to Soldering", "Gate: Morning");
-        vm.ProvideItems.Select(i => i.Source).Should().Equal("Events", "Shifts");
+        vm.ProvideItems!.Select(i => i.Summary).Should().Equal(
+            "Daily Yoga", "Intro to Soldering", "Gate: Morning", "Daily Yoga");
+        vm.ProvideItems.Select(i => i.Source).Should().Equal("Events", "Events", "Shifts", "Events");
+        vm.ProvideItems[0].Start.Should().Be(Instant.FromUtc(2026, 6, 17, 6, 0));
+        vm.ProvideItems[3].Start.Should().Be(Instant.FromUtc(2026, 6, 19, 6, 0));
     }
 
     [HumansFact]
