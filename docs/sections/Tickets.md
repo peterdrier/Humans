@@ -109,7 +109,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - TicketAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketAdminBoardOrAdmin`.
-- A user **cannot** send an attendee they do not own (the order's `MatchedUserId` must equal the Sender's user id; validated in `TicketTransferService.CreateRequestAsync`).
+- A user **cannot** send an attendee they do not own (the attendee's `MatchedUserId` must equal the Sender's user id; validated via `TicketAttendeeOwnership.IsCurrentOwner` in `TicketTransferService.CreateRequestAsync`; buyer-only order ownership does not confer send rights).
 
 ## Routing
 
