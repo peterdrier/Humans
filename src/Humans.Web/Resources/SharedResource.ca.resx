@@ -914,7 +914,7 @@
     <value>Fusionar comptes?</value>
   </data>
   <data name="Emails_MergeWarningBody" xml:space="preserve">
-    <value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. La transferència d'entrades entre humans és una funció separada, properament.</value>
+    <value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. Per transferir una entrada a un altre humà, utilitza la funció de transferència d'entrades a /Tickets/Transfers.</value>
   </data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve">
     <value>S’enviarà un correu de verificació a aquesta adreça.</value>
@@ -4609,6 +4609,9 @@
   </data>
   <data name="Nav_Staff" xml:space="preserve">
     <value>Equip</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Ajuda</value>
   </data>
   <data name="ProfileCard_Suspended" xml:space="preserve">
     <value>Suspès</value>

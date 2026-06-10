@@ -914,7 +914,7 @@
     <value>Fusionner des comptes ?</value>
   </data>
   <data name="Emails_MergeWarningBody" xml:space="preserve">
-    <value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Le transfert de billets entre humains est une fonctionnalité distincte, bientôt disponible.</value>
+    <value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Pour transférer un billet à un autre humain, utilisez la fonctionnalité de transfert de billets sur /Tickets/Transfers.</value>
   </data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Un e-mail de vérification sera envoyé à cette adresse.</value>
@@ -4609,6 +4609,9 @@
   </data>
   <data name="Nav_Staff" xml:space="preserve">
     <value>Équipe</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Aide</value>
   </data>
   <data name="ProfileCard_Suspended" xml:space="preserve">
     <value>Suspendu</value>
