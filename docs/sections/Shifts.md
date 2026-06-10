@@ -204,6 +204,7 @@ Selected routes:
 | `GET /Teams/{slug}/Shifts/Tags/Search` | Tag autocomplete |
 | `POST /Teams/{slug}/Shifts/Tags/Create` | Create new tag |
 | `GET /Shifts/Dashboard` | Cross-department coordinator dashboard |
+| `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftDashboardAccess`) |
 | `GET /Shifts/Dashboard/SearchVolunteers` | Dashboard volunteer search |
 | `POST /Shifts/Dashboard/Voluntell` | Dashboard voluntell |
 
