@@ -34,11 +34,11 @@ public class TicketTailorServiceCachingTests
 
         var service = CreateService(handler);
 
-        var first = await service.GetEventSummaryAsync("ev_test");
-        var second = await service.GetEventSummaryAsync("ev_test");
+        // 5xx throws — must not be cached so the second call can succeed
+        var act = () => service.GetEventSummaryAsync("ev_test");
+        await act.Should().ThrowAsync<HttpRequestException>();
 
-        first.EventName.Should().Be("Unknown");
-        first.TotalCapacity.Should().Be(0);
+        var second = await service.GetEventSummaryAsync("ev_test");
 
         second.EventName.Should().Be("Elsewhere 2026");
         second.TotalCapacity.Should().Be(2000);
