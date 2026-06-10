@@ -844,7 +844,10 @@ public sealed class ExpenseReportService(
         var now = clock.GetCurrentInstant();
         var ok = await repo.ReopenSepaAsync(reportId, now, ct);
         if (!ok)
+        {
+            logger.LogWarning("ReopenSepa guard failed for report {ReportId}: not in SepaSent status", reportId);
             return ExpenseMutationResult.Failure("Report is not in SepaSent status and cannot be reopened.");
+        }
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseSepaReopened,
@@ -1255,6 +1258,7 @@ public sealed class ExpenseReportService(
             AuditAction.ExpenseWithdraw,
             AuditAction.ExpenseCategoryOverride,
             AuditAction.ExpenseSepaSent,
+            AuditAction.ExpenseSepaReopened,
             AuditAction.ExpensePaid,
             AuditAction.ExpenseAttachmentUploaded,
             AuditAction.ExpenseAttachmentRemoved,
