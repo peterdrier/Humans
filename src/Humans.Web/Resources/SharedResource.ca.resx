@@ -2946,6 +2946,24 @@
   <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
     <value>Transferida el</value>
   </data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve">
+    <value>Va entrar el</value>
+  </data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve">
+    <value>Entrada anticipada per</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve">
+    <value>Tots els consentiments signats</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve">
+    <value>Consentiments pendents</value>
+  </data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve">
+    <value>S'ha apuntat a aportar</value>
+  </data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
+    <value>Sense torns ni activitats</value>
+  </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Afegeix membre</value>
   </data>

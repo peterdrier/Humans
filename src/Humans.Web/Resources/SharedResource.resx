@@ -1266,6 +1266,12 @@
   <data name="Scanner_Tickets_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Scanner_Tickets_TransferredTo" xml:space="preserve"><value>Transferred to</value></data>
   <data name="Scanner_Tickets_TransferredOn" xml:space="preserve"><value>Transferred on</value></data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve"><value>Checked in at</value></data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve"><value>Early entry via</value></data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve"><value>All consents signed</value></data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve"><value>Missing consents</value></data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve"><value>Signed up to provide</value></data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve"><value>No shifts or events</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Add Member</value></data>

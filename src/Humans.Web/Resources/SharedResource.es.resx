@@ -2970,6 +2970,24 @@
   <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
     <value>Transferida el</value>
   </data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve">
+    <value>Entró el</value>
+  </data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve">
+    <value>Entrada anticipada por</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve">
+    <value>Todos los consentimientos firmados</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve">
+    <value>Consentimientos pendientes</value>
+  </data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve">
+    <value>Se ha apuntado a aportar</value>
+  </data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
+    <value>Sin turnos ni actividades</value>
+  </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Agregar miembro</value>
   </data>
