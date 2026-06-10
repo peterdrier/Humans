@@ -15,13 +15,10 @@ namespace Humans.Web.Controllers;
 [Route("Budget")]
 public class BudgetController(
     IBudgetService budgetService,
-    ITeamServiceRead teamService,
     IAuthorizationService authService,
     IUserServiceRead userService,
     ILogger<BudgetController> logger) : HumansControllerBase(userService)
 {
-    private readonly ITeamServiceRead _teamService = teamService;
-
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {

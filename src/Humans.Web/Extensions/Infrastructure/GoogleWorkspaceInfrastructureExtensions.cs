@@ -22,7 +22,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         // this Application-owned options type. Same appsettings section as
         // GoogleWorkspaceSettings so a single config surface drives both.
         services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
-        services.AddSingleton(sp =>
+        services.AddSingleton(_ =>
         {
             var opts = new TeamResourceManagementOptions();
             configuration.GetSection(TeamResourceManagementOptions.SectionName).Bind(opts);

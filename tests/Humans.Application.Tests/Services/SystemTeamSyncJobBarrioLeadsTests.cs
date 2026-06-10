@@ -38,7 +38,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
@@ -51,13 +50,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private SystemTeamSyncJob CreateJob()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IMembershipCalculatorRead>(Substitute.For<IMembershipCalculatorRead>());
+        services.AddSingleton(Substitute.For<IMembershipCalculatorRead>());
         var provider = services.BuildServiceProvider();
 
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
-            _userEmailService,
             _campRepository,
             provider,
             _googleSyncService,
@@ -105,7 +103,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         // User is already an active member of Barrio Leads and is still a
         // lead of at least one camp — the guard in the job should short-circuit.
         var userId = Guid.NewGuid();
-        var team = StubBarrioLeadsTeam(
+        StubBarrioLeadsTeam(
             [
                 new TeamMember
                 {

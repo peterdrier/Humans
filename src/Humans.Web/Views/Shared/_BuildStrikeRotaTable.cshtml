@@ -1,5 +1,5 @@
 @model Humans.Web.Models.BuildStrikeRotaTableViewModel
-@if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
+@if (Model.Interaction == ShiftSignupInteraction.InstantToggle)
 {
     var allDayShifts = Model.RotaGroup.Shifts
         .Where(s => s.Shift.IsAllDay)

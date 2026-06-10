@@ -33,7 +33,7 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
     public async Task Webhook_with_unknown_event_type_is_a_200_no_op()
     {
         var payload = BuildEventJson(eventType: "customer.subscription.created", dataObjectJson: "{}");
-        var (sig, _) = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
+        var sig = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
 
         var resp = await PostWithSignatureAsync(payload, sig);
 
@@ -51,7 +51,7 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
             paymentIntentId: paymentIntentId,
             amountTotalMinorUnits: 4250,
             metadataOrderId: orderId.ToString());
-        var (sig, _) = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
+        var sig = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
 
         var resp = await PostWithSignatureAsync(payload, sig);
 
@@ -62,7 +62,7 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
         var payment = await db.StorePayments.AsNoTracking()
             .SingleOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId);
         payment.Should().NotBeNull();
-        payment!.OrderId.Should().Be(orderId);
+        payment.OrderId.Should().Be(orderId);
         payment.AmountEur.Should().Be(42.50m);
         payment.Method.Should().Be(StorePaymentMethod.Stripe);
     }
@@ -78,7 +78,7 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
             paymentIntentId: paymentIntentId,
             amountTotalMinorUnits: 1000,
             metadataOrderId: orderId.ToString());
-        var (sig, _) = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
+        var sig = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
 
         (await PostWithSignatureAsync(payload, sig)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await PostWithSignatureAsync(payload, sig)).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -179,13 +179,13 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
     /// Computes a valid Stripe-Signature header (scheme v1) per
     /// https://docs.stripe.com/webhooks#verify-manually.
     /// </summary>
-    private static (string Header, long Timestamp) SignPayload(string payload, string secret)
+    private static string SignPayload(string payload, string secret)
     {
         var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var signedPayload = $"{ts.ToString(CultureInfo.InvariantCulture)}.{payload}";
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(signedPayload));
         var hex = Convert.ToHexString(hash).ToLowerInvariant();
-        return ($"t={ts.ToString(CultureInfo.InvariantCulture)},v1={hex}", ts);
+        return $"t={ts.ToString(CultureInfo.InvariantCulture)},v1={hex}";
     }
 }

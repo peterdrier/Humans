@@ -143,7 +143,7 @@ public class MailerAudienceSyncServiceTests
             Subscriber("s1", "a@example.com", "active"),
             Subscriber("s2", "b@example.com", "active"));
         _ml.AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>())
-            .Returns<Task>(_ => throw new HttpRequestException("simulated 500"));
+            .Returns(_ => throw new HttpRequestException("simulated 500"));
 
         var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 

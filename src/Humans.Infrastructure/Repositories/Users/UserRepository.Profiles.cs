@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

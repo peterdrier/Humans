@@ -7,7 +7,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Web.Models.Google;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
@@ -20,14 +19,11 @@ public class GoogleController(
     IUserServiceRead userService,
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
-    IAuditViewerService auditViewer,
     ITeamResourceService teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
-    private readonly IAuditViewerService _auditViewer = auditViewer;
-
     // --- Sync Settings ---
 
     [HttpGet("SyncSettings")]

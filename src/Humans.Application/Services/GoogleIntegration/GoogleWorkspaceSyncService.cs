@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -244,33 +243,6 @@ public sealed class GoogleWorkspaceSyncService(
                 userEmail, resource.GoogleId);
         }
     }
-
-    /// <summary>Derive Group email from URL (groups.google.com/a/{domain}/g/{prefix}); null on parse fail (#639).</summary>
-    private string? TryDeriveGroupEmail(GoogleResource resource)
-    {
-        if (resource.ResourceType != GoogleResourceType.Group)
-        {
-            return null;
-        }
-        if (string.IsNullOrWhiteSpace(resource.Url))
-        {
-            return null;
-        }
-
-        const string marker = "/g/";
-        var idx = resource.Url.IndexOf(marker, StringComparison.Ordinal);
-        if (idx < 0)
-        {
-            return null;
-        }
-        var prefix = resource.Url[(idx + marker.Length)..].TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(prefix) || string.IsNullOrWhiteSpace(_options.Domain))
-        {
-            return null;
-        }
-        return $"{prefix}@{_options.Domain}";
-    }
-
 
     /// <inheritdoc />
     public async Task AddUserToTeamResourcesAsync(
@@ -1828,23 +1800,6 @@ public sealed class GoogleWorkspaceSyncService(
                 .FirstOrDefault();
     }
 
-    private static string? TryGetGoogleEmail(
-        TeamActiveMemberSnapshot tm,
-        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
-    {
-        if (tm.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-            return null;
-
-        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
-            ? list
-            : [];
-
-        return emails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault();
-    }
-
     private static bool IsAnyUserPermission(DrivePermission perm)
     {
         if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
@@ -2007,6 +1962,4 @@ public sealed class GoogleWorkspaceSyncService(
             drifts.Add(new GroupSettingDrift(settingName, expectedValue, actualValue));
         }
     }
-
-    private sealed record ExpectedMember(string Email, string DisplayName, Guid UserId, string? ProfilePictureUrl);
 }

@@ -128,7 +128,6 @@ public class GovernanceBoardVotingController(
                 SetError(result.ErrorKey switch
                 {
                     "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
-                    "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
                     _ => localizer["BoardVoting_ApplicationNotVotable"].Value
                 });
                 return RedirectToAction(nameof(BoardVoting));

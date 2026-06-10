@@ -29,7 +29,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         var sourceLoginKey = $"login-src-{runTag}";
         var sourceOnlyRole = $"role-src-{runTag}";
 
-        Guid sourceOnlyTeamId = Guid.Empty;
+        Guid sourceOnlyTeamId;
 
         // Stage 1 — seed source/target user pair with their primary verified
         // emails, a login, and a role assignment.
@@ -108,7 +108,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         var survivingTargetEmail = await db.UserEmails.AsNoTracking()
             .FirstOrDefaultAsync(e => e.UserId == targetId && e.Email == targetEmail);
         survivingTargetEmail.Should().NotBeNull();
-        survivingTargetEmail!.IsPrimary.Should().BeTrue(
+        survivingTargetEmail.IsPrimary.Should().BeTrue(
             "target's pre-existing IsPrimary must remain true after fold");
         survivingTargetEmail.IsGoogle.Should().BeTrue(
             "target's pre-existing IsGoogle must remain true after fold");
@@ -118,7 +118,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         // ----------------------------------------------------------------
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
         sourceUser.Should().NotBeNull();
-        sourceUser!.MergedToUserId.Should().Be(targetId,
+        sourceUser.MergedToUserId.Should().Be(targetId,
             "source must be tombstoned pointing at the target");
         sourceUser.MergedAt.Should().NotBeNull(
             "source MergedAt must be set after admin-initiated fold");
@@ -134,7 +134,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
                 && a.EntityType == nameof(User)
                 && a.EntityId == sourceId);
         auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the archived account");
-        auditRow!.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
+        auditRow.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
             "the audit description records the archived→survivor fold");
 
         // Bonus: source's team membership and role assignment moved to target.

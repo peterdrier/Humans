@@ -33,9 +33,9 @@ public static class AgentPricing
     public static AgentSpendStats Compute(long promptTokens, long outputTokens, long cachedTokens, string model)
     {
         var row = GetPriceRow(model);
-        var input = (decimal)promptTokens / 1_000_000m * row.Input;
-        var output = (decimal)outputTokens / 1_000_000m * row.Output;
-        var cacheRead = (decimal)cachedTokens / 1_000_000m * row.CacheRead;
+        var input = promptTokens / 1_000_000m * row.Input;
+        var output = outputTokens / 1_000_000m * row.Output;
+        var cacheRead = cachedTokens / 1_000_000m * row.CacheRead;
         return new AgentSpendStats(input, output, cacheRead, input + output + cacheRead);
     }
 }

@@ -100,8 +100,7 @@ public class AdminSidebarViewComponentTests
     {
         env ??= MakeDevEnv();
         var sp = new ServiceLocatorBuilder().Build();
-        var http = Substitute.For<IHttpContextAccessor>();
-        var sut = new AdminSidebarViewComponent(auth, env, sp, http, NullLogger<AdminSidebarViewComponent>.Instance);
+        var sut = new AdminSidebarViewComponent(auth, env, sp, NullLogger<AdminSidebarViewComponent>.Instance);
 
         var viewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
         {

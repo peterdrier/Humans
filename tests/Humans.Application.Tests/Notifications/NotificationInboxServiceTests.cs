@@ -136,7 +136,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task DismissAsync_DismissesInformationalNotification()
     {
-        var notification = await CreateNotification(NotificationClass.Informational);
+        var notification = await CreateNotification();
 
         var result = await _service.DismissAsync(notification.Id, _userId);
 
@@ -232,7 +232,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task BulkResolveAsync_SkipsInformationalNotifications()
     {
         var actionable = await CreateNotification(NotificationClass.Actionable);
-        var informational = await CreateNotification(NotificationClass.Informational);
+        var informational = await CreateNotification();
 
         await _service.BulkResolveAsync([actionable.Id, informational.Id], _userId);
 
@@ -248,8 +248,8 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task BulkDismissAsync_DismissesMultipleInformationalNotifications()
     {
-        var n1 = await CreateNotification(NotificationClass.Informational);
-        var n2 = await CreateNotification(NotificationClass.Informational);
+        var n1 = await CreateNotification();
+        var n2 = await CreateNotification();
 
         await _service.BulkDismissAsync([n1.Id, n2.Id], _userId);
 
@@ -264,7 +264,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task BulkDismissAsync_SkipsActionableNotifications()
     {
         var actionable = await CreateNotification(NotificationClass.Actionable);
-        var informational = await CreateNotification(NotificationClass.Informational);
+        var informational = await CreateNotification();
 
         await _service.BulkDismissAsync([actionable.Id, informational.Id], _userId);
 
@@ -308,7 +308,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task GetPopupAsync_ReturnsUnresolvedNotificationsSplitByClass()
     {
         await CreateNotification(NotificationClass.Actionable);
-        await CreateNotification(NotificationClass.Informational);
+        await CreateNotification();
         await CreateNotification(
             NotificationClass.Actionable,
             resolvedAt: _clock.GetCurrentInstant(),

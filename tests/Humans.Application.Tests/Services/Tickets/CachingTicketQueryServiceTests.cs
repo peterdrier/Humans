@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Tickets;

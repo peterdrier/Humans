@@ -16,7 +16,6 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Shifts;
@@ -33,8 +32,7 @@ public sealed class ShiftManagementService(
     IServiceProvider serviceProvider,
     IMemoryCache cache,
     IShiftViewInvalidator viewInvalidator,
-    IClock clock,
-    ILogger<ShiftManagementService> logger) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
+    IClock clock) : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -49,8 +47,6 @@ public sealed class ShiftManagementService(
     // Width of the all-day shift window, used by pie-row math.
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
-
-    private readonly ILogger<ShiftManagementService> _logger = logger;
 
     // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
     private ITeamServiceRead TeamService => serviceProvider.GetRequiredService<ITeamServiceRead>();

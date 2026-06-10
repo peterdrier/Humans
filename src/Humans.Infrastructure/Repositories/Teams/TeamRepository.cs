@@ -97,7 +97,7 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             .Where(tra =>
                 tra.TeamMember.LeftAt == null &&
                 tra.TeamRoleDefinition.IsManagement)
-            .Select(tra => new { TeamId = tra.TeamMember.TeamId, UserId = tra.TeamMember.UserId })
+            .Select(tra => new { tra.TeamMember.TeamId, tra.TeamMember.UserId })
             .ToListAsync(ct);
 
         return rows

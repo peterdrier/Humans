@@ -64,7 +64,7 @@ public class HoldedFinanceServiceTests
             ]));
 
         // Map already contains an active row for catA; catB has no map entry.
-        _repo.GetCategoryMapAsync(default).ReturnsForAnyArgs(
+        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(
             new List<HoldedCategoryMap>
             {
                 new()
@@ -122,10 +122,10 @@ public class HoldedFinanceServiceTests
             ]));
 
         // Local map is empty …
-        _repo.GetCategoryMapAsync(default).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
         // … but Holded already has an account at the first block number.
-        _client.ListExpenseAccountsAsync(default).ReturnsForAnyArgs(
+        _client.ListExpenseAccountsAsync().ReturnsForAnyArgs(
             new List<HoldedExpenseAccountDto>
             {
                 new() { Id = "acc-x", AccountNum = 6290010, Name = "Existing" },
@@ -146,7 +146,7 @@ public class HoldedFinanceServiceTests
         var catId = Guid.NewGuid();
 
         // One active map entry: account "acc-1", tag "comms".
-        _repo.GetCategoryMapAsync(default).ReturnsForAnyArgs(
+        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(
             new List<HoldedCategoryMap>
             {
                 new()
@@ -158,7 +158,7 @@ public class HoldedFinanceServiceTests
                 }
             });
 
-        _repo.GetSyncStateAsync(default).ReturnsForAnyArgs(new HoldedSyncState
+        _repo.GetSyncStateAsync().ReturnsForAnyArgs(new HoldedSyncState
         {
             Id = 1,
             SyncStatus = HoldedSyncStatus.Idle
@@ -192,7 +192,7 @@ public class HoldedFinanceServiceTests
             },
         };
 
-        _client.ListPurchaseDocumentsPageAsync(1, 100, default)
+        _client.ListPurchaseDocumentsPageAsync(1, 100)
             .ReturnsForAnyArgs(ci =>
                 (int)ci[0] == 1 ? (IReadOnlyList<HoldedPurchaseDocListItemDto>)page1 : []);
 
@@ -231,9 +231,9 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task Sync_sets_error_state_on_exception()
     {
-        _repo.GetCategoryMapAsync(default).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
-        _repo.GetSyncStateAsync(default).ReturnsForAnyArgs(new HoldedSyncState
+        _repo.GetSyncStateAsync().ReturnsForAnyArgs(new HoldedSyncState
         {
             Id = 1,
             SyncStatus = HoldedSyncStatus.Idle
@@ -263,13 +263,13 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task SyncCreditorData_caches_only_400000xx_balances_and_all_payments()
     {
-        _client.ListChartOfAccountsAsync(default).ReturnsForAnyArgs(new List<HoldedChartAccountDto>
+        _client.ListChartOfAccountsAsync().ReturnsForAnyArgs(new List<HoldedChartAccountDto>
         {
             new() { Num = 40000001, Name = "Daniela", Balance = -3180m },
             new() { Num = 40000004, Name = "Peter",   Balance = -23m },
             new() { Num = 62900000, Name = "Otros",   Balance = 12m },  // not a creditor acct
         });
-        _client.ListPaymentsAsync(default).ReturnsForAnyArgs(new List<HoldedPaymentDto>
+        _client.ListPaymentsAsync().ReturnsForAnyArgs(new List<HoldedPaymentDto>
         {
             new() { Id = "p1", ContactId = "c1", Amount = 50m, Date = FixedNow, DocumentType = "purchase" },
         });
@@ -291,9 +291,9 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_computes_owed_and_paid()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001, default).ReturnsForAnyArgs(
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001).ReturnsForAnyArgs(
             new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -3180m });
-        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1) },
             new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
@@ -302,7 +302,7 @@ public class HoldedFinanceServiceTests
         var status = await MakeService().GetCreditorStatusAsync(40000001, "c1");
 
         status.Should().NotBeNull();
-        status!.OwedToMember.Should().Be(3180m);
+        status.OwedToMember.Should().Be(3180m);
         status.TotalPaid.Should().Be(150m);
         status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
     }
@@ -310,8 +310,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_returns_null_when_nothing_cached()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(default, default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync(default!, default).ReturnsForAnyArgs(new List<HoldedPayment>());
+        _repo.GetCreditorBalanceByAccountNumAsync(default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync(default!).ReturnsForAnyArgs(new List<HoldedPayment>());
 
         var status = await MakeService().GetCreditorStatusAsync(40000099, "c-unknown");
 
@@ -323,8 +323,8 @@ public class HoldedFinanceServiceTests
     {
         // Payments cached but the 400000xx balance row is missing (cache gap / unresolved account).
         // Balance must stay null (unknown) — NOT coerced to 0 — so polling never falsely marks Paid.
-        _repo.GetCreditorBalanceByAccountNumAsync(default, default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetCreditorBalanceByAccountNumAsync(default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 60m, Date = new LocalDate(2026, 4, 1) },
         });
@@ -332,7 +332,7 @@ public class HoldedFinanceServiceTests
         var status = await MakeService().GetCreditorStatusAsync(40000007, "c1");
 
         status.Should().NotBeNull();
-        status!.Balance.Should().BeNull();
+        status.Balance.Should().BeNull();
         status.OwedToMember.Should().Be(0m);
         status.TotalPaid.Should().Be(60m);
     }
@@ -340,9 +340,9 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_surfaces_individual_payment_rows()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001, default).ReturnsForAnyArgs(
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001).ReturnsForAnyArgs(
             new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -100m });
-        _repo.GetPaymentsByContactAsync("c1", default).ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1), DocumentType = "purchase" },
             new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },

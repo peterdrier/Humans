@@ -36,7 +36,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     public ExpenseReportServiceTests()
         : base(FakeNow)
     {
-        _expenseRepo = new ExpenseRepository(DbFactory, NullLogger<ExpenseRepository>.Instance);
+        _expenseRepo = new ExpenseRepository(DbFactory);
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -1260,7 +1260,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var timeline = await _sut.GetHoldedTimelineAsync(report!);
 
         timeline.Should().NotBeNull();
-        timeline!.RegisteredInHolded.Should().BeTrue();
+        timeline.RegisteredInHolded.Should().BeTrue();
         timeline.OwedToMember.Should().Be(200m);
         timeline.OtherAmount.Should().Be(200m - report!.Total);
     }
@@ -1355,7 +1355,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var loaded = await _sut.GetAsync(reportId);
         loaded!.Status.Should().Be(ExpenseReportStatus.Paid);
         loaded.PaidAt.Should().Be(new LocalDate(2026, 5, 20).AtStartOfDayInZone(
-            NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+            DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
     }
 
     [HumansFact]

@@ -19,7 +19,6 @@ namespace Humans.Application.Tests.Services;
 public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 {
     private readonly CampService _service;
-    private readonly IUserService _userService;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
 
@@ -30,15 +29,12 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         var repo = new CampRepository(DbFactory);
 
-        _userService = NewDbBackedUserService();
-
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
         _service = new CampService(
             repo,
-            _userService,
             AuditLog,
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,
@@ -100,7 +96,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
     public async Task SetCampSeasonEeSlotCountAsync_AllowsReducingBelowCurrentGrants()
     {
         await SeedSettingsAsync();
-        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 10);
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 10);
         // Seed 5 active members all with HasEarlyEntry=true.
         for (var i = 0; i < 5; i++)
             await SeedActiveMemberWithEarlyEntryAsync(season.Id);

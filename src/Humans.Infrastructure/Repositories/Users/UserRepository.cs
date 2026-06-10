@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain;
 using Humans.Domain.Entities;

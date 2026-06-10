@@ -65,8 +65,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
         _service = new TeamService(
             new TeamRepository(DbFactory),
             AuditLog,
@@ -222,7 +221,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var team = SeedTeam("Test Team");
         var user1 = SeedUser("User1");
         var user2 = SeedUser("User2");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member1 = SeedMember(team, user1);
         var member2 = SeedMember(team, user2);
         SeedRoleAssignment(role, member1, slotIndex: 0);
@@ -243,8 +242,8 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        var existingMgmt = SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
-        var otherRole = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
+        var otherRole = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         await Db.SaveChangesAsync();
 
         var act = () => _service.UpdateRoleDefinitionAsync(
@@ -358,7 +357,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var user = SeedUser("User");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
         await Db.SaveChangesAsync();
@@ -380,7 +379,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var user = SeedUser("User");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         SeedMember(team, user);
         await Db.SaveChangesAsync();
 
@@ -402,7 +401,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var user = SeedUser("User");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         // Deliberately not adding user as team member
         await Db.SaveChangesAsync();
 
@@ -467,7 +466,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var team = SeedTeam("Test Team");
         var user1 = SeedUser("User1");
         var user2 = SeedUser("User2");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 1, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 1, sortOrder: 1);
         var member1 = SeedMember(team, user1);
         SeedMember(team, user2);
         SeedRoleAssignment(role, member1, slotIndex: 0);
@@ -509,7 +508,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var user = SeedUser("User");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
         await Db.SaveChangesAsync();
@@ -585,7 +584,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var user = SeedUser("User");
-        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
         await Db.SaveChangesAsync();

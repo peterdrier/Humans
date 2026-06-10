@@ -103,7 +103,7 @@
                       method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="modal-body">
-                        <partial name="_ContainerFormFields" model="@((ContainerViewModel?)null)" />
+                        <partial name="_ContainerFormFields" model="null" />
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>

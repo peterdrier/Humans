@@ -17,7 +17,7 @@ public static class BulkEventCsvParser
     public static List<BulkCsvRow> Parse(string csvText)
     {
         var rows = new List<BulkCsvRow>();
-        var lines = csvText.Split('\n', StringSplitOptions.None);
+        var lines = csvText.Split('\n');
         var dataLineNumber = 0;
 
         foreach (var rawLine in lines)

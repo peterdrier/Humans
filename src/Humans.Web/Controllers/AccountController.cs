@@ -563,6 +563,6 @@ public class AccountController(
 
     private IActionResult RedirectToLocal(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl)
-            ? LocalRedirect(returnUrl!)
+            ? LocalRedirect(returnUrl)
             : Redirect(Url.Content("~/"));
 }

@@ -26,7 +26,6 @@ public sealed class EmailOutboxServiceTests
     [HumansFact]
     public async Task GetOutboxStatsAsync_ReturnsNewestRecentMessages()
     {
-        var older = BuildMessage(_now - Duration.FromHours(2));
         var middle = BuildMessage(_now - Duration.FromHours(1));
         var newer = BuildMessage(_now);
 

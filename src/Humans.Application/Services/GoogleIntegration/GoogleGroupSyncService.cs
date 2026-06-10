@@ -64,7 +64,7 @@ public sealed class GoogleGroupSyncService(
         {
             if (claim.IsCollision)
             {
-                diffs.Add(await BuildCollisionDiffAsync(claim, resourcesByGroup, ct));
+                diffs.Add(await BuildCollisionDiffAsync(claim, resourcesByGroup));
                 continue;
             }
 
@@ -112,7 +112,7 @@ public sealed class GoogleGroupSyncService(
 
         if (claim.IsCollision)
         {
-            return await BuildCollisionDiffAsync(claim, resourcesByGroup, ct);
+            return await BuildCollisionDiffAsync(claim, resourcesByGroup);
         }
 
         return await ReconcileClaimAsync(
@@ -576,8 +576,7 @@ public sealed class GoogleGroupSyncService(
 
     private async Task<ResourceSyncDiff> BuildCollisionDiffAsync(
         GroupClaim claim,
-        IReadOnlyDictionary<string, GoogleResourceSnapshot> resourcesByGroup,
-        CancellationToken ct)
+        IReadOnlyDictionary<string, GoogleResourceSnapshot> resourcesByGroup)
     {
         var error = $"Google group membership source collision for {claim.GroupKey}: {string.Join(", ", claim.SourceNames)}";
         logger.LogError("{Error}", error);

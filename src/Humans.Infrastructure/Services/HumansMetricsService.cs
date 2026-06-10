@@ -164,7 +164,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _refreshTimer = new Timer(
-            callback: _ => _ = RefreshSnapshotAsync(),
+            callback: state => _ = RefreshSnapshotAsync(),
             state: null,
             dueTime: TimeSpan.Zero,
             period: TimeSpan.FromSeconds(60));
@@ -255,8 +255,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationServiceRead>();
             var teamService = scope.ServiceProvider.GetRequiredService<ITeamServiceRead>();
             var userService = scope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-            var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-            var now = clock.GetCurrentInstant();
 
             // Read off cached UserInfo snapshot — avoids full profile scan per scrape.
             var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);

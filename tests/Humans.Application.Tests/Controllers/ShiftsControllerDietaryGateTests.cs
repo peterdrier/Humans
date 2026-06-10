@@ -1,14 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using Humans.Web;
 using Humans.Web.Controllers;
 using Humans.Web.Models.Shifts;

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
@@ -387,7 +386,7 @@ public class UserEmailServiceTests
             .Select(g => BuildStubUserInfo(g.Key, g.ToList()))
             .ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyCollection<UserInfo>)infos);
+            .Returns(infos);
     }
 
     [HumansFact]
@@ -743,7 +742,6 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task SetGoogleAsync_RejectsOtherUser()
     {
-        var ownerId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         // Owner-gate: GetUserEmailByIdAndUserIdAsync(rowId, otherId) returns null because
@@ -1540,7 +1538,6 @@ public class UserEmailServiceTests
         // row B's purpose, so VerifyUserTokenAsync returns false and
         // ValidationException surfaces — but neither row gets verified.
         var userId = Guid.NewGuid();
-        var rowAId = Guid.NewGuid();
         var rowBId = Guid.NewGuid();
         var rowB = new UserEmail
         {

@@ -1,14 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -58,8 +56,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
 
         var signupRepo = new ShiftRepository(DbFactory, Db, Clock);
         _service = new ShiftSignupService(
@@ -82,7 +79,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
     {
         // Arrange: shift with MinVolunteers=2, exactly 2 Confirmed signups; bail
         // by either drops it to 1 (below min).
-        var (es, rota, shift, userA, userB) = await SeedScenarioAsync(
+        var (_, rota, _, userA, _) = await SeedScenarioAsync(
             minVolunteers: 2, maxVolunteers: 5);
         var coordinatorId = Guid.NewGuid();
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
@@ -114,7 +111,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
     {
         // Arrange: shift with MinVolunteers=1, 2 Confirmed signups; one bail
         // leaves 1 (still at min) — coverage gap should NOT fire.
-        var (es, rota, shift, userA, userB) = await SeedScenarioAsync(
+        var (_, rota, _, userA, _) = await SeedScenarioAsync(
             minVolunteers: 1, maxVolunteers: 5);
         var coordinatorId = Guid.NewGuid();
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())

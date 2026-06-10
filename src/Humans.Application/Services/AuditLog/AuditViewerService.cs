@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.AuditLog;
 
@@ -59,29 +58,6 @@ public sealed class AuditViewerService(
     // ─── Resolution ───
 
     private async Task<IReadOnlyList<AuditEvent>> ResolveAsync(
-        IReadOnlyList<AuditLogEntry> entries, CancellationToken ct)
-    {
-        if (entries.Count == 0)
-            return [];
-
-        var (userIds, teamIds, resourceIds) = CollectIds(entries);
-        var users = userIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await GetUserDisplayNamesAsync(userIds, ct);
-        var teams = teamIds.Count == 0
-            ? new Dictionary<Guid, (string Name, string Slug)>()
-            : await GetTeamNamesAsync(teamIds, ct);
-        var resources = resourceIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
-
-        var result = new List<AuditEvent>(entries.Count);
-        foreach (var entry in entries)
-            result.Add(Resolve(entry, users, teams, resources));
-        return result;
-    }
-
-    private async Task<IReadOnlyList<AuditEvent>> ResolveAsync(
         IReadOnlyList<AuditLogEntrySnapshot> entries, CancellationToken ct)
     {
         if (entries.Count == 0)
@@ -102,51 +78,6 @@ public sealed class AuditViewerService(
         foreach (var entry in entries)
             result.Add(Resolve(entry, users, teams, resources));
         return result;
-    }
-
-    private static AuditEvent Resolve(
-        AuditLogEntry entry,
-        IReadOnlyDictionary<Guid, string> users,
-        IReadOnlyDictionary<Guid, (string Name, string Slug)> teams,
-        IReadOnlyDictionary<Guid, string> resources)
-    {
-        var subjectId = ResolveSubjectId(entry);
-        var targetTeamId = ResolveTargetTeamId(entry);
-
-        string? actorName = entry.ActorUserId.HasValue && users.TryGetValue(entry.ActorUserId.Value, out var an) ? an : null;
-        string? subjectName = subjectId.HasValue && users.TryGetValue(subjectId.Value, out var sn) ? sn : null;
-        string? teamName = null;
-        string? teamSlug = null;
-        if (targetTeamId.HasValue && teams.TryGetValue(targetTeamId.Value, out var team))
-        {
-            teamName = team.Name;
-            teamSlug = team.Slug;
-        }
-        string? resourceName = entry.ResourceId.HasValue && resources.TryGetValue(entry.ResourceId.Value, out var rn) ? rn : null;
-
-        return new AuditEvent(
-            Id: entry.Id,
-            OccurredAt: entry.OccurredAt,
-            Action: entry.Action,
-            ActorUserId: entry.ActorUserId,
-            ActorDisplayName: actorName,
-            EntityType: entry.EntityType,
-            EntityId: entry.EntityId,
-            SubjectUserId: subjectId,
-            SubjectDisplayName: subjectName,
-            TargetTeamId: targetTeamId,
-            TargetTeamName: teamName,
-            TargetTeamSlug: teamSlug,
-            RelatedEntityId: entry.RelatedEntityId,
-            RelatedEntityType: entry.RelatedEntityType,
-            Description: entry.Description,
-            Role: entry.Role,
-            UserEmail: entry.UserEmail,
-            Success: entry.Success,
-            ErrorMessage: entry.ErrorMessage,
-            SyncSource: entry.SyncSource,
-            ResourceId: entry.ResourceId,
-            ResourceName: resourceName);
     }
 
     private static AuditEvent Resolve(
@@ -201,7 +132,7 @@ public sealed class AuditViewerService(
         var users = await userService.GetUserInfosAsync(userIds, ct);
         return users
             .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.Profile?.BurnerName))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Profile!.BurnerName!);
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Profile!.BurnerName);
     }
 
     private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
@@ -209,30 +140,6 @@ public sealed class AuditViewerService(
     {
         var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
         return teams.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value.Name, kvp.Value.Slug));
-    }
-
-    private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntry> entries)
-    {
-        var users = new HashSet<Guid>();
-        var teams = new HashSet<Guid>();
-        var resources = new HashSet<Guid>();
-        foreach (var e in entries)
-        {
-            if (e.ActorUserId.HasValue)
-                users.Add(e.ActorUserId.Value);
-
-            var subjectId = ResolveSubjectId(e);
-            if (subjectId.HasValue)
-                users.Add(subjectId.Value);
-
-            var teamId = ResolveTargetTeamId(e);
-            if (teamId.HasValue)
-                teams.Add(teamId.Value);
-
-            if (e.ResourceId.HasValue)
-                resources.Add(e.ResourceId.Value);
-        }
-        return (users.ToList(), teams.ToList(), resources.ToList());
     }
 
     private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntrySnapshot> entries)
@@ -259,7 +166,7 @@ public sealed class AuditViewerService(
         return (users.ToList(), teams.ToList(), resources.ToList());
     }
 
-    private static Guid? ResolveSubjectId(AuditLogEntry e)
+    private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)
     {
         // Subject = person acted upon. Guid.Empty → null (e.g. unmatched WorkspaceAccount addresses).
         Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
@@ -269,21 +176,6 @@ public sealed class AuditViewerService(
                 : null;
         return subject == Guid.Empty ? null : subject;
     }
-
-    private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)
-    {
-        Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
-            ? e.EntityId
-            : string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal)
-                ? e.RelatedEntityId
-                : null;
-        return subject == Guid.Empty ? null : subject;
-    }
-
-    private static Guid? ResolveTargetTeamId(AuditLogEntry e) =>
-        string.Equals(e.EntityType, "Team", StringComparison.Ordinal) ? e.EntityId
-        : string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) ? e.RelatedEntityId
-        : null;
 
     private static Guid? ResolveTargetTeamId(AuditLogEntrySnapshot e) =>
         string.Equals(e.EntityType, "Team", StringComparison.Ordinal) ? e.EntityId

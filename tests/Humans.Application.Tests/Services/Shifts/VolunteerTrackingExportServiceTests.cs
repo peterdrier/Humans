@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;

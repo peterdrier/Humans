@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -1222,7 +1221,7 @@ public sealed class ShiftSignupService(
 
         var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
         {
-            EventName = ss.Shift.Rota.EventSettings.EventName,
+            ss.Shift.Rota.EventSettings.EventName,
             Department = teamNamesById.TryGetValue(ss.Shift.Rota.TeamId, out var teamName) ? teamName : null,
             RotaName = ss.Shift.Rota.Name,
             ss.Shift.DayOffset,

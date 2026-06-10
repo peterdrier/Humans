@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Auth;
@@ -16,7 +15,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -58,8 +56,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
     }
 
     [HumansFact]
@@ -288,7 +285,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
         // Infrastructure direct: 2 shifts, 1 filled.
         var d1 = await SeedShiftAsync(infraDirect, dayOffset: 1, min: 1, max: 3);
-        var d2 = await SeedShiftAsync(infraDirect, dayOffset: 2, min: 1, max: 3);
+        await SeedShiftAsync(infraDirect, dayOffset: 2, min: 1, max: 3);
         await SeedSignupsAsync(d1, SignupStatus.Confirmed, count: 1);
 
         // Power: 2 shifts, both filled (high fill %).
@@ -816,7 +813,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         return shift;
     }
 
-    private async Task<Shift> SeedAllDayShiftAsync(Rota rota, int dayOffset, double nominalHours, int min, int max)
+    private async Task SeedAllDayShiftAsync(Rota rota, int dayOffset, double nominalHours, int min, int max)
     {
         var shift = new Shift
         {
@@ -833,10 +830,9 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         };
         Db.Shifts.Add(shift);
         await Db.SaveChangesAsync();
-        return shift;
     }
 
-    private async Task<Shift> SeedHourlyShiftAsync(Rota rota, int dayOffset, int hours, int min, int max)
+    private async Task SeedHourlyShiftAsync(Rota rota, int dayOffset, int hours, int min, int max)
     {
         var shift = new Shift
         {
@@ -853,7 +849,6 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         };
         Db.Shifts.Add(shift);
         await Db.SaveChangesAsync();
-        return shift;
     }
 
     private async Task<User> SeedUserAsync(string displayName, Instant? lastLogin = null)
@@ -1027,16 +1022,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             return dict;
         }
 
-        public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
-        {
-            return await db.Users
-                .Where(u => u.LastLoginAt != null && u.LastLoginAt >= fromInclusive && u.LastLoginAt < toExclusive)
-                .Select(u => u.LastLoginAt!.Value)
-                .ToListAsync(ct);
-        }
-
         // Members below are unused by the dashboard compute paths under test.
-        public Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1044,8 +1030,6 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<IReadOnlyList<OnsiteUserRow>> GetOnsiteUsersAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> TrySetGoogleEmailStatusFromSyncAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1068,16 +1052,11 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<bool> RemoveUserEmailAsync(Guid userId, Guid emailId, UserEmailRemoveCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(Guid userId, UserEmailReconcilePlanCommand command, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> AnonymizeForMergeAsync(Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> ReassignLoginsToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> ReassignEventParticipationToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(Guid targetUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1178,7 +1157,6 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task EnqueueGoogleResyncForUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();

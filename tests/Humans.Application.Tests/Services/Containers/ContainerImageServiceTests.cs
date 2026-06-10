@@ -60,7 +60,7 @@ public sealed class ContainerImageServiceTests : ServiceTestHarness
             CampId: CampId,
             Name: "Test",
             Description: null,
-            MainImage: FakeImage("main")));
+            MainImage: FakeImage()));
 
         result.CampId.Should().Be(CampId);
         result.ImageStoragePath.Should().StartWith($"/uploads/containers/{result.Id}/");
@@ -97,7 +97,7 @@ public sealed class ContainerImageServiceTests : ServiceTestHarness
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            MainImage: FakeImage("main")), actorUserId: Guid.NewGuid());
+            MainImage: FakeImage()), actorUserId: Guid.NewGuid());
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-old.jpg", Arg.Any<CancellationToken>());
 
