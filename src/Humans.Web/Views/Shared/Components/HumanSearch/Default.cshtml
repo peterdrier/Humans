@@ -119,7 +119,10 @@
     function fetchJsonOrEmpty(url) {
         return fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.ok ? r.json() : []; })
-            .catch(function () { return []; });
+            .catch(function (err) {
+                console.error('Human search fetch failed', err);
+                return [];
+            });
     }
 
     function fetchResults(q) {
