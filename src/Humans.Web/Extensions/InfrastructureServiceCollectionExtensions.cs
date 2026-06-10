@@ -58,6 +58,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCampaignsSection();
         services.AddAuditLogSection();
         services.AddGdprSection();
+        services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
         services.AddGuideSection(configuration);

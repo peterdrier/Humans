@@ -418,7 +418,7 @@ public class ShiftsController(
             await _userService.SetICalTokenAsync(user.Id, token.Value);
         }
 
-        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{token}.ics";
+        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
     }
 
     [HttpPost("Mine/Availability")]
