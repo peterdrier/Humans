@@ -1,11 +1,7 @@
 @model Humans.Application.DTOs.PostEventStats
-@using Humans.Domain.Enums
-@using Humans.Web.Controllers
 
 @{
     ViewData["Title"] = "Post-Event Stats";
-
-    var es = ViewData["EventSettings"] as Humans.Domain.Entities.EventSettings;
 
     static string NoShowBadgeClass(int pct) =>
         pct == 0 ? "bg-success" : pct <= 10 ? "bg-warning text-dark" : "bg-danger";

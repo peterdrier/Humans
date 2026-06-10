@@ -89,7 +89,6 @@ public class ShiftDashboardController(
         }
 
         ViewData["Title"] = "Post-Event Stats";
-        ViewData["EventSettings"] = es;
         return View(stats);
     }
 
