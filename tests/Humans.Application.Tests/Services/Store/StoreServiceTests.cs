@@ -163,70 +163,6 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderPageDataAsync_filters_past_deadline_products_from_catalog_without_bypass()
-    {
-        var order = MakeOrderDto(balanceEur: 0m);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([
-                MakeProduct(name: "Tent", orderableUntil: new LocalDate(2026, 12, 31)),
-                MakeProduct(name: "Ice", orderableUntil: new LocalDate(2026, 1, 1))
-            ]);
-        // _clock = 2026-03-14, so Ice's deadline is past.
-
-        var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: false);
-
-        result.Catalog.Select(p => p.Name).Should().Equal("Tent");
-    }
-
-    [HumansFact]
-    public async Task GetOrderPageDataAsync_keeps_past_deadline_products_in_catalog_with_bypass()
-    {
-        var order = MakeOrderDto(balanceEur: 0m);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([
-                MakeProduct(name: "Tent", orderableUntil: new LocalDate(2026, 12, 31)),
-                MakeProduct(name: "Ice", orderableUntil: new LocalDate(2026, 1, 1))
-            ]);
-
-        var result = await _service.GetOrderPageDataAsync(
-            order, canEdit: true, canPayAuthorized: false, bypassDeadline: true);
-
-        result.Catalog.Select(p => p.Name).Should().Equal("Ice", "Tent");
-    }
-
-    [HumansFact]
-    public async Task GetOrderPageDataAsync_excludes_past_deadline_lines_from_removable_without_bypass()
-    {
-        var expired = MakeProduct(name: "Ice", orderableUntil: new LocalDate(2026, 1, 1));
-        var open = MakeProduct(name: "Tent", orderableUntil: new LocalDate(2026, 12, 31));
-        var expiredLine = MakeLineDto(expired.Id);
-        var openLine = MakeLineDto(open.Id);
-        var order = MakeOrderDto(balanceEur: 0m) with { Lines = [expiredLine, openLine] };
-        _repo.GetProductByIdAsync(expired.Id, Arg.Any<CancellationToken>()).Returns(expired);
-        _repo.GetProductByIdAsync(open.Id, Arg.Any<CancellationToken>()).Returns(open);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
-
-        var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: false);
-
-        result.RemovableLineIds.Should().BeEquivalentTo([openLine.Id]);
-    }
-
-    [HumansFact]
-    public async Task GetOrderPageDataAsync_includes_past_deadline_lines_in_removable_with_bypass()
-    {
-        var expired = MakeProduct(name: "Ice", orderableUntil: new LocalDate(2026, 1, 1));
-        var expiredLine = MakeLineDto(expired.Id);
-        var order = MakeOrderDto(balanceEur: 0m) with { Lines = [expiredLine] };
-        _repo.GetProductByIdAsync(expired.Id, Arg.Any<CancellationToken>()).Returns(expired);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
-
-        var result = await _service.GetOrderPageDataAsync(
-            order, canEdit: true, canPayAuthorized: false, bypassDeadline: true);
-
-        result.RemovableLineIds.Should().BeEquivalentTo([expiredLine.Id]);
-    }
-
-    [HumansFact]
     public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -473,18 +409,27 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_rejects_after_orderable_until()
+    public async Task AddLineAsync_allows_past_deadline_and_notes_it_in_audit()
     {
+        // The deadline gate is authorization (StoreOrderAuthorizationHandler) — the
+        // service is auth-free and only annotates the audit trail.
         var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
         var product = MakeProduct(orderableUntil: new LocalDate(2026, 1, 1));
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         // _clock = 2026-03-14, so 2026-01-01 is past.
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid()));
-        ex.Message.Should().Contain("deadline");
+        await _service.AddLineAsync(orderId, product.Id, 1, actor);
+
+        await _repo.Received(1).AddLineAsync(
+            Arg.Is<StoreOrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineAdded, nameof(StoreOrderLine), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("past order deadline")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -579,17 +524,25 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_rejects_after_orderable_until()
+    public async Task RemoveLineAsync_allows_past_deadline_and_notes_it_in_audit()
     {
+        // The deadline gate is authorization (StoreOrderAuthorizationHandler) — the
+        // service is auth-free and only annotates the audit trail.
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new StoreLineContext(
                 lineId, orderId, Guid.NewGuid(),
                 StoreOrderState.Open, new LocalDate(2026, 1, 1)));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid()));
+        await _service.RemoveLineAsync(orderId, lineId, actor);
+
+        await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
+            Arg.Is<string>(d => d.Contains("past order deadline")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -642,68 +595,6 @@ public class StoreServiceTests
         result.Succeeded.Should().BeTrue();
         result.ErrorMessage.Should().BeNull();
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task AddLineAsync_allows_past_deadline_with_bypass()
-    {
-        var orderId = Guid.NewGuid();
-        var product = MakeProduct(orderableUntil: new LocalDate(2026, 1, 1));
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
-        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
-        // _clock = 2026-03-14, so 2026-01-01 is past.
-
-        await _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid(), bypassDeadline: true);
-
-        await _repo.Received(1).AddLineAsync(
-            Arg.Is<StoreOrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task AddLineAsync_rejects_issued_order_even_with_bypass()
-    {
-        var orderId = Guid.NewGuid();
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.InvoiceIssued });
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.AddLineAsync(orderId, Guid.NewGuid(), 1, Guid.NewGuid(), bypassDeadline: true));
-    }
-
-    [HumansFact]
-    public async Task RemoveLineAsync_allows_past_deadline_with_bypass()
-    {
-        var lineId = Guid.NewGuid();
-        var orderId = Guid.NewGuid();
-        var actor = Guid.NewGuid();
-        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
-            .Returns(new StoreLineContext(
-                lineId, orderId, Guid.NewGuid(),
-                StoreOrderState.Open, new LocalDate(2026, 1, 1)));
-
-        await _service.RemoveLineAsync(orderId, lineId, actor, bypassDeadline: true);
-
-        await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(
-            AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
-            Arg.Any<string>(), actor,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task RemoveLineAsync_rejects_issued_order_even_with_bypass()
-    {
-        var lineId = Guid.NewGuid();
-        var orderId = Guid.NewGuid();
-        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
-            .Returns(new StoreLineContext(
-                lineId, orderId, Guid.NewGuid(),
-                StoreOrderState.InvoiceIssued, new LocalDate(2026, 1, 1)));
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), bypassDeadline: true));
     }
 
     [HumansFact]
@@ -1265,10 +1156,6 @@ public class StoreServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
     }
-
-    private static OrderLineDto MakeLineDto(Guid productId) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), productId, "Line product", 1,
-            10m, 21m, null, default, 10m, 2.1m, 0m, 12.1m);
 
     private static CampInfo MakeCampInfo(Guid campId, Guid seasonId, string seasonName, Guid leadUserId) =>
         new(

@@ -21,7 +21,6 @@ public sealed record StoreOrderPageData(
     IReadOnlyList<ProductDto> Catalog,
     string CounterpartyDisplayName,
     bool CanEdit,
-    IReadOnlyCollection<Guid> RemovableLineIds,
     bool CanPay,
     bool IsStripeConfigured,
     IReadOnlyList<AuditLogEntrySnapshot> PriceChanges);
