@@ -2129,8 +2129,8 @@ reads `UserInfo.ICalToken` from the `CachingUserService` TrackedCache) and
 Current `ICalendarFeedContributor` implementations (registered by their owning
 sections in `ShiftsSectionExtensions` and `EventsSectionExtensions`):
 
-- **`ShiftSignupService`** (Shifts) — confirmed shift slots in the active event.
-- **`EventService`** (Events) — approved event-guide entries the user has favourited or is hosting.
+- **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
+- **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.
 
 Sequential fan-out (contributors share the scoped `HumansDbContext`; EF is not
 thread-safe — same pattern as `GdprExportService` and `EarlyEntryService`). No
