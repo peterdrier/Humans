@@ -2087,7 +2087,6 @@ public sealed class ShiftManagementService(
                 Build: ToPeriodRow(kvp.Value, ShiftPeriod.Build),
                 Event: ToPeriodRow(kvp.Value, ShiftPeriod.Event),
                 Strike: ToPeriodRow(kvp.Value, ShiftPeriod.Strike)))
-            .OrderBy(r => r.DepartmentName, StringComparer.Ordinal)
             .ToList();
 
         return new PostEventStats(

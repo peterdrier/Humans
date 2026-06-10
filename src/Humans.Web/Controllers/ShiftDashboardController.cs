@@ -89,7 +89,13 @@ public class ShiftDashboardController(
         }
 
         ViewData["Title"] = "Post-Event Stats";
-        return View(stats);
+        var ordered = stats with
+        {
+            Departments = stats.Departments
+                .OrderBy(r => r.DepartmentName, StringComparer.Ordinal)
+                .ToList()
+        };
+        return View(ordered);
     }
 
     // Auth: narrow policy overrides controller-level wider one (subteam managers can't reach directly).

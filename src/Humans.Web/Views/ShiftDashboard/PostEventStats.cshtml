@@ -3,17 +3,10 @@
 @{
     ViewData["Title"] = "Post-Event Stats";
 
-    static string NoShowBadgeClass(int pct) =>
-        pct == 0 ? "bg-success" : pct <= 10 ? "bg-warning text-dark" : "bg-danger";
-
     static string CompletionBadgeClass(int pct) =>
         pct >= 90 ? "bg-success" : pct >= 75 ? "bg-warning text-dark" : "bg-danger";
 
     int totalSignups = Model.TotalConfirmed + Model.TotalNoShow;
-    int overallNoShowPct = totalSignups > 0
-        ? (int)Math.Round(100.0 * Model.TotalNoShow / totalSignups, MidpointRounding.AwayFromZero)
-        : 0;
-    int overallCompletionPct = totalSignups > 0 ? Math.Clamp(100 - overallNoShowPct, 0, 100) : 0;
 }
 
 <div class="container py-4">
@@ -70,8 +63,8 @@
                     <div class="text-muted small text-uppercase">Completion Rate</div>
                     @if (totalSignups > 0)
                     {
-                        <div class="fs-3 fw-bold">@overallCompletionPct%</div>
-                        <div class="text-muted small">@overallNoShowPct% no-show rate</div>
+                        <div class="fs-3 fw-bold">@Model.CompletionPct%</div>
+                        <div class="text-muted small">@Model.NoShowPct% no-show rate</div>
                     }
                     else
                     {
@@ -109,10 +102,6 @@
                     @foreach (var dept in Model.Departments)
                     {
                         int deptTotal = dept.TotalConfirmed + dept.TotalNoShow;
-                        int deptNoShowPct = deptTotal > 0
-                            ? (int)Math.Round(100.0 * dept.TotalNoShow / deptTotal, MidpointRounding.AwayFromZero)
-                            : 0;
-                        int deptCompletionPct = deptTotal > 0 ? Math.Clamp(100 - deptNoShowPct, 0, 100) : 0;
 
                         <tr>
                             <td>
@@ -133,7 +122,7 @@
                             <td class="text-end">
                                 @if (deptTotal > 0)
                                 {
-                                    <span class="badge @CompletionBadgeClass(deptCompletionPct)">@deptCompletionPct%</span>
+                                    <span class="badge @CompletionBadgeClass(dept.CompletionPct)">@dept.CompletionPct%</span>
                                 }
                                 else
                                 {
@@ -143,7 +132,7 @@
                             <td class="text-center">
                                 @if (dept.Build.TotalConfirmed + dept.Build.TotalNoShow > 0)
                                 {
-                                    <span class="badge @NoShowBadgeClass(dept.Build.NoShowPct)" title="@dept.Build.TotalConfirmed confirmed, @dept.Build.TotalNoShow no-shows">
+                                    <span class="badge @CompletionBadgeClass(dept.Build.CompletionPct)" title="@dept.Build.TotalConfirmed confirmed, @dept.Build.TotalNoShow no-shows">
                                         @dept.Build.CompletionPct%
                                     </span>
                                 }
@@ -155,7 +144,7 @@
                             <td class="text-center">
                                 @if (dept.Event.TotalConfirmed + dept.Event.TotalNoShow > 0)
                                 {
-                                    <span class="badge @NoShowBadgeClass(dept.Event.NoShowPct)" title="@dept.Event.TotalConfirmed confirmed, @dept.Event.TotalNoShow no-shows">
+                                    <span class="badge @CompletionBadgeClass(dept.Event.CompletionPct)" title="@dept.Event.TotalConfirmed confirmed, @dept.Event.TotalNoShow no-shows">
                                         @dept.Event.CompletionPct%
                                     </span>
                                 }
@@ -167,7 +156,7 @@
                             <td class="text-center">
                                 @if (dept.Strike.TotalConfirmed + dept.Strike.TotalNoShow > 0)
                                 {
-                                    <span class="badge @NoShowBadgeClass(dept.Strike.NoShowPct)" title="@dept.Strike.TotalConfirmed confirmed, @dept.Strike.TotalNoShow no-shows">
+                                    <span class="badge @CompletionBadgeClass(dept.Strike.CompletionPct)" title="@dept.Strike.TotalConfirmed confirmed, @dept.Strike.TotalNoShow no-shows">
                                         @dept.Strike.CompletionPct%
                                     </span>
                                 }
