@@ -38,7 +38,7 @@ public class GoogleResourceReconciliationJob(
         {
             await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'DriveFolder sync' failed");
             phaseFailures.Add("DriveFolder sync");
@@ -51,7 +51,7 @@ public class GoogleResourceReconciliationJob(
         {
             await googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'DriveFile sync' failed");
             phaseFailures.Add("DriveFile sync");
@@ -65,7 +65,7 @@ public class GoogleResourceReconciliationJob(
         {
             await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'Group membership reconcile' failed");
             phaseFailures.Add("Group membership reconcile");
@@ -80,7 +80,7 @@ public class GoogleResourceReconciliationJob(
                 logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'Drive folder path updates' failed");
             phaseFailures.Add("Drive folder path updates");
@@ -95,7 +95,7 @@ public class GoogleResourceReconciliationJob(
                 logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'Inherited access enforcement' failed");
             phaseFailures.Add("Inherited access enforcement");
@@ -121,7 +121,7 @@ public class GoogleResourceReconciliationJob(
                             logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
                                 report.GroupEmail, remediation.ErrorMessage);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         logger.LogError(ex, "Failed to auto-remediate settings for group '{GroupEmail}'", report.GroupEmail);
                     }
@@ -132,7 +132,7 @@ public class GoogleResourceReconciliationJob(
                 logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Google reconciliation phase 'Group settings check' failed");
             phaseFailures.Add("Group settings check");
@@ -155,7 +155,7 @@ public class GoogleResourceReconciliationJob(
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Failed to dispatch GoogleDriftDetected notification");
             }
@@ -183,7 +183,7 @@ public class GoogleResourceReconciliationJob(
                     actionLabel: "View sync status",
                     cancellationToken: cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Failed to dispatch SyncError notification for phase failures");
             }
