@@ -2,16 +2,7 @@
 @{
     ViewData["Title"] = "Expense Reports — Finance Review";
     Layout = "_AdminLayout";
-    var badgeClass = (ExpenseReportStatus s) => s switch
-    {
-        ExpenseReportStatus.Draft => "bg-secondary",
-        ExpenseReportStatus.Submitted => "bg-primary",
-        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-        ExpenseReportStatus.Approved => "bg-success",
-        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-        ExpenseReportStatus.Paid => "bg-success",
-        _ => "bg-secondary"
-    };
+    var badgeClass = (ExpenseReportStatus s) => s.GetBadgeClass();
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -76,7 +67,7 @@ else
                                 </a>
                             </td>
                             <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                            <td>€@r.Total.ToString("N2")</td>
+                            <td>@r.Total.ToEuro()</td>
                             <td>
                                 <span class="badge @badgeClass(r.Status)">@r.Status</span>
                             </td>
@@ -129,7 +120,7 @@ else
                         </div>
                         <div class="modal-body">
                             <p class="mb-3">
-                                Total: <strong>€@r.Total.ToString("N2")</strong>
+                                Total: <strong>@r.Total.ToEuro()</strong>
                             </p>
                             <div class="mb-3">
                                 <label class="form-label">Category override (optional)</label>

@@ -4,10 +4,9 @@
     var preview = Model.Preview;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Send Wave: @Model.Campaign.Title</h1>
+<page-header title="Send Wave: @Model.Campaign.Title">
     <a asp-action="Detail" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-secondary">Back to Campaign</a>
-</div>
+</page-header>
 
 
 <div class="card mb-4">

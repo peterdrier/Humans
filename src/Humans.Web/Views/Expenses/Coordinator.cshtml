@@ -1,11 +1,7 @@
 @model Humans.Web.Models.ExpenseCoordinatorViewModel
 @{
     ViewData["Title"] = "Expense Reports — Coordinator Queue";
-    var badgeClass = (ExpenseReportStatus s) => s switch
-    {
-        ExpenseReportStatus.Submitted => "bg-primary",
-        _ => "bg-secondary"
-    };
+    var badgeClass = (ExpenseReportStatus s) => s.GetBadgeClass();
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -49,7 +45,7 @@ else
                             </a>
                         </td>
                         <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                        <td>€@r.Total.ToString("N2")</td>
+                        <td>@r.Total.ToEuro()</td>
                         <td>
                             <span class="badge @badgeClass(r.Status)">@r.Status</span>
                         </td>

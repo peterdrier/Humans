@@ -64,13 +64,13 @@
                                     <span class="badge bg-warning text-dark ms-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>Funds exhausted</span>
                                 }
                             </td>
-                            <td class="text-end text-success">&euro;@periodRow.IncomeTotal.ToString("N2")</td>
-                            <td class="text-end text-danger">&euro;@Math.Abs(periodRow.ExpenseTotal).ToString("N2")</td>
+                            <td class="text-end text-success">@periodRow.IncomeTotal.ToEuro()</td>
+                            <td class="text-end text-danger">@Math.Abs(periodRow.ExpenseTotal).ToEuro()</td>
                             <td class="text-end @(periodRow.Net >= 0 ? "text-success" : "text-danger")">
-                                &euro;@periodRow.Net.ToString("N2")
+                                @periodRow.Net.ToEuro()
                             </td>
                             <td class="text-end @(periodRow.RunningNet >= 0 ? "text-success" : "text-danger")">
-                                <strong>&euro;@periodRow.RunningNet.ToString("N2")</strong>
+                                <strong>@periodRow.RunningNet.ToEuro()</strong>
                             </td>
                             <td class="text-center">
                                 <i class="fa-solid fa-chevron-down small text-muted"></i>
@@ -87,7 +87,7 @@
                                                     @cat.GroupName <i class="fa-solid fa-chevron-right mx-1 small"></i> @cat.CategoryName
                                                 </td>
                                                 <td class="text-end @(cat.Amount >= 0 ? "text-success" : "text-danger")">
-                                                    &euro;@cat.Amount.ToString("N2")
+                                                    @cat.Amount.ToEuro()
                                                 </td>
                                             </tr>
                                         }
@@ -105,9 +105,9 @@
                     }
                     <tr class="fw-bold">
                         <td>Total Scheduled</td>
-                        <td class="text-end text-success">&euro;@totalIncome.ToString("N2")</td>
-                        <td class="text-end text-danger">&euro;@Math.Abs(totalExpenses).ToString("N2")</td>
-                        <td class="text-end @(totalNet >= 0 ? "text-success" : "text-danger")">&euro;@totalNet.ToString("N2")</td>
+                        <td class="text-end text-success">@totalIncome.ToEuro()</td>
+                        <td class="text-end text-danger">@Math.Abs(totalExpenses).ToEuro()</td>
+                        <td class="text-end @(totalNet >= 0 ? "text-success" : "text-danger")">@totalNet.ToEuro()</td>
                         <td></td>
                         <td></td>
                     </tr>
@@ -149,7 +149,7 @@ else
                                 @cat.GroupName <i class="fa-solid fa-chevron-right mx-1 small text-muted"></i> @cat.CategoryName
                             </td>
                             <td class="text-end @(cat.Amount >= 0 ? "text-success" : "text-danger")">
-                                &euro;@cat.Amount.ToString("N2")
+                                @cat.Amount.ToEuro()
                             </td>
                         </tr>
                     }
@@ -158,16 +158,16 @@ else
                     <tr class="fw-bold">
                         <td>Total Unscheduled</td>
                         <td class="text-end @(Model.Unscheduled.Net >= 0 ? "text-success" : "text-danger")">
-                            &euro;@Model.Unscheduled.Net.ToString("N2")
+                            @Model.Unscheduled.Net.ToEuro()
                         </td>
                     </tr>
                     <tr class="text-muted small">
                         <td class="ps-3">Income</td>
-                        <td class="text-end">&euro;@Model.Unscheduled.IncomeTotal.ToString("N2")</td>
+                        <td class="text-end">@Model.Unscheduled.IncomeTotal.ToEuro()</td>
                     </tr>
                     <tr class="text-muted small">
                         <td class="ps-3">Expenses</td>
-                        <td class="text-end">&euro;@Math.Abs(Model.Unscheduled.ExpenseTotal).ToString("N2")</td>
+                        <td class="text-end">@Math.Abs(Model.Unscheduled.ExpenseTotal).ToEuro()</td>
                     </tr>
                 </tfoot>
             </table>

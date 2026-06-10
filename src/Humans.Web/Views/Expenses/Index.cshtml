@@ -23,11 +23,11 @@
             <div class="row text-center">
                 <div class="col-md-4">
                     <div class="text-muted small">Owed to you (Holded balance)</div>
-                    <div class="fs-4 fw-semibold">&euro;@iou.OwedToMember.ToString("N2")</div>
+                    <div class="fs-4 fw-semibold">@iou.OwedToMember.ToEuro()</div>
                 </div>
                 <div class="col-md-4">
                     <div class="text-muted small">Paid to date</div>
-                    <div class="fs-4">&euro;@iou.TotalPaid.ToString("N2")</div>
+                    <div class="fs-4">@iou.TotalPaid.ToEuro()</div>
                 </div>
                 <div class="col-md-4">
                     <div class="text-muted small">Last payment</div>
@@ -38,7 +38,7 @@
             {
                 <p class="text-muted small mb-0 mt-3">
                     <i class="fa-solid fa-circle-info me-1"></i>
-                    Your Holded balance includes &euro;@iou.OtherAmount.ToString("N2") unrelated to these reports
+                    Your Holded balance includes @iou.OtherAmount.ToEuro() unrelated to these reports
                     (items fronted on the collective's behalf, adjustments, etc.), so the rows below won't necessarily sum to it.
                 </p>
             }
@@ -71,7 +71,7 @@
                                         <span class="badge bg-secondary ms-1">@st</span>
                                     }
                                 </td>
-                                <td class="text-end">@(row.IsPayment ? "−" : "")&euro;@row.Amount.ToString("N2")</td>
+                                <td class="text-end">@(row.IsPayment ? "−" : "")@row.Amount.ToEuro()</td>
                                 <td class="text-end">
                                     @if (row.ReportId is { } rid)
                                     {
@@ -130,22 +130,12 @@ else
             <tbody>
                 @foreach (var r in Model.Reports.OrderByDescending(x => x.CreatedAt))
                 {
-                    var badgeClass = r.Status switch
-                    {
-                        ExpenseReportStatus.Draft => "bg-secondary",
-                        ExpenseReportStatus.Submitted => "bg-primary",
-                        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-                        ExpenseReportStatus.Approved => "bg-success",
-                        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-                        ExpenseReportStatus.Paid => "bg-success",
-                        ExpenseReportStatus.Withdrawn => "bg-secondary",
-                        _ => "bg-secondary"
-                    };
+                    var badgeClass = r.Status.GetBadgeClass();
                     <tr>
                         <td>@r.CreatedAt.ToDate()</td>
                         <td><small class="text-muted">@(Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())</small></td>
                         <td><span class="badge @badgeClass">@r.Status</span></td>
-                        <td class="text-end">&euro;@r.Total.ToString("N2")</td>
+                        <td class="text-end">@r.Total.ToEuro()</td>
                         <td class="text-end">
                             <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">View</a>
                         </td>

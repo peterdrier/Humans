@@ -78,9 +78,9 @@ else
                                     <td><span class="badge bg-secondary">@order.State</span></td>
                                     @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
                                     {
-                                        <td class="text-end">&euro;@((order.LinesSubtotalEur + order.VatTotalEur).ToString("N2"))</td>
-                                        <td class="text-end">&euro;@order.DepositTotalEur.ToString("N2")</td>
-                                        <td class="text-end fw-bold">&euro;@order.BalanceEur.ToString("N2")</td>
+                                        <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>
+                                        <td class="text-end">@order.DepositTotalEur.ToEuro()</td>
+                                        <td class="text-end fw-bold">@order.BalanceEur.ToEuro()</td>
                                     }
                                     else
                                     {
@@ -140,10 +140,10 @@ else
                     <td>@product.Name</td>
                     <td>@Html.SanitizedMarkdown(product.Description)</td>
                     <td class="text-end">
-                        &euro;@product.UnitPriceInclVatEur.ToString("N2")
-                        <div class="text-muted small">(&euro;@product.UnitPriceEur.ToString("N2") + @product.VatRatePercent.ToString("0.##")% VAT)</div>
+                        @product.UnitPriceInclVatEur.ToEuro()
+                        <div class="text-muted small">(@product.UnitPriceEur.ToEuro() + @product.VatRatePercent.ToString("0.##")% VAT)</div>
                     </td>
-                    <td class="text-end">@(product.DepositAmountEur.HasValue ? $"€{product.DepositAmountEur.Value:N2}" : "—")</td>
+                    <td class="text-end">@(product.DepositAmountEur.HasValue ? product.DepositAmountEur.Value.ToEuro() : "—")</td>
                     <td>@product.OrderableUntil.ToDate()</td>
                 </tr>
             }

@@ -12,7 +12,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
         <h1 class="mb-0">@year.Name</h1>
-        <span class="badge bg-@(year.Status == BudgetYearStatus.Active ? "success" : year.Status == BudgetYearStatus.Draft ? "warning" : "secondary") fs-6">@year.Status</span>
+        <span class="badge @year.Status.GetBadgeClass() fs-6">@year.Status</span>
     </div>
     <div class="d-flex gap-2">
         @if (allYears.Count > 1)
@@ -27,7 +27,7 @@
                         <li>
                             <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
                                 @y.Name
-                                <span class="badge bg-@(y.Status == BudgetYearStatus.Active ? "success" : y.Status == BudgetYearStatus.Draft ? "warning" : "secondary") ms-1">@y.Status</span>
+                                <span class="badge @y.Status.GetBadgeClass() ms-1">@y.Status</span>
                             </a>
                         </li>
                     }
@@ -73,7 +73,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Income</h6>
-                <h3 class="card-title mb-0 text-success">&euro;@Model.TotalIncome.ToString("N2")</h3>
+                <h3 class="card-title mb-0 text-success">@Model.TotalIncome.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -81,7 +81,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Expenses</h6>
-                <h3 class="card-title mb-0 text-danger">&euro;@Math.Abs(Model.TotalExpenses).ToString("N2")</h3>
+                <h3 class="card-title mb-0 text-danger">@Math.Abs(Model.TotalExpenses).ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -90,7 +90,7 @@
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Net Balance</h6>
                 <h3 class="card-title mb-0 @(Model.NetBalance >= 0 ? "text-success" : "text-danger")">
-                    &euro;@Model.NetBalance.ToString("N2")
+                    @Model.NetBalance.ToEuro()
                 </h3>
             </div>
         </div>
@@ -168,8 +168,8 @@
                         }
                     </div>
                     <div class="text-end text-nowrap">
-                        <span class="text-muted small">Budget:</span> <strong>&euro;@groupBudget.ToString("N2")</strong>
-                        <span class="text-muted small ms-2">Actual:</span> <strong class="@(groupActual >= 0 ? "text-success" : "text-danger")">&euro;@groupActual.ToString("N2")</strong>
+                        <span class="text-muted small">Budget:</span> <strong>@groupBudget.ToEuro()</strong>
+                        <span class="text-muted small ms-2">Actual:</span> <strong class="@(groupActual >= 0 ? "text-success" : "text-danger")">@groupActual.ToEuro()</strong>
                     </div>
                 </div>
             </button>
@@ -380,18 +380,18 @@
                                             <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary") ms-1">@cat.ExpenditureType</span>
                                         </div>
                                         <div class="text-end text-nowrap small">
-                                            <span class="text-muted">@budgetLabel:</span> &euro;@displayBudget.ToString("N2")
+                                            <span class="text-muted">@budgetLabel:</span> @displayBudget.ToEuro()
                                             <span class="mx-1">&middot;</span>
-                                            <span class="text-muted">Actual:</span> &euro;@displayActual.ToString("N2")
+                                            <span class="text-muted">Actual:</span> @displayActual.ToEuro()
                                             <span class="mx-1">&middot;</span>
                                             <span class="@(displayRemaining >= 0 ? "text-success" : "text-danger")">
-                                                @remainingLabel: &euro;@Math.Abs(displayRemaining).ToString("N2")
+                                                @remainingLabel: @Math.Abs(displayRemaining).ToEuro()
                                             </span>
                                             @{ var holdedActual = Model.HoldedActualsByCategory.GetValueOrDefault(cat.Id); }
                                             @if (holdedActual != 0)
                                             {
                                                 <span class="mx-1">&middot;</span>
-                                                <span class="text-muted">Holded:</span> <span class="text-info">&euro;@Math.Abs(holdedActual).ToString("N2")</span>
+                                                <span class="text-muted">Holded:</span> <span class="text-info">@Math.Abs(holdedActual).ToEuro()</span>
                                             }
                                         </div>
                                     </div>
@@ -428,7 +428,7 @@
                                                                     <span class="badge bg-info ms-1">Cashflow</span>
                                                                 }
                                                             </td>
-                                                            <td class="text-end @amountClass">&euro;@item.Amount.ToString("N2")</td>
+                                                            <td class="text-end @amountClass">@item.Amount.ToEuro()</td>
                                                             <td>
                                                                 @if (item.VatRate > 0)
                                                                 {

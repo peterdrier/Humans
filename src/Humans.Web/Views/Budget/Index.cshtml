@@ -36,7 +36,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Allocated</h6>
-                <h3 class="card-title mb-0">&euro;@totalAllocated.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@totalAllocated.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -44,7 +44,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
-                <h3 class="card-title mb-0">&euro;@totalLineItems.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@totalLineItems.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -53,7 +53,7 @@
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
                 <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    &euro;@unallocated.ToString("N2")
+                    @unallocated.ToEuro()
                 </h3>
             </div>
         </div>
@@ -88,7 +88,7 @@
                     <span class="badge bg-secondary ms-1"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
                 }
             </div>
-            <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
+            <span class="text-muted">@groupAllocated.ToEuro()</span>
         </div>
         <div id="@collapseId" class="collapse show">
             <div class="card-body p-0">
@@ -121,10 +121,10 @@
                                             <span class="badge bg-success ms-1">Your dept</span>
                                         }
                                     </td>
-                                    <td class="text-end">&euro;@cat.AllocatedAmount.ToString("N2")</td>
-                                    <td class="text-end">&euro;@catLineItemTotal.ToString("N2")</td>
+                                    <td class="text-end">@cat.AllocatedAmount.ToEuro()</td>
+                                    <td class="text-end">@catLineItemTotal.ToEuro()</td>
                                     <td class="text-end @(catUnallocated < 0 ? "text-danger" : "")">
-                                        &euro;@catUnallocated.ToString("N2")
+                                        @catUnallocated.ToEuro()
                                     </td>
                                     <td>
                                         <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">

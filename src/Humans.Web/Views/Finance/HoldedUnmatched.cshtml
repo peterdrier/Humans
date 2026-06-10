@@ -52,7 +52,7 @@ else
                         <tr>
                             <td>@row.DocNumber</td>
                             <td>@row.ContactName</td>
-                            <td class="text-end text-danger">&euro;@row.Total.ToString("N2")</td>
+                            <td class="text-end text-danger">@row.Total.ToEuro()</td>
                             <td class="text-muted small">@row.Reason</td>
                             <td>
                                 <a href="@row.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">

@@ -46,10 +46,10 @@ else
                                     <div class="small text-muted">@Html.SanitizedMarkdown(p.Description)</div>
                                 }
                             </td>
-                            <td class="text-end">@p.UnitPriceEur.ToString("0.00") €</td>
+                            <td class="text-end">@p.UnitPriceEur.ToEuro()</td>
                             <td class="text-end">@p.VatRatePercent.ToString("0.##")</td>
                             <td class="text-end">
-                                @(p.DepositAmountEur is { } d ? d.ToString("0.00") + " €" : "—")
+                                @(p.DepositAmountEur is { } d ? d.ToEuro() : "—")
                             </td>
                             <td>@p.OrderableUntil.ToDate()</td>
                             <td>
