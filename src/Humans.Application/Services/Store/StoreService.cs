@@ -874,11 +874,19 @@ public class StoreService(
 
         var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
+        // Reprice Open orders to the live catalog, exactly like the order page
+        // (MapOrderAsync) — summing raw snapshots here made summary totals drift
+        // from order totals whenever a catalog price changed after lines were added.
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var totalsByOrder = campOrdersInYear
+            .Concat(teamOrders)
+            .ToDictionary(o => o.Id, o => BalanceCalculator.Compute(o, currentPrices));
+
         var byCounterparty = new List<OrderSummaryDto>();
 
         foreach (var o in campOrdersInYear)
         {
-            var totals = BalanceCalculator.Compute(o);
+            var totals = totalsByOrder[o.Id];
             var totalDue = totals.LinesSubtotalEur + totals.VatTotalEur + totals.DepositTotalEur;
             var sid = o.CampSeasonId!.Value;
             var campName = seasonsForYear[sid].Name;
@@ -895,7 +903,7 @@ public class StoreService(
         }
         foreach (var o in teamOrders)
         {
-            var totals = BalanceCalculator.Compute(o);
+            var totals = totalsByOrder[o.Id];
             var tid = o.TeamId!.Value;
             var teamName = teamNames.TryGetValue(tid, out var n) ? n : "(unknown team)";
             byCounterparty.Add(new OrderSummaryDto(
@@ -915,14 +923,11 @@ public class StoreService(
         // by-item aggregates lines from BOTH camp and team orders so suppliers see the full demand.
         var allLineProjections = campOrdersInYear
             .Concat(teamOrders)
-            .SelectMany(o => o.Lines.Select(l => new
+            .SelectMany(o =>
             {
-                l.ProductId,
-                l.Qty,
-                Subtotal = l.Qty * l.UnitPriceSnapshot,
-                Vat = Math.Round(l.Qty * l.UnitPriceSnapshot * l.VatRateSnapshot / 100m, 2, MidpointRounding.AwayFromZero),
-                Deposit = l.DepositAmountSnapshot is { } d ? l.Qty * d : 0m
-            }))
+                var lineTotals = totalsByOrder[o.Id].Lines.ToDictionary(t => t.LineId);
+                return o.Lines.Select(l => new { l.ProductId, l.Qty, lineTotals[l.Id].TotalEur });
+            })
             .ToList();
 
         var byItem = allLineProjections
@@ -931,7 +936,7 @@ public class StoreService(
                 g.Key,
                 productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
                 g.Sum(x => x.Qty),
-                g.Sum(x => x.Subtotal + x.Vat + x.Deposit)))
+                g.Sum(x => x.TotalEur)))
             .OrderByDescending(p => p.TotalQty)
             .ThenBy(p => p.ProductName, StringComparer.Ordinal)
             .ToList();
