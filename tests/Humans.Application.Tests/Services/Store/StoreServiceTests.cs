@@ -1095,7 +1095,7 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_checkout_payment()
+    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_paid_session_as_paid()
     {
         var orderId = Guid.NewGuid();
         _repo.StripePaymentIntentExistsAsync("pi_checkout", Arg.Any<CancellationToken>())
@@ -1104,13 +1104,37 @@ public class StoreServiceTests
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_checkout",
             StoreCheckoutEventKind.CheckoutSessionCompleted,
-            new StoreCheckoutSessionData("cs_checkout", orderId, "pi_checkout", 42.50m)));
+            new StoreCheckoutSessionData("cs_checkout", orderId, "pi_checkout", 42.50m, PaymentStatus: "paid")));
 
         await _repo.Received(1).AddPaymentAsync(
             Arg.Is<StorePayment>(p =>
                 p.OrderId == orderId &&
                 p.StripePaymentIntentId == "pi_checkout" &&
-                p.AmountEur == 42.50m),
+                p.AmountEur == 42.50m &&
+                p.Status == StorePaymentStatus.Paid),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_unpaid_session_as_pending()
+    {
+        // SEPA / async Bizum: completed fires with payment_status "unpaid" — only the mandate is
+        // captured. We record Pending so the order balance does NOT count it as paid.
+        var orderId = Guid.NewGuid();
+        _repo.StripePaymentIntentExistsAsync("pi_sepa", Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_sepa",
+            StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_sepa", orderId, "pi_sepa", 50m, PaymentStatus: "unpaid")));
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<StorePayment>(p =>
+                p.OrderId == orderId &&
+                p.StripePaymentIntentId == "pi_sepa" &&
+                p.AmountEur == 50m &&
+                p.Status == StorePaymentStatus.Pending),
             Arg.Any<CancellationToken>());
     }
 
@@ -1120,9 +1144,216 @@ public class StoreServiceTests
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_checkout",
             StoreCheckoutEventKind.CheckoutSessionCompleted,
-            new StoreCheckoutSessionData("cs_checkout", null, "pi_checkout", 42.50m)));
+            new StoreCheckoutSessionData("cs_checkout", null, "pi_checkout", 42.50m, PaymentStatus: "paid")));
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<StorePayment>(), Arg.Any<CancellationToken>());
+    }
+
+    // ── async-payment state machine (nobodies-collective/Humans#638) ────────────
+
+    [HumansFact]
+    public async Task AsyncPaymentSucceeded_transitions_matching_pending_to_paid()
+    {
+        var orderId = Guid.NewGuid();
+        var pending = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            StripePaymentIntentId = "pi_sepa"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_sepa", Arg.Any<CancellationToken>())
+            .Returns(pending);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_succeeded",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
+            new StoreCheckoutSessionData("cs_sepa", orderId, "pi_sepa", 50m)));
+
+        await _repo.Received(1).UpdatePaymentStatusAsync(pending.Id, StorePaymentStatus.Paid, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentSettled, nameof(StorePayment), pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, nameof(StoreOrder));
+    }
+
+    [HumansFact]
+    public async Task AsyncPaymentSucceeded_is_idempotent_when_already_paid()
+    {
+        var orderId = Guid.NewGuid();
+        var paid = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid,
+            StripePaymentIntentId = "pi_sepa"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_sepa", Arg.Any<CancellationToken>())
+            .Returns(paid);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_succeeded_redeliver",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
+            new StoreCheckoutSessionData("cs_sepa", orderId, "pi_sepa", 50m)));
+
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<StorePaymentStatus>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AsyncPaymentSucceeded_out_of_order_records_paid_when_no_row_yet()
+    {
+        // Stripe delivered async_payment_succeeded before completed: no payment row exists yet.
+        // Record the settled money directly so it isn't lost; the later completed no-ops on the PI.
+        var orderId = Guid.NewGuid();
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_ooo", Arg.Any<CancellationToken>())
+            .Returns((StorePayment?)null);
+        _repo.StripePaymentIntentExistsAsync("pi_ooo", Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_ooo",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
+            new StoreCheckoutSessionData("cs_ooo", orderId, "pi_ooo", 75m)));
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<StorePayment>(p =>
+                p.OrderId == orderId &&
+                p.StripePaymentIntentId == "pi_ooo" &&
+                p.AmountEur == 75m &&
+                p.Status == StorePaymentStatus.Paid),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AsyncPaymentFailed_transitions_matching_pending_to_failed()
+    {
+        // SEPA bounces after completed: the order returns to unpaid, NOT paid-then-reversed.
+        var orderId = Guid.NewGuid();
+        var pending = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            StripePaymentIntentId = "pi_bounce"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_bounce", Arg.Any<CancellationToken>())
+            .Returns(pending);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_failed",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
+            new StoreCheckoutSessionData("cs_bounce", orderId, "pi_bounce", 50m)));
+
+        await _repo.Received(1).UpdatePaymentStatusAsync(pending.Id, StorePaymentStatus.Failed, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentFailed, nameof(StorePayment), pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, nameof(StoreOrder));
+    }
+
+    [HumansFact]
+    public async Task AsyncPaymentFailed_is_idempotent_when_already_failed()
+    {
+        var orderId = Guid.NewGuid();
+        var failed = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Failed,
+            StripePaymentIntentId = "pi_bounce"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_bounce", Arg.Any<CancellationToken>())
+            .Returns(failed);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_failed_redeliver",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
+            new StoreCheckoutSessionData("cs_bounce", orderId, "pi_bounce", 50m)));
+
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<StorePaymentStatus>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AsyncPaymentFailed_with_no_row_is_a_noop()
+    {
+        // A failure with nothing pending means no money was ever owed here — do not create a row.
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_nothing", Arg.Any<CancellationToken>())
+            .Returns((StorePayment?)null);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_failed_orphan",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
+            new StoreCheckoutSessionData("cs_nothing", Guid.NewGuid(), "pi_nothing", 50m)));
+
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<StorePayment>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<StorePaymentStatus>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CompletedThenFailed_leaves_order_unpaid_not_reversed()
+    {
+        // End-to-end of the SEPA-bounce path through the public handler: completed(unpaid) records
+        // Pending, then async_payment_failed flips it to Failed. The order is never marked paid.
+        var orderId = Guid.NewGuid();
+        StorePayment? recorded = null;
+        _repo.StripePaymentIntentExistsAsync("pi_seq", Arg.Any<CancellationToken>())
+            .Returns(_ => recorded is not null);
+        await _repo.AddPaymentAsync(Arg.Do<StorePayment>(p => recorded = p), Arg.Any<CancellationToken>());
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_seq", Arg.Any<CancellationToken>())
+            .Returns(_ => recorded);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_seq_completed",
+            StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_seq", orderId, "pi_seq", 50m, PaymentStatus: "unpaid")));
+
+        recorded.Should().NotBeNull();
+        recorded!.Status.Should().Be(StorePaymentStatus.Pending);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_seq_failed",
+            StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
+            new StoreCheckoutSessionData("cs_seq", orderId, "pi_seq", 50m)));
+
+        await _repo.Received(1).UpdatePaymentStatusAsync(recorded.Id, StorePaymentStatus.Failed, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CheckoutSessionExpired_removes_orphan_pending_payment()
+    {
+        var orderId = Guid.NewGuid();
+        var pending = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            StripePaymentIntentId = "pi_expired"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_expired", Arg.Any<CancellationToken>())
+            .Returns(pending);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_expired",
+            StoreCheckoutEventKind.CheckoutSessionExpired,
+            new StoreCheckoutSessionData("cs_expired", orderId, "pi_expired", 50m)));
+
+        await _repo.Received(1).DeletePaymentAsync(pending.Id, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentExpired, nameof(StorePayment), pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, nameof(StoreOrder));
+    }
+
+    [HumansFact]
+    public async Task CheckoutSessionExpired_does_not_touch_a_settled_payment()
+    {
+        var paid = new StorePayment
+        {
+            Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid,
+            StripePaymentIntentId = "pi_expired_paid"
+        };
+        _repo.GetPaymentByStripePaymentIntentIdAsync("pi_expired_paid", Arg.Any<CancellationToken>())
+            .Returns(paid);
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_expired_paid",
+            StoreCheckoutEventKind.CheckoutSessionExpired,
+            new StoreCheckoutSessionData("cs_expired_paid", paid.OrderId, "pi_expired_paid", 50m)));
+
+        await _repo.DidNotReceive().DeletePaymentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
