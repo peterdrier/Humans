@@ -453,9 +453,16 @@ public sealed class DevPersonaSeeder(
         var leadDef = await campRoleService.GetDefinitionBySlugAsync(CampSystemRoles.CampLeadSlug);
         if (leadDef is null)
         {
-            logger.LogInformation(
-                "DEV: Camp Lead role definition missing — skipping lead seed for {CampId}. Run 'Seed system roles'.",
-                camp.Id);
+            // Fresh database: the system camp role definitions only exist after an
+            // admin runs "Seed system roles". Seed them here (idempotent) so dev
+            // personas can hold the Camp Lead role in new dev/test environments.
+            await campRoleService.SeedSystemRolesAndMigrateLeadsAsync(leadUserId);
+            leadDef = await campRoleService.GetDefinitionBySlugAsync(CampSystemRoles.CampLeadSlug);
+            logger.LogInformation("DEV: seeded system camp role definitions for {CampId}", camp.Id);
+        }
+        if (leadDef is null)
+        {
+            logger.LogError("DEV: Camp Lead role definition still missing after seed — skipping lead seed for {CampId}.", camp.Id);
             return false;
         }
 
