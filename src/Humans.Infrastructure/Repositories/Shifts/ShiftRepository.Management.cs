@@ -543,6 +543,39 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.Select(x => x.CreatedAt).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ShiftSignupStatusCount>> GetSignupStatusCountsForEventAsync(
+        Guid eventSettingsId,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // Project to shift-id, rota team-id, day-offset, and status in one query.
+        // Only Confirmed and NoShow statuses are relevant for post-event stats.
+        var statusValues = new[] { SignupStatus.Confirmed, SignupStatus.NoShow };
+
+        var rows = await (
+            from su in ctx.ShiftSignups.AsNoTracking()
+            join sh in ctx.Shifts.AsNoTracking() on su.ShiftId equals sh.Id
+            join r in ctx.Rotas.AsNoTracking() on sh.RotaId equals r.Id
+            where r.EventSettingsId == eventSettingsId && statusValues.Contains(su.Status)
+            select new { su.ShiftId, r.TeamId, sh.DayOffset, su.Status }
+        ).ToListAsync(ct);
+
+        return rows
+            .GroupBy(x => x.ShiftId)
+            .Select(g =>
+            {
+                var first = g.First();
+                return new ShiftSignupStatusCount(
+                    ShiftId: first.ShiftId,
+                    RotaTeamId: first.TeamId,
+                    DayOffset: first.DayOffset,
+                    ConfirmedCount: g.Count(x => x.Status == SignupStatus.Confirmed),
+                    NoShowCount: g.Count(x => x.Status == SignupStatus.NoShow));
+            })
+            .ToList();
+    }
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================
