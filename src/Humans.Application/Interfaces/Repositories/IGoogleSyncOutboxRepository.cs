@@ -116,13 +116,6 @@ public interface IGoogleSyncOutboxRepository : IRepository
     Task<int> RequeueAllFailedAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all permanently-failed outbox events (<c>FailedPermanently = true</c>),
-    /// ordered by <c>OccurredAt</c> ascending. Unbounded — used for bulk-retry
-    /// where the admin must see every dead-lettered event.
-    /// </summary>
-    Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetAllFailedAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Records a transient processing failure: increments <c>RetryCount</c>,
     /// stores <paramref name="lastError"/> (truncated to the 4000-char DB
     /// column width), and, if the new <c>RetryCount</c> has reached

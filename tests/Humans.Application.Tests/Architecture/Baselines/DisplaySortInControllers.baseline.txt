@@ -40,7 +40,6 @@ src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderBy#1

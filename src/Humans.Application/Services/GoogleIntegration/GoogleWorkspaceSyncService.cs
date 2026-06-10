@@ -1593,6 +1593,18 @@ public sealed class GoogleWorkspaceSyncService(
     {
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
 
+        // If the user's GoogleEmailStatus is Rejected, AddUserToTeamResourcesAsync will
+        // silently skip every enqueued event — don't enqueue at all (nobodies-collective/Humans#847).
+        var memberStatus = teamsById.Values
+            .SelectMany(t => t.Members)
+            .FirstOrDefault(m => m.UserId == userId)
+            ?.GoogleEmailStatus;
+        if (memberStatus == GoogleEmailStatus.Rejected)
+        {
+            logger.LogDebug("EnqueueUserSyncAsync skipped for user {UserId} — GoogleEmailStatus is Rejected", userId);
+            return 0;
+        }
+
         var now = clock.GetCurrentInstant();
         var events = teamsById.Values
             .Where(t => t.Members.Any(m => m.UserId == userId))

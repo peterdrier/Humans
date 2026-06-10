@@ -85,7 +85,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbConte
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
-        if (entity is null || (!entity.FailedPermanently && entity.ProcessedAt == null))
+        if (entity is null || !entity.FailedPermanently)
             return false;
 
         entity.FailedPermanently = false;
@@ -113,16 +113,6 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbConte
 
         await ctx.SaveChangesAsync(ct);
         return failed.Count;
-    }
-
-    public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetAllFailedAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
-            .AsNoTracking()
-            .Where(e => e.FailedPermanently)
-            .OrderBy(e => e.OccurredAt)
-            .ToListAsync(ct);
     }
 
     public async Task MarkProcessedAsync(Guid id, Instant processedAt, CancellationToken ct = default)
