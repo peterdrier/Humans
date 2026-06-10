@@ -105,7 +105,7 @@ builder.Services.AddSingleton<QueryStatistics>();
 builder.Services.AddSingleton<QueryMonitoringInterceptor>();
 
 // TrackingMemoryCache decorates MemoryCache for per-key hit/miss stats; exposed as both IMemoryCache and ICacheStatsProvider.
-builder.Services.AddSingleton<TrackingMemoryCache>(sp =>
+builder.Services.AddSingleton<TrackingMemoryCache>(_ =>
     new TrackingMemoryCache(new MemoryCache(new MemoryCacheOptions())));
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
@@ -622,7 +622,7 @@ app.MapPrometheusScrapingEndpoint("/metrics");
 // not available from request headers) for /Admin/ClientStats. Fire-and-forget.
 app.MapPost("/api/client-metrics", (
         Humans.Web.Models.ClientMetricsBeacon beacon,
-        Humans.Application.Interfaces.IClientStatsTracker clientStats) =>
+        IClientStatsTracker clientStats) =>
     {
         clientStats.RecordResolution(beacon.ScreenWidth, beacon.ScreenHeight);
         return Results.NoContent();

@@ -43,7 +43,7 @@ namespace Humans.Infrastructure.Services.Users;
 public sealed class CachingUserService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
-    IUserService, IUserMerge, IUserInfoInvalidator, IUserInfoSliceRefresher
+    IUserService, IUserInfoInvalidator, IUserInfoSliceRefresher
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -321,38 +321,6 @@ public sealed class CachingUserService(
 
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
-
-    private static IReadOnlyList<UserEmailInfo> ToUserEmailInfos(IEnumerable<UserEmail> rows) =>
-        rows
-            .OrderByDescending(e => e.IsPrimary)
-            .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-            .Select(e => new UserEmailInfo(
-                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
-                e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
-                e.CreatedAt, e.UpdatedAt))
-            .ToList();
-
-    private static IReadOnlyList<EventParticipationInfo> ToEventParticipationInfos(IEnumerable<EventParticipation> rows) =>
-        rows
-            .OrderBy(p => p.Year)
-            .Select(p => new EventParticipationInfo(
-                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt, p.CheckedInAt))
-            .ToList();
-
-    private static IReadOnlyList<UserExternalLoginInfo> ToExternalLoginInfos(
-        IEnumerable<(string Provider, string ProviderKey)> rows) =>
-        rows
-            .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
-            .ToList();
-
-    private static IReadOnlyList<CommunicationPreferenceInfo> ToCommunicationPreferenceInfos(
-        IEnumerable<CommunicationPreference> rows) =>
-        rows
-            .OrderBy(c => c.Category)
-            .Select(c => new CommunicationPreferenceInfo(
-                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
-                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
-            .ToList();
 
     private static UserInfo WithUserFields(UserInfo current, User user)
     {

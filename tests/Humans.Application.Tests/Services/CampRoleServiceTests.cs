@@ -109,14 +109,13 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             nameof(CampRoleDefinition),
             result.Id,
             Arg.Any<string>(),
-            _actorUserId,
-            null, null);
+            _actorUserId);
     }
 
     [HumansFact]
     public async Task CreateDefinition_rejects_duplicate_name()
     {
-        await SeedDefinitionAsync("Consent Lead");
+        await SeedDefinitionAsync();
 
         var input = new CreateCampRoleDefinitionInput(
             Name: "Consent Lead", Slug: "consent-lead-2", Description: null,
@@ -162,8 +161,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             nameof(CampRoleDefinition),
             def.Id,
             Arg.Any<string>(),
-            _actorUserId,
-            null, null);
+            _actorUserId);
 
         // Name/SortOrder are cached in the CampInfo role projection across all camps.
         await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
@@ -172,7 +170,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task UpdateDefinition_rejects_duplicate_name()
     {
-        var def1 = await SeedDefinitionAsync("Consent Lead");
+        await SeedDefinitionAsync();
         var def2 = await SeedDefinitionAsync("LNT");
 
         var input = new UpdateCampRoleDefinitionInput(
@@ -210,7 +208,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionDeactivated,
-            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
 
         await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
@@ -235,7 +233,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionReactivated,
-            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
 
         await _campInfoInvalidator.Received(1).InvalidateAllAsync(Arg.Any<CancellationToken>());
     }
@@ -243,7 +241,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_happy_path_creates_assignment_and_audits_and_notifies()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
@@ -276,7 +274,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_returns_MemberNotActive_when_member_is_pending()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var member = await SeedActiveMemberAsync(season.Id);
         var def = await SeedDefinitionAsync();
 
@@ -292,7 +290,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_returns_MemberSeasonMismatch_when_member_is_in_different_season()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var (_, otherSeason) = await SeedCampWithSeasonAsync();
         var member = await SeedActiveMemberAsync(otherSeason.Id);
         var def = await SeedDefinitionAsync();
@@ -308,7 +306,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_returns_SlotCapReached_when_full()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 1);
         var member1 = await SeedActiveMemberAsync(season.Id);
         var member2 = await SeedActiveMemberAsync(season.Id);
@@ -332,7 +330,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_returns_AlreadyHoldsRole_on_duplicate_member()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 2);
         var member = await SeedActiveMemberAsync(season.Id);
 
@@ -348,7 +346,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Assign_returns_RoleDeactivated_when_definition_is_soft_deleted()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
@@ -363,7 +361,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task Unassign_deletes_assignment_and_audits()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync();
         var member = await SeedActiveMemberAsync(season.Id);
         _campAccess.GetCampMemberStatusAsync(member.Id, CancellationToken.None)
@@ -392,8 +390,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildPanel_returns_one_row_per_active_definition_with_filled_and_empty_slots()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
-        var def1 = await SeedDefinitionAsync("Consent Lead", slotCount: 2);
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var def1 = await SeedDefinitionAsync(slotCount: 2);
         var def2 = await SeedDefinitionAsync("LNT", slotCount: 1);
         var member1 = await SeedActiveMemberAsync(season.Id);
         var member2 = await SeedActiveMemberAsync(season.Id);
@@ -438,7 +436,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildPanel_marks_OverCapacity_when_assignments_exceed_SlotCount()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 1);
         var m1 = await SeedActiveMemberAsync(season.Id);
         var m2 = await SeedActiveMemberAsync(season.Id);
@@ -472,9 +470,9 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     public async Task DirectoryRoleSummaries_includes_all_active_definitions_with_filled_and_slot_counts()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
+        var consent = await SeedDefinitionAsync(slotCount: 2, minimumRequired: 1);
         // minimumRequired: 0 — excluded from the compliance report, but the directory shows ALL active roles.
-        var power = await SeedDefinitionAsync("Power", slotCount: 3, minimumRequired: 0);
+        await SeedDefinitionAsync("Power", slotCount: 3, minimumRequired: 0);
         var member = await SeedActiveMemberAsync(season.Id);
 
         Db.CampRoleAssignments.Add(
@@ -510,8 +508,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync();
-        var def1 = await SeedDefinitionAsync("Consent Lead");
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var def1 = await SeedDefinitionAsync();
         var def2 = await SeedDefinitionAsync("LNT");
         var member = await SeedActiveMemberAsync(season.Id);
 
@@ -533,8 +531,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync(slug: "consent-lead");
         var member = await SeedActiveMemberAsync(season.Id);
 
         Db.CampRoleAssignments.Add(new CampRoleAssignment
@@ -564,7 +562,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetExpected_excludes_deactivated_definitions()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
@@ -597,7 +595,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         // Empty Slug = admin hasn't assigned a slug to this role yet → no
         // Google Group is provisioned and the role does not appear in the
         // membership-source's claim list.
-        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync("No Slug Yet", slug: "");
         var member = await SeedActiveMemberAsync(season.Id);
 
@@ -628,8 +626,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetExpected_excludes_assignment_when_member_is_inactive()
     {
-        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        var def = await SeedDefinitionAsync("Consent Lead", slug: "consent-lead");
+        var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync(slug: "consent-lead");
 
         // Seed a member that is NOT Active (Removed).
         var inactiveMember = new CampMember

@@ -1,16 +1,12 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -18,7 +14,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using Humans.Web;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
@@ -28,7 +23,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -235,9 +229,9 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
-            .SignUpAsync(default, default, default, default);
+            .SignUpAsync(default, default);
         await _signupService.DidNotReceiveWithAnyArgs()
-            .SignUpRangeAsync(default, default, default, default, default, default);
+            .SignUpRangeAsync(default, default, default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Shifts");
@@ -253,7 +247,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
         await _signupService.DidNotReceiveWithAnyArgs()
-            .SignUpAsync(default, default, default, default);
+            .SignUpAsync(default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Home");
@@ -274,9 +268,9 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         result.Should().BeOfType<ViewResult>();
         await _profileEditor.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!, default);
+            .SaveDietaryMedicalAsync(default, default!);
         await _signupService.DidNotReceiveWithAnyArgs()
-            .SignUpAsync(default, default, default, default);
+            .SignUpAsync(default, default);
     }
 
     [HumansFact]

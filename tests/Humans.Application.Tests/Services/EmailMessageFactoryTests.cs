@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Services.Email;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using NSubstitute;

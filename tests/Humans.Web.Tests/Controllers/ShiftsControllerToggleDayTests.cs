@@ -208,7 +208,7 @@ public class ShiftsControllerToggleDayTests
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("false");
         await _signupService.Received(1).BailAsync(signupId, userId, Arg.Any<string?>());
         await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default, default, default);
+            default, default);
     }
 
     [HumansFact]
@@ -306,7 +306,7 @@ public class ShiftsControllerToggleDayTests
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default, default, default);
+            default, default);
         await _signupService.DidNotReceiveWithAnyArgs().BailAsync(default, default, default);
     }
 
@@ -323,7 +323,7 @@ public class ShiftsControllerToggleDayTests
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default, default, default);
+            default, default);
         await _signupService.DidNotReceiveWithAnyArgs().BailAsync(default, default, default);
     }
 }

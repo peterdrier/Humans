@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Entities;
 using NodaTime;

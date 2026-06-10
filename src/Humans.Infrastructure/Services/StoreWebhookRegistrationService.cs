@@ -183,8 +183,7 @@ public class StoreWebhookRegistrationService(
             openPrs = await ListOpenPullRequestsAsync(
                 settings1.WebhookCleanupGitHubOwner,
                 settings1.WebhookCleanupGitHubRepository,
-                github.AccessToken,
-                ct);
+                github.AccessToken);
         }
         catch (Exception ex)
         {
@@ -232,7 +231,7 @@ public class StoreWebhookRegistrationService(
     }
 
     private static async Task<ISet<int>> ListOpenPullRequestsAsync(
-        string owner, string repo, string accessToken, CancellationToken ct)
+        string owner, string repo, string accessToken)
     {
         var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"))
         {

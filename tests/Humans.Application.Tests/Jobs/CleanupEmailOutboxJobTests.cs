@@ -53,7 +53,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
     public async Task ExecuteAsync_DeletesSentMessagesOlderThanRetentionPeriod()
     {
         // 200 days ago — older than the 150-day retention
-        var old = await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(200));
+        await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(200));
 
         await _job.ExecuteAsync();
 
@@ -65,7 +65,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
     public async Task ExecuteAsync_KeepsSentMessagesWithinRetentionPeriod()
     {
         // 100 days ago — within the 150-day retention
-        var recent = await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(100));
+        await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(100));
 
         await _job.ExecuteAsync();
 
@@ -77,7 +77,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
     public async Task ExecuteAsync_KeepsFailedMessagesRegardlessOfAge()
     {
         // Failed message, 200 days old — should not be deleted
-        var old = await SeedMessageAsync(EmailOutboxStatus.Failed, Now - Duration.FromDays(200));
+        await SeedMessageAsync(EmailOutboxStatus.Failed, Now - Duration.FromDays(200));
 
         await _job.ExecuteAsync();
 
@@ -89,7 +89,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
     public async Task ExecuteAsync_KeepsQueuedMessagesRegardlessOfAge()
     {
         // Queued message, 200 days old — should not be deleted
-        var old = await SeedMessageAsync(EmailOutboxStatus.Queued, Now - Duration.FromDays(200));
+        await SeedMessageAsync(EmailOutboxStatus.Queued, Now - Duration.FromDays(200));
 
         await _job.ExecuteAsync();
 

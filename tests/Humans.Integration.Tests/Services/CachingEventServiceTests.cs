@@ -104,7 +104,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
 
         var roundTrip = await svc.GetCategoryAsync(category.Id);
         roundTrip.Should().NotBeNull("admin EditCategory must resolve inactive rows by id");
-        roundTrip!.Slug.Should().Be(slug);
+        roundTrip.Slug.Should().Be(slug);
         roundTrip.IsActive.Should().BeFalse();
 
         // And the active-only projection must still exclude it.
@@ -131,7 +131,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
 
         var roundTrip = await svc.GetVenueAsync(venue.Id);
         roundTrip.Should().NotBeNull("admin EditVenue must resolve inactive rows by id");
-        roundTrip!.Name.Should().Be(name);
+        roundTrip.Name.Should().Be(name);
         roundTrip.IsActive.Should().BeFalse();
 
         var active = await svc.GetActiveVenuesAsync();

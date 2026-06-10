@@ -12,7 +12,6 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using NodaTime.Text;

@@ -296,7 +296,7 @@ public sealed class AccountMergeService(
 
         var shaped = rows.Select(r => new
         {
-            Status = r.Status,
+            r.Status,
             Role = r.IsTarget ? "Target" : "Source",
             CreatedAt = r.CreatedAt.ToIso8601(),
             ResolvedAt = r.ResolvedAt.ToIso8601()

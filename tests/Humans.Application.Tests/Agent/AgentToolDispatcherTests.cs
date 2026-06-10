@@ -331,9 +331,19 @@ public class AgentToolDispatcherTests
         Interfaces.Shifts.IShiftView? shiftView = null,
         Interfaces.Shifts.IShiftManagementService? shiftManagement = null)
     {
-        var env = new TestHostEnvironment();
-        var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
-        var features = new Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader(env);
+        var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var guideSettings = Microsoft.Extensions.Options.Options.Create(
+            new Humans.Infrastructure.Configuration.GuideSettings { CacheTtlHours = 6 });
+        var source = new StubGuideSource();
+        var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(
+            source, cache, guideSettings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                Humans.Infrastructure.Services.Preload.AgentSectionDocReader>.Instance);
+        var features = new Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader(
+            source, cache, guideSettings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader>.Instance);
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<Humans.Infrastructure.Services.Agent.AgentToolDispatcher>.Instance;
         return new Humans.Infrastructure.Services.Agent.AgentToolDispatcher(
             sections,
@@ -342,6 +352,15 @@ public class AgentToolDispatcherTests
             shiftView ?? Substitute.For<Interfaces.Shifts.IShiftView>(),
             shiftManagement ?? Substitute.For<Interfaces.Shifts.IShiftManagementService>(),
             logger);
+    }
+
+    private sealed class StubGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    {
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}");
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}");
     }
 
     private static Interfaces.Shifts.IShiftView MakeViewFor(
@@ -381,20 +400,4 @@ public class AgentToolDispatcherTests
         public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
-    private static string RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "docs", "sections")))
-            dir = dir.Parent;
-        return dir?.FullName ?? AppContext.BaseDirectory;
-    }
-
-    private sealed class TestHostEnvironment : Microsoft.Extensions.Hosting.IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = "Test";
-        public string ApplicationName { get; set; } = "Humans.Application.Tests";
-        public string ContentRootPath { get; set; } = RepoRoot();
-        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
-            new Microsoft.Extensions.FileProviders.PhysicalFileProvider(RepoRoot());
-    }
 }

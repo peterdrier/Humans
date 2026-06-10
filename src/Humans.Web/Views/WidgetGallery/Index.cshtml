@@ -451,7 +451,7 @@
                         @if (Model.SampleVolunteerProfile is not null)
                         {
                             @await Html.PartialAsync("_VolunteerProfileBadges",
-                                new Humans.Web.Models.VolunteerBadgesViewModel(
+                                new VolunteerBadgesViewModel(
                                     Model.SampleVolunteerProfile.Skills,
                                     Model.SampleVolunteerProfile.Quirks,
                                     Model.SampleVolunteerProfile.Languages,
@@ -484,9 +484,9 @@
                         ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketServiceRead</code>")
                     )
                     <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
-                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", Humans.Domain.Enums.TicketAttendeeStatus.Void, false, null, null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+                        <vc:ticket-stub stub="@(new Humans.Application.DTOs.TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
                     </div>
                 </div>
 

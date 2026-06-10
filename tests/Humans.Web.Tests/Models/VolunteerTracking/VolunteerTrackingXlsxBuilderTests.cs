@@ -94,7 +94,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
 
         var merged = sheet.MergedRanges.FirstOrDefault(r => r.RangeAddress.FirstAddress.RowNumber == 7);
         merged.Should().NotBeNull();
-        merged!.RangeAddress.LastAddress.ColumnNumber.Should().Be(3); // A..C (1 label + 2 day cols)
+        merged.RangeAddress.LastAddress.ColumnNumber.Should().Be(3); // A..C (1 label + 2 day cols)
     }
 
     [HumansFact]

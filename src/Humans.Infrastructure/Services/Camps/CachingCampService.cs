@@ -461,7 +461,7 @@ public sealed class CachingCampService(
 
     /// <inheritdoc cref="ICampInfoInvalidator.InvalidateCampAsync" />
     public Task InvalidateCampAsync(Guid campId, CancellationToken ct = default) =>
-        InvalidateCampAsync(campId, ct, memberName: string.Empty, filePath: string.Empty);
+        InvalidateCampAsync(campId, memberName: string.Empty, filePath: string.Empty);
 
     /// <inheritdoc cref="ICampInfoInvalidator.InvalidateSeasonAsync" />
     public Task InvalidateSeasonAsync(Guid campSeasonId, CancellationToken ct = default) =>
@@ -476,7 +476,6 @@ public sealed class CachingCampService(
 
     private Task InvalidateCampAsync(
         Guid campId,
-        CancellationToken ct,
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "")
     {

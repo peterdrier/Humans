@@ -15,7 +15,6 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;

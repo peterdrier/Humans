@@ -639,7 +639,7 @@ public sealed class CampRoleService(
         var assignments = await repo.GetActiveAssignmentsForYearsAsync(inScopeYears, ct);
         var assignmentsBySlugAndYear = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
-            .GroupBy(a => (a.Definition.Slug, Year: a.CampSeason.Year))
+            .GroupBy(a => (a.Definition.Slug, a.CampSeason.Year))
             .ToDictionary(
                 g => g.Key,
                 g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
@@ -648,12 +648,12 @@ public sealed class CampRoleService(
         // (slug, year) filled, and which leads exist per (camp, year).
         var assignmentsByCampSlugYear = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Definition.Slug))
-            .GroupBy(a => (CampId: a.CampSeason.CampId, Slug: a.Definition.Slug, Year: a.CampSeason.Year))
+            .GroupBy(a => (a.CampSeason.CampId, a.Definition.Slug, a.CampSeason.Year))
             .ToDictionary(g => g.Key, g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
 
         var leadsByCampAndYear = assignments
             .Where(a => a.Definition.SpecialRole == CampSpecialRole.Lead)
-            .GroupBy(a => (CampId: a.CampSeason.CampId, Year: a.CampSeason.Year))
+            .GroupBy(a => (a.CampSeason.CampId, a.CampSeason.Year))
             .ToDictionary(g => g.Key, g => g.Select(a => a.CampMember.UserId).Distinct().ToArray());
 
         var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);

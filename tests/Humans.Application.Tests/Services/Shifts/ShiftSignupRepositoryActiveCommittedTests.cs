@@ -50,7 +50,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
     public async Task GetActiveCommittedUserIdsForEventAsync_FiltersByEvent()
     {
         var (esA, _, shiftA) = await SeedShiftAsync(eventName: "Event A");
-        var (esB, _, shiftB) = await SeedShiftAsync(eventName: "Event B");
+        var (_, _, shiftB) = await SeedShiftAsync(eventName: "Event B");
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
 

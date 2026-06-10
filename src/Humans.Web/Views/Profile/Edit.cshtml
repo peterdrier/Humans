@@ -15,7 +15,7 @@
         <h1>@Localizer["ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
-            @if (ViewData.ModelState!.ErrorCount > 0)
+            @if (ViewData.ModelState.ErrorCount > 0)
             {
                 <div class="alert alert-danger mb-3" id="validationSummary">
                     <div asp-validation-summary="All"></div>
@@ -558,7 +558,7 @@
                 <partial name="_EditSectionPrivate" model="Model" />
             }
 
-            @if (ViewData.ModelState!.ErrorCount > 0)
+            @if (ViewData.ModelState.ErrorCount > 0)
             {
                 <div class="alert alert-danger mb-3">
                     <div asp-validation-summary="All"></div>

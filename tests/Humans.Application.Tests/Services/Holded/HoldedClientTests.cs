@@ -3,7 +3,6 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Holded;
 using Humans.Infrastructure.Services.Holded;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -14,8 +13,7 @@ public class HoldedClientTests
     private static HoldedClient Make(StubHandler handler) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
-            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance);
+            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }));
 
     [HumansFact]
     public async Task CreatePurchaseDocumentAsync_PostsExpectedJson_AndReturnsId()

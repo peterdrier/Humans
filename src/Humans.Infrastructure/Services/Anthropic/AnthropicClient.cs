@@ -209,7 +209,7 @@ public sealed class AnthropicClient : IAnthropicClient
 
             if (msg.Text is not null)
             {
-                contentBlocks.Add(new ContentBlockParam(new TextBlockParam(msg.Text), default));
+                contentBlocks.Add(new ContentBlockParam(new TextBlockParam(msg.Text)));
             }
 
             if (msg.ToolCalls is not null)
@@ -219,8 +219,7 @@ public sealed class AnthropicClient : IAnthropicClient
                     var input = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tc.JsonArguments)
                                 ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal);
                     contentBlocks.Add(new ContentBlockParam(
-                        new ToolUseBlockParam { ID = tc.Id, Name = tc.Name, Input = input },
-                        default));
+                        new ToolUseBlockParam { ID = tc.Id, Name = tc.Name, Input = input }));
                 }
             }
 
@@ -233,15 +232,14 @@ public sealed class AnthropicClient : IAnthropicClient
                         {
                             Content = (ToolResultBlockParamContent)tr.Content,
                             IsError = tr.IsError,
-                        },
-                        default));
+                        }));
                 }
             }
 
             result.Add(new MessageParam
             {
                 Role = role,
-                Content = new MessageParamContent(contentBlocks, default),
+                Content = new MessageParamContent(contentBlocks),
             });
         }
 

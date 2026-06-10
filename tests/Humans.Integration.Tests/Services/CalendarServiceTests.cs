@@ -45,7 +45,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
 
         var fetched = await svc.GetEventByIdAsync(created.Id);
         fetched.Should().NotBeNull();
-        fetched!.Title.Should().Be("Community call");
+        fetched.Title.Should().Be("Community call");
         fetched.OwningTeamId.Should().Be(team.Id);
         fetched.StartUtc.Should().Be(start);
         fetched.EndUtc.Should().Be(end);
@@ -296,7 +296,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
 
         var fetched = await svc.GetEventByIdAsync(ev.Id);
         fetched.Should().NotBeNull();
-        fetched!.Title.Should().Be("Updated");
+        fetched.Title.Should().Be("Updated");
         fetched.Description.Should().Be("new desc");
         fetched.StartUtc.Should().Be(Instant.FromUtc(2026, 7, 2, 17, 0));
     }

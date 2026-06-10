@@ -1,5 +1,5 @@
 // Tests seed TeamMember.User navs directly for DB-roundtrip verification.
-// TeamMember.User is Obsolete per §6c; the production path populates it
+// TeamMember.User is Obsolete per Â§6c; the production path populates it
 // in-memory via TeamService, but the tests set it on the entity before
 // SaveChanges. File-wide disable cleared when tests switch to seeding via
 // service calls instead of raw entity inserts.
@@ -58,7 +58,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
 
         // Capture the user service to a local before threading it into the locator
-        // builder — NSubstitute can't attach an outer .Returns() to a factory that
+        // builder â€” NSubstitute can't attach an outer .Returns() to a factory that
         // itself configures substitute calls.
         var userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
@@ -79,8 +79,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             serviceProvider,
             Cache,
             Substitute.For<IShiftViewInvalidator>(),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
+            Clock);
 
         // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
         // (backed by ShiftManagementService in DI). In tests we redirect it to the
@@ -241,7 +240,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     {
         var team = SeedTeam("Alpha");
         var user = SeedUser();
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var act = () => _service.AddSeededMemberAsync(
@@ -297,7 +296,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser();
         var vols = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(vols.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(vols.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
@@ -310,7 +309,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser();
         var team = SeedTeam("Old", isActive: false);
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
@@ -324,7 +323,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var user = SeedUser();
         var other = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, other.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, other.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.GetActiveTeamMembershipsForUserAsync(user.Id);
@@ -354,7 +353,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
@@ -412,7 +411,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var parent = SeedTeam("Department");
         var child = SeedTeam("SubTeam");
         child.ParentTeamId = parent.Id;
-        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(parent.Id, user.Id);
         await Db.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
@@ -964,7 +963,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, actor.Id, TeamMemberRole.Coordinator);
-        var member = SeedTeamMember(team.Id, target.Id, TeamMemberRole.Member);
+        var member = SeedTeamMember(team.Id, target.Id);
         await Db.SaveChangesAsync();
 
         var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id);
@@ -1527,7 +1526,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // GetTeamBySlugAsync (TeamInfo? — ITeamServiceRead surface)
+    // GetTeamBySlugAsync (TeamInfo? â€” ITeamServiceRead surface)
     // ==========================================================================
 
     [HumansFact]
@@ -1543,7 +1542,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
 
         info.Should().NotBeNull();
         entity.Should().NotBeNull();
-        info!.Id.Should().Be(entity!.Id);
+        info.Id.Should().Be(entity.Id);
         info.Slug.Should().Be(entity.Slug);
         info.Name.Should().Be(entity.Name);
     }
@@ -1720,7 +1719,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             RoleNames.Board,
             Clock.GetCurrentInstant() - Duration.FromDays(10));
         var team = SeedTeam("Alpha", requiresApproval: true);
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, user.Id);
         SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
         await Db.SaveChangesAsync();
 
@@ -1743,7 +1742,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var team = SeedTeam("Alpha");
         team.IsPublicPage = true;
         SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        SeedTeamMember(team.Id, member.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, member.Id);
 
         var publicChild = SeedTeam("Public Child");
         publicChild.ParentTeamId = team.Id;
@@ -1777,7 +1776,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var requester = SeedUser(displayName: "Requester");
         var team = SeedTeam("Alpha", requiresApproval: true);
         SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        SeedTeamMember(team.Id, member.Id, TeamMemberRole.Member);
+        SeedTeamMember(team.Id, member.Id);
         var pendingRequest = SeedJoinRequest(team.Id, requester.Id);
         var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
 
@@ -2269,7 +2268,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // GetAdminTeamListAsync — PendingShiftSignupCount
+    // GetAdminTeamListAsync â€” PendingShiftSignupCount
     // ==========================================================================
 
     [HumansFact]
@@ -2289,7 +2288,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Pending);
         SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed); // not pending
 
-        // Rota on inactive event — should NOT be counted
+        // Rota on inactive event â€” should NOT be counted
         var oldRota = SeedRota(team.Id, inactiveEvent.Id, "Old Shifts");
         var oldShift = SeedShift(oldRota.Id);
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
@@ -2323,7 +2322,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
-    // DeleteTeamAsync — #494: revoke Google access when a team is soft-deleted
+    // DeleteTeamAsync â€” #494: revoke Google access when a team is soft-deleted
     // ==========================================================================
 
     [HumansFact]
@@ -2347,7 +2346,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         // from the store rather than returning stale tracked entities.
         Db.ChangeTracker.Clear();
 
-        // Assert — team soft-deleted
+        // Assert â€” team soft-deleted
         var reloaded = await Db.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
@@ -2428,7 +2427,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         return definition;
     }
 
-    private TeamRoleAssignment SeedTeamRoleAssignment(Guid roleDefinitionId, Guid teamMemberId)
+    private void SeedTeamRoleAssignment(Guid roleDefinitionId, Guid teamMemberId)
     {
         var assignment = new TeamRoleAssignment
         {
@@ -2440,7 +2439,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
             AssignedByUserId = Guid.NewGuid()
         };
         Db.TeamRoleAssignments.Add(assignment);
-        return assignment;
     }
 
     private EventSettings SeedEventSettings(string name, bool isActive)
@@ -2495,7 +2493,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         return shift;
     }
 
-    private ShiftSignup SeedShiftSignup(Guid shiftId, Guid userId, SignupStatus status)
+    private void SeedShiftSignup(Guid shiftId, Guid userId, SignupStatus status)
     {
         var signup = new ShiftSignup
         {
@@ -2507,6 +2505,5 @@ public sealed class TeamServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ShiftSignups.Add(signup);
-        return signup;
     }
 }

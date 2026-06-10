@@ -82,7 +82,6 @@ public class AccountProvisioningServiceTests
 
         public void Seed(User user) => _users[user.Id] = user;
         public void Remove(Guid userId) => _users.Remove(userId);
-        public bool Contains(Guid userId) => _users.ContainsKey(userId);
         public int Count => _users.Count;
         public IReadOnlyCollection<User> All => _users.Values;
 
@@ -135,13 +134,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<User?> GetByNormalizedEmailAsync(string? normalizedEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-            Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
@@ -158,9 +150,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<EventParticipation?> GetParticipationAsync(
             Guid userId, int year, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
-            int year, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
@@ -198,16 +187,9 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
-            Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -398,7 +380,6 @@ public class AccountProvisioningServiceTests
         public bool ThrowOnAddVerified { get; set; }
 
         public void Seed(UserEmail email) => _emails[email.Id] = email;
-        public int Count => _emails.Count;
         public IReadOnlyCollection<UserEmail> All => _emails.Values;
 
         public Task<Guid?> FindAnyUserIdByEmail(string email)

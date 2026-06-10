@@ -7,7 +7,6 @@ using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Web.Services.Agent;
-using Xunit;
 
 namespace Humans.Web.Tests.Services;
 

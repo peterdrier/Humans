@@ -304,7 +304,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             Interfaces.Gdpr.GdprExportSections.RoleAssignments);
     }
 
-    private async Task<User> SeedUserAsync(Guid userId, string displayName)
+    private async Task SeedUserAsync(Guid userId, string displayName)
     {
         var user = new User
         {
@@ -317,7 +317,6 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
 
         Db.Users.Add(user);
         await Db.SaveChangesAsync();
-        return user;
     }
 
     private async Task<RoleAssignment> AddAssignmentAsync(

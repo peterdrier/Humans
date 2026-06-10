@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -71,7 +70,7 @@ public sealed class OnboardingServiceTests
             userId,
             "Consent check cleared",
             reviewerId);
-        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, default);
+        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default);
     }
 
     [HumansFact]
@@ -99,7 +98,7 @@ public sealed class OnboardingServiceTests
             userId,
             Arg.Any<string>(),
             reviewerId);
-        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, default);
+        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default);
         _emailMessages.DidNotReceiveWithAnyArgs().SignupRejected(default!, default!, default);
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default,
@@ -218,7 +217,7 @@ public sealed class OnboardingServiceTests
             .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
         _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new MembershipSnapshot(
-                Status: Humans.Domain.Enums.MembershipStatus.Pending,
+                Status: MembershipStatus.Pending,
                 IsVolunteerMember: false,
                 RequiredConsentCount: 0,
                 PendingConsentCount: 0,

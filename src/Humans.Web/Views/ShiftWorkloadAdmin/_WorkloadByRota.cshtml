@@ -13,7 +13,7 @@
 @{
     Func<WorkloadByRotaRow, IHtmlContent> coverageCell = @<text>
         @(item.PlannedSlots > 0
-            ? ((decimal)item.FilledSlots * 100m / item.PlannedSlots).ToString("0.0", CultureInfo.InvariantCulture)
+            ? (item.FilledSlots * 100m / item.PlannedSlots).ToString("0.0", CultureInfo.InvariantCulture)
             : "0.0")%
     </text>;
     var table = TableModel.For(Model)

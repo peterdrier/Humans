@@ -317,7 +317,7 @@ internal sealed partial class ShiftRepository
             {
                 s.UserId,
                 s.Shift.RotaId,
-                TeamId = s.Shift.Rota.TeamId,
+                s.Shift.Rota.TeamId,
                 s.Shift.DayOffset,
                 s.Shift.StartTime,
                 s.Shift.Duration,

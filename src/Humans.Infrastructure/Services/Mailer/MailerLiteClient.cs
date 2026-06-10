@@ -150,7 +150,7 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
         return new BulkImportResult(Created: created, Updated: 0, Duplicates: 0, Errors: errors);
     }
 
-    private async Task<MailerLiteGroup> RequireHumansGroupAsync(string groupId, CancellationToken ct)
+    private async Task RequireHumansGroupAsync(string groupId, CancellationToken ct)
     {
         var groups = await ListGroupsAsync(ct);
         var group = groups.FirstOrDefault(g => string.Equals(g.Id, groupId, StringComparison.Ordinal))
@@ -160,7 +160,6 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
             throw new InvalidOperationException(
                 $"MailerLite group '{group.Name}' (id={groupId}) is not managed by Humans. " +
                 $"Writes are restricted to groups whose name starts with '{HumansGroupPrefix}'.");
-        return group;
     }
 
     // Merge under the gate — nullifying would cascade into a full subscriber re-fetch.

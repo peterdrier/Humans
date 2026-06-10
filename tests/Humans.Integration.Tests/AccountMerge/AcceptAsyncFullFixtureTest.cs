@@ -53,16 +53,16 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         var sharedRole = $"role-shared-{runTag}";
         var sourceOnlyRole = $"role-src-{runTag}";
 
-        Guid sharedTeamId = Guid.Empty;
-        Guid sourceOnlyTeamId = Guid.Empty;
-        Guid joinTeamId = Guid.Empty;
-        Guid sharedNotificationId = Guid.Empty;
-        Guid sourceOnlyNotificationId = Guid.Empty;
-        Guid contestedCampaignId = Guid.Empty;
-        Guid sourceOnlyCampaignId = Guid.Empty;
-        Guid feedbackReportId = Guid.Empty;
-        Guid budgetYearId = Guid.Empty;
-        Guid documentVersionId = Guid.Empty;
+        Guid sharedTeamId;
+        Guid sourceOnlyTeamId;
+        Guid joinTeamId;
+        Guid sharedNotificationId;
+        Guid sourceOnlyNotificationId;
+        Guid contestedCampaignId;
+        Guid sourceOnlyCampaignId;
+        Guid feedbackReportId;
+        Guid budgetYearId;
+        Guid documentVersionId;
 
         // Stage 1 — seed source/target user pair plus all per-section data
         // that does NOT need an ad-hoc parent (UserEmails, ContactFields,
@@ -97,7 +97,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
             b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
 
             // Application — source-only.
-            b.WithSourceApplication(MembershipTier.Colaborador);
+            b.WithSourceApplication();
 
             // AuditLog — append-only; chain-follow stitches at read time.
             b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, auditDescription);
@@ -123,7 +123,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
             builder.WithSourceTeamMember(sharedTeamId);
             builder.WithTargetTeamMember(sharedTeamId);
             builder.WithSourceTeamMember(sourceOnlyTeamId);
-            builder.WithSourceTeamJoinRequest(joinTeamId, TeamJoinRequestStatus.Pending);
+            builder.WithSourceTeamJoinRequest(joinTeamId);
 
             // Notifications: shared (drop dup) + source-only (re-FK).
             sharedNotificationId = builder.SeedNotificationNow($"shared-{runTag}");
@@ -177,7 +177,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         // ----------------------------------------------------------------
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
         sourceUser.Should().NotBeNull();
-        sourceUser!.MergedToUserId.Should().Be(targetId);
+        sourceUser.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
         sourceUser.LockoutEnabled.Should().BeTrue();
         sourceUser.LockoutEnd.Should().NotBeNull();
@@ -188,7 +188,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         // Target User: still active, no lockout, no merged-to.
         var targetUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetId);
         targetUser.Should().NotBeNull();
-        targetUser!.MergedToUserId.Should().BeNull();
+        targetUser.MergedToUserId.Should().BeNull();
         targetUser.MergedAt.Should().BeNull();
 
         // ----------------------------------------------------------------
@@ -352,7 +352,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         var sourceProfile = await db.Profiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId);
         sourceProfile.Should().NotBeNull("source profile row stays as a tombstone");
-        sourceProfile!.FirstName.Should().Be("Merged");
+        sourceProfile.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
     }
 

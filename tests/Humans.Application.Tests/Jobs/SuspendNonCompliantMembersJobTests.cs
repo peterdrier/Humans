@@ -217,7 +217,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         var user = SetupUser();
         var teamId = Guid.NewGuid();
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(TeamDirectoryWith(teamId, user.Id)));
+            .Returns(Task.FromResult(TeamDirectoryWith(teamId, user.Id)));
 
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
@@ -270,7 +270,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         var user = SetupUser();
         var teamId = Guid.NewGuid();
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(TeamDirectoryWith(teamId, user.Id)));
+            .Returns(Task.FromResult(TeamDirectoryWith(teamId, user.Id)));
 
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });

@@ -4,7 +4,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Legal;

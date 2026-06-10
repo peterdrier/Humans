@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Humans.Application.Interfaces.Holded;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -11,16 +10,13 @@ public sealed class HoldedClient : IHoldedClient
 {
     private readonly HttpClient _http;
     private readonly HoldedClientOptions _options;
-    private readonly ILogger<HoldedClient> _logger;
 
     public HoldedClient(
         HttpClient http,
-        IOptions<HoldedClientOptions> options,
-        ILogger<HoldedClient> logger)
+        IOptions<HoldedClientOptions> options)
     {
         _http = http;
         _options = options.Value;
-        _logger = logger;
 
         if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
             _http.BaseAddress = new Uri(_options.BaseUrl);

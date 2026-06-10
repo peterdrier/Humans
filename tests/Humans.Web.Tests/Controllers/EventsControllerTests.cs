@@ -180,9 +180,9 @@ public class EventsControllerTests
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>())
             .Returns(MakeBurnSettings());
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventCategoryView>)[]);
+            .Returns([]);
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventVenueView>)[]);
+            .Returns([]);
     }
 
     private EventsController BuildController(Guid currentUserId, params string[] roles)

@@ -140,7 +140,6 @@ public class AgentServiceTests
     public async Task Rate_limited_refusal_is_not_written_into_another_users_conversation()
     {
         var attackerId = Guid.NewGuid();
-        var victimId = Guid.NewGuid();
 
         // Trip the daily cap for the attacker before they call AskAsync.
         var store = new AgentRateLimitStore();

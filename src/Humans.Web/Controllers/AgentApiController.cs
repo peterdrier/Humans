@@ -1,7 +1,6 @@
 using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Mvc;
@@ -110,18 +109,6 @@ public class AgentApiController : ControllerBase
         };
     }
 
-    private static object ToMessageDto(AgentMessage m) => new
-    {
-        m.Id,
-        Role = m.Role.ToString(),
-        m.Content,
-        CreatedAt = m.CreatedAt.ToDateTimeUtc(),
-        m.Model,
-        m.RefusalReason,
-        m.HandedOffToFeedbackId,
-        FetchedDocs = m.FetchedDocs
-    };
-
     private static object ToMessageDto(AgentMessageSnapshot m) => new
     {
         m.Id,
@@ -131,6 +118,6 @@ public class AgentApiController : ControllerBase
         m.Model,
         m.RefusalReason,
         m.HandedOffToFeedbackId,
-        FetchedDocs = m.FetchedDocs
+        m.FetchedDocs
     };
 }

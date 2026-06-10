@@ -370,7 +370,7 @@ public sealed class CampRepositoryTests : IDisposable
         return def;
     }
 
-    private async Task<CampRoleAssignment> SeedLeadAssignmentAsync(Guid campId, Guid roleDefinitionId, Guid userId)
+    private async Task SeedLeadAssignmentAsync(Guid campId, Guid roleDefinitionId, Guid userId)
     {
         // Helper that lands a CampRoleAssignment for the given (camp, role, user)
         // via the camp's current season + a CampMember(Active). Used by tests
@@ -405,6 +405,5 @@ public sealed class CampRepositoryTests : IDisposable
         };
         _dbContext.CampRoleAssignments.Add(assignment);
         await _dbContext.SaveChangesAsync();
-        return assignment;
     }
 }

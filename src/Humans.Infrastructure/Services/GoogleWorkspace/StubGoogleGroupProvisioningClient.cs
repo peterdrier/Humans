@@ -36,7 +36,7 @@ public sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupPro
             }
 
             var id = $"stubgroup-{_nextGroupId++}";
-            _groupsByEmail[groupEmail] = new StubGroup(id, displayName);
+            _groupsByEmail[groupEmail] = new StubGroup(id);
             return Task.FromResult(new GroupCreateResult(id, Error: null));
         }
     }
@@ -160,5 +160,5 @@ public sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupPro
         MessageDisplayFont: null,
         MaxMessageBytes: null);
 
-    private sealed record StubGroup(string Id, string DisplayName);
+    private sealed record StubGroup(string Id);
 }
