@@ -1167,6 +1167,43 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task ReopenSepaWithResultAsync_RevertsToApproved_AndAudits()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.SepaSent);
+
+        var result = await _sut.ReopenSepaWithResultAsync(reportId, actor);
+        result.Succeeded.Should().BeTrue();
+
+        (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Approved);
+        (await _sut.GetAsync(reportId))!.SepaSentAt.Should().BeNull();
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseSepaReopened, "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task ReopenSepaWithResultAsync_ReturnsFailure_WhenNotSepaSent()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Approved);
+
+        var result = await _sut.ReopenSepaWithResultAsync(reportId, Guid.NewGuid());
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+
+        (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Approved);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseSepaReopened, "ExpenseReport", reportId,
+            Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
     public async Task MarkPaidAsync_FlipsToPaid_AndAuditsJob()
     {
         var (_, category) = SetupActiveYear();

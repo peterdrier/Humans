@@ -105,6 +105,17 @@ else
                                             <i class="fa-solid fa-xmark me-1"></i>Reject
                                         </button>
                                     }
+                                    @if (r.Status == ExpenseReportStatus.SepaSent)
+                                    {
+                                        <form asp-action="SepaReopen" asp-route-id="@r.Id" method="post"
+                                              style="display:inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    onclick="return confirm('Reopen this report? It will return to Approved so you can include it in a new SEPA batch.')">
+                                                <i class="fa-solid fa-rotate-left me-1"></i>Reopen SEPA
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>

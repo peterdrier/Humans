@@ -730,6 +730,30 @@ public sealed class ExpensesController(
         return RedirectToAction(nameof(Review));
     }
 
+    [HttpPost("{id:guid}/Sepa/Reopen")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> SepaReopen(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.ReopenSepa));
+        if (!authResult.Succeeded) return Forbid();
+
+        var result = await service.ReopenSepaWithResultAsync(id, user.Id);
+        if (result.Succeeded)
+            SetSuccess("Report reopened — it is now Approved and can be included in a new SEPA batch.");
+        else
+            SetError(result.ErrorMessage ?? "Could not reopen the report.");
+
+        return RedirectToAction(nameof(Review));
+    }
+
     [HttpPost("Sepa/Generate")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
