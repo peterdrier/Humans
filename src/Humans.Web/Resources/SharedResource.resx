@@ -370,7 +370,7 @@
   <data name="Emails_YourEmails" xml:space="preserve"><value>Your Email Addresses</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
   <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
-  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. Ticket transfer between humans is a separate feature, coming soon.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To transfer a ticket to another human, use the ticket transfer feature at /Tickets/Transfers.</value></data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
@@ -1872,6 +1872,7 @@
   <data name="ShiftDash_ScheduleConflict" xml:space="preserve"><value>Schedule conflict</value></data>
   <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
   <data name="Nav_Staff" xml:space="preserve"><value>Staff</value></data>
+  <data name="Nav_Guide" xml:space="preserve"><value>Help</value></data>
   <data name="ProfileCard_Suspended" xml:space="preserve"><value>Suspended</value></data>
   <data name="ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>

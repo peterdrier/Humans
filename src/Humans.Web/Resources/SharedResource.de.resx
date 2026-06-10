@@ -914,7 +914,7 @@
     <value>Konten zusammenführen?</value>
   </data>
   <data name="Emails_MergeWarningBody" xml:space="preserve">
-    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Die Ticket-Übertragung zwischen Menschen ist eine separate Funktion und wird in Kürze verfügbar sein.</value>
+    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Um ein Ticket an einen anderen Menschen zu übertragen, nutze die Ticket-Übertragungsfunktion unter /Tickets/Transfers.</value>
   </data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Eine Bestätigungs-E-Mail wird an diese Adresse gesendet.</value>
@@ -4609,6 +4609,9 @@
   </data>
   <data name="Nav_Staff" xml:space="preserve">
     <value>Team</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Hilfe</value>
   </data>
   <data name="ProfileCard_Suspended" xml:space="preserve">
     <value>Gesperrt</value>
