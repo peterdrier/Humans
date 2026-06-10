@@ -65,28 +65,28 @@ Verified clean (no drift): `sections/survey.md` (full check of new section doc a
 
 ## Flagged for human review
 
-All items below were delivered to Peter inline at the end of the sweep (Phase 7.5); resolutions are recorded next to each.
+All 12 items were delivered to Peter inline (Phase 7.5); he approved fixing all 12, and all were applied on this PR branch in the follow-up commit.
 
-1. `features/auth/magic-link-auth.md` — describes `User.NormalizedEmail` / `FindByEmailAsync` fallback; code uses `IUserEmailService.FindVerifiedEmailWithUserAsync`. Historical-spec language vs current-state. — *pending*
-2. `features/tickets/ticket-vendor-integration.md` — `/Tickets/GateList` still "Stub for June implementation"; gate lookup shipped at `/Scanner/Tickets` (#930). — *pending*
-3. `sections/Holded.md` — "v1 ships only the four methods" stale; Feature 2 added GetContactAsync/ListChartOfAccountsAsync/ListPaymentsAsync/UpsertContactAsync. — *pending*
-4. `features/profiles/contact-fields.md` — uses `LeadsAndBoard = 1`; enum is `CoordinatorsAndBoard = 1`. — *pending*
-5. `features/profiles/preferred-email.md` — documents removed `User.GoogleEmail` / `GetEffectiveEmail()` / `GetGoogleServiceEmail()`; canonical reads are FullProfile-based (#635). — *pending*
-6. `features/profiles/dietary-medical-nudge.md` — dietary/medical fields moved from VolunteerEventProfile to Profile; doc still says VolunteerEventProfile columns. — *pending*
-7. `features/profiles/profiles.md` — BurnerName shown as `string?`; actually non-nullable `string`. — *pending*
-8. `sections/Profiles.md` — "Services.Profile/" should be "Services.Profiles/"; its freshness trigger `src/Humans.Application/Services/Profile/**` matches nothing. — *pending*
-9. `features/campaigns/campaigns.md` — wave-send exclusion documented as `User.UnsubscribedFromCampaigns`; actual gate is `ICommunicationPreferenceService.IsOptedOutAsync`. — *pending*
-10. `features/expires-on-deadline.md` — `User.NormalizedEmail` deadline row (2026-05-18) is past. — *pending*
-11. `features/notifications/notification-inbox.md` — Cleanup section omits the 30-day unresolved-Informational rule; Sources table missing many sources vs section doc. — *pending*
-12. `design-rules.md` — ICalendarFeedContributor (#931) is a second cross-section fanout pattern structurally identical to §8a IUserDataContributor, currently undocumented as a pattern. Design decision whether/where to document. — *pending*
+1. `features/auth/magic-link-auth.md` — `User.NormalizedEmail` / `FindByEmailAsync` fallback. — **fixed**: lookup flow rewritten to `IUserEmailService.FindVerifiedEmailWithUserAsync` throughout diagrams and examples.
+2. `features/tickets/ticket-vendor-integration.md` — `/Tickets/GateList` "Stub for June implementation". — **fixed**: note now points at the live `/Scanner/Tickets` gate lookup (#930); GateList remains a placeholder.
+3. `sections/Holded.md` — "v1 ships only the four methods" stale. — **fixed**: replaced with the current eleven-method `IHoldedClient` surface.
+4. `features/profiles/contact-fields.md` — `LeadsAndBoard` vs enum `CoordinatorsAndBoard`. — **fixed**: all 8 occurrences renamed (plus one in preferred-email.md US-11.4).
+5. `features/profiles/preferred-email.md` — removed `User.GoogleEmail` / `GetEffectiveEmail()` / `GetGoogleServiceEmail()` still documented. — **fixed**: stale subsections replaced with the FullProfile-based read path; sync/jobs notes updated.
+6. `features/profiles/dietary-medical-nudge.md` — fields documented on VolunteerEventProfile. — **fixed**: Data Model + Cross-section dependencies rewritten — fields live on Profile (VEP columns are retained-only tombstones); saves via `IProfileEditorService.SaveDietaryMedicalAsync`.
+7. `features/profiles/profiles.md` — BurnerName nullability. — **fixed**: `string? (256)` → `string (256)`.
+8. `sections/Profiles.md` — `Services.Profile` vs `Services.Profiles`. — **fixed**: 3 occurrences corrected including the dead freshness trigger glob (`Services/Profiles/**` now matches).
+9. `features/campaigns/campaigns.md` — wave-send exclusion attribution. — **fixed**: now `ICommunicationPreferenceService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes)`; the separate Unsubscribe-route section (which legitimately sets `User.UnsubscribedFromCampaigns`) verified accurate and left alone.
+10. `features/expires-on-deadline.md` — `User.NormalizedEmail` deadline 2026-05-18 past. — **fixed**: the `[ExpiresOn]` in `User.cs` was extended to 2026-09-01; table row updated to match (symbol still exists).
+11. `features/notifications/notification-inbox.md` — Cleanup rules + Sources table out of sync. — **fixed**: 30-day unresolved-Informational rule + actionable-never-deleted rule added; 8 missing sources added.
+12. `design-rules.md` — ICalendarFeedContributor fanout undocumented. — **fixed**: new §8b "Cross-Section Fanout — Contributor Pattern" generalizes the shape (orchestrator owns no tables, sections opt in via contributor interface) and tables both instances (GDPR `IUserDataContributor`, iCal `ICalendarFeedContributor`).
 
 ## Proposed for review
 
-None — all prune candidates resolved this sweep.
+None — all candidates resolved this sweep.
 
 ## Questions
 
-The 12 flagged items above were asked inline; this section will be updated with resolutions.
+None pending — all 12 inline questions answered ("fix all 12") and applied.
 
 ## Skipped (errors)
 

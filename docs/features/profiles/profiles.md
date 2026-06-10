@@ -71,7 +71,7 @@ Members need to maintain personal information for organizational records while p
 Profile
 ├── Id: Guid
 ├── UserId: Guid (FK → User, 1:1)
-├── BurnerName: string? (256)
+├── BurnerName: string (256)
 ├── FirstName: string (256) [legal]
 ├── LastName: string (256) [legal]
 ├── Pronouns: string? (50)

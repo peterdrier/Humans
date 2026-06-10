@@ -320,6 +320,25 @@ The architecture test suite in `GdprExportDependencyInjectionTests.cs` enforces 
 
 See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
 
+### 8b. Cross-Section Fanout — Contributor Pattern
+
+§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially (the contributors share the scoped `HumansDbContext`, which is not thread-safe) and never appears in §8's table-ownership map.
+
+Two fanouts exist today:
+
+| Orchestrator | Contributor interface | Sections that opt in | Merged result |
+|--------------|----------------------|----------------------|---------------|
+| `IGdprExportService` | `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
+| `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Application.Interfaces.ICalFeed`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
+
+Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
+
+```csharp
+services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventService>());
+```
+
+**Invariant:** a new cross-section need of this shape — assembling per-user (or per-aggregate) rows from several sections into one document — MUST follow the contributor pattern (orchestrator owning no tables, fanning out over a contributor interface that sections opt into) rather than the orchestrator making direct cross-section service calls section-by-section. Direct calls couple the orchestrator to every contributing section and bypass the opt-in registration that keeps the fanout list honest.
+
 ## 9. Cross-Service Communication
 
 When a service needs data from another section, it calls that section's public service interface via constructor injection. Repositories and stores are never crossed — only the public `I{Section}Service` interface.

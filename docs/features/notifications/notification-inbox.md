@@ -82,7 +82,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Type t
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily, deletes resolved notifications older than 7 days.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days and unresolved informational notifications older than 30 days. Actionable unresolved notifications are never auto-deleted.
 
 ## Authorization
 
@@ -116,6 +116,14 @@ All authenticated users can access their own notifications. No role-based restri
 | CampaignReceived | Informational | Campaign recipients | Marketing | Campaign code granted |
 | GoogleDriftDetected | Informational | Admin role | System | Reconciliation fixes drift |
 | FacilitatedMessageReceived | Informational | Camp leads | FacilitatedMessages | Facilitated message sent |
+| CampMembershipApproved | Informational | The user | System | Camp membership request approved |
+| CampMembershipRejected | Informational | The user | System | Camp membership request rejected |
+| CampMembershipSeasonClosed | Informational | The user | System | Camp season closed for new members |
+| CampRoleAssigned | Informational | The user | System | Camp role assigned |
+| IssueComment | Informational | Issue participants | System | Comment added to an issue |
+| IssueStatusChanged | Informational | Issue participants | System | Issue status changed |
+| IssueAssigned | Informational | The assignee | System | Issue assigned to a user |
+| IssueSubmitted | Actionable | Admin role | System | New issue submitted |
 
 ## Related Features
 

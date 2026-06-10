@@ -62,7 +62,7 @@ Members sign in using their Google account, which provides their primary email a
 **So that** I can share contact info with appropriate audiences
 
 **Acceptance Criteria:**
-- Each email has independent visibility (BoardOnly, LeadsAndBoard, MyTeams, AllActiveProfiles, or hidden)
+- Each email has independent visibility (BoardOnly, CoordinatorsAndBoard, MyTeams, AllActiveProfiles, or hidden)
 - Uses the same ContactFieldVisibility levels as ContactField
 - Visibility is null by default (hidden from profile)
 
@@ -131,16 +131,14 @@ UserEmail
 └── UpdatedAt: Instant
 ```
 
-### GoogleEmail Field on User
-```
-User.GoogleEmail: string? (256) — preferred email for Google services (Groups, Drive)
-```
+### Google Email Preference (FullProfile)
 
-### Computed Methods on User
-```csharp
-GetEffectiveEmail() → returns the email marked as notification target (for system emails)
-GetGoogleServiceEmail() → returns GoogleEmail ?? Email (for Google resource sync)
-```
+`User.GoogleEmail` C# property and the computed methods `GetEffectiveEmail()` / `GetGoogleServiceEmail()` were removed from the `User` entity (issue #635 §15i). The canonical read path is:
+
+- `FullProfile.GoogleEmail` — the `UserEmail` row flagged `IsGoogle = true`; used by Google sync for Groups/Drive access.
+- `FullProfile.PrimaryEmail` / `FullProfile.NotificationEmail` — the `UserEmail` row flagged `IsPrimary = true`; used for system notification emails.
+
+The `GoogleEmail` column is retained on disk as an EF shadow property pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`.
 
 ## Verification Flow
 
@@ -189,17 +187,17 @@ Uses ASP.NET Identity's built-in token providers:
 ## Service Integration
 
 ### Google Sync
-`GoogleWorkspaceSyncService` uses `GetGoogleServiceEmail()` (or `GoogleEmail ?? Email` in projections) for:
+`GoogleWorkspaceSyncService` uses `FullProfile.GoogleEmail` (the `UserEmail` row with `IsGoogle = true`) for:
 - Adding/removing users from Google Groups
 - Adding/removing users from Shared Drive folders
 - Drift detection for membership sync
 
-When `GoogleEmail` differs from the OAuth email (e.g., after linking a @nobodies.team address), `AddUserToTeamResourcesAsync` proactively removes the old OAuth email from Google Groups to prevent duplicate email delivery. This means the cleanup is immediate rather than waiting for the daily reconciliation cycle.
+When `FullProfile.GoogleEmail` differs from the OAuth email (e.g., after linking a @nobodies.team address), `AddUserToTeamResourcesAsync` proactively removes the old OAuth email from Google Groups to prevent duplicate email delivery. This means the cleanup is immediate rather than waiting for the daily reconciliation cycle.
 
 Users with `GoogleEmailStatus == Rejected` are excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API — typically because the email address does not have a Google account associated with it — is treated as a permanent rejection.
 
 ### Background Jobs
-These jobs use `GetEffectiveEmail()` to send to the notification target:
+These jobs use `FullProfile.PrimaryEmail` (the `UserEmail` row with `IsPrimary = true`) to send to the notification target:
 - `SendReConsentReminderJob` - consent reminder emails
 - `SuspendNonCompliantMembersJob` - suspension notification emails
 
