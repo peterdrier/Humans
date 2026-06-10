@@ -1885,7 +1885,8 @@ public class ProfileController(
             return (false, null);
 
         var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
-        if (!viewerIsCoordinator && !ShiftRoleChecks.IsPrivilegedSignupApprover(User))
+        var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)).Succeeded;
+        if (!viewerIsCoordinator && !isPrivilegedApprover)
             return (false, null);
 
         var messages = await _auditViewerService.GetFilteredAsync(
