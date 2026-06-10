@@ -80,7 +80,7 @@
             <vc:my-camps />
         }
 
-        @* Approved events this human submitted this edition (auto-hidden when empty) *@
+        @* Approved personal (non-camp) events this human submitted this edition (auto-hidden when empty); camp events show on the camp's page *@
         <vc:events-card user-id="@Model.UserId" />
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)

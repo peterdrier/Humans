@@ -15,9 +15,9 @@ namespace Humans.Application.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="EventsCardViewComponent"/>: it renders the approved events
-/// for exactly one scope — a camp, or a user's submissions — ordered by start
-/// time with the viewer's favourites marked, and renders nothing when the scope
-/// has no approved events or the viewer is unauthenticated.
+/// for exactly one scope — a camp, or a user's personal (non-camp) submissions —
+/// ordered by start time with the viewer's favourites marked, and renders nothing
+/// when the scope has no approved events or the viewer is unauthenticated.
 /// </summary>
 public class EventsCardViewComponentTests
 {
@@ -44,8 +44,8 @@ public class EventsCardViewComponentTests
         };
     }
 
-    private static ApprovedEventView Approved(Guid id, string title, Instant startAt, string description = "", Guid? submitterUserId = null) => new(
-        Id: id, CampId: Guid.NewGuid(), GuideSharedVenueId: null, SubmitterUserId: submitterUserId ?? Guid.NewGuid(),
+    private static ApprovedEventView Approved(Guid id, string title, Instant startAt, string description = "", Guid? submitterUserId = null, bool isPersonal = false) => new(
+        Id: id, CampId: isPersonal ? null : Guid.NewGuid(), GuideSharedVenueId: isPersonal ? Guid.NewGuid() : null, SubmitterUserId: submitterUserId ?? Guid.NewGuid(),
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: startAt, DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
@@ -85,15 +85,16 @@ public class EventsCardViewComponentTests
     }
 
     [HumansFact]
-    public async Task UserScope_FiltersToSubmittersEvents()
+    public async Task UserScope_FiltersToSubmittersPersonalEvents()
     {
         var viewerId = Guid.NewGuid();
         var susieId = Guid.NewGuid();
-        var susies = Approved(Guid.NewGuid(), "Susie's Salon", Instant.FromUtc(2026, 8, 1, 10, 0), submitterUserId: susieId);
-        var other = Approved(Guid.NewGuid(), "Someone Else's", Instant.FromUtc(2026, 8, 1, 12, 0));
+        var susies = Approved(Guid.NewGuid(), "Susie's Salon", Instant.FromUtc(2026, 8, 1, 10, 0), submitterUserId: susieId, isPersonal: true);
+        var susiesCampEvent = Approved(Guid.NewGuid(), "Susie's Camp Bash", Instant.FromUtc(2026, 8, 1, 11, 0), submitterUserId: susieId);
+        var other = Approved(Guid.NewGuid(), "Someone Else's", Instant.FromUtc(2026, 8, 1, 12, 0), isPersonal: true);
         _events.GetApprovedEventsAsync(null, null, null, null,
                 Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns([susies, other]);
+            .Returns([susies, susiesCampEvent, other]);
         StubSettings();
         _events.GetFavouriteEventIdsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns([]);
