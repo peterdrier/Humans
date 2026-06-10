@@ -45,15 +45,15 @@ public sealed class StoreOrderViewModel
         bool canDelete,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
-    {
-        Order = pageData.Order,
-        Catalog = catalog,
-        CounterpartyDisplayName = pageData.CounterpartyDisplayName,
-        CanEdit = pageData.CanEdit,
-        RemovableLineIds = removableLineIds,
-        CanPay = pageData.CanPay,
-        IsStripeConfigured = pageData.IsStripeConfigured,
-        CanDelete = canDelete,
-        PriceChanges = pageData.PriceChanges
-    };
+        {
+            Order = pageData.Order,
+            Catalog = catalog,
+            CounterpartyDisplayName = pageData.CounterpartyDisplayName,
+            CanEdit = pageData.CanEdit,
+            RemovableLineIds = removableLineIds,
+            CanPay = pageData.CanPay,
+            IsStripeConfigured = pageData.IsStripeConfigured,
+            CanDelete = canDelete,
+            PriceChanges = pageData.PriceChanges
+        };
 }
