@@ -1157,8 +1157,11 @@ public class StoreServiceTests
         var orderId = Guid.NewGuid();
         var pending = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Pending,
             StripePaymentIntentId = "pi_sepa"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_sepa", Arg.Any<CancellationToken>())
@@ -1181,8 +1184,11 @@ public class StoreServiceTests
         var orderId = Guid.NewGuid();
         var paid = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid,
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Paid,
             StripePaymentIntentId = "pi_sepa"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_sepa", Arg.Any<CancellationToken>())
@@ -1228,8 +1234,11 @@ public class StoreServiceTests
         var orderId = Guid.NewGuid();
         var pending = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Pending,
             StripePaymentIntentId = "pi_bounce"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_bounce", Arg.Any<CancellationToken>())
@@ -1252,8 +1261,11 @@ public class StoreServiceTests
         var orderId = Guid.NewGuid();
         var failed = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Failed,
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Failed,
             StripePaymentIntentId = "pi_bounce"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_bounce", Arg.Any<CancellationToken>())
@@ -1318,8 +1330,11 @@ public class StoreServiceTests
         var orderId = Guid.NewGuid();
         var pending = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = orderId, AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending,
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Pending,
             StripePaymentIntentId = "pi_expired"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_expired", Arg.Any<CancellationToken>())
@@ -1341,8 +1356,11 @@ public class StoreServiceTests
     {
         var paid = new StorePayment
         {
-            Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), AmountEur = 50m,
-            Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid,
+            Id = Guid.NewGuid(),
+            OrderId = Guid.NewGuid(),
+            AmountEur = 50m,
+            Method = StorePaymentMethod.Stripe,
+            Status = StorePaymentStatus.Paid,
             StripePaymentIntentId = "pi_expired_paid"
         };
         _repo.GetPaymentByStripePaymentIntentIdAsync("pi_expired_paid", Arg.Any<CancellationToken>())
