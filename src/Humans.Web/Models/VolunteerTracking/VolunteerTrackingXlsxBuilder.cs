@@ -102,8 +102,6 @@ public sealed class VolunteerTrackingXlsxBuilder
                             cell.Style.Font.FontColor = XLColor.White;
                             cell.Style.Font.Bold = true;
                             break;
-                        default:
-                            break;
                     }
                 }
                 row++;

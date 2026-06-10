@@ -59,7 +59,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.UserId.Should().Be(userId);
+        fetched.UserId.Should().Be(userId);
         fetched.BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
         fetched.Notes.Should().Be("left for barrio");
     }
@@ -103,7 +103,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         // Build-period rota with a shift at -7 — shift exists but no signup,
         // so this should NOT appear in the result.
         var buildRotaA = SeedRota(db, es.Id, teamId, RotaPeriod.Build);
-        var shiftBuildAA = SeedShift(db, buildRotaA.Id, dayOffset: -7);
+        SeedShift(db, buildRotaA.Id, dayOffset: -7);
 
         // Event-period rota with a shift at +1 and a Confirmed signup.
         // Period is Event → NOT eligible.
@@ -154,7 +154,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
         fetched.DayOffs[0].Reason.Should().Be("doctor");
         fetched.DayOffs[0].MarkedByUserId.Should().Be(actor);
@@ -182,7 +182,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
         fetched.DayOffs[0].Reason.Should().Be("family emergency");
         fetched.DayOffs[0].MarkedAt.Should().Be(t2);
@@ -206,7 +206,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-7, -5, -3);
+        fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-7, -5, -3);
     }
 
     [HumansFact(Timeout = 30000)]
@@ -228,7 +228,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         removed.Should().BeTrue();
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-3);
     }
 
@@ -280,7 +280,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         trimmed.Should().Equal(-3);
         var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
         fetched.Should().NotBeNull();
-        fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
+        fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
     }
 
     /// <summary>
@@ -386,7 +386,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         return shift;
     }
 
-    private static ShiftSignup SeedSignup(
+    private static void SeedSignup(
         HumansDbContext db, Guid userId, Guid shiftId, SignupStatus status)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -400,6 +400,5 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             UpdatedAt = now,
         };
         db.ShiftSignups.Add(signup);
-        return signup;
     }
 }

@@ -139,7 +139,7 @@ public class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guideSettings)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var model = await BuildFormAsync(guideSettings!, eventSettings);
+        var model = await BuildFormAsync(eventSettings);
         return View("IndividualEventForm", model);
     }
 
@@ -240,7 +240,7 @@ public class EventsController(
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
-        var model = await BuildFormAsync(guideSettings, eventSettings);
+        var model = await BuildFormAsync(eventSettings);
         model.Id = guideEvent.Id;
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
@@ -600,7 +600,7 @@ public class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettingsView guideSettings, BurnSettingsInfo burn)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(BurnSettingsInfo burn)
     {
         var model = new IndividualEventFormViewModel
         {
@@ -917,7 +917,7 @@ public class EventsController(
         sb.AppendLine("\"Id\",\"Barrio\",\"Status\",\"Title\",\"Description\",\"Category\",\"Date\",\"StartTime\",\"DurationMinutes\",\"LocationNote\",\"Host\",\"IsRecurring\",\"RecurrenceDays\",\"PriorityRank\"");
 
         var nonWithdrawn = campEvents
-            .Where(e => e.Status != Domain.Enums.EventStatus.Withdrawn)
+            .Where(e => e.Status != EventStatus.Withdrawn)
             .OrderByDescending(e => e.SubmittedAt)
             .ToList();
         foreach (var e in nonWithdrawn)
@@ -1002,7 +1002,7 @@ public class EventsController(
         List<BulkCsvRow> rows;
         try
         {
-            using var reader = new System.IO.StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
+            using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
             rows = BulkEventCsvParser.Parse(await reader.ReadToEndAsync());
         }
         catch (Exception ex)

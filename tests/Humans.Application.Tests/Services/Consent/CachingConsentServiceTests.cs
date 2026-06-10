@@ -40,7 +40,7 @@ public class CachingConsentServiceTests
         var userIds = Enumerable.Range(0, 50).Select(_ => Guid.NewGuid()).ToList();
         var stub = userIds.ToDictionary(
             id => id,
-            id => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
         _inner.GetConsentMapForUsersAsync(
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(stub);
@@ -66,7 +66,7 @@ public class CachingConsentServiceTests
         var userIds = Enumerable.Range(0, 10).Select(_ => Guid.NewGuid()).ToList();
         var firstCallStub = userIds.ToDictionary(
             id => id,
-            id => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
         _inner.GetConsentMapForUsersAsync(
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(firstCallStub);
@@ -123,7 +123,7 @@ public class CachingConsentServiceTests
 
         var hitStub = hitIds.ToDictionary(
             id => id,
-            id => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
         _inner.GetConsentMapForUsersAsync(
                 Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == hitIds.Count),
                 Arg.Any<CancellationToken>())
@@ -134,7 +134,7 @@ public class CachingConsentServiceTests
 
         var missStub = missIds.ToDictionary(
             id => id,
-            id => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid> { Guid.NewGuid() });
         _inner.GetConsentMapForUsersAsync(
                 Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == missIds.Count
                     && ids.All(missIds.Contains)),

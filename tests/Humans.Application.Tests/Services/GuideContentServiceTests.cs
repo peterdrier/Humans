@@ -109,7 +109,7 @@ public class GuideContentServiceTests
     public async Task GetRenderedAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();
-        var service = CreateService(source, out var cache);
+        var service = CreateService(source, out _);
         await service.GetRenderedAsync("Profiles", CancellationToken.None);
 
         // Simulate TTL-expired warm cache by clearing only the sentinel, leaving stale entries.

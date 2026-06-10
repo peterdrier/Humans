@@ -12,7 +12,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Controllers.Mailer;
 using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,20 +30,12 @@ namespace Humans.Web.Tests.Controllers.Mailer;
 /// </summary>
 public class MailerAdminControllerTests
 {
-    private readonly UserManager<User> _userManager;
     private readonly IMailerImportService _importService = Substitute.For<IMailerImportService>();
     private readonly IMailerLiteService _mlService = Substitute.For<IMailerLiteService>();
     private readonly IMailerAudienceSyncService _audienceSync = Substitute.For<IMailerAudienceSyncService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-
-    public MailerAdminControllerTests()
-    {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-    }
 
     private MailerAdminController BuildSut(
         ImportPlanCounts? snapshotCounts = null,
@@ -203,7 +194,7 @@ public class MailerAdminControllerTests
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
                 Enumerable.Range(0, 7)
                     .Select(_ => MakeUserInfoWithContactSource(ContactSource.MailerLite))
-                    .ToList<UserInfo>()));
+                    .ToList()));
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(3);
@@ -343,14 +334,14 @@ public class MailerAdminControllerTests
         audience.DisplayName.Returns("Ticket holders without a shift");
         audience.MailerLiteGroupName.Returns("Humans - Ticket no Shifts");
         audience.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { memberId } as IReadOnlySet<Guid>);
+            .Returns(new HashSet<Guid> { memberId });
 
         var other = Substitute.For<IMailerAudience>();
         other.Key.Returns("other-key");
         other.DisplayName.Returns("Other Audience");
         other.MailerLiteGroupName.Returns("Humans - Other");
         other.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>() as IReadOnlySet<Guid>);
+            .Returns(new HashSet<Guid>());
 
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns([

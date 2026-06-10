@@ -228,7 +228,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
         audience.Key.Returns(key);
         audience.DisplayName.Returns(key);
         audience.MailerLiteGroupName.Returns(groupName);
-        audience.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>()).Returns(set as IReadOnlySet<Guid>);
+        audience.ComputeMemberUserIdsAsync(Arg.Any<CancellationToken>()).Returns(set);
         return audience;
     }
 

@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -20,7 +19,7 @@ namespace Humans.Web.Tests.Controllers;
 
 public class TicketsContactsAdminControllerTests
 {
-    private static (TicketsContactsAdminController Ctrl, User CurrentUser, IUserService Users)
+    private static (TicketsContactsAdminController Ctrl, User CurrentUser)
         NewController(IAttendeeContactImportService import)
     {
         var users = Substitute.For<IUserService>();
@@ -37,9 +36,7 @@ public class TicketsContactsAdminControllerTests
                 [],
                 [])));
 
-        var ctrl = new TicketsContactsAdminController(
-            import, users,
-            NullLogger<TicketsContactsAdminController>.Instance);
+        var ctrl = new TicketsContactsAdminController(import, users);
 
         var services = new ServiceCollection();
         services.AddLogging();
@@ -60,7 +57,7 @@ public class TicketsContactsAdminControllerTests
         };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
-        return (ctrl, currentUser, users);
+        return (ctrl, currentUser);
     }
 
     [HumansFact]
@@ -74,7 +71,7 @@ public class TicketsContactsAdminControllerTests
         ], 1);
         import.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
 
-        var (controller, _, _) = NewController(import);
+        var (controller, _) = NewController(import);
 
         var result = await controller.Index(CancellationToken.None);
 
@@ -99,7 +96,7 @@ public class TicketsContactsAdminControllerTests
                 VanishedBetweenPlanAndApply: 0, Errors: 0,
                 Elapsed: Duration.FromSeconds(1)));
 
-        var (controller, currentUser, _) = NewController(import);
+        var (controller, currentUser) = NewController(import);
 
         var selectedId = Guid.NewGuid();
         var result = await controller.Apply([selectedId], CancellationToken.None);
@@ -119,7 +116,7 @@ public class TicketsContactsAdminControllerTests
     public async Task Apply_EmptySelection_RedirectsWithErrorMessage_NoServiceCall()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
-        var (controller, _, _) = NewController(import);
+        var (controller, _) = NewController(import);
 
         var result = await controller.Apply([], CancellationToken.None);
 

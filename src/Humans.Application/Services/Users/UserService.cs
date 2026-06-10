@@ -22,7 +22,7 @@ public sealed class UserService(
     IAdminAuthorizationService adminAuthorization,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
     IClock clock,
-    ILogger<UserService> logger) : IUserService, IUserDataContributor, IUserMerge
+    ILogger<UserService> logger) : IUserService, IUserDataContributor
 {
     private static readonly SemaphoreSlim[] ProfileStubLocks = CreateProfileStubLocks(32);
     private static SemaphoreSlim[] CreateProfileStubLocks(int count)

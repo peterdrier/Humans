@@ -48,7 +48,6 @@ public class OnboardingWidgetController(
             OnboardingWidgetStep.Names => RedirectToAction(nameof(Names)),
             OnboardingWidgetStep.Shifts => RedirectToAction(nameof(Shifts)),
             OnboardingWidgetStep.Consents => RedirectToAction(nameof(Consents)),
-            OnboardingWidgetStep.Complete => RedirectToAction("Index", "Home"),
             _ => RedirectToAction("Index", "Home"),
         };
     }

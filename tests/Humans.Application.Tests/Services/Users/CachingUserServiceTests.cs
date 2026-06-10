@@ -1013,7 +1013,7 @@ public class CachingUserServiceTests
             userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<CancellationToken>());
         var refreshed = await sut.GetUserInfoAsync(userId);
         refreshed.Should().NotBeNull();
-        refreshed!.BurnerName.Should().Be("New Burner");
+        refreshed.BurnerName.Should().Be("New Burner");
         refreshed.Profile.Should().NotBeNull();
         refreshed.Profile!.BurnerName.Should().Be("New Burner");
         refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");

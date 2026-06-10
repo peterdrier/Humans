@@ -327,7 +327,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         var tickets = new List<VendorTicketDto>
         {
-            MakeTicketDto("tkt_valid_vip", "ord_vat", "Valid VIP", "valid@example.com", 400m, "valid"),
+            MakeTicketDto("tkt_valid_vip", "ord_vat", "Valid VIP", "valid@example.com", 400m),
             MakeTicketDto("tkt_void_vip", "ord_vat", "Void VIP", "void@example.com", 500m, "void")
         };
 
@@ -353,8 +353,8 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         var tickets = new List<VendorTicketDto>
         {
-            MakeTicketDto("tkt_refunded", "ord_refunded", "Refunded VIP", "refunded@example.com", 400m, "valid"),
-            MakeTicketDto("tkt_cancelled", "ord_cancelled", "Cancelled VIP", "cancelled@example.com", 400m, "valid")
+            MakeTicketDto("tkt_refunded", "ord_refunded", "Refunded VIP", "refunded@example.com", 400m),
+            MakeTicketDto("tkt_cancelled", "ord_cancelled", "Cancelled VIP", "cancelled@example.com", 400m)
         };
 
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -509,7 +509,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await _userService.Received(1).SetParticipationFromTicketSyncAsync(
             userId, 2026, ParticipationStatus.Attended,
-            (Instant?)null, Arg.Any<CancellationToken>());
+            null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -536,7 +536,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await _userService.Received(1).SetParticipationFromTicketSyncAsync(
             userId, 2026, ParticipationStatus.Ticketed,
-            (Instant?)null, Arg.Any<CancellationToken>());
+            null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -644,7 +644,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
     // Helpers
     // ==========================================================================
 
-    private UserEmail SeedUserEmail(
+    private void SeedUserEmail(
         Guid userId, string email,
         bool isOAuth = false, bool isVerified = true)
     {
@@ -661,7 +661,6 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             UpdatedAt = now
         };
         Db.UserEmails.Add(userEmail);
-        return userEmail;
     }
 
     private static VendorOrderDto MakeOrderDto(

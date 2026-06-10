@@ -31,7 +31,7 @@ public class MailerImportServiceIdempotencyTests
 
         // Pass 1 – subscriber exists, no human user yet.
         var plan1 = await harness.Service.BuildPlanAsync();
-        var result1 = await harness.Service.ApplyAsync(plan1);
+        await harness.Service.ApplyAsync(plan1);
         var perRowAfterFirst = harness.Audit.PerRowCount;
 
         // Now wire the harness so the subscriber is "known" on the second pass.

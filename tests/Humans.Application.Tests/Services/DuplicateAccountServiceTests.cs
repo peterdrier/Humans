@@ -1,10 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

@@ -1389,7 +1389,7 @@ public sealed class TeamService(
         definition.Period = period;
         definition.UpdatedAt = clock.GetCurrentInstant();
 
-        var (_, invalidatedActiveTeams) = await repo.PersistRoleDefinitionUpdateAsync(
+        await repo.PersistRoleDefinitionUpdateAsync(
             definition, clearingIsManagement, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1468,7 +1468,7 @@ public sealed class TeamService(
         definition.IsManagement = isManagement;
         definition.UpdatedAt = clock.GetCurrentInstant();
 
-        var demotedMembers = await repo.PersistRoleIsManagementAsync(
+        await repo.PersistRoleIsManagementAsync(
             definition, clearingIsManagement, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1630,7 +1630,7 @@ public sealed class TeamService(
                 GoogleSyncOutboxEventTypes.AddUserToTeamResources, cancellationToken);
         }
 
-        var (assignment, autoAddedToTeam, persistedMember) = await AssignToRoleWithOutboxAsync(
+        var (assignment, autoAddedToTeam, _) = await AssignToRoleWithOutboxAsync(
             roleDefinitionId,
             targetUserId,
             actorUserId,
@@ -1672,7 +1672,7 @@ public sealed class TeamService(
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
 
-        var (demoted, targetUserId) = await repo.UnassignFromRoleAsync(
+        var (_, targetUserId) = await repo.UnassignFromRoleAsync(
             roleDefinitionId, teamMemberId, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -2148,35 +2148,6 @@ public sealed class TeamService(
             {
 #pragma warning disable CS0618 // §6b in-memory cross-domain join via Obsolete nav.
                 member.User = user;
-#pragma warning restore CS0618
-            }
-        }
-    }
-
-    private async Task StitchJoinRequestUserSlicesAsync(
-        IReadOnlyList<TeamJoinRequest> requests, CancellationToken ct)
-    {
-        if (requests.Count == 0)
-            return;
-
-        var userIds = requests.Select(r => r.UserId)
-            .Concat(requests.Where(r => r.ReviewedByUserId.HasValue).Select(r => r.ReviewedByUserId!.Value))
-            .Distinct()
-            .ToList();
-        var users = await UserService.GetByIdsAsync(userIds, ct);
-
-        foreach (var req in requests)
-        {
-            if (users.TryGetValue(req.UserId, out var u))
-            {
-#pragma warning disable CS0618
-                req.User = u;
-#pragma warning restore CS0618
-            }
-            if (req.ReviewedByUserId.HasValue && users.TryGetValue(req.ReviewedByUserId.Value, out var r))
-            {
-#pragma warning disable CS0618
-                req.ReviewedByUser = r;
 #pragma warning restore CS0618
             }
         }

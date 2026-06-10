@@ -95,7 +95,7 @@
 }
 else
 {
-    @await Html.PartialAsync("_HumanSearchResults", (IReadOnlyList<HumanSearchResultViewModel>)Model.Humans)
+    @await Html.PartialAsync("_HumanSearchResults", Model.Humans)
 }
 
 @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "AdminList") { NavCssClass = "mt-4" }; }

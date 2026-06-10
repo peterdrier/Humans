@@ -243,7 +243,7 @@ public sealed class TeamRepositoryTests : IDisposable
         var team2 = await SeedTeamAsync("Team B");
         var user = await SeedUserAsync();
         var m1 = await SeedActiveMemberAsync(team1, user);
-        var m2 = await SeedActiveMemberAsync(team2, user);
+        await SeedActiveMemberAsync(team2, user);
         var role = await SeedRoleDefinitionAsync(team1, isManagement: true);
         await SeedRoleAssignmentAsync(role, m1);
 
@@ -333,7 +333,7 @@ public sealed class TeamRepositoryTests : IDisposable
         return def;
     }
 
-    private async Task<TeamRoleAssignment> SeedRoleAssignmentAsync(TeamRoleDefinition def, TeamMember member)
+    private async Task SeedRoleAssignmentAsync(TeamRoleDefinition def, TeamMember member)
     {
         var assignment = new TeamRoleAssignment
         {
@@ -346,6 +346,5 @@ public sealed class TeamRepositoryTests : IDisposable
         };
         _dbContext.Set<TeamRoleAssignment>().Add(assignment);
         await _dbContext.SaveChangesAsync();
-        return assignment;
     }
 }

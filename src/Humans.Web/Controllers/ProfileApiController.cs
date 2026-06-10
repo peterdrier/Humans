@@ -50,9 +50,9 @@ public class ProfileApiController(
         // AllowEmail: an exact (case-insensitive) verified-email match resolves at most
         // one person — no enumeration/substring leak, so it is safe on this non-admin
         // endpoint. Only triggers when the query looks like an email.
-        if (allowEmail && q!.Contains('@', StringComparison.Ordinal))
+        if (allowEmail && q.Contains('@', StringComparison.Ordinal))
         {
-            var matchedUserId = await userEmailService.GetUserIdByExactEmailAsync(q!, ct);
+            var matchedUserId = await userEmailService.GetUserIdByExactEmailAsync(q, ct);
             if (matchedUserId is null)
                 return Ok(Array.Empty<HumanLookupSearchResult>());
 

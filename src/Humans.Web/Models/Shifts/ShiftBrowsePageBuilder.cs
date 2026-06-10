@@ -73,7 +73,7 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
 
         var periodFilteredShifts = postFilterByPeriod
             ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
-            : (IReadOnlyList<UrgentShift>)urgentShifts;
+            : urgentShifts;
 
         var activeTagFilter = request.TagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
         var filteredShifts = activeTagFilter.Count > 0

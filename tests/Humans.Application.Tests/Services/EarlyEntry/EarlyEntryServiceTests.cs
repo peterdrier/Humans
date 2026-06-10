@@ -70,7 +70,7 @@ public class EarlyEntryServiceTests
 
         var found = await sut.GetForUserAsync(userId, CancellationToken.None);
         found.Should().NotBeNull();
-        found!.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
+        found.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
         found.Sources.Should().HaveCount(2);
 
         var notFound = await sut.GetForUserAsync(Guid.NewGuid(), CancellationToken.None);

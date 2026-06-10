@@ -615,7 +615,6 @@ public class ProfileLanguageDisplayViewModel
         LanguageProficiency.Native => "bg-success",
         LanguageProficiency.Fluent => "bg-primary",
         LanguageProficiency.Conversational => "bg-info text-dark",
-        LanguageProficiency.Basic => "bg-secondary",
         _ => "bg-secondary"
     };
 }

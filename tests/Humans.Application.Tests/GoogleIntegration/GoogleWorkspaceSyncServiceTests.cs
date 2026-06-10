@@ -78,12 +78,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
     // ── Fixed test data ────────────────────────────────────────────────────────
 
-    private static readonly Guid TestGroupResourceId = Guid.Parse("aaaaaaaa-0001-0000-0000-000000000000");
     private static readonly Guid TestDriveFolderResourceId = Guid.Parse("aaaaaaaa-0002-0000-0000-000000000000");
     private static readonly Guid TestTeamId = Guid.Parse("bbbbbbbb-0001-0000-0000-000000000000");
     private static readonly Guid TestUserId = Guid.Parse("cccccccc-0001-0000-0000-000000000000");
 
-    private const string TestGoogleGroupId = "01groupgoogleid";
     private const string TestGoogleFolderId = "01drivegoogleid";
     private const string TestUserEmail = "alice@nobodies.team";
 
@@ -145,7 +143,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+            .Returns([
                 new UserEmailRowSnapshot(
                     Guid.NewGuid(),
                     TestUserId,
@@ -265,7 +263,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+            .Returns([
                 new UserEmailRowSnapshot(
                     Guid.NewGuid(),
                     TestUserId,
@@ -326,7 +324,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+            .Returns([
                 new UserEmailRowSnapshot(
                     Guid.NewGuid(),
                     TestUserId,
@@ -386,7 +384,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+            .Returns([
                 new UserEmailRowSnapshot(
                     Guid.NewGuid(),
                     TestUserId,
@@ -429,21 +427,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // ==========================================================================
     // Helpers
     // ==========================================================================
-
-    private void StageGroupResource()
-    {
-        _resourceRepository
-            .GetByIdAsync(TestGroupResourceId, Arg.Any<CancellationToken>())
-            .Returns(new GoogleResource
-            {
-                Id = TestGroupResourceId,
-                TeamId = TestTeamId,
-                ResourceType = GoogleResourceType.Group,
-                GoogleId = TestGoogleGroupId,
-                Name = "Test Group",
-                IsActive = true
-            });
-    }
 
     private static GoogleResource MakeDriveFolderResource(Guid id, Guid teamId, string googleId) =>
         new()

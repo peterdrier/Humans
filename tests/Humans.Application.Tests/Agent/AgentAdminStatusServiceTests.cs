@@ -28,13 +28,13 @@ public class AgentAdminStatusServiceTests
         var convB = SeedConversation(db, user2, now);
 
         // 24h window: one message at now-1h
-        SeedMessage(db, convA.Id, user1, now - Duration.FromHours(1),
+        SeedMessage(db, convA.Id, now - Duration.FromHours(1),
             prompt: 100, output: 50, cached: 200, fetched: ["agent", "tickets"]);
         // 7d window (and 30d): one message at now-5d
-        SeedMessage(db, convA.Id, user1, now - Duration.FromDays(5),
+        SeedMessage(db, convA.Id, now - Duration.FromDays(5),
             prompt: 1000, output: 500, cached: 0, refusalReason: "rate_limit");
         // 30d-only: one message at now-25d
-        SeedMessage(db, convB.Id, user2, now - Duration.FromDays(25),
+        SeedMessage(db, convB.Id, now - Duration.FromDays(25),
             prompt: 200, output: 100, cached: 0, fetched: ["agent"]);
         await db.SaveChangesAsync();
 
@@ -147,7 +147,7 @@ public class AgentAdminStatusServiceTests
         return conv;
     }
 
-    private static void SeedMessage(HumansDbContext db, Guid conversationId, Guid userId,
+    private static void SeedMessage(HumansDbContext db, Guid conversationId,
         Instant createdAt, int prompt, int output, int cached,
         string[]? fetched = null, string? refusalReason = null)
     {

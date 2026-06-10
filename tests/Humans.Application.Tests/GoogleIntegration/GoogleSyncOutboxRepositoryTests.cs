@@ -98,7 +98,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetRecentAsync_OrdersByOccurredAtDescending_AndAppliesTakeLimit()
     {
-        var oldest = Seed(occurredAt: Instant.FromUtc(2026, 4, 20, 10, 0));
+        Seed(occurredAt: Instant.FromUtc(2026, 4, 20, 10, 0));
         var middle = Seed(occurredAt: Instant.FromUtc(2026, 4, 22, 10, 0));
         var newest = Seed(occurredAt: Instant.FromUtc(2026, 4, 23, 10, 0));
 

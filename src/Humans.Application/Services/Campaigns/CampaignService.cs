@@ -702,8 +702,8 @@ public sealed class CampaignService(
 
         var shaped = grants.Select(g => new
         {
-            CampaignTitle = g.CampaignTitle,
-            Code = g.Code,
+            g.CampaignTitle,
+            g.Code,
             AssignedAt = g.AssignedAt.ToIso8601(),
             RedeemedAt = g.RedeemedAt.ToIso8601(),
             EmailStatus = g.LatestEmailStatus?.ToString()

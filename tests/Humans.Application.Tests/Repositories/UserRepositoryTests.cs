@@ -164,7 +164,7 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now,
-            checkedInAt: null, default);
+            checkedInAt: null);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.NotAttending);
@@ -193,7 +193,7 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null,
-            checkedInAt: null, default);
+            checkedInAt: null);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.Ticketed);
@@ -213,10 +213,10 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: arrival, default);
+            declaredAt: null, checkedInAt: arrival);
 
         result.Should().NotBeNull();
-        result!.Status.Should().Be(ParticipationStatus.Attended);
+        result.Status.Should().Be(ParticipationStatus.Attended);
         result.CheckedInAt.Should().Be(arrival);
 
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
@@ -246,7 +246,7 @@ public sealed class UserRepositoryTests : IDisposable
         var laterArrival = Instant.FromUtc(2026, 7, 8, 18, 0);
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: laterArrival, default);
+            declaredAt: null, checkedInAt: laterArrival);
 
         result.Should().BeNull(); // Attended-is-permanent short-circuit
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
@@ -275,10 +275,10 @@ public sealed class UserRepositoryTests : IDisposable
         var arrival = Instant.FromUtc(2026, 7, 8, 12, 0);
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: arrival, default);
+            declaredAt: null, checkedInAt: arrival);
 
         result.Should().NotBeNull();
-        result!.Status.Should().Be(ParticipationStatus.Attended);
+        result.Status.Should().Be(ParticipationStatus.Attended);
         result.CheckedInAt.Should().Be(arrival);
     }
 
@@ -300,7 +300,7 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, _clock.GetCurrentInstant(),
-            checkedInAt: null, default);
+            checkedInAt: null);
 
         result.Should().BeNull();
         var persisted = await _dbContext.EventParticipations.AsNoTracking()

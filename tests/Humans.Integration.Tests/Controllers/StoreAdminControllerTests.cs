@@ -39,7 +39,7 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
         // POST Save (no Id) → product created
         var uniqueName = $"Integration test product {Guid.NewGuid():N}";
         var createResp = await Client.PostAsync("/Store/Admin/Catalog/Save", BuildForm(
-            ("__RequestVerificationToken", token!),
+            ("__RequestVerificationToken", token),
             ("Year", year.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("Name", uniqueName),
             ("Description", "Created by integration test"),

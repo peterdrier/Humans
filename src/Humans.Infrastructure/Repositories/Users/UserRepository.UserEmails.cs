@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 
 namespace Humans.Infrastructure.Repositories.Users;

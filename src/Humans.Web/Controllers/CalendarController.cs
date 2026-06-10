@@ -212,7 +212,7 @@ public class CalendarController : HumansControllerBase
             return RedirectToAction(nameof(Event), new { id = result.Event.Id });
         }
 
-        AddCalendarEventMutationError(form, result);
+        AddCalendarEventMutationError(result);
         form.TeamOptions = await GetSelectableTeamsAsync(ct);
         return View(form);
     }
@@ -276,7 +276,7 @@ public class CalendarController : HumansControllerBase
         if (result.NotFound) return NotFound();
         if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
 
-        AddCalendarEventMutationError(form, result);
+        AddCalendarEventMutationError(result);
         form.TeamOptions = await GetSelectableTeamsAsync(ct);
         return View(form);
     }
@@ -410,15 +410,14 @@ public class CalendarController : HumansControllerBase
         GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
     private void AddCalendarEventMutationError(
-        CalendarEventFormViewModel form,
         CalendarEventMutationResult result)
     {
         var memberName = string.Equals(
                 result.ValidationMemberName,
                 nameof(CreateCalendarEventDto.RecurrenceTimezone),
                 StringComparison.Ordinal)
-            ? nameof(form.RecurrenceTimezone)
-            : nameof(form.RecurrenceRule);
+            ? nameof(CalendarEventFormViewModel.RecurrenceTimezone)
+            : nameof(CalendarEventFormViewModel.RecurrenceRule);
         ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
     }
 

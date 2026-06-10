@@ -39,7 +39,7 @@ public sealed class StubGoogleDriveActivityClient(ILogger<StubGoogleDriveActivit
     public Task<string?> TryResolvePersonEmailAsync(string peopleId, CancellationToken ct = default)
     {
         // Pass through email-shaped inputs (the real connector does the same).
-        return Task.FromResult<string?>(
+        return Task.FromResult(
             peopleId.StartsWith("people/", StringComparison.Ordinal) ? null : peopleId);
     }
 }

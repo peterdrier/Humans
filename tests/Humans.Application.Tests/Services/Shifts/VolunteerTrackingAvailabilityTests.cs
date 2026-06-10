@@ -135,7 +135,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var rec = await Db.GeneralAvailability.AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         rec.Should().NotBeNull();
-        rec!.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
+        rec.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
     }
 
     [HumansFact]

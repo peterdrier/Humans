@@ -214,7 +214,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId);
         sourceProfile.Should().NotBeNull("source profile row is kept as a tombstone");
-        sourceProfile!.FirstName.Should().Be("Merged");
+        sourceProfile.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
         sourceProfile.BurnerName.Should().Be("Merged User");
         sourceProfile.Bio.Should().BeNull();
@@ -224,7 +224,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == targetId);
         targetProfile.Should().NotBeNull();
-        targetProfile!.FirstName.Should().Be("Target");
+        targetProfile.FirstName.Should().Be("Target");
     }
 
     // ==================================================================
@@ -424,9 +424,9 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
         {
             // Both source and target have applications — every row moves; no dedup.
-            b.WithSourceApplication(MembershipTier.Colaborador);
+            b.WithSourceApplication();
             b.WithSourceApplication(MembershipTier.Asociado);
-            b.WithTargetApplication(MembershipTier.Colaborador);
+            b.WithTargetApplication();
         });
         var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -538,7 +538,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
         sourceUser.Should().NotBeNull();
-        sourceUser!.MergedToUserId.Should().Be(targetId);
+        sourceUser.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
         sourceUser.DisplayName.Should().Be("Merged User");
         // Legacy Identity email/username PII is scrubbed to a tombstone sentinel (GDPR).
@@ -560,7 +560,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
         sourceUser.Should().NotBeNull();
-        sourceUser!.LockoutEnabled.Should().BeTrue();
+        sourceUser.LockoutEnabled.Should().BeTrue();
         sourceUser.LockoutEnd.Should().NotBeNull("source must be locked out forever after merge");
         // AnonymizeForMergeAsync sets LockoutEnd = DateTimeOffset.MaxValue.
         sourceUser.LockoutEnd!.Value.Should().BeCloseTo(DateTimeOffset.MaxValue, TimeSpan.FromDays(1));
@@ -729,11 +729,11 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             sourceOnlyTeamId = b.SeedTeamNow($"SourceOnlyTJR-{Guid.NewGuid():N}");
 
             // Both pending on contestedTeam — drop source.
-            b.WithSourceTeamJoinRequest(contestedTeamId, TeamJoinRequestStatus.Pending);
-            b.WithTargetTeamJoinRequest(contestedTeamId, TeamJoinRequestStatus.Pending);
+            b.WithSourceTeamJoinRequest(contestedTeamId);
+            b.WithTargetTeamJoinRequest(contestedTeamId);
 
             // Source pending on sourceOnly — re-FK to target.
-            b.WithSourceTeamJoinRequest(sourceOnlyTeamId, TeamJoinRequestStatus.Pending);
+            b.WithSourceTeamJoinRequest(sourceOnlyTeamId);
         });
         var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -813,18 +813,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_CampaignGrants_Move_DedupPerCampaign()
     {
-        Guid contestedCampaignId = Guid.Empty, sourceOnlyCampaignId = Guid.Empty;
-        Guid creatorId = Guid.Empty;
+        Guid contestedCampaignId, sourceOnlyCampaignId;
 
         var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
 
         // Need a real user to satisfy Campaign.CreatedByUserId FK; use the
         // source as creator (fold doesn't touch Campaigns).
-        creatorId = sourceId;
+        var creatorId = sourceId;
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             contestedCampaignId = builder.SeedCampaignNow($"Contested-{Guid.NewGuid():N}", creatorId);
             sourceOnlyCampaignId = builder.SeedCampaignNow($"SourceOnly-{Guid.NewGuid():N}", creatorId);
@@ -868,7 +866,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_FeedbackMessages_Move()
     {
-        Guid reportId = Guid.Empty;
+        Guid reportId;
         var sourceContent = $"source-msg-{Guid.NewGuid():N}";
         var targetContent = $"target-msg-{Guid.NewGuid():N}";
 

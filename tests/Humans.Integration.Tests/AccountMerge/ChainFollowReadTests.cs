@@ -70,7 +70,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task ConsentRecords_ReadByUserId_FollowsMergedToUserIdChain()
     {
-        Guid versionId = Guid.Empty;
+        Guid versionId;
 
         var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
 
@@ -147,7 +147,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         var entries = slices[0].Data as System.Collections.IEnumerable;
         entries.Should().NotBeNull();
 
-        var found = entries!.Cast<object>()
+        var found = entries.Cast<object>()
             .Select(o => o.GetType().GetProperty("Description")?.GetValue(o) as string)
             .Where(d => d is not null);
         found.Should().Contain(description,

@@ -130,8 +130,8 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     {
         // ClearSubstitute(ClearOptions.All) drops received calls, configured return
         // values, and call actions — returning the substitute to a pristine state.
-        StripeServiceStub.ClearSubstitute(ClearOptions.All);
-        BackgroundJobClientStub.ClearSubstitute(ClearOptions.All);
+        StripeServiceStub.ClearSubstitute();
+        BackgroundJobClientStub.ClearSubstitute();
 
         // Re-seed the Stripe baseline defaults that the host build configured, since
         // ClearSubstitute wiped them. Per-test setup layers its own returns on top.
@@ -214,7 +214,6 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         //    with AllowAutoRedirect=false.
         var loginResp = await client.GetAsync($"/dev/login/{slug}");
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect
-            or HttpStatusCode.Found
             or HttpStatusCode.OK))
         {
             throw new InvalidOperationException(
@@ -256,7 +255,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             .Where(v => v.LegalDocument.IsRequired
                      && v.LegalDocument.IsActive
                      && v.EffectiveFrom <= now)
-            .Select(v => new { v.Id, v.LegalDocumentId, v.EffectiveFrom, Content = v.Content })
+            .Select(v => new { v.Id, v.LegalDocumentId, v.EffectiveFrom, v.Content })
             .ToListAsync();
 
         if (documentGroups.Count == 0)

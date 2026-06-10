@@ -552,7 +552,7 @@ public class ShiftsController(
             .Where(s => s.Shift?.Rota?.EventSettings is not null)
             .Select(s =>
             {
-                var sEs = s.Shift!.Rota!.EventSettings!;
+                var sEs = s.Shift.Rota.EventSettings;
                 var absStart = s.Shift.GetAbsoluteStart(sEs);
                 var absEnd = s.Shift.GetAbsoluteEnd(sEs);
                 var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
@@ -567,25 +567,6 @@ public class ShiftsController(
                     DisplayEnd: DateFormattingExtensions.TimeOfDayPattern.Format(localEnd.TimeOfDay));
             })
             .ToList();
-    }
-
-    private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)
-    {
-        return period switch
-        {
-            ShiftPeriod.Build => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(-1)),
-            ShiftPeriod.Event => (
-                es.GateOpeningDate,
-                es.GateOpeningDate.PlusDays(es.EventEndOffset)),
-            ShiftPeriod.Strike => (
-                es.GateOpeningDate.PlusDays(es.EventEndOffset + 1),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
-            _ => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
-        };
     }
 
     // Admin diagnostic: signups with no Created/Voluntold/Confirmed audit row

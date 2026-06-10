@@ -194,7 +194,7 @@ public class NotificationServiceTests : IDisposable
         var user2 = Guid.NewGuid();
 
         _recipientResolver.GetActiveUserIdsForRoleAsync("Board", Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<Guid>)[user1, user2]);
+            .Returns([user1, user2]);
 
         await _service.SendToRoleAsync(
             NotificationSource.ApplicationSubmitted,

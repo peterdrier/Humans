@@ -187,7 +187,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var active1 = await SeedAssignmentAsync(userId, RoleNames.Board, now - Duration.FromDays(5), null);
         var active2 = await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(3), null);
-        var ended = await SeedAssignmentAsync(userId, RoleNames.TeamsAdmin,
+        await SeedAssignmentAsync(userId, RoleNames.TeamsAdmin,
             now - Duration.FromDays(100), now - Duration.FromDays(50));
 
         var result = await _repo.GetActiveForUserForMutationAsync(userId, now);

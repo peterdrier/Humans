@@ -19,7 +19,6 @@
         {
             ShiftPeriod.Build => "bg-info",
             ShiftPeriod.Event => "bg-success",
-            ShiftPeriod.Strike => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -68,9 +67,9 @@
         <td></td>
     }
     <td>
-        @if (Model.Interaction == Humans.Web.Models.ShiftSignupInteraction.InstantToggle)
+        @if (Model.Interaction == ShiftSignupInteraction.InstantToggle)
         {
-            @await Html.PartialAsync("_ShiftToggleButton", new Humans.Web.Models.ShiftToggleButtonModel
+            @await Html.PartialAsync("_ShiftToggleButton", new ShiftToggleButtonModel
             {
                 ShiftId = shift.Id,
                 IsSignedUp = Model.IsSignedUp,

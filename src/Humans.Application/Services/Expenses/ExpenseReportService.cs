@@ -238,7 +238,7 @@ public sealed class ExpenseReportService(
         ExpenseLineType lineType = ExpenseLineType.Receipt,
         CancellationToken ct = default)
     {
-        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+        await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
         var line = new ExpenseLine
         {

@@ -13,11 +13,8 @@ namespace Humans.Web.Controllers;
 [Route("Tickets/Admin/Contacts")]
 public sealed class TicketsContactsAdminController(
     IAttendeeContactImportService import,
-    IUserServiceRead userService,
-    ILogger<TicketsContactsAdminController> logger) : HumansControllerBase(userService)
+    IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    private readonly ILogger<TicketsContactsAdminController> _logger = logger;
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {

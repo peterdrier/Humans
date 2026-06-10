@@ -60,7 +60,7 @@ public sealed class CachingCalendarServiceTests
         var detail = await sut.GetEventByIdAsync(info.Id);
 
         detail.Should().NotBeNull();
-        detail!.Id.Should().Be(info.Id);
+        detail.Id.Should().Be(info.Id);
         detail.Title.Should().Be("Cached event");
         await _inner.DidNotReceive().GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }

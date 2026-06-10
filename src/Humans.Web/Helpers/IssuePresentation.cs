@@ -16,8 +16,6 @@ public static class IssuePresentation
         IssueStatus.Open => "bg-primary text-white",
         IssueStatus.InProgress => "bg-info text-dark",
         IssueStatus.Resolved => "bg-success text-white",
-        IssueStatus.WontFix => "bg-secondary text-white",
-        IssueStatus.Duplicate => "bg-secondary text-white",
         _ => "bg-secondary text-white"
     };
 

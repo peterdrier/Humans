@@ -563,7 +563,7 @@ public sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync();
+            var (errorResult, _) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
             // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).

@@ -9,7 +9,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -43,8 +42,7 @@ public class ShiftUrgencyTests
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IShiftViewInvalidator>(),
-            new FakeClock(TestNow),
-            NullLogger<ShiftManagementService>.Instance);
+            new FakeClock(TestNow));
     }
 
     [HumansFact]
