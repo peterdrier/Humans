@@ -20,10 +20,16 @@ public interface IStoreService : IApplicationService
     // Orders (camp lead)
     Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default);
+    /// <summary>
+    /// <paramref name="bypassDeadline"/> mirrors the line-edit bypass: when false, past-deadline
+    /// products are filtered from the add-line catalog and past-deadline lines are excluded from
+    /// <see cref="StoreOrderPageData.RemovableLineIds"/>.
+    /// </summary>
     Task<StoreOrderPageData> GetOrderPageDataAsync(
         OrderDto order,
         bool canEdit,
         bool canPayAuthorized,
+        bool bypassDeadline = false,
         CancellationToken ct = default);
     Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default);
 
@@ -47,10 +53,16 @@ public interface IStoreService : IApplicationService
     /// Returns the team's order for the active event year, or null if none exists.
     /// </summary>
     Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default);
-    Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
-    Task<StoreMutationResult> AddLineWithResultAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
-    Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);
-    Task<StoreMutationResult> RemoveLineWithResultAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// <paramref name="bypassDeadline"/> skips the product's <c>OrderableUntil</c> check — the
+    /// controller sets it for Store admins. The Open-state requirement always applies: an
+    /// issued invoice is frozen for everyone.
+    /// </summary>
+    Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default);
+    Task<StoreMutationResult> AddLineWithResultAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default);
+    /// <inheritdoc cref="AddLineAsync"/>
+    Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default);
+    Task<StoreMutationResult> RemoveLineWithResultAsync(Guid orderId, Guid lineId, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default);
 
     // Counterparty (camp lead pre-issuance, FinanceAdmin always)
     Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default);

@@ -31,6 +31,12 @@ public sealed class StoreOrderViewModel
     /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
+    /// <summary>
+    /// Line ids whose Remove button renders. For non-admin editors this excludes lines whose
+    /// product order deadline has passed; Store admins may remove any line on an Open order.
+    /// </summary>
+    public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
+
     /// <summary>Price-change audit events for this order's items since it was created (#816).</summary>
     public IReadOnlyList<AuditLogEntrySnapshot> PriceChanges { get; init; } = [];
 
@@ -40,6 +46,7 @@ public sealed class StoreOrderViewModel
         Catalog = pageData.Catalog,
         CounterpartyDisplayName = pageData.CounterpartyDisplayName,
         CanEdit = pageData.CanEdit,
+        RemovableLineIds = pageData.RemovableLineIds,
         CanPay = pageData.CanPay,
         IsStripeConfigured = pageData.IsStripeConfigured,
         CanDelete = canDelete,

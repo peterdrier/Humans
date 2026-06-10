@@ -113,7 +113,7 @@
                         <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     }
                     <td class="text-end">
-                        @if (Model.CanEdit)
+                        @if (Model.CanEdit && Model.RemovableLineIds.Contains(line.Id))
                         {
                             <form asp-action="RemoveLine" asp-route-id="@order.Id" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()

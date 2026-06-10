@@ -123,16 +123,21 @@ public class StoreService(
         OrderDto order,
         bool canEdit,
         bool canPayAuthorized,
+        bool bypassDeadline = false,
         CancellationToken ct = default)
     {
         IReadOnlyList<ProductDto> catalog = [];
+        IReadOnlyCollection<Guid> removableLineIds = [];
         if (canEdit)
         {
             var activeEvent = await shifts.GetActiveAsync();
             var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
+            var today = await TodayInEventZoneAsync();
             catalog = (await GetActiveCatalogAsync(year, ct))
+                .Where(p => bypassDeadline || today <= p.OrderableUntil)
                 .OrderBy(p => p.Name, StringComparer.Ordinal)
                 .ToList();
+            removableLineIds = await ComputeRemovableLineIdsAsync(order, bypassDeadline, today, ct);
         }
 
         var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
@@ -142,9 +147,36 @@ public class StoreService(
             catalog,
             order.CounterpartyDisplayName,
             canEdit,
+            removableLineIds,
             canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured,
             priceChanges);
+    }
+
+    /// <summary>
+    /// Lines the viewer's Remove button should render for. Without the deadline bypass,
+    /// lines whose product's <see cref="StoreProduct.OrderableUntil"/> has passed are
+    /// excluded — RemoveLineAsync would reject them. A missing product stays removable;
+    /// the service-side check remains authoritative.
+    /// </summary>
+    private async Task<IReadOnlyCollection<Guid>> ComputeRemovableLineIdsAsync(
+        OrderDto order, bool bypassDeadline, LocalDate today, CancellationToken ct)
+    {
+        if (bypassDeadline)
+            return order.Lines.Select(l => l.Id).ToList();
+
+        var deadlines = new Dictionary<Guid, LocalDate>();
+        foreach (var productId in order.Lines.Select(l => l.ProductId).Distinct())
+        {
+            var product = await repo.GetProductByIdAsync(productId, ct);
+            if (product is not null)
+                deadlines[productId] = product.OrderableUntil;
+        }
+
+        return order.Lines
+            .Where(l => !deadlines.TryGetValue(l.ProductId, out var until) || today <= until)
+            .Select(l => l.Id)
+            .ToList();
     }
 
     /// <summary>
@@ -431,7 +463,7 @@ public class StoreService(
         return await MapOrderAsync(order, productNames, currentPrices, ct);
     }
 
-    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
+    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default)
     {
         if (qty <= 0)
             throw new ArgumentException("Qty must be positive", nameof(qty));
@@ -450,7 +482,8 @@ public class StoreService(
                 $"Product '{product.Name}' has been deactivated and is no longer orderable");
 
         var today = await TodayInEventZoneAsync();
-        if (today > product.OrderableUntil)
+        var deadlinePassed = today > product.OrderableUntil;
+        if (deadlinePassed && !bypassDeadline)
             throw new InvalidOperationException(
                 $"Product '{product.Name}' order deadline ({product.OrderableUntil}) has passed");
 
@@ -482,7 +515,8 @@ public class StoreService(
 
         await audit.LogAsync(
             AuditAction.StoreLineAdded, nameof(StoreOrderLine), line.Id,
-            $"Added {qty} × '{product.Name}' to order {order.Id}",
+            $"Added {qty} × '{product.Name}' to order {order.Id}"
+                + (deadlinePassed ? $" (admin override past deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, nameof(StoreOrder));
     }
 
@@ -491,11 +525,12 @@ public class StoreService(
         Guid productId,
         int qty,
         Guid actorUserId,
+        bool bypassDeadline = false,
         CancellationToken ct = default)
     {
         try
         {
-            await AddLineAsync(orderId, productId, qty, actorUserId, ct);
+            await AddLineAsync(orderId, productId, qty, actorUserId, bypassDeadline, ct);
             return StoreMutationResult.Success;
         }
         catch (ArgumentException ex)
@@ -510,7 +545,7 @@ public class StoreService(
         }
     }
 
-    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
+    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, bool bypassDeadline = false, CancellationToken ct = default)
     {
         var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct)
             ?? throw new InvalidOperationException($"Line {lineId} not found");
@@ -522,14 +557,16 @@ public class StoreService(
             throw new InvalidOperationException("Cannot remove lines from an issued order");
 
         var today = await TodayInEventZoneAsync();
-        if (today > ctx.ProductOrderableUntil)
+        var deadlinePassed = today > ctx.ProductOrderableUntil;
+        if (deadlinePassed && !bypassDeadline)
             throw new InvalidOperationException(
                 $"Line's product order deadline ({ctx.ProductOrderableUntil}) has passed");
 
         await repo.RemoveLineAsync(lineId, ct);
         await audit.LogAsync(
             AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
-            $"Removed line {lineId} from order {ctx.OrderId}",
+            $"Removed line {lineId} from order {ctx.OrderId}"
+                + (deadlinePassed ? $" (admin override past deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, nameof(StoreOrder));
     }
 
@@ -537,11 +574,12 @@ public class StoreService(
         Guid orderId,
         Guid lineId,
         Guid actorUserId,
+        bool bypassDeadline = false,
         CancellationToken ct = default)
     {
         try
         {
-            await RemoveLineAsync(orderId, lineId, actorUserId, ct);
+            await RemoveLineAsync(orderId, lineId, actorUserId, bypassDeadline, ct);
             return StoreMutationResult.Success;
         }
         catch (InvalidOperationException ex)

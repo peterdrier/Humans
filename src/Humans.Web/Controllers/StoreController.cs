@@ -76,7 +76,8 @@ public class StoreController(
         var canEdit = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
         var canPay = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded;
         var canDeleteAuth = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete)).Succeeded;
-        var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
+        var pageData = await storeService.GetOrderPageDataAsync(
+            order, canEdit, canPay, RoleChecks.CanAdministerStore(User), ct);
         return View(StoreOrderViewModel.FromPageData(pageData, canDeleteAuth && order.BalanceEur == 0m));
     }
 
@@ -200,7 +201,8 @@ public class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
+        var result = await storeService.AddLineWithResultAsync(
+            id, productId, qty, user.Id, RoleChecks.CanAdministerStore(User), ct);
         if (!result.Succeeded)
             SetError(result.ErrorMessage ?? "Could not add line.");
         else
@@ -222,7 +224,8 @@ public class StoreController(
         var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();
 
-        var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);
+        var result = await storeService.RemoveLineWithResultAsync(
+            id, lineId, user.Id, RoleChecks.CanAdministerStore(User), ct);
         if (!result.Succeeded)
             SetError(result.ErrorMessage ?? "Could not remove line.");
         else
