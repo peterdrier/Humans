@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -1567,6 +1568,7 @@ public sealed class GoogleWorkspaceSyncService(
         var events = await googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
         return events
             .Select(e => new GoogleSyncOutboxEventSnapshot(
+                e.Id,
                 e.EventType,
                 e.TeamId,
                 e.UserId,
@@ -1576,6 +1578,39 @@ public sealed class GoogleWorkspaceSyncService(
                 e.LastError,
                 e.FailedPermanently))
             .ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default)
+        => googleSyncOutboxRepository.RequeueAsync(id, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default)
+        => googleSyncOutboxRepository.RequeueAllFailedAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
+
+        var now = clock.GetCurrentInstant();
+        var events = teamsById.Values
+            .Where(t => t.Members.Any(m => m.UserId == userId))
+            .Select(t => new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = t.Id,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = $"admin-resync:{userId}:{t.Id}:{now.ToUnixTimeTicks()}"
+            })
+            .ToList();
+
+        if (events.Count > 0)
+            await googleSyncOutboxRepository.AddRangeAsync(events, cancellationToken);
+
+        return events.Count;
     }
 
     /// <summary>

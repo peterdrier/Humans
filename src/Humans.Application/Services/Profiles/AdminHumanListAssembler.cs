@@ -54,6 +54,9 @@ public static class AdminHumanListAssembler
             "deleting" or "deletepending" => u => StateOf(u) == UserState.DeletePending,
             "merged" => u => StateOf(u) == UserState.Merged,
             "deleted" => u => StateOf(u) == UserState.Deleted,
+            // nobodies-collective/Humans#847: filter humans whose Google email was rejected
+            // by the sync outbox processor (GoogleEmailStatus cached on UserInfo).
+            "googlerejected" => u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected,
             _ => null,
         };
 }

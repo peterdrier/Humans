@@ -118,4 +118,22 @@ public class StubGoogleSyncService(ILogger<StubGoogleSyncService> logger) : IGoo
         // Stub: no outbox in non-production environments.
         return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>([]);
     }
+
+    public Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("[STUB] Would requeue Google sync outbox event {Id}", id);
+        return Task.FromResult(false);
+    }
+
+    public Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("[STUB] Would requeue all permanently-failed Google sync outbox events");
+        return Task.FromResult(0);
+    }
+
+    public Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("[STUB] Would enqueue Google sync re-run for user {UserId}", userId);
+        return Task.FromResult(0);
+    }
 }

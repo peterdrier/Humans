@@ -6,6 +6,7 @@
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
     var resourceLookup = (Dictionary<Guid, List<string>>)ViewData["ResourceLookup"]!;
     var showError = (bool)ViewData["ShowError"]!;
+    var showRequeue = ViewData["ShowRequeue"] is bool sr && sr;
 }
 
 @if (Model.Count == 0)
@@ -57,6 +58,19 @@ else
             }
         </text>;
         builder = builder.Template("Last Error", errorCell);
+    }
+    if (showRequeue)
+    {
+        Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> requeueCell = @<text>
+            <form asp-action="RequeueOutboxEvent" asp-route-id="@item.Id" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-warning btn-sm"
+                        data-confirm="Requeue this event for retry?">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </form>
+        </text>;
+        builder = builder.Template("", requeueCell);
     }
     var table = builder.Build();
     <partial name="_Table" model="table" />
