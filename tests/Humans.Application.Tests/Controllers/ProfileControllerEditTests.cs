@@ -123,7 +123,8 @@ public class ProfileControllerEditTests
                 NullLogger<SignInManager<User>>.Instance,
                 Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>(),
                 Substitute.For<IUserConfirmation<User>>()),
-            Options.Create(new GoogleWorkspaceOptions()));
+            Options.Create(new GoogleWorkspaceOptions()),
+            Substitute.For<IAuditViewerService>());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())

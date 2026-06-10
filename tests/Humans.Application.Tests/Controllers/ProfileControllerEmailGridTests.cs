@@ -104,7 +104,8 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculatorRead>(),
             _signInManager,
-            Options.Create(new GoogleWorkspaceOptions()));
+            Options.Create(new GoogleWorkspaceOptions()),
+            Substitute.For<IAuditViewerService>());
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
