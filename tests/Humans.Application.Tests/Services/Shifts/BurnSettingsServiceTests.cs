@@ -24,7 +24,7 @@ public sealed class BurnSettingsServiceTests
         var entity = NewEventSettings(id);
         _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(entity);
 
-        var result = await _service.GetByIdAsync(id);
+        var result = await _service.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(id);
@@ -40,7 +40,7 @@ public sealed class BurnSettingsServiceTests
         _repo.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EventSettings?)null);
 
-        var result = await _service.GetByIdAsync(Guid.NewGuid());
+        var result = await _service.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -51,7 +51,7 @@ public sealed class BurnSettingsServiceTests
         var entity = NewEventSettings(Guid.NewGuid());
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
 
-        var result = await _service.GetActiveAsync();
+        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(entity.Id);
@@ -63,7 +63,7 @@ public sealed class BurnSettingsServiceTests
     {
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
 
-        var result = await _service.GetActiveAsync();
+        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -76,7 +76,7 @@ public sealed class BurnSettingsServiceTests
         entity.EarlyEntryCapacity[-5] = 12;
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
 
-        var result = await _service.GetActiveAsync();
+        var result = await _service.GetActiveAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.GetEarlyEntryCapacityForDay(-11).Should().Be(0);

@@ -85,9 +85,9 @@ public class GoogleWorkspaceSyncBridgeDependencyInjectionTests
         var b = new StubGoogleGroupMembershipClient(
             NullLogger<StubGoogleGroupMembershipClient>.Instance);
 
-        await a.CreateMembershipAsync("g", "alice@nobodies.team");
+        await a.CreateMembershipAsync("g", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
-        var bList = await b.ListMembershipsAsync("g");
+        var bList = await b.ListMembershipsAsync("g", Xunit.TestContext.Current.CancellationToken);
         bList.Memberships.Should().BeEmpty();
     }
 }

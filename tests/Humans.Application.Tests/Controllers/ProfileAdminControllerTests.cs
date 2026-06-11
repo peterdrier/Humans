@@ -93,7 +93,7 @@ public class ProfileAdminControllerTests
         _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
 
-        var result = await BuildController().EmailProblems(CancellationToken.None);
+        var result = await BuildController().EmailProblems(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<EmailProblemsListViewModel>();
@@ -106,7 +106,7 @@ public class ProfileAdminControllerTests
         var emailId = Guid.NewGuid();
         _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await BuildController().DeleteOrphanEmail(emailId, CancellationToken.None);
+        var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
             AuditAction.OrphanUserEmailDeleted,
@@ -122,7 +122,7 @@ public class ProfileAdminControllerTests
         var emailId = Guid.NewGuid();
         _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await BuildController().DeleteOrphanEmail(emailId, CancellationToken.None);
+        var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -138,7 +138,7 @@ public class ProfileAdminControllerTests
         _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)> { (u1, "a@x.com"), (u2, "b@x.com") });
 
-        var result = await BuildController().BackfillLegacyEmails(CancellationToken.None);
+        var result = await BuildController().BackfillLegacyEmails(Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
             AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
@@ -158,7 +158,7 @@ public class ProfileAdminControllerTests
         _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)>());
 
-        var result = await BuildController().BackfillLegacyEmails(CancellationToken.None);
+        var result = await BuildController().BackfillLegacyEmails(Xunit.TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),

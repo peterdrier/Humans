@@ -41,7 +41,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
         await AddSignupAsync(shift, cancelled, SignupStatus.Cancelled);
         await AddSignupAsync(shift, noShow, SignupStatus.NoShow);
 
-        var result = await _repo.GetActiveCommittedUserIdsForEventAsync(es.Id, CancellationToken.None);
+        var result = await _repo.GetActiveCommittedUserIdsForEventAsync(es.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo([pending, confirmed]);
     }
@@ -57,7 +57,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
         await AddSignupAsync(shiftA, userA, SignupStatus.Confirmed);
         await AddSignupAsync(shiftB, userB, SignupStatus.Confirmed);
 
-        var resultA = await _repo.GetActiveCommittedUserIdsForEventAsync(esA.Id, CancellationToken.None);
+        var resultA = await _repo.GetActiveCommittedUserIdsForEventAsync(esA.Id, Xunit.TestContext.Current.CancellationToken);
 
         resultA.Should().BeEquivalentTo([userA]);
         resultA.Should().NotContain(userB);
@@ -72,7 +72,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
         await AddSignupAsync(shift, userA, SignupStatus.Pending);
         await AddSignupAsync(shift, userA, SignupStatus.Confirmed);
 
-        var result = await _repo.GetActiveCommittedUserIdsForEventAsync(es.Id, CancellationToken.None);
+        var result = await _repo.GetActiveCommittedUserIdsForEventAsync(es.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle().Which.Should().Be(userA);
     }
@@ -136,7 +136,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             Rota = rota,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift);
     }
 
@@ -151,6 +151,6 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

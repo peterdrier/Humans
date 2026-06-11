@@ -44,7 +44,7 @@ public class FileSystemFileStorageTests : IDisposable
     {
         var payload = new byte[] { 1, 2, 3, 4, 5 };
 
-        await _store.SaveAsync("uploads/camps/abc/file.jpg", payload);
+        await _store.SaveAsync("uploads/camps/abc/file.jpg", payload, Xunit.TestContext.Current.CancellationToken);
 
         var fullPath = Path.Combine(_wwwroot, "uploads", "camps", "abc", "file.jpg");
         File.Exists(fullPath).Should().BeTrue();
@@ -57,7 +57,7 @@ public class FileSystemFileStorageTests : IDisposable
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "camps", "deep", "nested"))
             .Should().BeFalse();
 
-        await _store.SaveAsync("uploads/camps/deep/nested/file.png", [1]);
+        await _store.SaveAsync("uploads/camps/deep/nested/file.png", [1], Xunit.TestContext.Current.CancellationToken);
 
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "camps", "deep", "nested"))
             .Should().BeTrue();
@@ -66,17 +66,17 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_OverwriteReplacesExistingFile()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [1, 1, 1]);
-        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [9, 9, 9, 9]);
+        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [1, 1, 1], Xunit.TestContext.Current.CancellationToken);
+        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [9, 9, 9, 9], Xunit.TestContext.Current.CancellationToken);
 
-        var bytes = await _store.TryReadAsync("uploads/profile-pictures/p1.jpg");
+        var bytes = await _store.TryReadAsync("uploads/profile-pictures/p1.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeEquivalentTo(new byte[] { 9, 9, 9, 9 });
     }
 
     [HumansFact]
     public async Task SaveAsync_LeavesNoTempFilesAfterSuccess()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p2.jpg", [1]);
+        await _store.SaveAsync("uploads/profile-pictures/p2.jpg", [1], Xunit.TestContext.Current.CancellationToken);
 
         var dir = new DirectoryInfo(Path.Combine(_wwwroot, "uploads", "profile-pictures"));
         dir.GetFiles("*.tmp").Should().BeEmpty(
@@ -86,7 +86,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task TryReadAsync_MissingFile_ReturnsNull()
     {
-        var bytes = await _store.TryReadAsync("uploads/profile-pictures/does-not-exist.jpg");
+        var bytes = await _store.TryReadAsync("uploads/profile-pictures/does-not-exist.jpg", Xunit.TestContext.Current.CancellationToken);
 
         bytes.Should().BeNull();
     }
@@ -95,17 +95,17 @@ public class FileSystemFileStorageTests : IDisposable
     public async Task DeleteAsync_MissingFile_IsNoOp()
     {
         // Should not throw.
-        await _store.DeleteAsync("uploads/profile-pictures/does-not-exist.jpg");
+        await _store.DeleteAsync("uploads/profile-pictures/does-not-exist.jpg", Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
     public async Task DeleteAsync_RemovesFile()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p3.jpg", [1]);
+        await _store.SaveAsync("uploads/profile-pictures/p3.jpg", [1], Xunit.TestContext.Current.CancellationToken);
 
-        await _store.DeleteAsync("uploads/profile-pictures/p3.jpg");
+        await _store.DeleteAsync("uploads/profile-pictures/p3.jpg", Xunit.TestContext.Current.CancellationToken);
 
-        var bytes = await _store.TryReadAsync("uploads/profile-pictures/p3.jpg");
+        var bytes = await _store.TryReadAsync("uploads/profile-pictures/p3.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeNull();
     }
 
@@ -113,7 +113,7 @@ public class FileSystemFileStorageTests : IDisposable
     public async Task SaveAsync_RejectsParentDirectorySegment()
     {
         var act = async () =>
-            await _store.SaveAsync("uploads/../etc/passwd", [1]);
+            await _store.SaveAsync("uploads/../etc/passwd", [1], Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>(
             because: "path-traversal segments must be rejected to prevent writes outside wwwroot");
@@ -122,7 +122,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task TryReadAsync_RejectsParentDirectorySegment()
     {
-        var act = async () => await _store.TryReadAsync("../secret");
+        var act = async () => await _store.TryReadAsync("../secret", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
@@ -132,7 +132,7 @@ public class FileSystemFileStorageTests : IDisposable
     {
         // Use a runtime-constructed rooted path so this works on Linux + Windows.
         var rootedKey = Path.IsPathRooted("/abs/path") ? "/abs/path" : Path.Combine("C:", "abs");
-        var act = async () => await _store.SaveAsync(rootedKey, [1]);
+        var act = async () => await _store.SaveAsync(rootedKey, [1], Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>(
             because: "rooted paths could escape wwwroot");
@@ -141,7 +141,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_RejectsEmptyKey()
     {
-        var act = async () => await _store.SaveAsync("", [1]);
+        var act = async () => await _store.SaveAsync("", [1], Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
@@ -149,9 +149,9 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_AcceptsForwardOrBackslashSeparators()
     {
-        await _store.SaveAsync("uploads/camps/x/a.jpg", [1]);
+        await _store.SaveAsync("uploads/camps/x/a.jpg", [1], Xunit.TestContext.Current.CancellationToken);
 
-        var bytes = await _store.TryReadAsync("uploads/camps/x/a.jpg");
+        var bytes = await _store.TryReadAsync("uploads/camps/x/a.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeEquivalentTo(new byte[] { 1 });
     }
 }

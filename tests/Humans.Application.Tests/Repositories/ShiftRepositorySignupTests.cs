@@ -50,10 +50,10 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(userId, active, SignupStatus.Confirmed));
         _dbContext.ShiftSignups.Add(MakeSignup(userId, bailed, SignupStatus.Bailed));
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), otherUserShift, SignupStatus.Confirmed));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetActiveShiftIdsForUserAsync(
-            userId, [active, bailed, otherUserShift]);
+            userId, [active, bailed, otherUserShift], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo([active]);
     }
@@ -68,9 +68,9 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Confirmed));
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Pending));
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftB, SignupStatus.Cancelled));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([shiftA, shiftB]);
+        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([shiftA, shiftB], Xunit.TestContext.Current.CancellationToken);
 
         counts[shiftA].Should().Be(2);
         counts.ContainsKey(shiftB).Should().BeFalse();
@@ -79,7 +79,7 @@ public class ShiftRepositorySignupTests : IDisposable
     [HumansFact]
     public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInputReturnsEmpty()
     {
-        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([]);
+        var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([], Xunit.TestContext.Current.CancellationToken);
         counts.Should().BeEmpty();
     }
 
@@ -90,9 +90,9 @@ public class ShiftRepositorySignupTests : IDisposable
         var shiftId = Guid.NewGuid();
 
         _repo.AddRange([MakeSignup(userId, shiftId, SignupStatus.Pending)]);
-        await _repo.SaveChangesAsync();
+        await _repo.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _dbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId))
+        (await _dbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
     }
 
@@ -121,14 +121,14 @@ public class ShiftRepositorySignupTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(user2, shiftOtherEs, SignupStatus.Confirmed));
         // Non-confirmed → excluded.
         _dbContext.ShiftSignups.Add(MakeSignup(pendingUser, shiftDayMinus3A, SignupStatus.Pending));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var confirmed = await _repo.GetUserIdsForDayAsync(
-            esId, -3, ShiftDayUserStatusScope.ConfirmedOnly);
+            esId, -3, ShiftDayUserStatusScope.ConfirmedOnly, Xunit.TestContext.Current.CancellationToken);
         confirmed.Should().BeEquivalentTo([user1, user2]);
 
         var pendingOrConfirmed = await _repo.GetUserIdsForDayAsync(
-            esId, -3, ShiftDayUserStatusScope.PendingOrConfirmed);
+            esId, -3, ShiftDayUserStatusScope.PendingOrConfirmed, Xunit.TestContext.Current.CancellationToken);
         pendingOrConfirmed.Should().BeEquivalentTo([user1, user2, pendingUser]);
     }
 

@@ -39,7 +39,7 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        var counts = await service.GetActiveCountsByRoleAsync();
+        var counts = await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         counts.Should().BeEquivalentTo(new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -67,7 +67,7 @@ public class CachingRoleAssignmentServiceTests
             });
 
         var service = BuildService(repository, clock);
-        var counts = await service.GetActiveCountsByRoleAsync();
+        var counts = await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         counts["Board"].Should().Be(1);
     }
@@ -83,9 +83,9 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        await service.GetActiveCountsByRoleAsync();
-        await service.GetActiveCountsByRoleAsync();
-        await service.GetActiveCountsByRoleAsync();
+        await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
+        await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
+        await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         await repository.Received(1).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
     }
@@ -101,9 +101,9 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        await service.GetActiveCountsByRoleAsync();
+        await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
         service.InvalidateAll();
-        await service.GetActiveCountsByRoleAsync();
+        await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         await repository.Received(2).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
     }
@@ -133,10 +133,10 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        (await service.GetActiveCountsByRoleAsync())["Board"].Should().Be(1);
+        (await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken))["Board"].Should().Be(1);
 
         clock.Reset(expiresAt + Duration.FromMinutes(1));
-        var afterExpiry = await service.GetActiveCountsByRoleAsync();
+        var afterExpiry = await service.GetActiveCountsByRoleAsync(Xunit.TestContext.Current.CancellationToken);
 
         afterExpiry.Should().NotContainKey("Board");
     }
@@ -160,7 +160,7 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        var roles = await service.GetActiveForUserAsync(userA);
+        var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
         roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
     }
@@ -177,8 +177,8 @@ public class CachingRoleAssignmentServiceTests
 
         var service = BuildService(repository, clock);
 
-        await service.GetActiveForUserAsync(userId);
-        await service.GetActiveForUserAsync(userId);
+        await service.GetActiveForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await service.GetActiveForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await repository.Received(1).GetAllRowsForCacheAsync(Arg.Any<CancellationToken>());
     }

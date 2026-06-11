@@ -160,9 +160,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
                     CreatedAt: TestNow,
                     Members: [])
             });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         var item = items[0];
@@ -184,9 +184,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Pending);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         items[0].Summary.Should().Be("Test Rota (pending)");
@@ -202,9 +202,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         SeedSignup(shift, userId, status);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().BeEmpty();
     }
@@ -212,7 +212,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
     [HumansFact]
     public async Task GetCalendarItems_NoSignups_ReturnsEmpty()
     {
-        var items = await _service.GetCalendarItemsForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         items.Should().BeEmpty();
     }
@@ -227,9 +227,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         items[0].Description.Should().BeNull();
@@ -244,9 +244,9 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var items = await _service.GetCalendarItemsForUserAsync(userId, CancellationToken.None);
+        var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         // All-day window is 08:00–18:00 Europe/Madrid (Shift.AllDayWindowStart/End);

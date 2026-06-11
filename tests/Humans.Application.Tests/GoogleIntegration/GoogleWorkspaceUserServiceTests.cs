@@ -36,7 +36,7 @@ public class GoogleWorkspaceUserServiceTests
         ];
         _client.ListAccountsAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
-        var result = await _service.ListAccountsAsync();
+        var result = await _service.ListAccountsAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(expected);
     }
@@ -47,7 +47,7 @@ public class GoogleWorkspaceUserServiceTests
         _client.GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>())
             .Returns((WorkspaceUserAccount?)null);
 
-        var result = await _service.GetAccountAsync("missing@nobodies.team");
+        var result = await _service.GetAccountAsync("missing@nobodies.team", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
         await _client.Received(1).GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>());
@@ -64,7 +64,7 @@ public class GoogleWorkspaceUserServiceTests
             .Returns(expected);
 
         var result = await _service.ProvisionAccountAsync(
-            "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com");
+            "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com", TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(expected);
         await _client.Received(1).ProvisionAccountAsync(
@@ -79,18 +79,18 @@ public class GoogleWorkspaceUserServiceTests
     public async Task ProvisionAccountAsync_ThrowsWhenLastNameBlank(string? lastName)
     {
         var act = () => _service.ProvisionAccountAsync(
-            "new@nobodies.team", "First", lastName!, "pw");
+            "new@nobodies.team", "First", lastName!, "pw", ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*FamilyName is required*");
         await _client.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(
-            null!, null!, null!, null!, null, CancellationToken.None);
+            null!, null!, null!, null!, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task SuspendAccountAsync_DelegatesToClient()
     {
-        await _service.SuspendAccountAsync("target@nobodies.team");
+        await _service.SuspendAccountAsync("target@nobodies.team", TestContext.Current.CancellationToken);
 
         await _client.Received(1).SuspendAccountAsync(
             "target@nobodies.team", Arg.Any<CancellationToken>());
@@ -99,7 +99,7 @@ public class GoogleWorkspaceUserServiceTests
     [HumansFact]
     public async Task ReactivateAccountAsync_DelegatesToClient()
     {
-        await _service.ReactivateAccountAsync("target@nobodies.team");
+        await _service.ReactivateAccountAsync("target@nobodies.team", TestContext.Current.CancellationToken);
 
         await _client.Received(1).ReactivateAccountAsync(
             "target@nobodies.team", Arg.Any<CancellationToken>());
@@ -108,7 +108,7 @@ public class GoogleWorkspaceUserServiceTests
     [HumansFact]
     public async Task ResetPasswordAsync_DelegatesToClient()
     {
-        await _service.ResetPasswordAsync("target@nobodies.team", "NewP@ss");
+        await _service.ResetPasswordAsync("target@nobodies.team", "NewP@ss", TestContext.Current.CancellationToken);
 
         await _client.Received(1).ResetPasswordAsync(
             "target@nobodies.team", "NewP@ss", Arg.Any<CancellationToken>());

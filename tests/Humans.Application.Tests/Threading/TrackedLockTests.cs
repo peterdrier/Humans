@@ -18,7 +18,7 @@ public class TrackedLockTests
     {
         var sut = new TrackedLock("test");
 
-        using (var releaser = await sut.AcquireAsync(NullLogger.Instance))
+        using (var releaser = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken))
         {
             // Inside the lock — no exception means it was acquired.
         }
@@ -27,7 +27,7 @@ public class TrackedLockTests
         var act = async () =>
         {
             using var r = await sut.AcquireAsync(NullLogger.Instance,
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         };
         await act.Should().NotThrowAsync("lock should be available again after the first release");
     }
@@ -41,14 +41,14 @@ public class TrackedLockTests
     {
         var sut = new TrackedLock("test");
 
-        var releaser = await sut.AcquireAsync(NullLogger.Instance);
+        var releaser = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
         releaser.Dispose();
 
         var act = () => { releaser.Dispose(); };
         act.Should().NotThrow("second dispose must be silently ignored");
 
         // Lock should be acquirable exactly once after a single release.
-        using var r2 = await sut.AcquireAsync(NullLogger.Instance);
+        using var r2 = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
     }
 
     // =========================================================================
@@ -69,12 +69,12 @@ public class TrackedLockTests
         {
             for (var i = 0; i < 25; i++)
             {
-                using var r = await sut.AcquireAsync(NullLogger.Instance);
+                using var r = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
                 if (Interlocked.Increment(ref insideLock) > 1) violation = true;
                 await Task.Yield();
                 Interlocked.Decrement(ref insideLock);
             }
-        })).ToArray();
+        }, TestContext.Current.CancellationToken)).ToArray();
 
         await Task.WhenAll(tasks);
         violation.Should().BeFalse("two acquirers must never be inside the lock simultaneously");
@@ -122,15 +122,15 @@ public class TrackedLockTests
         var logger = Substitute.For<ILogger>();
 
         // Acquire first to force contention.
-        var first = await sut.AcquireAsync(NullLogger.Instance);
+        var first = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
         var secondTask = Task.Run(async () =>
         {
             // Small delay ensures the waiter spends > 1ms waiting.
-            using var r = await sut.AcquireAsync(logger);
-        });
+            using var r = await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
+        }, TestContext.Current.CancellationToken);
 
-        await Task.Delay(10);
+        await Task.Delay(10, TestContext.Current.CancellationToken);
         first.Dispose();
         await secondTask;
 
@@ -156,9 +156,9 @@ public class TrackedLockTests
         var logger = NullLogger.Instance;
 
         // Hold the lock indefinitely.
-        var holder = await sut.AcquireAsync(logger);
+        var holder = await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
 
-        var act = async () => await sut.AcquireAsync(logger);
+        var act = async () => await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
 
         var ex = await act.Should().ThrowAsync<TimeoutException>();
         ex.WithMessage($"*{lockName}*");
@@ -177,7 +177,7 @@ public class TrackedLockTests
             timeout: TimeSpan.FromSeconds(10));
 
         // Hold the lock so the second acquire has to wait.
-        var holder = await sut.AcquireAsync(NullLogger.Instance);
+        var holder = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromMilliseconds(50));

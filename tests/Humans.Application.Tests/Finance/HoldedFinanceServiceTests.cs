@@ -64,7 +64,7 @@ public class HoldedFinanceServiceTests
             ]));
 
         // Map already contains an active row for catA; catB has no map entry.
-        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
             new List<HoldedCategoryMap>
             {
                 new()
@@ -77,7 +77,7 @@ public class HoldedFinanceServiceTests
             });
 
         var svc = MakeService();
-        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010);
+        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
 
         var mapped = plan.Rows.Where(r => string.Equals(r.State, "Mapped", StringComparison.Ordinal)).ToList();
         var toAdd = plan.Rows.Where(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal)).ToList();
@@ -122,17 +122,17 @@ public class HoldedFinanceServiceTests
             ]));
 
         // Local map is empty …
-        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
         // … but Holded already has an account at the first block number.
-        _client.ListExpenseAccountsAsync().ReturnsForAnyArgs(
+        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
             new List<HoldedExpenseAccountDto>
             {
                 new() { Id = "acc-x", AccountNum = 6290010, Name = "Existing" },
             });
 
         var svc = MakeService();
-        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010);
+        var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: Xunit.TestContext.Current.CancellationToken);
 
         var toAdd = plan.Rows.Single(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal));
         toAdd.ProposedAccountNum.Should().Be(6290011); // 6290010 is taken in Holded → skipped
@@ -146,7 +146,7 @@ public class HoldedFinanceServiceTests
         var catId = Guid.NewGuid();
 
         // One active map entry: account "acc-1", tag "comms".
-        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
             new List<HoldedCategoryMap>
             {
                 new()
@@ -158,7 +158,7 @@ public class HoldedFinanceServiceTests
                 }
             });
 
-        _repo.GetSyncStateAsync().ReturnsForAnyArgs(new HoldedSyncState
+        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedSyncState
         {
             Id = 1,
             SyncStatus = HoldedSyncStatus.Idle
@@ -192,7 +192,7 @@ public class HoldedFinanceServiceTests
             },
         };
 
-        _client.ListPurchaseDocumentsPageAsync(1, 100)
+        _client.ListPurchaseDocumentsPageAsync(1, 100, Arg.Any<CancellationToken>())
             .ReturnsForAnyArgs(ci =>
                 (int)ci[0] == 1 ? (IReadOnlyList<HoldedPurchaseDocListItemDto>)page1 : []);
 
@@ -203,7 +203,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
 
         var svc = MakeService();
-        var result = await svc.SyncAsync();
+        var result = await svc.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.DocCount.Should().Be(3);
         result.Matched.Should().Be(2);
@@ -231,9 +231,9 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task Sync_sets_error_state_on_exception()
     {
-        _repo.GetCategoryMapAsync().ReturnsForAnyArgs(new List<HoldedCategoryMap>());
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
-        _repo.GetSyncStateAsync().ReturnsForAnyArgs(new HoldedSyncState
+        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedSyncState
         {
             Id = 1,
             SyncStatus = HoldedSyncStatus.Idle
@@ -248,7 +248,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
 
         var svc = MakeService();
-        var act = () => svc.SyncAsync();
+        var act = () => svc.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
 
@@ -263,13 +263,13 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task SyncCreditorData_caches_only_400000xx_balances_and_all_payments()
     {
-        _client.ListChartOfAccountsAsync().ReturnsForAnyArgs(new List<HoldedChartAccountDto>
+        _client.ListChartOfAccountsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedChartAccountDto>
         {
             new() { Num = 40000001, Name = "Daniela", Balance = -3180m },
             new() { Num = 40000004, Name = "Peter",   Balance = -23m },
             new() { Num = 62900000, Name = "Otros",   Balance = 12m },  // not a creditor acct
         });
-        _client.ListPaymentsAsync().ReturnsForAnyArgs(new List<HoldedPaymentDto>
+        _client.ListPaymentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPaymentDto>
         {
             new() { Id = "p1", ContactId = "c1", Amount = 50m, Date = FixedNow, DocumentType = "purchase" },
         });
@@ -281,7 +281,7 @@ public class HoldedFinanceServiceTests
         await _repo.UpsertPaymentsAsync(
             Arg.Do<IReadOnlyList<HoldedPayment>>(p => payments = p), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await MakeService().SyncCreditorDataAsync();
+        await MakeService().SyncCreditorDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         balances.Should().NotBeNull();
         balances!.Select(b => b.SupplierAccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000004 });
@@ -291,15 +291,15 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_computes_owed_and_paid()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001).ReturnsForAnyArgs(
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
             new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -3180m });
-        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1) },
             new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1");
+        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1", Xunit.TestContext.Current.CancellationToken);
 
         status.Should().NotBeNull();
         status.OwedToMember.Should().Be(3180m);
@@ -310,10 +310,10 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_returns_null_when_nothing_cached()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync(default!).ReturnsForAnyArgs(new List<HoldedPayment>());
+        _repo.GetCreditorBalanceByAccountNumAsync(default, Arg.Any<CancellationToken>()).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync(default!, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>());
 
-        var status = await MakeService().GetCreditorStatusAsync(40000099, "c-unknown");
+        var status = await MakeService().GetCreditorStatusAsync(40000099, "c-unknown", Xunit.TestContext.Current.CancellationToken);
 
         status.Should().BeNull();
     }
@@ -323,13 +323,13 @@ public class HoldedFinanceServiceTests
     {
         // Payments cached but the 400000xx balance row is missing (cache gap / unresolved account).
         // Balance must stay null (unknown) — NOT coerced to 0 — so polling never falsely marks Paid.
-        _repo.GetCreditorBalanceByAccountNumAsync(default).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetCreditorBalanceByAccountNumAsync(default, Arg.Any<CancellationToken>()).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
+        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 60m, Date = new LocalDate(2026, 4, 1) },
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000007, "c1");
+        var status = await MakeService().GetCreditorStatusAsync(40000007, "c1", Xunit.TestContext.Current.CancellationToken);
 
         status.Should().NotBeNull();
         status.Balance.Should().BeNull();
@@ -340,15 +340,15 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_surfaces_individual_payment_rows()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001).ReturnsForAnyArgs(
+        _repo.GetCreditorBalanceByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
             new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -100m });
-        _repo.GetPaymentsByContactAsync("c1").ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
         {
             new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1), DocumentType = "purchase" },
             new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1");
+        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1", Xunit.TestContext.Current.CancellationToken);
 
         status!.Payments.Should().NotBeNull();
         status.Payments!.Should().HaveCount(2);

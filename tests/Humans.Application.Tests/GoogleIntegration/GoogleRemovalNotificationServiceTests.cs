@@ -47,7 +47,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             "Some Group",
             "some-group@nobodies.team",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -89,7 +89,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             "Some Group",
             "some-group@nobodies.team",
-            SyncRemovalReason.EmailRotation);
+            SyncRemovalReason.EmailRotation, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             "old@nobodies.team",
@@ -128,7 +128,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             "My Group",
             "my-group@nobodies.team",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             "old@nobodies.team",
@@ -168,7 +168,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             "Comms Team",
             "comms@nobodies.team",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
             "primary@nobodies.team",
@@ -204,7 +204,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.DriveFolder,
             "Public Resources",
             "https://drive.google.com/drive/folders/abc",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleDriveRemovalLossOfAccess(
             "only@nobodies.team",
@@ -239,7 +239,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             resourceName: null,
             resourceIdentifier: "fallback@nobodies.team",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleGroupRemovalLossOfAccess(
             "dee@nobodies.team",
@@ -257,7 +257,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             GoogleResourceType.Group,
             "G",
             "g@nobodies.team",
-            SyncRemovalReason.Reconciliation);
+            SyncRemovalReason.Reconciliation, Xunit.TestContext.Current.CancellationToken);
 
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .GetUserIdByVerifiedEmailAsync(null!, Arg.Any<CancellationToken>());

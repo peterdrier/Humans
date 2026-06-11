@@ -24,7 +24,7 @@ public class OnsiteRosterServiceTests
     public async Task GetRosterAsync_YearZero_ReturnsEmpty()
     {
         var service = NewService();
-        var result = await service.GetRosterAsync(0, null, null, null);
+        var result = await service.GetRosterAsync(0, null, null, null, Xunit.TestContext.Current.CancellationToken);
         result.Rows.Should().BeEmpty();
         await _users.DidNotReceive().GetOnsiteUsersAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
@@ -36,7 +36,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<OnsiteUserRow>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null);
+        var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Rows.Should().BeEmpty();
         await _camps.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
@@ -66,7 +66,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null);
+        var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Rows.Should().HaveCount(2);
         result.Rows.Single(r => r.UserId == aliceId).RoleNames.Should().Contain("Board");
@@ -97,7 +97,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, "Board");
+        var result = await service.GetRosterAsync(2026, null, null, "Board", Xunit.TestContext.Current.CancellationToken);
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].UserId.Should().Be(aliceId);
@@ -128,7 +128,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null);
+        var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].UserId.Should().Be(liveId);
@@ -172,7 +172,7 @@ public class OnsiteRosterServiceTests
             .Returns(new List<RoleAssignmentSnapshot>());
 
         var service = NewService();
-        var result = await service.GetRosterAsync(2026, null, null, null);
+        var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Rows.Should().ContainSingle();
         result.Rows[0].CampNames.Should().Equal("Thunderdome 2026");

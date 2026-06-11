@@ -29,7 +29,7 @@ public class EarlyEntryServiceTests
             ProviderReturning(shiftGrant),
         });
 
-        var roster = await sut.GetRosterAsync(CancellationToken.None);
+        var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
 
         roster.Should().ContainSingle();
         var row = roster[0];
@@ -49,7 +49,7 @@ public class EarlyEntryServiceTests
 
         var sut = new EarlyEntryService(new[] { ProviderReturning(grant) });
 
-        var roster = await sut.GetRosterAsync(CancellationToken.None);
+        var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
 
         roster.Should().ContainSingle();
         roster[0].HasMultiple.Should().BeFalse();
@@ -68,12 +68,12 @@ public class EarlyEntryServiceTests
             ProviderReturning(shiftGrant),
         });
 
-        var found = await sut.GetForUserAsync(userId, CancellationToken.None);
+        var found = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         found.Should().NotBeNull();
         found.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
         found.Sources.Should().HaveCount(2);
 
-        var notFound = await sut.GetForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var notFound = await sut.GetForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         notFound.Should().BeNull();
     }
 }

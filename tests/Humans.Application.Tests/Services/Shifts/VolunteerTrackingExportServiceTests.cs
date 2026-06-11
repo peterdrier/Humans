@@ -97,7 +97,7 @@ public sealed class VolunteerTrackingExportServiceTests
         var (repo, shiftMgmt, users) = BuildMocks(shifts: Array.Empty<ConfirmedShiftRow>());
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().BeEmpty();
         model.TotalsPerDay.Should().AllBeEquivalentTo(0);
@@ -126,7 +126,7 @@ public sealed class VolunteerTrackingExportServiceTests
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
         var group = model.Groups[0];
@@ -170,7 +170,7 @@ public sealed class VolunteerTrackingExportServiceTests
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         var cells = model.Groups[0].Humans[0].Cells;
         cells[2].Kind.Should().Be(CellKind.Worked); // Day3
@@ -201,7 +201,7 @@ public sealed class VolunteerTrackingExportServiceTests
         users.GetUserInfoAsync(Bob, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Bob, "Bob"));
 
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
-        var model = await sut.BuildAsync(BuildRequest(departmentId: TeamA), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(departmentId: TeamA), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
         var cells = model.Groups[0].Humans[0].Cells;
@@ -225,7 +225,7 @@ public sealed class VolunteerTrackingExportServiceTests
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         var cells = model.Groups[0].Humans[0].Cells;
         cells.Should().NotContain(c => c.Kind == CellKind.Arrival);
@@ -248,7 +248,7 @@ public sealed class VolunteerTrackingExportServiceTests
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         var cellsDay3 = model.Groups.SelectMany(g => g.Humans).First().Cells[2];
         cellsDay3.Kind.Should().Be(CellKind.Worked);
@@ -267,7 +267,7 @@ public sealed class VolunteerTrackingExportServiceTests
             playaNames: new Dictionary<Guid, string> { [Alice] = "Alice" });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
         // The service does not call any status filter on the rows it receives.
@@ -304,7 +304,7 @@ public sealed class VolunteerTrackingExportServiceTests
             });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(2);
         model.Groups[0].TeamName.Should().Be("TeamA");  // tie → alpha
@@ -335,7 +335,7 @@ public sealed class VolunteerTrackingExportServiceTests
             });
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, users);
 
-        var model = await sut.BuildAsync(BuildRequest(), ct: default);
+        var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
         model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Zara", "Alice");

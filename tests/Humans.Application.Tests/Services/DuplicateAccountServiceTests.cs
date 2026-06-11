@@ -67,7 +67,7 @@ public sealed class DuplicateAccountServiceTests
             // User.Email column lingers — UserInfo.Email falls back to it. Must NOT re-collide.
             MakeInfo(tombstone, identityEmailColumn: "john@foo.com", mergedAt: Now, mergedToUserId: survivor));
 
-        var groups = await Sut.DetectDuplicatesAsync();
+        var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
         groups.Should().BeEmpty("a merge tombstone must not re-collide with its own survivor");
     }
@@ -81,7 +81,7 @@ public sealed class DuplicateAccountServiceTests
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
 
-        var groups = await Sut.DetectDuplicatesAsync();
+        var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
         groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate");
     }

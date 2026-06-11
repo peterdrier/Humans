@@ -100,8 +100,8 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
             7,
             "privacy/");
 
-        var document = await _service.CreateLegalDocumentAsync(request);
-        var documents = await _service.GetLegalDocumentsAsync(_team.Id);
+        var document = await _service.CreateLegalDocumentAsync(request, Xunit.TestContext.Current.CancellationToken);
+        var documents = await _service.GetLegalDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
 
         document.Name.Should().Be("Privacy Policy");
         documents.Should().ContainSingle();
@@ -121,7 +121,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
             7,
             "privacy/");
 
-        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request);
+        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request, Xunit.TestContext.Current.CancellationToken);
 
         result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
         result.SyncMessage.Should().Be("updated 1 file");
@@ -139,7 +139,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
             7,
             null);
 
-        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request);
+        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request, Xunit.TestContext.Current.CancellationToken);
 
         result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
         _syncService.LastSyncedDocumentId.Should().BeNull();
@@ -160,9 +160,9 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
             EffectiveFrom = Clock.GetCurrentInstant(),
             CreatedAt = Clock.GetCurrentInstant()
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await _service.UpdateVersionSummaryAsync(document.Id, versionId, "  Clarified scope  ");
+        var updated = await _service.UpdateVersionSummaryAsync(document.Id, versionId, "  Clarified scope  ", Xunit.TestContext.Current.CancellationToken);
 
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
@@ -170,7 +170,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
         await using var verifyCtx = DbFactory.CreateDbContext();
         var version = await verifyCtx.DocumentVersions
             .AsNoTracking()
-            .FirstOrDefaultAsync(v => v.Id == versionId);
+            .FirstOrDefaultAsync(v => v.Id == versionId, Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().BeTrue();
         version.Should().NotBeNull();
@@ -183,7 +183,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
         var document = await SeedDocumentAsync("Privacy");
         _syncService.SyncResult = "updated 1 file";
 
-        var result = await _service.SyncLegalDocumentAsync(document.Id);
+        var result = await _service.SyncLegalDocumentAsync(document.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be("updated 1 file");
         _syncService.LastSyncedDocumentId.Should().Be(document.Id);
@@ -206,7 +206,7 @@ public sealed class AdminLegalDocumentServiceTests : ServiceTestHarness
         };
 
         Db.LegalDocuments.Add(document);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return document;
     }
 

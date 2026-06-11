@@ -66,9 +66,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SendAsync_CreatesOutboxRowWithCorrectFields()
     {
-        await _service.SendAsync(Message(subject: "Access Suspended", html: "<p>Hello Alice</p>"));
+        await _service.SendAsync(Message(subject: "Access Suspended", html: "<p>Hello Alice</p>"), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.RecipientEmail.Should().Be("alice@example.com");
         msg.RecipientName.Should().Be("Alice");
         msg.Subject.Should().Be("Access Suspended");
@@ -82,21 +82,21 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SendAsync_RecordsEmailQueuedMetricKeyedOnTemplate()
     {
-        await _service.SendAsync(Message(template: "access_suspended"));
+        await _service.SendAsync(Message(template: "access_suspended"), Xunit.TestContext.Current.CancellationToken);
         _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
     [HumansFact]
     public async Task SendAsync_TriggerImmediate_RunsImmediateProcessor()
     {
-        await _service.SendAsync(Message(template: "email_verification", triggerImmediate: true));
+        await _service.SendAsync(Message(template: "email_verification", triggerImmediate: true), Xunit.TestContext.Current.CancellationToken);
         _immediate.Received(1).TriggerImmediate();
     }
 
     [HumansFact]
     public async Task SendAsync_WithoutTriggerImmediate_DoesNotRunImmediateProcessor()
     {
-        await _service.SendAsync(Message(triggerImmediate: false));
+        await _service.SendAsync(Message(triggerImmediate: false), Xunit.TestContext.Current.CancellationToken);
         _immediate.DidNotReceive().TriggerImmediate();
     }
 
@@ -106,9 +106,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         await _service.SendAsync(Message(
             template: "facilitated_message",
             category: MessageCategory.FacilitatedMessages,
-            replyTo: "dave@example.com"));
+            replyTo: "dave@example.com"), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.ReplyTo.Should().Be("dave@example.com");
     }
 
@@ -119,9 +119,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
             .Returns(userId);
 
-        await _service.SendAsync(Message(category: null));
+        await _service.SendAsync(Message(category: null), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().BeNull("always-send mail carries no List-Unsubscribe headers");
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
@@ -135,9 +135,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         _userEmailService.GetUserIdByVerifiedEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
             .Returns(userId);
 
-        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System));
+        await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.ExtraHeaders.Should().BeNull();
         await _commPrefService.DidNotReceive()
             .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
@@ -154,9 +154,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
 
         await _service.SendAsync(Message(
             recipient: "charlie@example.com", name: "Charlie",
-            template: "added_to_team", category: MessageCategory.TeamUpdates));
+            template: "added_to_team", category: MessageCategory.TeamUpdates), Xunit.TestContext.Current.CancellationToken);
 
-        (await Db.EmailOutboxMessages.ToListAsync()).Should()
+        (await Db.EmailOutboxMessages.ToListAsync(Xunit.TestContext.Current.CancellationToken)).Should()
             .BeEmpty("the email is suppressed because the user opted out of TeamUpdates");
     }
 
@@ -178,9 +178,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
 
         await _service.SendAsync(Message(
             recipient: "grace@example.com", name: "Grace",
-            template: "application_approved", category: MessageCategory.Governance));
+            template: "application_approved", category: MessageCategory.Governance), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
         msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for opt-outable mail");
         _bodyComposer.Received().Compose(Arg.Any<string>(), "https://example.com/Unsubscribe/abc");
@@ -199,9 +199,9 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
         await _service.SendAsync(Message(
             recipient: "zoe@example.com", name: "Zoe",
             template: "campaign_code", category: MessageCategory.CampaignCodes,
-            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId));
+            replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId), Xunit.TestContext.Current.CancellationToken);
 
-        var msg = await Db.EmailOutboxMessages.SingleAsync();
+        var msg = await Db.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
@@ -221,8 +221,8 @@ public sealed class OutboxEmailServiceTests : ServiceTestHarness
             .Returns(false);
 
         await _service.SendAsync(Message(
-            template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId));
+            template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId), Xunit.TestContext.Current.CancellationToken);
 
-        (await Db.EmailOutboxMessages.ToListAsync()).Should().HaveCount(1);
+        (await Db.EmailOutboxMessages.ToListAsync(Xunit.TestContext.Current.CancellationToken)).Should().HaveCount(1);
     }
 }

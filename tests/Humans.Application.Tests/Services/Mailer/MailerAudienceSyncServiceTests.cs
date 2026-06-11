@@ -31,7 +31,7 @@ public class MailerAudienceSyncServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult(1, 0, 0, 0));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().Be(1);
         result.Assigned.Should().Be(0);
@@ -49,7 +49,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "unsubscribed"));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.ExcludedUnsubscribed.Should().Be(1);
         result.Created.Should().Be(0);
@@ -69,7 +69,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Assigned.Should().Be(1);
         await _ml.Received(1).AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
@@ -83,7 +83,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: ["g1"]));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Unassigned.Should().Be(1);
         await _ml.Received(1).UnassignSubscriberFromGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
@@ -103,7 +103,7 @@ public class MailerAudienceSyncServiceTests
                 "g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult(1, 0, 0, 0));
 
-        await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _ml.Received(1).CreateGroupAsync("Humans - A", Arg.Any<CancellationToken>());
     }
@@ -117,7 +117,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: ["g1"]));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.AlreadyAssigned.Should().Be(1);
         result.Created.Should().Be(0);
@@ -145,7 +145,7 @@ public class MailerAudienceSyncServiceTests
         _ml.AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>())
             .Returns(_ => throw new HttpRequestException("simulated 500"));
 
-        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Errors.Should().Be(1);
         result.Assigned.Should().Be(1); // s2 still succeeded
@@ -156,7 +156,7 @@ public class MailerAudienceSyncServiceTests
     {
         var audience = NewAudience("a-aud", "Newsletter", []);
 
-        var act = async () => await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        var act = async () => await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Humans - *");
@@ -171,7 +171,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
 
-        await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
+        await NewService(audience).SyncAsync(audience, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
             AuditAction.MailerLiteAudienceSyncCompleted,

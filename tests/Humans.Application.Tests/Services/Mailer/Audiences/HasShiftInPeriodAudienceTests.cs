@@ -33,7 +33,7 @@ public class HasShiftInPeriodAudienceTests
         };
 
         var members = await NewAudience<HasShiftSetupAudience>(views)
-            .ComputeMemberUserIdsAsync(CancellationToken.None);
+            .ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([build]);
     }
@@ -53,7 +53,7 @@ public class HasShiftInPeriodAudienceTests
         };
 
         var members = await NewAudience<HasShiftEventAudience>(views)
-            .ComputeMemberUserIdsAsync(CancellationToken.None);
+            .ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([@event]);
     }
@@ -73,7 +73,7 @@ public class HasShiftInPeriodAudienceTests
         };
 
         var members = await NewAudience<HasShiftStrikeAudience>(views)
-            .ComputeMemberUserIdsAsync(CancellationToken.None);
+            .ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([strike]);
     }

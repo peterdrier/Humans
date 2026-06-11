@@ -71,7 +71,7 @@ public sealed class TicketTransferService_OnwardTransferTests
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var rows = await _service.GetMyAttendeesAsync(UserB);
+        var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
         rows[0].CanSendTransfer.Should().BeTrue();
@@ -92,7 +92,7 @@ public sealed class TicketTransferService_OnwardTransferTests
         _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var rows = await _service.GetMyAttendeesAsync(UserA);
+        var rows = await _service.GetMyAttendeesAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
         rows[0].CanSendTransfer.Should().BeFalse();
@@ -116,7 +116,7 @@ public sealed class TicketTransferService_OnwardTransferTests
         _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var rows = await _service.GetMyAttendeesAsync(UserA);
+        var rows = await _service.GetMyAttendeesAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(1);
         rows[0].IsCurrentOwner.Should().BeFalse();
@@ -137,7 +137,7 @@ public sealed class TicketTransferService_OnwardTransferTests
             });
 
         var act = async () => await _service.CreateRequestAsync(
-            new TicketTransferRequestDto(attendeeId, UserC, "test"), UserA);
+            new TicketTransferRequestDto(attendeeId, UserC, "test"), UserA, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*currently hold*");
@@ -174,7 +174,7 @@ public sealed class TicketTransferService_OnwardTransferTests
             .Returns([]);
 
         var result = await _service.CreateRequestAsync(
-            new TicketTransferRequestDto(attendeeId, UserC, "passing to Carol"), UserB);
+            new TicketTransferRequestDto(attendeeId, UserC, "passing to Carol"), UserB, Xunit.TestContext.Current.CancellationToken);
 
         result.SenderUserId.Should().Be(UserB);
         result.ReceiverUserId.Should().Be(UserC);

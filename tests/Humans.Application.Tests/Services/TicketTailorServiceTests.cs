@@ -53,7 +53,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var orders = await service.GetOrdersAsync(null, "ev_test");
+        var orders = await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         orders.Should().HaveCount(1);
         orders[0].BuyerName.Should().Be("Jane Doe");
@@ -95,7 +95,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var orders = await service.GetOrdersAsync(null, "ev_test");
+        var orders = await service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         orders.Should().HaveCount(2);
     }
@@ -107,7 +107,7 @@ public class TicketTailorServiceTests
         handler.EnqueueResponse(HttpStatusCode.Unauthorized, new { error = "Invalid API key" });
 
         var service = CreateService(handler);
-        var act = () => service.GetOrdersAsync(null, "ev_test");
+        var act = () => service.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -137,7 +137,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets.Should().HaveCount(1);
         tickets[0].AttendeeName.Should().Be("Jane Doe");
@@ -180,7 +180,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("dpmirandadp@gmail.com");
     }
@@ -214,7 +214,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
     }
@@ -249,7 +249,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
     }
@@ -287,7 +287,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
     }
@@ -315,7 +315,7 @@ public class TicketTailorServiceTests
         });
 
         var service = CreateService(handler);
-        var summary = await service.GetEventSummaryAsync("ev_test");
+        var summary = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
 
         summary.EventName.Should().Be("Elsewhere 2026");
         summary.TotalCapacity.Should().Be(2000);

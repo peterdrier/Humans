@@ -82,10 +82,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        var profileId = await _editor.SaveProfileAsync(userId, "Jane Doe", request);
+        var profileId = await _editor.SaveProfileAsync(userId, "Jane Doe", request, Xunit.TestContext.Current.CancellationToken);
 
         profileId.Should().NotBe(Guid.Empty);
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.BurnerName.Should().Be("Flame");
         profile.FirstName.Should().Be("Jane");
         profile.LastName.Should().Be("Doe");
@@ -104,9 +104,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        await _editor.SaveProfileAsync(userId, "Jane Doe", request);
+        await _editor.SaveProfileAsync(userId, "Jane Doe", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.State.Should().Be(ProfileState.Active);
     }
 
@@ -121,9 +121,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // BurnerName/FirstName/LastName all empty — Stub state.
         var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
 
-        await _editor.SaveProfileAsync(userId, "Stub", request);
+        await _editor.SaveProfileAsync(userId, "Stub", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.State.Should().Be(ProfileState.Stub);
     }
 
@@ -134,9 +134,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(burnerName: "NewName", firstName: "Updated", lastName: "Person");
 
-        await _editor.SaveProfileAsync(userId, "Updated Person", request);
+        await _editor.SaveProfileAsync(userId, "Updated Person", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.BurnerName.Should().Be("NewName");
         profile.FirstName.Should().Be("Updated");
         profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
@@ -149,9 +149,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest();
 
-        await _editor.SaveProfileAsync(userId, "New Display Name", request);
+        await _editor.SaveProfileAsync(userId, "New Display Name", request, Xunit.TestContext.Current.CancellationToken);
 
-        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
         user.DisplayName.Should().Be("New Display Name");
     }
 
@@ -162,9 +162,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 14);
 
-        await _editor.SaveProfileAsync(userId, "Test", request);
+        await _editor.SaveProfileAsync(userId, "Test", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
     }
 
@@ -175,9 +175,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 30);
 
-        await _editor.SaveProfileAsync(userId, "Test", request);
+        await _editor.SaveProfileAsync(userId, "Test", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.DateOfBirth.Should().BeNull();
     }
 
@@ -192,9 +192,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var payload = new byte[] { 0x10, 0x20, 0x30 };
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
-        await _editor.SaveProfileAsync(userId, "Test", request);
+        await _editor.SaveProfileAsync(userId, "Test", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         // Content-type column is the "has picture" marker + extension source.
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
         // Bytes live on the file share, keyed under uploads/profile-pictures/.
@@ -210,9 +210,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
 
         var request = MakeRequest(removeProfilePicture: true);
-        await _editor.SaveProfileAsync(userId, "Test", request);
+        await _editor.SaveProfileAsync(userId, "Test", request, Xunit.TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().BeNull();
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
     }
@@ -234,9 +234,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
@@ -248,9 +248,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -258,7 +258,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetProfilePictureAsync_NoProfile_ReturnsNull()
     {
-        var result = await _service.GetProfilePictureAsync(Guid.NewGuid());
+        var result = await _service.GetProfilePictureAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -272,12 +272,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // when the DB content-type column says a picture exists.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         var fsPayload = new byte[] { 9, 9, 9, 9 };
-        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload);
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(fsPayload);
@@ -292,11 +292,11 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // the file share is now the only source of truth.)
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"));
+        await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -309,17 +309,17 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // the read path MUST NOT serve it. The content-type column is the gate.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         // Clear the gate as if anonymization had run.
-        var tracked = await Db.Profiles.FirstAsync(p => p.UserId == userId);
+        var tracked = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         tracked.ProfilePictureContentType = null;
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Confirm the stale file is still on disk to make the gate meaningful.
         _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
 
-        var result = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
@@ -369,7 +369,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         };
 
         // Act
-        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, entries);
+        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, entries, Xunit.TestContext.Current.CancellationToken);
 
         // Assert: delegates to the repository with the profile's Id
         saved.Should().BeTrue();
@@ -390,7 +390,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var service = BuildUserServiceWith(mockRepo);
 
         // Act
-        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, new List<CVEntry>());
+        var saved = await service.SaveProfileVolunteerHistoryAsync(userId, new List<CVEntry>(), Xunit.TestContext.Current.CancellationToken);
 
         // Assert: reconcile is never called
         saved.Should().BeFalse();
@@ -425,7 +425,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             PreferredLanguage = "en"
         };
         Db.Users.Add(user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task<Guid> SeedUserWithProfileAsync(Guid userId,
@@ -448,10 +448,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             profile.ProfilePictureContentType = "image/png";
         }
         Db.Profiles.Add(profile);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         if (withPicture)
         {
-            await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3]);
+            await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3], Xunit.TestContext.Current.CancellationToken);
         }
         return profile.Id;
     }

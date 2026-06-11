@@ -42,9 +42,9 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task AddAsync_PersistsEvent()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
-        var persisted = await _dbContext.CalendarEvents.AsNoTracking().SingleAsync();
+        var persisted = await _dbContext.CalendarEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         persisted.Id.Should().Be(ev.Id);
         persisted.Title.Should().Be(ev.Title);
     }
@@ -53,16 +53,16 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task GetEventByIdAsync_ReturnsEventWithExceptions()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
-            apply: x => x.IsCancelled = true);
+            apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetEventByIdAsync(ev.Id);
+        var fetched = await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Exceptions.Should().ContainSingle(x => x.IsCancelled);
     }
@@ -70,7 +70,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetEventByIdAsync_ReturnsNullForMissingId()
     {
-        var fetched = await _repo.GetEventByIdAsync(Guid.NewGuid());
+        var fetched = await _repo.GetEventByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         fetched.Should().BeNull();
     }
 
@@ -78,9 +78,9 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task GetEventByIdAsync_DoesNotLoadOwningTeamNav()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetEventByIdAsync(ev.Id);
+        var fetched = await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
 #pragma warning disable CS0618 // accessing the [Obsolete] nav intentionally in the assertion
         fetched.OwningTeam.Should().BeNull(
@@ -92,11 +92,11 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task GetEventByIdAsync_HidesSoftDeleted()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.SoftDeleteAsync(ev.Id, Instant.FromUtc(2026, 4, 10, 0, 0));
+        await _repo.SoftDeleteAsync(ev.Id, Instant.FromUtc(2026, 4, 10, 0, 0), Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetEventByIdAsync(ev.Id);
+        var fetched = await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().BeNull();
     }
 
@@ -114,13 +114,13 @@ public sealed class CalendarRepositoryTests : IDisposable
             start: Instant.FromUtc(2027, 1, 1, 0, 0),
             end: Instant.FromUtc(2027, 1, 1, 1, 0));
 
-        await _repo.AddAsync(inside);
-        await _repo.AddAsync(outside);
+        await _repo.AddAsync(inside, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(outside, Xunit.TestContext.Current.CancellationToken);
 
         var events = await _repo.GetEventsInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
             to: Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: null);
+            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         events.Should().ContainSingle(e => e.Id == inside.Id);
         events.Should().NotContain(e => e.Id == outside.Id);
@@ -135,13 +135,13 @@ public sealed class CalendarRepositoryTests : IDisposable
         var a = BuildEvent(teamId: teamA);
         var b = BuildEvent(teamId: teamB);
 
-        await _repo.AddAsync(a);
-        await _repo.AddAsync(b);
+        await _repo.AddAsync(a, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(b, Xunit.TestContext.Current.CancellationToken);
 
         var events = await _repo.GetEventsInWindowAsync(
             from: Instant.FromUtc(2026, 1, 1, 0, 0),
             to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: teamA);
+            teamId: teamA, ct: Xunit.TestContext.Current.CancellationToken);
 
         events.Should().ContainSingle(e => e.Id == a.Id);
         events.Should().NotContain(e => e.Id == b.Id);
@@ -151,19 +151,19 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task GetEventsInWindowAsync_IncludesExceptions()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
-            apply: x => x.IsCancelled = true);
+            apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
         var events = await _repo.GetEventsInWindowAsync(
             from: Instant.FromUtc(2026, 1, 1, 0, 0),
             to: Instant.FromUtc(2027, 1, 1, 0, 0),
-            teamId: null);
+            teamId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         events.Should().ContainSingle();
         events[0].Exceptions.Should().ContainSingle(x => x.IsCancelled);
@@ -177,16 +177,16 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task UpdateAsync_MutatesTrackedEntity()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await _repo.UpdateAsync(ev.Id, e =>
         {
             e.Title = "Updated title";
             e.UpdatedAt = Instant.FromUtc(2026, 4, 10, 0, 0);
-        });
+        }, Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().BeTrue();
-        var persisted = await _repo.GetEventByIdAsync(ev.Id);
+        var persisted = await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken);
         persisted.Should().NotBeNull();
         persisted.Title.Should().Be("Updated title");
     }
@@ -194,7 +194,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     [HumansFact]
     public async Task UpdateAsync_ReturnsFalseForMissingId()
     {
-        var updated = await _repo.UpdateAsync(Guid.NewGuid(), _ => { });
+        var updated = await _repo.UpdateAsync(Guid.NewGuid(), _ => { }, Xunit.TestContext.Current.CancellationToken);
         updated.Should().BeFalse();
     }
 
@@ -206,10 +206,10 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task SoftDeleteAsync_ReturnsTeamIdAndTitleAndStampsDeletedAt()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         var now = Instant.FromUtc(2026, 4, 10, 0, 0);
-        var result = await _repo.SoftDeleteAsync(ev.Id, now);
+        var result = await _repo.SoftDeleteAsync(ev.Id, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.OwningTeamId.Should().Be(ev.OwningTeamId);
@@ -218,14 +218,14 @@ public sealed class CalendarRepositoryTests : IDisposable
         var deletedRow = await _dbContext.CalendarEvents
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .SingleAsync(e => e.Id == ev.Id);
+            .SingleAsync(e => e.Id == ev.Id, Xunit.TestContext.Current.CancellationToken);
         deletedRow.DeletedAt.Should().Be(now);
     }
 
     [HumansFact]
     public async Task SoftDeleteAsync_ReturnsNullForMissingId()
     {
-        var result = await _repo.SoftDeleteAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 10, 0, 0));
+        var result = await _repo.SoftDeleteAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 10, 0, 0), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -237,16 +237,16 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task UpsertExceptionAsync_InsertsNewRowWhenMissing()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
-            apply: x => x.IsCancelled = true);
+            apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var exceptions = await _dbContext.CalendarEventExceptions.AsNoTracking().ToListAsync();
+        var exceptions = await _dbContext.CalendarEventExceptions.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         exceptions.Should().ContainSingle();
         exceptions[0].IsCancelled.Should().BeTrue();
     }
@@ -255,14 +255,14 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task UpsertExceptionAsync_UpdatesExistingRowWhenPresent()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
-            apply: x => x.IsCancelled = true);
+            apply: x => x.IsCancelled = true, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _repo.UpsertExceptionAsync(
             ev.Id,
@@ -273,9 +273,9 @@ public sealed class CalendarRepositoryTests : IDisposable
             {
                 x.IsCancelled = false;
                 x.OverrideTitle = "Overridden";
-            });
+            }, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var exceptions = await _dbContext.CalendarEventExceptions.AsNoTracking().ToListAsync();
+        var exceptions = await _dbContext.CalendarEventExceptions.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         exceptions.Should().ContainSingle(x =>
             !x.IsCancelled && x.OverrideTitle == "Overridden");
     }
@@ -284,14 +284,14 @@ public sealed class CalendarRepositoryTests : IDisposable
     public async Task UpsertExceptionAsync_ThrowsWhenNeitherCancelledNorOverridden()
     {
         var ev = BuildEvent();
-        await _repo.AddAsync(ev);
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _repo.UpsertExceptionAsync(
             ev.Id,
             ev.StartUtc,
             createdByUserId: Guid.NewGuid(),
             now: Instant.FromUtc(2026, 4, 10, 0, 0),
-            apply: _ => { });
+            apply: _ => { }, ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

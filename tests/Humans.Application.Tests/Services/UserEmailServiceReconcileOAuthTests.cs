@@ -101,7 +101,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey,
-            claimEmail: "Alice@Example.com", claimEmailVerified: true);
+            claimEmail: "Alice@Example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.NoChange);
         result.AffectedRowId.Should().Be(rowId);
@@ -137,7 +137,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey,
-            claimEmail: "new@example.com", claimEmailVerified: true);
+            claimEmail: "new@example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.EmailRewritten);
         result.AffectedRowId.Should().Be(rowId);
@@ -197,7 +197,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey,
-            claimEmail: "New@Example.com", claimEmailVerified: true);
+            claimEmail: "New@Example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.TagMoved);
         result.AffectedRowId.Should().Be(siblingId);
@@ -247,7 +247,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey,
-            claimEmail: "Match@Example.com", claimEmailVerified: true);
+            claimEmail: "Match@Example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.TagMoved);
         result.AffectedRowId.Should().Be(siblingId);
@@ -284,7 +284,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey,
-            claimEmail: "new@example.com", claimEmailVerified: true);
+            claimEmail: "new@example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.NewRowCreated);
         planned.Should().NotBeNull();
@@ -340,7 +340,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,
-            claimEmail: "shared@example.com", claimEmailVerified: true);
+            claimEmail: "shared@example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.CrossUserDisplaced);
         result.DisplacedUserId.Should().Be(displacedUserId);
@@ -395,7 +395,7 @@ public class UserEmailServiceReconcileOAuthTests
 
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,
-            claimEmail: "shared@example.com", claimEmailVerified: true);
+            claimEmail: "shared@example.com", claimEmailVerified: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.CrossUserDisplaced);
         result.DisplacedUserLeftWithoutVerifiedEmail.Should().BeTrue();
@@ -447,7 +447,7 @@ public class UserEmailServiceReconcileOAuthTests
         var result = await _service.ReconcileOAuthIdentityAsync(
             signingUserId, Provider, ProviderKey,
             claimEmail: "shared@example.com",
-            claimEmailVerified: false);
+            claimEmailVerified: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ReconcileOutcome.CrossUserBlocked);
         result.DisplacedUserId.Should().Be(displacedUserId);

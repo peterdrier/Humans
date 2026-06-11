@@ -77,7 +77,7 @@ public class GuideRoleResolverTests
     {
         var resolver = CreateResolver();
 
-        var result = await resolver.ResolveAsync(new ClaimsPrincipal(new ClaimsIdentity()));
+        var result = await resolver.ResolveAsync(new ClaimsPrincipal(new ClaimsIdentity()), Xunit.TestContext.Current.CancellationToken);
 
         result.IsAuthenticated.Should().BeFalse();
         result.IsTeamCoordinator.Should().BeFalse();
@@ -90,7 +90,7 @@ public class GuideRoleResolverTests
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(Guid.NewGuid(), RoleNames.Admin, RoleNames.Board);
 
-        var result = await resolver.ResolveAsync(user);
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsAuthenticated.Should().BeTrue();
         result.SystemRoles.Should().Contain([RoleNames.Admin, RoleNames.Board]);
@@ -106,7 +106,7 @@ public class GuideRoleResolverTests
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
-        var result = await resolver.ResolveAsync(user, CancellationToken.None);
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsTeamCoordinator.Should().BeTrue();
     }
@@ -123,7 +123,7 @@ public class GuideRoleResolverTests
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
-        var result = await resolver.ResolveAsync(user, CancellationToken.None);
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsTeamCoordinator.Should().BeFalse();
     }
@@ -138,7 +138,7 @@ public class GuideRoleResolverTests
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
-        var result = await resolver.ResolveAsync(user, CancellationToken.None);
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsTeamCoordinator.Should().BeFalse();
     }
@@ -154,7 +154,7 @@ public class GuideRoleResolverTests
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
-        var result = await resolver.ResolveAsync(user, CancellationToken.None);
+        var result = await resolver.ResolveAsync(user, Xunit.TestContext.Current.CancellationToken);
 
         result.IsTeamCoordinator.Should().BeTrue();
     }

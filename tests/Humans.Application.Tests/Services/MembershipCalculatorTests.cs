@@ -137,7 +137,7 @@ public class MembershipCalculatorTests
         SeedProfile(userId, isApproved: false, isSuspended: false);
         SeedActiveRole(userId);
 
-        var result = await _service.ComputeStatusAsync(userId);
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(MembershipStatus.Pending);
     }
@@ -155,7 +155,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
 
-        var snapshot = await _service.GetMembershipSnapshotAsync(userId);
+        var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.RequiredConsentCount.Should().Be(1);
         snapshot.PendingConsentCount.Should().Be(1);
@@ -171,7 +171,7 @@ public class MembershipCalculatorTests
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
     }
@@ -183,7 +183,7 @@ public class MembershipCalculatorTests
         var userTeam = SeedTeam("Geeks", SystemTeamType.None);
         SeedTeamMember(userId, userTeam.Id, TeamMemberRole.Coordinator);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().Contain(SystemTeamIds.Coordinators);
@@ -196,7 +196,7 @@ public class MembershipCalculatorTests
         var userTeam = SeedTeam("Geeks", SystemTeamType.None);
         SeedTeamMember(userId, userTeam.Id, TeamMemberRole.Member);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().NotContain(SystemTeamIds.Coordinators);
@@ -210,7 +210,7 @@ public class MembershipCalculatorTests
         var volunteersTeam = SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
         SeedTeamMember(userId, volunteersTeam.Id, TeamMemberRole.Coordinator);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().NotContain(SystemTeamIds.Coordinators);
@@ -225,7 +225,7 @@ public class MembershipCalculatorTests
         SeedTeamMember(userId, geeks.Id, TeamMemberRole.Member);
         SeedTeamMember(userId, volunteers.Id, TeamMemberRole.Member);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(geeks.Id);
         result.Should().Contain(SystemTeamIds.Volunteers);
@@ -257,7 +257,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Coordinators, coordsVersionId, gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
 
-        var snapshot = await _service.GetMembershipSnapshotAsync(userId);
+        var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // Should include both Volunteers and Coordinators docs
         snapshot.RequiredConsentCount.Should().Be(2);
@@ -287,7 +287,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Coordinators, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
 
-        var snapshot = await _service.GetMembershipSnapshotAsync(userId);
+        var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // Should only include Volunteers doc, not Coordinators
         snapshot.RequiredConsentCount.Should().Be(1);
@@ -305,7 +305,7 @@ public class MembershipCalculatorTests
         var colaboradorsTeam = SeedTeam("Colaboradors", SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors);
         SeedTeamMember(userId, colaboradorsTeam.Id, TeamMemberRole.Member);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().Contain(SystemTeamIds.Colaboradors);
@@ -317,7 +317,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedVolunteersTeamMember(userId);
 
-        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().NotContain(SystemTeamIds.Colaboradors);
@@ -330,7 +330,7 @@ public class MembershipCalculatorTests
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.ComputeStatusAsync(userId);
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(MembershipStatus.None);
     }
@@ -341,7 +341,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.ComputeStatusAsync(userId);
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(MembershipStatus.Suspended);
     }
@@ -354,7 +354,7 @@ public class MembershipCalculatorTests
         SeedActiveRole(userId);
         SeedVolunteersTeamMember(userId);
 
-        var result = await _service.ComputeStatusAsync(userId);
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(MembershipStatus.Active);
     }
@@ -370,7 +370,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.ComputeStatusAsync(userId);
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(MembershipStatus.Inactive);
     }
@@ -383,7 +383,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedActiveRole(userId);
 
-        var result = await _service.HasActiveRolesAsync(userId);
+        var result = await _service.HasActiveRolesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -393,7 +393,7 @@ public class MembershipCalculatorTests
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.HasActiveRolesAsync(userId);
+        var result = await _service.HasActiveRolesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -408,7 +408,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId);
         SeedConsent(userId, versionId);
 
-        var result = await _service.HasAllRequiredConsentsAsync(userId);
+        var result = await _service.HasAllRequiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -423,7 +423,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, v2);
         SeedConsent(userId, v1); // v2 unsigned
 
-        var result = await _service.HasAllRequiredConsentsAsync(userId);
+        var result = await _service.HasAllRequiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -433,7 +433,7 @@ public class MembershipCalculatorTests
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.HasAllRequiredConsentsAsync(userId);
+        var result = await _service.HasAllRequiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -449,7 +449,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(team.Id, versionId);
         SeedConsent(userId, versionId);
 
-        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -461,7 +461,7 @@ public class MembershipCalculatorTests
         var team = SeedTeam("Geeks", SystemTeamType.None);
         SeedRequiredVersion(team.Id, Guid.NewGuid()); // unsigned
 
-        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -472,7 +472,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         var team = SeedTeam("Geeks", SystemTeamType.None);
 
-        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAllRequiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -486,7 +486,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsAsync(userId);
+        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -498,7 +498,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsAsync(userId);
+        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -512,7 +512,7 @@ public class MembershipCalculatorTests
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
         SeedConsent(userId, versionId);
 
-        var result = await _service.HasAnyExpiredConsentsAsync(userId);
+        var result = await _service.HasAnyExpiredConsentsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -527,7 +527,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(team.Id, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -540,7 +540,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(team.Id, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -555,7 +555,7 @@ public class MembershipCalculatorTests
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
         SeedConsent(userId, versionId);
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id);
+        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -572,7 +572,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, v2);
         SeedConsent(userId, v1); // sign only v1
 
-        var result = await _service.GetMissingConsentVersionsAsync(userId);
+        var result = await _service.GetMissingConsentVersionsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle().Which.Should().Be(v2);
     }
@@ -585,7 +585,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, v1);
         SeedConsent(userId, v1);
 
-        var result = await _service.GetMissingConsentVersionsAsync(userId);
+        var result = await _service.GetMissingConsentVersionsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -599,7 +599,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, v1);
         SeedRequiredVersion(SystemTeamIds.Volunteers, v2);
 
-        var result = await _service.GetMissingConsentVersionsAsync(userId);
+        var result = await _service.GetMissingConsentVersionsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Should().Contain(v1);
@@ -617,7 +617,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersRequiringStatusUpdateAsync();
+        var result = await _service.GetUsersRequiringStatusUpdateAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(userId);
     }
@@ -630,7 +630,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersRequiringStatusUpdateAsync();
+        var result = await _service.GetUsersRequiringStatusUpdateAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotContain(userId);
     }
@@ -643,7 +643,7 @@ public class MembershipCalculatorTests
         SeedActiveRoleInList(userId);
         // No required docs → no expired consents
 
-        var result = await _service.GetUsersRequiringStatusUpdateAsync();
+        var result = await _service.GetUsersRequiringStatusUpdateAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -658,7 +658,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId);
         SeedConsent(userId, versionId);
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(userId);
     }
@@ -669,7 +669,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid()); // unsigned
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotContain(userId);
     }
@@ -679,7 +679,7 @@ public class MembershipCalculatorTests
     {
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid());
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync([]);
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -693,7 +693,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Contain(userId);
     }
@@ -706,7 +706,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -717,7 +717,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([]);
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }

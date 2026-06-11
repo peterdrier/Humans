@@ -63,7 +63,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        var result = await sut.SyncActualsAsync(Guid.NewGuid());
+        var result = await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(1);
         capturedActuals.Should().NotBeNull();
@@ -105,7 +105,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid());
+        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].TicketCount.Should().Be(1);
@@ -134,7 +134,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid());
+        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].StripeFees.Should().Be(1m);
@@ -162,7 +162,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        await sut.SyncActualsAsync(Guid.NewGuid());
+        await sut.SyncActualsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         capturedActuals.Should().NotBeNull().And.BeEmpty();
     }
@@ -176,7 +176,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        var result = await sut.RefreshProjectionsAsync(yearId);
+        var result = await sut.RefreshProjectionsAsync(yearId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(7);
         await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
@@ -205,7 +205,7 @@ public class TicketingBudgetServiceTests
 
         var sut = CreateSut();
 
-        var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId);
+        var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(4);
         await _budgetService.Received(1).UpdateTicketingProjectionAsync(
@@ -241,7 +241,7 @@ public class TicketingBudgetServiceTests
                     ProjectedTtFees = 5m,
                 }
             };
-        _budgetService.GetTicketingProjectionEntriesAsync(groupId).Returns(expected);
+        _budgetService.GetTicketingProjectionEntriesAsync(groupId, Arg.Any<CancellationToken>()).Returns(expected);
 
         var sut = CreateSut();
 

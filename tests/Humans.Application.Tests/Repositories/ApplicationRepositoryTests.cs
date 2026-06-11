@@ -41,9 +41,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
             Vote = VoteChoice.Yay,
             VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0)
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetByIdAsync(app.Id);
+        var result = await _repo.GetByIdAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.BoardVotes.Should().HaveCount(1);
@@ -53,7 +53,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByIdAsync_NonExistent_ReturnsNull()
     {
-        var result = await _repo.GetByIdAsync(Guid.NewGuid());
+        var result = await _repo.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -66,7 +66,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var older = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
         var newer = SeedApp(userId, submittedAt: Instant.FromUtc(2026, 3, 1, 0, 0));
 
-        var result = await _repo.GetByUserIdAsync(userId);
+        var result = await _repo.GetByUserIdAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Select(a => a.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
@@ -80,7 +80,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp(userA);
         SeedApp(userB);
 
-        var result = await _repo.GetByUserIdAsync(userA);
+        var result = await _repo.GetByUserIdAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userA);
@@ -92,8 +92,8 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         SeedApp(userId);
 
-        (await _repo.AnySubmittedForUserAsync(userId)).Should().BeTrue();
-        (await _repo.AnySubmittedForUserAsync(Guid.NewGuid())).Should().BeFalse();
+        (await _repo.AnySubmittedForUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _repo.AnySubmittedForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -102,9 +102,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         var approved = SeedApp(userId);
         approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _repo.AnySubmittedForUserAsync(userId)).Should().BeFalse();
+        (await _repo.AnySubmittedForUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -113,8 +113,8 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp();
         SeedApp();
 
-        (await _repo.CountByStatusAsync(ApplicationStatus.Submitted)).Should().Be(2);
-        (await _repo.CountByStatusAsync(ApplicationStatus.Approved)).Should().Be(0);
+        (await _repo.CountByStatusAsync(ApplicationStatus.Submitted, Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await _repo.CountByStatusAsync(ApplicationStatus.Approved, Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -123,9 +123,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var submitted = SeedApp();
         var approved = SeedApp();
         approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var (items, total) = await _repo.GetFilteredAsync(status: null, tier: null, page: 1, pageSize: 10);
+        var (items, total) = await _repo.GetFilteredAsync(status: null, tier: null, page: 1, pageSize: 10, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items.Should().HaveCount(1);
@@ -138,9 +138,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp();
         var approved = SeedApp();
         approved.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var (items, total) = await _repo.GetFilteredAsync(ApplicationStatus.Approved, null, 1, 10);
+        var (items, total) = await _repo.GetFilteredAsync(ApplicationStatus.Approved, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items[0].Id.Should().Be(approved.Id);
@@ -153,7 +153,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp(tier: MembershipTier.Asociado);
 
         var (items, total) = await _repo.GetFilteredAsync(
-            ApplicationStatus.Submitted, MembershipTier.Asociado, 1, 10);
+            ApplicationStatus.Submitted, MembershipTier.Asociado, 1, 10, Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
@@ -166,7 +166,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             SeedApp();
 
         var (items, total) = await _repo.GetFilteredAsync(
-            ApplicationStatus.Submitted, null, page: 1, pageSize: 2);
+            ApplicationStatus.Submitted, null, page: 1, pageSize: 2, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(3);
         items.Should().HaveCount(2);
@@ -185,9 +185,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
             UpdatedAt = Instant.FromUtc(2026, 3, 1, 12, 0)
         };
 
-        await _repo.AddAsync(app);
+        await _repo.AddAsync(app, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.Applications.FindAsync(app.Id);
+        var reloaded = await _dbContext.Applications.FindAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.Should().NotBeNull();
     }
 
@@ -198,12 +198,12 @@ public sealed class ApplicationRepositoryTests : IDisposable
         await _dbContext.BoardVotes.AddRangeAsync(
             new BoardVote { Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = Guid.NewGuid(), Vote = VoteChoice.Yay, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) },
             new BoardVote { Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = Guid.NewGuid(), Vote = VoteChoice.No, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         app.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
-        await _repo.FinalizeAsync(app);
+        await _repo.FinalizeAsync(app, Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == app.Id).ToListAsync();
+        var remaining = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == app.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().BeEmpty();
     }
 
@@ -213,12 +213,12 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var appA = SeedApp();
         var appB = SeedApp();
         _dbContext.BoardVotes.Add(new BoardVote { Id = Guid.NewGuid(), ApplicationId = appB.Id, BoardMemberUserId = Guid.NewGuid(), Vote = VoteChoice.Yay, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         appA.Approve(Guid.NewGuid(), "ok", new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
-        await _repo.FinalizeAsync(appA);
+        await _repo.FinalizeAsync(appA, Xunit.TestContext.Current.CancellationToken);
 
-        var otherVotes = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == appB.Id).ToListAsync();
+        var otherVotes = await _dbContext.BoardVotes.Where(bv => bv.ApplicationId == appB.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         otherVotes.Should().HaveCount(1);
     }
 
@@ -231,9 +231,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         await _dbContext.BoardVotes.AddRangeAsync(
             new BoardVote { Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = voter1, Vote = VoteChoice.Yay, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) },
             new BoardVote { Id = Guid.NewGuid(), ApplicationId = app.Id, BoardMemberUserId = voter2, Vote = VoteChoice.No, VotedAt = Instant.FromUtc(2026, 3, 1, 12, 0) });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id);
+        var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().BeEquivalentTo([voter1, voter2]);
     }
@@ -243,7 +243,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     {
         var app = SeedApp();
 
-        var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id);
+        var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().BeEmpty();
     }
@@ -254,9 +254,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var app = SeedApp();
         app.Withdraw(new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
 
-        await _repo.UpdateAsync(app);
+        await _repo.UpdateAsync(app, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.Applications.FindAsync(app.Id);
+        var reloaded = await _dbContext.Applications.FindAsync(app.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 

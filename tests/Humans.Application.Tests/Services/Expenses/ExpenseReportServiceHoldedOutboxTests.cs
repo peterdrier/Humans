@@ -130,12 +130,12 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
+            .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UpdatePurchaseDocumentTagsAsync(null!, null!, CancellationToken.None);
+            .UpdatePurchaseDocumentTagsAsync(null!, null!, Arg.Any<CancellationToken>());
     }
 
     // ─── CreateIncomingDoc happy path ──────────────────────────────────────────
@@ -154,7 +154,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(holdedDocId);
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
             Arg.Is<HoldedPurchaseDocumentInput>(i =>
@@ -182,7 +182,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         // group "Camp Build" → "camp-build", category "Camp" → "camp"
         await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
@@ -244,7 +244,7 @@ public class ExpenseReportServiceHoldedOutboxTests
                 Arg.Any<CancellationToken>())
             .Returns([3, 4]);
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.Received(1).UploadAttachmentAsync(
             holdedDocId,
@@ -282,10 +282,10 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-no-att");
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UploadAttachmentAsync(null!, null!, CancellationToken.None);
+            .UploadAttachmentAsync(null!, null!, Arg.Any<CancellationToken>());
         await _repo.Received(1).SetHoldedDocIdAsync(
             report.Id, "doc-no-att", Now, Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkOutboxProcessedAsync(
@@ -326,14 +326,14 @@ public class ExpenseReportServiceHoldedOutboxTests
         _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        var act = async () => await _sut.DrainHoldedOutboxAsync(BatchSize);
+        var act = async () => await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*could not be read from storage*");
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UploadAttachmentAsync(null!, null!, CancellationToken.None);
+            .UploadAttachmentAsync(null!, null!, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
+            .MarkOutboxProcessedAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -350,12 +350,12 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
+            .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs()
-            .SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
+            .SetHoldedDocIdAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
@@ -373,7 +373,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.Received(1).UpdatePurchaseDocumentTagsAsync(
             "holded-existing-doc",
@@ -384,7 +384,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .CreatePurchaseDocumentAsync(null!, CancellationToken.None);
+            .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
     }
 
     // ─── Transient error ──────────────────────────────────────────────────────
@@ -402,14 +402,14 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).IncrementOutboxRetryAsync(
             outboxEvent.Id, "timeout", Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkOutboxFailedPermanentlyAsync(Guid.Empty, null!, default, CancellationToken.None);
+            .MarkOutboxFailedPermanentlyAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -427,7 +427,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         // Contact link persisted (with the upserted id, num still null) BEFORE the failed create.
         await _repo.Received(1).SetHoldedContactLinkAsync(
@@ -449,16 +449,16 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(new HoldedPermanentException(422, "body", "Unprocessable entity")));
 
-        await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).MarkOutboxFailedPermanentlyAsync(
             outboxEvent.Id,
             Arg.Any<string>(),
             Now,
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, CancellationToken.None);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, CancellationToken.None);
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(Guid.Empty, null!, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(Guid.Empty, null!, Arg.Any<CancellationToken>());
     }
 
     // ─── IBAN never logged ────────────────────────────────────────────────────
@@ -492,7 +492,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-iban-test");
 
-        await sut.DrainHoldedOutboxAsync(BatchSize);
+        await sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         // Verify the raw IBAN never appears as a log argument
         logger.DidNotReceive().Log(

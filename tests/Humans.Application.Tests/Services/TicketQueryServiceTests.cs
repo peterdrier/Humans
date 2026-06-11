@@ -122,7 +122,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         };
 
         Db.TicketOrders.Add(order);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetSalesAggregatesAsync();
 
@@ -147,7 +147,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             MakeOrder("ord_paid", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 100m, 0m, 9.09m, 1, 0m),
             MakeOrder("ord_refunded", TicketPaymentStatus.Refunded, Instant.FromUtc(2026, 3, 2, 12, 0), 999m, 50m, 90m, 1, 200m),
             MakeOrder("ord_cancelled", TicketPaymentStatus.Cancelled, Instant.FromUtc(2026, 3, 3, 12, 0), 888m, 25m, 80m, 1, 100m));
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetSalesAggregatesAsync();
 
@@ -185,7 +185,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
                 MakeAttendee(orderId, "tkt_weekend_duplicate", "Weekend")
             ]
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var types = await _service.GetAvailableTicketTypesAsync();
 
@@ -207,7 +207,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
                 100m, 0m, 9.09m, 1, 0m));
         }
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetOrdersPageAsync(
             null, "date", true, 1, 2, null, null, null);
@@ -223,7 +223,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             Instant.FromUtc(2026, 3, 1, 10, 0), 100m, 0m, 9.09m, 1, 0m));
         Db.TicketOrders.Add(MakeOrder("ord_refund", TicketPaymentStatus.Refunded,
             Instant.FromUtc(2026, 3, 2, 10, 0), 200m, 0m, 0m, 1, 0m));
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetOrdersPageAsync(
             null, "date", true, 1, 25, "Paid", null, null);
@@ -239,7 +239,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             Instant.FromUtc(2026, 3, 1, 10, 0), 50m, 0m, 0m, 1, 0m));
         Db.TicketOrders.Add(MakeOrder("ord_expensive", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 2, 10, 0), 500m, 0m, 0m, 1, 0m));
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetOrdersPageAsync(
             null, "amount", false, 1, 25, null, null, null);
@@ -258,7 +258,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         var order = MakeOrder("ord_1", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 1, 10, 0), 300m, 0m, 0m, 3, 0m);
         Db.TicketOrders.Add(order);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAttendeesPageAsync(
             null, "name", false, 1, 2, null, null, null, null);
@@ -306,7 +306,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             ]
         };
         Db.TicketOrders.Add(order);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAttendeesPageAsync(
             null, "name", false, 1, 25, "VIP", null, null, null);
@@ -322,7 +322,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             Instant.FromUtc(2026, 3, 1, 10, 0), 100m, 0m, 0m, 1, 0m));
         Db.TicketOrders.Add(MakeOrder("ord_B", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 2, 10, 0), 200m, 0m, 0m, 2, 0m));
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAttendeesPageAsync(
             null, "name", false, 1, 25, null, null, null, "ord_A");
@@ -356,7 +356,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             MatchedUserId = userWithTicket.Id,
         });
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Wire service dependencies — both users are Volunteers members with Profiles.
         WireWhoHasntBoughtDependencies(userWithTicket, userWithout);
@@ -389,7 +389,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             MatchedUserId = userWithTicket.Id,
         });
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         WireWhoHasntBoughtDependencies(userWithTicket, userWithout);
 
@@ -488,7 +488,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         };
 
         Db.TicketOrders.Add(order);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var rows = await _service.GetAttendeeExportDataAsync();
 
@@ -505,7 +505,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
             Instant.FromUtc(2026, 1, 1, 10, 0), 100m, 5m, 9.09m, 1, 0m));
         Db.TicketOrders.Add(MakeOrder("ord_new", TicketPaymentStatus.Paid,
             Instant.FromUtc(2026, 3, 1, 10, 0), 200m, 10m, 18.18m, 2, 0m));
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var rows = await _service.GetOrderExportDataAsync();
 
@@ -559,7 +559,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         };
 
         Db.TicketOrders.Add(order);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var transfer = new TicketTransferRequest
         {
@@ -578,7 +578,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
         _transferRepo.GetByStatusAsync(TicketTransferStatus.Approved, Arg.Any<CancellationToken>())
             .Returns([transfer]);
 
-        var result = await _service.GetTicketOrdersAsync();
+        var result = await _service.GetTicketOrdersAsync(Xunit.TestContext.Current.CancellationToken);
 
         var attendeeInfo = result.Should().ContainSingle().Which
             .Attendees.Should().ContainSingle().Subject;

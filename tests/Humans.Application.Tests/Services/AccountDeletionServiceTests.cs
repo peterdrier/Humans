@@ -85,12 +85,12 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var result = await _service.RequestDeletionAsync(userId);
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
+            .RevokeAllMembershipsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -100,12 +100,12 @@ public class AccountDeletionServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
-        var result = await _service.RequestDeletionAsync(userId);
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
         await _teamService.DidNotReceiveWithAnyArgs()
-            .RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
+            .RevokeAllMembershipsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -121,7 +121,7 @@ public class AccountDeletionServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var result = await _service.RequestDeletionAsync(userId);
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
 
@@ -160,7 +160,7 @@ public class AccountDeletionServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [userId] = "notif@example.com" });
 
-        await _service.RequestDeletionAsync(userId);
+        await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).AccountDeletionRequested(
             "notif@example.com", user.BurnerName,
@@ -188,7 +188,7 @@ public class AccountDeletionServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var result = await _service.RequestDeletionAsync(userId);
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.IsHeldForTicket.Should().BeTrue();
@@ -213,7 +213,7 @@ public class AccountDeletionServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, deletionPending: true));
 
-        var result = await _service.CancelDeletionAsync(userId);
+        var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).ClearDeletionAsync(userId, Arg.Any<CancellationToken>());
@@ -226,11 +226,11 @@ public class AccountDeletionServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId));
 
-        var result = await _service.CancelDeletionAsync(userId);
+        var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NoDeletionPending");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -239,11 +239,11 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var result = await _service.CancelDeletionAsync(userId);
+        var result = await _service.CancelDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
-        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, CancellationToken.None);
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -256,12 +256,12 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns((string?)null);
 
-        var result = await _service.PurgeAsync(userId);
+        var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
-        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(Guid.Empty, CancellationToken.None);
+        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -270,7 +270,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
-        var result = await _service.PurgeAsync(userId);
+        var result = await _service.PurgeAsync(userId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
@@ -289,7 +289,7 @@ public class AccountDeletionServiceTests
         var actorId = Guid.NewGuid();
         _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
 
-        await _service.PurgeAsync(userId, actorId);
+        await _service.PurgeAsync(userId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         // GDPR right-of-access depends on this audit row surviving the purge.
         await _auditLogService.Received(1).LogAsync(
@@ -309,10 +309,10 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId);
+        var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
-        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(Guid.Empty, CancellationToken.None);
+        await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -336,7 +336,7 @@ public class AccountDeletionServiceTests
                 OriginalDisplayName: "Expired Human",
                 PreferredLanguage: "es"));
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId);
+        var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.OriginalEmail.Should().Be("expired@example.com");
@@ -369,7 +369,7 @@ public class AccountDeletionServiceTests
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ExpiredDeletionAnonymizationResult("e@example.com", "Name", "es"));
 
-        await _service.AnonymizeExpiredAccountAsync(userId);
+        await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await _teamService.Received(1).DeleteEarlyEntryGrantsForUserAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -383,7 +383,7 @@ public class AccountDeletionServiceTests
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns((ExpiredDeletionAnonymizationResult?)null);
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId);
+        var result = await _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.OriginalEmail.Should().Be("gone@example.com");
@@ -409,7 +409,7 @@ public class AccountDeletionServiceTests
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
             .Returns<int>(_ => throw new InvalidOperationException("boom"));
 
-        var act = () => _service.AnonymizeExpiredAccountAsync(userId);
+        var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _userService.DidNotReceive().ApplyExpiredDeletionAnonymizationAsync(

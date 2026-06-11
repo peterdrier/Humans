@@ -41,7 +41,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
         var rowC = await SeedVerifiedAsync(userId, "c@x.test", isGoogle: false);
 
         var updatedAt = Instant.FromUtc(2026, 4, 30, 12, 0);
-        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowB.Id, updatedAt, CancellationToken.None);
+        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowB.Id, updatedAt, Xunit.TestContext.Current.CancellationToken);
 
         var reloadedA = await GetByIdAsync(rowA.Id);
         var reloadedB = await GetByIdAsync(rowB.Id);
@@ -82,11 +82,11 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
             UpdatedAt = SeedInstant,
         };
         _dbContext.UserEmails.Add(row);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.Entry(row).State = EntityState.Detached;
         return row;
     }
 
     private async Task<UserEmail?> GetByIdAsync(Guid id)
-        => await _dbContext.UserEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+        => await _dbContext.UserEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
 }

@@ -77,7 +77,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         var existingShift = SeedAllDayShift(rota, -3);
         var targetShift = SeedAllDayShift(rota, -2);
         SeedSignup(Guid.NewGuid(), existingShift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(Guid.NewGuid(), targetShift.Id);
 
@@ -100,7 +100,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         SeedAllDayShift(rota, -2);
         var finalDayShift = SeedAllDayShift(rota, -1);
         SeedSignup(Guid.NewGuid(), finalDayShift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(Guid.NewGuid(), rota.Id, -3, -1);
 

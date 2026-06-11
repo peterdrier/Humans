@@ -15,7 +15,7 @@ public class TrackedCacheStartupSafetyTests
         var logger = Substitute.For<ILogger>();
         var sut = new ThrowingCache("test-cache", warmOnStartup: true, logger);
 
-        var act = async () => await ((IHostedService)sut).StartAsync(CancellationToken.None);
+        var act = async () => await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync(
             "no-startup-guards HARD RULE — the host MUST boot even when warmup fails");
@@ -35,11 +35,11 @@ public class TrackedCacheStartupSafetyTests
     {
         var sut = new ThrowingCache("test-cache", warmOnStartup: true);
 
-        await ((IHostedService)sut).StartAsync(CancellationToken.None);
+        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
         sut.WarmAttempts.Should().Be(1, "first attempt failed during startup");
 
         sut.ShouldThrow = false;
-        await sut.WarmFromOutsideAsync(CancellationToken.None);
+        await sut.WarmFromOutsideAsync(Xunit.TestContext.Current.CancellationToken);
 
         sut.WarmAttempts.Should().Be(2, "subsequent read must re-trigger warm");
         sut.IsWarmedUpExposed.Should().BeTrue("recovery warm succeeded");
@@ -62,7 +62,7 @@ public class TrackedCacheStartupSafetyTests
     {
         var sut = new ThrowingCache("test-cache", warmOnStartup: false);
 
-        await ((IHostedService)sut).StartAsync(CancellationToken.None);
+        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         sut.WarmAttempts.Should().Be(0);
     }

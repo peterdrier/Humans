@@ -85,7 +85,7 @@ public class AdminDashboardServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.GetAdminDashboardAsync();
+        var result = await sut.GetAdminDashboardAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.TotalMembers.Should().Be(4);
         result.ActiveMembers.Should().Be(2);
@@ -136,7 +136,7 @@ public class AdminDashboardServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.GetPendingReviewCountAsync();
+        var result = await sut.GetPendingReviewCountAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(2);
     }

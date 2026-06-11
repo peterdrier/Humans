@@ -22,7 +22,7 @@ public class GdprExportServiceTests
     {
         var service = CreateService(new FakeContributor("Profile", new { Name = "Jane" }));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.ExportedAt.Should().Be("2026-04-15T10:30:00Z");
     }
@@ -36,7 +36,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", profile),
             new FakeContributor("Consents", consents));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.Sections.Should().HaveCount(2);
         export.Sections["Profile"].Should().BeSameAs(profile);
@@ -50,7 +50,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", new { Name = "Jane" }),
             new FakeContributor("Applications", (object?)null));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.Sections.Should().ContainKey("Profile");
         export.Sections.Should().NotContainKey("Applications");
@@ -80,7 +80,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", new { A = 1 }),
             new FakeContributor("Profile", new { B = 2 }));
 
-        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Profile*");
@@ -94,7 +94,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", new { A = 1 }),
             new FakeContributor("Applications", boom));
 
-        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var act = async () => await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
     }
@@ -104,7 +104,7 @@ public class GdprExportServiceTests
     {
         var service = CreateService();
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.Sections.Should().BeEmpty();
         export.ExportedAt.Should().NotBeNullOrEmpty();
@@ -118,7 +118,7 @@ public class GdprExportServiceTests
             new UserDataSlice("ContactFields", new[] { new { Field = "email" } }),
             new UserDataSlice("Languages", new[] { new { Code = "es" } })));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.Sections.Should().HaveCount(3);
         export.Sections.Should().ContainKey("Profile");
@@ -137,7 +137,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", new { Name = "Jane" }),
             new FakeContributor("Consents", emptyConsents));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         export.Sections.Should().ContainKey("Consents",
             "an empty collection slice must NOT be dropped by the orchestrator");
@@ -152,7 +152,7 @@ public class GdprExportServiceTests
             new FakeContributor("Profile", new { Name = "Jane" }),
             new FakeContributor("Consents", emptyConsents));
 
-        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         // Flatten into the shape the controllers serialize
         var payload = new Dictionary<string, object?>(StringComparer.Ordinal)

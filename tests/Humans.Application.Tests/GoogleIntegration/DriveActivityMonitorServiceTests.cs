@@ -64,11 +64,11 @@ public class DriveActivityMonitorServiceTests
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
-        _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, CancellationToken.None);
-        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
+        _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, Arg.Any<CancellationToken>());
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -90,7 +90,7 @@ public class DriveActivityMonitorServiceTests
 
         SeedActivity(resource.GoogleId, emailEvent, clientIdEvent);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         // Marker still advances because no failures occurred.
@@ -115,7 +115,7 @@ public class DriveActivityMonitorServiceTests
             targetUser: "intruder@example.com");
         SeedActivity(resource.GoogleId, anomalousEvent);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _systemSettings.Received(1).SetValueAsync(
@@ -148,7 +148,7 @@ public class DriveActivityMonitorServiceTests
         _client.TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>())
             .Returns("resolved@example.com");
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
@@ -184,7 +184,7 @@ public class DriveActivityMonitorServiceTests
         _client.TryResolvePersonEmailAsync("people/222", Arg.Any<CancellationToken>())
             .Returns("actor-b@example.com");
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
         await _userService.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
@@ -209,7 +209,7 @@ public class DriveActivityMonitorServiceTests
                 BuildUserInfoWithNullEmail(new UserExternalLoginInfo("Google", "99"))
             ]);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
@@ -243,7 +243,7 @@ public class DriveActivityMonitorServiceTests
                     new UserExternalLoginInfo("Google", "42"))
             ]);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
@@ -272,7 +272,7 @@ public class DriveActivityMonitorServiceTests
             .Returns(_ => Task.FromException<IReadOnlyCollection<UserInfo>>(
                 new InvalidOperationException("user cache failed")));
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _systemSettings.Received(1).SetValueAsync(
@@ -311,7 +311,7 @@ public class DriveActivityMonitorServiceTests
                     new UserExternalLoginInfo("Google", "42"))
             ]);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
@@ -342,11 +342,11 @@ public class DriveActivityMonitorServiceTests
         _client.QueryActivityAsync(broken.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => ThrowingEnumerable());
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
         // Partial failure → marker not advanced, but the anomaly is still audited.
-        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
@@ -364,7 +364,7 @@ public class DriveActivityMonitorServiceTests
         _client.QueryActivityAsync(missing.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => ThrowNotFoundEnumerable(missing.GoogleId));
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
         // 404 is expected and does NOT count as a failure — marker advances.
@@ -389,10 +389,10 @@ public class DriveActivityMonitorServiceTests
         SeedResources(resource);
         SeedActivity(resource.GoogleId /* no events */);
 
-        var count = await _service.CheckForAnomalousActivityAsync();
+        var count = await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(0);
-        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, CancellationToken.None);
+        await _systemSettings.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, default(string)!);
     }
@@ -409,7 +409,7 @@ public class DriveActivityMonitorServiceTests
 
         SeedActivity(resource.GoogleId /* no events */);
 
-        await _service.CheckForAnomalousActivityAsync();
+        await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         // The filter should be 24h before "now" on first run.
         var expectedLookback = _clock.GetCurrentInstant().Minus(Duration.FromHours(24));
@@ -432,7 +432,7 @@ public class DriveActivityMonitorServiceTests
 
         SeedActivity(resource.GoogleId /* no events */);
 
-        await _service.CheckForAnomalousActivityAsync();
+        await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         _client.Received(1).QueryActivityAsync(
             resource.GoogleId,
@@ -452,7 +452,7 @@ public class DriveActivityMonitorServiceTests
 
         SeedActivity(resource.GoogleId /* no events */);
 
-        await _service.CheckForAnomalousActivityAsync();
+        await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken);
 
         var expectedLookback = _clock.GetCurrentInstant().Minus(Duration.FromHours(24));
         _client.Received(1).QueryActivityAsync(
