@@ -45,7 +45,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
             ]);
         var users = StubUsers([frank]);
 
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
 
         snap.NonPrimary.Should().ContainSingle();
         var row = snap.NonPrimary[0];
@@ -82,7 +82,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
         var audience = StubAudience("k", "Humans - k", members: []);
         var ml = StubMl(groups: [], subscribers: []);
         var users = StubUsers([]);
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
         snap.Expected.Should().BeEmpty();
         snap.CurrentlyInMl.Should().BeEmpty();
     }
@@ -97,7 +97,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
         var ml = StubMl(groups: [], subscribers: []);
         var users = StubUsers([u]);
 
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
 
         snap.Expected.Should().ContainSingle();
         snap.Expected[0].UserId.Should().Be(uid);
@@ -139,7 +139,7 @@ public class MailerAudienceDebugSnapshotBuilderTests
             ]);
         var users = StubUsers([alice, bob, carol, dario]);
 
-        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, CancellationToken.None);
+        var snap = await MailerAudienceDebugSnapshotBuilder.BuildAsync(audience, ml, users, NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
 
         snap.CurrentlyInMl.Should().ContainSingle().Which.Email.Should().Be("alice@example.com");
         snap.ToRemove.Should().BeEmpty("suppressed-status subscribers must not appear as removable");

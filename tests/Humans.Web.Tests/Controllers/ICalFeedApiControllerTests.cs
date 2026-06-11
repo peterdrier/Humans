@@ -22,7 +22,7 @@ public class ICalFeedApiControllerTests
         _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+        var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -35,7 +35,7 @@ public class ICalFeedApiControllerTests
         _feed.GetFeedIcsAsync(userId, token, Arg.Any<CancellationToken>())
             .Returns("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
 
-        var result = await CreateController().GetFeed(userId, token, CancellationToken.None);
+        var result = await CreateController().GetFeed(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;
         file.ContentType.Should().Be("text/calendar");
@@ -48,7 +48,7 @@ public class ICalFeedApiControllerTests
         _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<string?>(_ => throw new InvalidOperationException("boom"));
 
-        var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+        var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>()
             .Which.StatusCode.Should().Be(500);

@@ -179,7 +179,7 @@ public class VolunteerTrackingControllerTests
                 UnbookedCohort: []));
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.Index(false, false, false, CancellationToken.None);
+        var result = await ctrl.Index(false, false, false, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
@@ -228,7 +228,7 @@ public class VolunteerTrackingControllerTests
 
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
-        var result = await ctrl.Index(false, false, false, CancellationToken.None);
+        var result = await ctrl.Index(false, false, false, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
@@ -249,7 +249,7 @@ public class VolunteerTrackingControllerTests
                 []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
-        var result = await ctrl.Index(hideNoGaps: true, false, false, CancellationToken.None);
+        var result = await ctrl.Index(hideNoGaps: true, false, false, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
@@ -272,7 +272,7 @@ public class VolunteerTrackingControllerTests
                 []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
-        var result = await ctrl.Index(false, hideCampSetup: true, false, CancellationToken.None);
+        var result = await ctrl.Index(false, hideCampSetup: true, false, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
@@ -294,7 +294,7 @@ public class VolunteerTrackingControllerTests
                 [], unbooked));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
-        var result = await ctrl.Index(false, false, hideUnbookedSection: true, CancellationToken.None);
+        var result = await ctrl.Index(false, false, hideUnbookedSection: true, TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
@@ -318,7 +318,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14", Notes = "early" };
 
-        var result = await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        var result = await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -347,7 +347,7 @@ public class VolunteerTrackingControllerTests
             Notes = null,
         };
 
-        var result = await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        var result = await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -374,7 +374,7 @@ public class VolunteerTrackingControllerTests
             Notes = null,
         };
 
-        var result = await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        var result = await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -396,7 +396,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14" };
 
-        var result = await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        var result = await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -416,7 +416,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(currentUser: null);
         var form = new SetCampSetupForm { UserId = Guid.NewGuid(), Date = "2026-06-14" };
 
-        var result = await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        var result = await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<ForbidResult>(result);
     }
@@ -432,7 +432,7 @@ public class VolunteerTrackingControllerTests
         var target = Guid.NewGuid();
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.ClearCampSetup(target, null, CancellationToken.None);
+        var result = await ctrl.ClearCampSetup(target, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -455,7 +455,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.ClearCampSetup(Guid.Empty, null, CancellationToken.None);
+        var result = await ctrl.ClearCampSetup(Guid.Empty, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
         await _service.DidNotReceive().ClearCampSetupAsync(
@@ -482,7 +482,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = "doctor" };
 
-        var result = await ctrl.SetDayOff(form, null, CancellationToken.None);
+        var result = await ctrl.SetDayOff(form, null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -508,7 +508,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = null };
 
-        var result = await ctrl.SetDayOff(form, null, CancellationToken.None);
+        var result = await ctrl.SetDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -529,7 +529,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
-        var result = await ctrl.ClearDayOff(form, null, CancellationToken.None);
+        var result = await ctrl.ClearDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
         await _auditLog.Received(1).LogAsync(
@@ -554,7 +554,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
-        var result = await ctrl.ClearDayOff(form, null, CancellationToken.None);
+        var result = await ctrl.ClearDayOff(form, null, TestContext.Current.CancellationToken);
 
         Assert.IsType<RedirectToActionResult>(result);
         await _auditLog.DidNotReceive().LogAsync(
@@ -575,7 +575,7 @@ public class VolunteerTrackingControllerTests
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-30", Notes = null };
 
-        await ctrl.SetCampSetup(form, null, CancellationToken.None);
+        await ctrl.SetCampSetup(form, null, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.VolunteerCampSetupSet, Arg.Any<string>(), target,
@@ -624,7 +624,7 @@ public class VolunteerTrackingControllerTests
             .Returns(true);
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
+        var result = await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.Received(1)
             .SetDayAvailabilityAsync(target, esId, -2, true, Arg.Any<CancellationToken>());
@@ -648,7 +648,7 @@ public class VolunteerTrackingControllerTests
         // Default: SetDayAvailabilityAsync returns false → no audit row (service short-circuited).
         var ctrl = BuildSut(current);
 
-        await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, CancellationToken.None);
+        await ctrl.SetAvailabilityDay(target, -2, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.VolunteerAvailabilitySet,
@@ -671,7 +671,7 @@ public class VolunteerTrackingControllerTests
             .Returns(true);
         var ctrl = BuildSut(current);
 
-        var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
+        var result = await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.Received(1)
             .SetDayAvailabilityAsync(target, esId, -3, false, Arg.Any<CancellationToken>());
@@ -695,7 +695,7 @@ public class VolunteerTrackingControllerTests
         // Default: SetDayAvailabilityAsync returns false → no audit row.
         var ctrl = BuildSut(current);
 
-        await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, CancellationToken.None);
+        await ctrl.ClearAvailabilityDay(target, -3, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.VolunteerAvailabilityCleared,
@@ -715,7 +715,7 @@ public class VolunteerTrackingControllerTests
         var localUrl = $"/Profile/{Guid.NewGuid()}";
         ctrl.Url.IsLocalUrl(localUrl).Returns(true);
 
-        var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: localUrl, CancellationToken.None);
+        var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: localUrl, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<LocalRedirectResult>(result);
         redirect.Url.Should().Be(localUrl);
@@ -731,7 +731,7 @@ public class VolunteerTrackingControllerTests
         const string externalUrl = "https://evil.test/steal";
         ctrl.Url.IsLocalUrl(externalUrl).Returns(false);
 
-        var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: externalUrl, CancellationToken.None);
+        var result = await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: externalUrl, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
@@ -744,7 +744,7 @@ public class VolunteerTrackingControllerTests
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
         var ctrl = BuildSut(current);
 
-        await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, CancellationToken.None);
+        await ctrl.SetAvailabilityDay(Guid.NewGuid(), -1, returnUrl: null, TestContext.Current.CancellationToken);
 
         await _service.DidNotReceive()
             .SetDayAvailabilityAsync(
