@@ -411,12 +411,6 @@ public sealed class EventService(
         return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
     }
 
-    public async Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
-    {
-        var pref = await repo.GetPreferenceAsync(userId, ct);
-        return pref is null ? null : new EventPreferenceInfo(pref.UserId, pref.ExcludedCategorySlugs, pref.UpdatedAt);
-    }
-
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
         => repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), clock.GetCurrentInstant(), ct);
 
