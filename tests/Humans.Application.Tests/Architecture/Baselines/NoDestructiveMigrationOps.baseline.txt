@@ -28,3 +28,8 @@ src/Humans.Infrastructure/Migrations/20260414215135_RestrictGoogleResourceTeamDe
 src/Humans.Infrastructure/Migrations/20260426185621_DropCampRoleIsRequired.cs:DropColumn(name=IsRequired)#1
 src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerCount)#1
 src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(name=ContainerNotes)#1
+# Peter-approved per-incident (2026-06-11): widening the favourites unique index to include
+# DayOffset requires dropping the old (UserId, GuideEventId) unique index in the same
+# migration — the old index forbids the per-occurrence rows the feature writes. Index-only,
+# no data touched. See memory/architecture/no-drops-until-prod-verified.md.
+src/Humans.Infrastructure/Migrations/20260611195627_AddEventFavouriteDayOffset.cs:DropIndex(name=IX_event_favourites_UserId_GuideEventId)#1

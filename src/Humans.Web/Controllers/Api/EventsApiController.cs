@@ -210,26 +210,35 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
         var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, favourites.Where(f => f.Event.CampId == null).Select(f => f.Event.SubmitterUserId).Distinct());
-        var results = favourites.OrderBy(f => f.Event.StartAt).Select(f =>
+        var results = favourites.SelectMany(f =>
         {
             var e = f.Event;
             var campName = ResolveCampName(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
-            return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName);
-        }).ToList();
+
+            // One entry per favourited occurrence (day-specific favourites
+            // expand to that single occurrence) — mirrors the schedule page.
+            IReadOnlyList<Instant> occurrences = gateOpeningDate.HasValue && tz != null
+                ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz, f.DayOffset)
+                : [e.StartAt];
+
+            return occurrences.Select(start =>
+                (start, dto: BuildEventDto(e, start, ComputeDayOffset(start, gateOpeningDate, tz), campName, submitterName)));
+        }).OrderBy(x => x.start).Select(x => x.dto).ToList();
 
         return Ok(results);
     }
 
+    // day selects one occurrence of a recurring event; omitted = the whole event.
     [Authorize]
     [DisableCors]
     [HttpPost("favourites/{eventId:guid}")]
-    public async Task<IActionResult> AddFavourite(Guid eventId)
+    public async Task<IActionResult> AddFavourite(Guid eventId, int? day)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var added = await guide.AddFavouriteAsync(userId.Value, eventId);
+        var added = await guide.AddFavouriteAsync(userId.Value, eventId, day);
         if (!added) return Conflict(new { error = "Already favourited" });
         return Ok(new { favourited = true });
     }
@@ -237,12 +246,12 @@ public class EventsApiController(IEventService guide, ICampServiceRead camps, IU
     [Authorize]
     [DisableCors]
     [HttpDelete("favourites/{eventId:guid}")]
-    public async Task<IActionResult> RemoveFavourite(Guid eventId)
+    public async Task<IActionResult> RemoveFavourite(Guid eventId, int? day)
     {
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var removed = await guide.RemoveFavouriteAsync(userId.Value, eventId);
+        var removed = await guide.RemoveFavouriteAsync(userId.Value, eventId, day);
         if (!removed) return NotFound();
         return Ok(new { unfavourited = true });
     }

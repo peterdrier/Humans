@@ -386,17 +386,17 @@ public sealed class EventService(
     {
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
         return favourites.Select(f => new EventFavouriteInfo(
-            f.Id, f.UserId, f.GuideEventId, f.CreatedAt, ToEventInfo(f.Event))).ToList();
+            f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event))).ToList();
     }
 
-    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-        => repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId), ct);
+    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
+        => repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset), ct);
 
-    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-        => repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId), ct);
+    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
+        => repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
 
-    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-        => repo.RemoveFavouriteAsync(userId, eventId, ct);
+    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
+        => repo.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);
 
     public async Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default)
     {
@@ -524,11 +524,12 @@ public sealed class EventService(
             .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
             .ToList());
 
-    private EventFavourite BuildFavourite(Guid userId, Guid eventId) => new()
+    private EventFavourite BuildFavourite(Guid userId, Guid eventId, int? dayOffset) => new()
     {
         Id = Guid.NewGuid(),
         UserId = userId,
         GuideEventId = eventId,
+        DayOffset = dayOffset,
         CreatedAt = clock.GetCurrentInstant()
     };
 
@@ -569,7 +570,7 @@ public sealed class EventService(
             var e = favourite.Event;
             // tz non-null implies burn non-null (tz is derived from burn above).
             IReadOnlyList<Instant> occurrences = tz is not null
-                ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz)
+                ? e.GetOccurrenceInstants(burn!.GateOpeningDate, tz, favourite.DayOffset)
                 : [e.StartAt];
 
             var location = string.Join(" — ", new[] { e.EventVenue?.Name, e.LocationNote }
@@ -612,6 +613,7 @@ public sealed class EventService(
                 .Select(f => new
                 {
                     f.GuideEventId,
+                    f.DayOffset,
                     CreatedAt = f.CreatedAt.ToIso8601()
                 }).ToList(),
             Preference = preference == null ? null : new

@@ -114,6 +114,7 @@ else
                             <span class="badge bg-secondary ms-1">@item.CategoryName</span>
                         </div>
                         <form method="post" asp-action="ToggleFavourite" asp-route-eventId="@item.EventId"
+                              asp-route-day="@item.FavouriteDayOffset"
                               asp-route-categoryId="@Model.FilterCategoryId"
                               asp-route-venueId="@Model.FilterVenueId" asp-route-q="@Model.SearchQuery"
                               asp-route-favouritesOnly="@Model.FavouritesOnly" class="d-inline">

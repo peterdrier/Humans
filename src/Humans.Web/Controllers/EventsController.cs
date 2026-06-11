@@ -372,40 +372,51 @@ public class EventsController(
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id);
         var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
 
-        var scheduleItems = favourites.OrderBy(f => f.Event.StartAt).Select(f =>
+        var scheduleItems = favourites.SelectMany(f =>
         {
             var e = f.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var campName = camp?.Active?.Name ?? camp?.Slug;
-            var localStart = ToLocalDateTime(e.StartAt, tz);
 
-            var dayOffset = 0;
-            if (gateOpeningDate != null)
-            {
-                LocalDate eventDate = tz != null
-                    ? e.StartAt.InZone(tz).Date
-                    : LocalDate.FromDateTime(e.StartAt.ToDateTimeUtc());
-                dayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
-            }
+            // One line per favourited occurrence: a day-specific favourite expands
+            // to that single occurrence, a whole-event favourite to all of them.
+            IReadOnlyList<Instant> occurrences = gateOpeningDate.HasValue && tz != null
+                ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz, f.DayOffset)
+                : [e.StartAt];
 
-            return new ScheduleItemViewModel
+            return occurrences.Select(startInstant =>
             {
-                EventId = e.Id,
-                Title = e.Title,
-                CategoryName = e.CategoryName,
-                CampName = campName,
-                VenueName = e.VenueName,
-                LocationNote = e.LocationNote,
-                StartAt = localStart,
-                DurationMinutes = e.DurationMinutes,
-                DayOffset = dayOffset,
-                DayLabel = gateOpeningDate != null
-                    ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
-                    : localStart.ToWeekdayDayMonth(),
-                StartInstant = e.StartAt,
-                HasConflict = false
-            };
-        }).ToList();
+                var localStart = ToLocalDateTime(startInstant, tz);
+
+                var dayOffset = 0;
+                if (gateOpeningDate != null)
+                {
+                    LocalDate eventDate = tz != null
+                        ? startInstant.InZone(tz).Date
+                        : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
+                    dayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
+                }
+
+                return new ScheduleItemViewModel
+                {
+                    EventId = e.Id,
+                    Title = e.Title,
+                    CategoryName = e.CategoryName,
+                    CampName = campName,
+                    VenueName = e.VenueName,
+                    LocationNote = e.LocationNote,
+                    StartAt = localStart,
+                    DurationMinutes = e.DurationMinutes,
+                    DayOffset = dayOffset,
+                    DayLabel = gateOpeningDate != null
+                        ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
+                        : localStart.ToWeekdayDayMonth(),
+                    StartInstant = startInstant,
+                    FavouriteDayOffset = f.DayOffset,
+                    HasConflict = false
+                };
+            });
+        }).OrderBy(i => i.StartInstant).ToList();
 
         // Detect time conflicts
         for (var i = 0; i < scheduleItems.Count; i++)
@@ -462,7 +473,8 @@ public class EventsController(
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
 
         var excludedSlugs = await guide.GetExcludedCategorySlugsAsync(user.Id);
-        var favouriteEventIds = await guide.GetFavouriteEventIdsAsync(user.Id);
+        var favouriteDaysByEventId = (await guide.GetFavouritesWithEventsAsync(user.Id))
+            .ToLookup(f => f.GuideEventId, f => f.DayOffset);
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
 
         var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year);
@@ -491,6 +503,12 @@ public class EventsController(
 
                 if (filterDays != null && !filterDays.Contains(eventDayOffset)) continue;
 
+                // Hearts on recurring-event cards favourite that day's occurrence;
+                // non-recurring cards (and unexpanded ones) favourite the whole event.
+                var favouriteDayOffset = e.IsRecurring && gateOpeningDate.HasValue && tz != null
+                    ? eventDayOffset
+                    : (int?)null;
+
                 items.Add(new BrowseEventItem
                 {
                     EventId = e.Id,
@@ -503,7 +521,8 @@ public class EventsController(
                     StartAt = ToLocalDateTime(startInstant, tz),
                     DurationMinutes = e.DurationMinutes,
                     DayOffset = eventDayOffset,
-                    IsFavourited = favouriteEventIds.Contains(e.Id),
+                    FavouriteDayOffset = favouriteDayOffset,
+                    IsFavourited = favouriteDaysByEventId[e.Id].Any(d => d == null || d == favouriteDayOffset),
                     SubmitterName = submitterName,
                     DisplayHost = e.CampId == null
                         ? (e.Host ?? submitterName)
@@ -535,7 +554,6 @@ public class EventsController(
         var model = new BrowseViewModel
         {
             TimeZoneId = eventSettings?.TimeZoneId,
-            FavouritedEventIds = favouriteEventIds,
             Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
             Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
             Days = eventDays,
@@ -562,23 +580,23 @@ public class EventsController(
 
     [HttpPost("Browse/Favourite/{eventId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleFavourite(Guid eventId, [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
+    public async Task<IActionResult> ToggleFavourite(Guid eventId, int? day, [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        await guide.ToggleFavouriteAsync(user.Id, eventId);
+        await guide.ToggleFavouriteAsync(user.Id, eventId, day);
         return RedirectToAction(nameof(Browse), null, new { days, categoryId, venueId, q, favouritesOnly }, $"event-{eventId}");
     }
 
     [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Unfavourite(Guid eventId)
+    public async Task<IActionResult> Unfavourite(Guid eventId, int? day)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        if (await guide.RemoveFavouriteAsync(user.Id, eventId))
+        if (await guide.RemoveFavouriteAsync(user.Id, eventId, day))
             SetSuccess("Event removed from your schedule.");
 
         return RedirectToAction(nameof(Schedule));
@@ -594,7 +612,8 @@ public class EventsController(
         var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
-        await guide.ToggleFavouriteAsync(user.Id, eventId);
+        // The card lists one row per event, so its heart is whole-event.
+        await guide.ToggleFavouriteAsync(user.Id, eventId, null);
         return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(Browse));
     }
 

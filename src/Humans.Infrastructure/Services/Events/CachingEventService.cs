@@ -332,14 +332,14 @@ public sealed class CachingEventService(
     public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetFavouritesWithEventsAsync(userId, ct));
 
-    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default) =>
-        WithInner(inner => inner.ToggleFavouriteAsync(userId, eventId, ct));
+    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+        WithInner(inner => inner.ToggleFavouriteAsync(userId, eventId, dayOffset, ct));
 
-    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default) =>
-        WithInner(inner => inner.AddFavouriteAsync(userId, eventId, ct));
+    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+        WithInner(inner => inner.AddFavouriteAsync(userId, eventId, dayOffset, ct));
 
-    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default) =>
-        WithInner(inner => inner.RemoveFavouriteAsync(userId, eventId, ct));
+    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+        WithInner(inner => inner.RemoveFavouriteAsync(userId, eventId, dayOffset, ct));
 
     // ==========================================================================
     // Preferences — per-user, pass-through (not in projection scope)

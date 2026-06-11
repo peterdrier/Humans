@@ -211,10 +211,12 @@ public sealed record EventInfo(
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
     /// <summary>
-    /// Expands this event into concrete occurrence instants.
+    /// Expands this event into concrete occurrence instants. A non-null
+    /// <paramref name="dayOffset"/> narrows a recurring event to the single
+    /// occurrence on that day offset (non-recurring events ignore it).
     /// Mirrors <see cref="Event.GetOccurrenceInstants"/>.
     /// </summary>
-    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone, int? dayOffset = null)
     {
         if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
             return [StartAt];
@@ -224,7 +226,7 @@ public sealed record EventInfo(
         return RecurrenceDays
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
-            .Where(d => d.HasValue)
+            .Where(d => d.HasValue && (dayOffset == null || d == dayOffset))
             .Select(d => gateOpeningDate.PlusDays(d!.Value)
                 .At(startLocal.TimeOfDay)
                 .InZoneLeniently(timeZone)
@@ -235,12 +237,14 @@ public sealed record EventInfo(
 
 /// <summary>
 /// A favourited event projected for the personal schedule / favourites API —
-/// the favourite metadata plus the flattened event projection.
+/// the favourite metadata plus the flattened event projection. A null
+/// <see cref="DayOffset"/> means the whole event (every occurrence).
 /// </summary>
 public sealed record EventFavouriteInfo(
     Guid Id,
     Guid UserId,
     Guid GuideEventId,
+    int? DayOffset,
     Instant CreatedAt,
     EventInfo Event);
 

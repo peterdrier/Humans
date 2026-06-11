@@ -165,6 +165,67 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ToggleFavouriteAsync_DayToggle_RemovesWholeEventRow()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        await _db.EventFavourites.AddAsync(BuildFavourite(userId, eventId), Xunit.TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var nowFavourited = await _repo.ToggleFavouriteAsync(
+            userId, eventId, BuildFavourite(userId, eventId, dayOffset: 2), Xunit.TestContext.Current.CancellationToken);
+
+        nowFavourited.Should().BeFalse();
+        (await _repo.GetFavouriteEventIdsAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ToggleFavouriteAsync_DifferentDays_CoexistAsSeparateRows()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        (await _repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset: 2), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId, dayOffset: 4), Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+
+        var favourites = await _repo.GetFavouritesForContributorAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        favourites.Select(f => f.DayOffset).Should().BeEquivalentTo([2, 4]);
+    }
+
+    [HumansFact]
+    public async Task RemoveFavouriteAsync_NullDay_RemovesAllRowsForEvent()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        await _db.EventFavourites.AddRangeAsync(
+            BuildFavourite(userId, eventId, dayOffset: 2),
+            BuildFavourite(userId, eventId, dayOffset: 4));
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var removed = await _repo.RemoveFavouriteAsync(userId, eventId, dayOffset: null, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().BeTrue();
+        (await _repo.GetFavouritesForContributorAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RemoveFavouriteAsync_SpecificDay_KeepsOtherDays()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        await _db.EventFavourites.AddRangeAsync(
+            BuildFavourite(userId, eventId, dayOffset: 2),
+            BuildFavourite(userId, eventId, dayOffset: 4));
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var removed = await _repo.RemoveFavouriteAsync(userId, eventId, dayOffset: 2, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().BeTrue();
+        (await _repo.GetFavouritesForContributorAsync(userId, Xunit.TestContext.Current.CancellationToken))
+            .Should().ContainSingle(f => f.DayOffset == 4);
+    }
+
+    [HumansFact]
     public async Task GetActiveCampEventsAsync_ReturnsOnlyPendingAndApprovedCampEvents()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
@@ -275,12 +336,13 @@ public sealed class EventRepositoryTests : IDisposable
         });
     }
 
-    private EventFavourite BuildFavourite(Guid userId, Guid guideEventId)
+    private EventFavourite BuildFavourite(Guid userId, Guid guideEventId, int? dayOffset = null)
         => new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             GuideEventId = guideEventId,
+            DayOffset = dayOffset,
             CreatedAt = _clock.GetCurrentInstant()
         };
 }

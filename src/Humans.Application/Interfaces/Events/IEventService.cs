@@ -89,9 +89,10 @@ public interface IEventService : IApplicationService, IEventServiceRead
     // ── Favourites ────────────────────────────────────────────────────────
     // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
-    Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
-    Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
-    Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
+    // dayOffset selects one occurrence of a recurring event; null means the whole event.
+    Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
     // ── Preferences ───────────────────────────────────────────────────────
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);

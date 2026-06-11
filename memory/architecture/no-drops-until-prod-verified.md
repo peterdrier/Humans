@@ -37,5 +37,6 @@ If a plan or spec appears to violate this rule, **STOP and ask Peter.** Do not r
 **Authorized exceptions (Peter, per-incident):**
 
 - **Containers redesign (PR #389, 2026-05-11)** — `DropColumn ContainerCount` and `DropColumn ContainerNotes` on `camp_seasons` are authorized to ship in the same migration (`20260511114347_AddContainers`) that introduces the replacement `containers` + `container_placements` tables. This is a one-shot redesign, not a decoupling — the old columns have zero remaining readers and the new schema is structurally different (per-container records vs. per-season count/notes). Do not flag again.
+- **Per-occurrence event favourites (2026-06-11)** — `DropIndex IX_event_favourites_UserId_GuideEventId` is authorized in the same migration (`20260611195627_AddEventFavouriteDayOffset`) that creates the widened unique index `(UserId, GuideEventId, DayOffset)`. The old unique index actively forbids the per-occurrence rows the feature writes, so no two-PR sequencing is possible; index-only, no data touched, rebuildable from its definition. Do not flag again.
 
 **Related:** [`no-column-drops-for-decoupling`](no-column-drops-for-decoupling.md) — DB-column-specific instance.

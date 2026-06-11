@@ -39,7 +39,7 @@ else
                             <strong>@item.Title</strong>
                             <span class="badge bg-secondary ms-1">@item.CategoryName</span>
                         </div>
-                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" class="d-inline" data-confirm="Remove this event from your schedule?">
+                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" asp-route-day="@item.FavouriteDayOffset" class="d-inline" data-confirm="Remove this event from your schedule?">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from schedule">
                                 <i class="fa-solid fa-heart-crack"></i>

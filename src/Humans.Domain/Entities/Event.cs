@@ -173,9 +173,11 @@ public class Event
     }
 
     /// <summary>
-    /// Expands this event into concrete occurrence instants.
+    /// Expands this event into concrete occurrence instants. A non-null
+    /// <paramref name="dayOffset"/> narrows a recurring event to the single
+    /// occurrence on that day offset (non-recurring events ignore it).
     /// </summary>
-    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone)
+    public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone, int? dayOffset = null)
     {
         if (!IsRecurring || string.IsNullOrWhiteSpace(RecurrenceDays))
             return [StartAt];
@@ -185,7 +187,7 @@ public class Event
         return RecurrenceDays
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var d) ? (int?)d : null)
-            .Where(d => d.HasValue)
+            .Where(d => d.HasValue && (dayOffset == null || d == dayOffset))
             .Select(d => gateOpeningDate.PlusDays(d!.Value)
                 .At(startLocal.TimeOfDay)
                 .InZoneLeniently(timeZone)

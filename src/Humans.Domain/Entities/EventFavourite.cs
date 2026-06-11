@@ -24,6 +24,14 @@ public class EventFavourite
     public Guid GuideEventId { get; set; }
 
     /// <summary>
+    /// Day offset (from gate opening) of the favourited occurrence of a
+    /// recurring event. Null favourites the whole event — every occurrence —
+    /// which is also what event-level toggles (events card, API without a day)
+    /// and rows created before this column existed mean.
+    /// </summary>
+    public int? DayOffset { get; set; }
+
+    /// <summary>
     /// When the favourite was created.
     /// </summary>
     public Instant CreatedAt { get; init; }

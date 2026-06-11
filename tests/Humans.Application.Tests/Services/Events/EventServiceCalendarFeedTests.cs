@@ -50,13 +50,17 @@ public class EventServiceCalendarFeedTests
             LastUpdatedAt = FixedNow,
         };
 
-    private void StubFavourites(Guid userId, params Event[] events)
+    private void StubFavourites(Guid userId, params Event[] events) =>
+        StubFavourites(userId, dayOffset: null, events);
+
+    private void StubFavourites(Guid userId, int? dayOffset, params Event[] events)
     {
         IReadOnlyList<EventFavourite> favourites = events.Select(e => new EventFavourite
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             GuideEventId = e.Id,
+            DayOffset = dayOffset,
             CreatedAt = FixedNow,
             Event = e,
         }).ToList();
@@ -156,6 +160,22 @@ public class EventServiceCalendarFeedTests
             $"event-{ev.Id}-20260701@humans.nobodies.team",
             $"event-{ev.Id}-20260703@humans.nobodies.team",
         });
+    }
+
+    [HumansFact]
+    public async Task GetCalendarItems_DaySpecificFavourite_OnlyThatOccurrence()
+    {
+        var userId = Guid.NewGuid();
+        StubBurnSettings();
+        // Recurs on day offsets 0 and 2; the favourite picks only day 2 → July 3.
+        var ev = MakeEvent(EventStatus.Approved, isRecurring: true, recurrenceDays: "0,2");
+        StubFavourites(userId, dayOffset: 2, ev);
+
+        var items = await _service.GetCalendarItemsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        items.Should().HaveCount(1);
+        items[0].Start.Should().Be(Instant.FromUtc(2026, 7, 3, 17, 0));
+        items[0].Uid.Should().Be($"event-{ev.Id}-20260703@humans.nobodies.team");
     }
 
     [HumansFact]

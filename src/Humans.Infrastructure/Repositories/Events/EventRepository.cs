@@ -399,11 +399,10 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
     public async Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.EventFavourites
-            .FirstOrDefaultAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
-        if (existing != null)
+        var existing = await MatchingFavourites(ctx, userId, eventId, newFavourite.DayOffset).ToListAsync(ct);
+        if (existing.Count > 0)
         {
-            ctx.EventFavourites.Remove(existing);
+            ctx.EventFavourites.RemoveRange(existing);
             await ctx.SaveChangesAsync(ct);
             return false;
         }
@@ -416,24 +415,33 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
     public async Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var exists = await ctx.EventFavourites
-            .AnyAsync(f => f.UserId == favourite.UserId && f.GuideEventId == favourite.GuideEventId, ct);
+        var exists = await MatchingFavourites(ctx, favourite.UserId, favourite.GuideEventId, favourite.DayOffset)
+            .AnyAsync(ct);
         if (exists) return false;
         ctx.EventFavourites.Add(favourite);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
 
-    public async Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+    public async Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.EventFavourites
-            .FirstOrDefaultAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
-        if (existing == null) return false;
-        ctx.EventFavourites.Remove(existing);
+        var existing = await MatchingFavourites(ctx, userId, eventId, dayOffset).ToListAsync(ct);
+        if (existing.Count == 0) return false;
+        ctx.EventFavourites.RemoveRange(existing);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
+
+    /// <summary>
+    /// Favourites that overlap a (user, event, dayOffset) reference: a whole-event
+    /// reference (null dayOffset) matches every row for the event; a day reference
+    /// matches the same-day row plus any whole-event row.
+    /// </summary>
+    private static IQueryable<EventFavourite> MatchingFavourites(HumansDbContext ctx, Guid userId, Guid eventId, int? dayOffset) =>
+        ctx.EventFavourites
+            .Where(f => f.UserId == userId && f.GuideEventId == eventId)
+            .Where(f => dayOffset == null || f.DayOffset == null || f.DayOffset == dayOffset);
 
     // ── Preferences ───────────────────────────────────────────────────────
 

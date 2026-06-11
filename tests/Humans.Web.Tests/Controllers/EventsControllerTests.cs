@@ -119,7 +119,7 @@ public class EventsControllerTests
 
         var result = await controller.ToggleCardFavourite(eventId, "/Barrios/shenanicamp");
 
-        await _guide.Received(1).ToggleFavouriteAsync(userId, eventId, Arg.Any<CancellationToken>());
+        await _guide.Received(1).ToggleFavouriteAsync(userId, eventId, null, Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Barrios/shenanicamp");
     }
 
@@ -143,7 +143,7 @@ public class EventsControllerTests
 
         result.Should().BeOfType<ChallengeResult>();
         await _guide.DidNotReceive().ToggleFavouriteAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     private EventsController BuildAnonymousController() =>

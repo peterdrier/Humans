@@ -138,11 +138,12 @@ public sealed class EventServiceTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        await _service.ToggleFavouriteAsync(userId, eventId, TestContext.Current.CancellationToken);
+        await _service.ToggleFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
         _repo.Favourites.Should().ContainSingle(f =>
             f.UserId == userId
             && f.GuideEventId == eventId
+            && f.DayOffset == 4
             && f.CreatedAt == _clock.GetCurrentInstant());
         _repo.SaveChangesCount.Should().Be(1);
     }
@@ -159,10 +160,41 @@ public sealed class EventServiceTests
         };
         _repo.Favourites.Add(fav);
 
-        await _service.ToggleFavouriteAsync(fav.UserId, fav.GuideEventId, TestContext.Current.CancellationToken);
+        await _service.ToggleFavouriteAsync(fav.UserId, fav.GuideEventId, dayOffset: null, TestContext.Current.CancellationToken);
 
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ToggleFavouriteAsync_DaySpecificToggle_RemovesWholeEventFavourite()
+    {
+        var fav = new EventFavourite
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            GuideEventId = Guid.NewGuid(),
+            DayOffset = null,
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+        _repo.Favourites.Add(fav);
+
+        await _service.ToggleFavouriteAsync(fav.UserId, fav.GuideEventId, dayOffset: 2, TestContext.Current.CancellationToken);
+
+        _repo.Favourites.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ToggleFavouriteAsync_DifferentDays_KeepSeparateFavourites()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        await _service.ToggleFavouriteAsync(userId, eventId, dayOffset: 2, TestContext.Current.CancellationToken);
+        await _service.ToggleFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
+
+        _repo.Favourites.Should().HaveCount(2);
+        _repo.Favourites.Select(f => f.DayOffset).Should().BeEquivalentTo([2, 4]);
     }
 
     [HumansFact]
@@ -669,10 +701,10 @@ public sealed class EventServiceTests
 
         public Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
         {
-            var existing = Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId);
-            if (existing != null)
+            var existing = MatchingFavourites(userId, eventId, newFavourite.DayOffset).ToList();
+            if (existing.Count > 0)
             {
-                Favourites.Remove(existing);
+                existing.ForEach(f => Favourites.Remove(f));
                 SaveChangesCount++;
                 return Task.FromResult(false);
             }
@@ -683,21 +715,27 @@ public sealed class EventServiceTests
 
         public Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default)
         {
-            if (Favourites.Any(f => f.UserId == favourite.UserId && f.GuideEventId == favourite.GuideEventId))
+            if (MatchingFavourites(favourite.UserId, favourite.GuideEventId, favourite.DayOffset).Any())
                 return Task.FromResult(false);
             Favourites.Add(favourite);
             SaveChangesCount++;
             return Task.FromResult(true);
         }
 
-        public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
         {
-            var existing = Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId);
-            if (existing == null) return Task.FromResult(false);
-            Favourites.Remove(existing);
+            var existing = MatchingFavourites(userId, eventId, dayOffset).ToList();
+            if (existing.Count == 0) return Task.FromResult(false);
+            existing.ForEach(f => Favourites.Remove(f));
             SaveChangesCount++;
             return Task.FromResult(true);
         }
+
+        // Mirrors EventRepository.MatchingFavourites.
+        private IEnumerable<EventFavourite> MatchingFavourites(Guid userId, Guid eventId, int? dayOffset) =>
+            Favourites
+                .Where(f => f.UserId == userId && f.GuideEventId == eventId)
+                .Where(f => dayOffset == null || f.DayOffset == null || f.DayOffset == dayOffset);
 
         public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Preference?.UserId == userId ? Preference : null);

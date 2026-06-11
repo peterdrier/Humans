@@ -149,6 +149,9 @@ public class ScheduleItemViewModel
     public int DayOffset { get; set; }
     public string DayLabel { get; set; } = string.Empty;
     public NodaTime.Instant StartInstant { get; set; }
+
+    /// <summary>The backing favourite row's day offset; null = whole-event favourite.</summary>
+    public int? FavouriteDayOffset { get; set; }
     public bool HasConflict { get; set; }
 }
 
@@ -165,7 +168,6 @@ public class BrowseViewModel
     public List<CategoryOptionViewModel> Categories { get; set; } = [];
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> Days { get; set; } = [];
-    public HashSet<Guid> FavouritedEventIds { get; set; } = [];
 
     // Active filters (round-tripped via query string)
     public HashSet<int> FilterDays { get; set; } = [];
@@ -194,6 +196,9 @@ public class BrowseEventItem
     public DateTime StartAt { get; set; }
     public int DurationMinutes { get; set; }
     public int DayOffset { get; set; }
+
+    /// <summary>Day offset the heart toggles: this card's day for recurring events, null (whole event) otherwise.</summary>
+    public int? FavouriteDayOffset { get; set; }
     public bool IsFavourited { get; set; }
     public string? SubmitterName { get; set; }
     public string? DisplayHost { get; set; }
