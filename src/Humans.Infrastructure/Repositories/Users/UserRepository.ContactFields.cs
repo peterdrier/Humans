@@ -91,13 +91,13 @@ internal sealed partial class UserRepository
         // comparison configured, so we use case-insensitive match to keep the
         // collapse correct for emails/usernames where casing may differ. Target
         // wins on collision.
-        var targetKeys = new HashSet<(ContactFieldType FieldType, string Value)>(
-            targetRows.Select(cf => (cf.FieldType, cf.Value)),
-            new FieldTypeValueComparer());
+        var targetKeys = targetRows
+            .Select(cf => (cf.FieldType, Value: cf.Value.ToLowerInvariant()))
+            .ToHashSet();
 
         foreach (var src in sourceRows)
         {
-            var key = (src.FieldType, src.Value);
+            var key = (src.FieldType, Value: src.Value.ToLowerInvariant());
             if (targetKeys.Contains(key))
             {
                 // Target already has the same (FieldType, Value) — drop source.
@@ -117,18 +117,4 @@ internal sealed partial class UserRepository
         return await ctx.ContactFields
             .CountAsync(cf => cf.ProfileId == targetProfileId.Value, ct);
     }
-
-    private sealed class FieldTypeValueComparer
-        : IEqualityComparer<(ContactFieldType FieldType, string Value)>
-    {
-        public bool Equals(
-            (ContactFieldType FieldType, string Value) x,
-            (ContactFieldType FieldType, string Value) y) =>
-            x.FieldType == y.FieldType
-            && string.Equals(x.Value, y.Value, StringComparison.OrdinalIgnoreCase);
-
-        public int GetHashCode((ContactFieldType FieldType, string Value) obj) =>
-            HashCode.Combine(obj.FieldType, obj.Value.ToLowerInvariant());
-    }
 }
-

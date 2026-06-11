@@ -55,7 +55,6 @@ public sealed class AccountProvisioningService(
             }
         }
 
-        // Create new User + UserEmail.
         var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@')[0]
             : displayName;
@@ -161,7 +160,16 @@ public sealed class AccountProvisioningService(
             logger.LogError(ex,
                 "Failed to create UserEmail for magic-link signup {UserId} ({Email}); rolling back user",
                 user.Id, email);
-            await TryDeleteOrphanUserAsync(user);
+            try
+            {
+                await userManager.DeleteAsync(user);
+            }
+            catch (Exception deleteEx)
+            {
+                logger.LogError(deleteEx,
+                    "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
+                    user.Id);
+            }
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.Failed,
                 User: null);
@@ -177,19 +185,5 @@ public sealed class AccountProvisioningService(
         return new MagicLinkSignupCompletionResult(
             MagicLinkSignupCompletionOutcome.Created,
             user);
-    }
-
-    private async Task TryDeleteOrphanUserAsync(User user)
-    {
-        try
-        {
-            await userManager.DeleteAsync(user);
-        }
-        catch (Exception deleteEx)
-        {
-            logger.LogError(deleteEx,
-                "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
-                user.Id);
-        }
     }
 }

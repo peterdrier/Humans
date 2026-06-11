@@ -25,13 +25,10 @@ public sealed class UserService(
     IClock clock,
     ILogger<UserService> logger) : IUserService, IUserDataContributor
 {
-    private static readonly TrackedLock[] ProfileStubLocks = CreateProfileStubLocks(32);
-    private static TrackedLock[] CreateProfileStubLocks(int count)
-    {
-        var locks = new TrackedLock[count];
-        for (var i = 0; i < count; i++) locks[i] = new TrackedLock($"UserService.ProfileStub[{i}]");
-        return locks;
-    }
+    private static readonly TrackedLock[] ProfileStubLocks = Enumerable
+        .Range(0, 32)
+        .Select(i => new TrackedLock($"UserService.ProfileStub[{i}]"))
+        .ToArray();
 
     private static TrackedLock ProfileStubLockFor(Guid userId) =>
         ProfileStubLocks[(uint)userId.GetHashCode() % (uint)ProfileStubLocks.Length];
@@ -227,20 +224,16 @@ public sealed class UserService(
 
         foreach (var user in userList)
         {
+            if (user.UserEmails.Count > 0)
+                continue;
+
             var emails = emailsByUser.TryGetValue(user.Id, out var found)
                 ? found
                 : [];
-            AttachUserEmails(user, emails);
+
+            foreach (var email in emails)
+                user.UserEmails.Add(email);
         }
-    }
-
-    private static void AttachUserEmails(User user, IEnumerable<UserEmail> emails)
-    {
-        if (user.UserEmails.Count > 0)
-            return;
-
-        foreach (var email in emails)
-            user.UserEmails.Add(email);
     }
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
@@ -360,7 +353,17 @@ public sealed class UserService(
         UserProfileOnboardingCommand command,
         CancellationToken ct = default)
     {
-        ValidateProfileOnboardingCommand(command);
+        switch (command.Mutation)
+        {
+            case UserProfileOnboardingMutation.RecordConsentCheck
+                when command.ConsentCheckStatus is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged:
+                throw new ArgumentException(
+                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
+                    nameof(command));
+
+            case UserProfileOnboardingMutation.SetSuspension when command.Suspended is null:
+                throw new ArgumentException("SetSuspension requires Suspended.", nameof(command));
+        }
 
         var profile = await repo.GetByUserIdAsync(userId, ct);
         if (profile is null)
@@ -372,7 +375,13 @@ public sealed class UserService(
             case UserProfileOnboardingMutation.RecordConsentCheck:
                 if (command.ConsentCheckStatus == ConsentCheckStatus.Cleared && profile.RejectedAt is not null)
                     return new OnboardingResult(false, "AlreadyRejected");
-                ApplyConsentCheck(profile, command, now);
+                var cleared = command.ConsentCheckStatus == ConsentCheckStatus.Cleared;
+                profile.ConsentCheckStatus = command.ConsentCheckStatus;
+                profile.ConsentCheckAt = now;
+                profile.ConsentCheckedByUserId = command.ActorUserId;
+                profile.ConsentCheckNotes = command.Notes;
+                profile.IsApproved = cleared;
+                profile.UpdatedAt = now;
                 break;
 
             case UserProfileOnboardingMutation.RejectSignup:
@@ -386,7 +395,16 @@ public sealed class UserService(
                 break;
 
             case UserProfileOnboardingMutation.SetSuspension:
-                ApplySuspension(profile, command, now);
+                var suspended = command.Suspended!.Value;
+                profile.IsSuspended = suspended;
+                profile.State = suspended
+                    ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
+                    : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
+
+                if (suspended)
+                    profile.AdminNotes = command.Notes;
+
+                profile.UpdatedAt = now;
                 break;
 
             case UserProfileOnboardingMutation.SetConsentCheckPending:
@@ -482,7 +500,7 @@ public sealed class UserService(
         };
 
         // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
-        if (!IsSuspendedState(profile.State))
+        if (profile.State is not (ProfileState.Suspended or ProfileState.AdminSuspended))
         {
             profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
         }
@@ -659,7 +677,9 @@ public sealed class UserService(
             UpdatedAt = now,
         };
 
-        await AddRowWithInvariantsAsync(row, ct);
+        await repo.AddUserEmailAsync(row, ct);
+        await EnsurePrimaryInvariantAsync(row.UserId, ct);
+        await EnsureGoogleInvariantAsync(row.UserId, ct);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
     }
 
@@ -897,7 +917,11 @@ public sealed class UserService(
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault();
-        var effectiveEmail = SelectEffectiveEmail(userEmails, user.IdentityEmailColumn);
+        var effectiveEmail = userEmails
+            .Where(e => e.IsVerified)
+            .OrderByDescending(e => e.IsPrimary)
+            .Select(e => e.Email)
+            .FirstOrDefault() ?? user.IdentityEmailColumn;
 
         var shaped = new
         {
@@ -1041,15 +1065,6 @@ public sealed class UserService(
         ];
     }
 
-    private static string? SelectEffectiveEmail(
-        IReadOnlyCollection<UserEmail> userEmails,
-        string? fallbackEmail) =>
-        userEmails
-            .Where(e => e.IsVerified)
-            .OrderByDescending(e => e.IsPrimary)
-            .Select(e => e.Email)
-            .FirstOrDefault() ?? fallbackEmail;
-
     private async Task SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
     {
         var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
@@ -1173,13 +1188,6 @@ public sealed class UserService(
             await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
-    private async Task AddRowWithInvariantsAsync(UserEmail row, CancellationToken ct)
-    {
-        await repo.AddUserEmailAsync(row, ct);
-        await EnsurePrimaryInvariantAsync(row.UserId, ct);
-        await EnsureGoogleInvariantAsync(row.UserId, ct);
-    }
-
     private async Task SeedUserStateIfNullAsync(User user, UserInfo info, CancellationToken ct)
     {
         if (user.State is null && info.State is { } seeded)
@@ -1190,63 +1198,10 @@ public sealed class UserService(
     // profile transitions that can change the stored state (e.g. Bare after a name submit).
     private void InvalidateClaims(Guid userId) => roleAssignmentClaimsInvalidator.Invalidate(userId);
 
-    private static void ApplyConsentCheck(
-        Profile profile,
-        UserProfileOnboardingCommand command,
-        Instant now)
-    {
-        var cleared = command.ConsentCheckStatus == ConsentCheckStatus.Cleared;
-        profile.ConsentCheckStatus = command.ConsentCheckStatus;
-        profile.ConsentCheckAt = now;
-        profile.ConsentCheckedByUserId = command.ActorUserId;
-        profile.ConsentCheckNotes = command.Notes;
-        profile.IsApproved = cleared;
-        profile.UpdatedAt = now;
-    }
-
-    private static void ApplySuspension(
-        Profile profile,
-        UserProfileOnboardingCommand command,
-        Instant now)
-    {
-        var suspended = command.Suspended!.Value;
-
-        profile.IsSuspended = suspended;
-
-        // Dual-write until IsSuspended is dropped. State is the canonical shape
-        // exposed through UserInfo.
-        profile.State = suspended
-            ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
-            : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-
-        if (suspended)
-            profile.AdminNotes = command.Notes;
-
-        profile.UpdatedAt = now;
-    }
-
     private static bool HasRequiredNameFields(Profile profile) =>
         !string.IsNullOrWhiteSpace(profile.BurnerName)
         && !string.IsNullOrWhiteSpace(profile.FirstName)
         && !string.IsNullOrWhiteSpace(profile.LastName);
-
-    private static bool IsSuspendedState(ProfileState? state) =>
-        state is ProfileState.Suspended or ProfileState.AdminSuspended;
-
-    private static void ValidateProfileOnboardingCommand(UserProfileOnboardingCommand command)
-    {
-        switch (command.Mutation)
-        {
-            case UserProfileOnboardingMutation.RecordConsentCheck
-                when command.ConsentCheckStatus is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged:
-                throw new ArgumentException(
-                    "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
-                    nameof(command));
-
-            case UserProfileOnboardingMutation.SetSuspension when command.Suspended is null:
-                throw new ArgumentException("SetSuspension requires Suspended.", nameof(command));
-        }
-    }
 
     private static string? GetAlternateEmail(string normalizedEmail)
     {

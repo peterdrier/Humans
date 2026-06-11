@@ -2,7 +2,6 @@
 // @e2e: profile.spec.ts
 using Humans.Application;
 using Humans.Application.Authorization;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -57,7 +56,35 @@ public sealed class UsersAdminController(
         int page = 1,
         CancellationToken ct = default)
     {
-        var allRows = await BuildAdminHumansAsync(search, filter, ct);
+        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var notificationEmails =
+            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
+
+        IReadOnlySet<Guid>? searchUserIds = null;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchResults = await _userService.SearchUsersAsync(
+                search, PersonSearchFields.AdminAll, limit: int.MaxValue, ct);
+
+            var byEmail = allUsers
+                .Where(u =>
+                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.Id);
+
+            searchUserIds = searchResults
+                .Select(r => r.UserId)
+                .Concat(byEmail)
+                .ToHashSet();
+        }
+
+        var allRows = AdminHumanListAssembler.Assemble(
+            allUsers,
+            notificationEmails,
+            searchUserIds,
+            filter);
+
         var viewModel = AdminHumanListViewModelBuilder.Build(
             allRows,
             search,
@@ -396,41 +423,6 @@ public sealed class UsersAdminController(
 
         SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
         return RedirectToAction(nameof(AdminList));
-    }
-
-    private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct)
-    {
-        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var notificationEmails =
-            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
-
-        IReadOnlySet<Guid>? searchUserIds = null;
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            // Uncapped: used as a match set to filter the admin list (ordering is the table's own),
-            // so a hard cap would silently drop matching humans. Cheap at ~500 users.
-            var searchResults = await _userService.SearchUsersAsync(
-                search, PersonSearchFields.AdminAll, limit: int.MaxValue, ct);
-
-            var byEmail = allUsers
-                .Where(u =>
-                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .Select(u => u.Id);
-
-            searchUserIds = searchResults
-                .Select(r => r.UserId)
-                .Concat(byEmail)
-                .ToHashSet();
-        }
-
-        return AdminHumanListAssembler.Assemble(
-            allUsers,
-            notificationEmails,
-            searchUserIds,
-            statusFilter);
     }
 
 }
