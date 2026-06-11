@@ -37,10 +37,10 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 | StoreAdmin | Money (Store catalog, Store summary, Store payments) |
 | FeedbackAdmin | Feedback (Feedback queue) |
 | ConsentCoordinator | Members (Review) |
-| VolunteerCoordinator | Tickets (Early entry), Members (Review), Shifts (Volunteer tracking, Workload) |
+| VolunteerCoordinator | Tickets (Early entry), Members (Review), Shifts (Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
 | CampAdmin | Barrios (Overview, Roles, Barrio map) |
-| NoInfoAdmin | Tickets (Early entry), Shifts (Volunteer tracking, Workload) |
+| NoInfoAdmin | Tickets (Early entry), Shifts (Volunteer tracking, Workload, Post-event stats) |
 
 ## Invariants
 

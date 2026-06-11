@@ -36,7 +36,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     groups: [
       { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster', 'Campaigns', 'Scanner', 'Gate terminal', 'Early entry'] },
       { label: 'Members', items: ['Humans', 'Roles', 'Review', 'Account merges', 'Email problems', 'Audience segmentation'] },
-      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Orphan signups'] },
+      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats', 'Orphan signups'] },
       { label: 'Barrios', items: ['Overview', 'Roles', 'Barrio map'] },
       { label: 'Cantina', items: ['Roster'] },
       { label: 'Money', items: ['Expense review', 'Finance', 'Store catalog', 'Store summary', 'Store payments'] },
@@ -92,7 +92,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     groups: [
       { label: 'Tickets', items: ['Early entry'] },
       { label: 'Members', items: ['Review'] },
-      { label: 'Shifts', items: ['Volunteer tracking', 'Workload'] },
+      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
     ],
   },
   {
