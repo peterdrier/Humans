@@ -4,7 +4,7 @@ namespace Humans.Domain.Tests;
 
 /// <summary>
 /// Demonstration of xUnit v3's per-test <c>[Fact(Timeout = N)]</c>
-/// mechanism. Skipped by default; unskip locally and run to confirm the
+/// mechanism. Runs only under a debugger; attach and run to confirm the
 /// test runner cancels a cooperative long-running test at the configured
 /// millisecond budget (reported as a timeout-caused failure).
 ///
@@ -19,9 +19,7 @@ namespace Humans.Domain.Tests;
 /// </summary>
 public class GlobalTimeoutDemoTest
 {
-    [HumansFact(
-        Skip = "Demo test — unskip locally to verify the 500ms [HumansFact(Timeout)] enforcement. See nobodies-collective/Humans#586.",
-        Timeout = 500)]
+    [DebuggerOnlyFact(Timeout = 500)]
     public async Task Cooperative_loop_exceeding_timeout_is_cancelled()
     {
         // Wait cooperatively on the xUnit-provided cancellation token so the
