@@ -146,6 +146,7 @@ public class GovernanceBoardVotingController(
 
     [HttpPost("Finalize")]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
         var currentUser = await GetCurrentUserInfoAsync();
