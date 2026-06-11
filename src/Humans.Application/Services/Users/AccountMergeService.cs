@@ -144,7 +144,14 @@ public sealed class AccountMergeService(
         }
         finally
         {
-            InvalidateMergeCaches(survivorUserId, archivedUserId);
+            roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
+            roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
+            roleAssignmentService.InvalidateNavBadgeCache();
+            roleAssignmentService.InvalidateRoleAssignmentCache();
+            notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
+            consentCacheInvalidator.InvalidateUser(archivedUserId);
+            consentCacheInvalidator.InvalidateUser(survivorUserId);
+            activeTeamsCacheInvalidator.Invalidate();
         }
     }
 
@@ -199,20 +206,6 @@ public sealed class AccountMergeService(
             req.AdminNotes = notes ?? "Resolved by merge.";
             await mergeRepository.UpdateAsync(req, ct);
         }
-    }
-
-    // Cache-aside eviction after a merge. Runs in MergeAsync's finally so a partial/failed
-    // run still clears stale per-user reads.
-    private void InvalidateMergeCaches(Guid survivorUserId, Guid archivedUserId)
-    {
-        roleAssignmentService.InvalidateClaimsCacheForUser(archivedUserId);
-        roleAssignmentService.InvalidateClaimsCacheForUser(survivorUserId);
-        roleAssignmentService.InvalidateNavBadgeCache();
-        roleAssignmentService.InvalidateRoleAssignmentCache();
-        notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
-        consentCacheInvalidator.InvalidateUser(archivedUserId);
-        consentCacheInvalidator.InvalidateUser(survivorUserId);
-        activeTeamsCacheInvalidator.Invalidate();
     }
 
     public async Task RejectAsync(

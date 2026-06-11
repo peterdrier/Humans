@@ -2,7 +2,6 @@
 // @e2e: profile.spec.ts
 using Humans.Application;
 using Humans.Application.Authorization;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -57,7 +56,35 @@ public sealed class UsersAdminController(
         int page = 1,
         CancellationToken ct = default)
     {
-        var allRows = await BuildAdminHumansAsync(search, filter, ct);
+        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var notificationEmails =
+            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
+
+        IReadOnlySet<Guid>? searchUserIds = null;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchResults = await _userService.SearchUsersAsync(
+                search, PersonSearchFields.AdminAll, limit: int.MaxValue, ct);
+
+            var byEmail = allUsers
+                .Where(u =>
+                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.Id);
+
+            searchUserIds = searchResults
+                .Select(r => r.UserId)
+                .Concat(byEmail)
+                .ToHashSet();
+        }
+
+        var allRows = AdminHumanListAssembler.Assemble(
+            allUsers,
+            notificationEmails,
+            searchUserIds,
+            filter);
+
         var viewModel = AdminHumanListViewModelBuilder.Build(
             allRows,
             search,
@@ -128,6 +155,9 @@ public sealed class UsersAdminController(
         var mergedToName = info.MergedToUserId is Guid mergedTo
             ? (await _userService.GetUserInfoAsync(mergedTo, ct))?.BurnerName
             : null;
+        var rejectedByName = info.Profile?.RejectedByUserId is Guid rejectedByUserId
+            ? (await _userService.GetUserInfoAsync(rejectedByUserId, ct))?.BurnerName
+            : null;
 
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
             info,
@@ -139,7 +169,7 @@ public sealed class UsersAdminController(
             campaignGrants,
             outboxCount,
             clock.GetCurrentInstant(),
-            await GetRejectedByNameAsync(info.Profile, ct),
+            rejectedByName,
             revealedIban,
             mergedToName);
 
@@ -153,7 +183,20 @@ public sealed class UsersAdminController(
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
-        return await RevealIbanCoreAsync(id, actor.Id, ct);
+
+        var info = await _userService.GetUserInfoAsync(id, ct);
+        var iban = info?.Profile?.Iban;
+        if (iban is null)
+        {
+            SetError("No IBAN on record for this user.");
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+
+        await auditLogService.LogAsync(
+            AuditAction.IbanReveal, nameof(User), id,
+            $"Admin revealed IBAN for user {id}", actor.Id);
+        TempData["RevealedIban"] = iban;
+        return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
     [HttpGet("{id:guid}/Outbox")]
@@ -208,10 +251,10 @@ public sealed class UsersAdminController(
         var result = await onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
         if (!result.Success)
         {
-            if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                SetError("This human has already been rejected.");
-            else
+            if (!string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
                 return NotFound();
+
+            SetError("This human has already been rejected.");
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
 
@@ -222,11 +265,8 @@ public sealed class UsersAdminController(
     [HttpGet("{id:guid}/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var info = await _userService.GetUserInfoAsync(id);
-        if (info is null)
-        {
+        if (await _userService.GetUserInfoAsync(id) is null)
             return NotFound();
-        }
 
         var viewModel = new CreateRoleAssignmentViewModel
         {
@@ -241,16 +281,14 @@ public sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var info = await _userService.GetUserInfoAsync(id);
-        if (info is null)
-        {
+        if (await _userService.GetUserInfoAsync(id) is null)
             return NotFound();
-        }
 
         if (string.IsNullOrWhiteSpace(model.RoleName))
         {
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            PopulateRoleAssignmentForm(model, id);
+            model.UserId = id;
+            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
             return View(model);
         }
 
@@ -273,7 +311,11 @@ public sealed class UsersAdminController(
         var result = await roleAssignmentService.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
-        SetRoleAssignmentResult(model.RoleName, result.Success);
+        if (result.Success)
+            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));
+        else
+            SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
+
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
@@ -307,7 +349,14 @@ public sealed class UsersAdminController(
         var result = await roleAssignmentService.EndRoleAsync(
             roleId, currentUser.Id, notes);
 
-        SetRoleEndedResult(result.Success, roleAssignment.RoleName, roleAssignment.UserDisplayName);
+        if (result.Success)
+            SetSuccess(string.Format(
+                localizer["Admin_RoleEnded"].Value,
+                roleAssignment.RoleName,
+                roleAssignment.UserDisplayName));
+        else
+            SetError(localizer["Admin_RoleNotActive"].Value);
+
         return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
     }
 
@@ -376,91 +425,4 @@ public sealed class UsersAdminController(
         return RedirectToAction(nameof(AdminList));
     }
 
-    private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct)
-    {
-        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var notificationEmails =
-            await userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
-
-        IReadOnlySet<Guid>? searchUserIds = null;
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            // Uncapped: used as a match set to filter the admin list (ordering is the table's own),
-            // so a hard cap would silently drop matching humans. Cheap at ~500 users.
-            var searchResults = await _userService.SearchUsersAsync(
-                search, PersonSearchFields.AdminAll, limit: int.MaxValue, ct);
-
-            var byEmail = allUsers
-                .Where(u =>
-                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.BurnerName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .Select(u => u.Id);
-
-            searchUserIds = searchResults
-                .Select(r => r.UserId)
-                .Concat(byEmail)
-                .ToHashSet();
-        }
-
-        return AdminHumanListAssembler.Assemble(
-            allUsers,
-            notificationEmails,
-            searchUserIds,
-            statusFilter);
-    }
-
-    private async Task<string?> GetRejectedByNameAsync(ProfileInfo? profile, CancellationToken ct)
-    {
-        if (profile?.RejectedByUserId is null)
-            return null;
-
-        var rejectedByInfo = await _userService.GetUserInfoAsync(profile.RejectedByUserId.Value, ct);
-        return rejectedByInfo?.BurnerName;
-    }
-
-    private async Task<IActionResult> RevealIbanCoreAsync(Guid id, Guid actorId, CancellationToken ct)
-    {
-        var info = await _userService.GetUserInfoAsync(id, ct);
-        var iban = info?.Profile?.Iban;
-        if (iban is null)
-        {
-            SetError("No IBAN on record for this user.");
-            return RedirectToAction(nameof(AdminDetail), new { id });
-        }
-        await auditLogService.LogAsync(
-            AuditAction.IbanReveal, nameof(User), id,
-            $"Admin revealed IBAN for user {id}", actorId);
-        TempData["RevealedIban"] = iban;
-        return RedirectToAction(nameof(AdminDetail), new { id });
-    }
-
-    private void PopulateRoleAssignmentForm(CreateRoleAssignmentViewModel model, Guid userId)
-    {
-        model.UserId = userId;
-        model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
-    }
-
-    private void SetRoleAssignmentResult(string roleName, bool success)
-    {
-        if (success)
-        {
-            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, roleName));
-            return;
-        }
-
-        SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, roleName));
-    }
-
-    private void SetRoleEndedResult(bool success, string roleName, string userDisplayName)
-    {
-        if (success)
-        {
-            SetSuccess(string.Format(localizer["Admin_RoleEnded"].Value, roleName, userDisplayName));
-            return;
-        }
-
-        SetError(localizer["Admin_RoleNotActive"].Value);
-    }
 }

@@ -17,7 +17,6 @@ public sealed class UnsubscribeService(
 {
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
     {
-        // Try category-aware token first.
         var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
@@ -29,28 +28,9 @@ public sealed class UnsubscribeService(
             return UnsubscribeTokenResult.Valid(result.UserId, info?.BurnerName ?? string.Empty, result.Category);
         }
 
-        // Expired new-format — don't fall through to legacy.
         if (result.Status == TokenValidationStatus.Expired)
             return UnsubscribeTokenResult.Expired();
 
-        // Fall back to legacy campaign-only token.
-        return await ValidateLegacyTokenAsync(token, ct);
-    }
-
-    public async Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default)
-    {
-        var result = await ValidateTokenAsync(token, ct);
-        if (!result.IsValid || !result.UserId.HasValue || !result.Category.HasValue)
-            return result;
-
-        await preferenceService.UpdatePreferenceAsync(
-            result.UserId.Value, result.Category.Value, optedOut: true, source: source);
-
-        return result;
-    }
-
-    private async Task<UnsubscribeTokenResult> ValidateLegacyTokenAsync(string token, CancellationToken ct)
-    {
         var protector = dataProtection
             .CreateProtector("CampaignUnsubscribe")
             .ToTimeLimitedDataProtector();
@@ -71,11 +51,23 @@ public sealed class UnsubscribeService(
             return UnsubscribeTokenResult.Invalid();
         }
 
-        var user = await userRepository.GetByIdAsync(userId, ct);
-        if (user is null)
+        var legacyUser = await userRepository.GetByIdAsync(userId, ct);
+        if (legacyUser is null)
             return UnsubscribeTokenResult.Invalid();
 
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        return UnsubscribeTokenResult.Valid(userId, info?.BurnerName ?? string.Empty, MessageCategory.Marketing, isLegacy: true);
+        var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
+        return UnsubscribeTokenResult.Valid(userId, legacyInfo?.BurnerName ?? string.Empty, MessageCategory.Marketing, isLegacy: true);
+    }
+
+    public async Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default)
+    {
+        var result = await ValidateTokenAsync(token, ct);
+        if (!result.IsValid || !result.UserId.HasValue || !result.Category.HasValue)
+            return result;
+
+        await preferenceService.UpdatePreferenceAsync(
+            result.UserId.Value, result.Category.Value, optedOut: true, source: source);
+
+        return result;
     }
 }

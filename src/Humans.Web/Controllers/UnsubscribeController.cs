@@ -20,13 +20,11 @@ public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogg
 
         if (!result.IsLegacy)
         {
-            // New tokens redirect to comms preferences (no session).
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Legacy: show confirmation page.
         ViewData["DisplayName"] = result.DisplayName;
         ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View();
@@ -46,13 +44,11 @@ public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogg
 
         if (!result.IsLegacy)
         {
-            // New tokens redirect to comms preferences (no session).
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Legacy: show done page.
         ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View("Done");
     }
