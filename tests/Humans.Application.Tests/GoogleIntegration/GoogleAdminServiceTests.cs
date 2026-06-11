@@ -107,7 +107,7 @@ public class GoogleAdminServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
 
-        var result = await _service.GetWorkspaceAccountListAsync();
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.TotalAccounts.Should().Be(2);
         result.ActiveAccounts.Should().Be(1);
@@ -143,7 +143,7 @@ public class GoogleAdminServiceTests
                     DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
             ]);
 
-        var result = await _service.GetWorkspaceAccountListAsync();
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.MissingTwoFactorCount.Should().Be(1);
     }
@@ -186,7 +186,7 @@ public class GoogleAdminServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [verifiedUserId] = verifiedUser.ToUserInfo() }));
 
-        var result = await _service.GetWorkspaceAccountListAsync();
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorMessage.Should().BeNull();
         result.TotalAccounts.Should().Be(1);
@@ -201,7 +201,7 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.GetWorkspaceAccountListAsync();
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorMessage.Should().NotBeNull();
         result.TotalAccounts.Should().Be(0);
@@ -221,7 +221,7 @@ public class GoogleAdminServiceTests
                 DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId);
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -242,7 +242,7 @@ public class GoogleAdminServiceTests
                 DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId);
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already exists in Google Workspace");
@@ -255,13 +255,13 @@ public class GoogleAdminServiceTests
             "test",
             "",
             "User",
-            _actorUserId);
+            _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("All fields are required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, CancellationToken.None);
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(null!, null!, null!, null!, null, CancellationToken.None);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(null!, null!, null!, null!, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -272,7 +272,7 @@ public class GoogleAdminServiceTests
             .Returns(true);
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId);
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in use by another human");
@@ -307,7 +307,7 @@ public class GoogleAdminServiceTests
             }.ToUserInfo());
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId);
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in use by another human");
@@ -340,7 +340,7 @@ public class GoogleAdminServiceTests
             .Returns(new Dictionary<Guid, TeamInfo> { [commsTeamId] = commsTeam });
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "comms", "Any", "Name", _actorUserId);
+            "comms", "Any", "Name", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Google Group");
@@ -359,7 +359,7 @@ public class GoogleAdminServiceTests
     public async Task SuspendAccountAsync_SuspendsAndAudits()
     {
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId);
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("suspended");
@@ -375,7 +375,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("API error"));
 
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId);
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Failed to suspend");
@@ -387,7 +387,7 @@ public class GoogleAdminServiceTests
     public async Task ReactivateAccountAsync_ReactivatesAndAudits()
     {
         var result = await _service.ReactivateAccountAsync(
-            "test@nobodies.team", _actorUserId);
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("reactivated");
@@ -402,7 +402,7 @@ public class GoogleAdminServiceTests
     public async Task ResetPasswordAsync_ResetsAndReturnsNewPassword()
     {
         var result = await _service.ResetPasswordAsync(
-            "test@nobodies.team", _actorUserId);
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -415,12 +415,12 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task ResetPasswordAsync_ReturnsErrorForMissingEmail()
     {
-        var result = await _service.ResetPasswordAsync("", _actorUserId);
+        var result = await _service.ResetPasswordAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email is required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, CancellationToken.None);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -438,7 +438,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
         var result = await _service.ResetPasswordAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -455,7 +455,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("user_emails query failed"));
 
         var result = await _service.ResetPasswordAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -476,7 +476,7 @@ public class GoogleAdminServiceTests
                     UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
 
-        await _service.ResetPasswordAsync("ben.tree@nobodies.team", _actorUserId);
+        await _service.ResetPasswordAsync("ben.tree@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.WorkspaceAccountPasswordReset,
@@ -498,7 +498,7 @@ public class GoogleAdminServiceTests
             .Returns(issued);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Email.Should().Be("alice@nobodies.team");
@@ -523,7 +523,7 @@ public class GoogleAdminServiceTests
             .Returns([]);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Combined method returns Success=true with password-only on backup-code failure.
         result.Success.Should().BeTrue();
@@ -545,7 +545,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Combined method surfaces backup-code failure as Success=true, BackupCode=null.
         result.Success.Should().BeTrue();
@@ -579,7 +579,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.BackupCode.Should().Be("aaaa-1111");
@@ -596,7 +596,7 @@ public class GoogleAdminServiceTests
             .Returns(issued);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Email.Should().Be("alice@nobodies.team");
@@ -628,7 +628,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.TempPassword.Should().BeNull();
@@ -651,7 +651,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.TempPassword.Should().NotBeNullOrEmpty();
@@ -674,7 +674,7 @@ public class GoogleAdminServiceTests
                 IsEnrolledIn2Sv: true));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.TempPassword.Should().BeNull();
@@ -716,7 +716,7 @@ public class GoogleAdminServiceTests
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "alice@nobodies.team", _actorUserId);
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already enrolled in 2FA");
@@ -735,7 +735,7 @@ public class GoogleAdminServiceTests
             .Returns((WorkspaceUserAccount?)null);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
-            "ghost@nobodies.team", _actorUserId);
+            "ghost@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not found");
@@ -747,13 +747,13 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorForMissingEmail()
     {
-        var result = await _service.ResetPasswordAndGenerate2FaAsync("", _actorUserId);
+        var result = await _service.ResetPasswordAndGenerate2FaAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email is required.");
 
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, CancellationToken.None);
-        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, CancellationToken.None);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, Arg.Any<CancellationToken>());
     }
 
     // --- LinkAccountAsync ---
@@ -768,7 +768,7 @@ public class GoogleAdminServiceTests
             .Returns(false);
 
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", userId, _actorUserId);
+            "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("Linked");
@@ -799,7 +799,7 @@ public class GoogleAdminServiceTests
             .Returns((UserInfo?)null);
 
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", Guid.NewGuid(), _actorUserId);
+            "alice@nobodies.team", Guid.NewGuid(), _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not found");
@@ -816,7 +816,7 @@ public class GoogleAdminServiceTests
             .Returns(true);
 
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", userId, _actorUserId);
+            "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already linked");
@@ -838,7 +838,7 @@ public class GoogleAdminServiceTests
         _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.Ok());
 
-        var result = await _service.LinkGroupToTeamAsync(teamId, "test-team");
+        var result = await _service.LinkGroupToTeamAsync(teamId, "test-team", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("test-team@nobodies.team");
@@ -853,7 +853,7 @@ public class GoogleAdminServiceTests
         _teamService.SetGoogleGroupPrefixAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((false, (string?)null));
 
-        var result = await _service.LinkGroupToTeamAsync(Guid.NewGuid(), "prefix");
+        var result = await _service.LinkGroupToTeamAsync(Guid.NewGuid(), "prefix", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not found");
@@ -870,7 +870,7 @@ public class GoogleAdminServiceTests
         _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.Error("Failed to create group"));
 
-        var result = await _service.LinkGroupToTeamAsync(teamId, "new-prefix");
+        var result = await _service.LinkGroupToTeamAsync(teamId, "new-prefix", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Failed to create group");
@@ -905,7 +905,7 @@ public class GoogleAdminServiceTests
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(teams);
 
-        var result = await _service.GetActiveTeamsAsync();
+        var result = await _service.GetActiveTeamsAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[0].Name.Should().Be("Alpha");

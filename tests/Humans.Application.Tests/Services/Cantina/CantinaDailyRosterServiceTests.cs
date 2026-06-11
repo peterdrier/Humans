@@ -79,7 +79,7 @@ public class CantinaDailyRosterServiceTests
     {
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
-        var result = await _service.GetDailyRosterAsync(dayOffset: 3);
+        var result = await _service.GetDailyRosterAsync(dayOffset: 3, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.DayOffset.Should().Be(3);
         result.CalendarDate.Should().BeNull();
@@ -107,7 +107,7 @@ public class CantinaDailyRosterServiceTests
         var es = ActiveEvent();
         _shiftMgmt.GetActiveAsync().Returns(es);
 
-        var result = await _service.GetDailyRosterAsync(dayOffset: 0);
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.CalendarDate.Should().Be(GateOpening);
         result.EventName.Should().Be(EventName);
@@ -137,7 +137,7 @@ public class CantinaDailyRosterServiceTests
             Human(b, "Beth", "Omnivore", allergies: ["Peanut"]),
             Human(c, "Cleo"));
 
-        var result = await _service.GetDailyRosterAsync(dayOffset: 0);
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.TotalOnSite.Should().Be(3);
         result.UnansweredCount.Should().Be(1);
@@ -198,7 +198,7 @@ public class CantinaDailyRosterServiceTests
             MedicalConditions = "Severe peanut allergy",
         });
 
-        var result = await _service.GetDailyRosterAsync(dayOffset: 0);
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
@@ -215,9 +215,9 @@ public class CantinaDailyRosterServiceTests
         var es = ActiveEvent();
         _shiftMgmt.GetActiveAsync().Returns(es);
 
-        (await _service.GetDailyRosterAsync(0)).WeekStartOffset.Should().Be(-1);
-        (await _service.GetDailyRosterAsync(-3)).WeekStartOffset.Should().Be(-8);
-        (await _service.GetDailyRosterAsync(5)).WeekStartOffset.Should().Be(-1);
+        (await _service.GetDailyRosterAsync(0, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
+        (await _service.GetDailyRosterAsync(-3, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-8);
+        (await _service.GetDailyRosterAsync(5, Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
     }
 
     [HumansFact]
@@ -237,7 +237,7 @@ public class CantinaDailyRosterServiceTests
         SetupDay(0, c, b, a);
         SetupHumans(Human(c, "Charlie"), Human(b, "Bob"), Human(a, "Alice"));
 
-        var result = await _service.GetDailyRosterAsync(dayOffset: 0);
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.People.Select(p => p.BurnerName).Should().Equal("Charlie", "Bob", "Alice");
     }
@@ -253,7 +253,7 @@ public class CantinaDailyRosterServiceTests
         var es = ActiveEvent();
         _shiftMgmt.GetActiveAsync().Returns(es);
 
-        var result = await service.GetDailyRosterAsync(dayOffset: 0);
+        var result = await service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
 
         // CET = UTC+2 in July (DST). 23:30 UTC = 01:30 next day Madrid time.
         result.EventTodayDate.Should().Be(GateOpening.PlusDays(1));

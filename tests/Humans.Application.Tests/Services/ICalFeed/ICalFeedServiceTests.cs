@@ -63,7 +63,7 @@ public class ICalFeedServiceTests
             new FakeContributor(MakeItem("b@x", "Shifts", late)),
             new FakeContributor(MakeItem("a@x", "Events", early)));
 
-        var items = await service.GetFeedItemsAsync(Guid.NewGuid(), CancellationToken.None);
+        var items = await service.GetFeedItemsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
         items[0].Uid.Should().Be("a@x");
@@ -75,7 +75,7 @@ public class ICalFeedServiceTests
     {
         var service = CreateService(new FakeContributor(new InvalidOperationException("boom")));
 
-        var act = async () => await service.GetFeedItemsAsync(Guid.NewGuid(), CancellationToken.None);
+        var act = async () => await service.GetFeedItemsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
     }
@@ -87,7 +87,7 @@ public class ICalFeedServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -99,7 +99,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: null);
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -111,7 +111,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: Guid.NewGuid());
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -124,7 +124,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: token, mergedToUserId: Guid.NewGuid());
         var service = CreateService();
 
-        var ics = await service.GetFeedIcsAsync(userId, token, CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().BeNull();
     }
@@ -138,7 +138,7 @@ public class ICalFeedServiceTests
         var service = CreateService(new FakeContributor(
             MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))));
 
-        var ics = await service.GetFeedIcsAsync(userId, token, CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
         ics.Should().Contain("BEGIN:VCALENDAR");
@@ -162,7 +162,7 @@ public class ICalFeedServiceTests
         StubUser(userId, icalToken: token);
         var service = CreateService(new FakeContributor());
 
-        var ics = await service.GetFeedIcsAsync(userId, token, CancellationToken.None);
+        var ics = await service.GetFeedIcsAsync(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         ics.Should().NotBeNull();
         var parsed = Ical.Net.Calendar.Load(ics!);

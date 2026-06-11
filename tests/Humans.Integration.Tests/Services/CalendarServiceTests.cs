@@ -39,11 +39,11 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
                 IsAllDay: false,
                 RecurrenceRule: null,
                 RecurrenceTimezone: null),
-            createdByUserId: userId);
+            createdByUserId: userId, ct: TestContext.Current.CancellationToken);
 
         created.Id.Should().NotBe(Guid.Empty);
 
-        var fetched = await svc.GetEventByIdAsync(created.Id);
+        var fetched = await svc.GetEventByIdAsync(created.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Community call");
         fetched.OwningTeamId.Should().Be(team.Id);
@@ -65,18 +65,18 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             "Inside", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
             Instant.FromUtc(2026, 6, 15, 18, 0),
-            false, null, null), userId);
+            false, null, null), userId, TestContext.Current.CancellationToken);
 
         await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Outside", null, null, null, team.Id,
             Instant.FromUtc(2027, 1, 1, 0, 0),
             Instant.FromUtc(2027, 1, 1, 1, 0),
-            false, null, null), userId);
+            false, null, null), userId, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
             to: Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().ContainSingle(o => o.Title == "Inside");
         occ.Should().NotContain(o => o.Title == "Outside");
@@ -97,17 +97,17 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         await svc.CreateEventAsync(new CreateCalendarEventDto(
             "A-evt", null, null, null, a.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
-            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
         await svc.CreateEventAsync(new CreateCalendarEventDto(
             "B-evt", null, null, null, b.Id,
             Instant.FromUtc(2026, 6, 15, 19, 0),
-            Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: a.Id);
+            teamId: a.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().ContainSingle(o => o.Title == "A-evt");
         occ.Should().NotContain(o => o.Title == "B-evt");
@@ -126,14 +126,14 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "DoomedEvent", null, null, null, team.Id,
             Instant.FromUtc(2026, 6, 15, 17, 0),
-            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
-        await svc.DeleteEventAsync(ev.Id, uid);
+        await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
             Instant.FromUtc(2026, 7, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().BeEmpty();
     }
@@ -160,12 +160,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             EndUtc: firstUtc.Plus(Duration.FromHours(1)),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;BYDAY=TU;COUNT=4",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 3, 1, 0, 0),
             to: Instant.FromUtc(2026, 5, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(4);
         foreach (var o in occ)
@@ -192,12 +192,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             EndUtc: Instant.FromUtc(2024, 1, 7, 19, 0),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;UNTIL=20240201T000000Z",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 2, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().BeEmpty();
     }
@@ -218,16 +218,16 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
-            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         // Cancel the 3rd occurrence (2026-05-19 19:00 Madrid).
         var cancel = new LocalDateTime(2026, 5, 19, 19, 0).InZoneLeniently(zone).ToInstant();
-        await svc.CancelOccurrenceAsync(ev.Id, cancel, uid);
+        await svc.CancelOccurrenceAsync(ev.Id, cancel, uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(3);
         occ.Select(o => o.OccurrenceStartUtc).Should().NotContain(cancel);
@@ -249,7 +249,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Weekly", null, null, null, team.Id,
             first, first.Plus(Duration.FromHours(1)),
-            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         // Move the 2nd occurrence from 19:00 to 20:00.
         var original = new LocalDateTime(2026, 5, 12, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -261,12 +261,12 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             OverrideTitle: "Special week",
             OverrideDescription: null,
             OverrideLocation: null,
-            OverrideLocationUrl: null), uid);
+            OverrideLocationUrl: null), uid, TestContext.Current.CancellationToken);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 5, 1, 0, 0),
             Instant.FromUtc(2026, 6, 1, 0, 0),
-            teamId: team.Id);
+            teamId: team.Id, ct: TestContext.Current.CancellationToken);
 
         occ.Should().HaveCount(4);
         var special = occ.Single(o => string.Equals(o.Title, "Special week", StringComparison.Ordinal));
@@ -287,14 +287,14 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 7, 1, 17, 0),
-            Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
         await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
             "Updated", "new desc", "Hall", null, team.Id,
             Instant.FromUtc(2026, 7, 2, 17, 0),
-            Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
-        var fetched = await svc.GetEventByIdAsync(ev.Id);
+        var fetched = await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Title.Should().Be("Updated");
         fetched.Description.Should().Be("new desc");
@@ -317,7 +317,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             Instant.FromUtc(2026, 5, 1, 18, 0),
             false,
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ValidationException>()
             .WithMessage("*Recurrence rule is malformed*");
@@ -336,7 +336,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
             Instant.FromUtc(2026, 5, 1, 17, 0),
-            Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
         var act = async () => await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
             "Updated", null, null, null, team.Id,
@@ -344,7 +344,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             Instant.FromUtc(2026, 5, 2, 18, 0),
             false,
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
-            RecurrenceTimezone: "Europe/Madrid"), uid);
+            RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ValidationException>()
             .WithMessage("*Recurrence rule is malformed*");
@@ -363,11 +363,11 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "ToDelete", null, null, null, team.Id,
             Instant.FromUtc(2026, 8, 1, 10, 0),
-            Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid);
+            Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid, TestContext.Current.CancellationToken);
 
-        await svc.DeleteEventAsync(ev.Id, uid);
+        await svc.DeleteEventAsync(ev.Id, uid, TestContext.Current.CancellationToken);
 
-        (await svc.GetEventByIdAsync(ev.Id)).Should().BeNull();
+        (await svc.GetEventByIdAsync(ev.Id, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)
@@ -383,7 +383,7 @@ public class CalendarServiceTests(HumansWebApplicationFactory factory) : IClassF
             UpdatedAt = now,
         };
         db.Teams.Add(team);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return team;
     }
 

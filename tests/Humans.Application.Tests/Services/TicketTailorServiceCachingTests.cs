@@ -35,10 +35,10 @@ public class TicketTailorServiceCachingTests
         var service = CreateService(handler);
 
         // 5xx throws — must not be cached so the second call can succeed
-        var act = () => service.GetEventSummaryAsync("ev_test");
+        var act = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<HttpRequestException>();
 
-        var second = await service.GetEventSummaryAsync("ev_test");
+        var second = await service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
 
         second.EventName.Should().Be("Elsewhere 2026");
         second.TotalCapacity.Should().Be(2000);

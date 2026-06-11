@@ -28,24 +28,24 @@ public class AgentSettingsServiceTests
             RetentionDays = 90,
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var store = new AgentSettingsStore();
         var clock = new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0));
         var repo = new AgentRepository(db, clock);
         var service = new AgentSettingsService(repo, store, clock);
-        await service.LoadAsync(CancellationToken.None);
+        await service.LoadAsync(Xunit.TestContext.Current.CancellationToken);
 
         await service.UpdateAsync(s =>
         {
             s.Enabled = true;
             s.DailyMessageCap = 60;
-        }, CancellationToken.None);
+        }, Xunit.TestContext.Current.CancellationToken);
 
         store.Current.Enabled.Should().BeTrue();
         store.Current.DailyMessageCap.Should().Be(60);
 
-        var reloaded = await db.AgentSettings.AsNoTracking().FirstAsync();
+        var reloaded = await db.AgentSettings.AsNoTracking().FirstAsync(Xunit.TestContext.Current.CancellationToken);
         reloaded.Enabled.Should().BeTrue();
         reloaded.DailyMessageCap.Should().Be(60);
     }

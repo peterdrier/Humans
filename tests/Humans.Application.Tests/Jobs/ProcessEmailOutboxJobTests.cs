@@ -75,7 +75,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -87,7 +87,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync();
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
         updated.PickedUpAt.Should().BeNull();
@@ -105,9 +105,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await FreshQuery().SingleAsync();
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Failed);
         updated.RetryCount.Should().Be(1);
         updated.LastError.Should().Contain("SMTP timeout");
@@ -130,7 +130,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
-        await job.ExecuteAsync();
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.Received(10).SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -143,11 +143,11 @@ public class ProcessEmailOutboxJobTests : IDisposable
     public async Task ExecuteAsync_SkipsPaused()
     {
         _dbContext.SystemSettings.Add(new SystemSetting { Key = "IsEmailSendingPaused", Value = "true" });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await SeedMessageAsync(EmailOutboxStatus.Queued);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -162,9 +162,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
         // Message picked up 6 minutes ago but never completed (simulates crash)
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.PickedUpAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -173,7 +173,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync();
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -184,9 +184,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
         // Message picked up 2 minutes ago — still within the 5 minute window
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         message.PickedUpAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -203,9 +203,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
         message.RetryCount = 3;
         message.NextRetryAt = _clock.GetCurrentInstant() - Duration.FromMinutes(1);
         message.LastError = "previous error";
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.Received(1).SendAsync(
             message.RecipientEmail,
@@ -214,7 +214,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await FreshQuery().SingleAsync();
+        var updated = await FreshQuery().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -226,9 +226,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
         var message = await SeedMessageAsync(EmailOutboxStatus.Failed);
         message.RetryCount = 2;
         message.NextRetryAt = _clock.GetCurrentInstant() + Duration.FromMinutes(10);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _transport.DidNotReceive().SendAsync(
             Arg.Any<string>(), Arg.Any<string?>(),
@@ -265,7 +265,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         };
 
         _dbContext.EmailOutboxMessages.Add(message);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return message;
     }
 }

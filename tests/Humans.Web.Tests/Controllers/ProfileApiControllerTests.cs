@@ -174,7 +174,7 @@ public class ProfileApiControllerTests
         // (401) instead of returning rows with empty details.
         var sut = BuildSut(currentUser: null);
 
-        var result = await sut.Search(q: "David");
+        var result = await sut.Search(q: "David", ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<UnauthorizedResult>();
 
@@ -212,7 +212,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "David");
+        var result = await sut.Search(q: "David", ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
@@ -247,7 +247,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "David");
+        var result = await sut.Search(q: "David", ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
@@ -274,7 +274,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "David");
+        var result = await sut.Search(q: "David", ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject
@@ -309,7 +309,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "David");
+        var result = await sut.Search(q: "David", ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
@@ -345,7 +345,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "Ian");
+        var result = await sut.Search(q: "Ian", ct: Xunit.TestContext.Current.CancellationToken);
 
         var rows = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.ToList();
@@ -377,7 +377,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "Friend@Example.com", scope: null, allowEmail: true);
+        var result = await sut.Search(q: "Friend@Example.com", scope: null, allowEmail: true, ct: Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
@@ -396,7 +396,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.Search(q: "nobody@example.com", scope: null, allowEmail: true);
+        var result = await sut.Search(q: "nobody@example.com", scope: null, allowEmail: true, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Should().BeEmpty();
@@ -412,7 +412,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        await sut.Search(q: "friend@example.com", scope: null, allowEmail: false);
+        await sut.Search(q: "friend@example.com", scope: null, allowEmail: false, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _userEmailService.DidNotReceive().GetUserIdByExactEmailAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -431,7 +431,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.GetByUserId(Guid.NewGuid());
+        var result = await sut.GetByUserId(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -448,7 +448,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.GetByUserId(targetUserId);
+        var result = await sut.GetByUserId(targetUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -473,7 +473,7 @@ public class ProfileApiControllerTests
 
         var sut = BuildSut(viewer);
 
-        var result = await sut.GetByUserId(targetUserId);
+        var result = await sut.GetByUserId(targetUserId, Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<HumanLookupSearchResult>().Subject;

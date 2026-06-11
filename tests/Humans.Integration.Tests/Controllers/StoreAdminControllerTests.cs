@@ -15,7 +15,7 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var resp = await Client.GetAsync("/Store/Admin/Catalog");
+        var resp = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
 
         ((int)resp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Forbidden,
@@ -30,9 +30,9 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
         var year = await GetActiveYearAsync();
 
         // GET edit form to seed antiforgery token + cookie.
-        var editResp = await Client.GetAsync("/Store/Admin/Catalog/Edit");
+        var editResp = await Client.GetAsync("/Store/Admin/Catalog/Edit", Xunit.TestContext.Current.CancellationToken);
         editResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var editBody = await editResp.Content.ReadAsStringAsync();
+        var editBody = await editResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var token = ExtractAntiForgeryToken(editBody);
         token.Should().NotBeNullOrEmpty();
 
@@ -47,7 +47,7 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
             ("VatRatePercent", "21"),
             ("DepositAmountEur", ""),
             ("OrderableUntil", $"{year}-12-31"),
-            ("IsActive", "true")));
+            ("IsActive", "true")), Xunit.TestContext.Current.CancellationToken);
         ((int)createResp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
 
@@ -56,14 +56,14 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
         createdId.Should().NotBe(Guid.Empty);
 
         // GET Catalog → product visible
-        var catalogResp = await Client.GetAsync("/Store/Admin/Catalog");
+        var catalogResp = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
         catalogResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await catalogResp.Content.ReadAsStringAsync()).Should().Contain(uniqueName);
+        (await catalogResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().Contain(uniqueName);
 
         // POST Save (with Id, modified fields) → product updated
-        var editIdResp = await Client.GetAsync($"/Store/Admin/Catalog/Edit/{createdId}");
+        var editIdResp = await Client.GetAsync($"/Store/Admin/Catalog/Edit/{createdId}", Xunit.TestContext.Current.CancellationToken);
         editIdResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var editIdBody = await editIdResp.Content.ReadAsStringAsync();
+        var editIdBody = await editIdResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var editToken = ExtractAntiForgeryToken(editIdBody);
 
         var renamed = $"{uniqueName} (renamed)";
@@ -77,43 +77,43 @@ public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : In
             ("VatRatePercent", "10"),
             ("DepositAmountEur", "20.00"),
             ("OrderableUntil", $"{year}-11-30"),
-            ("IsActive", "true")));
+            ("IsActive", "true")), Xunit.TestContext.Current.CancellationToken);
         ((int)updateResp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
 
-        var catalogAfterEdit = await Client.GetAsync("/Store/Admin/Catalog");
-        (await catalogAfterEdit.Content.ReadAsStringAsync()).Should().Contain(renamed);
+        var catalogAfterEdit = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
+        (await catalogAfterEdit.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().Contain(renamed);
 
         // POST Deactivate/{id}
         var deactivateResp = await Client.PostAsync(
             $"/Store/Admin/Catalog/Deactivate/{createdId}",
-            BuildForm(("__RequestVerificationToken", editToken!)));
+            BuildForm(("__RequestVerificationToken", editToken!)), Xunit.TestContext.Current.CancellationToken);
         ((int)deactivateResp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Found, (int)HttpStatusCode.Redirect);
 
         // Admin Catalog still shows it (with Inactive badge), camp-lead /Store does not.
-        var adminCatalogAfter = await Client.GetAsync("/Store/Admin/Catalog");
-        var adminBody = await adminCatalogAfter.Content.ReadAsStringAsync();
+        var adminCatalogAfter = await Client.GetAsync("/Store/Admin/Catalog", Xunit.TestContext.Current.CancellationToken);
+        var adminBody = await adminCatalogAfter.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         adminBody.Should().Contain(renamed);
         adminBody.Should().Contain("Inactive");
 
-        var storeIndex = await Client.GetAsync("/Store");
+        var storeIndex = await Client.GetAsync("/Store", Xunit.TestContext.Current.CancellationToken);
         storeIndex.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await storeIndex.Content.ReadAsStringAsync()).Should().NotContain(renamed);
+        (await storeIndex.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().NotContain(renamed);
     }
 
     private async Task<int> GetActiveYearAsync()
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        return (await db.CampSettings.FirstAsync()).PublicYear;
+        return (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
     }
 
     private async Task<Guid> GetProductIdByNameAsync(string name)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var p = await db.StoreProducts.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name);
+        var p = await db.StoreProducts.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name, Xunit.TestContext.Current.CancellationToken);
         return p?.Id ?? Guid.Empty;
     }
 

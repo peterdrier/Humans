@@ -47,7 +47,7 @@ public class CachingConsentServiceTests
 
         var sut = CreateSut();
 
-        var result = await sut.GetConsentMapForUsersAsync(userIds);
+        var result = await sut.GetConsentMapForUsersAsync(userIds, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(50);
         foreach (var id in userIds)
@@ -74,11 +74,11 @@ public class CachingConsentServiceTests
         var sut = CreateSut();
 
         // Warm the cache.
-        _ = await sut.GetConsentMapForUsersAsync(userIds);
+        _ = await sut.GetConsentMapForUsersAsync(userIds, Xunit.TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
 
         // All-hit path: no scope, no inner call.
-        var second = await sut.GetConsentMapForUsersAsync(userIds);
+        var second = await sut.GetConsentMapForUsersAsync(userIds, Xunit.TestContext.Current.CancellationToken);
 
         second.Should().HaveCount(10);
         foreach (var id in userIds)
@@ -105,7 +105,7 @@ public class CachingConsentServiceTests
             .Returns(stub);
 
         var sut = CreateSut();
-        var result = await sut.GetConsentMapForUsersAsync(userIds);
+        var result = await sut.GetConsentMapForUsersAsync(userIds, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[id].Should().BeEquivalentTo(stub[id]);
@@ -130,7 +130,7 @@ public class CachingConsentServiceTests
             .Returns(hitStub);
 
         var sut = CreateSut();
-        _ = await sut.GetConsentMapForUsersAsync(hitIds); // warm
+        _ = await sut.GetConsentMapForUsersAsync(hitIds, Xunit.TestContext.Current.CancellationToken); // warm
 
         var missStub = missIds.ToDictionary(
             id => id,
@@ -142,7 +142,7 @@ public class CachingConsentServiceTests
             .Returns(missStub);
 
         var combined = hitIds.Concat(missIds).ToList();
-        var result = await sut.GetConsentMapForUsersAsync(combined);
+        var result = await sut.GetConsentMapForUsersAsync(combined, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(7);
 

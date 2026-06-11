@@ -50,11 +50,11 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-            var addResult = await userEmailService.AddEmailAsync(userAId, sharedEmail);
+            var addResult = await userEmailService.AddEmailAsync(userAId, sharedEmail, Xunit.TestContext.Current.CancellationToken);
             addResult.IsConflict.Should().BeTrue(
                 "AddEmail must flag the conflict so the verification email warns the user.");
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(userAId, addResult.EmailId, addResult.Token);
+            var verifyResult = await userEmailService.VerifyEmailAsync(userAId, addResult.EmailId, addResult.Token, Xunit.TestContext.Current.CancellationToken);
             verifyResult.MergeRequestCreated.Should().BeTrue(
                 "the verify-time conflict path is what writes the merge request.");
         }
@@ -64,7 +64,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
             var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
             var merge = await db.Set<AccountMergeRequest>()
                 .AsNoTracking()
-                .SingleAsync(m => m.TargetUserId == userAId && m.SourceUserId == userBId);
+                .SingleAsync(m => m.TargetUserId == userAId && m.SourceUserId == userBId, Xunit.TestContext.Current.CancellationToken);
 
             merge.Status.Should().Be(AccountMergeRequestStatus.Pending);
             merge.Email.Should().Be(sharedEmail);
@@ -75,9 +75,9 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         // BuildEmailsViewModelAsync, so the MergePending pill renders identically.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var resp = await Client.GetAsync($"/Profile/{userAId}/Admin/Emails");
+        var resp = await Client.GetAsync($"/Profile/{userAId}/Admin/Emails", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadAsStringAsync();
+        var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Localized string "Merge pending" is registered in SharedResource.resx
         // under EmailGrid_StatusMergePending; the row also carries the
@@ -100,7 +100,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
             targetEmailId = await db.Set<UserEmail>()
                 .Where(e => e.UserId == targetUserId && e.Email == email)
                 .Select(e => e.Id)
-                .SingleAsync();
+                .SingleAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
         // Sign in as a plain volunteer (not admin, not the target).
@@ -132,7 +132,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         // Sanity check: the underlying email row was not mutated.
         await using var verifyScope = Factory.Services.CreateAsyncScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var row = await verifyDb.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == targetEmailId);
+        var row = await verifyDb.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == targetEmailId, Xunit.TestContext.Current.CancellationToken);
         row.IsGoogle.Should().BeFalse("SetGoogle must not have run for the unprivileged actor.");
     }
 
@@ -158,10 +158,10 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-            var addResult = await userEmailService.AddEmailAsync(targetUserId, sharedEmail);
+            var addResult = await userEmailService.AddEmailAsync(targetUserId, sharedEmail, Xunit.TestContext.Current.CancellationToken);
             addResult.IsConflict.Should().BeTrue();
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(targetUserId, addResult.EmailId, addResult.Token);
+            var verifyResult = await userEmailService.VerifyEmailAsync(targetUserId, addResult.EmailId, addResult.Token, Xunit.TestContext.Current.CancellationToken);
             verifyResult.MergeRequestCreated.Should().BeTrue(
                 "even when an admin initiates the add, cross-user collisions must surface as merge requests, not silent folds.");
         }
@@ -171,7 +171,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         var merges = await db.Set<AccountMergeRequest>()
             .AsNoTracking()
             .Where(m => m.TargetUserId == targetUserId && m.SourceUserId == sourceUserId)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         merges.Should().ContainSingle();
         merges[0].Status.Should().Be(AccountMergeRequestStatus.Pending);
         merges[0].Email.Should().Be(sharedEmail);
@@ -179,7 +179,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         // The source user's verified email still exists; nothing was force-folded.
         var sourceStillHasEmail = await db.Set<UserEmail>()
             .AsNoTracking()
-            .AnyAsync(e => e.UserId == sourceUserId && e.Email == sharedEmail && e.IsVerified);
+            .AnyAsync(e => e.UserId == sourceUserId && e.Email == sharedEmail && e.IsVerified, Xunit.TestContext.Current.CancellationToken);
         sourceStillHasEmail.Should().BeTrue("merge has not been accepted yet — source data must be intact.");
     }
 
@@ -244,7 +244,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user.Id;
     }
 
@@ -274,11 +274,11 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
     /// </summary>
     private async Task<(string FormToken, string Cookie)> GetAntiforgeryAsync(string url)
     {
-        var resp = await Client.GetAsync(url);
+        var resp = await Client.GetAsync(url, Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK,
             $"GET {url} must render so we can harvest its antiforgery token (got {(int)resp.StatusCode}).");
 
-        var html = await resp.Content.ReadAsStringAsync();
+        var html = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var match = Regex.Match(
             html,
             @"name=""__RequestVerificationToken""[^>]*value=""(?<v>[^""]+)""",
@@ -321,7 +321,7 @@ public class EmailGridFlowTests(HumansWebApplicationFactory factory) : Integrati
         // re-sends the antiforgery cookie automatically once it's been set,
         // but adding it explicitly is harmless and documents the dependency.
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
-        return await Client.SendAsync(req);
+        return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }
 
     private static void AssertForbidden(HttpResponseMessage resp)

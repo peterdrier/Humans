@@ -68,7 +68,7 @@ public class HomeControllerTests
         _dashboardService.GetMemberDashboardAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildEmptyDashboard());
 
-        var result = await BuildSut(Authenticated(userId)).Index(CancellationToken.None);
+        var result = await BuildSut(Authenticated(userId)).Index(TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal("Dashboard", view.ViewName);
@@ -78,7 +78,7 @@ public class HomeControllerTests
     public async Task Index_RendersLandingView_ForAnonymousVisitor()
     {
         var result = await BuildSut(new ClaimsPrincipal(new ClaimsIdentity()))
-            .Index(CancellationToken.None);
+            .Index(TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Null(view.ViewName);

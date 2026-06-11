@@ -30,7 +30,7 @@ public class NotificationRecipientResolverTests
         _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([u1, u2]));
 
-        var ids = await _resolver.GetActiveUserIdsForRoleAsync("Board");
+        var ids = await _resolver.GetActiveUserIdsForRoleAsync("Board", Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().BeEquivalentTo([u1, u2]);
         await _roleAssignmentService.Received(1)

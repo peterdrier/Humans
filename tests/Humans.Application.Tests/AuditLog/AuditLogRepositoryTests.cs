@@ -39,12 +39,12 @@ public class AuditLogRepositoryTests
     {
         var entry = MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid());
 
-        await _sut.AddAsync(entry);
+        await _sut.AddAsync(entry, Xunit.TestContext.Current.CancellationToken);
 
         // Round-trip via a fresh context confirms the row was saved by AddAsync.
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var stored = await ctx.AuditLogEntries.AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == entry.Id);
+            .FirstOrDefaultAsync(e => e.Id == entry.Id, Xunit.TestContext.Current.CancellationToken);
 
         stored.Should().NotBeNull(
             because: "AddAsync is the sole write path — it must persist immediately without a caller SaveChanges");
@@ -59,13 +59,13 @@ public class AuditLogRepositoryTests
         var now = Instant.FromUtc(2026, 5, 12, 10, 0);
 
         await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(),
-            occurredAt: now - Duration.FromHours(2)));
+            occurredAt: now - Duration.FromHours(2)), Xunit.TestContext.Current.CancellationToken);
         await _sut.AddAsync(MakeEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(),
-            occurredAt: now - Duration.FromHours(1)));
+            occurredAt: now - Duration.FromHours(1)), Xunit.TestContext.Current.CancellationToken);
         var newest = MakeEntry(AuditAction.RoleAssigned, "User", Guid.NewGuid(), occurredAt: now);
-        await _sut.AddAsync(newest);
+        await _sut.AddAsync(newest, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _sut.GetRecentAsync(count: 2);
+        var result = await _sut.GetRecentAsync(count: 2, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[0].Id.Should().Be(newest.Id,

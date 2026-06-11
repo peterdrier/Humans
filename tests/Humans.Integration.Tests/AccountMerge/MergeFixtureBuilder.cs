@@ -729,6 +729,6 @@ public sealed class MergeFixtureBuilder
             apply(_db);
         }
         _pending.Clear();
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

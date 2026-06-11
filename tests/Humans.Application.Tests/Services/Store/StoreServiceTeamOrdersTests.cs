@@ -63,7 +63,7 @@ public class StoreServiceTeamOrdersTests
         StoreOrder? captured = null;
         await _repo.AddOrderAsync(Arg.Do<StoreOrder>(o => captured = o), Arg.Any<CancellationToken>());
 
-        var id = await _service.CreateTeamOrderAsync(teamId, userId);
+        var id = await _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
         captured!.Id.Should().Be(id);
@@ -84,7 +84,7 @@ public class StoreServiceTeamOrdersTests
             .Returns(new StoreOrder { Id = Guid.NewGuid(), TeamId = teamId, Year = 2026 });
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, userId));
+            () => _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -97,7 +97,7 @@ public class StoreServiceTeamOrdersTests
             .Returns(MakeDepartment(teamId, "Sub", userId, parentTeamId: parentId));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, userId));
+            () => _service.CreateTeamOrderAsync(teamId, userId, TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -107,7 +107,7 @@ public class StoreServiceTeamOrdersTests
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateTeamOrderAsync(teamId, Guid.NewGuid()));
+            () => _service.CreateTeamOrderAsync(teamId, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ==========================================================================
@@ -125,7 +125,7 @@ public class StoreServiceTeamOrdersTests
             _service.UpdateCounterpartyAsync(
                 orderId,
                 new OrderCounterpartyInput("N", null, null, null, null),
-                Guid.NewGuid()));
+                Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -136,7 +136,7 @@ public class StoreServiceTeamOrdersTests
             balanceEur: 0m);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.CreateStripeCheckoutSessionAsync(teamOrder, 10m, "https://x"));
+            _service.CreateStripeCheckoutSessionAsync(teamOrder, 10m, "https://x", TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -148,7 +148,7 @@ public class StoreServiceTeamOrdersTests
         _repo.StripePaymentIntentExistsAsync("pi_x", Arg.Any<CancellationToken>()).Returns(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m));
+            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken));
     }
 
     // ==========================================================================
@@ -184,7 +184,7 @@ public class StoreServiceTeamOrdersTests
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
-        await _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid());
+        await _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpdateOrderAsync(
             Arg.Is<StoreOrder>(o => o.Year == 2025),
@@ -212,7 +212,7 @@ public class StoreServiceTeamOrdersTests
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<StoreProduct>());
 
-        var data = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false);
+        var data = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false, ct: TestContext.Current.CancellationToken);
 
         data.Counterparties.Should().HaveCount(1);
         data.Counterparties[0].CounterpartyType.Should().Be(StoreOrderCounterpartyType.Team);
@@ -234,7 +234,7 @@ public class StoreServiceTeamOrdersTests
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<StoreProduct>());
 
-        var data = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false);
+        var data = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false, ct: TestContext.Current.CancellationToken);
 
         data.Counterparties.Should().BeEmpty();
         data.ShowNoOrdersMessage.Should().BeTrue();
@@ -254,7 +254,7 @@ public class StoreServiceTeamOrdersTests
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<StoreProduct>());
 
-        var data = await _service.GetIndexDataAsync(viewerId, isPrivilegedReader: true);
+        var data = await _service.GetIndexDataAsync(viewerId, isPrivilegedReader: true, ct: TestContext.Current.CancellationToken);
 
         data.Counterparties.Should().ContainSingle(c =>
             c.CounterpartyType == StoreOrderCounterpartyType.Team && c.CounterpartyId == otherDeptId);
@@ -293,7 +293,7 @@ public class StoreServiceTeamOrdersTests
                     Id = Guid.NewGuid(), OrderId = orderId, ProductId = productId,
                     Qty = 7, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m }} }]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, TestContext.Current.CancellationToken);
 
         result.ByCounterparty.Should().ContainSingle(r =>
             r.CounterpartyType == StoreOrderCounterpartyType.Team
@@ -348,7 +348,7 @@ public class StoreServiceTeamOrdersTests
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new StoreOrder { Id = orderId, CampSeasonId = Guid.NewGuid(), Year = 2026 });
 
-        await _service.DeleteOrderAsync(orderId, actor);
+        await _service.DeleteOrderAsync(orderId, actor, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
@@ -375,7 +375,7 @@ public class StoreServiceTeamOrdersTests
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid()));
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
 
         await _repo.DidNotReceive().DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
     }
@@ -388,7 +388,7 @@ public class StoreServiceTeamOrdersTests
             .Returns((StoreOrder?)null);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid()));
+            () => _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ==========================================================================
@@ -410,7 +410,7 @@ public class StoreServiceTeamOrdersTests
             });
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.CreateOrderAsync(seasonId, null, Guid.NewGuid()));
+            () => _service.CreateOrderAsync(seasonId, null, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     private static OrderDto MakeOrderDto(

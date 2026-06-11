@@ -101,7 +101,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().BeEmpty();
     }
@@ -118,7 +118,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.MultipleIsPrimary && p.UserId == userId);
@@ -136,7 +136,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.MultipleIsGoogle && p.UserId == userId);
@@ -154,7 +154,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.ZeroIsPrimary && p.UserId == userId);
@@ -171,7 +171,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().NotContain(p => p.Kind == EmailProblemKind.ZeroIsPrimary);
     }
@@ -187,7 +187,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == userId);
@@ -202,7 +202,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.Unverified
@@ -219,7 +219,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans(new UserEmailOrphan(deadUserId, emailId, "ghost@x.com"));
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.OrphanUserEmail
@@ -235,7 +235,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts(ghostUserId);
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.GhostExternalLogins && p.UserId == ghostUserId);
@@ -247,7 +247,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var ghostUserId = Guid.NewGuid();
         SetGhosts(ghostUserId);
 
-        (await Sut.IsGhostExternalLoginsUserAsync(ghostUserId)).Should().BeTrue();
+        (await Sut.IsGhostExternalLoginsUserAsync(ghostUserId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -257,7 +257,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var otherUserId = Guid.NewGuid();
         SetGhosts(ghostUserId);
 
-        (await Sut.IsGhostExternalLoginsUserAsync(otherUserId)).Should().BeFalse();
+        (await Sut.IsGhostExternalLoginsUserAsync(otherUserId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -271,7 +271,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails
@@ -290,7 +290,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().NotContain(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
@@ -304,7 +304,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().NotContain(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
@@ -321,7 +321,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails
@@ -338,7 +338,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com"));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle()
             .Which.Should().Be((userId, "legacy@x.com"));
@@ -355,7 +355,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             Email(userId, "match@x.com", isVerified: true, isPrimary: true)
         ]));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
@@ -368,7 +368,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: null));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -384,7 +384,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().NotContain(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
@@ -398,7 +398,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         SetOrphans();
         SetGhosts();
 
-        var report = await Sut.ScanAsync();
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails
@@ -415,7 +415,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             Email(userId, "import@x.com", isVerified: true)
         ]));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(

@@ -17,19 +17,19 @@ public class BarriosQueryTests(HumansWebApplicationFactory factory) : Integratio
         using (var warmScope = Factory.Services.CreateScope())
         {
             var users = warmScope.ServiceProvider.GetRequiredService<IUserServiceRead>();
-            await users.GetAllUserInfosAsync();
+            await users.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
         // Pay any one-time auth/culture/claims costs from sign-in before measuring
         // the page reload itself.
-        var warmResponse = await Client.GetAsync("/");
+        var warmResponse = await Client.GetAsync("/", Xunit.TestContext.Current.CancellationToken);
         warmResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
         var queryStats = scope.ServiceProvider.GetRequiredService<QueryStatistics>();
         queryStats.Reset();
 
-        var response = await Client.GetAsync("/Barrios");
+        var response = await Client.GetAsync("/Barrios", Xunit.TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var userSelects = queryStats.GetSnapshot()

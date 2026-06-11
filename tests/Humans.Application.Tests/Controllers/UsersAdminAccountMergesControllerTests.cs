@@ -79,7 +79,7 @@ public class UsersAdminAccountMergesControllerTests
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
 
-        var result = await BuildController().Merge(survivor, archived, "note", CancellationToken.None);
+        var result = await BuildController().Merge(survivor, archived, "note", Xunit.TestContext.Current.CancellationToken);
 
         await _mergeService.Received(1).MergeAsync(
             survivor, archived, _adminUserId, "note", null, Arg.Any<CancellationToken>());
@@ -95,7 +95,7 @@ public class UsersAdminAccountMergesControllerTests
         _mergeService.MergeAsync(survivor, archived, _adminUserId, Arg.Any<string?>(), null, Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("boom"));
 
-        var result = await BuildController().Merge(survivor, archived, notes: null, CancellationToken.None);
+        var result = await BuildController().Merge(survivor, archived, notes: null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
@@ -107,7 +107,7 @@ public class UsersAdminAccountMergesControllerTests
         var requestId = Guid.NewGuid();
         var survivor = Guid.NewGuid();
 
-        var result = await BuildController().MergeRequest(requestId, survivor, "note", CancellationToken.None);
+        var result = await BuildController().MergeRequest(requestId, survivor, "note", Xunit.TestContext.Current.CancellationToken);
 
         await _mergeService.Received(1).AcceptAsync(
             requestId, _adminUserId, survivor, "note", Arg.Any<CancellationToken>());
@@ -120,7 +120,7 @@ public class UsersAdminAccountMergesControllerTests
     {
         var requestId = Guid.NewGuid();
 
-        var result = await BuildController().Dismiss(requestId, "no thanks", CancellationToken.None);
+        var result = await BuildController().Dismiss(requestId, "no thanks", Xunit.TestContext.Current.CancellationToken);
 
         await _mergeService.Received(1).RejectAsync(
             requestId, _adminUserId, "no thanks", Arg.Any<CancellationToken>());
@@ -133,7 +133,7 @@ public class UsersAdminAccountMergesControllerTests
     {
         var requestId = Guid.NewGuid();
 
-        var result = await BuildController().Close(requestId, CancellationToken.None);
+        var result = await BuildController().Close(requestId, Xunit.TestContext.Current.CancellationToken);
 
         await _mergeService.Received(1).ReconcileMergedRequestAsync(
             requestId, _adminUserId, Arg.Any<CancellationToken>());
@@ -148,7 +148,7 @@ public class UsersAdminAccountMergesControllerTests
         _mergeService.ReconcileMergedRequestAsync(requestId, _adminUserId, Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("not merged into each other"));
 
-        var result = await BuildController().Close(requestId, CancellationToken.None);
+        var result = await BuildController().Close(requestId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));

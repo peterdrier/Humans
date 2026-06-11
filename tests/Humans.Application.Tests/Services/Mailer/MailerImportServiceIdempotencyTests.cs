@@ -30,15 +30,15 @@ public class MailerImportServiceIdempotencyTests
         var harness = new IdempotencyHarness();
 
         // Pass 1 – subscriber exists, no human user yet.
-        var plan1 = await harness.Service.BuildPlanAsync();
-        await harness.Service.ApplyAsync(plan1);
+        var plan1 = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
+        await harness.Service.ApplyAsync(plan1, ct: Xunit.TestContext.Current.CancellationToken);
         var perRowAfterFirst = harness.Audit.PerRowCount;
 
         // Now wire the harness so the subscriber is "known" on the second pass.
         harness.PromoteToVerifiedUser();
 
-        var plan2 = await harness.Service.BuildPlanAsync();
-        var result2 = await harness.Service.ApplyAsync(plan2);
+        var plan2 = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
+        var result2 = await harness.Service.ApplyAsync(plan2, ct: Xunit.TestContext.Current.CancellationToken);
 
         var perRowDelta = harness.Audit.PerRowCount - perRowAfterFirst;
         perRowDelta.Should().Be(0, "second pass over unchanged state must not log per-row events");

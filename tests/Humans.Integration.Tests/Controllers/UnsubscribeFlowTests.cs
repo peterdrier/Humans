@@ -70,7 +70,7 @@ public class UnsubscribeFlowTests(HumansWebApplicationFactory factory) : Integra
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var pref = await db.Set<CommunicationPreference>()
             .AsNoTracking()
-            .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates);
+            .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
         pref.OptedOut.Should().BeTrue("emailEnabled=false maps to OptedOut=true.");
         pref.UpdateSource.Should().Be("MagicLink",
             "anonymous token-driven updates must be attributed to MagicLink, " +
@@ -105,7 +105,7 @@ public class UnsubscribeFlowTests(HumansWebApplicationFactory factory) : Integra
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var pref = await db.Set<CommunicationPreference>()
             .AsNoTracking()
-            .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates);
+            .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
         pref.OptedOut.Should().BeTrue("emailEnabled=false maps to OptedOut=true.");
         pref.UpdateSource.Should().Be("Guest",
             "session-driven updates must be attributed to Guest, distinct from MagicLink.");
@@ -135,11 +135,11 @@ public class UnsubscribeFlowTests(HumansWebApplicationFactory factory) : Integra
 
     private async Task<(string FormToken, string Cookie)> GetAntiforgeryAsync(string url)
     {
-        var resp = await Client.GetAsync(url);
+        var resp = await Client.GetAsync(url, Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK,
             $"GET {url} must render so we can harvest its antiforgery token (got {(int)resp.StatusCode}).");
 
-        var html = await resp.Content.ReadAsStringAsync();
+        var html = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var match = Regex.Match(
             html,
             @"name=""__RequestVerificationToken""[^>]*value=""(?<v>[^""]+)""",
@@ -176,6 +176,6 @@ public class UnsubscribeFlowTests(HumansWebApplicationFactory factory) : Integra
         using var content = new FormUrlEncodedContent(withToken);
         using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
-        return await Client.SendAsync(req);
+        return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }
 }

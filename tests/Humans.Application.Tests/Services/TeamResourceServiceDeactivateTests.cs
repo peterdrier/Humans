@@ -59,19 +59,19 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
         SeedResource(otherTeamId, "Safe Drive", GoogleResourceType.DriveFolder);
         // Already-inactive row on target team should not generate a duplicate audit.
         SeedResource(teamId, "Already inactive", GoogleResourceType.DriveFolder, isActive: false);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.DeactivateResourcesForTeamAsync(teamId);
+        await _service.DeactivateResourcesForTeamAsync(teamId, ct: Xunit.TestContext.Current.CancellationToken);
 
         var doomedRows = await Db.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         doomedRows.Should().OnlyContain(r => !r.IsActive);
 
         var safeRow = await Db.GoogleResources
             .AsNoTracking()
-            .SingleAsync(r => r.TeamId == otherTeamId);
+            .SingleAsync(r => r.TeamId == otherTeamId, Xunit.TestContext.Current.CancellationToken);
         safeRow.IsActive.Should().BeTrue();
 
         // Exactly two audit entries (for the two previously-active doomed resources).
@@ -96,14 +96,14 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
         SeedTeam(teamId, "Doomed");
         SeedResource(teamId, "Doomed Drive", GoogleResourceType.DriveFolder);
         SeedResource(teamId, "Doomed Group", GoogleResourceType.Group);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.DeactivateResourcesForTeamAsync(teamId, GoogleResourceType.DriveFolder);
+        await _service.DeactivateResourcesForTeamAsync(teamId, GoogleResourceType.DriveFolder, Xunit.TestContext.Current.CancellationToken);
 
         var rows = await Db.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(2);
         rows.Single(r => r.ResourceType == GoogleResourceType.DriveFolder).IsActive.Should().BeFalse();
@@ -116,18 +116,18 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
         var teamId = Guid.NewGuid();
         SeedTeam(teamId, "Access");
         var resourceId = SeedResource(teamId, "Folder", GoogleResourceType.DriveFolder);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _drivePermissions.SetInheritedPermissionsDisabledAsync(
                 Arg.Any<string>(),
                 true,
                 Arg.Any<CancellationToken>())
             .Returns((GoogleClientError?)null);
 
-        var result = await _service.SetRestrictInheritedAccessWithResultAsync(resourceId, restrict: true);
+        var result = await _service.SetRestrictInheritedAccessWithResultAsync(resourceId, restrict: true, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
 
-        var stored = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId);
+        var stored = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, Xunit.TestContext.Current.CancellationToken);
         stored.RestrictInheritedAccess.Should().BeTrue();
     }
 
@@ -138,7 +138,7 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
     [HumansFact]
     public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()
     {
-        var result = await _service.GetResourceNamesByIdsAsync([]);
+        var result = await _service.GetResourceNamesByIdsAsync([], Xunit.TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
     }
 
@@ -172,9 +172,9 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
             IsActive = true,
             ProvisionedAt = Clock.GetCurrentInstant()
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetResourceNamesByIdsAsync([knownId1, knownId2, unknownId]);
+        var result = await _service.GetResourceNamesByIdsAsync([knownId1, knownId2, unknownId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[knownId1].Should().Be("Folder One");
@@ -187,9 +187,9 @@ public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness
     {
         var teamId = Guid.NewGuid();
         SeedTeam(teamId, "Empty");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.DeactivateResourcesForTeamAsync(teamId);
+        await _service.DeactivateResourcesForTeamAsync(teamId, ct: Xunit.TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(),

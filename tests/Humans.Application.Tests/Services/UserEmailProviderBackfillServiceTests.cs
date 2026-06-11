@@ -67,7 +67,7 @@ public class UserEmailProviderBackfillServiceTests
         _userManager.GetLoginsAsync(user)
             .Returns(new List<UserLoginInfo> { new("Google", "sub-A", "Google") });
 
-        var result = await _service.RunAsync();
+        var result = await _service.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.UsersProcessed.Should().Be(1);
         result.ProviderRowsUpdated.Should().Be(1);
@@ -120,7 +120,7 @@ public class UserEmailProviderBackfillServiceTests
             .Returns([googleRow, otherRow]);
         _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo>());
 
-        var result = await _service.RunAsync();
+        var result = await _service.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.IsGoogleRowsUpdated.Should().Be(1);
         googleRow.IsGoogle.Should().BeTrue();
@@ -165,7 +165,7 @@ public class UserEmailProviderBackfillServiceTests
             .Returns([oauthRow, otherRow]);
         _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo>());
 
-        var result = await _service.RunAsync();
+        var result = await _service.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.IsGoogleRowsUpdated.Should().Be(1);
         oauthRow.IsGoogle.Should().BeTrue();
@@ -204,7 +204,7 @@ public class UserEmailProviderBackfillServiceTests
         _userManager.GetLoginsAsync(user)
             .Returns(new List<UserLoginInfo> { new("Google", "sub-A", "Google") });
 
-        var result = await _service.RunAsync();
+        var result = await _service.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.ProviderRowsUpdated.Should().Be(0);
         await _userRepository.DidNotReceive().UpdateUserEmailsAsync(

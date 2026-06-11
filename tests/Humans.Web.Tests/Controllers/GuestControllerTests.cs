@@ -86,7 +86,7 @@ public class GuestControllerTests
             .Returns(OnboardingWidgetStep.Names);
         var ctrl = BuildSut(user);
 
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);
@@ -103,7 +103,7 @@ public class GuestControllerTests
             .Returns(new UserTicketHoldings(0, []));
         var ctrl = BuildSut(user);
 
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         Assert.IsType<ViewResult>(result);
     }
@@ -112,7 +112,7 @@ public class GuestControllerTests
     public async Task RequestDeletion_AlreadyPending_RedirectsWithSpecificError()
     {
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _accountDeletionService.RequestDeletionAsync(user.Id)
+        _accountDeletionService.RequestDeletionAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new DeletionRequestResult(false, "AlreadyPending"));
         var ctrl = BuildSut(user);
 
@@ -127,7 +127,7 @@ public class GuestControllerTests
     public async Task RequestDeletion_Success_RedirectsWithDeletionMessage()
     {
         var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
-        _accountDeletionService.RequestDeletionAsync(user.Id)
+        _accountDeletionService.RequestDeletionAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new DeletionRequestResult(
                 true,
                 EffectiveDeletionDate: Instant.FromUtc(2026, 6, 15, 0, 0)));

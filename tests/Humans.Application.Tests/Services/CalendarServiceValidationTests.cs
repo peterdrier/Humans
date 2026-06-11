@@ -125,7 +125,7 @@ public class CalendarServiceValidationTests
             RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
             RecurrenceTimezone: "Europe/Madrid");
 
-        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
@@ -149,7 +149,7 @@ public class CalendarServiceValidationTests
             RecurrenceRule: "FREQ=DAILY",
             RecurrenceTimezone: "Europe/Madird");
 
-        var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid());
+        var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
@@ -186,7 +186,7 @@ public class CalendarServiceValidationTests
             RecurrenceRule: null,
             RecurrenceTimezone: null);
 
-        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue(
             because: "the DB write committed; audit failure is best-effort and must not void the result");
@@ -240,7 +240,7 @@ public class CalendarServiceValidationTests
             RecurrenceRule: null,
             RecurrenceTimezone: null);
 
-        var result = await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid());
+        var result = await service.UpdateEventWithResultAsync(eventId, dto, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue(
             because: "the DB write committed; audit failure is best-effort and must not void the result");
@@ -268,7 +268,7 @@ public class CalendarServiceValidationTests
 
         // Void overload — re-throwing audit would also skip the decorator's
         // post-delete invalidation, leaving the soft-deleted event in cache.
-        var act = async () => await service.DeleteEventAsync(eventId, Guid.NewGuid());
+        var act = async () => await service.DeleteEventAsync(eventId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
     }
 
@@ -287,7 +287,7 @@ public class CalendarServiceValidationTests
         var service = BuildService(repo, audit);
 
         var act = async () => await service.CancelOccurrenceAsync(
-            Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid());
+            Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 10, 0), Guid.NewGuid(), TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
     }
 

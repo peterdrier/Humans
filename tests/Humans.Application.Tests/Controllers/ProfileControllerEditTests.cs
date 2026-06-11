@@ -180,9 +180,9 @@ public class ProfileControllerEditTests
         await _controller.Edit(model);
 
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileVolunteerHistoryAsync(
             _userId, Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileLanguagesAsync(
@@ -206,7 +206,7 @@ public class ProfileControllerEditTests
             Arg.Is<string?>(x => x == null),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -246,7 +246,7 @@ public class ProfileControllerEditTests
             Arg.Is<string?>(x => x == null),
             Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -272,11 +272,11 @@ public class ProfileControllerEditTests
         await _controller.Edit(model);
 
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, CancellationToken.None);
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, CancellationToken.None);
+            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(Guid.Empty, CancellationToken.None);
+            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -380,7 +380,7 @@ public class ProfileControllerEditTests
             Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
             Arg.Any<CancellationToken>());
         await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!);
+            .SaveDietaryMedicalAsync(default, default!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -399,7 +399,7 @@ public class ProfileControllerEditTests
         _controller.ModelState.IsValid.Should().BeFalse();
         _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
         await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(default, default!, default!);
+            .SaveProfileAsync(default, default!, default!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -417,7 +417,7 @@ public class ProfileControllerEditTests
                 AllergyOtherText = "Mango",
             }));
 
-        var result = await _controller.Edit();
+        var result = await _controller.Edit(ct: Xunit.TestContext.Current.CancellationToken);
 
         var viewModel = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<ProfileViewModel>().Subject;

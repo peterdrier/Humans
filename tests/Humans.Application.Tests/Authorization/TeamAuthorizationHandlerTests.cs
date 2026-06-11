@@ -25,7 +25,7 @@ public sealed class TeamAuthorizationHandlerTests
     public TeamAuthorizationHandlerTests()
     {
         _handler = new TeamAuthorizationHandler(_teamService);
-        _teamService.GetTeamsAsync().Returns(CreateTeamMap());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
     }
 
     public static TheoryData<string, string, bool> TeamAuthorizationCases => new()

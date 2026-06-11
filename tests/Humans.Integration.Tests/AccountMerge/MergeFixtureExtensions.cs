@@ -91,7 +91,7 @@ public static class MergeFixtureExtensions
         };
         db.AccountMergeRequests.Add(request);
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return request.Id;
     }
 
@@ -157,7 +157,7 @@ public static class MergeFixtureExtensions
             UpdatedAt = now,
         };
         db.Profiles.Add(profile);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         return userId;
     }

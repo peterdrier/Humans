@@ -179,7 +179,7 @@ public class ShiftsControllerToggleDayTests
             .Returns(SignupResult.Ok(created));
         StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("true");
@@ -202,7 +202,7 @@ public class ShiftsControllerToggleDayTests
             .Returns(SignupResult.Ok(existing));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("false");
@@ -223,7 +223,7 @@ public class ShiftsControllerToggleDayTests
             .Returns(SignupResult.Fail("Time conflict on day(s): Mon"));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Toast-Type"].ToString().Should().Be("warning");
@@ -244,7 +244,7 @@ public class ShiftsControllerToggleDayTests
             .Returns(SignupResult.Ok(pending));
         StubBrowseRow(shiftId, userId, SignupStatus.Pending);
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("true");
@@ -268,7 +268,7 @@ public class ShiftsControllerToggleDayTests
         _shiftMgmt.GetActiveAsync().Returns(Event);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShift>());
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeAssignableTo<IStatusCodeActionResult>()
             .Which.StatusCode.Should().Be(204);
@@ -301,7 +301,7 @@ public class ShiftsControllerToggleDayTests
         _shiftMgmt.GetActiveAsync().Returns(Event);
         _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
@@ -318,7 +318,7 @@ public class ShiftsControllerToggleDayTests
         // Empty name fields → name gate trips.
         var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: "", dietary: "Vegan"));
 
-        var result = await ctrl.ToggleDay(shiftId, CancellationToken.None);
+        var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);

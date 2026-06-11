@@ -224,7 +224,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.ShiftSignups.Add(signup);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
@@ -250,7 +250,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.ShiftSignups.Add(signup);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
@@ -404,7 +404,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
                 UpdatedAt = TestNow,
             });
         }
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var coord = await SeedUserAsync("coord", TestNow.Minus(Duration.FromDays(2)));
         await SeedCoordinatorAsync(build, coord);
@@ -476,7 +476,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDashboardTrendsAsync(es.Id, TrendWindow.Last7Days);
 
@@ -751,7 +751,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.EventSettings.Add(es);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -769,7 +769,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.Teams.Add(team);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return team;
     }
 
@@ -789,7 +789,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.Rotas.Add(rota);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return rota;
     }
 
@@ -809,7 +809,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
 
@@ -829,7 +829,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedHourlyShiftAsync(Rota rota, int dayOffset, int hours, int min, int max)
@@ -848,7 +848,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             UpdatedAt = TestNow,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task<User> SeedUserAsync(string displayName, Instant? lastLogin = null)
@@ -866,7 +866,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
         };
         Db.Users.Add(user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user;
     }
 
@@ -885,7 +885,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
                 UpdatedAt = TestNow,
             });
         }
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedOneSignupAsync(Shift shift, Guid userId, SignupStatus status)
@@ -899,7 +899,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow.Minus(Duration.FromHours(1)),
             UpdatedAt = TestNow,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedTicketOrderAsync(Guid userId, TicketPaymentStatus status)
@@ -917,7 +917,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             PurchasedAt = TestNow.Minus(Duration.FromDays(10)),
             SyncedAt = TestNow,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedCoordinatorAsync(Team team, User user)
@@ -930,7 +930,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             Role = TeamMemberRole.Coordinator,
             JoinedAt = TestNow.Minus(Duration.FromDays(30)),
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     // ================================================================

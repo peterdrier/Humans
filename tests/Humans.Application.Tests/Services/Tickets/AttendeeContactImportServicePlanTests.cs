@@ -31,7 +31,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Should().ContainSingle()
             .Which.Outcome.Should().Be(AttendeeImportOutcome.SkipNoEmail);
@@ -57,7 +57,7 @@ public class AttendeeContactImportServicePlanTests
                 new User { Id = userId, MergedToUserId = null },
                 [], [], [], null, [], [], [], []));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var decision = plan.Decisions.Single();
         decision.Outcome.Should().Be(AttendeeImportOutcome.AttachVerified);
@@ -90,7 +90,7 @@ public class AttendeeContactImportServicePlanTests
                 new User { Id = liveId, MergedToUserId = null },
                 [], [], [], null, [], [], [], []));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().TargetUserId.Should().Be(liveId);
     }
@@ -114,7 +114,7 @@ public class AttendeeContactImportServicePlanTests
         harness.UserEmails.FindAnyEmailRowByAddressAsync("victim@x.com", Arg.Any<CancellationToken>())
             .Returns((squatterUserId, unverifiedRowId));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var decision = plan.Decisions.Single();
         decision.Outcome.Should().Be(AttendeeImportOutcome.DeleteUnverifiedThenCreate);
@@ -139,7 +139,7 @@ public class AttendeeContactImportServicePlanTests
         harness.UserEmails.FindAnyEmailRowByAddressAsync("fresh@x.com", Arg.Any<CancellationToken>())
             .Returns(((Guid, Guid)?)null);
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var decision = plan.Decisions.Single();
         decision.Outcome.Should().Be(AttendeeImportOutcome.CreateNewUser);
@@ -183,7 +183,7 @@ public class AttendeeContactImportServicePlanTests
         harness.UserEmails.FindAnyEmailRowByAddressAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(((Guid, Guid)?)null);
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Should().ContainSingle();
         var d = plan.Decisions[0];
@@ -215,7 +215,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Should().HaveCount(2);
         plan.Decisions.Should().OnlyContain(d => d.Outcome == AttendeeImportOutcome.SkipNoEmail);
@@ -238,7 +238,7 @@ public class AttendeeContactImportServicePlanTests
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("shared@x.com", Arg.Any<CancellationToken>())
             .Returns([u1, u2]);
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var decision = plan.Decisions.Single();
         decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousMultipleVerified);

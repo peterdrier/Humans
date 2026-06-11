@@ -154,9 +154,9 @@ public sealed class TicketRepository_OrderDriftTests : IDisposable
             SyncedAt = now,
         });
 
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetOrderDriftAsync();
+        var result = await _repo.GetOrderDriftAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].OrderId.Should().Be(driftOrderId);

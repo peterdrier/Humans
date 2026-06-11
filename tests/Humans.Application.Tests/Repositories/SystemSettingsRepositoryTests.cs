@@ -32,7 +32,7 @@ public sealed class SystemSettingsRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetValueAsync_ReturnsNullWhenRowDoesNotExist()
     {
-        var result = await _repository.GetValueAsync("Missing");
+        var result = await _repository.GetValueAsync("Missing", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -45,9 +45,9 @@ public sealed class SystemSettingsRepositoryTests : IDisposable
             Key = "Feature:Enabled",
             Value = "true",
         });
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repository.GetValueAsync("Feature:Enabled");
+        var result = await _repository.GetValueAsync("Feature:Enabled", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be("true");
     }
@@ -55,10 +55,10 @@ public sealed class SystemSettingsRepositoryTests : IDisposable
     [HumansFact]
     public async Task SetValueAsync_InsertsRowWhenAbsent()
     {
-        await _repository.SetValueAsync("Email:Paused", "true");
+        await _repository.SetValueAsync("Email:Paused", "true", Xunit.TestContext.Current.CancellationToken);
 
         var row = await _seedContext.SystemSettings.AsNoTracking()
-            .SingleAsync(setting => setting.Key == "Email:Paused");
+            .SingleAsync(setting => setting.Key == "Email:Paused", Xunit.TestContext.Current.CancellationToken);
         row.Value.Should().Be("true");
     }
 
@@ -70,13 +70,13 @@ public sealed class SystemSettingsRepositoryTests : IDisposable
             Key = "Email:Paused",
             Value = "true",
         });
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _repository.SetValueAsync("Email:Paused", "false");
+        await _repository.SetValueAsync("Email:Paused", "false", Xunit.TestContext.Current.CancellationToken);
 
         var rows = await _seedContext.SystemSettings.AsNoTracking()
             .Where(setting => setting.Key == "Email:Paused")
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle();
         rows[0].Value.Should().Be("false");
     }

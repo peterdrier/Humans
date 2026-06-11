@@ -56,7 +56,7 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.SuspendAsync(userId, adminId, notes);
+        var result = await sut.SuspendAsync(userId, adminId, notes, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
@@ -107,7 +107,7 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        await sut.SuspendAsync(userId, adminId, notes: null);
+        await sut.SuspendAsync(userId, adminId, notes: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.AccessSuspended,
@@ -136,12 +136,12 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.SuspendAsync(userId, adminId, notes: null);
+        var result = await sut.SuspendAsync(userId, adminId, notes: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
-            default, default, default, null!, null!);
+            default, default, default, null!, null!, cancellationToken: Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, Guid.Empty);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
@@ -164,7 +164,7 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.UnsuspendAsync(userId, adminId);
+        var result = await sut.UnsuspendAsync(userId, adminId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
@@ -198,12 +198,12 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.UnsuspendAsync(userId, adminId);
+        var result = await sut.UnsuspendAsync(userId, adminId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationInboxService.DidNotReceiveWithAnyArgs()
-            .ResolveBySourceAsync(Guid.Empty, default, CancellationToken.None);
+            .ResolveBySourceAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -235,7 +235,7 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.SuspendAsync(userId, adminId, notes: null);
+        var result = await sut.SuspendAsync(userId, adminId, notes: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         _metrics.Received(1).RecordMemberSuspended("admin");
@@ -261,7 +261,7 @@ public class HumanLifecycleServiceTests
 
         var sut = BuildSut();
 
-        var result = await sut.UnsuspendAsync(userId, adminId);
+        var result = await sut.UnsuspendAsync(userId, adminId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
     }
@@ -280,7 +280,7 @@ public class HumanLifecycleServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var result = await BuildSut().RestoreConsentSuspensionAsync(userId);
+        var result = await BuildSut().RestoreConsentSuspensionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
@@ -304,11 +304,11 @@ public class HumanLifecycleServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId, UserState.AdminSuspended)));
 
-        var result = await BuildSut().RestoreConsentSuspensionAsync(userId);
+        var result = await BuildSut().RestoreConsentSuspensionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _userService.DidNotReceiveWithAnyArgs().ApplyProfileOnboardingMutationAsync(
-            Guid.Empty, default!, CancellationToken.None);
+            Guid.Empty, default!, Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
             default, null!, default, null!, null!);
     }

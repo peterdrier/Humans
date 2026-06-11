@@ -135,7 +135,7 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // 8 active categories in MessageCategoryExtensions.ActiveCategories
         prefs.Should().HaveCount(8);
@@ -147,7 +147,7 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
         // Rows should be persisted in the database
         var dbCount = await Db.CommunicationPreferences
             .Where(cp => cp.UserId == userId)
-            .CountAsync();
+            .CountAsync(Xunit.TestContext.Current.CancellationToken);
         dbCount.Should().Be(8);
     }
 
@@ -156,7 +156,7 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.OptedOut.Should().BeTrue();
@@ -168,14 +168,14 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
 
         // Attempt to opt out of always-on categories
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.System, optedOut: true, source: "Test");
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test");
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.System, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         // No rows should have been created (update was silently rejected)
         var systemPref = await Db.CommunicationPreferences
-            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.System);
+            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.System, Xunit.TestContext.Current.CancellationToken);
         var campaignPref = await Db.CommunicationPreferences
-            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.CampaignCodes);
+            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.CampaignCodes, Xunit.TestContext.Current.CancellationToken);
 
         systemPref.Should().BeNull();
         campaignPref.Should().BeNull();
@@ -186,8 +186,8 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var systemResult = await _service.IsOptedOutAsync(userId, MessageCategory.System);
-        var campaignResult = await _service.IsOptedOutAsync(userId, MessageCategory.CampaignCodes);
+        var systemResult = await _service.IsOptedOutAsync(userId, MessageCategory.System, Xunit.TestContext.Current.CancellationToken);
+        var campaignResult = await _service.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, Xunit.TestContext.Current.CancellationToken);
 
         systemResult.Should().BeFalse();
         campaignResult.Should().BeFalse();
@@ -198,7 +198,7 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.AcceptsFacilitatedMessagesAsync(userId);
+        var result = await _service.AcceptsFacilitatedMessagesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -209,9 +209,9 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
 
         await _service.UpdatePreferenceAsync(
-            userId, MessageCategory.FacilitatedMessages, optedOut: true, source: "Test");
+            userId, MessageCategory.FacilitatedMessages, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.AcceptsFacilitatedMessagesAsync(userId);
+        var result = await _service.AcceptsFacilitatedMessagesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }

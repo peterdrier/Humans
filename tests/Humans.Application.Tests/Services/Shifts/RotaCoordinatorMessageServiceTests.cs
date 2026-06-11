@@ -40,7 +40,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_RejectsBlankMessage()
     {
-        var result = await CreateSut().SendRotaMessageAsync(Guid.NewGuid(), Guid.NewGuid(), "   ");
+        var result = await CreateSut().SendRotaMessageAsync(Guid.NewGuid(), Guid.NewGuid(), "   ", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("required", "blank body must surface a clear error");
@@ -56,7 +56,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _repo.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
-        var result = await CreateSut().SendRotaMessageAsync(rotaId, Guid.NewGuid(), "hello");
+        var result = await CreateSut().SendRotaMessageAsync(rotaId, Guid.NewGuid(), "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("not found");
@@ -69,7 +69,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello");
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("no active signups");
@@ -97,7 +97,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA, userB);
 
-        await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello team");
+        await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello team", Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).CoordinatorRotaMessage(
             Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com"));
@@ -136,7 +136,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 else if (string.Equals(r.RecipientEmail, "b@example.com", StringComparison.Ordinal)) captured_B = r;
             }));
 
-        await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello");
+        await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         captured_A.Should().NotBeNull();
         captured_A!.ShiftLines.Should().HaveCount(2, "userA has 2 distinct shifts on this rota");
@@ -162,7 +162,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1);
@@ -209,7 +209,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                     [noEmail] = UserInfoStubHelpers.MakeUserInfo(noEmail, displayName: "NoEmail"),
                 }));
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello");
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1, "only the recipient with an email is queued");
@@ -242,7 +242,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 Arg.Is<CoordinatorRotaMessageRequest>(r => r.RecipientEmail == "a@example.com")))
             .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue("partial dispatch still returns success");
         result.RecipientCount.Should().Be(1, "only the surviving enqueue counts as queued");
@@ -284,7 +284,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 Arg.Any<CoordinatorRotaMessageRequest>()))
             .Do(_ => throw new InvalidOperationException("simulated outbox outage"));
 
-        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change");
+        var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse(
             "queued == 0 && failed > 0 must surface as Failure so the controller does not render a misleading success toast");
@@ -309,7 +309,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_RejectsBlankMessage()
     {
-        var result = await CreateSut().SendTeamRotasMessageAsync(Guid.NewGuid(), Guid.NewGuid(), "   ");
+        var result = await CreateSut().SendTeamRotasMessageAsync(Guid.NewGuid(), Guid.NewGuid(), "   ", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("required");
@@ -320,9 +320,9 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenTeamMissing()
     {
         var teamId = Guid.NewGuid();
-        _teamService.GetTeamAsync(teamId).Returns((TeamInfo?)null);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
-        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello");
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("Team not found");
@@ -335,7 +335,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _repo.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventSettings?)null);
 
-        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello");
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().Contain("no upcoming rotas");
@@ -366,7 +366,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _ = userA;
         StubUsers(sender, userB);
 
-        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         // Exactly one email queued, to userB; past-only rota produced no work.
         _emailMessages.Received(1).CoordinatorTeamRotasMessage(
@@ -398,7 +398,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         // for the bailed id, the test would surface that via the wrong count.
         StubUsers(sender, confirmed, pending);
 
-        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(2, "bailed is excluded; pending + confirmed are kept");
@@ -426,7 +426,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
 
-        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RecipientCount.Should().Be(1, "user appears in two rotas but should receive exactly one email");
@@ -463,7 +463,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _emailMessages.CoordinatorTeamRotasMessage(
             Arg.Do<CoordinatorTeamRotasMessageRequest>(r => captured = r));
 
-        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello");
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hello", Xunit.TestContext.Current.CancellationToken);
 
         captured.Should().NotBeNull();
         captured!.ShiftGroups[0].RotaName.Should().Be("Antelope", "rotas grouped alphabetically by name");
@@ -485,7 +485,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota]);
         StubUsers(sender, userA);
 
-        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "schedule change");
+        await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "schedule change", Xunit.TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
@@ -518,7 +518,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 Arg.Is<CoordinatorTeamRotasMessageRequest>(r => r.RecipientEmail == "a@example.com")))
             .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
 
-        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hi");
+        var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hi", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue("partial dispatch returns success");
         result.RecipientCount.Should().Be(1);
@@ -552,7 +552,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                     [userB] = MakeUserInfoWithEmail(userB, "b@example.com", "Bob"),
                 }));
 
-        var preview = await CreateSut().GetTeamRotasRecipientPreviewAsync(teamId);
+        var preview = await CreateSut().GetTeamRotasRecipientPreviewAsync(teamId, Xunit.TestContext.Current.CancellationToken);
 
         preview.RotaCount.Should().Be(2);
         preview.RecipientNames.Should().BeEquivalentTo(["Alice", "Bob"]);
@@ -567,7 +567,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             RequiresApproval: false, IsPublicPage: false, IsHidden: false,
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: []);
-        _teamService.GetTeamAsync(teamId).Returns(team);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(team);
         return teamId;
     }
 

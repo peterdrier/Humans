@@ -98,12 +98,12 @@ public class ExpenseReportServiceHoldedPollingTests
         _repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
-            .GetPurchaseDocumentAsync(null!, CancellationToken.None);
+            .GetPurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs()
-            .MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
+            .MarkPaidAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     // ─── happy path ───────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-1", Arg.Any<CancellationToken>())
             .Returns(MakeSettledStatus(paymentDate));
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         var expectedInstant = paymentDate.AtStartOfDayInZone(
             DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant();
@@ -134,7 +134,7 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-1", Arg.Any<CancellationToken>())
             .Returns(MakeSettledStatus(lastPaymentDate: null));
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).MarkPaidAsync(report.Id, Now, Arg.Any<CancellationToken>());
     }
@@ -150,9 +150,9 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-1", Arg.Any<CancellationToken>())
             .Returns(MakeOwedStatus());
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -162,11 +162,11 @@ public class ExpenseReportServiceHoldedPollingTests
         _repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, Arg.Any<CancellationToken>())
             .Returns([report]);
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _holdedFinance.DidNotReceiveWithAnyArgs()
-            .GetCreditorStatusAsync(default, null!, CancellationToken.None);
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
+            .GetCreditorStatusAsync(default, null!, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -178,9 +178,9 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-1", Arg.Any<CancellationToken>())
             .Returns((HoldedCreditorStatus?)null);
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     // ─── account-num backfill ─────────────────────────────────────────────────
@@ -196,7 +196,7 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-1", Arg.Any<CancellationToken>())
             .Returns(MakeSettledStatus(new LocalDate(2026, 5, 8)));
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).SetHoldedContactLinkAsync(
             report.Id, "contact-1", 40000007, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -220,7 +220,7 @@ public class ExpenseReportServiceHoldedPollingTests
         _holdedFinance.GetCreditorStatusAsync(40000007, "contact-ok", Arg.Any<CancellationToken>())
             .Returns(MakeSettledStatus(new LocalDate(2026, 5, 8)));
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         // report2 should still be marked paid
         await _repo.Received(1).MarkPaidAsync(report2.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -238,10 +238,10 @@ public class ExpenseReportServiceHoldedPollingTests
             .Throws(new HoldedTransientException("Gateway timeout"));
 
         // Should not throw
-        var act = () => _sut.PollHoldedPaidStatusAsync(BatchSize);
+        var act = () => _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
-        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, CancellationToken.None);
+        await _repo.DidNotReceiveWithAnyArgs().MarkPaidAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     // ─── batch cap ────────────────────────────────────────────────────────────
@@ -279,7 +279,7 @@ public class ExpenseReportServiceHoldedPollingTests
                 (int?)callInfo[0], Balance: 0m, OwedToMember: 0m,
                 LastPaymentDate: new LocalDate(2026, 5, 8), TotalPaid: 100m));
 
-        await _sut.PollHoldedPaidStatusAsync(BatchSize);
+        await _sut.PollHoldedPaidStatusAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
         // Only 50 MarkPaid calls, not 55
         await _repo.Received(50).MarkPaidAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());

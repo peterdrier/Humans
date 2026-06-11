@@ -30,11 +30,11 @@ public sealed class AdminAuthorizationServiceTests
     {
         _currentUser.UserId.Returns((Guid?)null);
 
-        var act = () => _service.RequireCurrentUserIsAdminAsync();
+        var act = () => _service.RequireCurrentUserIsAdminAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
         await _roleAssignments.DidNotReceiveWithAnyArgs()
-            .HasActiveRoleAsync(Guid.Empty, null!, default, CancellationToken.None);
+            .HasActiveRoleAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -46,7 +46,7 @@ public sealed class AdminAuthorizationServiceTests
             .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>())
             .Returns(false);
 
-        var act = () => _service.RequireCurrentUserIsAdminAsync();
+        var act = () => _service.RequireCurrentUserIsAdminAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
@@ -60,7 +60,7 @@ public sealed class AdminAuthorizationServiceTests
             .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        await _service.RequireCurrentUserIsAdminAsync();
+        await _service.RequireCurrentUserIsAdminAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _roleAssignments.Received(1)
             .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>());

@@ -44,9 +44,9 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         var active = NewEvent(isActive: true);
         var inactive = NewEvent(isActive: false);
         await _dbContext.EventSettings.AddRangeAsync(active, inactive);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetActiveEventSettingsAsync();
+        var result = await _repo.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(active.Id);
@@ -57,10 +57,10 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     {
         var es = NewEvent(isActive: true);
         _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: es.Id)).Should().BeFalse();
-        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null)).Should().BeTrue();
+        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: es.Id, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact(Timeout = 10000)]
@@ -71,9 +71,9 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             NewShift(rota, dayOffset: -3),
             NewShift(rota, dayOffset: -2),
             NewShift(rota, dayOffset: -2)); // duplicate day
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var days = await _repo.GetShiftDayOffsetsForRotaAsync(rota.Id);
+        var days = await _repo.GetShiftDayOffsetsForRotaAsync(rota.Id, Xunit.TestContext.Current.CancellationToken);
 
         days.Should().BeEquivalentTo([-3, -2]);
     }
@@ -81,7 +81,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     [HumansFact]
     public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInput_ReturnsEmpty()
     {
-        var result = await _repo.GetConfirmedSignupCountsByShiftAsync([]);
+        var result = await _repo.GetConfirmedSignupCountsByShiftAsync([], Xunit.TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
     }
 
@@ -99,16 +99,16 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             UserId = userId,
             ShiftTagId = tagA.Id
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.SetVolunteerTagPreferencesAsync(userId, [tagB.Id, tagC.Id]);
+        await _repo.SetVolunteerTagPreferencesAsync(userId, [tagB.Id, tagC.Id], Xunit.TestContext.Current.CancellationToken);
 
         _dbContext.ChangeTracker.Clear();
         var preferences = await _dbContext.VolunteerTagPreferences
             .AsNoTracking()
             .Where(v => v.UserId == userId)
             .Select(v => v.ShiftTagId)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         preferences.Should().BeEquivalentTo([tagB.Id, tagC.Id]);
     }
 
@@ -159,7 +159,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             UpdatedAt = TestNow
         };
         _dbContext.Rotas.Add(rota);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota);
     }
 

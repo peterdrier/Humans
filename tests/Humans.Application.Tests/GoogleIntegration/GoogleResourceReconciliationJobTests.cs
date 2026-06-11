@@ -50,7 +50,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new GroupSettingsDriftResult());
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _googleSyncService.Received(1)
             .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>());
@@ -68,7 +68,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException());
 
-        Func<Task> act = () => _job.ExecuteAsync();
+        Func<Task> act = () => _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         await _googleGroupSync.DidNotReceive()

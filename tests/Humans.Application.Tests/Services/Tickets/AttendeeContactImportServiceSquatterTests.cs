@@ -39,7 +39,7 @@ public class AttendeeContactImportServiceSquatterTests
                     null, squatterRowId, squatterUserId, null)
         ], 1);
 
-        await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
+        await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         // 1. Squatter row deleted.
         await harness.UserEmails.Received(1)

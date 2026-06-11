@@ -54,7 +54,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // should union the source-tombstone id and surface source's row.
         await using var assertScope = factory.Services.CreateAsyncScope();
         var auditService = assertScope.ServiceProvider.GetRequiredService<IAuditLogService>();
-        var entries = await auditService.GetByUserAsync(targetId, count: 100);
+        var entries = await auditService.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
 
         entries.Should().Contain(
             e => e.Description == description
@@ -95,7 +95,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // the source-tombstone id was unioned in.
         await using var assertScope = factory.Services.CreateAsyncScope();
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
-        var dashboard = await consentService.GetConsentDashboardAsync(targetId);
+        var dashboard = await consentService.GetConsentDashboardAsync(targetId, TestContext.Current.CancellationToken);
 
         dashboard.History.Should().Contain(
             h => h.DocumentVersionId == versionId,
@@ -196,7 +196,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 
@@ -205,8 +205,8 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         await using var scope = factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
         // Chain-follow tests assert source→target (target survives); pick the request target.
-        var request = await mergeService.GetByIdAsync(requestId)
+        var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)
             ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
-        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id);
+        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id, ct: TestContext.Current.CancellationToken);
     }
 }

@@ -38,7 +38,7 @@ public class ShiftViewServiceTests
             .Returns([]);
 
         var sut = CreateSut();
-        var view = await sut.GetUserAsync(userId);
+        var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         view.Should().NotBeNull();
         view.UserId.Should().Be(userId);
@@ -79,7 +79,7 @@ public class ShiftViewServiceTests
             .Returns([buildStatus]);
 
         var sut = CreateSut();
-        var view = await sut.GetUserAsync(userId);
+        var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         view.Availability.Should().BeSameAs(availability);
         view.BuildStatus.Should().BeSameAs(buildStatus);
@@ -99,7 +99,7 @@ public class ShiftViewServiceTests
             .Returns([]);
 
         var sut = CreateSut();
-        var view = await sut.GetUserAsync(userId);
+        var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         view.Signups.Should().BeEmpty();
         await _management.DidNotReceive().GetForUsersAsync(
@@ -128,7 +128,7 @@ public class ShiftViewServiceTests
             .Returns(scoped);
 
         var sut = CreateSut();
-        var view = await sut.GetUserAsync(userId);
+        var view = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         view.Signups.Should().BeSameAs(scoped);
         await _management.Received(1).GetForUsersAsync(
@@ -149,7 +149,7 @@ public class ShiftViewServiceTests
             .Returns((Rota?)null);
 
         var sut = CreateSut();
-        var view = await sut.GetRotaAsync(rotaId);
+        var view = await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
         view.Should().NotBeNull();
         view.RotaId.Should().Be(rotaId);
@@ -177,7 +177,7 @@ public class ShiftViewServiceTests
         _management.GetRotaAsync(rotaId, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var sut = CreateSut();
-        var view = await sut.GetRotaAsync(rotaId);
+        var view = await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
         view.Rota.Should().BeSameAs(rota);
         view.Shifts.Should().HaveCount(2);
@@ -205,7 +205,7 @@ public class ShiftViewServiceTests
             .Returns([]);
 
         var sut = CreateSut();
-        var batch = await sut.GetUsersAsync([userA, userA, userB]);
+        var batch = await sut.GetUsersAsync([userA, userA, userB], Xunit.TestContext.Current.CancellationToken);
 
         batch.Should().ContainKey(userA);
         batch.Should().ContainKey(userB);

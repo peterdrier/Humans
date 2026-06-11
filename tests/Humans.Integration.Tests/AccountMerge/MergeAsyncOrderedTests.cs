@@ -43,13 +43,13 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await sut.MergeAsync(survivorId, archivedId, adminId);
+            await sut.MergeAsync(survivorId, archivedId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var survivor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == survivorId);
-        var archived = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId);
+        var survivor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == survivorId, TestContext.Current.CancellationToken);
+        var archived = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken);
         survivor!.MergedToUserId.Should().BeNull("the survivor is never tombstoned");
         archived!.MergedToUserId.Should().Be(survivorId, "the archived account is tombstoned into the survivor");
         archived.MergedAt.Should().NotBeNull("the tombstone is the merge commit point");
@@ -74,13 +74,13 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         // A pending-email id that no longer exists must NOT throw — a gone email is the
         // desired end state — and the archived account MUST still be tombstoned.
         var act = async () => await sut.MergeAsync(
-            survivorId, archivedId, adminId, pendingEmailIdToVerify: Guid.NewGuid());
+            survivorId, archivedId, adminId, pendingEmailIdToVerify: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
 
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId))!.MergedToUserId
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().Be(survivorId, "the tombstone must still be written when the pending email is gone");
     }
 
@@ -126,7 +126,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

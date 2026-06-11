@@ -15,7 +15,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Tier1_index_lists_only_the_eight_highest_signal_sections()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, CancellationToken.None);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
 
         text.Should().Contain("**Onboarding**");
         text.Should().Contain("**Teams**");
@@ -34,7 +34,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Tier2_index_lists_all_fourteen_sections()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, CancellationToken.None);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
 
         text.Should().Contain("**Budget**");
         text.Should().Contain("**Camps**");
@@ -46,7 +46,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Index_does_not_include_section_bodies()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, CancellationToken.None);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
 
         // Section bodies have these subheadings; the index must not include them.
         text.Should().NotContain("## Invariants");
@@ -58,7 +58,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Tier1_output_is_below_the_ITPM_budget()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, CancellationToken.None);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
 
         // Rough token estimate: 1 token ≈ 3.8 chars for English/Spanish mix.
         // The index is just keys + taglines; section bodies are fetched on demand

@@ -53,7 +53,7 @@ public class ShiftRepositorySummaryTests : IDisposable
     {
         SeedScenario();
 
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         var byUser = totals.ToDictionary(t => t.UserId);
         // userA: rota1 S1 (4h) + rota1 S2 (2h) = 6h over 2 confirmed signups.
@@ -71,7 +71,7 @@ public class ShiftRepositorySummaryTests : IDisposable
     {
         SeedScenario();
 
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, teamIds: [_team1]);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, teamIds: [_team1], ct: Xunit.TestContext.Current.CancellationToken);
 
         var byUser = totals.ToDictionary(t => t.UserId);
         byUser.Keys.Should().BeEquivalentTo([_userA]);
@@ -84,7 +84,7 @@ public class ShiftRepositorySummaryTests : IDisposable
     {
         SeedScenario();
 
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, rotaId: _rota2);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, rotaId: _rota2, ct: Xunit.TestContext.Current.CancellationToken);
 
         var byUser = totals.ToDictionary(t => t.UserId);
         byUser.Keys.Should().BeEquivalentTo([_userB]);
@@ -98,7 +98,7 @@ public class ShiftRepositorySummaryTests : IDisposable
         SeedScenario();
 
         // userA also has a confirmed signup in a different event — must not leak in.
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         totals.Single(t => t.UserId == _userA).Hours.Should().Be(6.0);
     }
@@ -113,9 +113,9 @@ public class ShiftRepositorySummaryTests : IDisposable
         // worked hours are the 08:00–18:00 window (10h) — see Shift.IsAllDay.
         var allDay = SeedShift(_rota1, Duration.FromHours(24), isAllDay: true);
         _dbContext.ShiftSignups.Add(MakeSignup(_userA, allDay, SignupStatus.Confirmed));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         totals.Single(t => t.UserId == _userA).Hours.Should().Be(Shift.AllDayWindowHours);
     }
@@ -124,9 +124,9 @@ public class ShiftRepositorySummaryTests : IDisposable
     public async Task GetConfirmedUserShiftTotalsAsync_EmptyEvent_ReturnsEmpty()
     {
         SeedEvent(_event);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event);
+        var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         totals.Should().BeEmpty();
     }

@@ -121,7 +121,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_Global_FlatTableHasEveryConfirmedHumanWithCamp()
     {
-        var summary = await _service.BuildSummaryAsync(_event);
+        var summary = await _service.BuildSummaryAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         summary.Should().NotBeNull();
         summary.Scope.Should().Be(ShiftSummaryScope.Global);
@@ -148,7 +148,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_Global_PivotLeftJoinsRosterWithCamplessBucket()
     {
-        var summary = await _service.BuildSummaryAsync(_event);
+        var summary = await _service.BuildSummaryAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         var byCamp = summary!.Camps.ToDictionary(c => c.CampId ?? Guid.Empty);
 
@@ -173,7 +173,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_Global_LinksToEachDepartment()
     {
-        var summary = await _service.BuildSummaryAsync(_event);
+        var summary = await _service.BuildSummaryAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
         // Non-promoted sub-team "Sub" rolls up into "Power"; departments = Power, Water.
         summary!.TeamLinks.Select(t => t.Slug).Should().BeEquivalentTo(["power", "water"]);
@@ -183,7 +183,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_TeamScope_RestrictsFlatTableToTeamSetButKeepsFullRoster()
     {
-        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power");
+        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", ct: Xunit.TestContext.Current.CancellationToken);
 
         summary.Should().NotBeNull();
         summary.Scope.Should().Be(ShiftSummaryScope.Team);
@@ -208,7 +208,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_RotaScope_RestrictsToSingleRota()
     {
-        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", rotaId: _rPower);
+        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", rotaId: _rPower, ct: Xunit.TestContext.Current.CancellationToken);
 
         summary.Should().NotBeNull();
         summary.Scope.Should().Be(ShiftSummaryScope.Rota);
@@ -225,7 +225,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     public async Task BuildSummaryAsync_RotaNotInTeamSet_ReturnsNull()
     {
         // rWater belongs to Water, not Power's team-set.
-        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", rotaId: _rWater);
+        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "power", rotaId: _rWater, ct: Xunit.TestContext.Current.CancellationToken);
 
         summary.Should().BeNull();
     }
@@ -233,7 +233,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task BuildSummaryAsync_UnknownTeamSlug_ReturnsNull()
     {
-        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "does-not-exist");
+        var summary = await _service.BuildSummaryAsync(_event, teamSlug: "does-not-exist", ct: Xunit.TestContext.Current.CancellationToken);
 
         summary.Should().BeNull();
     }

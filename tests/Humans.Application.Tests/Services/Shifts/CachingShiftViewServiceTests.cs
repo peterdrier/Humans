@@ -45,11 +45,11 @@ public class CachingShiftViewServiceTests
 
         var sut = CreateSut();
 
-        var first = await sut.GetUserAsync(userId);
+        var first = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         first.Should().BeSameAs(view);
         await _inner.Received(1).GetUserAsync(userId, Arg.Any<CancellationToken>());
 
-        var second = await sut.GetUserAsync(userId);
+        var second = await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         second.Should().BeSameAs(view);
         // Hot path: no further calls to inner.
         await _inner.Received(1).GetUserAsync(userId, Arg.Any<CancellationToken>());
@@ -69,9 +69,9 @@ public class CachingShiftViewServiceTests
 
         var sut = CreateSut();
 
-        (await sut.GetUserAsync(userId)).Should().BeSameAs(view1);
+        (await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(view1);
         sut.InvalidateUser(userId);
-        (await sut.GetUserAsync(userId)).Should().BeSameAs(view2);
+        (await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(view2);
 
         await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -90,13 +90,13 @@ public class CachingShiftViewServiceTests
 
         var sut = CreateSut();
 
-        var batch = await sut.GetUsersAsync([u1, u2]);
+        var batch = await sut.GetUsersAsync([u1, u2], Xunit.TestContext.Current.CancellationToken);
         batch.Should().ContainKeys(u1, u2);
         batch[u1].Should().BeSameAs(v1);
         batch[u2].Should().BeSameAs(v2);
 
-        (await sut.GetUserAsync(u1)).Should().BeSameAs(v1);
-        (await sut.GetUserAsync(u2)).Should().BeSameAs(v2);
+        (await sut.GetUserAsync(u1, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(v1);
+        (await sut.GetUserAsync(u2, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(v2);
 
         // The whole point: batch reads collapse to ONE call into the inner, not N.
         await _inner.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
@@ -125,9 +125,9 @@ public class CachingShiftViewServiceTests
             });
 
         var sut = CreateSut();
-        await sut.GetUserAsync(cached); // prime
+        await sut.GetUserAsync(cached, Xunit.TestContext.Current.CancellationToken); // prime
 
-        var batch = await sut.GetUsersAsync([cached, miss1, miss2]);
+        var batch = await sut.GetUsersAsync([cached, miss1, miss2], Xunit.TestContext.Current.CancellationToken);
         batch.Should().HaveCount(3);
         batch[cached].Should().BeSameAs(cachedView);
         batch[miss1].Should().BeSameAs(miss1View);
@@ -153,8 +153,8 @@ public class CachingShiftViewServiceTests
 
         var sut = CreateSut();
 
-        (await sut.GetRotaAsync(rotaId)).Should().BeSameAs(view);
-        (await sut.GetRotaAsync(rotaId)).Should().BeSameAs(view);
+        (await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(view);
+        (await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(view);
 
         await _inner.Received(1).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
     }
@@ -173,13 +173,13 @@ public class CachingShiftViewServiceTests
                 rotaId, null, [], [], [])));
 
         var sut = CreateSut();
-        await sut.GetUserAsync(userId);
-        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
         sut.InvalidateAll();
 
-        await sut.GetUserAsync(userId);
-        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
 
         await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
@@ -221,17 +221,17 @@ public class CachingShiftViewServiceTests
             .Returns(new ValueTask<ShiftUserView>(unrelatedUserView));
 
         var sut = CreateSut();
-        await sut.GetRotaAsync(rotaId);
-        await sut.GetUserAsync(userOnRota);
-        await sut.GetUserAsync(unrelatedUser);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(userOnRota, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(unrelatedUser, Xunit.TestContext.Current.CancellationToken);
 
         sut.InvalidateRota(rotaId);
 
         // Rota cache and the user with a signup on it reload; unrelated user
         // stays cached.
-        await sut.GetRotaAsync(rotaId);
-        await sut.GetUserAsync(userOnRota);
-        await sut.GetUserAsync(unrelatedUser);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(userOnRota, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(unrelatedUser, Xunit.TestContext.Current.CancellationToken);
 
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetUserAsync(userOnRota, Arg.Any<CancellationToken>());
@@ -273,17 +273,17 @@ public class CachingShiftViewServiceTests
         var sut = CreateSut();
 
         // Prime the cache so InvalidateShift has something to walk.
-        await sut.GetRotaAsync(rotaId);
-        await sut.GetUserAsync(userId);
-        await sut.GetUserAsync(unrelatedUserId);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(unrelatedUserId, Xunit.TestContext.Current.CancellationToken);
 
         sut.InvalidateShift(shiftId);
 
         // Affected entries reload.
-        await sut.GetRotaAsync(rotaId);
-        await sut.GetUserAsync(userId);
+        await sut.GetRotaAsync(rotaId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         // Unrelated user stays cached.
-        await sut.GetUserAsync(unrelatedUserId);
+        await sut.GetUserAsync(unrelatedUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
         await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());

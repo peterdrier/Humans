@@ -48,7 +48,7 @@ public class SurveysApiControllerTests
         var id = Guid.NewGuid();
         _surveys.GetForEditAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyDetail?)null);
 
-        var result = await _sut.Definition(id, CancellationToken.None);
+        var result = await _sut.Definition(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -68,7 +68,7 @@ public class SurveysApiControllerTests
         _surveys.GetForEditAsync(id, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(id, SurveyStatus.Open, editable));
 
-        var result = await _sut.Definition(id, CancellationToken.None);
+        var result = await _sut.Definition(id, Xunit.TestContext.Current.CancellationToken);
 
         var value = result.Should().BeOfType<OkObjectResult>().Subject.Value!;
         value.GetType().GetProperty("title")!.GetValue(value).Should().Be("My Survey");
@@ -87,7 +87,7 @@ public class SurveysApiControllerTests
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyResponseExport?)null);
 
-        var result = await _sut.Responses(id, null, null, 100, null, null, CancellationToken.None);
+        var result = await _sut.Responses(id, null, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -103,7 +103,7 @@ public class SurveysApiControllerTests
             ]);
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(export);
 
-        var result = await _sut.Responses(id, ResponseAnonymity.Anonymous, null, 100, null, null, CancellationToken.None);
+        var result = await _sut.Responses(id, ResponseAnonymity.Anonymous, null, 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         var value = result.Should().BeOfType<OkObjectResult>().Subject.Value!;
         var items = ((IEnumerable<object>)value.GetType().GetProperty("items")!.GetValue(value)!).ToList();
@@ -123,7 +123,7 @@ public class SurveysApiControllerTests
             ]);
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(export);
 
-        var result = await _sut.Responses(id, null, "2026-03-01T00:00:00Z", 100, null, null, CancellationToken.None);
+        var result = await _sut.Responses(id, null, "2026-03-01T00:00:00Z", 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         var value = result.Should().BeOfType<OkObjectResult>().Subject.Value!;
         var items = ((IEnumerable<object>)value.GetType().GetProperty("items")!.GetValue(value)!).ToList();
@@ -137,7 +137,7 @@ public class SurveysApiControllerTests
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>())
             .Returns(new SurveyResponseExport(id, "T", "en", [], []));
 
-        var result = await _sut.Responses(id, null, "not-a-date", 100, null, null, CancellationToken.None);
+        var result = await _sut.Responses(id, null, "not-a-date", 100, null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -152,14 +152,14 @@ public class SurveysApiControllerTests
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>())
             .Returns(new SurveyResponseExport(id, "T", "en", [], rows));
 
-        var first = await _sut.Responses(id, null, null, limit: 2, cursor: null, format: null, CancellationToken.None);
+        var first = await _sut.Responses(id, null, null, limit: 2, cursor: null, format: null, Xunit.TestContext.Current.CancellationToken);
         var firstValue = first.Should().BeOfType<OkObjectResult>().Subject.Value!;
         var firstItems = ((IEnumerable<object>)firstValue.GetType().GetProperty("items")!.GetValue(firstValue)!).ToList();
         firstItems.Should().HaveCount(2);
         var nextCursor = (string?)firstValue.GetType().GetProperty("nextCursor")!.GetValue(firstValue);
         nextCursor.Should().NotBeNull();
 
-        var second = await _sut.Responses(id, null, null, limit: 2, cursor: nextCursor, format: null, CancellationToken.None);
+        var second = await _sut.Responses(id, null, null, limit: 2, cursor: nextCursor, format: null, Xunit.TestContext.Current.CancellationToken);
         var secondValue = second.Should().BeOfType<OkObjectResult>().Subject.Value!;
         var secondItems = ((IEnumerable<object>)secondValue.GetType().GetProperty("items")!.GetValue(secondValue)!).ToList();
         secondItems.Should().HaveCount(1);
@@ -177,7 +177,7 @@ public class SurveysApiControllerTests
                 new SurveyExportAnswer(qId, ["a", "b"], ["Apple", "Banana"], null, null))]);
         _surveys.GetResponseExportAsync(id, Arg.Any<CancellationToken>()).Returns(export);
 
-        var result = await _sut.Responses(id, null, null, 100, null, "md", CancellationToken.None);
+        var result = await _sut.Responses(id, null, null, 100, null, "md", Xunit.TestContext.Current.CancellationToken);
 
         var content = result.Should().BeOfType<ContentResult>().Subject;
         content.ContentType.Should().StartWith("text/markdown");
@@ -193,7 +193,7 @@ public class SurveysApiControllerTests
         var id = Guid.NewGuid();
         _surveys.GetResultsAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyResultsView?)null);
 
-        var result = await _sut.Aggregates(id, CancellationToken.None);
+        var result = await _sut.Aggregates(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -207,7 +207,7 @@ public class SurveysApiControllerTests
             [], []);
         _surveys.GetResultsAsync(id, Arg.Any<CancellationToken>()).Returns(results);
 
-        var result = await _sut.Aggregates(id, CancellationToken.None);
+        var result = await _sut.Aggregates(id, Xunit.TestContext.Current.CancellationToken);
 
         var value = result.Should().BeOfType<OkObjectResult>().Subject.Value!;
         value.GetType().GetProperty("status")!.GetValue(value).Should().Be("Closed");

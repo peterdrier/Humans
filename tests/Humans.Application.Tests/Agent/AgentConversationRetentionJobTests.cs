@@ -23,7 +23,7 @@ public class AgentConversationRetentionJobTests
 
         db.AgentConversations.Add(new AgentConversation { Id = Guid.NewGuid(), UserId = user, StartedAt = now - Duration.FromDays(200), LastMessageAt = now - Duration.FromDays(120), Locale = "es" });
         db.AgentConversations.Add(new AgentConversation { Id = Guid.NewGuid(), UserId = user, StartedAt = now - Duration.FromDays(30), LastMessageAt = now - Duration.FromDays(10), Locale = "es" });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(
@@ -40,9 +40,9 @@ public class AgentConversationRetentionJobTests
         var repo = new AgentRepository(db, clock);
         var runStore = new AgentRetentionRunStore();
         var job = new AgentConversationRetentionJob(repo, settings, runStore, clock, NullLogger<AgentConversationRetentionJob>.Instance);
-        await job.ExecuteAsync(CancellationToken.None);
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await db.AgentConversations.CountAsync()).Should().Be(1);
+        (await db.AgentConversations.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
         runStore.Snapshot.LastRunAt.Should().Be(now);
         runStore.Snapshot.LastDeletedCount.Should().Be(1);
     }

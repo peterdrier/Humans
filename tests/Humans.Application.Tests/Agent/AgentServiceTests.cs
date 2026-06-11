@@ -38,7 +38,7 @@ public class AgentServiceTests
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(new AgentTurnRequest(
             ConversationId: Guid.Empty, UserId: userId, Message: "hi", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
             tokens.Add(t);
         }
@@ -61,7 +61,7 @@ public class AgentServiceTests
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "hi", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
             tokens.Add(t);
         }
@@ -85,7 +85,7 @@ public class AgentServiceTests
         Guid? conversationId = null;
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What's Volunteers?", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
             if (t.Finalizer is { } f) conversationId = f.ConversationId;
         }
@@ -98,7 +98,7 @@ public class AgentServiceTests
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: conversationId.Value, UserId: userId, Message: "Can I join?", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
         }
 
@@ -127,7 +127,7 @@ public class AgentServiceTests
         // a stale id from the client must not 500 the SSE stream.
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.NewGuid(), UserId: userId, Message: "hi", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
             if (t.Finalizer is { } f) finalConversationId = f.ConversationId;
         }
@@ -161,13 +161,13 @@ public class AgentServiceTests
         var spoofedId = Guid.NewGuid();
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: spoofedId, UserId: attackerId, Message: "hi", Locale: "es"),
-            CancellationToken.None))
+            Xunit.TestContext.Current.CancellationToken))
         {
         }
 
         // The attacker's GET-history must not surface the spoofed id (because the
         // service started a new conversation owned by the attacker for the refusal).
-        var attackerHistory = await svc.GetHistoryAsync(attackerId, take: 10, CancellationToken.None);
+        var attackerHistory = await svc.GetHistoryAsync(attackerId, take: 10, Xunit.TestContext.Current.CancellationToken);
         attackerHistory.Should().NotContain(c => c.Id == spoofedId,
             "the rate-limit refusal must persist into a new attacker-owned conversation, never into the spoofed id");
         attackerHistory.Should().HaveCount(1, "exactly one new conversation was started for the refusal");
@@ -196,13 +196,13 @@ public class AgentServiceTests
         };
         tune(settings);
         db.AgentSettings.Add(settings);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var clock = new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0));
         var store = new AgentSettingsStore();
         var repo = new AgentRepository(db, clock);
         var settingsService = new AgentSettingsService(repo, store, clock);
-        await settingsService.LoadAsync(CancellationToken.None);
+        await settingsService.LoadAsync(Xunit.TestContext.Current.CancellationToken);
         var ratelimit = rateLimitStore ?? new AgentRateLimitStore();
         var abuse = new AgentAbuseDetector();
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
