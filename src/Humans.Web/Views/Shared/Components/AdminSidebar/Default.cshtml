@@ -1,34 +1,73 @@
 @model Humans.Web.ViewComponents.AdminSidebarViewModel
 
+@{
+    // Mobile two-tier strip: row 1 = group chips, row 2 = the selected group's
+    // items. The group containing the active item is selected on load (falling
+    // back to the first group); site.js switches selection on chip tap.
+    var mobileActive = Model.Groups.FirstOrDefault(g => g.ContainsActive) ?? Model.Groups.FirstOrDefault();
+}
+
 <div class="sidebar-scroll">
+    <div class="group-chips-wrap">
+        <div class="group-chips" role="tablist" aria-label="Admin sections">
+            @foreach (var group in Model.Groups)
+            {
+                <button type="button" role="tab" aria-selected="@(group == mobileActive ? "true" : "false")"
+                        class="group-chip @(group == mobileActive ? "m-active" : null)" data-group="@group.Label">
+                    <span>@group.Label</span>
+                    @if (group.PillSum.HasValue)
+                    {
+                        <span class="pill">@group.PillSum.Value</span>
+                    }
+                </button>
+            }
+        </div>
+    </div>
+
     @foreach (var group in Model.Groups)
     {
-        <h4>@group.Label</h4>
-        @foreach (var item in group.Items)
-        {
-            if (item.RawHref is not null)
-            {
-                <a class="@(item.IsActive ? "active" : null)" href="@item.RawHref">
-                    <i class="@item.IconCssClass" aria-hidden="true"></i>
-                    <span>@item.Label</span>
-                    @if (item.PillCount.HasValue)
+        // Desktop accordion: system groups start collapsed unless they hold the
+        // active item; site.js applies any user-toggled state from localStorage.
+        <section class="nav-group @(group.System ? "system" : null) @(group.System && !group.ContainsActive ? "collapsed" : null) @(group == mobileActive ? "m-active" : null)"
+                 data-group="@group.Label">
+            <h4>
+                <button type="button" class="group-toggle" aria-expanded="@(group.System && !group.ContainsActive ? "false" : "true")">
+                    <span>@group.Label</span>
+                    @if (group.PillSum.HasValue)
                     {
-                        <span class="pill">@item.PillCount.Value</span>
+                        <span class="pill group-pill">@group.PillSum.Value</span>
                     }
-                </a>
-            }
-            else
-            {
-                <a class="@(item.IsActive ? "active" : null)"
-                   asp-controller="@item.Controller" asp-action="@item.Action">
-                    <i class="@item.IconCssClass" aria-hidden="true"></i>
-                    <span>@item.Label</span>
-                    @if (item.PillCount.HasValue)
+                    <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
+                </button>
+            </h4>
+            <div class="group-items">
+                @foreach (var item in group.Items)
+                {
+                    if (item.RawHref is not null)
                     {
-                        <span class="pill">@item.PillCount.Value</span>
+                        <a class="@(item.IsActive ? "active" : null)" href="@item.RawHref">
+                            <i class="@item.IconCssClass" aria-hidden="true"></i>
+                            <span>@item.Label</span>
+                            @if (item.PillCount.HasValue)
+                            {
+                                <span class="pill">@item.PillCount.Value</span>
+                            }
+                        </a>
                     }
-                </a>
-            }
-        }
+                    else
+                    {
+                        <a class="@(item.IsActive ? "active" : null)"
+                           asp-controller="@item.Controller" asp-action="@item.Action">
+                            <i class="@item.IconCssClass" aria-hidden="true"></i>
+                            <span>@item.Label</span>
+                            @if (item.PillCount.HasValue)
+                            {
+                                <span class="pill">@item.PillCount.Value</span>
+                            }
+                        </a>
+                    }
+                }
+            </div>
+        </section>
     }
 </div>

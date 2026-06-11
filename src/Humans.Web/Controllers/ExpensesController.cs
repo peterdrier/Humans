@@ -92,6 +92,8 @@ public sealed class ExpensesController(
                 }
             }
 
+            var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
+
             var model = new ExpensesIndexViewModel
             {
                 Reports = reports,
@@ -100,6 +102,7 @@ public sealed class ExpensesController(
                 CategoryNames = categoryNames,
                 Iou = iou,
                 Ledger = ledger,
+                CoordinatorQueueCount = coordinatorQueue.Count,
             };
             return View(model);
         }

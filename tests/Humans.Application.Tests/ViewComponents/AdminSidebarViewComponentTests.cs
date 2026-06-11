@@ -77,6 +77,16 @@ public class AdminSidebarViewComponentTests
     }
 
     [HumansFact]
+    public async Task System_Flag_Flows_To_ViewModel()
+    {
+        var sut = MakeSut(AlwaysAllow(), "Home", "Index");
+        var result = await sut.InvokeAsync() as ViewViewComponentResult;
+        var model = result!.ViewData!.Model as AdminSidebarViewModel;
+        model!.Groups.Single(g => string.Equals(g.Label, "Tickets", StringComparison.Ordinal)).System.Should().BeFalse();
+        model.Groups.Single(g => string.Equals(g.Label, "Diagnostics", StringComparison.Ordinal)).System.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Hides_Dev_Group_In_Production()
     {
         var env = Substitute.For<IWebHostEnvironment>();
