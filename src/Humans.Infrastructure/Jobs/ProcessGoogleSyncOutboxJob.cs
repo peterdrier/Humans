@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -32,6 +33,7 @@ public class ProcessGoogleSyncOutboxJob(
     IUserService userService,
     ITeamServiceRead teamService,
     IGoogleSyncService googleSyncService,
+    INotificationService notificationService,
     IHumansMetrics metrics,
     IClock clock,
     ILogger<ProcessGoogleSyncOutboxJob> logger) : IRecurringJob
@@ -118,40 +120,89 @@ public class ProcessGoogleSyncOutboxJob(
                     await outboxRepository.MarkPermanentlyFailedAsync(
                         outboxEvent.Id, clock.GetCurrentInstant(), ex.Message, cancellationToken);
 
+                    var userEmail = userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown");
+                    var teamName = teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString());
+
                     logger.LogWarning(
                         ex,
                         "Permanent failure processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — HTTP {StatusCode}, not retrying",
                         outboxEvent.Id,
                         outboxEvent.EventType,
-                        userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
-                        teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
+                        userEmail,
+                        teamName,
                         ex.Error?.Code);
 
                     // Mark user's Google email as Rejected
                     await userService.TrySetGoogleEmailStatusFromSyncAsync(
                         outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
+
+                    // Notify Admin so the failure is visible immediately
+                    // (badge fix nobodies-collective/Humans#847 also surfaces this in the meter).
+                    try
+                    {
+                        await notificationService.SendToRoleAsync(
+                            NotificationSource.SyncError,
+                            NotificationClass.Actionable,
+                            NotificationPriority.High,
+                            $"Google sync permanently failed for {userEmail}",
+                            RoleNames.Admin,
+                            body: $"Event {outboxEvent.EventType} for team {teamName} failed with HTTP {ex.Error?.Code}: {ex.Message}",
+                            actionUrl: "/Google/SyncOutbox",
+                            actionLabel: "View outbox",
+                            cancellationToken: cancellationToken);
+                    }
+                    catch (Exception notifyEx)
+                    {
+                        logger.LogError(notifyEx,
+                            "Failed to send Admin notification for permanent outbox failure {OutboxId}", outboxEvent.Id);
+                    }
                 }
                 catch (Exception ex)
                 {
                     metrics.RecordSyncOperation("failure");
 
-                    var (_, retryCount) = await outboxRepository.IncrementRetryAsync(
+                    var (exhausted, retryCount) = await outboxRepository.IncrementRetryAsync(
                         outboxEvent.Id,
                         clock.GetCurrentInstant(),
                         ex.Message,
                         MaxRetryCount,
                         cancellationToken);
 
+                    var userEmail = userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown");
+                    var teamName = teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString());
+
                     logger.LogError(
                         ex,
                         "Failed processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — attempt {Attempt}/{MaxRetries}",
                         outboxEvent.Id,
                         outboxEvent.EventType,
-                        userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
-                        teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
+                        userEmail,
+                        teamName,
                         retryCount,
                         MaxRetryCount);
 
+                    // Notify Admin when retry budget is exhausted (dead-lettered by retry limit).
+                    if (exhausted)
+                    {
+                        try
+                        {
+                            await notificationService.SendToRoleAsync(
+                                NotificationSource.SyncError,
+                                NotificationClass.Actionable,
+                                NotificationPriority.High,
+                                $"Google sync dead-lettered for {userEmail} (retry limit reached)",
+                                RoleNames.Admin,
+                                body: $"Event {outboxEvent.EventType} for team {teamName} exhausted {MaxRetryCount} retries. Last error: {ex.Message}",
+                                actionUrl: "/Google/SyncOutbox",
+                                actionLabel: "View outbox",
+                                cancellationToken: cancellationToken);
+                        }
+                        catch (Exception notifyEx)
+                        {
+                            logger.LogError(notifyEx,
+                                "Failed to send Admin notification for dead-lettered outbox event {OutboxId}", outboxEvent.Id);
+                        }
+                    }
                 }
             }
 

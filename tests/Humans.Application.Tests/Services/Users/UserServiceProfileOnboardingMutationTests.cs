@@ -61,9 +61,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             ProviderKey = "sub-1",
             IsGoogle = false,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Select(s => s.SectionName).Should().Contain([
             GdprExportSections.Account,
@@ -116,9 +116,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             IsVerified = true,
             IsPrimary = true,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUsersWithLoginsButNoEmailsAsync();
+        var result = await _service.GetUsersWithLoginsButNoEmailsAsync(TestContext.Current.CancellationToken);
 
         result.Should().Equal([userWithoutEmail.Id]);
     }
@@ -139,12 +139,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var infos = await _service.GetAllUserInfosAsync();
+        var infos = await _service.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
 
         infos.Single(u => u.Id == userId).State.Should().Be(UserState.Active);
-        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        var reloaded = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         reloaded.State.Should().Be(UserState.Active);
     }
 
@@ -160,14 +160,14 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             IsVerified = true,
             IsPrimary = true,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var displayName = await _service.PurgeOwnDataAsync(user.Id);
+        var displayName = await _service.PurgeOwnDataAsync(user.Id, TestContext.Current.CancellationToken);
 
         displayName.Should().Be("Purge Me");
         var remaining = await Db.UserEmails.AsNoTracking()
             .Where(e => e.UserId == user.Id)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         remaining.Should().BeEmpty();
     }
 
@@ -184,10 +184,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 UserProfileOnboardingMutation.RecordConsentCheck,
                 ActorUserId: reviewerId,
                 ConsentCheckStatus: ConsentCheckStatus.Cleared,
-                Notes: "Looks good"));
+                Notes: "Looks good"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
         profile.IsApproved.Should().BeTrue();
         profile.ConsentCheckAt.Should().Be(Clock.GetCurrentInstant());
@@ -208,7 +208,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RecordConsentCheck,
                 ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared));
+                ConsentCheckStatus: ConsentCheckStatus.Cleared), TestContext.Current.CancellationToken);
 
         _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
@@ -225,10 +225,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 UserProfileOnboardingMutation.RecordConsentCheck,
                 ActorUserId: Guid.NewGuid(),
                 ConsentCheckStatus: ConsentCheckStatus.Flagged,
-                Notes: "Concern X"));
+                Notes: "Concern X"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Flagged);
         profile.IsApproved.Should().BeFalse();
     }
@@ -238,16 +238,16 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RecordConsentCheck,
                 ActorUserId: Guid.NewGuid(),
-                ConsentCheckStatus: ConsentCheckStatus.Cleared));
+                ConsentCheckStatus: ConsentCheckStatus.Cleared), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyRejected");
@@ -265,7 +265,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 new UserProfileOnboardingCommand(
                     UserProfileOnboardingMutation.RecordConsentCheck,
                     ActorUserId: Guid.NewGuid(),
-                    ConsentCheckStatus: ConsentCheckStatus.Pending)));
+                    ConsentCheckStatus: ConsentCheckStatus.Pending), TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -280,10 +280,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RejectSignup,
                 ActorUserId: reviewerId,
-                RejectionReason: "Spam account"));
+                RejectionReason: "Spam account"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.RejectedAt.Should().Be(Clock.GetCurrentInstant());
         profile.RejectedByUserId.Should().Be(reviewerId);
         profile.RejectionReason.Should().Be("Spam account");
@@ -295,15 +295,15 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: Guid.NewGuid()));
+                ActorUserId: Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyRejected");
@@ -320,10 +320,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.SetSuspension,
                 Suspended: true,
-                Notes: "Disruptive"));
+                Notes: "Disruptive"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended.Should().BeTrue();
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
@@ -343,11 +343,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 UserProfileOnboardingMutation.SetSuspension,
                 Suspended: true,
                 AdminSuspension: true,
-                Notes: "Manual hold"));
+                Notes: "Manual hold"), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         profile.State.Should().Be(ProfileState.AdminSuspended);
         user.State.Should().Be(UserState.AdminSuspended);
     }
@@ -357,21 +357,21 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended = true;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
         profile.State = ProfileState.Suspended;
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.SetSuspension,
-                Suspended: false));
+                Suspended: false), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var fresh = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var fresh = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         fresh.IsSuspended.Should().BeFalse();
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
@@ -386,10 +386,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var result = await _service.ApplyProfileOnboardingMutationAsync(
             userId,
-            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.SetConsentCheckPending));
+            new UserProfileOnboardingCommand(UserProfileOnboardingMutation.SetConsentCheckPending), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
     }
 
@@ -404,10 +404,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             userId,
             now,
             now.Plus(NodaTime.Duration.FromDays(30)),
-            eligibleAfter: null);
+            eligibleAfter: null, ct: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.DeletePending);
         _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
@@ -417,17 +417,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
-        var user = await Db.Users.FirstAsync(u => u.Id == userId);
+        var user = await Db.Users.FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         var now = Clock.GetCurrentInstant();
         user.DeletionRequestedAt = now;
         user.DeletionScheduledFor = now.Plus(NodaTime.Duration.FromDays(30));
         user.State = UserState.DeletePending;
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.ClearDeletionAsync(userId);
+        var result = await _service.ClearDeletionAsync(userId, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+        var fresh = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         fresh.State.Should().Be(UserState.Active);
         _claimsCacheInvalidator.Received(1).Invalidate(userId);
     }
@@ -439,7 +439,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Guid.NewGuid(),
             new UserProfileOnboardingCommand(
                 UserProfileOnboardingMutation.RejectSignup,
-                ActorUserId: Guid.NewGuid()));
+                ActorUserId: Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -450,7 +450,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var fakeRepo = Substitute.For<IUserRepository>();
         Profile? stored = null;
@@ -470,8 +470,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
 #pragma warning disable VSTHRD003
         await Task.WhenAll(
-            Task.Run(() => service.EnsureStubProfileAsync(userId)),
-            Task.Run(() => service.EnsureStubProfileAsync(userId)));
+            Task.Run(() => service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken)),
+            Task.Run(() => service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken)));
 #pragma warning restore VSTHRD003
 
         await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
@@ -482,11 +482,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId, " Sparkle ", " Ada ", " Lovelace ");
+        await _service.EnsureStubProfileAsync(userId, " Sparkle ", " Ada ", " Lovelace ", TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().Be("Sparkle");
         profile.FirstName.Should().Be("Ada");
         profile.LastName.Should().Be("Lovelace");
@@ -498,11 +498,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.BurnerName.Should().BeEmpty();
         profile.State.Should().Be(ProfileState.Stub);
     }
@@ -513,11 +513,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
         user.MergedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -526,11 +526,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
         user.DisplayName = "Deleted User";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _service.EnsureStubProfileAsync(userId);
+        await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        (await Db.Profiles.AnyAsync(p => p.UserId == userId)).Should().BeFalse();
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -540,15 +540,15 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var user = SeedUser(userId);
         user.Email = "legacy@example.com";
         user.UserName = "legacy@example.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.AddUserEmailAsync(
             userId,
             new UserEmailAddCommand("legacy@example.com", IsVerified: true),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         result.Added.Should().BeTrue();
-        var row = await Db.UserEmails.AsNoTracking().SingleAsync(e => e.Id == result.EmailId);
+        var row = await Db.UserEmails.AsNoTracking().SingleAsync(e => e.Id == result.EmailId, TestContext.Current.CancellationToken);
         row.UserId.Should().Be(userId);
         row.Email.Should().Be("legacy@example.com");
         row.IsVerified.Should().BeTrue();
@@ -561,9 +561,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         await SeedUserWithProfileAsync(userId);
         Clock.Advance(NodaTime.Duration.FromHours(1));
 
-        await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador);
+        await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador, TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         profile.MembershipTier.Should().Be(MembershipTier.Colaborador);
         profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
@@ -573,10 +573,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var unknownUserId = Guid.NewGuid();
 
-        var updated = await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado);
+        var updated = await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado, TestContext.Current.CancellationToken);
 
         updated.Should().BeFalse();
-        var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId);
+        var profileExists = await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId, TestContext.Current.CancellationToken);
         profileExists.Should().BeFalse();
     }
 
@@ -585,17 +585,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId);
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType = "image/png";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.AnonymizeProfileForDeletionAsync(userId);
+        var result = await _service.AnonymizeProfileForDeletionAsync(userId, TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
         result.ProfileId.Should().Be(profileId);
         result.PreviousProfilePictureContentType.Should().Be("image/png");
 
-        var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId);
+        var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();
         fresh.FirstName.Should().Be("Deleted");
         fresh.LastName.Should().Be("User");
@@ -620,7 +620,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             UpdatedAt = Clock.GetCurrentInstant(),
         };
         Db.Profiles.Add(profile);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return profile.Id;
     }
 

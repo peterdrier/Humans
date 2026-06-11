@@ -47,9 +47,9 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     {
         var outboxEvent = CreateEvent();
 
-        await _repository.AddAsync(outboxEvent);
+        await _repository.AddAsync(outboxEvent, Xunit.TestContext.Current.CancellationToken);
 
-        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         stored.Id.Should().Be(outboxEvent.Id);
         stored.DeduplicationKey.Should().Be(outboxEvent.DeduplicationKey);
     }
@@ -60,12 +60,12 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var first = CreateEvent();
         var second = CreateEvent();
 
-        await _repository.AddRangeAsync([first, second]);
+        await _repository.AddRangeAsync([first, second], Xunit.TestContext.Current.CancellationToken);
 
         var ids = await _seedContext.GoogleSyncOutboxEvents
             .AsNoTracking()
             .Select(e => e.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         ids.Should().BeEquivalentTo([first.Id, second.Id]);
     }
 
@@ -77,7 +77,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         Seed(processedAt: null, failedPermanently: true, lastError: "perm"); // permanent-in-flight
         Seed(processedAt: Instant.FromUtc(2026, 4, 23, 12, 0)); // processed — excluded
 
-        var count = await _repository.CountPendingAsync();
+        var count = await _repository.CountPendingAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(3);
     }
@@ -90,7 +90,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         Seed(processedAt: null, failedPermanently: true, lastError: "perm"); // also matches (not processed yet)
         Seed(processedAt: Instant.FromUtc(2026, 4, 23, 12, 0), lastError: "old"); // processed — excluded
 
-        var count = await _repository.CountFailedAsync();
+        var count = await _repository.CountFailedAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
     }
@@ -102,7 +102,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var middle = Seed(occurredAt: Instant.FromUtc(2026, 4, 22, 10, 0));
         var newest = Seed(occurredAt: Instant.FromUtc(2026, 4, 23, 10, 0));
 
-        var page = await _repository.GetRecentAsync(2);
+        var page = await _repository.GetRecentAsync(2, Xunit.TestContext.Current.CancellationToken);
 
         page.Should().HaveCount(2);
         page[0].Id.Should().Be(newest);
@@ -118,7 +118,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         Seed(failedPermanently: true, lastError: "perm"); // permanent — excluded
         Seed(retryCount: 5, lastError: "exhausted"); // at maxRetryCount=5 — excluded (RetryCount < max)
 
-        var batch = await _repository.GetProcessingBatchAsync(batchSize: 10, maxRetryCount: 5);
+        var batch = await _repository.GetProcessingBatchAsync(batchSize: 10, maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
 
         batch.Select(e => e.Id).Should().Equal(oldest, newest);
     }
@@ -129,9 +129,9 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var id = Seed(lastError: "transient");
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
 
-        await _repository.MarkProcessedAsync(id, at);
+        await _repository.MarkProcessedAsync(id, at, Xunit.TestContext.Current.CancellationToken);
 
-        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id);
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.ProcessedAt.Should().Be(at);
         stored.LastError.Should().BeNull();
         stored.FailedPermanently.Should().BeFalse();
@@ -140,7 +140,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     [HumansFact]
     public async Task MarkProcessedAsync_MissingRow_NoThrow()
     {
-        var act = async () => await _repository.MarkProcessedAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 23, 14, 0));
+        var act = async () => await _repository.MarkProcessedAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 23, 14, 0), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
     }
@@ -152,9 +152,9 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
         var longMessage = new string('x', 5000); // exceeds 4000 cap
 
-        await _repository.MarkPermanentlyFailedAsync(id, at, longMessage);
+        await _repository.MarkPermanentlyFailedAsync(id, at, longMessage, Xunit.TestContext.Current.CancellationToken);
 
-        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id);
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.FailedPermanently.Should().BeTrue();
         stored.ProcessedAt.Should().Be(at);
         stored.LastError.Should().HaveLength(4000);
@@ -166,11 +166,11 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var id = Seed(retryCount: 1);
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
 
-        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, "flaky", maxRetryCount: 5);
+        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, "flaky", maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
 
         exhausted.Should().BeFalse();
         retryCount.Should().Be(2);
-        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id);
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.RetryCount.Should().Be(2);
         stored.LastError.Should().Be("flaky");
         stored.FailedPermanently.Should().BeFalse();
@@ -183,11 +183,11 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         var id = Seed(retryCount: 4);
         var at = Instant.FromUtc(2026, 4, 23, 14, 0);
 
-        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, "final", maxRetryCount: 5);
+        var (exhausted, retryCount) = await _repository.IncrementRetryAsync(id, at, "final", maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
 
         exhausted.Should().BeTrue();
         retryCount.Should().Be(5);
-        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id);
+        var stored = await _seedContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(e => e.Id == id, Xunit.TestContext.Current.CancellationToken);
         stored.FailedPermanently.Should().BeTrue();
         stored.ProcessedAt.Should().Be(at);
         stored.LastError.Should().Be("final");
@@ -197,7 +197,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
     public async Task IncrementRetryAsync_MissingRow_ReturnsFalseZero()
     {
         var (exhausted, retryCount) = await _repository.IncrementRetryAsync(
-            Guid.NewGuid(), Instant.FromUtc(2026, 4, 23, 14, 0), "err", maxRetryCount: 5);
+            Guid.NewGuid(), Instant.FromUtc(2026, 4, 23, 14, 0), "err", maxRetryCount: 5, ct: Xunit.TestContext.Current.CancellationToken);
 
         exhausted.Should().BeFalse();
         retryCount.Should().Be(0);

@@ -47,13 +47,13 @@ public sealed class UserRepositoryTests : IDisposable
         {
             _dbContext.Entry(user).Property<string?>("GoogleEmail").CurrentValue = googleEmail;
         }
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user;
     }
 
     private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
     {
-        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], CancellationToken.None);
+        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], Xunit.TestContext.Current.CancellationToken);
         return lookup.TryGetValue(userId, out var v) ? v : null;
     }
 
@@ -65,7 +65,7 @@ public sealed class UserRepositoryTests : IDisposable
     public async Task TrySetGoogleEmailAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
         var result = await _repo.TrySetGoogleEmailAsync(
-            Guid.NewGuid(), "new@example.com", CancellationToken.None);
+            Guid.NewGuid(), "new@example.com", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -75,7 +75,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync(googleEmail: null);
 
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", CancellationToken.None);
+        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("new@nobodies.team");
@@ -86,7 +86,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync(googleEmail: "existing@nobodies.team");
 
-        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", CancellationToken.None);
+        var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("existing@nobodies.team");
@@ -99,7 +99,7 @@ public sealed class UserRepositoryTests : IDisposable
     [HumansFact]
     public async Task UpdateDisplayNameAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
-        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", CancellationToken.None);
+        var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", Xunit.TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 
@@ -108,10 +108,10 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", CancellationToken.None);
+        var result = await _repo.UpdateDisplayNameAsync(user.Id, "Renamed Person", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.DisplayName.Should().Be("Renamed Person");
     }
 
@@ -126,10 +126,10 @@ public sealed class UserRepositoryTests : IDisposable
         var requested = Instant.FromUtc(2026, 4, 1, 0, 0);
         var scheduled = Instant.FromUtc(2026, 5, 1, 0, 0);
 
-        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, null);
+        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.DeletionRequestedAt.Should().Be(requested);
         reloaded.DeletionScheduledFor.Should().Be(scheduled);
     }
@@ -141,12 +141,12 @@ public sealed class UserRepositoryTests : IDisposable
         user.DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0);
         user.DeletionScheduledFor = Instant.FromUtc(2026, 5, 1, 0, 0);
         user.DeletionEligibleAfter = Instant.FromUtc(2026, 6, 1, 0, 0);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.ClearDeletionAsync(user.Id, CancellationToken.None);
+        var result = await _repo.ClearDeletionAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.DeletionRequestedAt.Should().BeNull();
         reloaded.DeletionScheduledFor.Should().BeNull();
         reloaded.DeletionEligibleAfter.Should().BeNull();
@@ -164,7 +164,7 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now,
-            checkedInAt: null);
+            checkedInAt: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.NotAttending);
@@ -172,7 +172,7 @@ public sealed class UserRepositoryTests : IDisposable
         result.DeclaredAt.Should().Be(now);
 
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
-            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.Id.Should().Be(result.Id);
     }
 
@@ -189,11 +189,11 @@ public sealed class UserRepositoryTests : IDisposable
             Source = ParticipationSource.UserDeclared,
             DeclaredAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null,
-            checkedInAt: null);
+            checkedInAt: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.Ticketed);
@@ -213,14 +213,14 @@ public sealed class UserRepositoryTests : IDisposable
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: arrival);
+            declaredAt: null, checkedInAt: arrival, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.Attended);
         result.CheckedInAt.Should().Be(arrival);
 
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
-            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.CheckedInAt.Should().Be(arrival);
     }
 
@@ -241,16 +241,16 @@ public sealed class UserRepositoryTests : IDisposable
             Source = ParticipationSource.TicketSync,
             CheckedInAt = originalArrival,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var laterArrival = Instant.FromUtc(2026, 7, 8, 18, 0);
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: laterArrival);
+            declaredAt: null, checkedInAt: laterArrival, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull(); // Attended-is-permanent short-circuit
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
-            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.CheckedInAt.Should().Be(originalArrival);
     }
 
@@ -270,12 +270,12 @@ public sealed class UserRepositoryTests : IDisposable
             Source = ParticipationSource.TicketSync,
             CheckedInAt = null,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var arrival = Instant.FromUtc(2026, 7, 8, 12, 0);
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync,
-            declaredAt: null, checkedInAt: arrival);
+            declaredAt: null, checkedInAt: arrival, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Status.Should().Be(ParticipationStatus.Attended);
@@ -296,15 +296,15 @@ public sealed class UserRepositoryTests : IDisposable
             Source = ParticipationSource.TicketSync,
             DeclaredAt = attendedAt,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, _clock.GetCurrentInstant(),
-            checkedInAt: null);
+            checkedInAt: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
-            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
+            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026, Xunit.TestContext.Current.CancellationToken);
         persisted.Status.Should().Be(ParticipationStatus.Attended);
         persisted.Source.Should().Be(ParticipationSource.TicketSync);
     }
@@ -325,14 +325,14 @@ public sealed class UserRepositoryTests : IDisposable
             Status = ParticipationStatus.Ticketed,
             Source = ParticipationSource.TicketSync,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
+            userId, 2026, ParticipationSource.TicketSync, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
-            .CountAsync(ep => ep.UserId == userId);
+            .CountAsync(ep => ep.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(0);
     }
 
@@ -348,14 +348,14 @@ public sealed class UserRepositoryTests : IDisposable
             Status = ParticipationStatus.NotAttending,
             Source = ParticipationSource.UserDeclared,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
+            userId, 2026, ParticipationSource.TicketSync, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
-            .CountAsync(ep => ep.UserId == userId);
+            .CountAsync(ep => ep.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(1);
     }
 
@@ -371,14 +371,14 @@ public sealed class UserRepositoryTests : IDisposable
             Status = ParticipationStatus.Attended,
             Source = ParticipationSource.TicketSync,
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.RemoveParticipationAsync(
-            userId, 2026, ParticipationSource.TicketSync, CancellationToken.None);
+            userId, 2026, ParticipationSource.TicketSync, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         var remaining = await _dbContext.EventParticipations.AsNoTracking()
-            .CountAsync(ep => ep.UserId == userId);
+            .CountAsync(ep => ep.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(1);
     }
 
@@ -410,7 +410,7 @@ public sealed class UserRepositoryTests : IDisposable
                 Status = ParticipationStatus.Attended,
                 Source = ParticipationSource.TicketSync,
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var entries = new List<(Guid UserId, ParticipationStatus Status)>
         {
@@ -419,13 +419,13 @@ public sealed class UserRepositoryTests : IDisposable
             (userAttendedId, ParticipationStatus.NotAttending),
         };
 
-        var count = await _repo.BackfillParticipationsAsync(2025, entries, CancellationToken.None);
+        var count = await _repo.BackfillParticipationsAsync(2025, entries, Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(3);
 
         var records = await _dbContext.EventParticipations.AsNoTracking()
             .Where(ep => ep.Year == 2025)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         records.Should().HaveCount(3);
 
         var newRecord = records.Single(r => r.UserId == userNewId);
@@ -458,12 +458,12 @@ public sealed class UserRepositoryTests : IDisposable
         var other = await SeedUserAsync();
         AddLogin(user.Id, "Google", "fred-google-sub");
         AddLogin(other.Id, "Google", "other-google-sub");
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var displayName = await _repo.PurgeAsync(user.Id, CancellationToken.None);
+        var displayName = await _repo.PurgeAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         displayName.Should().NotBeNull();
-        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
+        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().ContainSingle()
             .Which.UserId.Should().Be(other.Id);
     }
@@ -473,7 +473,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var displayName = await _repo.PurgeAsync(user.Id, CancellationToken.None);
+        var displayName = await _repo.PurgeAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         displayName.Should().Be("Seeded User");
     }
@@ -490,12 +490,12 @@ public sealed class UserRepositoryTests : IDisposable
         AddLogin(user.Id, "Google", "fred-google-sub");
         AddLogin(user.Id, "Microsoft", "fred-ms-sub");
         AddLogin(other.Id, "Google", "other-google-sub");
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
+        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().ContainSingle()
             .Which.UserId.Should().Be(other.Id);
     }
@@ -505,7 +505,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.OriginalDisplayName.Should().Be("Seeded User");
@@ -518,10 +518,10 @@ public sealed class UserRepositoryTests : IDisposable
         var originalEmail = user.IdentityEmailColumn;
         originalEmail.Should().NotBeNullOrEmpty();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, CancellationToken.None);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.IdentityEmailColumn.Should().Be($"deleted-{user.Id:N}@deleted.local",
             "the legacy Identity email column is scrubbed to a no-PII sentinel on deletion");
         reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
@@ -537,10 +537,10 @@ public sealed class UserRepositoryTests : IDisposable
         originalEmail.Should().NotBeNullOrEmpty();
         var now = _clock.GetCurrentInstant();
 
-        var result = await _repo.AnonymizeForMergeAsync(source.Id, target.Id, now, CancellationToken.None);
+        var result = await _repo.AnonymizeForMergeAsync(source.Id, target.Id, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.IdentityEmailColumn.Should().Be($"merged-{source.Id:N}@merged.local",
             "the legacy Identity email column is scrubbed to a no-PII sentinel on the merge tombstone");
         reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);

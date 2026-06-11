@@ -9,7 +9,7 @@ public class CalendarControllerTests(HumansWebApplicationFactory factory) : Inte
     [HumansFact]
     public async Task Anonymous_GET_Calendar_redirects_to_login()
     {
-        var resp = await Client.GetAsync("/Calendar");
+        var resp = await Client.GetAsync("/Calendar", Xunit.TestContext.Current.CancellationToken);
 
         // Cookie auth redirects unauthenticated requests to a login challenge.
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized);
@@ -20,7 +20,7 @@ public class CalendarControllerTests(HumansWebApplicationFactory factory) : Inte
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var resp = await Client.GetAsync("/Calendar");
+        var resp = await Client.GetAsync("/Calendar", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -30,7 +30,7 @@ public class CalendarControllerTests(HumansWebApplicationFactory factory) : Inte
         // Calendar editing is open to any authenticated human; changes are audited.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var resp = await Client.GetAsync("/Calendar/Event/Create");
+        var resp = await Client.GetAsync("/Calendar/Event/Create", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -39,7 +39,7 @@ public class CalendarControllerTests(HumansWebApplicationFactory factory) : Inte
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var resp = await Client.GetAsync("/Calendar/Agenda");
+        var resp = await Client.GetAsync("/Calendar/Agenda", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

@@ -71,11 +71,11 @@ public sealed class CommunicationPreferenceCountTests : ServiceTestHarness
             });
         }
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false))
+        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, cancellationToken: Xunit.TestContext.Current.CancellationToken))
             .Should().Be(5);
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true))
+        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, cancellationToken: Xunit.TestContext.Current.CancellationToken))
             .Should().Be(3);
     }
 }

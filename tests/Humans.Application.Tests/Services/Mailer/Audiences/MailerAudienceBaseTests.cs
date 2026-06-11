@@ -26,7 +26,7 @@ public class MailerAudienceBaseTests
                 InfoWithMarketing(optedOut, optedOut: true),
             ]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([optedIn, noPref]);
     }
@@ -41,7 +41,7 @@ public class MailerAudienceBaseTests
             raw: [a, b],
             infos: [InfoWithMarketing(a, optedOut: null), InfoWithMarketing(b, optedOut: false)]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([a, b]);
     }
@@ -52,7 +52,7 @@ public class MailerAudienceBaseTests
         var users = Substitute.For<IUserService>();
         var audience = new FakeAudience([], users);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
         await users.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());

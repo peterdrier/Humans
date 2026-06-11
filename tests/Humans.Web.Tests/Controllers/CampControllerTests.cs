@@ -41,7 +41,7 @@ public class CampControllerTests
         StubCampReadModel([matching, filteredOut, pending]);
         var controller = BuildController();
 
-        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true });
+        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true }, Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
@@ -63,7 +63,7 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
         var controller = BuildController(userId);
 
-        var result = await controller.Index(null);
+        var result = await controller.Index(null, Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
@@ -83,7 +83,7 @@ public class CampControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
         var controller = BuildController(userId);
 
-        var result = await controller.Index(null);
+        var result = await controller.Index(null, Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;

@@ -144,6 +144,6 @@ public static class DateFormattingExtensions
         LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
 
     /// <summary>Ops-notice date, "ddd MMMM d" (e.g. "Mon January 5").</summary>
-    public static readonly LocalDateTimePattern OpsNoticeDatePattern =
-        LocalDateTimePattern.CreateWithInvariantCulture("ddd MMMM d");
+    public static readonly LocalDatePattern OpsNoticeDatePattern =
+        LocalDatePattern.CreateWithInvariantCulture("ddd MMMM d");
 }

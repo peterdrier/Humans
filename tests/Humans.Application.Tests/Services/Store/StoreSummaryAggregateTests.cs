@@ -41,7 +41,7 @@ public class StoreSummaryAggregateTests
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2026);
         result.ByCounterparty.Should().BeEmpty();
@@ -110,7 +110,7 @@ public class StoreSummaryAggregateTests
                 Arg.Any<CancellationToken>())
             .Returns([order]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         // By-counterparty
         result.ByCounterparty.Should().HaveCount(1);
@@ -181,7 +181,7 @@ public class StoreSummaryAggregateTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([orderA, orderB]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         // By-item totals
         result.ByItem.Single(i => i.ProductId == productX).TotalQty.Should().Be(6);
@@ -233,7 +233,7 @@ public class StoreSummaryAggregateTests
                 }
             ]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         result.ByItem.Should().ContainSingle(i => i.ProductId == deadProductId && i.TotalQty == 2);
         result.CrossTab.Products.Should().ContainSingle(p => p.ProductId == deadProductId);
@@ -289,7 +289,7 @@ public class StoreSummaryAggregateTests
                 Order(orderUnpaid, seasonUnpaid, qty: 1, paid: 0m)    // due 10, paid  0  → balance 10  (unpaid)
             ]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         var paidRow = result.ByCounterparty.Single(r => r.OrderId == orderPaid);
         paidRow.TotalDueEur.Should().Be(20m);
@@ -341,7 +341,7 @@ public class StoreSummaryAggregateTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([order]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         // 3 × 8 = 24.00 + 21% VAT 5.04 = 29.04 — the live total the order page
         // shows for an Open order, not the 36.30 the add-time snapshot would give.
@@ -368,7 +368,7 @@ public class StoreSummaryAggregateTests
                 new StoreOrder { Id = Guid.NewGuid(), CampSeasonId = outOfYear, State = StoreOrderState.Open }
             ]);
 
-        var result = await _service.GetStoreSummaryAsync(2026);
+        var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         result.ByCounterparty.Should().BeEmpty();
         result.CrossTab.Counterparties.Should().BeEmpty();

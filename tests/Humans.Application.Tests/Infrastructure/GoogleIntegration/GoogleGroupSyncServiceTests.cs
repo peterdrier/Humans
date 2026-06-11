@@ -63,7 +63,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
             .Returns((GoogleClientError?)null);
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.MembersToAdd.Should().ContainSingle().Which.Should().Be("bob@nobodies.team");
         diff.MembersToRemove.Should().ContainSingle().Which.Should().Be("old@nobodies.team");
@@ -86,7 +86,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.ListMembershipsAsync("group-1", Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipListResult(null, new GoogleClientError(503, "backend error")));
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("backend error");
         var scheduled = _syncScheduler.Scheduled.Should().ContainSingle().Which;
@@ -114,7 +114,7 @@ public sealed class GoogleGroupSyncServiceTests
         var diff = await service.ReconcileOneAsync(
             "team@nobodies.team",
             SyncAction.Execute,
-            CancellationToken.None,
+            Xunit.TestContext.Current.CancellationToken,
             retryAttempt: 5);
 
         diff.ErrorMessage.Should().Contain("backend error");
@@ -132,7 +132,7 @@ public sealed class GoogleGroupSyncServiceTests
     {
         var service = CreateService();
 
-        await service.RequestSyncAsync("  ");
+        await service.RequestSyncAsync("  ", Xunit.TestContext.Current.CancellationToken);
 
         _syncScheduler.Enqueued.Should().BeEmpty();
         _logger.Messages.Should().Contain(m =>
@@ -147,7 +147,7 @@ public sealed class GoogleGroupSyncServiceTests
         _provisioningClient.LookupGroupIdAsync("team@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(503, "backend error")));
 
-        var result = await service.ReconcileAllAsync(SyncAction.Execute);
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(1);
         _logger.Messages.Should().Contain(m =>
@@ -171,7 +171,7 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(503, "backend error")));
 
-        var result = await service.ReconcileAllAsync(SyncAction.Execute);
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(1);
         _logger.Messages.Should().Contain(m =>
@@ -194,7 +194,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
             .Returns(new GoogleClientError(503, "backend error"));
 
-        var result = await service.ReconcileAllAsync(SyncAction.Execute);
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(1);
         _logger.Messages.Should().Contain(m =>
@@ -213,7 +213,7 @@ public sealed class GoogleGroupSyncServiceTests
         var service = CreateService();
         var resource = StageResource("team@nobodies.team");
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ResourceId.Should().Be(resource.Id);
         diff.ErrorMessage.Should().Be("No Google group membership source claims this group");
@@ -235,7 +235,7 @@ public sealed class GoogleGroupSyncServiceTests
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.None);
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().BeNull();
         await _teamResourceService.DidNotReceive().MarkResourceSyncedAsync(
@@ -251,7 +251,7 @@ public sealed class GoogleGroupSyncServiceTests
         var resource = StageResource("team@nobodies.team", includeGroupUrl: false);
         StubGroup("team@nobodies.team", "group-1");
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ResourceId.Should().Be(resource.Id);
         await _teamResourceService.Received(1).MarkResourceSyncedAsync(
@@ -267,7 +267,7 @@ public sealed class GoogleGroupSyncServiceTests
         StageDuplicateGroupResources("team@nobodies.team");
         StubGroup("team@nobodies.team", "group-1");
 
-        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Preview);
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
 
         _logger.Messages.Should().Contain(m =>
             m.Contains("Multiple active Google group resource rows", StringComparison.Ordinal)
@@ -289,7 +289,7 @@ public sealed class GoogleGroupSyncServiceTests
         StubGroup("one@nobodies.team", "group-1");
         StubGroup("two@nobodies.team", "group-2");
 
-        var result = await service.ReconcileAllAsync(SyncAction.Preview);
+        var result = await service.ReconcileAllAsync(SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
 
         result.Diffs.Should().HaveCount(2);
         await _userService.Received(1)
@@ -303,11 +303,11 @@ public sealed class GoogleGroupSyncServiceTests
             new StaticSource("team@nobodies.team", Guid.NewGuid()),
             new StaticSource("team@nobodies.team", Guid.NewGuid()));
 
-        var result = await service.ReconcileAllAsync(SyncAction.Execute);
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(1);
         await _provisioningClient.DidNotReceiveWithAnyArgs()
-            .LookupGroupIdAsync(null!, CancellationToken.None);
+            .LookupGroupIdAsync(null!, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
             nameof(GoogleResource),
@@ -325,7 +325,7 @@ public sealed class GoogleGroupSyncServiceTests
         StubProfiles((userId, "Burner Name"));
         StubGroup("team@nobodies.team", "group-1");
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Preview);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
 
         diff.Members.Should().ContainSingle().Which.DisplayName.Should().Be("Burner Name");
     }
@@ -337,11 +337,11 @@ public sealed class GoogleGroupSyncServiceTests
         StubGroup("team@nobodies.team", "group-1",
             new GroupMembership("service-account@nobodies.team", "groups/group-1/memberships/sa"));
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.MembersToRemove.Should().BeEmpty();
         await _membershipClient.DidNotReceiveWithAnyArgs()
-            .DeleteMembershipAsync(null!, CancellationToken.None);
+            .DeleteMembershipAsync(null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -365,7 +365,7 @@ public sealed class GoogleGroupSyncServiceTests
                 CreatedAt = _clock.GetCurrentInstant()
             }.ToUserInfo());
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("Google rejected alice@nobodies.team");
         _logger.Messages.Should().Contain(m =>
@@ -403,7 +403,7 @@ public sealed class GoogleGroupSyncServiceTests
                 CreatedAt = _clock.GetCurrentInstant()
             }.ToUserInfo());
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("Google rejected alice@external.test");
         diff.ErrorMessage.Should().Contain("HTTP 400");
@@ -430,13 +430,13 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(400, "Bad Request: invalid argument 'roles'")));
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("invalid argument 'roles'");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
         await _userService.DidNotReceiveWithAnyArgs()
-            .GetByEmailOrAlternateAsync(null!, CancellationToken.None);
+            .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
         _syncScheduler.Scheduled.Should().ContainSingle();
     }
 
@@ -453,13 +453,13 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(403, "billing account disabled for project")));
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("billing account disabled");
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
         await _userService.DidNotReceiveWithAnyArgs()
-            .GetByEmailOrAlternateAsync(null!, CancellationToken.None);
+            .GetByEmailOrAlternateAsync(null!, Arg.Any<CancellationToken>());
         _syncScheduler.Scheduled.Should().ContainSingle();
     }
 
@@ -490,7 +490,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.CreateMembershipAsync("group-new", "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
 
-        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().BeNull();
         await _provisioningClient.Received(1).CreateGroupAsync(
@@ -530,7 +530,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.CreateMembershipAsync("group-new", "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
 
-        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().BeNull();
         await _provisioningClient.Received(1).CreateGroupAsync(
@@ -563,7 +563,7 @@ public sealed class GoogleGroupSyncServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new GroupCreateResult(null, new GoogleClientError(503, "backend error")));
 
-        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().NotBeNull();
         _syncScheduler.Scheduled.Should().ContainSingle()
@@ -581,7 +581,7 @@ public sealed class GoogleGroupSyncServiceTests
         _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
             .Returns(new GoogleClientError(503, "backend error"));
 
-        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute);
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         diff.ErrorMessage.Should().Contain("backend error");
         await _auditLogService.Received(1).LogGoogleSyncAsync(

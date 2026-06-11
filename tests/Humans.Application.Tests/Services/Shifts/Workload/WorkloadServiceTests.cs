@@ -54,7 +54,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetForActiveEvent_NoActiveEvent_ReturnsNull()
     {
-        var result = await _service.GetForActiveEventAsync();
+        var result = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -63,7 +63,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     {
         var es = await SeedEventAsync();
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Should().NotBeNull();
         report.EventSettingsId.Should().Be(es.Id);
@@ -88,7 +88,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         await SeedSignupAsync(s2, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(s1, bob.Id, SignupStatus.Pending);
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
 
         var aliceRow = report.ByPerson.Single(p => p.UserId == alice.Id);
@@ -122,7 +122,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         await SeedSignupAsync(eventShift, alice.Id, SignupStatus.Confirmed);
         await SeedSignupAsync(strikeShift, alice.Id, SignupStatus.Confirmed);
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var row = report.ByPerson.Single(p => p.UserId == alice.Id);
         row.BuildHours.Should().Be(4m);
@@ -146,7 +146,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             await SeedSignupAsync(shift, u.Id, SignupStatus.Confirmed);
         }
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var dept = report.ByDepartment.Single();
         dept.PlannedSlots.Should().Be(3);
@@ -174,7 +174,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             Role(team.Id, "Gate", "gate", RolePeriod.YearRound, estimatedHours: 10, slotCount: 1, alice.Id),
             Role(team.Id, "Gate", "gate", RolePeriod.Build, estimatedHours: 4, slotCount: 1, alice.Id)));
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var row = report.ByPerson.Single(p => p.UserId == alice.Id);
         row.YearRoundHours.Should().Be(10m);
@@ -199,7 +199,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         StubTeams(TeamWithRoles(team.Id, "Board", "board",
             Role(team.Id, "Board", "board", RolePeriod.YearRound, estimatedHours: 12, slotCount: 1, bob.Id)));
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var row = report.ByPerson.Single(p => p.UserId == bob.Id);
         row.YearRoundHours.Should().Be(12m);
@@ -221,7 +221,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         StubTeams(TeamWithRoles(team.Id, "Gate", "gate",
             Role(team.Id, "Gate", "gate", RolePeriod.YearRound, estimatedHours: null, slotCount: 1, alice.Id)));
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var row = report.ByPerson.Single(p => p.UserId == alice.Id);
         row.YearRoundHours.Should().Be(0m);
@@ -242,7 +242,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         StubTeams(TeamWithRoles(team.Id, "Gate", "gate",
             Role(team.Id, "Gate", "gate", RolePeriod.Event, estimatedHours: 10, slotCount: 2, alice.Id)));
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var dept = report.ByDepartment.Single(d => d.TeamId == team.Id);
         dept.PlannedHours.Should().Be(32m); // 12 shift + 20 role
@@ -267,7 +267,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             TeamWithRoles(board.Id, "Board", "board",
                 Role(board.Id, "Board", "board", RolePeriod.YearRound, estimatedHours: 8, slotCount: 1, bob.Id)));
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var dept = report.ByDepartment.Single(d => d.TeamId == board.Id);
         dept.TeamName.Should().Be("Board");
@@ -299,7 +299,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             with
             { IsActive = false });
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         report.ByPerson.Should().NotContain(p => p.UserId == alice.Id);
         report.ByDepartment.Should().NotContain(d => d.TeamId == oldTeam.Id);
@@ -317,7 +317,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         await SeedShiftAsync(visibleRota, dayOffset: 1, hours: 4, adminOnly: true);
         await SeedShiftAsync(hiddenRota, dayOffset: 2, hours: 4);
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         report.ByRota.Should().HaveCount(2);
         report.ByRota.Select(r => r.RotaId).Should().BeEquivalentTo([visibleRota.Id, hiddenRota.Id]);
@@ -332,7 +332,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         await SeedShiftAsync(rota, dayOffset: 1, hours: 4, max: 2);
         await SeedShiftAsync(rota, dayOffset: 2, hours: 6, max: 3);
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         var row = report.ByRota.Single(r => r.RotaId == rota.Id);
         row.ShiftCount.Should().Be(2);
@@ -356,7 +356,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
         var alice = await SeedUserWithProfileAsync("Alice");
         await SeedSignupAsync(allDay, alice.Id, SignupStatus.Confirmed);
 
-        var report = await _service.GetForActiveEventAsync();
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
         report.Should().NotBeNull();
         report.ByPerson.Single(p => p.UserId == alice.Id).BuildHours.Should().Be(10m); // 18:00 - 08:00
     }
@@ -407,7 +407,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             UpdatedAt = now,
         };
         Db.EventSettings.Add(es);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -416,7 +416,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     private async Task<Team> SeedWorkloadTeamAsync(string name)
     {
         var team = SeedTeam(name);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return team;
     }
 
@@ -437,7 +437,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             UpdatedAt = now,
         };
         Db.Rotas.Add(rota);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return rota;
     }
 
@@ -459,7 +459,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             UpdatedAt = now,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
 
@@ -480,7 +480,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             UpdatedAt = now,
         };
         Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
 
@@ -498,7 +498,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user;
     }
 
@@ -514,6 +514,6 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now.Minus(Duration.FromHours(1)),
             UpdatedAt = now,
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

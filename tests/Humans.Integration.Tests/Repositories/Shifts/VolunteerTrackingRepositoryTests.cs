@@ -33,7 +33,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
         var userId = Guid.NewGuid();
 
-        var result = await sut.GetBuildStatusesForEventAsync(Guid.NewGuid(), [userId]);
+        var result = await sut.GetBuildStatusesForEventAsync(Guid.NewGuid(), [userId], TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -53,11 +53,11 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             notes: "left for barrio",
             setByUserId: Guid.NewGuid(),
             setAt: SystemClock.Instance.GetCurrentInstant(),
-            setupOffsetThreshold: null);
+            setupOffsetThreshold: null, ct: TestContext.Current.CancellationToken);
 
         trimmed.Should().BeEmpty();
 
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.UserId.Should().Be(userId);
         fetched.BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
@@ -78,11 +78,11 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var u3 = Guid.NewGuid();
 
         // Two rows on es1, one on es2.
-        await sut.UpsertCampSetupAsync(u1, es1.Id, new LocalDate(2026, 6, 30), null, null, null, null);
-        await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null, null);
-        await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null, null);
+        await sut.UpsertCampSetupAsync(u1, es1.Id, new LocalDate(2026, 6, 30), null, null, null, null, TestContext.Current.CancellationToken);
+        await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null, null, TestContext.Current.CancellationToken);
+        await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null, null, TestContext.Current.CancellationToken);
 
-        var rows = await sut.GetBuildStatusesForEventAsync(es1.Id);
+        var rows = await sut.GetBuildStatusesForEventAsync(es1.Id, ct: TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(2);
         rows.Select(r => r.UserId).Should().BeEquivalentTo([u1, u2]);
@@ -119,9 +119,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         SeedSignup(db, userId, shiftBuildBNeg3.Id, SignupStatus.Confirmed);
         SeedSignup(db, userId, shiftBuildBNeg2.Id, SignupStatus.Bailed);
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await sut.GetEligibleBuildSignupsAsync(es.Id);
+        var result = await sut.GetEligibleBuildSignupsAsync(es.Id, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);
@@ -150,9 +150,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         await sut.UpsertDayOffAsync(
             userId, es.Id,
-            new DayOffEntry(DayOffset: -5, Reason: "doctor", MarkedByUserId: actor, MarkedAt: markedAt));
+            new DayOffEntry(DayOffset: -5, Reason: "doctor", MarkedByUserId: actor, MarkedAt: markedAt), TestContext.Current.CancellationToken);
 
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
@@ -175,12 +175,12 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
 
         await sut.UpsertDayOffAsync(
             userId, es.Id,
-            new DayOffEntry(-5, "doctor", actor, t1));
+            new DayOffEntry(-5, "doctor", actor, t1), TestContext.Current.CancellationToken);
         await sut.UpsertDayOffAsync(
             userId, es.Id,
-            new DayOffEntry(-5, "family emergency", actor, t2));
+            new DayOffEntry(-5, "family emergency", actor, t2), TestContext.Current.CancellationToken);
 
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-5);
@@ -200,11 +200,11 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Insert out of order; persisted layout should sort ascending.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-7, "b", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "c", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "a", actor, t), TestContext.Current.CancellationToken);
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-7, "b", actor, t), TestContext.Current.CancellationToken);
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "c", actor, t), TestContext.Current.CancellationToken);
 
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-7, -5, -3);
     }
@@ -220,13 +220,13 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var t = SystemClock.Instance.GetCurrentInstant();
         var sut = new VolunteerTrackingRepository(db);
 
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "b", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "a", actor, t), TestContext.Current.CancellationToken);
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "b", actor, t), TestContext.Current.CancellationToken);
 
-        var removed = await sut.RemoveDayOffAsync(userId, es.Id, -5);
+        var removed = await sut.RemoveDayOffAsync(userId, es.Id, -5, TestContext.Current.CancellationToken);
 
         removed.Should().BeTrue();
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.DayOffs.Should().HaveCount(1);
         fetched.DayOffs[0].DayOffset.Should().Be(-3);
@@ -244,11 +244,11 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Row does not exist at all.
-        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+        (await sut.RemoveDayOffAsync(userId, es.Id, -5, TestContext.Current.CancellationToken)).Should().BeFalse();
 
         // Row exists but no entry for that offset.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, null, actor, t));
-        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, null, actor, t), TestContext.Current.CancellationToken);
+        (await sut.RemoveDayOffAsync(userId, es.Id, -5, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact(Timeout = 30000)]
@@ -263,9 +263,9 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
         var sut = new VolunteerTrackingRepository(db);
 
         // Seed three day-offs at offsets -8, -5, -3.
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "b", actor, t));
-        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "c", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t), TestContext.Current.CancellationToken);
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "b", actor, t), TestContext.Current.CancellationToken);
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "c", actor, t), TestContext.Current.CancellationToken);
 
         // Camp setup at offset -4 → trim threshold is -4 (auto-clear day-offs >= -4).
         // Only -3 should be auto-cleared; -8 and -5 stay.
@@ -275,10 +275,10 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             notes: null,
             setByUserId: actor,
             setAt: t,
-            setupOffsetThreshold: -4);
+            setupOffsetThreshold: -4, ct: TestContext.Current.CancellationToken);
 
         trimmed.Should().Equal(-3);
-        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId])).SingleOrDefault();
+        var fetched = (await sut.GetBuildStatusesForEventAsync(es.Id, [userId], TestContext.Current.CancellationToken)).SingleOrDefault();
         fetched.Should().NotBeNull();
         fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
     }
@@ -306,7 +306,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             UpdatedAt = now,
         };
         db.EventSettings.Add(es);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -323,7 +323,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             UpdatedAt = now,
         };
         db.Teams.Add(team);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return team;
     }
 
@@ -339,7 +339,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
             CreatedAt = now,
         };
         db.Users.Add(user);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return user;
     }
 

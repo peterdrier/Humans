@@ -38,9 +38,9 @@ public sealed class StoreRepositoryTests
             UpdatedAt = Instant.FromUtc(2026, 3, 1, 12, 0)
         };
 
-        await _repo.AddProductAsync(product);
+        await _repo.AddProductAsync(product, Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetActiveProductsForYearAsync(2026);
+        var fetched = await _repo.GetActiveProductsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().HaveCount(1);
         fetched[0].Id.Should().Be(product.Id);
         fetched[0].Name.Should().Be("Tent rental");
@@ -51,11 +51,11 @@ public sealed class StoreRepositoryTests
     [HumansFact]
     public async Task GetActiveProductsForYearAsync_filters_by_year_and_active_flag()
     {
-        await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: true, name: "A"));
-        await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: false, name: "B"));
-        await _repo.AddProductAsync(MakeProduct(year: 2025, isActive: true, name: "C"));
+        await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: true, name: "A"), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: false, name: "B"), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddProductAsync(MakeProduct(year: 2025, isActive: true, name: "C"), Xunit.TestContext.Current.CancellationToken);
 
-        var results = await _repo.GetActiveProductsForYearAsync(2026);
+        var results = await _repo.GetActiveProductsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].Name.Should().Be("A");
@@ -64,8 +64,8 @@ public sealed class StoreRepositoryTests
     [HumansFact]
     public async Task GetOrCreateTreasurySyncStateAsync_creates_singleton_on_first_call()
     {
-        var first = await _repo.GetOrCreateTreasurySyncStateAsync();
-        var second = await _repo.GetOrCreateTreasurySyncStateAsync();
+        var first = await _repo.GetOrCreateTreasurySyncStateAsync(Xunit.TestContext.Current.CancellationToken);
+        var second = await _repo.GetOrCreateTreasurySyncStateAsync(Xunit.TestContext.Current.CancellationToken);
 
         first.Id.Should().Be(1);
         second.Id.Should().Be(1);
@@ -83,9 +83,9 @@ public sealed class StoreRepositoryTests
             UpdatedAt = Instant.FromUtc(2026, 3, 1, 12, 0)
         };
 
-        await _repo.AddOrderAsync(order);
+        await _repo.AddOrderAsync(order, Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId);
+        var fetched = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Id.Should().Be(orderId);
         fetched.Lines.Should().BeEmpty();

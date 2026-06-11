@@ -64,7 +64,7 @@ else if (!report.StripeQueried)
         <div class="ms-auto d-flex align-items-center gap-3">
             @if (report.MissingCount > 0)
             {
-                <span class="text-danger fw-semibold">€@report.MissingTotalEur.ToString("0.00") collected but unrecorded</span>
+                <span class="text-danger fw-semibold">@report.MissingTotalEur.ToEuro() collected but unrecorded</span>
                 <form asp-action="RecordMissingPayments" method="post" class="mb-0">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-primary">
@@ -91,7 +91,7 @@ else
     Func<StripeReconciliationRow, IHtmlContent> stripeCreatedCell =
         @<text>@(item.CreatedAt?.ToInvariantTimestamp() ?? "—")</text>;
     Func<StripeReconciliationRow, IHtmlContent> stripeAmountCell =
-        @<text>@(item.AmountEur.HasValue ? $"€{item.AmountEur.Value:0.00}" : "—")</text>;
+        @<text>@(item.AmountEur.HasValue ? item.AmountEur.Value.ToEuro() : "—")</text>;
     Func<StripeReconciliationRow, IHtmlContent> stripeStatusCell = @<text>
         @{
             var (css, label) = StatusBadge(item.Status);
@@ -129,7 +129,7 @@ else
     <h2 class="h5 mt-4 mb-2 text-warning">Orphan payments — recorded here but not found in Stripe</h2>
     <p class="text-muted small">Investigate manually; these are never auto-removed.</p>
     Func<StripeOrphanPayment, IHtmlContent> orphanAmountCell =
-        @<text>€@item.AmountEur.ToString("0.00", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        @<text>@item.AmountEur.ToEuro()</text>;
     Func<StripeOrphanPayment, IHtmlContent> orphanOrderCell =
         @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@(item.OrderLabel ?? item.OrderId.ToString())</a></text>;
     Func<StripeOrphanPayment, IHtmlContent> orphanPiCell =

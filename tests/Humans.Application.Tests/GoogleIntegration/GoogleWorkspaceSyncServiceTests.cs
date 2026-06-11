@@ -170,7 +170,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _drivePermissions.DidNotReceive()
             .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -230,7 +230,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute);
+        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         // Mode is AddOnly, so the delete gateway must not have been called.
         await _drivePermissions.DidNotReceive()
@@ -298,7 +298,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     "The recipient has no Google account associated with this address. " +
                     "Please set SendNotificationEmail to true to invite them.")));
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             TestUserId,
@@ -356,10 +356,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(400, "Bad Request: invalid role 'archivist'")));
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -418,10 +418,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     400,
                     "Precondition check failed for shared drive sharing policy.")));
 
-        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceiveWithAnyArgs()
-            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, CancellationToken.None);
+            .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

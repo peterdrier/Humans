@@ -42,7 +42,7 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
             UpdatedAt = now,
         };
         Db.Containers.Add(container);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return container;
     }
 
@@ -53,7 +53,7 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
         Clock.AdvanceSeconds(60);
 
-        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
+        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.LocationGeoJson.Should().Be(geoJson);
         result.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
@@ -63,7 +63,7 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SavePlacementAsync_ThrowsWhenContainerNotFound()
     {
-        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}", ActorUserId);
+        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}", ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Container not found.");
@@ -74,11 +74,11 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId);
+        await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        var placement = await _sut.GetPlacementAsync(container.Id, Year);
+        var placement = await _sut.GetPlacementAsync(container.Id, Year, Xunit.TestContext.Current.CancellationToken);
         placement.Should().BeNull();
     }
 
@@ -87,7 +87,7 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
     {
         var container = await SeedContainerAsync();
 
-        var act = async () => await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId);
+        var act = async () => await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
     }
@@ -97,12 +97,12 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
-        await _sut.SavePlacementAsync(container.Id, Year + 1, geoJson, ActorUserId);
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
+        await _sut.SavePlacementAsync(container.Id, Year + 1, geoJson, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.DeleteAsync(container.Id, ActorUserId);
+        await _sut.DeleteAsync(container.Id, ActorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        (await _sut.GetPlacementAsync(container.Id, Year)).Should().BeNull();
-        (await _sut.GetPlacementAsync(container.Id, Year + 1)).Should().BeNull();
+        (await _sut.GetPlacementAsync(container.Id, Year, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _sut.GetPlacementAsync(container.Id, Year + 1, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 }

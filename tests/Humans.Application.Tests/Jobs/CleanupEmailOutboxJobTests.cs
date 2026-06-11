@@ -55,9 +55,9 @@ public class CleanupEmailOutboxJobTests : IDisposable
         // 200 days ago — older than the 150-day retention
         await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(200));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.EmailOutboxMessages.CountAsync();
+        var remaining = await _dbContext.EmailOutboxMessages.CountAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(0);
     }
 
@@ -67,9 +67,9 @@ public class CleanupEmailOutboxJobTests : IDisposable
         // 100 days ago — within the 150-day retention
         await SeedMessageAsync(EmailOutboxStatus.Sent, Now - Duration.FromDays(100));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.EmailOutboxMessages.CountAsync();
+        var remaining = await _dbContext.EmailOutboxMessages.CountAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(1);
     }
 
@@ -79,9 +79,9 @@ public class CleanupEmailOutboxJobTests : IDisposable
         // Failed message, 200 days old — should not be deleted
         await SeedMessageAsync(EmailOutboxStatus.Failed, Now - Duration.FromDays(200));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.EmailOutboxMessages.CountAsync();
+        var remaining = await _dbContext.EmailOutboxMessages.CountAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(1);
     }
 
@@ -91,9 +91,9 @@ public class CleanupEmailOutboxJobTests : IDisposable
         // Queued message, 200 days old — should not be deleted
         await SeedMessageAsync(EmailOutboxStatus.Queued, Now - Duration.FromDays(200));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.EmailOutboxMessages.CountAsync();
+        var remaining = await _dbContext.EmailOutboxMessages.CountAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().Be(1);
     }
 
@@ -112,7 +112,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         };
 
         _dbContext.EmailOutboxMessages.Add(message);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return message;
     }
 }

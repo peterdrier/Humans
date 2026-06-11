@@ -22,7 +22,7 @@ internal static class AnalyzerTestHarness
         string assemblyName,
         string source)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         var compilation = CSharpCompilation.Create(
             assemblyName: assemblyName,
             syntaxTrees: [syntaxTree],
@@ -31,7 +31,7 @@ internal static class AnalyzerTestHarness
                 OutputKind.DynamicallyLinkedLibrary,
                 nullableContextOptions: NullableContextOptions.Enable));
 
-        var compileDiagnostics = compilation.GetDiagnostics()
+        var compileDiagnostics = compilation.GetDiagnostics(Xunit.TestContext.Current.CancellationToken)
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToImmutableArray();
         if (compileDiagnostics.Length > 0)
@@ -42,7 +42,7 @@ internal static class AnalyzerTestHarness
         }
 
         var withAnalyzers = compilation.WithAnalyzers([analyzer]);
-        return await withAnalyzers.GetAnalyzerDiagnosticsAsync().ConfigureAwait(false);
+        return await withAnalyzers.GetAnalyzerDiagnosticsAsync(Xunit.TestContext.Current.CancellationToken).ConfigureAwait(false);
     }
 
     private static ImmutableArray<MetadataReference> BuildBaseReferences()

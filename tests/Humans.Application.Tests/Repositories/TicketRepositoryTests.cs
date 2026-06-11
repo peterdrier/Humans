@@ -44,7 +44,7 @@ public sealed class TicketRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetSyncStateAsync_ReturnsSingletonRow()
     {
-        var state = await _repo.GetSyncStateAsync();
+        var state = await _repo.GetSyncStateAsync(Xunit.TestContext.Current.CancellationToken);
 
         state.Should().NotBeNull();
         state.Id.Should().Be(1);
@@ -54,14 +54,14 @@ public sealed class TicketRepositoryTests : IDisposable
     [HumansFact]
     public async Task PersistSyncStateAsync_UpdatesExistingSingleton()
     {
-        var state = (await _repo.GetSyncStateAsync())!;
+        var state = (await _repo.GetSyncStateAsync(Xunit.TestContext.Current.CancellationToken))!;
         state.SyncStatus = TicketSyncStatus.Running;
         state.LastError = "boom";
         state.StatusChangedAt = _clock.GetCurrentInstant();
 
-        await _repo.PersistSyncStateAsync(state);
+        await _repo.PersistSyncStateAsync(state, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.TicketSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1);
+        var reloaded = await _dbContext.TicketSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         reloaded.SyncStatus.Should().Be(TicketSyncStatus.Running);
         reloaded.LastError.Should().Be("boom");
     }
@@ -69,13 +69,13 @@ public sealed class TicketRepositoryTests : IDisposable
     [HumansFact]
     public async Task ResetSyncStateLastSyncAsync_ClearsLastSyncAt()
     {
-        var state = (await _repo.GetSyncStateAsync())!;
+        var state = (await _repo.GetSyncStateAsync(Xunit.TestContext.Current.CancellationToken))!;
         state.LastSyncAt = _clock.GetCurrentInstant();
-        await _repo.PersistSyncStateAsync(state);
+        await _repo.PersistSyncStateAsync(state, Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.ResetSyncStateLastSyncAsync();
+        await _repo.ResetSyncStateLastSyncAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.TicketSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1);
+        var reloaded = await _dbContext.TicketSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         reloaded.LastSyncAt.Should().BeNull();
     }
 
@@ -98,7 +98,7 @@ public sealed class TicketRepositoryTests : IDisposable
             SyncedAt = _clock.GetCurrentInstant(),
         };
         _dbContext.TicketOrders.Add(existing);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var updatedExisting = new TicketOrder
         {
@@ -127,10 +127,10 @@ public sealed class TicketRepositoryTests : IDisposable
             SyncedAt = _clock.GetCurrentInstant(),
         };
 
-        await _repo.UpsertOrdersAsync(new List<TicketOrder> { updatedExisting, brandNew });
+        await _repo.UpsertOrdersAsync(new List<TicketOrder> { updatedExisting, brandNew }, Xunit.TestContext.Current.CancellationToken);
 
         var rows = await _dbContext.TicketOrders.AsNoTracking()
-            .OrderBy(o => o.VendorOrderId).ToListAsync();
+            .OrderBy(o => o.VendorOrderId).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().HaveCount(2);
         rows[0].VendorOrderId.Should().Be("ord_existing");
         rows[0].BuyerName.Should().Be("New Name");
@@ -193,9 +193,9 @@ public sealed class TicketRepositoryTests : IDisposable
             MatchedUserId = null,
             SyncedAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _repo.GetMatchedAttendeesForEventAsync("ev_a");
+        var rows = await _repo.GetMatchedAttendeesForEventAsync("ev_a", Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle();
         rows[0].MatchedUserId.Should().Be(matchedUserId);
@@ -281,9 +281,9 @@ public sealed class TicketRepositoryTests : IDisposable
                 MatchedUserId = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId);
+        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result.Single().Id.Should().Be(includedId);
@@ -320,9 +320,9 @@ public sealed class TicketRepositoryTests : IDisposable
             MatchedUserId = null,
             SyncedAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId);
+        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle(a => a.Id == includedId);
     }
@@ -371,9 +371,9 @@ public sealed class TicketRepositoryTests : IDisposable
                 Status = TicketAttendeeStatus.Valid,
                 SyncedAt = _clock.GetCurrentInstant(),
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetAttendeeByIdAsync(targetId);
+        var result = await _repo.GetAttendeeByIdAsync(targetId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.VendorTicketId.Should().Be("tkt_1");
@@ -440,9 +440,9 @@ public sealed class TicketRepositoryTests : IDisposable
                 Status = TicketAttendeeStatus.Valid,
                 SyncedAt = _clock.GetCurrentInstant(),
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetVendorTicketIdsForOrderAsync(orderId);
+        var result = await _repo.GetVendorTicketIdsForOrderAsync(orderId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo("tkt_a", "tkt_b");
     }
@@ -490,7 +490,7 @@ public sealed class TicketRepositoryTests : IDisposable
                 Barcode = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (rows, totalCount) = await _repo.GetAttendeesPageAsync(
             search: "xyz34Qy5",
@@ -502,7 +502,7 @@ public sealed class TicketRepositoryTests : IDisposable
             filterStatus: null,
             filterMatched: null,
             filterOrderId: null,
-            filterMultipleTickets: false);
+            filterMultipleTickets: false, ct: Xunit.TestContext.Current.CancellationToken);
 
         totalCount.Should().Be(1);
         rows.Should().ContainSingle(r => r.Id == barcodeId);

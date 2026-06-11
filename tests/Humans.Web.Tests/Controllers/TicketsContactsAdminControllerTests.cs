@@ -73,7 +73,7 @@ public class TicketsContactsAdminControllerTests
 
         var (controller, _) = NewController(import);
 
-        var result = await controller.Index(CancellationToken.None);
+        var result = await controller.Index(Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         var vm = view.Model.Should().BeOfType<ContactImportPreviewViewModel>().Subject;
@@ -99,7 +99,7 @@ public class TicketsContactsAdminControllerTests
         var (controller, currentUser) = NewController(import);
 
         var selectedId = Guid.NewGuid();
-        var result = await controller.Apply([selectedId], CancellationToken.None);
+        var result = await controller.Apply([selectedId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(TicketsContactsAdminController.Index));
@@ -118,7 +118,7 @@ public class TicketsContactsAdminControllerTests
         var import = Substitute.For<IAttendeeContactImportService>();
         var (controller, _) = NewController(import);
 
-        var result = await controller.Apply([], CancellationToken.None);
+        var result = await controller.Apply([], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().NotBeNull();

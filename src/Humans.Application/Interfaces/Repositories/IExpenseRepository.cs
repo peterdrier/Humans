@@ -76,6 +76,14 @@ public interface IExpenseRepository : IRepository
         NodaTime.Instant sepaSentAt,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Reverts a <see cref="Humans.Domain.Enums.ExpenseReportStatus.SepaSent"/> report back to
+    /// <see cref="Humans.Domain.Enums.ExpenseReportStatus.Approved"/> so the admin can re-include
+    /// it in a fresh SEPA batch after a failed download.
+    /// Only transitions from <c>SepaSent</c>; no-op (returns false) for any other status.
+    /// </summary>
+    Task<bool> ReopenSepaAsync(Guid reportId, NodaTime.Instant updatedAt, CancellationToken ct = default);
+
     Task<bool> MarkPaidAsync(
         Guid reportId, NodaTime.Instant paidAt, CancellationToken ct = default);
 

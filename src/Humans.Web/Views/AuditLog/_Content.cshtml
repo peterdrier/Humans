@@ -2,15 +2,14 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.AuditLogListViewModel
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Audit Log</h1>
+<page-header title="Audit Log">
     <form asp-controller="AuditLog" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-warning" id="checkBtn">
             Check Drive Activity Now
         </button>
     </form>
-</div>
+</page-header>
 
 
 @if (Model.AnomalyCount > 0)

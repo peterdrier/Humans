@@ -121,7 +121,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         // Act + Assert: should not throw and must not call the membership
         // delta apply path (otherwise a duplicate insert would surface).
-        var act = async () => await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads);
+        var act = async () => await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, Xunit.TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
 
         await _teamService.DidNotReceive().ApplySystemTeamMembershipDeltaAsync(
@@ -151,7 +151,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         var job = CreateJob();
 
-        await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads);
+        await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, Xunit.TestContext.Current.CancellationToken);
 
         await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
             team.Id,

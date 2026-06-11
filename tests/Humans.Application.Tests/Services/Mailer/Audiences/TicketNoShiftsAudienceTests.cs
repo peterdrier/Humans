@@ -26,7 +26,7 @@ public class TicketNoShiftsAudienceTests
             ticketHolders: [userA, userB, userD],
             shiftCommitted: [userB, userD]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA]);
     }
@@ -38,7 +38,7 @@ public class TicketNoShiftsAudienceTests
             ticketHolders: [],
             shiftCommitted: []);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }
@@ -63,7 +63,7 @@ public class TicketNoShiftsAudienceTests
             ticketHolders: [userA],
             shiftCommitted: []);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA]);
     }

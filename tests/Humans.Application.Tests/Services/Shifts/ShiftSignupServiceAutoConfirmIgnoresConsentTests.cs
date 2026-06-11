@@ -74,7 +74,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -86,7 +86,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     public async Task SignUp_PublicRota_UserWithConsents_ReturnsConfirmed()
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -98,7 +98,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     public async Task SignUp_RequireApprovalRota_UserMissingConsents_StaysPending()
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -115,14 +115,14 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         {
             SeedAllDayShift(rota, day);
         }
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(_userId, rota.Id, -3, -1, _userId);
 
         Assert.True(result.Success);
         var blockSignups = await Db.ShiftSignups
             .Where(s => s.UserId == _userId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, blockSignups.Count);
         Assert.All(blockSignups, s => Assert.Equal(SignupStatus.Confirmed, s.Status));
         Assert.NotNull(blockSignups[0].SignupBlockId);

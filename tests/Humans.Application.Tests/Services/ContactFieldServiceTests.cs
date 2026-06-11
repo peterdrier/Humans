@@ -75,7 +75,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.GetViewerAccessLevelAsync(userId, userId);
+        var result = await _service.GetViewerAccessLevelAsync(userId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
@@ -88,7 +88,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
@@ -102,7 +102,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Returns(false);
         SetupTeams((viewerId, TeamMemberRole.Coordinator, Guid.NewGuid(), SystemTeamType.None));
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.CoordinatorsAndBoard);
     }
@@ -120,7 +120,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
             (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.MyTeams);
     }
@@ -137,7 +137,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             (viewerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None),
             (ownerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None));
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
@@ -156,7 +156,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
             (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers));
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         // Should NOT return MyTeams since Volunteers doesn't count
         result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
@@ -179,7 +179,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             (ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
             (ownerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None));
 
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(ContactFieldVisibility.MyTeams);
     }
@@ -191,7 +191,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task GetVisibleContactFields_WhenProfileNotFound_ReturnsEmptyList()
     {
-        var result = await _service.GetVisibleContactFieldsAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await _service.GetVisibleContactFieldsAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -211,7 +211,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         SetupEmptyTeams();
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, viewerId, Xunit.TestContext.Current.CancellationToken);
 
         // Assert - should only see AllActiveProfiles field
         result.Should().HaveCount(1);
@@ -227,7 +227,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(ownerId, profile);
 
         // Act
-        var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId);
+        var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId, Xunit.TestContext.Current.CancellationToken);
 
         // Assert - should see all 4 fields
         result.Should().HaveCount(4);
@@ -249,12 +249,12 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         };
 
         // Act
-        await _service.SaveContactFieldsAsync(profile.Id, fields);
+        await _service.SaveContactFieldsAsync(profile.Id, fields, Xunit.TestContext.Current.CancellationToken);
 
         // Assert
         var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(2);
     }
 
@@ -275,7 +275,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ContactFields.Add(existingField);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var fields = new List<ContactFieldEditDto>
         {
@@ -283,11 +283,11 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         };
 
         // Act
-        await _service.SaveContactFieldsAsync(profile.Id, fields);
+        await _service.SaveContactFieldsAsync(profile.Id, fields, Xunit.TestContext.Current.CancellationToken);
 
         // Assert
         var savedField = await Db.ContactFields.AsNoTracking()
-            .FirstOrDefaultAsync(cf => cf.Id == existingField.Id);
+            .FirstOrDefaultAsync(cf => cf.Id == existingField.Id, Xunit.TestContext.Current.CancellationToken);
         savedField!.Value.Should().Be("+34 698765432");
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
     }
@@ -309,15 +309,15 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ContactFields.Add(existingField);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Save empty list (delete all)
-        await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>());
+        await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>(), Xunit.TestContext.Current.CancellationToken);
 
         // Assert
         var remainingFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remainingFields.Should().BeEmpty();
     }
 
@@ -331,11 +331,11 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(null, ContactFieldType.Telegram, null, "@my_telegram_handle", ContactFieldVisibility.AllActiveProfiles, 0)
         };
 
-        await _service.SaveContactFieldsAsync(profile.Id, fields);
+        await _service.SaveContactFieldsAsync(profile.Id, fields, Xunit.TestContext.Current.CancellationToken);
 
         var savedFields = await Db.ContactFields
             .Where(cf => cf.ProfileId == profile.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(1);
     }
 
@@ -382,7 +382,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.Profiles.Add(profile);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // No store to populate; contact reads now resolve through UserInfo or IUserRepository.
 
@@ -443,7 +443,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         };
 
         Db.ContactFields.AddRange(fields);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         return profile;
     }

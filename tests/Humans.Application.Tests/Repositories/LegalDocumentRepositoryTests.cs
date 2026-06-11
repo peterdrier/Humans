@@ -64,7 +64,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             LastSyncedAt = _clock.GetCurrentInstant()
         };
         _dbContext.LegalDocuments.Add(document);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return document;
     }
 
@@ -84,7 +84,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant()
         };
         _dbContext.DocumentVersions.Add(version);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return version;
     }
 
@@ -93,7 +93,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenMissing()
     {
-        var result = await _repo.GetByIdAsync(Guid.NewGuid());
+        var result = await _repo.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -103,7 +103,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var doc = await SeedDocumentAsync("Privacy");
         await SeedVersionAsync(doc.Id, "v1", _clock.GetCurrentInstant());
 
-        var result = await _repo.GetByIdAsync(doc.Id);
+        var result = await _repo.GetByIdAsync(doc.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Versions.Should().ContainSingle();
@@ -138,10 +138,10 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             CurrentCommitSha = "x",
             CreatedAt = _clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var mine = await _repo.GetDocumentsAsync(_team.Id);
-        var all = await _repo.GetDocumentsAsync(null);
+        var mine = await _repo.GetDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
+        var all = await _repo.GetDocumentsAsync(null, Xunit.TestContext.Current.CancellationToken);
 
         mine.Should().HaveCount(2);
         all.Should().HaveCount(3);
@@ -154,7 +154,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         await SeedDocumentAsync("Archived", isActive: false, isRequired: true);
         await SeedDocumentAsync("Optional", isActive: true, isRequired: false);
 
-        var result = await _repo.GetActiveRequiredDocumentsForTeamAsync(_team.Id);
+        var result = await _repo.GetActiveRequiredDocumentsForTeamAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle()
             .Which.Name.Should().Be("Active");
@@ -166,7 +166,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var doc = await SeedDocumentAsync("Privacy");
         var version = await SeedVersionAsync(doc.Id, "v1", _clock.GetCurrentInstant());
 
-        var result = await _repo.GetVersionByIdAsync(version.Id);
+        var result = await _repo.GetVersionByIdAsync(version.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.LegalDocument.Should().NotBeNull();
@@ -190,11 +190,11 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant()
         };
 
-        var saved = await _repo.AddAsync(doc);
+        var saved = await _repo.AddAsync(doc, Xunit.TestContext.Current.CancellationToken);
         saved.Id.Should().Be(doc.Id);
 
         // Verify via a fresh context so we don't observe the test's tracker.
-        var dbCount = await _dbContext.LegalDocuments.CountAsync(d => d.Id == doc.Id);
+        var dbCount = await _dbContext.LegalDocuments.CountAsync(d => d.Id == doc.Id, Xunit.TestContext.Current.CancellationToken);
         dbCount.Should().Be(1);
     }
 
@@ -203,7 +203,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     {
         var updated = await _repo.UpdateAsync(
             Guid.NewGuid(),
-            "x", _team.Id, true, true, 1, null);
+            "x", _team.Id, true, true, 1, null, Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().BeFalse();
     }
@@ -213,7 +213,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     {
         var doc = await SeedDocumentAsync("Privacy", isActive: true);
 
-        var result = await _repo.ArchiveAsync(doc.Id);
+        var result = await _repo.ArchiveAsync(doc.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.IsActive.Should().BeFalse();
@@ -235,11 +235,11 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             CreatedAt = now
         };
 
-        var ok = await _repo.AddVersionAsync(doc.Id, newVersion, "newsha", now);
+        var ok = await _repo.AddVersionAsync(doc.Id, newVersion, "newsha", now, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
         // Fresh read confirms parent fields were updated atomically.
-        var reloaded = await _repo.GetByIdAsync(doc.Id);
+        var reloaded = await _repo.GetByIdAsync(doc.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.CurrentCommitSha.Should().Be("newsha");
         reloaded.Versions.Should().ContainSingle();
     }
@@ -250,10 +250,10 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var doc = await SeedDocumentAsync("Privacy");
         var version = await SeedVersionAsync(doc.Id, "v1", _clock.GetCurrentInstant());
 
-        var updated = await _repo.UpdateVersionSummaryAsync(doc.Id, version.Id, "  trimmed  ");
+        var updated = await _repo.UpdateVersionSummaryAsync(doc.Id, version.Id, "  trimmed  ", Xunit.TestContext.Current.CancellationToken);
         updated.Should().BeTrue();
 
-        var reloaded = await _repo.GetVersionByIdAsync(version.Id);
+        var reloaded = await _repo.GetVersionByIdAsync(version.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.ChangesSummary.Should().Be("trimmed");
     }
 
@@ -264,7 +264,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var docB = await SeedDocumentAsync("B");
         var versionOfA = await SeedVersionAsync(docA.Id, "v1", _clock.GetCurrentInstant());
 
-        var updated = await _repo.UpdateVersionSummaryAsync(docB.Id, versionOfA.Id, "summary");
+        var updated = await _repo.UpdateVersionSummaryAsync(docB.Id, versionOfA.Id, "summary", Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().BeFalse();
     }

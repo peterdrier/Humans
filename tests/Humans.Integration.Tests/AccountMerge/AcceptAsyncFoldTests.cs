@@ -64,7 +64,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 
@@ -92,14 +92,14 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using var assertScope = factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
         var collapsed = targetEmails.Should()
             .ContainSingle(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase)).Subject;
         collapsed.IsVerified.Should().BeTrue("source's verified flag should OR-combine into the target row");
         collapsed.IsPrimary.Should().BeTrue("target's authoritative IsPrimary should be preserved");
         collapsed.IsGoogle.Should().BeTrue("target's authoritative IsGoogle should be preserved");
 
-        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().NotContain(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -126,14 +126,14 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using var assertScope = factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
 
         // Same address collapses to a single target row.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, collapseEmail, StringComparison.OrdinalIgnoreCase));
         // Source-only address re-FK'd onto target.
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, sourceOnlyEmail, StringComparison.OrdinalIgnoreCase));
 
-        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().BeEmpty();
     }
 
@@ -172,7 +172,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var targetLogins = await db.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == targetId)
             .AsNoTracking()
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         // All three logins now point at target.
         targetLogins.Should().HaveCount(3);
@@ -189,7 +189,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourceLogins = await db.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == sourceId)
             .AsNoTracking()
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceLogins.Should().BeEmpty();
     }
 
@@ -212,7 +212,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // Source profile row still exists (tombstone) but with anonymized scalars.
         var sourceProfile = await db.Profiles
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == sourceId);
+            .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);
         sourceProfile.Should().NotBeNull("source profile row is kept as a tombstone");
         sourceProfile.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
@@ -222,7 +222,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // Target profile is untouched.
         var targetProfile = await db.Profiles
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == targetId);
+            .FirstOrDefaultAsync(p => p.UserId == targetId, TestContext.Current.CancellationToken);
         targetProfile.Should().NotBeNull();
         targetProfile.FirstName.Should().Be("Target");
     }
@@ -253,12 +253,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(p => p.UserId == targetId)
             .Select(p => p.Id)
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var targetEntries = await db.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == targetProfileId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetEntries.Should().HaveCount(3, "dedup keeps one of the dup pair plus the two unique entries");
         targetEntries.Should().ContainSingle(v => v.Date.Year == 2024 && v.EventName == "Nowhere 2024");
@@ -269,12 +269,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(p => p.UserId == sourceId)
             .Select(p => p.Id)
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var sourceEntries = await db.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == sourceProfileId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceEntries.Should().BeEmpty();
     }
 
@@ -306,12 +306,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(p => p.UserId == targetId)
             .Select(p => p.Id)
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var targetLangs = await db.ProfileLanguages
             .AsNoTracking()
             .Where(l => l.ProfileId == targetProfileId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetLangs.Should().HaveCount(3);
         targetLangs.Single(l => string.Equals(l.LanguageCode, "es", StringComparison.Ordinal)).Proficiency
@@ -354,7 +354,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var targetPrefs = await db.CommunicationPreferences
             .AsNoTracking()
             .Where(cp => cp.UserId == targetId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetPrefs.Should().HaveCount(2);
         targetPrefs.Single(cp => cp.Category == MessageCategory.VolunteerUpdates).OptedOut
@@ -365,7 +365,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourcePrefs = await db.CommunicationPreferences
             .AsNoTracking()
             .Where(cp => cp.UserId == sourceId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourcePrefs.Should().BeEmpty();
     }
 
@@ -400,7 +400,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var targetEvents = await db.EventParticipations
             .AsNoTracking()
             .Where(ep => ep.UserId == targetId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetEvents.Should().HaveCount(3);
         targetEvents.Single(ep => ep.Year == 2024).Status.Should().Be(ParticipationStatus.Attended);
@@ -410,7 +410,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourceEvents = await db.EventParticipations
             .AsNoTracking()
             .Where(ep => ep.UserId == sourceId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceEvents.Should().BeEmpty();
     }
 
@@ -439,13 +439,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var targetApps = await db.Applications
             .AsNoTracking()
             .Where(a => a.UserId == targetId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         targetApps.Should().HaveCount(3);
 
         var sourceApps = await db.Applications
             .AsNoTracking()
             .Where(a => a.UserId == sourceId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceApps.Should().BeEmpty();
     }
 
@@ -473,7 +473,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var targetReports = await db.FeedbackReports
             .AsNoTracking()
             .Where(r => r.UserId == targetId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         targetReports.Should().HaveCount(3);
         targetReports.Should().ContainSingle(r => r.Description == "Source bug A");
         targetReports.Should().ContainSingle(r => r.Description == "Source bug B");
@@ -482,7 +482,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourceReports = await db.FeedbackReports
             .AsNoTracking()
             .Where(r => r.UserId == sourceId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceReports.Should().BeEmpty();
     }
 
@@ -515,7 +515,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var seededRows = await db.AuditLogEntries
             .AsNoTracking()
             .Where(a => a.Description == description)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         seededRows.Should().HaveCount(1);
         seededRows[0].ActorUserId.Should().Be(sourceId);
     }
@@ -536,7 +536,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
+        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
@@ -558,7 +558,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
+        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.LockoutEnabled.Should().BeTrue();
         sourceUser.LockoutEnd.Should().NotBeNull("source must be locked out forever after merge");
@@ -592,12 +592,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(p => p.UserId == targetId)
             .Select(p => p.Id)
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var targetFields = await db.ContactFields
             .AsNoTracking()
             .Where(cf => cf.ProfileId == targetProfileId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         // Net union with dedup: target has its two pre-existing rows + the
         // source-only Telegram row re-FK'd. The source's duplicate Phone
@@ -612,12 +612,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(p => p.UserId == sourceId)
             .Select(p => p.Id)
-            .SingleAsync();
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var sourceFields = await db.ContactFields
             .AsNoTracking()
             .Where(cf => cf.ProfileId == sourceProfileId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceFields.Should().BeEmpty();
     }
 
@@ -652,7 +652,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(ra => ra.UserId == targetId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetRows.Should().HaveCount(2);
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sharedRole, StringComparison.Ordinal));
@@ -662,7 +662,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(ra => ra.UserId == sourceId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceRows.Should().BeEmpty();
     }
 
@@ -701,7 +701,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .Where(tm => tm.UserId == targetId && tm.LeftAt == null
                 && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
             .Select(tm => tm.TeamId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         targetActiveTeams.Should().Contain(sharedTeamId);
         targetActiveTeams.Should().Contain(sourceOnlyTeamId);
 
@@ -710,7 +710,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(tm => tm.UserId == sourceId && tm.LeftAt == null
                 && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceActive.Should().BeEmpty();
     }
 
@@ -747,7 +747,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(r => r.UserId == targetId
                 && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         // One pending on each team; source's contested-team duplicate dropped.
         targetRequests.Should().HaveCount(2);
@@ -758,7 +758,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(r => r.UserId == sourceId
                 && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceRequests.Should().BeEmpty();
     }
 
@@ -792,7 +792,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(nr => nr.UserId == targetId
                 && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         targetRecipients.Should().HaveCount(2, "duplicate on shared notification dropped, source-only re-FK'd");
         targetRecipients.Should().ContainSingle(nr => nr.NotificationId == sharedNotificationId);
@@ -802,7 +802,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(nr => nr.UserId == sourceId
                 && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceRecipients.Should().BeEmpty();
     }
 
@@ -846,7 +846,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(g => g.UserId == targetId
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         targetGrants.Should().HaveCount(2);
         targetGrants.Should().ContainSingle(g => g.CampaignId == contestedCampaignId);
         targetGrants.Should().ContainSingle(g => g.CampaignId == sourceOnlyCampaignId);
@@ -855,7 +855,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(g => g.UserId == sourceId
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceGrants.Should().BeEmpty();
     }
 
@@ -900,13 +900,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             .AsNoTracking()
             .Where(m => m.SenderUserId == targetId
                 && (m.Content == sourceContent || m.Content == targetContent))
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         targetMessages.Should().HaveCount(2);
 
         var sourceMessages = await db.FeedbackMessages
             .AsNoTracking()
             .Where(m => m.SenderUserId == sourceId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sourceMessages.Should().BeEmpty();
     }
 
@@ -944,7 +944,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var rows = await db.BudgetAuditLogs
             .AsNoTracking()
             .Where(l => l.Description == description)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().HaveCount(1);
         rows[0].ActorUserId.Should().Be(sourceId);
     }
@@ -965,16 +965,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await sut.AcceptAsync(requestId, adminId, survivorUserId: requestSourceId); // flip: keep the Source
+            await sut.AcceptAsync(requestId, adminId, survivorUserId: requestSourceId, ct: TestContext.Current.CancellationToken); // flip: keep the Source
         }
 
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestSourceId))!.MergedToUserId
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestSourceId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().BeNull("the admin-chosen survivor is never tombstoned");
-        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestTargetId))!.MergedToUserId
+        (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestTargetId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().Be(requestSourceId, "the request target was archived into the chosen survivor");
-        (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId))!.Status
+        (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(AccountMergeRequestStatus.Accepted);
     }
 
@@ -987,8 +987,8 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         await using var scope = factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
         // These fold tests assert source→target (target survives); pick the request target.
-        var request = await mergeService.GetByIdAsync(requestId)
+        var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)
             ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
-        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id);
+        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id, ct: TestContext.Current.CancellationToken);
     }
 }

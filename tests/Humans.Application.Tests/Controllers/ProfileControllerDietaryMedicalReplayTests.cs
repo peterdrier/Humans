@@ -177,7 +177,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>());
         await _signupService.Received(1)
             .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -206,7 +206,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>());
         await _signupService.Received(1)
             .SignUpRangeAsync(
                 _userId,
@@ -228,7 +228,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>());
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default);
         await _signupService.DidNotReceiveWithAnyArgs()
@@ -246,7 +246,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>());
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default);
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
@@ -269,7 +269,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         result.Should().BeOfType<ViewResult>();
         await _profileEditor.DidNotReceiveWithAnyArgs()
-            .SaveDietaryMedicalAsync(default, default!);
+            .SaveDietaryMedicalAsync(default, default!, Arg.Any<CancellationToken>());
         await _signupService.DidNotReceiveWithAnyArgs()
             .SignUpAsync(default, default);
     }
@@ -290,7 +290,7 @@ public class ProfileControllerDietaryMedicalReplayTests
 
         var result = await _controller.DietaryMedical(model);
 
-        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>());
+        await _profileEditor.Received(1).SaveDietaryMedicalAsync(_userId, Arg.Any<UserProfileDietaryMedicalCommand>(), Arg.Any<CancellationToken>());
         await _signupService.Received(1)
             .SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;

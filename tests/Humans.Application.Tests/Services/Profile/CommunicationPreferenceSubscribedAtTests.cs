@@ -43,11 +43,11 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
     {
         var userId = Guid.NewGuid();
         // Seed all defaults so GetPreferencesAsync returns a full set after UpdatePreferenceAsync.
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.SubscribedAt.Should().NotBeNull();
     }
@@ -57,16 +57,16 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
     {
         var userId = Guid.NewGuid();
         // Seed all defaults so GetPreferencesAsync returns a full set after UpdatePreferenceAsync.
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
-        var firstStamp = (await _service.GetPreferencesAsync(userId))
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var firstStamp = (await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
         Clock.Advance(Duration.FromMilliseconds(10));
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "Profile");
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
-        var laterStamp = (await _service.GetPreferencesAsync(userId))
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var laterStamp = (await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
         laterStamp.Should().Be(firstStamp);
@@ -77,18 +77,18 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
     {
         var userId = Guid.NewGuid();
         // Seed all defaults so GetPreferencesAsync returns a full set after UpdatePreferenceAsync.
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // First opt-in: stamps SubscribedAt
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
-        var firstStamp = (await _service.GetPreferencesAsync(userId))
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var firstStamp = (await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
         Clock.Advance(Duration.FromMilliseconds(10));
 
         // No-op: already opted in, calling again with optedOut:false is idempotent — no state change, no overwrite
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
-        var afterNoOpStamp = (await _service.GetPreferencesAsync(userId))
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        var afterNoOpStamp = (await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken))
             .Single(p => p.Category == MessageCategory.Marketing).SubscribedAt;
 
         afterNoOpStamp.Should().Be(firstStamp);
@@ -100,12 +100,12 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         var userId = Guid.NewGuid();
 
         // Marketing defaults to OptedOut=true — seed defaults first
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // Now opt in: existing row with OptedOut=true transitions to false
-        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile");
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.SubscribedAt.Should().NotBeNull();
     }
@@ -116,12 +116,12 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         var userId = Guid.NewGuid();
         // Seed defaults so GetPreferencesAsync returns the full set after Update
         // (matches the 3-arg test pattern).
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await _service.UpdatePreferenceAsync(
-            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile");
+            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.SubscribedAt.Should().NotBeNull();
     }
@@ -132,13 +132,13 @@ public sealed class CommunicationPreferenceSubscribedAtTests : ServiceTestHarnes
         var userId = Guid.NewGuid();
 
         // Seed defaults (Marketing.OptedOut=true, SubscribedAt=null)
-        await _service.GetPreferencesAsync(userId);
+        await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         // Transition existing row: opted-out → opted-in via 4-arg overload
         await _service.UpdatePreferenceAsync(
-            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile");
+            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var prefs = await _service.GetPreferencesAsync(userId);
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.SubscribedAt.Should().NotBeNull();
     }

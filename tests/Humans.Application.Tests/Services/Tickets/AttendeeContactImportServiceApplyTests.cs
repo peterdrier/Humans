@@ -49,7 +49,7 @@ public class AttendeeContactImportServiceApplyTests
             TotalUnmatched: 1);
 
         var actorId = Guid.NewGuid();
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, actorId);
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.AttachedToExistingVerified.Should().Be(1);
         result.UsersCreated.Should().Be(0);
@@ -101,7 +101,7 @@ public class AttendeeContactImportServiceApplyTests
             ],
             1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.UsersCreated.Should().Be(1);
         attendee.MatchedUserId.Should().Be(newUserId);
@@ -147,7 +147,7 @@ public class AttendeeContactImportServiceApplyTests
             ],
             1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.UnverifiedRowsDeletedAndUserCreated.Should().Be(1);
         result.UsersCreated.Should().Be(1);
@@ -197,7 +197,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null)
         ], 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.TotalAttempted.Should().Be(1);
         result.UsersCreated.Should().Be(1);
@@ -247,7 +247,7 @@ public class AttendeeContactImportServiceApplyTests
                 ObservedNames: ["Sara Smith"])
         ], 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.TotalAttempted.Should().Be(1);
         result.UsersCreated.Should().Be(1);
@@ -305,7 +305,7 @@ public class AttendeeContactImportServiceApplyTests
                 AdditionalAttendeeIds: [extraId])
         ], 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.AttachedToExistingVerified.Should().Be(1);
         lead.MatchedUserId.Should().Be(targetUserId);
@@ -358,7 +358,7 @@ public class AttendeeContactImportServiceApplyTests
                 AdditionalAttendeeIds: [driftedId])
         ], 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { leadId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         // Lead still wins; drifted is silently skipped (logged), not vanished.
         result.UsersCreated.Should().Be(1);
@@ -380,7 +380,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null)
         ], 1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.VanishedBetweenPlanAndApply.Should().Be(1);
         result.UsersCreated.Should().Be(0);
@@ -426,7 +426,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null)
         ], 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId }, Guid.NewGuid());
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Errors.Should().Be(1);
         result.UsersCreated.Should().Be(1);

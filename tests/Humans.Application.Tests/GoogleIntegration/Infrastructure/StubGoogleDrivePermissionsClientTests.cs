@@ -21,7 +21,7 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task CreateFolderAsync_ReturnsFolderWithIdAndLink()
     {
-        var result = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var result = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.Folder.Should().NotBeNull();
@@ -33,9 +33,9 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task ListPermissionsAsync_EmptyFolder_ReturnsEmptyList()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _client.ListPermissionsAsync(folder.Folder!.Id!);
+        var result = await _client.ListPermissionsAsync(folder.Folder!.Id!, Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.Permissions.Should().NotBeNull().And.BeEmpty();
@@ -44,10 +44,10 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task CreatePermissionAsync_NewEmail_ReturnsCreated()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         var result = await _client.CreatePermissionAsync(
-            folder.Folder!.Id!, "alice@nobodies.team", "writer");
+            folder.Folder!.Id!, "alice@nobodies.team", "writer", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(DrivePermissionCreateOutcome.Created);
         result.Error.Should().BeNull();
@@ -56,11 +56,11 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task CreatePermissionAsync_DuplicateEmail_ReturnsAlreadyExists()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer", Xunit.TestContext.Current.CancellationToken);
 
         var second = await _client.CreatePermissionAsync(
-            folder.Folder.Id!, "alice@nobodies.team", "reader");
+            folder.Folder.Id!, "alice@nobodies.team", "reader", Xunit.TestContext.Current.CancellationToken);
 
         second.Outcome.Should().Be(DrivePermissionCreateOutcome.AlreadyExists,
             because: "the real client treats Google's 400 'already exists' as idempotent success");
@@ -69,10 +69,10 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task ListPermissionsAsync_AfterAdd_ContainsUserPermission()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer", Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _client.ListPermissionsAsync(folder.Folder.Id!);
+        var result = await _client.ListPermissionsAsync(folder.Folder.Id!, Xunit.TestContext.Current.CancellationToken);
 
         result.Permissions.Should().ContainSingle();
         var perm = result.Permissions!.Single();
@@ -86,24 +86,24 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task DeletePermissionAsync_Existing_RemovesIt()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
-        var before = await _client.ListPermissionsAsync(folder.Folder.Id!);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer", Xunit.TestContext.Current.CancellationToken);
+        var before = await _client.ListPermissionsAsync(folder.Folder.Id!, Xunit.TestContext.Current.CancellationToken);
         var permId = before.Permissions!.Single().Id!;
 
-        var deleteError = await _client.DeletePermissionAsync(folder.Folder.Id!, permId);
+        var deleteError = await _client.DeletePermissionAsync(folder.Folder.Id!, permId, Xunit.TestContext.Current.CancellationToken);
 
         deleteError.Should().BeNull();
-        var after = await _client.ListPermissionsAsync(folder.Folder.Id!);
+        var after = await _client.ListPermissionsAsync(folder.Folder.Id!, Xunit.TestContext.Current.CancellationToken);
         after.Permissions.Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task DeletePermissionAsync_MissingPermission_Returns404()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _client.DeletePermissionAsync(folder.Folder!.Id!, "nope");
+        var result = await _client.DeletePermissionAsync(folder.Folder!.Id!, "nope", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.StatusCode.Should().Be(404);
@@ -112,9 +112,9 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task GetFileAsync_AfterCreateFolder_ReturnsFolderMetadata()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _client.GetFileAsync(folder.Folder!.Id!);
+        var fetched = await _client.GetFileAsync(folder.Folder!.Id!, Xunit.TestContext.Current.CancellationToken);
 
         fetched.Error.Should().BeNull();
         fetched.File.Should().NotBeNull();
@@ -125,7 +125,7 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task GetFileAsync_MissingId_Returns404()
     {
-        var result = await _client.GetFileAsync("nonexistent");
+        var result = await _client.GetFileAsync("nonexistent", Xunit.TestContext.Current.CancellationToken);
 
         result.File.Should().BeNull();
         result.Error!.StatusCode.Should().Be(404);
@@ -134,19 +134,19 @@ public class StubGoogleDrivePermissionsClientTests
     [HumansFact]
     public async Task SetInheritedPermissionsDisabledAsync_RoundTripsViaGetFile()
     {
-        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
+        var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null, ct: Xunit.TestContext.Current.CancellationToken);
 
-        var error = await _client.SetInheritedPermissionsDisabledAsync(folder.Folder!.Id!, disabled: true);
+        var error = await _client.SetInheritedPermissionsDisabledAsync(folder.Folder!.Id!, disabled: true, ct: Xunit.TestContext.Current.CancellationToken);
 
         error.Should().BeNull();
-        var fetched = await _client.GetFileAsync(folder.Folder.Id!);
+        var fetched = await _client.GetFileAsync(folder.Folder.Id!, Xunit.TestContext.Current.CancellationToken);
         fetched.File!.InheritedPermissionsDisabled.Should().BeTrue();
     }
 
     [HumansFact]
     public async Task GetSharedDriveAsync_UnknownDrive_Returns404()
     {
-        var result = await _client.GetSharedDriveAsync("nonexistent-drive");
+        var result = await _client.GetSharedDriveAsync("nonexistent-drive", Xunit.TestContext.Current.CancellationToken);
 
         result.Drive.Should().BeNull();
         result.Error!.StatusCode.Should().Be(404);
@@ -159,7 +159,7 @@ public class StubGoogleDrivePermissionsClientTests
         // files rather than an empty permission list. Per Codex's P2
         // review on PR #302 — returning empty-success would mask
         // deleted / mistyped Google IDs during dev/QA.
-        var result = await _client.ListPermissionsAsync("nonexistent-file");
+        var result = await _client.ListPermissionsAsync("nonexistent-file", Xunit.TestContext.Current.CancellationToken);
 
         result.Permissions.Should().BeNull();
         result.Error.Should().NotBeNull();
@@ -175,7 +175,7 @@ public class StubGoogleDrivePermissionsClientTests
         // which would let invalid / stale Google IDs pass dev/QA and only
         // fail in production with the real client.
         var result = await _client.CreatePermissionAsync(
-            "nonexistent-file", "alice@nobodies.team", "writer");
+            "nonexistent-file", "alice@nobodies.team", "writer", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(DrivePermissionCreateOutcome.Failed);
         result.Error.Should().NotBeNull();

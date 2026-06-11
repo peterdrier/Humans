@@ -2,16 +2,7 @@
 @{
     ViewData["Title"] = "Expense Report";
     var r = Model.Report;
-    var badgeClass = r.Status switch
-    {
-        ExpenseReportStatus.Draft => "bg-secondary",
-        ExpenseReportStatus.Submitted => "bg-primary",
-        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-        ExpenseReportStatus.Approved => "bg-success",
-        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-        ExpenseReportStatus.Paid => "bg-success",
-        _ => "bg-secondary"
-    };
+    var badgeClass = r.Status.GetBadgeClass();
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -65,7 +56,7 @@
                     <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
 
                     <dt class="col-sm-4">Total</dt>
-                    <dd class="col-sm-8 fw-semibold">&euro;@r.Total.ToString("N2")</dd>
+                    <dd class="col-sm-8 fw-semibold">@r.Total.ToEuro()</dd>
 
                     <dt class="col-sm-4">Created</dt>
                     <dd class="col-sm-8">@r.CreatedAt.ToDateTime()</dd>
@@ -103,7 +94,7 @@
                                 <tr>
                                     <td>@(line.SortOrder + 1)</td>
                                     <td>@line.Description</td>
-                                    <td class="text-end">&euro;@line.Amount.ToString("N2")</td>
+                                    <td class="text-end">@line.Amount.ToEuro()</td>
                                     <td>
                                         @if (line.LineType != ExpenseLineType.Receipt)
                                         {
@@ -127,7 +118,7 @@
                         <tfoot>
                             <tr class="fw-semibold">
                                 <td colspan="2" class="text-end">Total</td>
-                                <td class="text-end">&euro;@r.Total.ToString("N2")</td>
+                                <td class="text-end">@r.Total.ToEuro()</td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -169,21 +160,21 @@
                             Registered in Holded
                             @if (tl.OwedToMember > 0)
                             {
-                                <span class="fw-semibold">&mdash; &euro;@tl.OwedToMember.ToString("N2") owed to you</span>
+                                <span class="fw-semibold">&mdash; @tl.OwedToMember.ToEuro() owed to you</span>
                             }
                         </li>
                         @if (tl.OtherAmount > 0)
                         {
                             <li class="mb-2 text-muted">
                                 <i class="fa-solid fa-circle-info me-1"></i>
-                                Includes &euro;@tl.OtherAmount.ToString("N2") other (fronted / adjustments in Holded)
+                                Includes @tl.OtherAmount.ToEuro() other (fronted / adjustments in Holded)
                             </li>
                         }
                         @if (tl.Paid)
                         {
                             <li class="mb-0">
                                 <i class="fa-solid fa-money-bill-wave text-success me-1"></i>
-                                Paid&nbsp;&euro;@tl.TotalPaid.ToString("N2")@(tl.PaidOn is { } d ? $" on {d.ToInvariantDate()}" : "") &mdash; balance &euro;0
+                                Paid&nbsp;@tl.TotalPaid.ToEuro()@(tl.PaidOn is { } d ? $" on {d.ToInvariantDate()}" : "") &mdash; balance &euro;0
                             </li>
                         }
                         else

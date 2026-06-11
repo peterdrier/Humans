@@ -27,7 +27,7 @@ public class AgentSectionDocReaderTests
         var source = new FakeSource();
         var reader = MakeReader(source);
 
-        var content = await reader.ReadAsync(key, CancellationToken.None);
+        var content = await reader.ReadAsync(key, TestContext.Current.CancellationToken);
 
         content.Should().NotBeNullOrEmpty();
         source.LastFolder.Should().Be(AgentSectionDocReader.FolderPath);
@@ -39,7 +39,7 @@ public class AgentSectionDocReaderTests
     {
         var reader = MakeReader(new FakeSource());
 
-        var content = await reader.ReadAsync("NotASection", CancellationToken.None);
+        var content = await reader.ReadAsync("NotASection", TestContext.Current.CancellationToken);
 
         content.Should().BeNull();
     }
@@ -50,7 +50,7 @@ public class AgentSectionDocReaderTests
         var source = new FakeSource { FailWith = new NotFoundException("missing", System.Net.HttpStatusCode.NotFound) };
         var reader = MakeReader(source);
 
-        var content = await reader.ReadAsync("Shifts", CancellationToken.None);
+        var content = await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);
 
         content.Should().BeNull();
     }
@@ -61,7 +61,7 @@ public class AgentSectionDocReaderTests
         var source = new FakeSource { FailWith = new InvalidOperationException("network down") };
         var reader = MakeReader(source);
 
-        var content = await reader.ReadAsync("Shifts", CancellationToken.None);
+        var content = await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);
 
         content.Should().BeNull();
     }
@@ -72,8 +72,8 @@ public class AgentSectionDocReaderTests
         var source = new FakeSource();
         var reader = MakeReader(source);
 
-        await reader.ReadAsync("Shifts", CancellationToken.None);
-        await reader.ReadAsync("Shifts", CancellationToken.None);
+        await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);
+        await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);
 
         source.CallCount.Should().Be(1);
     }

@@ -55,9 +55,9 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var older = Seed(teamId, "older", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 20, 0, 0));
         var newer = Seed(teamId, "newer", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 21, 0, 0));
         Seed(teamId, "dead", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 19, 0, 0), isActive: false);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _repository.GetActiveByTeamIdAsync(teamId);
+        var rows = await _repository.GetActiveByTeamIdAsync(teamId, Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(2);
         rows.Select(r => r.Id).Should().ContainInOrder(older.Id, newer.Id);
@@ -66,7 +66,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetActiveByTeamIdsAsync_EmptyCollection_ReturnsEmptyDictionary()
     {
-        var dict = await _repository.GetActiveByTeamIdsAsync([]);
+        var dict = await _repository.GetActiveByTeamIdsAsync([], Xunit.TestContext.Current.CancellationToken);
         dict.Should().BeEmpty();
     }
 
@@ -76,9 +76,9 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var presentTeam = Guid.NewGuid();
         var absentTeam = Guid.NewGuid();
         Seed(presentTeam, "resource", GoogleResourceType.Group);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var dict = await _repository.GetActiveByTeamIdsAsync([presentTeam, absentTeam]);
+        var dict = await _repository.GetActiveByTeamIdsAsync([presentTeam, absentTeam], Xunit.TestContext.Current.CancellationToken);
 
         dict.Should().ContainKey(presentTeam).WhoseValue.Should().HaveCount(1);
         dict.Should().ContainKey(absentTeam).WhoseValue.Should().BeEmpty(
@@ -91,12 +91,12 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var teamId = Guid.NewGuid();
         var folder = Seed(teamId, "match", GoogleResourceType.DriveFolder, googleId: "abc123");
         Seed(teamId, "file-with-same-id", GoogleResourceType.DriveFile, googleId: "abc123");
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var row = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.DriveFolder);
+        var row = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.DriveFolder, Xunit.TestContext.Current.CancellationToken);
         row!.Id.Should().Be(folder.Id);
 
-        var missing = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.Group);
+        var missing = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.Group, Xunit.TestContext.Current.CancellationToken);
         missing.Should().BeNull();
     }
 
@@ -106,7 +106,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var teamId = Guid.NewGuid();
         var row = Seed(teamId, "stale", GoogleResourceType.DriveFolder, isActive: false);
         row.ErrorMessage = "last sync failed";
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var updated = await _repository.ReactivateAsync(
             row.Id,
@@ -114,7 +114,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
             url: "https://example.com/fresh",
             lastSyncedAt: Instant.FromUtc(2026, 4, 22, 12, 0),
             newGoogleId: null,
-            newPermissionLevel: DrivePermissionLevel.Manager);
+            newPermissionLevel: DrivePermissionLevel.Manager, ct: Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().NotBeNull();
         updated.IsActive.Should().BeTrue();
@@ -131,7 +131,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         // stored the email where we now store the numeric id.
         var teamId = Guid.NewGuid();
         var row = Seed(teamId, "old-group", GoogleResourceType.Group, isActive: false, googleId: "old@example.com");
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var updated = await _repository.ReactivateAsync(
             row.Id,
@@ -139,7 +139,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
             url: null,
             lastSyncedAt: _clock.GetCurrentInstant(),
             newGoogleId: "01234567",
-            newPermissionLevel: null);
+            newPermissionLevel: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         updated!.GoogleId.Should().Be("01234567");
     }
@@ -148,28 +148,28 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     public async Task UnlinkAsync_FlipsIsActive_IsIdempotent()
     {
         var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFile);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _repository.UnlinkAsync(row.Id);
-        (await _repository.GetByIdAsync(row.Id))!.IsActive.Should().BeFalse();
+        await _repository.UnlinkAsync(row.Id, Xunit.TestContext.Current.CancellationToken);
+        (await _repository.GetByIdAsync(row.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeFalse();
 
         // Second call must not throw.
-        await _repository.UnlinkAsync(row.Id);
+        await _repository.UnlinkAsync(row.Id, Xunit.TestContext.Current.CancellationToken);
 
         // Unknown id must not throw either.
-        await _repository.UnlinkAsync(Guid.NewGuid());
+        await _repository.UnlinkAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
     public async Task UpdatePermissionLevelAsync_ReportsTrueOnlyWhenRowExists()
     {
         var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFolder);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await _repository.UpdatePermissionLevelAsync(row.Id, DrivePermissionLevel.Viewer);
+        var updated = await _repository.UpdatePermissionLevelAsync(row.Id, DrivePermissionLevel.Viewer, Xunit.TestContext.Current.CancellationToken);
         updated.Should().BeTrue();
 
-        var missing = await _repository.UpdatePermissionLevelAsync(Guid.NewGuid(), DrivePermissionLevel.Viewer);
+        var missing = await _repository.UpdatePermissionLevelAsync(Guid.NewGuid(), DrivePermissionLevel.Viewer, Xunit.TestContext.Current.CancellationToken);
         missing.Should().BeFalse();
     }
 
@@ -181,21 +181,21 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         var teamId = Guid.NewGuid();
         var drive = Seed(teamId, "drive", GoogleResourceType.DriveFolder);
         var group = Seed(teamId, "group", GoogleResourceType.Group);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var deactivated = await _repository.DeactivateByTeamAsync(teamId, GoogleResourceType.DriveFolder);
+        var deactivated = await _repository.DeactivateByTeamAsync(teamId, GoogleResourceType.DriveFolder, Xunit.TestContext.Current.CancellationToken);
 
         deactivated.Select(r => r.Id).Should().BeEquivalentTo([drive.Id]);
 
         await using var check = new HumansDbContext(_options);
-        (await check.GoogleResources.FindAsync(drive.Id))!.IsActive.Should().BeFalse();
-        (await check.GoogleResources.FindAsync(group.Id))!.IsActive.Should().BeTrue();
+        (await check.GoogleResources.FindAsync(drive.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeFalse();
+        (await check.GoogleResources.FindAsync(group.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeTrue();
     }
 
     [HumansFact]
     public async Task DeactivateByTeamAsync_NoRows_ReturnsEmpty()
     {
-        var deactivated = await _repository.DeactivateByTeamAsync(Guid.NewGuid(), resourceType: null);
+        var deactivated = await _repository.DeactivateByTeamAsync(Guid.NewGuid(), resourceType: null, ct: Xunit.TestContext.Current.CancellationToken);
         deactivated.Should().BeEmpty();
     }
 

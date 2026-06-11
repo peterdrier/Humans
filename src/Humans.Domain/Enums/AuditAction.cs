@@ -148,6 +148,7 @@ public enum AuditAction
     ExpenseWithdraw,
     ExpenseCategoryOverride,
     ExpenseSepaSent,
+    ExpenseSepaReopened,
     ExpensePaid,
     IbanSet,
     IbanRemove,

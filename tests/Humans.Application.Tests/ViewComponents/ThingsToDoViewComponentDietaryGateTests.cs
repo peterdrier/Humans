@@ -38,7 +38,7 @@ public class ThingsToDoViewComponentDietaryGateTests
         // Default profile snapshot — empty consents so the consent item is
         // skipped (RequiredConsentCount==0), keeping the dashboard items list
         // focused on what these tests care about.
-        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>())
+        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new MembershipSnapshot(
                 Status: MembershipStatus.Active,
                 IsVolunteerMember: true,
@@ -70,7 +70,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     public async Task DietaryItemAppearsWithNoShiftCopyWhenNoQualifyingSignup()
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(false);
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);
@@ -85,7 +85,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     public async Task DietaryItemUsesExistingCopyWhenHasQualifyingSignup()
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(true);
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: true, profileCompletionPercent: 100);
@@ -99,7 +99,7 @@ public class ThingsToDoViewComponentDietaryGateTests
     public async Task DietaryItemNotAddedWhenDietaryFilled()
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(false);
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, "Vegetarian"));
 
         var result = await _sut.InvokeAsync(userId, isVolunteerMember: true, hasShiftSignups: false, profileCompletionPercent: 100);

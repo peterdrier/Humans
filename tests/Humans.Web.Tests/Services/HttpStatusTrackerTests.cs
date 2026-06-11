@@ -10,7 +10,7 @@ public class HttpStatusTrackerTests
     public async Task TalliesByStatusCode()
     {
         var tracker = new HttpStatusTracker();
-        await tracker.StartAsync(CancellationToken.None);
+        await tracker.StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         using (var meter = new Meter("Microsoft.AspNetCore.Hosting"))
         {
@@ -28,7 +28,7 @@ public class HttpStatusTrackerTests
             tracker.Total.Should().Be(5);
         }
 
-        await tracker.StopAsync(CancellationToken.None);
+        await tracker.StopAsync(Xunit.TestContext.Current.CancellationToken);
 
         static void Record(Histogram<double> h, int statusCode)
             => h.Record(0.01, new KeyValuePair<string, object?>("http.response.status_code", statusCode));
@@ -38,7 +38,7 @@ public class HttpStatusTrackerTests
     public async Task IgnoresMeasurementsWithoutStatusCodeTag()
     {
         var tracker = new HttpStatusTracker();
-        await tracker.StartAsync(CancellationToken.None);
+        await tracker.StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         using (var meter = new Meter("Microsoft.AspNetCore.Hosting"))
         {
@@ -48,14 +48,14 @@ public class HttpStatusTrackerTests
             tracker.Total.Should().Be(0);
         }
 
-        await tracker.StopAsync(CancellationToken.None);
+        await tracker.StopAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
     public async Task IgnoresInstrumentsOnOtherMeters()
     {
         var tracker = new HttpStatusTracker();
-        await tracker.StartAsync(CancellationToken.None);
+        await tracker.StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         using (var meter = new Meter("Some.Other.Meter"))
         {
@@ -65,6 +65,6 @@ public class HttpStatusTrackerTests
             tracker.Total.Should().Be(0);
         }
 
-        await tracker.StopAsync(CancellationToken.None);
+        await tracker.StopAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

@@ -86,10 +86,10 @@ public class OnboardingWidgetStateTests
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
     {
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Complete, step);
     }
@@ -98,11 +98,11 @@ public class OnboardingWidgetStateTests
     public async Task NoUserInfo_ReturnsNames()
     {
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns((UserInfo?)null);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Names, step);
     }
@@ -114,11 +114,11 @@ public class OnboardingWidgetStateTests
         // signup) means the user hasn't filled in legal name yet — they must
         // hit the Names step before the consent flow can write a record.
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(StubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(StubUserInfo(userId));
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Names, step);
     }
@@ -128,13 +128,13 @@ public class OnboardingWidgetStateTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Shifts, step);
     }
@@ -144,14 +144,14 @@ public class OnboardingWidgetStateTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _session.ShiftSkipActive.Returns(true);
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
@@ -162,9 +162,9 @@ public class OnboardingWidgetStateTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
@@ -176,7 +176,7 @@ public class OnboardingWidgetStateTests
                 TagPreferences: [],
                 Signups: [new ShiftSignup { ShiftId = shiftId, Status = SignupStatus.Pending }])));
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
@@ -191,9 +191,9 @@ public class OnboardingWidgetStateTests
         var eventId = Guid.NewGuid();
         var signedDocId = Guid.NewGuid();
         var unsignedDocId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns([
@@ -203,7 +203,7 @@ public class OnboardingWidgetStateTests
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
@@ -212,12 +212,12 @@ public class OnboardingWidgetStateTests
     public async Task ProfileWithNoActiveEvent_ReturnsShifts()
     {
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, CancellationToken.None)
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
-        _users.GetUserInfoAsync(userId, CancellationToken.None).Returns(NonStubUserInfo(userId));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
-        var step = await BuildSut().GetCurrentStepAsync(userId);
+        var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 
         Assert.Equal(OnboardingWidgetStep.Shifts, step);
     }

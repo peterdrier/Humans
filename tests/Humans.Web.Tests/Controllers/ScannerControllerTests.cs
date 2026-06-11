@@ -135,7 +135,7 @@ public class ScannerControllerTests
         var tickets = TicketsWithAttendee(Attendee());
         var ctrl = NewController(tickets);
 
-        var result = await ctrl.Card("xyz34Qy5", default);
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
@@ -167,7 +167,7 @@ public class ScannerControllerTests
         var tickets = TicketsWithAttendee(attendee);
         var ctrl = NewController(tickets);
 
-        var result = await ctrl.Card("vb1", default);
+        var result = await ctrl.Card("vb1", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
@@ -182,7 +182,7 @@ public class ScannerControllerTests
         var tickets = TicketsWithAttendee(Attendee());
         var ctrl = NewController(tickets);
 
-        var result = await ctrl.Card("nope-0000", default);
+        var result = await ctrl.Card("nope-0000", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
@@ -200,7 +200,7 @@ public class ScannerControllerTests
         var users = Substitute.For<IUserServiceRead>();
         var ctrl = NewController(tickets, users: users, earlyEntry: earlyEntry, consents: consents);
 
-        var result = await ctrl.Card("xyz34Qy5", default);
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
@@ -278,7 +278,7 @@ public class ScannerControllerTests
 
         var ctrl = NewController(tickets, users, earlyEntry, consents, calendarFeed, events, burnSettings);
 
-        var result = await ctrl.Card("xyz34Qy5", default);
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;
@@ -311,7 +311,7 @@ public class ScannerControllerTests
 
         var ctrl = NewController(tickets, consents: consents);
 
-        var result = await ctrl.Card("xyz34Qy5", default);
+        var result = await ctrl.Card("xyz34Qy5", Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ScannerTicketCardViewModel>().Subject;

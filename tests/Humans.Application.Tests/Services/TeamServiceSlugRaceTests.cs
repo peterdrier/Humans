@@ -45,7 +45,7 @@ public class TeamServiceSlugRaceTests
         var created = await service.CreateTeamAsync(
             name: "Design",
             description: null,
-            requiresApproval: true);
+            requiresApproval: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         created.Name.Should().Be("Design");
         created.Slug.Should().Be("design-2",
@@ -70,7 +70,7 @@ public class TeamServiceSlugRaceTests
         var created = await service.CreateTeamAsync(
             name: "Design",
             description: null,
-            requiresApproval: true);
+            requiresApproval: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         created.Slug.Should().Be("design");
         await repo.Received(1).AddTeamWithRequiresApprovalOverrideAsync(

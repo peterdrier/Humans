@@ -38,7 +38,7 @@ public class MailerImportServiceClassifierTests
         var harness = new ClassifierHarness();
         harness.MlReturns(Unconfirmed("foo@x.com"));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.UnconfirmedSkipped);
     }
@@ -53,7 +53,7 @@ public class MailerImportServiceClassifierTests
         harness.MlReturns(Active("verified@x.com"));
         harness.VerifiedMatches["verified@x.com"] = userId;
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var d = plan.Decisions.Single();
         d.Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptIn);
@@ -71,7 +71,7 @@ public class MailerImportServiceClassifierTests
         harness.SetMarketingPref(userId, optedOut: false, source: "Profile",
             updatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedPrefsAlreadyMatch);
     }
@@ -87,7 +87,7 @@ public class MailerImportServiceClassifierTests
         harness.SetMarketingPref(userId, optedOut: true, source: "MailerLiteSync",
             updatedAt: Instant.FromUtc(2025, 1, 1, 0, 0));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptIn);
     }
@@ -103,7 +103,7 @@ public class MailerImportServiceClassifierTests
         harness.SetMarketingPref(userId, optedOut: false, source: "MailerLiteSync",
             updatedAt: Instant.FromUtc(2025, 1, 1, 0, 0));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptOut);
     }
@@ -119,7 +119,7 @@ public class MailerImportServiceClassifierTests
         harness.MlReturns(Unsubscribed("verified@x.com"));
         harness.VerifiedMatches["verified@x.com"] = userId;
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedPrefsAlreadyMatch);
     }
@@ -137,7 +137,7 @@ public class MailerImportServiceClassifierTests
         harness.SetMarketingPref(userId, optedOut: false, source: "Profile",
             updatedAt: Instant.FromUtc(2026, 5, 1, 0, 0));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedKeepHumansPref);
     }
@@ -152,7 +152,7 @@ public class MailerImportServiceClassifierTests
         harness.VerifiedMatches["tomb@x.com"] = sourceId;
         harness.MergedToTargets[sourceId] = targetId;
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().TargetUserId.Should().Be(targetId);
     }
@@ -166,7 +166,7 @@ public class MailerImportServiceClassifierTests
         harness.MlReturns(Active("pending@x.com"));
         harness.AnyEmailRows["pending@x.com"] = (unverifiedUserId, unverifiedEmailId);
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var d = plan.Decisions.Single();
         d.Outcome.Should().Be(SubscriberOutcome.ReplaceUnverifiedEmail);
@@ -179,7 +179,7 @@ public class MailerImportServiceClassifierTests
         var harness = new ClassifierHarness();
         harness.MlReturns(Active("brand-new@x.com"));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.CreateNewHuman);
     }
@@ -193,7 +193,7 @@ public class MailerImportServiceClassifierTests
         harness.MlReturns(Active("shared@x.com"));
         harness.VerifiedOwners["shared@x.com"] = [userA, userB];
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         var d = plan.Decisions.Single();
         d.Outcome.Should().Be(SubscriberOutcome.AmbiguousMultipleVerified);

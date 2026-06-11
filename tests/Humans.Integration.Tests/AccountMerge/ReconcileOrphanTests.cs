@@ -33,12 +33,12 @@ public class ReconcileOrphanTests(HumansWebApplicationFactory factory)
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await sut.MergeAsync(targetId, sourceId, adminId);
+            await sut.MergeAsync(targetId, sourceId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
         await using var assertScope = factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId))!.Status
+        (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(AccountMergeRequestStatus.Accepted,
                 "merging the pair must auto-close its pending request — no orphan is left behind");
     }
@@ -81,7 +81,7 @@ public class ReconcileOrphanTests(HumansWebApplicationFactory factory)
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

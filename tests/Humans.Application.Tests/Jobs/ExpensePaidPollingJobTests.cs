@@ -17,7 +17,7 @@ public class ExpensePaidPollingJobTests
         var expenses = Substitute.For<IExpenseReportBackgroundProcessor>();
         var job = new ExpensePaidPollingJob(expenses);
 
-        await job.ExecuteAsync();
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await expenses.Received(1).PollHoldedPaidStatusAsync(50, Arg.Any<CancellationToken>());
     }

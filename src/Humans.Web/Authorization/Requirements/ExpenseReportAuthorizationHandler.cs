@@ -39,7 +39,8 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
                     or ExpenseReportOperation.Approve
                     or ExpenseReportOperation.FinanceReject
                     or ExpenseReportOperation.CategoryOverride
-                    or ExpenseReportOperation.IncludeInSepaPayout)
+                    or ExpenseReportOperation.IncludeInSepaPayout
+                    or ExpenseReportOperation.ReopenSepa)
             {
                 context.Succeed(requirement);
                 return;

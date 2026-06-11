@@ -85,7 +85,7 @@ public class CantinaRosterServiceTests
     {
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.WeekStartOffset.Should().Be(WeekStartOffset);
         result.WeekStartDate.Should().BeNull();
@@ -120,7 +120,7 @@ public class CantinaRosterServiceTests
         var es = ActiveEvent();
         _shiftMgmt.GetActiveAsync().Returns(es);
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.WeekStartDate.Should().Be(GateOpening);
         result.WeekEndDate.Should().Be(GateOpening.PlusDays(6));
@@ -149,7 +149,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 0, userId);
         SetupHumans(Human(userId, "AlicePrime", "Omnivore"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.UnansweredCount.Should().Be(0);
@@ -192,7 +192,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 4, userId);
         SetupHumans(Human(userId, "Alice", "Vegan"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.DietaryBreakdown["Vegan"].Should().Be(1);
@@ -231,7 +231,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 2, userId);
         SetupHumans(Human(userId, "BobBurner"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(1);
         result.UnansweredCount.Should().Be(1);
@@ -277,7 +277,7 @@ public class CantinaRosterServiceTests
             Human(c, "Cleo", "Omnivore", allergies: ["Other"], allergyOther: "MSG"),
             Human(d, "Dee"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(4);
         result.UnansweredCount.Should().Be(1);
@@ -333,7 +333,7 @@ public class CantinaRosterServiceTests
             // identical free-text — must dedup
             Human(b, "Beth", "Omnivore", allergies: ["Other"], allergyOther: "MSG"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalUniqueOnSite.Should().Be(2);
         result.AllergyOtherEntries.Should().BeEquivalentTo(new[] { "MSG" });
@@ -363,7 +363,7 @@ public class CantinaRosterServiceTests
             MedicalConditions = "Severe peanut allergy",
         });
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
@@ -390,7 +390,7 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 5, onSiteUserId);
         SetupHumans(Human(onSiteUserId, "OnSite", "Omnivore"), Human(excludedUserId, "Excluded"));
 
-        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset);
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
 
         result.People.Should().HaveCount(1);
         result.People.Should().NotContain(p => p.UserId == excludedUserId);

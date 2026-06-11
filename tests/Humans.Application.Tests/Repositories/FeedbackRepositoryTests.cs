@@ -38,7 +38,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
-        var result = await _repo.GetByIdAsync(Guid.NewGuid());
+        var result = await _repo.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -61,9 +61,9 @@ public sealed class FeedbackRepositoryTests : IDisposable
         await _dbContext.FeedbackMessages.AddRangeAsync(
             new FeedbackMessage { Id = Guid.NewGuid(), FeedbackReportId = reportId, Content = "second", CreatedAt = now + Duration.FromMinutes(5) },
             new FeedbackMessage { Id = Guid.NewGuid(), FeedbackReportId = reportId, Content = "first", CreatedAt = now + Duration.FromMinutes(1) });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetByIdAsync(reportId);
+        var result = await _repo.GetByIdAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Messages.Should().HaveCount(2);
@@ -87,17 +87,17 @@ public sealed class FeedbackRepositoryTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.FindForMutationAsync(reportId);
+        var result = await _repo.FindForMutationAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         // Mutate and save through the repository.
         result.Status = FeedbackStatus.Resolved;
-        await _repo.SaveTrackedReportAsync(result);
+        await _repo.SaveTrackedReportAsync(result, Xunit.TestContext.Current.CancellationToken);
 
         var reloaded = await _dbContext.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == reportId);
+            .FirstAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(FeedbackStatus.Resolved);
     }
 
@@ -138,13 +138,13 @@ public sealed class FeedbackRepositoryTests : IDisposable
                 CreatedAt = now + Duration.FromMinutes(1),
                 UpdatedAt = now
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var filtered = await _repo.GetListAsync(
             status: null, category: null, reporterUserId: null,
             assignedToUserId: null, assignedToTeamId: teamA,
             unassignedOnly: null,
-            limit: 50);
+            limit: 50, ct: Xunit.TestContext.Current.CancellationToken);
 
         filtered.Should().ContainSingle();
         filtered[0].AssignedToTeamId.Should().Be(teamA);
@@ -180,13 +180,13 @@ public sealed class FeedbackRepositoryTests : IDisposable
                 CreatedAt = now,
                 UpdatedAt = now
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetListAsync(
             status: null, category: null, reporterUserId: null,
             assignedToUserId: null, assignedToTeamId: null,
             unassignedOnly: true,
-            limit: 50);
+            limit: 50, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Description.Should().Be("unassigned");
@@ -239,9 +239,9 @@ public sealed class FeedbackRepositoryTests : IDisposable
                 UpdatedAt = now,
                 ResolvedAt = now
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _repo.GetActionableCountAsync();
+        var count = await _repo.GetActionableCountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(2);
     }
 
@@ -259,9 +259,9 @@ public sealed class FeedbackRepositoryTests : IDisposable
             new FeedbackReport { Id = Guid.NewGuid(), UserId = u1, Category = FeedbackCategory.Bug, Description = "a", PageUrl = "/", Status = FeedbackStatus.Open, CreatedAt = now, UpdatedAt = now },
             new FeedbackReport { Id = Guid.NewGuid(), UserId = u1, Category = FeedbackCategory.Bug, Description = "b", PageUrl = "/", Status = FeedbackStatus.Open, CreatedAt = now, UpdatedAt = now },
             new FeedbackReport { Id = Guid.NewGuid(), UserId = u2, Category = FeedbackCategory.Bug, Description = "c", PageUrl = "/", Status = FeedbackStatus.Open, CreatedAt = now, UpdatedAt = now });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var rows = await _repo.GetReporterCountsAsync();
+        var rows = await _repo.GetReporterCountsAsync(Xunit.TestContext.Current.CancellationToken);
 
         rows.Should().HaveCount(2);
         rows.Single(r => r.UserId == u1).Count.Should().Be(2);
@@ -288,9 +288,9 @@ public sealed class FeedbackRepositoryTests : IDisposable
             CreatedAt = now,
             UpdatedAt = now
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var tracked = await _repo.FindForMutationAsync(reportId);
+        var tracked = await _repo.FindForMutationAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         tracked.Should().NotBeNull();
 
         tracked.LastAdminMessageAt = now + Duration.FromMinutes(1);
@@ -304,12 +304,12 @@ public sealed class FeedbackRepositoryTests : IDisposable
             CreatedAt = now + Duration.FromMinutes(1)
         };
 
-        await _repo.AddMessageAndSaveReportAsync(msg, tracked);
+        await _repo.AddMessageAndSaveReportAsync(msg, tracked, Xunit.TestContext.Current.CancellationToken);
 
-        var reloadedReport = await _dbContext.FeedbackReports.AsNoTracking().FirstAsync(r => r.Id == reportId);
+        var reloadedReport = await _dbContext.FeedbackReports.AsNoTracking().FirstAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
         reloadedReport.LastAdminMessageAt.Should().Be(now + Duration.FromMinutes(1));
 
-        var reloadedMsg = await _dbContext.FeedbackMessages.AsNoTracking().FirstAsync(m => m.Id == msg.Id);
+        var reloadedMsg = await _dbContext.FeedbackMessages.AsNoTracking().FirstAsync(m => m.Id == msg.Id, Xunit.TestContext.Current.CancellationToken);
         reloadedMsg.Content.Should().Be("hello");
     }
 
@@ -353,9 +353,9 @@ public sealed class FeedbackRepositoryTests : IDisposable
             Content = "note",
             CreatedAt = now
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetForUserExportAsync(me);
+        var result = await _repo.GetForUserExportAsync(me, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Description.Should().Be("mine");

@@ -165,7 +165,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId);
+            await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId, ct: TestContext.Current.CancellationToken);
         }
 
         // Assert — comprehensive post-merge state.
@@ -175,7 +175,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         // ----------------------------------------------------------------
         // Source User: tombstoned with MergedToUserId, MergedAt, lockout.
         // ----------------------------------------------------------------
-        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
+        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
@@ -186,7 +186,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         sourceUser.LockoutEnd!.Value.Should().BeAfter(DateTimeOffset.UtcNow.AddYears(50));
 
         // Target User: still active, no lockout, no merged-to.
-        var targetUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetId);
+        var targetUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetId, TestContext.Current.CancellationToken);
         targetUser.Should().NotBeNull();
         targetUser.MergedToUserId.Should().BeNull();
         targetUser.MergedAt.Should().BeNull();
@@ -194,37 +194,37 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         // ----------------------------------------------------------------
         // Live cross-section tables: source row count == 0.
         // ----------------------------------------------------------------
-        (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId))
+        (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all UserEmails re-FK or collapse off the source");
-        (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId))
+        (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all logins re-FK to target");
-        (await db.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId))
+        (await db.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId))
+        (await db.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId))
+        (await db.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await db.RoleAssignments.AsNoTracking().CountAsync(ra =>
-                ra.UserId == sourceId && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole)))
+                ra.UserId == sourceId && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole), TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await db.TeamMembers.AsNoTracking().CountAsync(tm =>
                 tm.UserId == sourceId && tm.LeftAt == null
-                && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId)))
+                && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId), TestContext.Current.CancellationToken))
             .Should().Be(0, "no active source memberships remain");
         (await db.TeamJoinRequests.AsNoTracking().CountAsync(r =>
-                r.UserId == sourceId && r.TeamId == joinTeamId))
+                r.UserId == sourceId && r.TeamId == joinTeamId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await db.NotificationRecipients.AsNoTracking().CountAsync(nr =>
                 nr.UserId == sourceId
-                && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId)))
+                && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId), TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await db.CampaignGrants.AsNoTracking().CountAsync(g =>
                 g.UserId == sourceId
-                && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId)))
+                && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId), TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.FeedbackReports.AsNoTracking().CountAsync(r => r.UserId == sourceId))
+        (await db.FeedbackReports.AsNoTracking().CountAsync(r => r.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.FeedbackMessages.AsNoTracking().CountAsync(m => m.SenderUserId == sourceId))
+        (await db.FeedbackMessages.AsNoTracking().CountAsync(m => m.SenderUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
         // Profile is the one live-section EXCEPTION — source profile row
@@ -232,125 +232,125 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
         // rows (ContactFields, ProfileLanguages, VolunteerHistoryEntries)
         // re-FK to the target profile.
         var sourceProfileId = await db.Profiles.AsNoTracking()
-            .Where(p => p.UserId == sourceId).Select(p => p.Id).SingleAsync();
+            .Where(p => p.UserId == sourceId).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
         var targetProfileId = await db.Profiles.AsNoTracking()
-            .Where(p => p.UserId == targetId).Select(p => p.Id).SingleAsync();
+            .Where(p => p.UserId == targetId).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
 
-        (await db.ContactFields.AsNoTracking().CountAsync(cf => cf.ProfileId == sourceProfileId))
+        (await db.ContactFields.AsNoTracking().CountAsync(cf => cf.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.ProfileLanguages.AsNoTracking().CountAsync(pl => pl.ProfileId == sourceProfileId))
+        (await db.ProfileLanguages.AsNoTracking().CountAsync(pl => pl.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.VolunteerHistoryEntries.AsNoTracking().CountAsync(v => v.ProfileId == sourceProfileId))
+        (await db.VolunteerHistoryEntries.AsNoTracking().CountAsync(v => v.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
         // ----------------------------------------------------------------
         // Append-only sections: source rows still attached (chain-follow).
         // ----------------------------------------------------------------
         (await db.AuditLogEntries.AsNoTracking()
-                .CountAsync(a => a.Description == auditDescription && a.ActorUserId == sourceId))
+                .CountAsync(a => a.Description == auditDescription && a.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "audit log is append-only — source row stays for chain-follow");
-        (await db.ConsentRecords.AsNoTracking().CountAsync(c => c.UserId == sourceId))
+        (await db.ConsentRecords.AsNoTracking().CountAsync(c => c.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().BeGreaterThan(0, "consent records are append-only — source rows stay for chain-follow");
         (await db.BudgetAuditLogs.AsNoTracking()
-                .CountAsync(b => b.Description == budgetDescription && b.ActorUserId == sourceId))
+                .CountAsync(b => b.Description == budgetDescription && b.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "budget audit log is append-only — source row stays for chain-follow");
 
         // ----------------------------------------------------------------
         // Target picked up source content (one assertion per fold rule).
         // ----------------------------------------------------------------
         (await db.UserEmails.AsNoTracking().AnyAsync(e =>
-                e.UserId == targetId && e.Email == sourceOnlyEmail))
+                e.UserId == targetId && e.Email == sourceOnlyEmail, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only email re-FK'd onto target");
 
         var sharedEmailRows = await db.UserEmails.AsNoTracking()
             .Where(e => e.UserId == targetId && e.Email == sharedEmail)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         sharedEmailRows.Should().ContainSingle("shared-email collapsed onto a single target row");
         sharedEmailRows[0].IsVerified.Should().BeTrue("source's verified flag OR-combines into the survivor");
 
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking()
                 .AnyAsync(l => l.UserId == targetId
-                    && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey))
+                    && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey, TestContext.Current.CancellationToken))
             .Should().BeTrue("source login re-FK'd to target");
 
         (await db.ContactFields.AsNoTracking()
                 .AnyAsync(cf => cf.ProfileId == targetProfileId
                     && cf.FieldType == ContactFieldType.Telegram
-                    && cf.Value == $"@src-{runTag}"))
+                    && cf.Value == $"@src-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only Telegram contact field moved to target profile");
 
         (await db.VolunteerHistoryEntries.AsNoTracking()
-                .AnyAsync(v => v.ProfileId == targetProfileId && v.EventName == $"BurnFest-{runTag}"))
+                .AnyAsync(v => v.ProfileId == targetProfileId && v.EventName == $"BurnFest-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source volunteer-history row re-FK'd to target profile");
 
         (await db.ProfileLanguages.AsNoTracking()
                 .AnyAsync(pl => pl.ProfileId == targetProfileId
-                    && pl.LanguageCode == $"x-{runTag.Substring(0, 4)}"))
+                    && pl.LanguageCode == $"x-{runTag.Substring(0, 4)}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only language re-FK'd to target profile");
 
         (await db.CommunicationPreferences.AsNoTracking()
                 .AnyAsync(cp => cp.UserId == targetId
-                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut))
+                    && cp.Category == MessageCategory.VolunteerUpdates && cp.OptedOut, TestContext.Current.CancellationToken))
             .Should().BeTrue("source CommPref re-FK'd to target");
 
         (await db.EventParticipations.AsNoTracking()
                 .AnyAsync(ep => ep.UserId == targetId && ep.Year == 2024
-                    && ep.Status == ParticipationStatus.Attended))
+                    && ep.Status == ParticipationStatus.Attended, TestContext.Current.CancellationToken))
             .Should().BeTrue("source event participation re-FK'd to target");
 
         (await db.Applications.AsNoTracking()
                 .CountAsync(a => a.UserId == targetId
-                    && a.MembershipTier == MembershipTier.Colaborador))
+                    && a.MembershipTier == MembershipTier.Colaborador, TestContext.Current.CancellationToken))
             .Should().BeGreaterThan(0, "source application moved to target");
 
         (await db.RoleAssignments.AsNoTracking()
-                .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole))
+                .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role re-FK'd to target");
         (await db.RoleAssignments.AsNoTracking()
-                .CountAsync(ra => ra.UserId == targetId && ra.RoleName == sharedRole))
+                .CountAsync(ra => ra.UserId == targetId && ra.RoleName == sharedRole, TestContext.Current.CancellationToken))
             .Should().Be(1, "shared role stays as target's single active assignment");
 
         (await db.TeamMembers.AsNoTracking()
                 .AnyAsync(tm => tm.UserId == targetId && tm.TeamId == sourceOnlyTeamId
-                    && tm.LeftAt == null))
+                    && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("target gained active membership on source-only team");
         (await db.TeamMembers.AsNoTracking()
                 .CountAsync(tm => tm.UserId == targetId && tm.TeamId == sharedTeamId
-                    && tm.LeftAt == null))
+                    && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().Be(1, "target keeps its single active membership on shared team");
 
         (await db.TeamJoinRequests.AsNoTracking()
-                .AnyAsync(r => r.UserId == targetId && r.TeamId == joinTeamId))
+                .AnyAsync(r => r.UserId == targetId && r.TeamId == joinTeamId, TestContext.Current.CancellationToken))
             .Should().BeTrue("source's team-join request re-FK'd to target");
 
         (await db.NotificationRecipients.AsNoTracking()
                 .AnyAsync(nr => nr.UserId == targetId
-                    && nr.NotificationId == sourceOnlyNotificationId))
+                    && nr.NotificationId == sourceOnlyNotificationId, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only notification recipient re-FK'd to target");
         (await db.NotificationRecipients.AsNoTracking()
                 .CountAsync(nr => nr.UserId == targetId
-                    && nr.NotificationId == sharedNotificationId))
+                    && nr.NotificationId == sharedNotificationId, TestContext.Current.CancellationToken))
             .Should().Be(1, "duplicate-on-shared-notification dropped, single row kept");
 
         (await db.CampaignGrants.AsNoTracking()
-                .AnyAsync(g => g.UserId == targetId && g.CampaignId == sourceOnlyCampaignId))
+                .AnyAsync(g => g.UserId == targetId && g.CampaignId == sourceOnlyCampaignId, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only campaign grant re-FK'd to target");
         (await db.CampaignGrants.AsNoTracking()
-                .CountAsync(g => g.UserId == targetId && g.CampaignId == contestedCampaignId))
+                .CountAsync(g => g.UserId == targetId && g.CampaignId == contestedCampaignId, TestContext.Current.CancellationToken))
             .Should().Be(1, "contested campaign grant deduped to a single target row");
 
         (await db.FeedbackReports.AsNoTracking()
-                .AnyAsync(r => r.UserId == targetId && r.Description == $"src-report-{runTag}"))
+                .AnyAsync(r => r.UserId == targetId && r.Description == $"src-report-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source feedback report re-FK'd to target");
         (await db.FeedbackMessages.AsNoTracking()
-                .AnyAsync(m => m.SenderUserId == targetId && m.Content == $"src-msg-{runTag}"))
+                .AnyAsync(m => m.SenderUserId == targetId && m.Content == $"src-msg-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source feedback message re-FK'd to target");
 
         // ----------------------------------------------------------------
         // Source profile tombstone — anonymized scalars.
         // ----------------------------------------------------------------
         var sourceProfile = await db.Profiles.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == sourceId);
+            .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);
         sourceProfile.Should().NotBeNull("source profile row stays as a tombstone");
         sourceProfile.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
@@ -394,7 +394,7 @@ public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

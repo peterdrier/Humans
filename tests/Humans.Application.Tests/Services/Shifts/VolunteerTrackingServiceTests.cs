@@ -24,7 +24,7 @@ public class VolunteerTrackingServiceTests
     {
         var sut = BuildSut(activeEvent: null);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.HasActiveEvent.Should().BeFalse();
         result.MainCohort.Should().BeEmpty();
@@ -48,7 +48,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.HasActiveEvent.Should().BeTrue();
         result.MainCohort.Should().HaveCount(1);
@@ -82,7 +82,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = result.MainCohort.Single();
         row.GapCount.Should().Be(1);
@@ -106,7 +106,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.MainCohort.Should().BeEmpty();
     }
@@ -128,7 +128,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = result.MainCohort.Single();
         row.GapCount.Should().Be(0);
@@ -156,7 +156,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = result.MainCohort.Single();
         row.GapCount.Should().Be(0);
@@ -185,7 +185,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = result.MainCohort.Single();
         row.GapCount.Should().Be(4); // -4, -3, -2, -1 are all gaps now.
@@ -203,7 +203,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, participations: participations, availabilities: availability);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.MainCohort.Should().BeEmpty();
         result.UnbookedCohort.Should().HaveCount(1);
@@ -233,7 +233,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, signups: signups, participations: participations, availabilities: availability);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.MainCohort.Should().HaveCount(1);
         result.MainCohort[0].UserId.Should().Be(userId);
@@ -250,7 +250,7 @@ public class VolunteerTrackingServiceTests
 
         var sut = BuildSut(es, participations: participations, availabilities: availability);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.MainCohort.Should().BeEmpty();
         result.UnbookedCohort.Should().BeEmpty();
@@ -264,7 +264,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es);
 
         var result = await sut.SetCampSetupAsync(
-            userId, es.GateOpeningDate, notes: null, coordinatorUserId: Guid.NewGuid());
+            userId, es.GateOpeningDate, notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupAtOrAfterGateOpen");
@@ -284,7 +284,7 @@ public class VolunteerTrackingServiceTests
 
         // Setup date at offset -8 (before first signup at -5).
         var result = await sut.SetCampSetupAsync(
-            userId, es.GateOpeningDate.PlusDays(-8), notes: null, coordinatorUserId: Guid.NewGuid());
+            userId, es.GateOpeningDate.PlusDays(-8), notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupBeforeFirstSignup");
@@ -304,7 +304,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, signups: signups, trackingRepo: trackingRepo);
         var setupDate = es.GateOpeningDate.PlusDays(-3);
 
-        var result = await sut.SetCampSetupAsync(userId, setupDate, "left for setup", coordinatorId);
+        var result = await sut.SetCampSetupAsync(userId, setupDate, "left for setup", coordinatorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeTrue();
         result.ErrorMessageKey.Should().BeNull();
@@ -338,7 +338,7 @@ public class VolunteerTrackingServiceTests
             [bs], []);
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
-        await sut.ClearCampSetupAsync(userId, coordinatorId);
+        await sut.ClearCampSetupAsync(userId, coordinatorId, Xunit.TestContext.Current.CancellationToken);
 
         trackingRepo.UpsertCalls.Should().HaveCount(1);
         var call = trackingRepo.UpsertCalls[0];
@@ -364,9 +364,9 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es);
 
         var below = await sut.SetDayOffAsync(
-            Guid.NewGuid(), -6, reason: null, coordinatorUserId: Guid.NewGuid());
+            Guid.NewGuid(), -6, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
         var above = await sut.SetDayOffAsync(
-            Guid.NewGuid(), 0, reason: null, coordinatorUserId: Guid.NewGuid());
+            Guid.NewGuid(), 0, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         below.Ok.Should().BeFalse();
         below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
@@ -386,7 +386,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, signups: signups);
 
         var result = await sut.SetDayOffAsync(
-            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid());
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -404,7 +404,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, signups: signups);
 
         var result = await sut.SetDayOffAsync(
-            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid());
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeFalse();
         result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
@@ -420,7 +420,7 @@ public class VolunteerTrackingServiceTests
             [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId);
+        var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId, Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeTrue();
         result.ErrorMessageKey.Should().BeNull();
@@ -441,8 +441,8 @@ public class VolunteerTrackingServiceTests
             [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid());
-        await sut.SetDayOffAsync(userId, -3, "city visit", Guid.NewGuid());
+        await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.SetDayOffAsync(userId, -3, "city visit", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var stored = trackingRepo.BuildStatuses.Single();
         stored.DayOffs.Should().HaveCount(1);
@@ -457,11 +457,11 @@ public class VolunteerTrackingServiceTests
             [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
-        await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid());
+        await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         var blank = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
 
         var oversized = new string('x', 250);
-        await sut.SetDayOffAsync(Guid.NewGuid(), -2, oversized, Guid.NewGuid());
+        await sut.SetDayOffAsync(Guid.NewGuid(), -2, oversized, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         var capped = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
 
         blank.Should().BeNull();
@@ -490,7 +490,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // -2 is INSIDE the camp-setup span. The service does NOT reject.
-        var result = await sut.SetDayOffAsync(userId, -2, "doctor", Guid.NewGuid());
+        var result = await sut.SetDayOffAsync(userId, -2, "doctor", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeTrue();
     }
@@ -515,7 +515,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(
-            userId, -3, coordinatorUserId: Guid.NewGuid());
+            userId, -3, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Removed.Should().BeTrue();
         bs.DayOffs.Should().BeEmpty();
@@ -530,7 +530,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(
-            Guid.NewGuid(), -3, coordinatorUserId: Guid.NewGuid());
+            Guid.NewGuid(), -3, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Removed.Should().BeFalse();
     }
@@ -543,7 +543,7 @@ public class VolunteerTrackingServiceTests
     public async Task GetUserBuildStrip_returns_null_when_no_active_event()
     {
         var sut = BuildSut(activeEvent: null);
-        (await sut.GetUserBuildStripAsync(Guid.NewGuid())).Should().BeNull();
+        (await sut.GetUserBuildStripAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -556,7 +556,7 @@ public class VolunteerTrackingServiceTests
             participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) },
             availabilities: new[] { Availability(userId, es.Id, [-2, -1]) });
 
-        var strip = await sut.GetUserBuildStripAsync(userId);
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         strip.Should().NotBeNull();
         // Declared flag set on exactly the declared days:
@@ -576,7 +576,7 @@ public class VolunteerTrackingServiceTests
             signups: new[] { new EligibleBuildSignup(userId, -3, SignupStatus.Confirmed, "Cleanup") },
             participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
 
-        var strip = await sut.GetUserBuildStripAsync(userId);
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         strip!.Row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
     }
@@ -588,7 +588,7 @@ public class VolunteerTrackingServiceTests
         var userId = Guid.NewGuid();
         var sut = BuildSut(es, participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
 
-        var strip = await sut.GetUserBuildStripAsync(userId);
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         strip.Should().NotBeNull();
         strip.Row.Cells.Should().OnlyContain(c => c.DeclaredAvailable == false);
@@ -617,7 +617,7 @@ public class VolunteerTrackingServiceTests
         };
         var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
 
-        var result = await sut.GetTrackingDataAsync();
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = result.MainCohort.Single();
         // -5 Confirmed, -4 Gap, -3 DayOff (suppresses gap), -2 Gap, -1 Confirmed.
@@ -653,7 +653,7 @@ public class VolunteerTrackingServiceTests
 
         // New camp-setup at -7 → span covers -7, -6, -5, ..., -1.
         var result = await sut.SetCampSetupAsync(
-            userId, es.GateOpeningDate.PlusDays(-7), notes: null, coordId);
+            userId, es.GateOpeningDate.PlusDays(-7), notes: null, coordId, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeTrue();
         result.AutoClearedDayOffs.Should().Equal(-6);
@@ -680,7 +680,7 @@ public class VolunteerTrackingServiceTests
         var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.SetCampSetupAsync(
-            userId, es.GateOpeningDate.PlusDays(-3), notes: null, Guid.NewGuid());
+            userId, es.GateOpeningDate.PlusDays(-3), notes: null, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Ok.Should().BeTrue();
         result.AutoClearedDayOffs.Should().BeEmpty();

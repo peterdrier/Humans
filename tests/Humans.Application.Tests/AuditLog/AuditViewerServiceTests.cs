@@ -48,7 +48,7 @@ public class AuditViewerServiceTests
 
         var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
-        var events = await service.GetForUserAsync(viewer, 10);
+        var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().HaveCount(1);
         var ev = events[0];
@@ -69,7 +69,7 @@ public class AuditViewerServiceTests
         var teamResourceService = Substitute.For<ITeamResourceService>();
         var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
-        var events = await service.GetForUserAsync(Guid.NewGuid(), 10);
+        var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().BeEmpty();
         // No name lookups should fire on empty input — short-circuit guard.
@@ -94,7 +94,7 @@ public class AuditViewerServiceTests
         var (auditLog, userService, teamService, teamResourceService) = MakeServices(entry, actor, viewer, "Frank", "Peter");
         var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
-        var events = await service.GetForUserAsync(viewer, 10);
+        var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
         var line = events[0].RenderPlainText(viewerUserId: viewer);
 
         line.Should().Be("2026-04-30 — Frank voluntold You — shift 'Cantina dinner'");
@@ -133,7 +133,7 @@ public class AuditViewerServiceTests
 
         var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
-        var events = await service.GetForResourceAsync(resourceId);
+        var events = await service.GetForResourceAsync(resourceId, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().HaveCount(1);
         var ev = events[0];
@@ -170,7 +170,7 @@ public class AuditViewerServiceTests
 
         var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
-        var result = await service.GetPageAsync(null, 1, 50);
+        var result = await service.GetPageAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalCount.Should().Be(1);
         result.Items.Should().HaveCount(1);

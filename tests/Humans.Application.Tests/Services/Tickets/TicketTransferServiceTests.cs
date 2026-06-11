@@ -96,7 +96,7 @@ public sealed class TicketTransferServiceTests
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
-        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId);
+        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
 
         confirm.Should().NotBeNull();
         confirm.ReceiverLegalName.Should().Be("Alice Smith");
@@ -108,7 +108,7 @@ public sealed class TicketTransferServiceTests
     public async Task GetConfirmation_Null_WhenReceiverIsSender()
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-        var confirm = await _service.GetConfirmationAsync(_attendeeId, _senderId, _senderId);
+        var confirm = await _service.GetConfirmationAsync(_attendeeId, _senderId, _senderId, Xunit.TestContext.Current.CancellationToken);
         confirm.Should().BeNull();
     }
 
@@ -116,7 +116,7 @@ public sealed class TicketTransferServiceTests
     public async Task GetConfirmation_Null_WhenNotOwner()
     {
         StubAttendee(TicketAttendeeStatus.Valid, Guid.NewGuid());
-        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId);
+        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
         confirm.Should().BeNull();
     }
 
@@ -124,7 +124,7 @@ public sealed class TicketTransferServiceTests
     public async Task GetConfirmation_Null_WhenNotValid()
     {
         StubAttendee(TicketAttendeeStatus.Void, _senderId);
-        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId);
+        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
         confirm.Should().BeNull();
     }
 
@@ -136,7 +136,7 @@ public sealed class TicketTransferServiceTests
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         await _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad"), _senderId, Xunit.TestContext.Current.CancellationToken);
 
         await _transferRepo.Received(1).AddAsync(
             Arg.Is<TicketTransferRequest>(r =>
@@ -166,7 +166,7 @@ public sealed class TicketTransferServiceTests
 
         // Must not throw (request is already persisted) and the team must still be alerted.
         await _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).TicketTransferTeamNotification(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -177,7 +177,7 @@ public sealed class TicketTransferServiceTests
     public async Task CreateRequest_Throws_WhenReceiverIsSender()
     {
         var act = () => _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _senderId, "x"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _senderId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -186,7 +186,7 @@ public sealed class TicketTransferServiceTests
     {
         StubAttendee(TicketAttendeeStatus.Valid, Guid.NewGuid());
         var act = () => _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -195,7 +195,7 @@ public sealed class TicketTransferServiceTests
     {
         StubAttendee(TicketAttendeeStatus.Void, _senderId);
         var act = () => _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -207,7 +207,7 @@ public sealed class TicketTransferServiceTests
             .Returns(new[] { MakePending(Guid.NewGuid()) });
 
         var act = () => _service.CreateRequestAsync(
-            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId);
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -219,7 +219,7 @@ public sealed class TicketTransferServiceTests
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        await _service.CancelAsync(req.Id, _senderId);
+        await _service.CancelAsync(req.Id, _senderId, Xunit.TestContext.Current.CancellationToken);
 
         req.Status.Should().Be(TicketTransferStatus.Cancelled);
         await _auditLog.Received(1).LogAsync(
@@ -232,7 +232,7 @@ public sealed class TicketTransferServiceTests
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => _service.CancelAsync(req.Id, Guid.NewGuid());
+        var act = () => _service.CancelAsync(req.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -245,7 +245,7 @@ public sealed class TicketTransferServiceTests
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
-        await _service.ApproveAsync(req.Id, _adminId, "looks good");
+        await _service.ApproveAsync(req.Id, _adminId, "looks good", Xunit.TestContext.Current.CancellationToken);
 
         req.Status.Should().Be(TicketTransferStatus.Approved);
         req.DecidedByUserId.Should().Be(_adminId);
@@ -265,7 +265,7 @@ public sealed class TicketTransferServiceTests
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
-        await _service.ApproveAsync(req.Id, _adminId, null);
+        await _service.ApproveAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
 
         _cacheInvalidator.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
     }
@@ -278,7 +278,7 @@ public sealed class TicketTransferServiceTests
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
 
-        var act = () => _service.RejectAsync(req.Id, _adminId, "   ");
+        var act = () => _service.RejectAsync(req.Id, _adminId, "   ", Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -289,7 +289,7 @@ public sealed class TicketTransferServiceTests
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
-        await _service.RejectAsync(req.Id, _adminId, "duplicate request");
+        await _service.RejectAsync(req.Id, _adminId, "duplicate request", Xunit.TestContext.Current.CancellationToken);
 
         req.Status.Should().Be(TicketTransferStatus.Rejected);
         req.AdminNotes.Should().Be("duplicate request");

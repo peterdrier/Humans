@@ -92,7 +92,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
             .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
-        await _service.SendMagicLinkAsync("alice@work.com", "/dashboard");
+        await _service.SendMagicLinkAsync("alice@work.com", "/dashboard", Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).MagicLinkLogin(
             "alice@work.com",
@@ -120,7 +120,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
             .Returns(CreateUserInfo(user));
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
-        await _service.SendMagicLinkAsync("alice@gmail.com", null);
+        await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).MagicLinkLogin(
             "alice@gmail.com",
@@ -133,7 +133,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     {
         // Default _userEmailService.FindVerifiedEmailWithUserAsync returns null —
         // no setup needed; the service falls through to signup.
-        await _service.SendMagicLinkAsync("newperson@example.com", "/welcome");
+        await _service.SendMagicLinkAsync("newperson@example.com", "/welcome", Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).MagicLinkSignup(
             "newperson@example.com",
@@ -171,7 +171,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
             .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
-        await _service.SendMagicLinkAsync("alice@gmail.com", null);
+        await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().MagicLinkLogin(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
@@ -181,13 +181,13 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
         // First call succeeds
-        await _service.SendMagicLinkAsync("newperson@example.com", null);
+        await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
         _emailMessages.ClearReceivedCalls();
 
         // Subsequent TryReserveSignupSendAsync returns false
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
 
-        await _service.SendMagicLinkAsync("newperson@example.com", null);
+        await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().MagicLinkSignup(
             Arg.Any<string>(), Arg.Any<string>());
@@ -200,7 +200,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         // for unverified rows; the default substitute returns null. Post-PR-2
         // there is no User.Email-column fallback either, so the service routes
         // straight to the signup-link branch.
-        await _service.SendMagicLinkAsync("alice@work.com", null);
+        await _service.SendMagicLinkAsync("alice@work.com", null, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).MagicLinkSignup(
             Arg.Any<string>(), Arg.Any<string>());
@@ -219,7 +219,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     {
         _userManager.FindByIdAsync(Arg.Any<string>()).Returns((User?)null);
 
-        var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token");
+        var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -232,7 +232,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _urlBuilder.UnprotectLoginToken("bad-token").Returns((string?)null);
 
-        var result = await _service.VerifyLoginTokenAsync(userId, "bad-token");
+        var result = await _service.VerifyLoginTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -246,7 +246,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
         _rateLimiter.TryConsumeLoginTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
-        var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
+        var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -259,7 +259,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
 
-        var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
+        var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
@@ -276,7 +276,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
             .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
-        var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");
+        var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
@@ -287,7 +287,7 @@ public sealed class MagicLinkServiceTests : ServiceTestHarness
     {
         // Post-PR-2 there is no User.Email column fallback; the only path is
         // through the verified UserEmail row. Default substitute returns null.
-        var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com");
+        var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }

@@ -104,7 +104,7 @@ public class UserEmailServiceTests
             });
 
         var (canAdd, minutesUntilResend, pendingEmailId) =
-            await _service.GetEmailCooldownInfoAsync(emailId);
+            await _service.GetEmailCooldownInfoAsync(emailId, Xunit.TestContext.Current.CancellationToken);
 
         canAdd.Should().BeFalse();
         minutesUntilResend.Should().BeGreaterThan(0);
@@ -126,7 +126,7 @@ public class UserEmailServiceTests
             });
 
         var (canAdd, minutesUntilResend, pendingEmailId) =
-            await _service.GetEmailCooldownInfoAsync(emailId);
+            await _service.GetEmailCooldownInfoAsync(emailId, Xunit.TestContext.Current.CancellationToken);
 
         canAdd.Should().BeTrue();
         minutesUntilResend.Should().Be(0);
@@ -148,7 +148,7 @@ public class UserEmailServiceTests
             });
 
         var (canAdd, minutesUntilResend, pendingEmailId) =
-            await _service.GetEmailCooldownInfoAsync(emailId);
+            await _service.GetEmailCooldownInfoAsync(emailId, Xunit.TestContext.Current.CancellationToken);
 
         canAdd.Should().BeTrue();
         minutesUntilResend.Should().Be(0);
@@ -411,7 +411,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
-        await _service.SetPrimaryAsync(userId, targetId);
+        await _service.SetPrimaryAsync(userId, targetId, Xunit.TestContext.Current.CancellationToken);
 
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         emails.Single(e => e.Id == targetId).IsPrimary.Should().BeTrue();
@@ -434,7 +434,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
-        var act = async () => await _service.SetPrimaryAsync(userId, targetId);
+        var act = async () => await _service.SetPrimaryAsync(userId, targetId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _userInfoInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -478,7 +478,7 @@ public class UserEmailServiceTests
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo> { new("Google", "sub-123", "Google") });
 
-        await _service.DeleteEmailAsync(userId, deletingId);
+        await _service.DeleteEmailAsync(userId, deletingId, Xunit.TestContext.Current.CancellationToken);
 
         await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -506,7 +506,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(providerRowId, userId, Arg.Any<CancellationToken>())
             .Returns(providerRow);
 
-        var result = await _service.DeleteEmailAsync(userId, providerRowId);
+        var result = await _service.DeleteEmailAsync(userId, providerRowId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -535,7 +535,7 @@ public class UserEmailServiceTests
         _userManager.GetLoginsAsync(Arg.Any<User>())
             .Returns(new List<UserLoginInfo>());
 
-        var act = async () => await _service.DeleteEmailAsync(userId, emailId);
+        var act = async () => await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -567,7 +567,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
 
-        var act = async () => await _service.DeleteEmailAsync(userId, emailId);
+        var act = async () => await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -592,7 +592,7 @@ public class UserEmailServiceTests
                 IsPrimary = false,
             });
 
-        await _service.DeleteEmailAsync(userId, emailId);
+        await _service.DeleteEmailAsync(userId, emailId, Xunit.TestContext.Current.CancellationToken);
 
         await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         // GetLoginsAsync should not even be called since the verified branch is skipped.
@@ -627,7 +627,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { primary, secondary });
 
-        var act = async () => await _service.DeleteEmailAsync(userId, primaryId);
+        var act = async () => await _service.DeleteEmailAsync(userId, primaryId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -689,7 +689,7 @@ public class UserEmailServiceTests
                     ])
             ]));
 
-        var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId);
+        var act = async () => await _service.DeleteEmailAsync(userId, ticketEmailId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -730,7 +730,7 @@ public class UserEmailServiceTests
                 rowB.IsGoogle = true;
             });
 
-        var result = await _service.SetGoogleAsync(userId, rowBId, userId);
+        var result = await _service.SetGoogleAsync(userId, rowBId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         rowA.IsGoogle.Should().BeFalse();
@@ -749,7 +749,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, otherId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
-        var result = await _service.SetGoogleAsync(otherId, rowId, otherId);
+        var result = await _service.SetGoogleAsync(otherId, rowId, otherId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         await _repository.DidNotReceive().SetUserEmailGoogleExclusiveAsync(
@@ -774,7 +774,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
-        var result = await _service.SetGoogleAsync(userId, rowId, userId);
+        var result = await _service.SetGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         row.IsGoogle.Should().BeFalse();
@@ -814,7 +814,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
-        var result = await _service.ClearGoogleAsync(userId, rowId, actorId);
+        var result = await _service.ClearGoogleAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         row.IsGoogle.Should().BeFalse();
@@ -845,7 +845,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
-        var result = await _service.ClearGoogleAsync(userId, rowId, userId);
+        var result = await _service.ClearGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -873,7 +873,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
-        var result = await _service.ClearGoogleAsync(userId, rowId, userId);
+        var result = await _service.ClearGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         row.IsGoogle.Should().BeTrue();
@@ -911,7 +911,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { rowA, rowB });
 
-        var result = await _service.ClearGoogleAsync(userId, rowAId, userId);
+        var result = await _service.ClearGoogleAsync(userId, rowAId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         // Only the targeted row should have flowed through UpdateAsync —
@@ -950,7 +950,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
-        var result = await _service.ClearPrimaryAsync(userId, rowId, actorId);
+        var result = await _service.ClearPrimaryAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         row.IsPrimary.Should().BeFalse();
@@ -985,7 +985,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
-        var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
+        var result = await _service.ClearPrimaryAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         row.IsPrimary.Should().BeTrue();
@@ -1026,7 +1026,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, unverifiedSibling });
 
-        var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
+        var result = await _service.ClearPrimaryAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         row.IsPrimary.Should().BeTrue();
@@ -1065,7 +1065,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row, sibling });
 
-        await _service.ClearPrimaryAsync(userId, rowId, userId);
+        await _service.ClearPrimaryAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         await _repository.DidNotReceive().GetUserEmailsByUserIdForMutationAsync(
             userId, Arg.Any<CancellationToken>());
@@ -1103,7 +1103,7 @@ public class UserEmailServiceTests
 
         StubAllUserInfosFromRows(rows);
 
-        var violations = await _service.GetEmailFlagViolationsAsync();
+        var violations = await _service.GetEmailFlagViolationsAsync(Xunit.TestContext.Current.CancellationToken);
 
         violations.Should().HaveCount(3);
         violations.Should().NotContain(v => v.UserId == userHealthy);
@@ -1135,7 +1135,7 @@ public class UserEmailServiceTests
         };
         StubAllUserInfosFromRows(rows);
 
-        var violations = await _service.GetEmailFlagViolationsAsync();
+        var violations = await _service.GetEmailFlagViolationsAsync(Xunit.TestContext.Current.CancellationToken);
 
         violations.Should().BeEmpty();
     }
@@ -1165,7 +1165,7 @@ public class UserEmailServiceTests
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Success);
 
-        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+        var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
@@ -1198,7 +1198,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
 
-        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+        var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         await _userManager.DidNotReceive().RemoveLoginAsync(
@@ -1230,7 +1230,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { row });
 
-        await _service.SetGoogleAsync(userId, rowId, userId);
+        await _service.SetGoogleAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
         await _userInfoInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
@@ -1263,7 +1263,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
 
-        await _service.AddVerifiedEmailAsync(userId, "alice@gmail.com");
+        await _service.AddVerifiedEmailAsync(userId, "alice@gmail.com", Xunit.TestContext.Current.CancellationToken);
 
         added.Should().NotBeNull();
         added!.IsPrimary.Should().BeTrue();
@@ -1297,7 +1297,7 @@ public class UserEmailServiceTests
                 ? new List<UserEmail> { existingPrimary }
                 : new List<UserEmail> { existingPrimary, added });
 
-        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team");
+        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         added.Should().NotBeNull();
         added!.IsPrimary.Should().BeTrue();
@@ -1325,7 +1325,7 @@ public class UserEmailServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildStubUserInfo(userId, []));
 
-        var result = await _service.AddEmailAsync(userId, "katja@gmail.com");
+        var result = await _service.AddEmailAsync(userId, "katja@gmail.com", Xunit.TestContext.Current.CancellationToken);
 
         result.EmailId.Should().NotBe(Guid.Empty);
         await _repository.Received(1).AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1339,7 +1339,7 @@ public class UserEmailServiceTests
                 userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var act = async () => await _service.AddEmailAsync(userId, "katja@gmail.com");
+        var act = async () => await _service.AddEmailAsync(userId, "katja@gmail.com", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _userService.DidNotReceive().AddUserEmailAsync(
@@ -1387,7 +1387,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { secondary });
 
-        var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
+        var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         secondary.IsPrimary.Should().BeTrue();
@@ -1430,7 +1430,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { primary });
 
-        var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
+        var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         primary.IsPrimary.Should().BeTrue();
@@ -1462,7 +1462,7 @@ public class UserEmailServiceTests
             .Returns(IdentityResult.Failed(
                 new IdentityError { Code = "SomeFailure", Description = "Identity refused" }));
 
-        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+        var result = await _service.UnlinkAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
         await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
@@ -1519,7 +1519,7 @@ public class UserEmailServiceTests
                 $"UserEmailVerification:{rowBId}", "the-token-for-B")
             .Returns(true);
 
-        var result = await _service.VerifyEmailAsync(userId, rowBId, "the-token-for-B");
+        var result = await _service.VerifyEmailAsync(userId, rowBId, "the-token-for-B", Xunit.TestContext.Current.CancellationToken);
 
         result.MergeRequestCreated.Should().BeFalse();
         result.Email.Should().Be("b@example.com");
@@ -1559,7 +1559,7 @@ public class UserEmailServiceTests
             .Returns(false);
 
         var act = async () => await _service.VerifyEmailAsync(
-            userId, rowBId, "token-issued-for-A");
+            userId, rowBId, "token-issued-for-A", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         rowB.IsVerified.Should().BeFalse();
@@ -1584,7 +1584,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(verified);
 
-        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token");
+        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
@@ -1611,7 +1611,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauth);
 
-        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token");
+        var act = async () => await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
@@ -1642,7 +1642,7 @@ public class UserEmailServiceTests
                 rowId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
-        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId);
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.MergeRequestCreated.Should().BeFalse();
         result.Email.Should().Be("pending@example.com");
@@ -1693,7 +1693,7 @@ public class UserEmailServiceTests
         _mergeService.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
             .Returns(false);
 
-        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId);
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.MergeRequestCreated.Should().BeTrue();
         pending.IsVerified.Should().BeFalse();
@@ -1716,7 +1716,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
@@ -1736,7 +1736,7 @@ public class UserEmailServiceTests
                 Provider = null,
             });
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
@@ -1759,7 +1759,7 @@ public class UserEmailServiceTests
                 ProviderKey = "sub-x",
             });
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
@@ -1806,7 +1806,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => new List<UserEmail> { personalRow, added! });
 
-        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team");
+        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         added.Should().NotBeNull();
         added!.IsGoogle.Should().BeTrue("@nobodies.team row wins Google precedence");
@@ -1833,7 +1833,7 @@ public class UserEmailServiceTests
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
 
-        await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
+        await _service.AddProvisionedEmailAsync(userId, "alice@example.com", Xunit.TestContext.Current.CancellationToken);
 
         added.Should().NotBeNull();
         added!.IsPrimary.Should().BeTrue("the only verified row wins Primary");
@@ -1847,7 +1847,7 @@ public class UserEmailServiceTests
         _repository.UserEmailExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
+        await _service.AddProvisionedEmailAsync(userId, "alice@example.com", Xunit.TestContext.Current.CancellationToken);
 
         await _repository.DidNotReceive()
             .AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());

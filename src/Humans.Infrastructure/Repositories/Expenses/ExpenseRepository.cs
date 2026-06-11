@@ -321,6 +321,19 @@ internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> facto
         return rows.Select(r => r.Id).ToList();
     }
 
+    public async Task<bool> ReopenSepaAsync(Guid reportId, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var r = await ctx.ExpenseReports
+            .FirstOrDefaultAsync(x => x.Id == reportId, ct);
+        if (r is null || r.Status != ExpenseReportStatus.SepaSent) return false;
+        r.Status = ExpenseReportStatus.Approved;
+        r.SepaSentAt = null;
+        r.UpdatedAt = updatedAt;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> MarkPaidAsync(
         Guid reportId, Instant paidAt, CancellationToken ct = default)
     {

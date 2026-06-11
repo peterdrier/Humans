@@ -95,6 +95,26 @@ public interface IGoogleSyncOutboxRepository : IRepository
     Task MarkPermanentlyFailedAsync(
         Guid id, Instant processedAt, string lastError, CancellationToken ct = default);
 
+    // ==========================================================================
+    // Admin recovery
+    // ==========================================================================
+
+    /// <summary>
+    /// Requeues a single failed outbox event for retry: clears
+    /// <c>FailedPermanently</c>, <c>ProcessedAt</c>, <c>RetryCount</c>, and
+    /// <c>LastError</c>. No-op if the row is missing or not in a failed state.
+    /// Returns <c>true</c> if the event was found and reset.
+    /// </summary>
+    Task<bool> RequeueAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Requeues all permanently-failed outbox events: clears
+    /// <c>FailedPermanently</c>, <c>ProcessedAt</c>, <c>RetryCount</c>, and
+    /// <c>LastError</c> on every event where <c>FailedPermanently = true</c>.
+    /// Returns the number of events reset.
+    /// </summary>
+    Task<int> RequeueAllFailedAsync(CancellationToken ct = default);
+
     /// <summary>
     /// Records a transient processing failure: increments <c>RetryCount</c>,
     /// stores <paramref name="lastError"/> (truncated to the 4000-char DB

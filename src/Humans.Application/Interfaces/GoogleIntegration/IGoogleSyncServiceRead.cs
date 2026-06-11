@@ -30,6 +30,7 @@ public interface IGoogleSyncServiceRead
 }
 
 public sealed record GoogleSyncOutboxEventSnapshot(
+    Guid Id,
     string EventType,
     Guid TeamId,
     Guid UserId,

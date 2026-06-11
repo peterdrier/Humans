@@ -34,7 +34,7 @@ public class MailerImportServiceThrottleTests
             }.ToList().AsReadOnly(),
             TotalPulled: 3);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.HumansCreated.Should().Be(1);
         result.DecisionsThrottled.Should().Be(2);
@@ -65,7 +65,7 @@ public class MailerImportServiceThrottleTests
             }.ToList().AsReadOnly(),
             TotalPulled: 4);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.HumansCreated.Should().Be(1);
         result.PrefsFlippedToOptOut.Should().Be(1);
@@ -109,7 +109,7 @@ public class MailerImportServiceThrottleTests
             }.ToList().AsReadOnly(),
             TotalPulled: 8);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.HumansCreated.Should().Be(1);
         // Only the second CreateNewHuman is throttled — all three skip buckets pass through.
@@ -132,7 +132,7 @@ public class MailerImportServiceThrottleTests
             }.ToList().AsReadOnly(),
             TotalPulled: 2);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.HumansCreated.Should().Be(2);
         result.DecisionsThrottled.Should().Be(0);

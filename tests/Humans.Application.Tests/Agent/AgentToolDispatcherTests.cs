@@ -14,7 +14,7 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", "delete_users", "{}"),
             userId: Guid.NewGuid(),
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Unknown tool");
@@ -39,7 +39,7 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":5}"""),
             userId: viewer,
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         result.Content.Should().Contain("voluntold You");
@@ -57,7 +57,7 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
             userId: Guid.NewGuid(),
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         result.Content.Should().Be("No audit history for this user.");
@@ -74,19 +74,19 @@ public class AgentToolDispatcherTests
         // Request 999 → clamps to 50.
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":999}"""),
-            userId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         stub.LastLimit.Should().Be(50);
 
         // Omit limit → defaults to 20.
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, "{}"),
-            userId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         stub.LastLimit.Should().Be(20);
 
         // Request 0 → clamps to 1 (minimum).
         await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetAuditHistory, """{"limit":0}"""),
-            userId: Guid.NewGuid(), CancellationToken.None);
+            userId: Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         stub.LastLimit.Should().Be(1);
     }
 
@@ -168,7 +168,7 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{blockId}}"}"""),
             userId: viewer,
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         result.Content.Should().Contain("Cantina build");
@@ -199,7 +199,7 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{signup.Id}}"}"""),
             userId: viewer,
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         result.Content.Should().Contain("Setup crew");
@@ -224,7 +224,7 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{Guid.NewGuid()}}"}"""),
             userId: viewer,
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Shift not found");
@@ -252,7 +252,7 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
                 $$"""{"shiftId":"{{foreignBlockId}}"}"""),
             userId: viewer,
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Shift not found");
@@ -265,7 +265,7 @@ public class AgentToolDispatcherTests
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails, """{"shiftId":"not-a-guid"}"""),
             userId: Guid.NewGuid(),
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("must be a valid GUID");
     }
@@ -320,7 +320,7 @@ public class AgentToolDispatcherTests
             new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
                 """{"title":"Calendar feature","category":"Feature","description":"User asked about calendar; not implemented yet."}"""),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         result.Content.Should().Contain("Proposal queued");

@@ -66,6 +66,10 @@
                class="btn @(Model.StatusFilter == "deleted" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Deleted"]
             </a>
+            <a asp-action="AdminList" asp-route-filter="googlerejected" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "googlerejected" ? "btn-danger" : "btn-outline-danger")">
+                Google: Rejected
+            </a>
         </div>
     </div>
 </div>

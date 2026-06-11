@@ -83,7 +83,7 @@ public sealed class ShiftAdminPageBuilderTests
 
         vm.PendingSignups.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()
-            .GetUsersWithAllRequiredConsentsForTeamAsync(null!, Guid.Empty, CancellationToken.None);
+            .GetUsersWithAllRequiredConsentsForTeamAsync(null!, Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

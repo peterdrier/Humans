@@ -97,7 +97,7 @@ public class MembershipPartitionTests
         var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
         SeedConsent(userId, versionId);
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Active.Should().Contain(userId);
         result.PendingApproval.Should().NotContain(userId);
@@ -113,7 +113,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         SeedProfile(userId, isApproved: false, isSuspended: false);
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.PendingApproval.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -125,7 +125,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Suspended.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -137,7 +137,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         // No profile seeded
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.IncompleteSignup.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -149,7 +149,7 @@ public class MembershipPartitionTests
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: false);
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.PendingDeletion.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -162,7 +162,7 @@ public class MembershipPartitionTests
         SeedProfile(userId, isApproved: true, isSuspended: false);
         SeedRequiredVersion(SystemTeamIds.Volunteers); // required doc, no consent record
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.MissingConsents.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -193,7 +193,7 @@ public class MembershipPartitionTests
         // Has a required doc from above but no consent record
 
         var allIds = new[] { activeUser, pendingUser, suspendedUser, incompleteUser, deletionUser, missingConsentsUser };
-        var result = await _service.PartitionUsersAsync(allIds);
+        var result = await _service.PartitionUsersAsync(allIds, Xunit.TestContext.Current.CancellationToken);
 
         var totalCount = result.Active.Count
             + result.PendingApproval.Count
@@ -228,7 +228,7 @@ public class MembershipPartitionTests
         SeedProfile(missingConsentsUser, isApproved: true, isSuspended: false);
 
         var allIds = new[] { activeUser, pendingUser, suspendedUser, incompleteUser, deletionUser, missingConsentsUser };
-        var result = await _service.PartitionUsersAsync(allIds);
+        var result = await _service.PartitionUsersAsync(allIds, Xunit.TestContext.Current.CancellationToken);
 
         var buckets = new[]
         {
@@ -254,7 +254,7 @@ public class MembershipPartitionTests
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.PartitionUsersAsync([userId]);
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.PendingDeletion.Should().Contain(userId);
         result.Suspended.Should().NotContain(userId);

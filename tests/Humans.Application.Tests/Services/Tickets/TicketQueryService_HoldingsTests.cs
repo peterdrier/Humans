@@ -55,7 +55,7 @@ public sealed class TicketQueryService_HoldingsTests
     [HumansFact]
     public async Task ReturnsEmpty_WhenUserHasNoOrdersAndNoAttendees()
     {
-        var result = await Service.GetUserTicketHoldingsAsync(UserA);
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
         result.OrderCount.Should().Be(0);
         result.Tickets.Should().BeEmpty();
     }
@@ -103,7 +103,7 @@ public sealed class TicketQueryService_HoldingsTests
                 attendeeMatchedA_Order3
             ]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA);
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.OrderCount.Should().Be(2);
         result.Tickets.Should().HaveCount(2);
@@ -137,7 +137,7 @@ public sealed class TicketQueryService_HoldingsTests
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([voided, active]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA);
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.Tickets.Should().HaveCount(2);
         result.Tickets[0].Status.Should().Be(TicketAttendeeStatus.Valid);
@@ -187,7 +187,7 @@ public sealed class TicketQueryService_HoldingsTests
                 },
             ]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA);
+        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         var pendingRow = result.Tickets.Single(t => t.AttendeeId == inTransfer.Id);
         pendingRow.HasPendingOutgoingTransfer.Should().BeTrue();

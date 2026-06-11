@@ -39,7 +39,7 @@ public class ExpenseRepositoryTests
             UpdatedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
         });
 
-        var got = await _sut.GetByIdAsync(id);
+        var got = await _sut.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
         got.Should().NotBeNull();
         got.Id.Should().Be(id);
     }
@@ -51,7 +51,7 @@ public class ExpenseRepositoryTests
         var otherId = Guid.NewGuid();
         await Seed(MakeReport(submitter: meId), MakeReport(submitter: otherId));
 
-        var mine = await _sut.GetForSubmitterAsync(meId);
+        var mine = await _sut.GetForSubmitterAsync(meId, Xunit.TestContext.Current.CancellationToken);
         mine.Should().HaveCount(1);
         mine[0].SubmitterUserId.Should().Be(meId);
     }
@@ -64,7 +64,7 @@ public class ExpenseRepositoryTests
             MakeReport(status: ExpenseReportStatus.Submitted),
             MakeReport(status: ExpenseReportStatus.Approved));
 
-        var submitted = await _sut.GetByStatusAsync(ExpenseReportStatus.Submitted);
+        var submitted = await _sut.GetByStatusAsync(ExpenseReportStatus.Submitted, Xunit.TestContext.Current.CancellationToken);
         submitted.Should().HaveCount(1);
         submitted[0].Status.Should().Be(ExpenseReportStatus.Submitted);
     }
@@ -73,9 +73,9 @@ public class ExpenseRepositoryTests
     public async Task AddDraftAsync_PersistsReport()
     {
         var report = MakeReport();
-        await _sut.AddDraftAsync(report);
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
 
-        var loaded = await _sut.GetByIdAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded.Should().NotBeNull();
         loaded.Status.Should().Be(ExpenseReportStatus.Draft);
     }
@@ -84,13 +84,13 @@ public class ExpenseRepositoryTests
     public async Task AddLineAsync_AppendsLine_AndUpdatesTotal()
     {
         var report = MakeReport();
-        await _sut.AddDraftAsync(report);
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
 
         var ok = await _sut.AddLineAsync(report.Id,
-            new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 12.50m });
+            new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 12.50m }, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().HaveCount(1);
         loaded.Total.Should().Be(12.50m);
     }
@@ -99,17 +99,17 @@ public class ExpenseRepositoryTests
     public async Task RemoveLineAsync_RemovesAndRecomputesTotal()
     {
         var report = MakeReport();
-        await _sut.AddDraftAsync(report);
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
         var lineId = Guid.NewGuid();
         await _sut.AddLineAsync(report.Id,
-            new ExpenseLine { Id = lineId, Description = "a", Amount = 10m });
+            new ExpenseLine { Id = lineId, Description = "a", Amount = 10m }, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddLineAsync(report.Id,
-            new ExpenseLine { Id = Guid.NewGuid(), Description = "b", Amount = 20m });
+            new ExpenseLine { Id = Guid.NewGuid(), Description = "b", Amount = 20m }, Xunit.TestContext.Current.CancellationToken);
 
-        var ok = await _sut.RemoveLineAsync(report.Id, lineId);
+        var ok = await _sut.RemoveLineAsync(report.Id, lineId, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.Should().HaveCount(1);
         loaded.Total.Should().Be(20m);
     }
@@ -118,10 +118,10 @@ public class ExpenseRepositoryTests
     public async Task SetLineAttachmentAsync_LinksAttachment()
     {
         var report = MakeReport();
-        await _sut.AddDraftAsync(report);
+        await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
         var lineId = Guid.NewGuid();
         await _sut.AddLineAsync(report.Id,
-            new ExpenseLine { Id = lineId, Description = "x", Amount = 1m });
+            new ExpenseLine { Id = lineId, Description = "x", Amount = 1m }, Xunit.TestContext.Current.CancellationToken);
 
         var attachId = await _sut.AddAttachmentAsync(new ExpenseAttachment
         {
@@ -132,11 +132,11 @@ public class ExpenseRepositoryTests
             SizeBytes = 100,
             UploadedByUserId = Guid.NewGuid(),
             UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
-        });
+        }, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.SetLineAttachmentAsync(lineId, attachId);
+        await _sut.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
 
-        var loaded = await _sut.GetByIdAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Lines.First().AttachmentId.Should().Be(attachId);
         loaded.Lines.First().Attachment.Should().NotBeNull();
     }
@@ -145,18 +145,18 @@ public class ExpenseRepositoryTests
     public async Task SubmitAsync_FlipsStatus_AndStampsSubmittedAt()
     {
         var r = MakeReport();
-        await _sut.AddDraftAsync(r);
+        await _sut.AddDraftAsync(r, Xunit.TestContext.Current.CancellationToken);
         await _sut.AddLineAsync(r.Id,
-            new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 5m });
-        var attachId = await _sut.AddAttachmentAsync(NewAttachment());
-        var line = (await _sut.GetByIdAsync(r.Id))!.Lines.First();
-        await _sut.SetLineAttachmentAsync(line.Id, attachId);
+            new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 5m }, Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _sut.AddAttachmentAsync(NewAttachment(), Xunit.TestContext.Current.CancellationToken);
+        var line = (await _sut.GetByIdAsync(r.Id, Xunit.TestContext.Current.CancellationToken))!.Lines.First();
+        await _sut.SetLineAttachmentAsync(line.Id, attachId, Xunit.TestContext.Current.CancellationToken);
 
         var ok = await _sut.SubmitAsync(r.Id, "Alice", "ES9121000418450200051332",
-            Instant.FromUtc(2026, 5, 2, 9, 0));
+            Instant.FromUtc(2026, 5, 2, 9, 0), Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdAsync(r.Id);
+        var loaded = await _sut.GetByIdAsync(r.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
         loaded.PayeeName.Should().Be("Alice");
         loaded.PayeeIban.Should().Be("ES9121000418450200051332");
@@ -171,15 +171,15 @@ public class ExpenseRepositoryTests
         var outboxId = Guid.NewGuid();
 
         var ok = await _sut.ApproveAsync(r.Id, Guid.NewGuid(), null,
-            Instant.FromUtc(2026, 5, 3, 12, 0), outboxId);
+            Instant.FromUtc(2026, 5, 3, 12, 0), outboxId, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdAsync(r.Id);
+        var loaded = await _sut.GetByIdAsync(r.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Approved);
         loaded.ApprovedAt.Should().NotBeNull();
 
-        await using var ctx = await _factory.CreateDbContextAsync();
-        var ev = await ctx.HoldedExpenseOutboxEvents.FirstAsync(e => e.Id == outboxId);
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        var ev = await ctx.HoldedExpenseOutboxEvents.FirstAsync(e => e.Id == outboxId, Xunit.TestContext.Current.CancellationToken);
         ev.ExpenseReportId.Should().Be(r.Id);
         ev.EventType.Should().Be(HoldedExpenseOutboxEventType.CreateIncomingDoc);
     }
@@ -193,12 +193,12 @@ public class ExpenseRepositoryTests
         await Seed(a, b, c);
 
         var flipped = await _sut.MarkSepaSentAsync([a.Id, b.Id],
-            Instant.FromUtc(2026, 5, 4, 10, 0));
+            Instant.FromUtc(2026, 5, 4, 10, 0), Xunit.TestContext.Current.CancellationToken);
         flipped.Should().BeEquivalentTo([a.Id, b.Id]);
 
-        (await _sut.GetByIdAsync(a.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetByIdAsync(b.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetByIdAsync(c.Id))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        (await _sut.GetByIdAsync(a.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+        (await _sut.GetByIdAsync(b.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+        (await _sut.GetByIdAsync(c.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
     }
 
     [HumansFact]
@@ -210,7 +210,7 @@ public class ExpenseRepositoryTests
         var ev4 = NewOutbox();
         await SeedOutbox(ev1, ev2, ev3, ev4);
 
-        var got = await _sut.GetUnprocessedOutboxAsync(limit: 10);
+        var got = await _sut.GetUnprocessedOutboxAsync(limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
         got.Should().HaveCount(2);
         got.Select(e => e.Id).Should().BeEquivalentTo([ev1.Id, ev4.Id]);
     }
@@ -226,25 +226,25 @@ public class ExpenseRepositoryTests
         await Seed(report);
         var updatedAt = Instant.FromUtc(2026, 5, 5, 1, 0);
 
-        await _sut.SetHoldedDocIdAsync(report.Id, "doc-123", updatedAt);
+        await _sut.SetHoldedDocIdAsync(report.Id, "doc-123", updatedAt, Xunit.TestContext.Current.CancellationToken);
 
-        var loaded = await _sut.GetByIdAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id, Xunit.TestContext.Current.CancellationToken);
         loaded!.HoldedDocId.Should().Be("doc-123");
         loaded.UpdatedAt.Should().Be(updatedAt);
     }
 
     private async Task Seed(params ExpenseReport[] reports)
     {
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         await ctx.ExpenseReports.AddRangeAsync(reports);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedOutbox(params HoldedExpenseOutboxEvent[] events)
     {
-        await using var ctx = await _factory.CreateDbContextAsync();
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         await ctx.HoldedExpenseOutboxEvents.AddRangeAsync(events);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private static ExpenseReport MakeReport(

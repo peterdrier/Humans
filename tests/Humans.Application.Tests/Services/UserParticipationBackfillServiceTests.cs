@@ -34,7 +34,7 @@ public sealed class UserParticipationBackfillServiceTests
         var b = Guid.NewGuid();
         var csv = $"UserId,Status\n{a},Ticketed\nnot-a-guid,Ticketed\n{b},notastatus\n{b},NotAttending\n";
 
-        var result = await CreateService().BackfillFromCsvAsync(2026, csv);
+        var result = await CreateService().BackfillFromCsvAsync(2026, csv, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         _captured.Should().Equal((a, ParticipationStatus.Ticketed), (b, ParticipationStatus.NotAttending));
@@ -46,7 +46,7 @@ public sealed class UserParticipationBackfillServiceTests
         var a = Guid.NewGuid();
         var csv = $"\"{a}\";\"Ticketed\"\n";
 
-        var result = await CreateService().BackfillFromCsvAsync(2026, csv);
+        var result = await CreateService().BackfillFromCsvAsync(2026, csv, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         _captured.Should().Equal((a, ParticipationStatus.Ticketed));
@@ -55,9 +55,9 @@ public sealed class UserParticipationBackfillServiceTests
     [HumansFact]
     public async Task NoValidEntries_FailsWithoutCallingUserService()
     {
-        var result = await CreateService().BackfillFromCsvAsync(2026, "garbage\nmore,garbage\n");
+        var result = await CreateService().BackfillFromCsvAsync(2026, "garbage\nmore,garbage\n", Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, CancellationToken.None);
+        await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, Arg.Any<CancellationToken>());
     }
 }

@@ -75,7 +75,7 @@ public class UsersAdminDebugControllerTests
 
         var controller = new UsersAdminDebugController(userService);
 
-        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
+        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
         result.Should().NotBeNull();
         var vm = result.Model.Should().BeOfType<UsersDebugViewModel>().Subject;
@@ -100,7 +100,7 @@ public class UsersAdminDebugControllerTests
 
         var controller = new UsersAdminDebugController(userService);
 
-        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc") as ViewResult;
+        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc", ct: Xunit.TestContext.Current.CancellationToken) as ViewResult;
 
         var vm = (UsersDebugViewModel)result!.Model!;
         vm.Rows.Select(r => r.DisplayName).Should().Equal("Carol", "Bob", "Alice");
@@ -118,10 +118,10 @@ public class UsersAdminDebugControllerTests
 
         var controller = new UsersAdminDebugController(userService);
 
-        var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1)).Model!;
+        var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1, ct: Xunit.TestContext.Current.CancellationToken)).Model!;
         tooSmall.PageSize.Should().Be(10);
 
-        var tooBig = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 9999)).Model!;
+        var tooBig = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 9999, ct: Xunit.TestContext.Current.CancellationToken)).Model!;
         tooBig.PageSize.Should().Be(200);
     }
 }

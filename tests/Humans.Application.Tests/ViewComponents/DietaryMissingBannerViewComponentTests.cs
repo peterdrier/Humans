@@ -43,7 +43,7 @@ public class DietaryMissingBannerViewComponentTests
     public async Task Renders_WhenQualifyingSignupAndDietaryEmpty()
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(true);
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, null));
 
         var result = await _sut.InvokeAsync(userId);
@@ -58,7 +58,7 @@ public class DietaryMissingBannerViewComponentTests
     public async Task DoesNotRender_WhenGateMissed(bool hasQualifying, string? dietary)
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId).Returns(hasQualifying);
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(hasQualifying);
         _userRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, dietary));
 
         var result = await _sut.InvokeAsync(userId);
@@ -71,7 +71,7 @@ public class DietaryMissingBannerViewComponentTests
     public async Task DoesNotRender_WhenServiceThrows()
     {
         var userId = Guid.NewGuid();
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId)
+        _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>())
                   .Returns<Task<bool>>(_ => throw new InvalidOperationException("transient DB error"));
 
         var result = await _sut.InvokeAsync(userId);

@@ -13,11 +13,11 @@ public class MailerLiteClientCacheTests
         var handler = new CountingHandler();
         var client = BuildClient(handler);
 
-        _ = await client.GetAccountSummaryAsync();
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
         var callsAfterFirst = handler.Calls;
-        _ = await client.GetAccountSummaryAsync();
-        _ = await client.ListGroupsAsync();
-        await foreach (var _ in client.ListSubscribersAsync()) { /* drain */ }
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        _ = await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken);
+        await foreach (var _ in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken)) { /* drain */ }
 
         handler.Calls.Should().Be(callsAfterFirst, "every read after the first must be served from the cache");
     }
@@ -28,7 +28,7 @@ public class MailerLiteClientCacheTests
         var client = BuildClient(new CountingHandler());
         client.LastFetchedAt.Should().BeNull();
 
-        _ = await client.GetAccountSummaryAsync();
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
 
         client.LastFetchedAt.Should().NotBeNull();
     }
@@ -39,10 +39,10 @@ public class MailerLiteClientCacheTests
         var handler = new CountingHandler();
         var client = BuildClient(handler);
 
-        _ = await client.GetAccountSummaryAsync();
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
         var callsBeforeRefresh = handler.Calls;
 
-        await client.RefreshAsync();
+        await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
 
         handler.Calls.Should().BeGreaterThan(callsBeforeRefresh, "Refresh must re-fetch from MailerLite");
     }

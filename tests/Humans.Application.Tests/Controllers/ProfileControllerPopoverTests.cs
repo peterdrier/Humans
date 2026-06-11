@@ -118,7 +118,7 @@ public class ProfileControllerPopoverTests
         var id = Guid.NewGuid();
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var result = await _controller.Popover(id, CancellationToken.None);
+        var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -145,7 +145,7 @@ public class ProfileControllerPopoverTests
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile: null, userEmails));
 
-        var result = await _controller.Popover(id, CancellationToken.None);
+        var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
 
         var partial = result.Should().BeOfType<PartialViewResult>().Subject;
         partial.ViewName.Should().Be("_HumanPopover");
@@ -188,7 +188,7 @@ public class ProfileControllerPopoverTests
         _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
             .Returns(new List<Models.TeamMembership>());
 
-        var result = await _controller.Popover(id, CancellationToken.None);
+        var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
 
         var partial = result.Should().BeOfType<PartialViewResult>().Subject;
         partial.ViewName.Should().Be("_HumanPopover");
@@ -234,7 +234,7 @@ public class ProfileControllerPopoverTests
         _campService.GetCampUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(new CampUserInfo(season, ["Camp Lead", "Greeter"]));
 
-        var result = await _controller.Popover(id, CancellationToken.None);
+        var result = await _controller.Popover(id, Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
