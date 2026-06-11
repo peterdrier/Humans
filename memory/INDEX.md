@@ -142,7 +142,10 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`birthday-not-dob`](product/birthday-not-dob.md) — store birthday (month + day only); UI says "birthday", never "date of birth"
 - [`coolify-build-constraint`](product/coolify-build-constraint.md) — Coolify strips `.git`; never `COPY .git` in Dockerfile; use `SOURCE_COMMIT` build arg
+- [`humans-at-is-third-level`](product/humans-at-is-third-level.md) — humans@ is Peter, 3rd-level support; copy ladder = help button → coordinator/Discord → humans@ last resort
 - [`humans-terminology`](product/humans-terminology.md) — UI uses "humans"; never "members"/"volunteers"/"users". Stays English in es/de/fr/it.
+- [`member-copy-distractions`](product/member-copy-distractions.md) — member-facing copy: no Google-avatar mentions; no Consent Coordinator narrative in the volunteer journey
+- [`nobodies-email-need-based`](product/nobodies-email-need-based.md) — @nobodies.team accounts granted on need (role/PII), never default; copy must carry the 2FA/primary-account caution
 - [`no-event-name-nowhere`](product/no-event-name-nowhere.md) — never use "Nowhere" in user-facing text (legal); "Elsewhere" is the current event name
 - [`no-ranking-language`](product/no-ranking-language.md) — never "tier status"/"standing"/"level"; tiers are commitments, not ranks. Say "membership tier".
 - [`no-url-aliases`](product/no-url-aliases.md) — single canonical URL per page; only sanctioned alias is Barrios↔Camps

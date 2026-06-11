@@ -159,4 +159,4 @@ documents; admission is automatic. See [Onboarding](Onboarding.md).
 
 The role that acts as a facilitation contact for onboarding, with read-only
 access to the onboarding review queue. Distinct from the Consent Coordinator,
-who clears consents. See [Onboarding](Onboarding.md).
+who reviews consents. See [Onboarding](Onboarding.md).

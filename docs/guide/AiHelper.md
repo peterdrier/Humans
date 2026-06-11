@@ -27,7 +27,8 @@ have to use it, and everything in the app works without it.
   up, transfer your ticket, or edit your profile behind your back.
 - It's only there when you're **signed in**. Signed-out visitors don't see it.
 - It's not a person. It's usually right, but if something matters, double-check
-  with your coordinator or [humans@nobodies.team](mailto:humans@nobodies.team).
+  with your coordinator or in [#🧘-humans-app](https://discord.gg/fq7gr29p) on
+  Discord.
 
 ## Is it private?
 
@@ -51,7 +52,7 @@ Worth knowing, in plain terms:
 | Do I have to use it? | No — it's optional, and the app works fine without it |
 | Will it do things for me? | No. It can tee things up, but you press the button |
 | Can it see my stuff? | It knows your account so it can help (your teams, shifts, tickets, to-dos). It can't see your passwords |
-| It gave me a wrong answer | It happens — check with your coordinator or email [humans@nobodies.team](mailto:humans@nobodies.team) |
+| It gave me a wrong answer | It happens — check with your coordinator, or file an issue via the same help button so it gets fixed |
 | I'd rather just report a bug | Same help button → "Create issue" (or "Feedback") files it for the team |
 
 ## Related

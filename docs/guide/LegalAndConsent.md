@@ -35,7 +35,7 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 - **Your consents** (`/Consent`) — any signed-in human reviews documents they've signed and re-signs when versions change.
 - **My Data** (`/Profile/Me/Privacy`) — Download my Data (Article 15) and Account Deletion (Article 17).
 - **Statutes** (`/Legal`) — anyone, including signed-out visitors, reads the association's current statutes (pulled directly from GitHub).
-- **Onboarding review queue** (`/OnboardingReview`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Volunteer Coordinator](Glossary.md#volunteer-coordinator), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view humans awaiting activation; only Consent Coordinator, Board, and Admin can clear, flag, or reject.
+- **Onboarding review queue** (`/OnboardingReview`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Volunteer Coordinator](Glossary.md#volunteer-coordinator), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view new signups; only Consent Coordinator, Board, and Admin can clear, flag, or reject.
 - **Manage documents** (`/Legal/Admin/Documents`) — Board and Admin create, edit, archive, and publish legal documents.
 
 ## As a [Volunteer](Glossary.md#volunteer)

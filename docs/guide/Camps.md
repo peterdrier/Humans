@@ -109,7 +109,7 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 | City Planning / Placement | Melo — via Discord or the city planning channel |
 | Water, LNT, power obligations | Barrio Support — comms go out via Humans to camp leads |
 | Barrio store / purchasing | Production & Logistics — [daniela@nobodies.team](mailto:daniela@nobodies.team) |
-| App issues | [humans@nobodies.team](mailto:humans@nobodies.team) |
+| App issues | The in-app help button (AI helper / file an issue); [humans@nobodies.team](mailto:humans@nobodies.team) only as a last resort |
 | General questions | [#🎪-barrios](https://discord.gg/rBZxDv8z) on Discord |
 
 ## Related sections

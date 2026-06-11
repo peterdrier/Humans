@@ -64,7 +64,7 @@ There is no preselected level — you choose one when you add the field.
 
 ### Upload a profile picture
 
-On the edit page, choose an image (JPEG, PNG, WebP, or HEIC/HEIF/AVIF from a phone camera, up to 20 MB). The system rotates and resizes it server-side to a long edge of 1000 px and re-encodes as JPEG. Your custom picture takes precedence over your Google avatar everywhere in the app. You can remove it later to revert to the Google avatar.
+On the edit page, choose an image (JPEG, PNG, WebP, or HEIC/HEIF/AVIF from a phone camera, up to 20 MB). The system rotates and resizes it server-side to a long edge of 1000 px and re-encodes as JPEG. You can remove or replace it later.
 
 ### Manage your email addresses
 

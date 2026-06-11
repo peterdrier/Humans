@@ -11,7 +11,7 @@ Go to the login page (`/Account/Login`). You'll see two options:
 - **Email me a login link.** Type your email address and we send you a link.
   Click it and you're in. Nothing to memorize.
 - **Sign in with Google.** One click, using a Google account you're already
-  signed into. Your name and photo come across automatically.
+  signed into. Your name comes across automatically.
 
 Either works. The login link is the simplest if you're not sure.
 
@@ -42,8 +42,8 @@ A few things to know about the link:
 | I clicked the link but nothing happened | Make sure you click the **button** on the page the link opens — that's the step that signs you in |
 | Google sign-in won't go through | Try the "email me a login link" option instead — it gets you to the same place |
 | I'm signed in but the app looks empty / locked | You're in, but your profile isn't finished yet. Fill it in (you'll be nudged to `/Profile/Me/Edit`) and the rest opens up — see [Getting Started](GettingStarted.md) |
-| I think I have two accounts | Don't make a third one. Email [humans@nobodies.team](mailto:humans@nobodies.team) and they can merge them for you |
-| Totally stuck | Email [humans@nobodies.team](mailto:humans@nobodies.team) or ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord |
+| I think I have two accounts | Don't make a third one. Sign in to either and use the help button (bottom right) to file an issue so they can be merged |
+| Totally stuck | Ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord. If you truly can't get in and nobody there could help, email [humans@nobodies.team](mailto:humans@nobodies.team) as a last resort |
 
 ## A note on your two logins
 
