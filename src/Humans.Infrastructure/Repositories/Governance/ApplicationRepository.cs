@@ -31,13 +31,13 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .Where(a => a.UserId == userId)
             .ToListAsync(ct), ct);
 
-    public async Task<bool> AnySubmittedForUserAsync(Guid userId, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.Applications.AnyAsync(
+    public Task<bool> AnySubmittedForUserAsync(Guid userId, CancellationToken ct = default) =>
+        WithContextAsync(ctx => ctx.Applications.AnyAsync(
             a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
             ct), ct);
 
-    public async Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.Applications.CountAsync(a => a.Status == status, ct), ct);
+    public Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default) =>
+        WithContextAsync(ctx => ctx.Applications.CountAsync(a => a.Status == status, ct), ct);
 
     public async Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
@@ -130,9 +130,9 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
         return matched.ToHashSet();
     }
 
-    public async Task<MemberApplication?> GetSubmittedForUserAsync(
+    public Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.Applications
+        WithContextAsync(ctx => ctx.Applications
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
@@ -155,8 +155,8 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .ToListAsync(ct), ct);
 
-    public async Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct), ct);
+    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
+        WithContextAsync(ctx => ctx.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct), ct);
 
     public async Task UpsertBoardVoteAsync(
         Guid applicationId,
@@ -194,9 +194,9 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> GetUnvotedCountForBoardMemberAsync(
+    public Task<int> GetUnvotedCountForBoardMemberAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.Applications.CountAsync(
+        WithContextAsync(ctx => ctx.Applications.CountAsync(
             a => a.Status == ApplicationStatus.Submitted &&
                  !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
             ct), ct);
@@ -274,9 +274,9 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .Distinct()
             .ToListAsync(ct), ct);
 
-    public async Task<bool> HasActiveApprovedTierAsync(
+    public Task<bool> HasActiveApprovedTierAsync(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        await WithContextAsync(ctx => ctx.Applications
+        WithContextAsync(ctx => ctx.Applications
             .AsNoTracking()
             .AnyAsync(a =>
                 a.UserId == userId &&
@@ -302,10 +302,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
     }
-
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
 
     public async Task<int> ReassignApplicationsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,

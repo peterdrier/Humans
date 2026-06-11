@@ -93,54 +93,23 @@ public sealed class ApplicationDecisionService(
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-        if (user is not null)
-        {
-            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
-                [application.UserId], cancellationToken);
-            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
-                && !string.IsNullOrWhiteSpace(recipientEmail))
-            {
-                try
-                {
-                    await emailService.SendAsync(emailMessages.ApplicationApproved(
-                        recipientEmail,
-                        user.BurnerName,
-                        application.MembershipTier,
-                        user.PreferredLanguage));
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
-                }
-            }
-            else
-            {
-                logger.LogWarning(
-                    "Skipping approval email for application {ApplicationId} because user {UserId} has no notification-target email",
-                    application.Id, application.UserId);
-            }
-        }
+        await SendDecisionEmailAsync(
+            application,
+            "approval",
+            (recipientEmail, user) => emailMessages.ApplicationApproved(
+                recipientEmail,
+                user.BurnerName,
+                application.MembershipTier,
+                user.PreferredLanguage),
+            cancellationToken);
 
-        try
-        {
-            await notificationService.SendAsync(
-                NotificationSource.ApplicationApproved,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                $"Your {application.MembershipTier} application has been approved",
-                [application.UserId],
-                body: $"Congratulations! Your {application.MembershipTier} application has been approved.",
-                actionUrl: "/Governance/MyApplications",
-                actionLabel: "View application",
-                cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to dispatch ApplicationApproved notification for {ApplicationId}",
-                application.Id);
-        }
+        await SendDecisionNotificationAsync(
+            application,
+            NotificationSource.ApplicationApproved,
+            $"Your {application.MembershipTier} application has been approved",
+            $"Congratulations! Your {application.MembershipTier} application has been approved.",
+            "ApplicationApproved",
+            cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -159,7 +128,6 @@ public sealed class ApplicationDecisionService(
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
-        // Capture voter ids before FinalizeAsync deletes them.
         var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
         application.Reject(reviewerUserId, reason, clock);
@@ -185,55 +153,24 @@ public sealed class ApplicationDecisionService(
             "Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
 
-        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-        if (user is not null)
-        {
-            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
-                [application.UserId], cancellationToken);
-            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
-                && !string.IsNullOrWhiteSpace(recipientEmail))
-            {
-                try
-                {
-                    await emailService.SendAsync(emailMessages.ApplicationRejected(
-                        recipientEmail,
-                        user.BurnerName,
-                        application.MembershipTier,
-                        reason,
-                        user.PreferredLanguage));
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
-                }
-            }
-            else
-            {
-                logger.LogWarning(
-                    "Skipping rejection email for application {ApplicationId} because user {UserId} has no notification-target email",
-                    application.Id, application.UserId);
-            }
-        }
+        await SendDecisionEmailAsync(
+            application,
+            "rejection",
+            (recipientEmail, user) => emailMessages.ApplicationRejected(
+                recipientEmail,
+                user.BurnerName,
+                application.MembershipTier,
+                reason,
+                user.PreferredLanguage),
+            cancellationToken);
 
-        try
-        {
-            await notificationService.SendAsync(
-                NotificationSource.ApplicationRejected,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                $"Your {application.MembershipTier} application was not approved",
-                [application.UserId],
-                body: $"Your {application.MembershipTier} application was not approved.",
-                actionUrl: "/Governance/MyApplications",
-                actionLabel: "View application",
-                cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to dispatch ApplicationRejected notification for {ApplicationId}",
-                application.Id);
-        }
+        await SendDecisionNotificationAsync(
+            application,
+            NotificationSource.ApplicationRejected,
+            $"Your {application.MembershipTier} application was not approved",
+            $"Your {application.MembershipTier} application was not approved.",
+            "ApplicationRejected",
+            cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -242,22 +179,21 @@ public sealed class ApplicationDecisionService(
         Guid userId, CancellationToken ct = default)
     {
         var applications = await repository.GetByUserIdAsync(userId, ct);
-        return applications.Select(ToUserApplicationSnapshot).ToList();
+        return applications
+            .Select(application => new UserApplicationSnapshot(
+                application.Id,
+                application.UserId,
+                application.Status,
+                application.MembershipTier,
+                application.SubmittedAt,
+                application.ResolvedAt,
+                application.TermExpiresAt,
+                application.Motivation,
+                application.AdditionalInfo,
+                application.SignificantContribution,
+                application.RoleUnderstanding))
+            .ToList();
     }
-
-    private static UserApplicationSnapshot ToUserApplicationSnapshot(MemberApplication application) =>
-        new(
-            application.Id,
-            application.UserId,
-            application.Status,
-            application.MembershipTier,
-            application.SubmittedAt,
-            application.ResolvedAt,
-            application.TermExpiresAt,
-            application.Motivation,
-            application.AdditionalInfo,
-            application.SignificantContribution,
-            application.RoleUnderstanding);
 
     public async Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
         Guid applicationId, Guid userId, CancellationToken ct = default)
@@ -571,16 +507,15 @@ public sealed class ApplicationDecisionService(
     {
         var applications = await repository.GetExpiringApplicationsNeedingReminderAsync(
             today, reminderThreshold, ct);
-        return applications.Select(ToRenewalReminderCandidate).ToList();
+        return applications
+            .Select(application => new ApplicationRenewalReminderCandidate(
+                application.Id,
+                application.UserId,
+                application.MembershipTier,
+                application.SubmittedAt,
+                application.TermExpiresAt))
+            .ToList();
     }
-
-    private static ApplicationRenewalReminderCandidate ToRenewalReminderCandidate(MemberApplication application) =>
-        new(
-            application.Id,
-            application.UserId,
-            application.MembershipTier,
-            application.SubmittedAt,
-            application.TermExpiresAt);
 
     public Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default) =>
@@ -692,5 +627,68 @@ public sealed class ApplicationDecisionService(
             .ToList();
 
         return (reviewerName, history);
+    }
+
+    private async Task SendDecisionEmailAsync(
+        MemberApplication application,
+        string decisionName,
+        Func<string, UserInfo, EmailMessage> buildMessage,
+        CancellationToken cancellationToken)
+    {
+        var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
+        if (user is null)
+            return;
+
+        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
+            [application.UserId], cancellationToken);
+        if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
+            && !string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            try
+            {
+                await emailService.SendAsync(buildMessage(recipientEmail, user));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to send {DecisionName} email for {ApplicationId}",
+                    decisionName, application.Id);
+            }
+        }
+        else
+        {
+            logger.LogWarning(
+                "Skipping {DecisionName} email for application {ApplicationId} because user {UserId} has no notification-target email",
+                decisionName, application.Id, application.UserId);
+        }
+    }
+
+    private async Task SendDecisionNotificationAsync(
+        MemberApplication application,
+        NotificationSource source,
+        string title,
+        string body,
+        string logName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await notificationService.SendAsync(
+                source,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                title,
+                [application.UserId],
+                body: body,
+                actionUrl: "/Governance/MyApplications",
+                actionLabel: "View application",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch {NotificationName} notification for {ApplicationId}",
+                logName, application.Id);
+        }
     }
 }

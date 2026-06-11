@@ -3,11 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
-
-using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -156,8 +155,7 @@ public class GovernanceBoardVotingController(
         LocalDate? meetingDate = null;
         if (!string.IsNullOrWhiteSpace(model.BoardMeetingDate))
         {
-            var pattern = NodaTime.Text.LocalDatePattern.Iso;
-            var parseResult = pattern.Parse(model.BoardMeetingDate);
+            var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(model.BoardMeetingDate);
             if (parseResult.Success)
                 meetingDate = parseResult.Value;
         }
@@ -177,19 +175,13 @@ public class GovernanceBoardVotingController(
 
         try
         {
-            ApplicationDecisionResult result;
-            if (model.Approved)
-            {
-                result = await applicationDecisionService.ApproveAsync(
+            var result = model.Approved
+                ? await applicationDecisionService.ApproveAsync(
                     model.ApplicationId, currentUser.Id,
-                    model.DecisionNote, meetingDate);
-            }
-            else
-            {
-                result = await applicationDecisionService.RejectAsync(
+                    model.DecisionNote, meetingDate)
+                : await applicationDecisionService.RejectAsync(
                     model.ApplicationId, currentUser.Id,
                     model.DecisionNote ?? string.Empty, meetingDate);
-            }
 
             if (!result.Success)
             {

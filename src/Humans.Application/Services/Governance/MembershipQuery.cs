@@ -14,12 +14,12 @@ public sealed class MembershipQuery(ITeamServiceRead teamService, IRoleAssignmen
         CancellationToken cancellationToken = default)
     {
         return (await teamService.GetTeamsAsync(cancellationToken)).Values
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new MembershipTeamSnapshot(
-                x.TeamInfo.Id,
-                x.Membership!.Role,
-                x.TeamInfo.SystemTeamType))
+            .SelectMany(t => t.Members
+                .Where(m => m.UserId == userId)
+                .Select(m => new MembershipTeamSnapshot(
+                    t.Id,
+                    m.Role,
+                    t.SystemTeamType)))
             .ToList();
     }
 
