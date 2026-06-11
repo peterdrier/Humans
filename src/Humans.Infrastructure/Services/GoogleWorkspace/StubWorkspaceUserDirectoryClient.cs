@@ -86,7 +86,6 @@ public sealed class StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDi
     public Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string primaryEmail, CancellationToken ct = default)
     {
         logger.LogInformation("[Stub] Generated backup codes for fake account: {Email}", primaryEmail);
-        // Return 10 placeholder codes for local development visibility.
         IReadOnlyList<string> codes =
         [
             "1111-1111", "2222-2222", "3333-3333", "4444-4444", "5555-5555",

@@ -25,8 +25,6 @@ public class GoogleController(
     IGoogleAdminService googleAdminService,
     ILogger<GoogleController> logger) : HumansControllerBase(userService)
 {
-    // --- Sync Settings ---
-
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings(
@@ -85,8 +83,6 @@ public class GoogleController(
         return RedirectToAction(nameof(SyncSettings));
     }
 
-    // --- System Team Sync ---
-
     [HttpPost("SyncSystemTeams")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -126,8 +122,6 @@ public class GoogleController(
 
         return View(report);
     }
-
-    // --- Google Group Settings ---
 
     [HttpPost("CheckGroupSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -227,8 +221,6 @@ public class GoogleController(
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- All Domain Groups ---
-
     [HttpGet("AllGroups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> AllGroups()
@@ -273,8 +265,6 @@ public class GoogleController(
 
         return RedirectToAction(nameof(AllGroups));
     }
-
-    // --- Resource Sync Dashboard ---
 
     [HttpGet("Sync")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
@@ -353,8 +343,6 @@ public class GoogleController(
         }
     }
 
-    // --- Human Email Provisioning ---
-
     [HttpPost("Human/{id:guid}/ProvisionEmail")]
     [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
     [ValidateAntiForgeryToken]
@@ -391,8 +379,6 @@ public class GoogleController(
 
         return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
     }
-
-    // --- Workspace Accounts ---
 
     [HttpGet("Accounts")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -611,8 +597,6 @@ public class GoogleController(
         return RedirectToAction(nameof(Accounts));
     }
 
-    // --- Sync Outbox ---
-
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
@@ -725,8 +709,6 @@ public class GoogleController(
         return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
     }
 
-    // --- Email Rename Detection ---
-
     [HttpPost("CheckEmailRenames")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
@@ -766,8 +748,6 @@ public class GoogleController(
         return View(result);
     }
 
-    // --- Email Flag Violations (admin remediation) ---
-
     [HttpGet("EmailFlagViolations")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> EmailFlagViolations(
@@ -778,16 +758,12 @@ public class GoogleController(
         return View(violations);
     }
 
-    // --- Index ---
-
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Index()
     {
         return View();
     }
-
-    // --- Helpers ---
 
     private static string FormatServiceName(SyncServiceType type) => type switch
     {

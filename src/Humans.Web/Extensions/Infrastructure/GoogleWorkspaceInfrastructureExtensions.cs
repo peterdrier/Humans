@@ -17,10 +17,6 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         IHostEnvironment environment)
     {
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
-        // §15 Part 2b — Application-layer sync service reads non-sensitive
-        // fields (Domain, CustomerId, TeamFoldersParentId, Groups) through
-        // this Application-owned options type. Same appsettings section as
-        // GoogleWorkspaceSettings so a single config surface drives both.
         services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
         services.AddSingleton(_ =>
         {
@@ -33,9 +29,6 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
                                    !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
 
-        // Application-layer service uses the repo + one of the two Google
-        // connector implementations below. Stub connector is used when no
-        // service-account credentials are configured (dev only).
         services.AddScoped<ITeamResourceService, TeamResourceService>();
 
         if (hasGoogleCredentials)
@@ -45,25 +38,14 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
             services.AddScoped<IGoogleDriveActivityClient, GoogleDriveActivityClient>();
 
-            // Google Integration §15 migration (issue #554) — workspace users.
-            // Application-layer service depends only on the shape-neutral
-            // IWorkspaceUserDirectoryClient connector; the real and stub
-            // implementations live in Humans.Infrastructure.
             services.AddScoped<IWorkspaceUserDirectoryClient, WorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
 
-            // §15 Part 2a (issue #574) — SDK bridge interfaces for the
-            // GoogleWorkspaceSyncService migration in Part 2b (#575). These
-            // are registered alongside the existing SDK-direct service
-            // (dual-path during 2a → 2b transition). GoogleWorkspaceSyncService
-            // continues to import Google.Apis.* directly until Part 2b strips
-            // it; no Application-layer imports are added here.
             services.AddScoped<IGoogleGroupMembershipClient, GoogleGroupMembershipClient>();
             services.AddScoped<IGoogleGroupProvisioningClient, GoogleGroupProvisioningClient>();
             services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
             services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
 
-            // Cloud Translation (REST, same service account) — Survey's "pre-fill translations".
             services.AddHttpClient<IGoogleTranslationClient, GoogleTranslationClient>();
         }
         else if (environment.IsProduction())
@@ -82,11 +64,6 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
 
-            // §15 Part 2a (issue #574) — stub SDK bridge interfaces for dev
-            // environments without Google credentials. Registered as
-            // Singletons so each stub's in-memory state survives across
-            // scoped requests (matching the once-per-process behaviour of
-            // the real SDK client handles).
             services.AddSingleton<IGoogleGroupMembershipClient, StubGoogleGroupMembershipClient>();
             services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
             services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
@@ -97,7 +74,6 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
         services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
-
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();

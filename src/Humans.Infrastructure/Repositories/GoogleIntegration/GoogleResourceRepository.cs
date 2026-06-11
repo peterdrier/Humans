@@ -16,10 +16,6 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// </summary>
 internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext> factory) : IGoogleResourceRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     public async Task<GoogleResource?> GetByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -167,10 +163,6 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext
                 && r.ResourceType == GoogleResourceType.Group
                 && !r.IsActive, ct);
     }
-
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
 
     public async Task AddAsync(GoogleResource resource, CancellationToken ct = default)
     {

@@ -106,12 +106,6 @@ public sealed class TeamResourceGoogleClient(
             return _serviceAccountEmail;
         }
 
-        _serviceAccountEmail = await ExtractServiceAccountEmailAsync(ct);
-        return _serviceAccountEmail;
-    }
-
-    private async Task<string> ExtractServiceAccountEmailAsync(CancellationToken ct)
-    {
         string? json = null;
 
         if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
@@ -128,11 +122,13 @@ public sealed class TeamResourceGoogleClient(
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
             {
-                return emailElement.GetString() ?? "unknown@serviceaccount.iam.gserviceaccount.com";
+                _serviceAccountEmail = emailElement.GetString() ?? "unknown@serviceaccount.iam.gserviceaccount.com";
+                return _serviceAccountEmail;
             }
         }
 
-        return "unknown@serviceaccount.iam.gserviceaccount.com";
+        _serviceAccountEmail = "unknown@serviceaccount.iam.gserviceaccount.com";
+        return _serviceAccountEmail;
     }
 
     /// <summary>

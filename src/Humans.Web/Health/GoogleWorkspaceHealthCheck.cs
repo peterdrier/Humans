@@ -21,7 +21,6 @@ public class GoogleWorkspaceHealthCheck(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        // Skip check if not configured
         if (string.IsNullOrEmpty(_settings.ServiceAccountKeyPath) &&
             string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
         {

@@ -138,7 +138,6 @@ public class GoogleResourceReconciliationJob(
             phaseFailures.Add("Group settings check");
         }
 
-        // Notify Admin if any drift was detected and corrected
         var totalDrift = inheritanceCorrected + settingsResult.DriftCount;
         if (totalDrift > 0)
         {

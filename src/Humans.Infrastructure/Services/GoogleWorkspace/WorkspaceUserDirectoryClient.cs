@@ -142,7 +142,6 @@ public sealed class WorkspaceUserDirectoryClient(
             OrgUnitPath = "/"
         };
 
-        // Set recovery email if provided (for password resets and initial notification)
         if (!string.IsNullOrEmpty(recoveryEmail) &&
             !recoveryEmail.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
         {
@@ -192,7 +191,6 @@ public sealed class WorkspaceUserDirectoryClient(
         // invalidates any previously issued set in the same call.
         await service.VerificationCodes.Generate(primaryEmail).ExecuteAsync(ct);
 
-        // List returns the freshly generated codes so we can surface them to the admin.
         var response = await service.VerificationCodes.List(primaryEmail).ExecuteAsync(ct);
 
         var codes = response.Items?

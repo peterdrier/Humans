@@ -200,7 +200,6 @@ public sealed class GoogleAdminService(
                 ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
         }
 
-        // Check if account already exists
         var existing = await workspaceUserService.GetAccountAsync(fullEmail, ct);
         if (existing is not null)
         {
@@ -522,7 +521,6 @@ public sealed class GoogleAdminService(
                     ErrorMessage: "Human not found.");
             }
 
-            // Check not already linked (case-insensitive, any user)
             var alreadyLinked = await userEmailService.IsEmailLinkedToAnyUserAsync(email, ct);
             if (alreadyLinked)
             {

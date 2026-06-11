@@ -12,7 +12,14 @@ public sealed class SyncSettingsService(ISyncSettingsRepository repository, IClo
     public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
     {
         var rows = await repository.GetAllAsync(ct);
-        return rows.Select(CreateSyncServiceSettingsInfo).ToList();
+        return rows
+            .Select(settings => new SyncServiceSettingsInfo(
+                settings.Id,
+                settings.ServiceType,
+                settings.SyncMode,
+                settings.UpdatedAt,
+                settings.UpdatedByUserId))
+            .ToList();
     }
 
     public Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
@@ -29,11 +36,4 @@ public sealed class SyncSettingsService(ISyncSettingsRepository repository, IClo
         }
     }
 
-    private static SyncServiceSettingsInfo CreateSyncServiceSettingsInfo(SyncServiceSettings settings) =>
-        new(
-            settings.Id,
-            settings.ServiceType,
-            settings.SyncMode,
-            settings.UpdatedAt,
-            settings.UpdatedByUserId);
 }

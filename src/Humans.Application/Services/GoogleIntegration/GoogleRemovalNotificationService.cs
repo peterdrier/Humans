@@ -48,7 +48,6 @@ public sealed class GoogleRemovalNotificationService(
             return;
         }
 
-        // Load the user with all UserEmails so we can run the variant selector.
         var usersById = await userService.GetUserInfosAsync([userId.Value], cancellationToken);
         if (!usersById.TryGetValue(userId.Value, out var user))
         {
@@ -63,10 +62,11 @@ public sealed class GoogleRemovalNotificationService(
             : removedEmail;
         var culture = string.IsNullOrWhiteSpace(user.PreferredLanguage) ? "en" : user.PreferredLanguage;
 
-        // Variant selector: does the user retain another verified IsGoogle
-        // address that is NOT the one being removed? If yes → secondary
-        // cleanup (Variant 2). Otherwise → loss of access (Variant 1).
-        var otherGoogleEmail = FindOtherVerifiedGoogleEmail(user, removedEmail);
+        var otherGoogleEmail = user.UserEmails
+            .FirstOrDefault(ue => ue.IsVerified
+                && ue.IsGoogle
+                && !string.Equals(ue.Email, removedEmail, StringComparison.OrdinalIgnoreCase))
+            ?.Email;
 
         if (otherGoogleEmail is not null)
         {
@@ -121,28 +121,5 @@ public sealed class GoogleRemovalNotificationService(
                 "Sent Google removal Variant 1 (drive loss-of-access) to {Email} for user {UserId} folder {Folder}",
                 removedEmail, user.Id, displayName);
         }
-    }
-
-    /// <summary>
-    /// Returns a verified <c>IsGoogle</c> email belonging to the user that
-    /// is NOT <paramref name="removedEmail"/>, or <c>null</c> when no such
-    /// row exists. Drives the Variant 1 / Variant 2 split.
-    /// </summary>
-    private static string? FindOtherVerifiedGoogleEmail(UserInfo user, string removedEmail)
-    {
-        foreach (var ue in user.UserEmails)
-        {
-            if (!ue.IsVerified || !ue.IsGoogle)
-            {
-                continue;
-            }
-            if (string.Equals(ue.Email, removedEmail, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-            return ue.Email;
-        }
-
-        return null;
     }
 }

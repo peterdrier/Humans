@@ -81,5 +81,4 @@ public sealed class GoogleWorkspaceUserService(
             codes.Count, primaryEmail);
         return codes;
     }
-
 }

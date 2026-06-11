@@ -159,7 +159,13 @@ public sealed class DriveActivityMonitorService(
         // audit_log_entries is the AuditLog section's repository. Audit is logged
         // after the business save (per IAuditLogService) and regardless of the
         // marker outcome — anomalies must surface even on a partial-failure run.
-        await AdvanceLastRunMarkerAsync(newMarker, cancellationToken);
+        if (newMarker is not null)
+        {
+            await systemSettings.SetValueAsync(
+                SystemSettingKeys.DriveActivityMonitorLastRunAt,
+                newMarker.Value.ToIso8601(),
+                cancellationToken);
+        }
 
         foreach (var (resourceId, description) in anomalies)
         {
@@ -234,18 +240,6 @@ public sealed class DriveActivityMonitorService(
             "Could not parse stored Drive activity monitor timestamp '{Value}', falling back to default lookback",
             value);
         return null;
-    }
-
-    private Task AdvanceLastRunMarkerAsync(
-        Instant? newLastRunAt,
-        CancellationToken cancellationToken)
-    {
-        return newLastRunAt is null
-            ? Task.CompletedTask
-            : systemSettings.SetValueAsync(
-                SystemSettingKeys.DriveActivityMonitorLastRunAt,
-                newLastRunAt.Value.ToIso8601(),
-                cancellationToken);
     }
 
     private static bool IsInitiatedByServiceAccount(

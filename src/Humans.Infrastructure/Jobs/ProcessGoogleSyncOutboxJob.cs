@@ -60,7 +60,6 @@ public class ProcessGoogleSyncOutboxJob(
                 return;
             }
 
-            // Pre-load contextual info for richer error messages
             var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
             var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
             var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
@@ -113,7 +112,7 @@ public class ProcessGoogleSyncOutboxJob(
                         }
                     }
                 }
-                catch (Google.GoogleApiException ex) when (IsPermanentError(ex))
+                catch (Google.GoogleApiException ex) when (ex.Error?.Code is int code && PermanentErrorCodes.Contains(code))
                 {
                     metrics.RecordSyncOperation("permanent_failure");
 
@@ -132,7 +131,6 @@ public class ProcessGoogleSyncOutboxJob(
                         teamName,
                         ex.Error?.Code);
 
-                    // Mark user's Google email as Rejected
                     await userService.TrySetGoogleEmailStatusFromSyncAsync(
                         outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
 
@@ -214,10 +212,5 @@ public class ProcessGoogleSyncOutboxJob(
             logger.LogError(ex, "Error processing Google sync outbox");
             throw;
         }
-    }
-
-    private static bool IsPermanentError(Google.GoogleApiException ex)
-    {
-        return ex.Error?.Code is int code && PermanentErrorCodes.Contains(code);
     }
 }

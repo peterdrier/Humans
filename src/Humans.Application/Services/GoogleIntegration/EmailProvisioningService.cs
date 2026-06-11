@@ -70,7 +70,6 @@ public sealed class EmailProvisioningService(
                     ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
             }
 
-            // Check if account already exists in Google Workspace
             var existing = await workspaceUserService.GetAccountAsync(fullEmail);
             if (existing is not null)
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
@@ -85,10 +84,8 @@ public sealed class EmailProvisioningService(
             // ORDERING IS CRITICAL — do NOT reorder. Recovery email must be captured BEFORE AddVerifiedEmailAsync flips the notification target to @nobodies.team.
             // 1. Capture recovery (personal) email  2. Provision Workspace  3. Link @nobodies.team  4. Send creds to recovery
 
-            // Step 1: Capture recovery email BEFORE the notification target changes.
             var recoveryEmail = await ResolveRecoveryEmailAsync(userId, user.Email);
 
-            // Step 2: Generate temp password and provision in Google Workspace.
             var tempPassword = PasswordGenerator.GenerateTemporary();
             await workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName, lastName, tempPassword,
@@ -114,14 +111,12 @@ public sealed class EmailProvisioningService(
                 await userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);
             }
 
-            // Audit
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);
 
-            // Step 4: Send credentials to the PERSONAL email captured in step 1.
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
                 await emailService.SendAsync(emailMessages.WorkspaceCredentials(
@@ -129,7 +124,6 @@ public sealed class EmailProvisioningService(
                     user.PreferredLanguage));
             }
 
-            // In-app notification (best-effort)
             try
             {
                 await notificationService.SendAsync(

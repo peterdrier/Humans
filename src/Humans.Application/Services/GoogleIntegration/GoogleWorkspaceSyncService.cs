@@ -575,7 +575,6 @@ public sealed class GoogleWorkspaceSyncService(
 
         try
         {
-            // Expected: union of all linked teams' active members + child team rollup.
             var membersByEmail = await BuildExpectedDriveMembersByEmailAsync(
                 resources,
                 teamsById,
@@ -585,7 +584,6 @@ public sealed class GoogleWorkspaceSyncService(
 
             var linkedTeams = BuildDriveLinkedTeams(resources, teamsById);
 
-            // Current: Drive permissions.
             var permsResult = await drivePermissions.ListPermissionsAsync(primary.GoogleId, cancellationToken);
             if (permsResult.Permissions is null)
             {
@@ -601,11 +599,14 @@ public sealed class GoogleWorkspaceSyncService(
             var permissions = permsResult.Permissions;
             var permissionSnapshot = BuildDrivePermissionSnapshot(permissions);
 
-            var members = await BuildDriveMemberStatusesAsync(
-                membersByEmail,
-                levelByTeamSlug,
-                permissionSnapshot,
-                cancellationToken);
+            var members = membersByEmail
+                .Select(entry => BuildExpectedDriveMemberStatus(
+                    entry.Key,
+                    entry.Value,
+                    levelByTeamSlug,
+                    permissionSnapshot))
+                .ToList();
+            await AddExtraDriveMemberStatusesAsync(members, membersByEmail, permissionSnapshot, cancellationToken);
 
             if (action == SyncAction.Execute)
             {
@@ -712,7 +713,10 @@ public sealed class GoogleWorkspaceSyncService(
 
         if (membersByEmail.TryGetValue(memberEmail, out var existing))
         {
-            AddDriveTeamLink(existing.TeamLinks, teamLink);
+            if (!existing.TeamLinks.Any(link => string.Equals(link.Name, teamLink.Name, StringComparison.Ordinal)))
+            {
+                existing.TeamLinks.Add(teamLink);
+            }
             return;
         }
 
@@ -721,12 +725,6 @@ public sealed class GoogleWorkspaceSyncService(
             member.UserId,
             member.ProfilePictureUrl,
             [teamLink]);
-    }
-
-    private static void AddDriveTeamLink(List<TeamLink> links, TeamLink teamLink)
-    {
-        if (!links.Any(link => string.Equals(link.Name, teamLink.Name, StringComparison.Ordinal)))
-            links.Add(teamLink);
     }
 
     private static List<TeamLink> BuildDriveLinkedTeams(
@@ -784,24 +782,6 @@ public sealed class GoogleWorkspaceSyncService(
         }
 
         return snapshot;
-    }
-
-    private async Task<List<MemberSyncStatus>> BuildDriveMemberStatusesAsync(
-        IReadOnlyDictionary<string, DriveExpectedMember> membersByEmail,
-        IReadOnlyDictionary<string, DrivePermissionLevel> levelByTeamSlug,
-        DrivePermissionSnapshot permissionSnapshot,
-        CancellationToken cancellationToken)
-    {
-        var members = membersByEmail
-            .Select(entry => BuildExpectedDriveMemberStatus(
-                entry.Key,
-                entry.Value,
-                levelByTeamSlug,
-                permissionSnapshot))
-            .ToList();
-
-        await AddExtraDriveMemberStatusesAsync(members, membersByEmail, permissionSnapshot, cancellationToken);
-        return members;
     }
 
     private static MemberSyncStatus BuildExpectedDriveMemberStatus(
@@ -1000,7 +980,6 @@ public sealed class GoogleWorkspaceSyncService(
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existingGroup = activeResources.FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group);
 
-        // If prefix was cleared, deactivate any active group resource.
         if (team.GoogleGroupPrefix is null)
         {
             if (existingGroup is not null)
@@ -1034,7 +1013,6 @@ public sealed class GoogleWorkspaceSyncService(
 
         var email = $"{team.GoogleGroupPrefix}@{_options.Domain}";
 
-        // Cross-team active conflict check.
         var activeConflict = await FindActiveGroupByUrlAsync(expectedUrl, cancellationToken);
         if (activeConflict is not null)
         {
@@ -1046,7 +1024,6 @@ public sealed class GoogleWorkspaceSyncService(
             return GroupLinkResult.Error($"This group is already linked to team \"{conflictName}\".");
         }
 
-        // Inactive-for-this-team reactivation scenario.
         var inactiveForTeam = await FindInactiveGroupForTeamByUrlAsync(teamId, expectedUrl, cancellationToken);
         if (inactiveForTeam is not null && !confirmReactivation)
         {
@@ -1077,7 +1054,6 @@ public sealed class GoogleWorkspaceSyncService(
             return GroupLinkResult.Ok();
         }
 
-        // Deactivate the old resource if prefix changed.
         if (existingGroup is not null)
         {
             await resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
@@ -1293,7 +1269,6 @@ public sealed class GoogleWorkspaceSyncService(
         var allGroups = listResult.Groups;
         logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _options.Domain);
 
-        // Build a lookup: group prefix → linked Team (active, with GoogleGroupPrefix set).
         var teams = (await teamService.GetTeamsAsync(cancellationToken)).Values
             .Where(t => t.IsActive);
         var teamsByPrefix = teams
@@ -1364,7 +1339,6 @@ public sealed class GoogleWorkspaceSyncService(
 
         var groupInfos = (await Task.WhenAll(tasks)).ToList();
 
-        // Sort: linked groups first, then alphabetically by email.
         var sorted = groupInfos
             .OrderBy(g => g.LinkedTeamId is null ? 1 : 0)
             .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
@@ -1382,7 +1356,6 @@ public sealed class GoogleWorkspaceSyncService(
     {
         var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
 
-        // Filter to resources whose team is still active.
         if (driveResources.Count == 0) return 0;
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var filtered = driveResources
@@ -1745,31 +1718,21 @@ public sealed class GoogleWorkspaceSyncService(
     private async Task<GoogleResource?> FindInactiveGroupForTeamByUrlAsync(
         Guid teamId, string expectedUrl, CancellationToken ct)
     {
-        // Re-use FindInactiveGroupByCandidatesAsync as a best-effort lookup:
-        // it matches by GoogleId / email, so feeding it the prefix@domain form
-        // lets the email-based branch hit.
-        var email = ExtractGroupEmailFromUrl(expectedUrl);
-        if (email is null) return null;
-        return await resourceRepository.FindInactiveGroupByCandidatesAsync(
-            teamId,
-            googleNumericId: email, // empty-result on numeric id; email branch matches via ILike
-            normalizedGroupEmail: email,
-            ct);
-    }
-
-    private static string? ExtractGroupEmailFromUrl(string url)
-    {
-        // Expected URL form: https://groups.google.com/a/{domain}/g/{prefix}
-        var parts = url.Split("/g/");
+        var parts = expectedUrl.Split("/g/");
         if (parts.Length != 2) return null;
         var prefix = parts[1].Split('/')[0];
-        // Reconstruct the email: {prefix}@{domain from URL}
         var beforeG = parts[0];
         var aIdx = beforeG.LastIndexOf("/a/", StringComparison.Ordinal);
         if (aIdx < 0) return null;
         var domain = beforeG[(aIdx + 3)..];
-        return string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(domain)
+        var email = string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(domain)
             ? null : $"{prefix}@{domain}";
+        if (email is null) return null;
+        return await resourceRepository.FindInactiveGroupByCandidatesAsync(
+            teamId,
+            googleNumericId: email,
+            normalizedGroupEmail: email,
+            ct);
     }
 
     /// <summary>
