@@ -59,25 +59,25 @@ public class TrackedLockTests
     public async Task AcquireAsync_serializes_concurrent_acquirers()
     {
         var sut = new TrackedLock("test");
-        var insideConcurrently = false;
+        var insideLock = 0;
         var violation = false;
 
-        var first = await sut.AcquireAsync(NullLogger.Instance);
-
-        var secondTask = Task.Run(async () =>
+        // The occupancy counter is only ever touched while holding the lock,
+        // so observing it above 1 proves two holders overlapped — no timing
+        // window can produce a false positive.
+        var tasks = Enumerable.Range(0, 4).Select(_ => Task.Run(async () =>
         {
-            using var r = await sut.AcquireAsync(NullLogger.Instance);
-            if (insideConcurrently) violation = true;
-        });
+            for (var i = 0; i < 25; i++)
+            {
+                using var r = await sut.AcquireAsync(NullLogger.Instance);
+                if (Interlocked.Increment(ref insideLock) > 1) violation = true;
+                await Task.Yield();
+                Interlocked.Decrement(ref insideLock);
+            }
+        })).ToArray();
 
-        // Give the second task a moment to reach WaitAsync.
-        await Task.Delay(20);
-        insideConcurrently = true;
-        first.Dispose();
-        insideConcurrently = false;
-
-        await secondTask;
-        violation.Should().BeFalse("the two acquirers must not be inside the lock simultaneously");
+        await Task.WhenAll(tasks);
+        violation.Should().BeFalse("two acquirers must never be inside the lock simultaneously");
     }
 
     // =========================================================================

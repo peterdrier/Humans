@@ -22,6 +22,7 @@ public sealed class TrackedLock
 
     public string Name { get; }
 
+    /// <summary>Creates a named lock with optional timeout and log-threshold overrides.</summary>
     /// <param name="name">Human-readable name used in log messages and exception text.</param>
     /// <param name="timeout">Maximum time to wait before throwing <see cref="TimeoutException"/>. Defaults to 60 seconds.</param>
     /// <param name="debugThreshold">Wait ≥ this logs at Debug. Defaults to 1 second.</param>
@@ -55,7 +56,7 @@ public sealed class TrackedLock
     {
         var start = TimeProvider.System.GetTimestamp();
 
-        var acquired = await _semaphore.WaitAsync((int)_timeout.TotalMilliseconds, ct).ConfigureAwait(false);
+        var acquired = await _semaphore.WaitAsync(_timeout, ct).ConfigureAwait(false);
 
         var elapsed = TimeProvider.System.GetElapsedTime(start);
 
