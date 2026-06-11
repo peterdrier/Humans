@@ -1,7 +1,6 @@
-using System.Text;
+using Humans.Application.Csv;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Extensions;
 
 namespace Humans.Web.Models.CampAdmin;
 
@@ -22,53 +21,52 @@ public sealed class CampCsvExportBuilder(
             .ToList();
         var leadUsers = await userService.GetUserInfosAsync(leadUserIds);
 
-        var csv = new StringBuilder();
-        csv.AppendCsvRow(
-            "Name", "Slug", "Status", "Contact Email", "Contact Phone",
-            "Leads", "Languages", "Member Count",
-            "Space Requirement", "Sound Zone", "Electrical Grid",
-            "Accepting Members", "Kids Welcome", "Adult Playspace",
-            "Vibes", "Swiss Camp", "Times Participating");
-
-        foreach (var camp in camps)
+        var bytes = HumansCsv.WriteBytes(csv =>
         {
-            var season = camp.Seasons.FirstOrDefault();
-            if (season is null) continue;
+            csv.WriteRow(
+                "Name", "Slug", "Status", "Contact Email", "Contact Phone",
+                "Leads", "Languages", "Member Count",
+                "Space Requirement", "Sound Zone", "Electrical Grid",
+                "Accepting Members", "Kids Welcome", "Adult Playspace",
+                "Vibes", "Swiss Camp", "Times Participating");
 
-            var leads = string.Join("; ", season.LeadUserIds
-                .Select(id =>
-                {
-                    var user = leadUsers.TryGetValue(id, out var u) ? u : null;
-                    return $"{user?.BurnerName ?? string.Empty} <{user?.Email ?? string.Empty}>";
-                }));
+            foreach (var camp in camps)
+            {
+                var season = camp.Seasons.FirstOrDefault();
+                if (season is null) continue;
 
-            var vibes = season.Vibes.Count > 0
-                ? string.Join(", ", season.Vibes)
-                : "";
+                var leads = string.Join("; ", season.LeadUserIds
+                    .Select(id =>
+                    {
+                        var user = leadUsers.TryGetValue(id, out var u) ? u : null;
+                        return $"{user?.BurnerName ?? string.Empty} <{user?.Email ?? string.Empty}>";
+                    }));
 
-            csv.AppendCsvRow(
-                season.Name,
-                camp.Slug,
-                season.Status,
-                camp.ContactEmail,
-                camp.ContactPhone,
-                leads,
-                season.Languages,
-                season.MemberCount,
-                season.SpaceRequirement?.ToString() ?? "",
-                season.SoundZone?.ToString() ?? "",
-                season.ElectricalGrid?.ToString() ?? "",
-                season.AcceptingMembers,
-                season.KidsWelcome,
-                season.AdultPlayspace,
-                vibes,
-                camp.IsSwissCamp ? "Yes" : "No",
-                camp.TimesAtNowhere);
-        }
+                var vibes = season.Vibes.Count > 0
+                    ? string.Join(", ", season.Vibes)
+                    : "";
 
-        return new CampCsvExport(
-            Encoding.UTF8.GetBytes(csv.ToString()),
-            "text/csv",
-            $"barrios-{year}.csv");
+                csv.WriteRow(
+                    season.Name,
+                    camp.Slug,
+                    season.Status,
+                    camp.ContactEmail,
+                    camp.ContactPhone,
+                    leads,
+                    season.Languages,
+                    season.MemberCount,
+                    season.SpaceRequirement?.ToString() ?? "",
+                    season.SoundZone?.ToString() ?? "",
+                    season.ElectricalGrid?.ToString() ?? "",
+                    season.AcceptingMembers,
+                    season.KidsWelcome,
+                    season.AdultPlayspace,
+                    vibes,
+                    camp.IsSwissCamp ? "Yes" : "No",
+                    camp.TimesAtNowhere);
+            }
+        });
+
+        return new CampCsvExport(bytes, "text/csv", $"barrios-{year}.csv");
     }
 }

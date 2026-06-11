@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Csv;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -321,15 +322,15 @@ public class TicketController(
     {
         var rows = await ticketQueryService.GetAttendeeExportDataAsync();
 
-        var csv = new System.Text.StringBuilder();
-        csv.AppendCsvRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
-        foreach (var a in rows)
+        var bytes = HumansCsv.WriteBytes(csv =>
         {
-            csv.AppendCsvRow(a.AttendeeName, a.AttendeeEmail, a.TicketTypeName, a.Price, a.Status, a.VendorOrderId);
-        }
-
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
-            "text/csv", "attendees-export.csv");
+            csv.WriteRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
+            foreach (var a in rows)
+            {
+                csv.WriteRow(a.AttendeeName, a.AttendeeEmail, a.TicketTypeName, a.Price, a.Status, a.VendorOrderId);
+            }
+        });
+        return File(bytes, "text/csv", "attendees-export.csv");
     }
 
     [HttpGet("Export/Orders")]
@@ -338,29 +339,29 @@ public class TicketController(
     {
         var rows = await ticketQueryService.GetOrderExportDataAsync();
 
-        var csv = new System.Text.StringBuilder();
-        csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
-            "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Status");
-        foreach (var o in rows)
+        var bytes = HumansCsv.WriteBytes(csv =>
         {
-            csv.AppendCsvRow(
-                o.Date,
-                o.BuyerName,
-                o.BuyerEmail,
-                o.AttendeeCount,
-                o.TotalAmount,
-                o.Currency,
-                o.DiscountCode,
-                o.DiscountAmount,
-                o.DonationAmount,
-                o.VatAmount,
-                o.PaymentMethod,
-                o.StripeFee,
-                o.ApplicationFee,
-                o.PaymentStatus);
-        }
-
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
-            "text/csv", "orders-export.csv");
+            csv.WriteRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
+                "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Status");
+            foreach (var o in rows)
+            {
+                csv.WriteRow(
+                    o.Date,
+                    o.BuyerName,
+                    o.BuyerEmail,
+                    o.AttendeeCount,
+                    o.TotalAmount,
+                    o.Currency,
+                    o.DiscountCode,
+                    o.DiscountAmount,
+                    o.DonationAmount,
+                    o.VatAmount,
+                    o.PaymentMethod,
+                    o.StripeFee,
+                    o.ApplicationFee,
+                    o.PaymentStatus);
+            }
+        });
+        return File(bytes, "text/csv", "orders-export.csv");
     }
 }

@@ -1,10 +1,9 @@
-using System.Text;
+using Humans.Application.Csv;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,10 +35,7 @@ public class EventsExportController(
         var tz = GetTimeZone(eventSettings);
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
 
-        var sb = new StringBuilder();
-        sb.Append('﻿');
-        sb.AppendLine("Id,Title,Description,Category,CampName,VenueName,SubmitterName,LocationNote,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Status,SubmittedAt");
-
+        var rows = new List<object?[]>();
         foreach (var e in events.OrderBy(e => e.StartAt))
         {
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
@@ -55,7 +51,7 @@ public class EventsExportController(
 
             foreach (var (date, time) in GetOccurrences(e, eventSettings?.GateOpeningDate, tz))
             {
-                sb.AppendCsvRow(
+                rows.Add([
                     e.Id.ToString(),
                     e.Title,
                     e.Description,
@@ -70,11 +66,21 @@ public class EventsExportController(
                     e.IsRecurring ? "Yes" : "No",
                     e.PriorityRank,
                     e.Status.ToString(),
-                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp());
+                    ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
+                ]);
             }
         }
 
-        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "event-guide-export.csv");
+        var bytes = HumansCsv.WriteBytes(csv =>
+        {
+            csv.WriteRow("Id", "Title", "Description", "Category", "CampName", "VenueName", "SubmitterName",
+                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt");
+            foreach (var row in rows)
+            {
+                csv.WriteRow(row);
+            }
+        });
+        return File(bytes, "text/csv", "event-guide-export.csv");
     }
 
     [HttpGet("PrintGuide")]
