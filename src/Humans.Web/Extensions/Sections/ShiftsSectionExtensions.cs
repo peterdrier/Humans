@@ -26,7 +26,6 @@ internal static class ShiftsSectionExtensions
 {
     internal static IServiceCollection AddShiftsSection(this IServiceCollection services)
     {
-        // ShiftRepository backs both management and signup interfaces; authorization invalidation remains on the management service.
         services.AddScoped<ShiftRepository>();
         services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftsShiftManagementService>();

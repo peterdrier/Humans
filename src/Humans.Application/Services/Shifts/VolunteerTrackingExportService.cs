@@ -208,14 +208,6 @@ public sealed class VolunteerTrackingExportService(
         return days;
     }
 
-    private static string BuildFileName(VolunteerExportRequest req, string? departmentSlug)
-    {
-        var prefix = departmentSlug is { Length: > 0 } slug
-            ? $"volunteer-tracking-{slug}-"
-            : "volunteer-tracking-";
-        return $"{prefix}{req.StartDate.ToInvariantDate()}-to-{req.EndDate.ToInvariantDate()}.xlsx";
-    }
-
     private static string SlugifyTeamName(string teamName)
     {
         // Spec §File Output slugification rule:
@@ -283,6 +275,9 @@ public sealed class VolunteerTrackingExportService(
         var deptName = filteredTeamName ?? "All";
         var periodLabel = request.Period?.ToString() ?? "custom";
         var slug = filteredTeamName is null ? null : SlugifyTeamName(filteredTeamName);
+        var filePrefix = slug is { Length: > 0 }
+            ? $"volunteer-tracking-{slug}-"
+            : "volunteer-tracking-";
         return new VolunteerExportModel(
             MethodologyBlurb: "Rows = humans with >=1 confirmed shift in range. Cell color = the team they worked most " +
                 "hours that day. White cell = day before their first confirmed shift (arrival day). " +
@@ -293,6 +288,6 @@ public sealed class VolunteerTrackingExportService(
             Days: days,
             Groups: groups,
             TotalsPerDay: totals,
-            SuggestedFileName: BuildFileName(request, slug));
+            SuggestedFileName: $"{filePrefix}{request.StartDate.ToInvariantDate()}-to-{request.EndDate.ToInvariantDate()}.xlsx");
     }
 }
