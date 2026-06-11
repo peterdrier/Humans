@@ -9,6 +9,7 @@ using Humans.Web.Infrastructure;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog.Events;
 
 namespace Humans.Web.Controllers;
 
@@ -30,14 +31,24 @@ public class DebugController(
     IAdminDatabaseDiagnosticsService databaseDiagnostics) : HumansControllerBase(userService)
 {
     [HttpGet("Logs")]
-    public IActionResult Logs(int count = 1000)
+    public IActionResult Logs(int count = 1000, string? minLevel = null)
     {
         count = Math.Clamp(count, 1, 1000);
+
+        LogEventLevel? minLogLevel = minLevel?.ToUpperInvariant() switch
+        {
+            "WARNING" => LogEventLevel.Warning,
+            "ERROR" => LogEventLevel.Error,
+            "FATAL" => LogEventLevel.Fatal,
+            _ => null
+        };
+
         var sink = InMemoryLogSink.Instance;
-        var events = sink.GetEvents(count);
+        var events = sink.GetEvents(count, minLogLevel);
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         ViewBag.SinkStartedAt = sink.StartedAt;
         ViewBag.TotalEvents = sink.TotalEvents;
+        ViewBag.MinLevel = minLevel;
         return View(events);
     }
 

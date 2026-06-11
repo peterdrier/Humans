@@ -33,14 +33,9 @@ public class LogApiController : ControllerBase
                 return BadRequest(new { error = $"Invalid minLevel '{minLevel}'. Valid values: Warning, Error, Fatal" });
         }
 
-        var events = InMemoryLogSink.Instance.GetEvents();
+        var events = InMemoryLogSink.Instance.GetEvents(count, minLogLevel);
 
-        if (minLogLevel.HasValue)
-        {
-            events = events.Where(e => e.Level >= minLogLevel.Value).ToList();
-        }
-
-        var result = events.Take(count).Select(e => new
+        var result = events.Select(e => new
         {
             Timestamp = e.Timestamp.UtcDateTime,
             Level = e.Level.ToString(),
