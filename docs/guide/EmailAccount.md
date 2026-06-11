@@ -1,9 +1,9 @@
 # Your `@nobodies.team` email
 
-Everyone who volunteers gets their own email address that ends in
-`@nobodies.team` — for example `rosa@nobodies.team`. It's a real, full email
-account (it's Google underneath, so it looks and works just like Gmail). It's
-yours for as long as you're active with us.
+Volunteers can get their own email address ending in `@nobodies.team` — for
+example `rosa@nobodies.team`. It's a real, full email account (it's Google
+underneath, so it looks and works just like Gmail). It's yours for as long as
+you're active with us.
 
 The short version: **use your `@nobodies.team` address for anything to do with
 the org**, and keep your personal email for your personal life. That way the
@@ -13,13 +13,12 @@ private inbox.
 
 ## How to get one
 
-- **Signed up recently?** You were asked which address you'd like
-  (`firstname@…`, `firstname.lastname@…`, or similar) and it was set up for you
-  automatically.
-- **Been around a while and don't have one yet?** Just ask. Your team
-  coordinator can set one up for you from the app, or you can use the help
-  button (the round button, bottom-right of any page) or email
-  [humans@nobodies.team](mailto:humans@nobodies.team).
+Accounts are set up for you — there's nothing to do yourself. Your team
+coordinator can create one from your team's page in the app (they pick the
+address with you, e.g. `firstname@…` or `firstname.lastname@…`), and admins
+can do the same. If you don't have one yet, just ask your coordinator, use the
+help button (the round button, bottom-right of any page), or email
+[humans@nobodies.team](mailto:humans@nobodies.team).
 
 ## Signing in for the first time
 

@@ -56,7 +56,9 @@ On the edit page, add contact fields for Phone, Signal, Telegram, WhatsApp, Disc
 - **Board only** — only Board members can see it
 - **Coordinators and Board** — Coordinators of any team plus the Board
 - **My teams** — humans who share a team with you
-- **All active humans** — any active human in the system (the default)
+- **All active humans** — any active human in the system
+
+There is no preselected level — you choose one when you add the field.
 
 ![TODO: screenshot — `/Profile/Me/Edit` contact fields section, showing the per-field visibility dropdown with all four levels]
 
@@ -116,6 +118,6 @@ Use `/Users/Admin/{id}/Roles/Add` to assign or end [role assignments](Glossary.m
 
 ## Related sections
 
-- [Legal and Consent](LegalAndConsent.md) — consent clearance gates Volunteer activation and flows through the profile
+- [Legal and Consent](LegalAndConsent.md) — your signed consents (plus your legal name) drive Volunteers-team admission, and consent status flows through the profile
 - [Teams](Teams.md) — sharing a team with another human raises what you can see on their profile
 - [Onboarding](Onboarding.md) — completing your profile is a required step in the signup pipeline

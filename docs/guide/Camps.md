@@ -115,6 +115,6 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 ## Related sections
 
 - [Profiles](Profiles.md) — camp leads are linked to human accounts; a valid profile is required to be a lead.
-- [Governance](Governance.md) — Colaborador application is the prerequisite for becoming a camp lead.
+- [Governance](Governance.md) — many camp leads are also Colaboradores, but tier status is not a system requirement for registering or leading a camp.
 - [City Planning](CityPlanning.md) — what happens to the placement data your camp profile feeds in.
 - [Glossary](Glossary.md) — definitions for "barrio", "season", "Camp Lead", "sound zone", and other camp terms.

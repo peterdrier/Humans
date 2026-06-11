@@ -69,9 +69,9 @@ not the person.
 ### Assign a `@nobodies.team` address to someone on your team
 
 If a member of your team doesn't have a `@nobodies.team` address yet, you
-can assign one for them from the Humans app. The flow lives on the human's
-profile admin page; if you can't find it, ask in the app's feedback button
-(three dots in a speech bubble, bottom right) or email
+can provision one for them from your team's members page
+(`/Teams/{slug}/Members`) — you choose the address prefix as part of the
+flow. If you can't find it, use the round help button (bottom right) or email
 [humans@nobodies.team](mailto:humans@nobodies.team).
 
 ### Group email membership follows team membership

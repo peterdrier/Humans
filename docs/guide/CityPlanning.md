@@ -64,6 +64,6 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 
 ## Related sections
 
-- [Camps](Camps.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year, and Primary/Co-Leads are the ones allowed to edit that camp's polygon.
+- [Camps](Camps.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year, and the camp's leads are the ones allowed to edit that camp's polygon.
 - [Teams](Teams.md) — membership in the City Planning team (slug `city-planning`) grants map admin access without needing a global Camp Admin or Admin role.
 - [Glossary](Glossary.md) — definitions for "barrio", "sound zone", "limit zone", and related terms.
