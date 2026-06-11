@@ -41,43 +41,51 @@ section-aligns) so targeting doesn't default to "biggest score wins" — the big
 also absorbed the most refactoring attention, and score-only ranking starves the small sections
 indefinitely.
 
-**Selection rule for new waves:** rank candidates by Last Lane ascending (never-served first),
-then by current score descending. Skip sections with in-flight or imminently-planned feature work
-(check the active sprint plan). Each wave: update the served rows' Last Lane, and re-snapshot the
-Score column from `reforge surface-score --format compact` so trends stay visible.
+**Selection rule for new waves:** never-served sections first (current score descending); among
+already-served sections, prioritize by score growth since the last lane (Score − Post-Lane Score —
+a large delta means the section is re-accumulating debt fastest), tie-break by Last Lane ascending.
+Skip sections with in-flight or imminently-planned feature work (check the active sprint plan).
 
-Scores below are the 2026-06-11 snapshot (solution combined: 58939).
+**Maintaining the table:** each lane records its Post-Lane Score (the section's built
+`reforge surface-score` after the final accepted commit) and Last Lane (date + PR) — the
+refactor-swarm coordinator does this in one wave-end docs commit; /section-align and
+/section-read-split update their own section's row in the PR. Each wave also re-snapshots the
+Score column for all sections from `reforge surface-score --format compact` so deltas stay honest.
 
-| Section | Score | Last Lane | What |
-|---------|-------|-----------|------|
-| Users | 8480 | 2026-05-30 | #838 Reforge surface reduction; dead cross-section nav strip #920 (06-09); account-merge consolidation #899 (06-07) |
-| Shifts | 5335 | 2026-05-30 | #820 service+repo surface refactor; ShiftRepository convergence #882 (06-04); /section-align 05-12 |
-| Teams | 4385 | 2026-06-01 | #850 route consumers onto ITeamServiceRead + TeamInfo; read-split reference #678 |
-| Camps | 3688 | 2026-05-29 | #822 cached read model + read surface |
-| GoogleIntegration | 3457 | 2026-05-30 | #835 Reforge surface reduction; /section-align 05-12 (#500) |
-| Tickets | 3293 | 2026-05-30 | #833 Reforge surface reduction; ticket read service #744 (05-25); buyer-fallback retirement #953 (06-11) |
-| Events | 3254 | — | never served |
-| Platform | 2207 | — | never served as a lane (table-component work #929/#932 was shared-UI feature work) |
-| Email | 2123 | 2026-05-30 | #837 Reforge surface reduction; IEmailService collapse to SendAsync(EmailMessage) #844 |
-| (ungrouped) | 1870 | 2026-05-29 | #829 assigned ungrouped surface-score ownership |
-| Budget | 1805 | 2026-05-30 | #836 Reforge surface reduction; ticketing-budget repo surface removal #815 (05-28) |
-| Governance | 1634 | 2026-06-01 | #851 read/write split (IApplicationServiceRead + IMembershipCalculatorRead) + dead-surface trim |
-| Expenses | 1632 | 2026-05-30 | #830 service surface refactor |
-| Store | 1551 | — | never served |
-| Agent | 1318 | 2026-05-31 | #849 dead-parameter drop (minor) |
-| Consent | 1292 | 2026-06-01 | #854 duplicate-read collapse + dead consent-workflow surface deletion |
-| Campaigns | 1233 | 2026-05-31 | #847 ICampaignServiceRead carve |
-| Admin | 1223 | 2026-05-30 | #842 admin-nav realign (nav holder, not a section — lanes belong to the owning sections) |
-| Auth | 1091 | — | never served (horizontal — lanes need extra care) |
-| Notifications | 1012 | 2026-06-01 | #852 dead-surface deletion + emit-only consumer narrowing; badge-count caching move #954 (06-11) |
-| Issues | 1011 | 2026-05-31 | #848 forwarding-overload collapse |
-| CityPlanning | 975 | — | never served |
-| Finance | 899 | — | never served |
-| AuditLog | 876 | — | never served (horizontal — lanes need extra care) |
-| Feedback | 873 | — | never served |
-| Calendar | 769 | — | never served |
-| Containers | 687 | — | never served |
-| Dashboard | 451 | — | never served |
-| Cantina | 302 | — | never served |
-| Search | 132 | 2026-06-07 | #906 relevance-ranked, cache-only search rewrite |
-| Gdpr | 81 | — | never served |
+Scores below are the 2026-06-11 snapshot (solution combined: 58939). Post-Lane Score is seeded "—"
+for lanes that predate this table — no built post-lane scores were recorded for the
+2026-05-24→06-01 wave, so the 2026-06-11 snapshot is everyone's baseline.
+
+| Section | Score | Post-Lane Score | Last Lane | What |
+|---------|-------|-----------------|-----------|------|
+| Users | 8480 | — | 2026-05-30 | #838 Reforge surface reduction; dead cross-section nav strip #920 (06-09); account-merge consolidation #899 (06-07) |
+| Shifts | 5335 | — | 2026-05-30 | #820 service+repo surface refactor; ShiftRepository convergence #882 (06-04); /section-align 05-12 |
+| Teams | 4385 | — | 2026-06-01 | #850 route consumers onto ITeamServiceRead + TeamInfo; read-split reference #678 |
+| Camps | 3688 | — | 2026-05-29 | #822 cached read model + read surface |
+| GoogleIntegration | 3457 | — | 2026-05-30 | #835 Reforge surface reduction; /section-align 05-12 (#500) |
+| Tickets | 3293 | — | 2026-05-30 | #833 Reforge surface reduction; ticket read service #744 (05-25); buyer-fallback retirement #953 (06-11) |
+| Events | 3254 | — | — | never served |
+| Platform | 2207 | — | — | never served as a lane (table-component work #929/#932 was shared-UI feature work) |
+| Email | 2123 | — | 2026-05-30 | #837 Reforge surface reduction; IEmailService collapse to SendAsync(EmailMessage) #844 |
+| (ungrouped) | 1870 | — | 2026-05-29 | #829 assigned ungrouped surface-score ownership |
+| Budget | 1805 | — | 2026-05-30 | #836 Reforge surface reduction; ticketing-budget repo surface removal #815 (05-28) |
+| Governance | 1634 | — | 2026-06-01 | #851 read/write split (IApplicationServiceRead + IMembershipCalculatorRead) + dead-surface trim |
+| Expenses | 1632 | — | 2026-05-30 | #830 service surface refactor |
+| Store | 1551 | — | — | never served |
+| Agent | 1318 | — | 2026-05-31 | #849 dead-parameter drop (minor) |
+| Consent | 1292 | — | 2026-06-01 | #854 duplicate-read collapse + dead consent-workflow surface deletion |
+| Campaigns | 1233 | — | 2026-05-31 | #847 ICampaignServiceRead carve |
+| Admin | 1223 | — | 2026-05-30 | #842 admin-nav realign (nav holder, not a section — lanes belong to the owning sections) |
+| Auth | 1091 | — | — | never served (horizontal — lanes need extra care) |
+| Notifications | 1012 | — | 2026-06-01 | #852 dead-surface deletion + emit-only consumer narrowing; badge-count caching move #954 (06-11) |
+| Issues | 1011 | — | 2026-05-31 | #848 forwarding-overload collapse |
+| CityPlanning | 975 | — | — | never served |
+| Finance | 899 | — | — | never served |
+| AuditLog | 876 | — | — | never served (horizontal — lanes need extra care) |
+| Feedback | 873 | — | — | never served |
+| Calendar | 769 | — | — | never served |
+| Containers | 687 | — | — | never served |
+| Dashboard | 451 | — | — | never served |
+| Cantina | 302 | — | — | never served |
+| Search | 132 | — | 2026-06-07 | #906 relevance-ranked, cache-only search rewrite |
+| Gdpr | 81 | — | — | never served |
