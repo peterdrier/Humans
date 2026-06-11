@@ -20,10 +20,7 @@ public sealed class BrandedEmailBodyComposer(IOptions<EmailSettings> settings, I
     private readonly string _baseUrl = settings.Value.BaseUrl;
     private readonly string _environmentName = hostEnvironment.EnvironmentName;
 
-    public (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null)
-    {
-        return (
-            BrandedEmailTemplate.Wrap(htmlContent, _baseUrl, _environmentName, unsubscribeUrl),
-            HtmlPlainTextConverter.Convert(htmlContent));
-    }
+    public (string HtmlBody, string PlainTextBody) Compose(string htmlContent, string? unsubscribeUrl = null) => (
+        BrandedEmailTemplate.Wrap(htmlContent, _baseUrl, _environmentName, unsubscribeUrl),
+        HtmlPlainTextConverter.Convert(htmlContent));
 }

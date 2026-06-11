@@ -48,7 +48,6 @@ public class ProcessEmailOutboxJob(
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        // 1. Check global pause flag
         if (await emailOutboxService.IsEmailPausedAsync(cancellationToken))
         {
             logger.LogInformation("Email sending is paused, skipping outbox processing");
@@ -58,7 +57,6 @@ public class ProcessEmailOutboxJob(
         var now = clock.GetCurrentInstant();
         var staleThreshold = now - Duration.FromMinutes(5);
 
-        // 2. Select batch of messages to process
         var messages = await outboxRepo.GetProcessingBatchAsync(
             now, staleThreshold, _settings.OutboxMaxRetries, _settings.OutboxBatchSize, cancellationToken);
 
@@ -67,11 +65,9 @@ public class ProcessEmailOutboxJob(
             return;
         }
 
-        // 3. Mark batch as picked up (prevents concurrent processor runs picking the same rows)
         await outboxRepo.MarkPickedUpAsync(
             messages.Select(m => m.Id).ToList(), now, cancellationToken);
 
-        // 4. Process each message
         foreach (var message in messages)
         {
             try
@@ -123,7 +119,6 @@ public class ProcessEmailOutboxJob(
             }
             catch (Exception ex)
             {
-                // Failure
                 var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
                 await outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
                 metrics.RecordEmailFailed(message.TemplateName);
@@ -147,11 +142,9 @@ public class ProcessEmailOutboxJob(
             }
         }
 
-        // 5. Set outbox_pending gauge
         var pendingCount = await outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
         _outboxPendingMeter.Set(pendingCount);
 
-        // 6. Record successful job run
         metrics.RecordJobRun("process_email_outbox", "success");
     }
 }

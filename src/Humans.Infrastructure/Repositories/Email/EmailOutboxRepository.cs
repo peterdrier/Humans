@@ -17,10 +17,6 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// </summary>
 internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory) : IEmailOutboxRepository
 {
-    // ==========================================================================
-    // Reads — admin dashboard and profile views
-    // ==========================================================================
-
     public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -74,10 +70,6 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> f
             .CountAsync(m => m.SentAt == null && m.RetryCount < maxRetries, ct);
     }
 
-    // ==========================================================================
-    // Writes — admin operations
-    // ==========================================================================
-
     public async Task AddAsync(EmailOutboxMessage message, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -113,10 +105,6 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> f
 
         return recipient;
     }
-
-    // ==========================================================================
-    // Processor — used by ProcessEmailOutboxJob
-    // ==========================================================================
 
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetProcessingBatchAsync(
         Instant now,
@@ -189,10 +177,6 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> f
         return true;
     }
 
-    // ==========================================================================
-    // Cleanup — used by CleanupEmailOutboxJob
-    // ==========================================================================
-
     public async Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -207,9 +191,5 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> f
         await ctx.SaveChangesAsync(ct);
         return toDelete.Count;
     }
-
-    // ==========================================================================
-    // Pause flag — IsEmailSendingPaused row in system_settings
-    // ==========================================================================
 
 }

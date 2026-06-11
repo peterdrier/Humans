@@ -14,7 +14,6 @@ namespace Humans.Application.Services.Email;
 /// </summary>
 public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessageFactory
 {
-    /// <inheritdoc />
     public EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null)
     {
         var content = renderer.RenderApplicationApproved(userName, tier, culture);
@@ -22,7 +21,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "application_approved", MessageCategory.Governance);
     }
 
-    /// <inheritdoc />
     public EmailMessage ApplicationRejected(string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
     {
         var content = renderer.RenderApplicationRejected(userName, tier, reason, culture);
@@ -30,7 +28,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "application_rejected", MessageCategory.Governance);
     }
 
-    /// <inheritdoc />
     public EmailMessage ReConsentsRequired(string userEmail, string userName, IEnumerable<string> documentNames, string? culture = null)
     {
         var content = renderer.RenderReConsentsRequired(userName, documentNames.ToList(), culture);
@@ -38,7 +35,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "reconsents_required");
     }
 
-    /// <inheritdoc />
     public EmailMessage ReConsentReminder(string userEmail, string userName, IEnumerable<string> documentNames, int daysRemaining, string? culture = null)
     {
         var content = renderer.RenderReConsentReminder(userName, documentNames.ToList(), daysRemaining, culture);
@@ -46,7 +42,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "reconsent_reminder");
     }
 
-    /// <inheritdoc />
     public EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null)
     {
         var content = renderer.RenderAccessSuspended(userName, reason, culture);
@@ -54,7 +49,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "access_suspended");
     }
 
-    /// <inheritdoc />
     public EmailMessage EmailVerification(string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null)
     {
         var content = renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
@@ -62,7 +56,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "email_verification", TriggerImmediate: true);
     }
 
-    /// <inheritdoc />
     public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
     {
         var formattedDate = deletionDate.InUtc().Date.ToInvariantLongDate();
@@ -71,7 +64,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "deletion_requested");
     }
 
-    /// <inheritdoc />
     public EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null)
     {
         var content = renderer.RenderAccountDeleted(userName, culture);
@@ -79,7 +71,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "account_deleted");
     }
 
-    /// <inheritdoc />
     public EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
     {
         var content = renderer.RenderAddedToTeam(userName, teamName, teamSlug, resources.ToList(), culture);
@@ -87,7 +78,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "added_to_team", MessageCategory.TeamUpdates);
     }
 
-    /// <inheritdoc />
     public EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null)
     {
         var content = renderer.RenderSignupRejected(userName, reason, culture);
@@ -95,7 +85,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "signup_rejected", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, string expiresAt, string? culture = null)
     {
         var content = renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
@@ -103,7 +92,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "term_renewal_reminder", MessageCategory.Governance);
     }
 
-    /// <inheritdoc />
     public EmailMessage SurveyInvitation(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
     {
         var content = renderer.RenderSurveyInvitation(userName, surveyTitle, answerToken, culture);
@@ -111,7 +99,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "survey_invitation", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage SurveyReminder(string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
     {
         var content = renderer.RenderSurveyReminder(userName, surveyTitle, answerToken, culture);
@@ -119,7 +106,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "survey_reminder", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage FeedbackResponse(string userEmail, string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
     {
         var content = renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
@@ -127,7 +113,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "feedback_response", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null)
     {
         var content = renderer.RenderFacilitatedMessage(recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
@@ -136,7 +121,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "facilitated_message", MessageCategory.FacilitatedMessages, ReplyTo: replyTo);
     }
 
-    /// <inheritdoc />
     public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -147,7 +131,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "coordinator_rota_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
     }
 
-    /// <inheritdoc />
     public EmailMessage CoordinatorTeamRotasMessage(CoordinatorTeamRotasMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -158,7 +141,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "coordinator_team_rotas_message", MessageCategory.VolunteerUpdates, ReplyTo: request.SenderEmail);
     }
 
-    /// <inheritdoc />
     public EmailMessage MagicLinkLogin(string toEmail, string displayName, string magicLinkUrl, string? culture = null)
     {
         var content = renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
@@ -166,7 +148,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "magic_link_login", TriggerImmediate: true);
     }
 
-    /// <inheritdoc />
     public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
     {
         var content = renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
@@ -174,7 +155,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "magic_link_signup", TriggerImmediate: true);
     }
 
-    /// <inheritdoc />
     public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
     {
         var content = renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
@@ -182,7 +162,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "workspace_credentials", TriggerImmediate: true);
     }
 
-    /// <inheritdoc />
     public EmailMessage IssueComment(string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
     {
         var content = renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
@@ -190,7 +169,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "issue_comment", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage CampaignCode(CampaignCodeEmailRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -201,7 +179,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             ReplyTo: request.ReplyTo, UserId: request.UserId, CampaignGrantId: request.CampaignGrantId);
     }
 
-    /// <inheritdoc />
     public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -210,7 +187,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             request.TemplateName(), TriggerImmediate: true);
     }
 
-    /// <inheritdoc />
     public EmailMessage GoogleGroupRemovalLossOfAccess(string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
     {
         var content = renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
@@ -218,7 +194,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "google_group_removal_loss_of_access", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage GoogleDriveRemovalLossOfAccess(string removedEmail, string userName, string folderName, string? culture = null)
     {
         var content = renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
@@ -226,7 +201,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "google_drive_removal_loss_of_access", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage GoogleAccessRemovalSecondaryCleanup(string removedEmail, string userName, string currentGoogleEmail, string? culture = null)
     {
         var content = renderer.RenderGoogleAccessRemovalSecondaryCleanup(userName, removedEmail, currentGoogleEmail, culture);
@@ -234,7 +208,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "google_access_removal_secondary_cleanup", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage TicketTransferRequested(string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null)
     {
         var content = renderer.RenderTicketTransferRequested(senderName, receiverName, ticketLabel, culture);
@@ -242,7 +215,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "ticket_transfer_requested", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage TicketTransferTeamNotification(string senderName, string receiverName, string receiverEmail, string ticketLabel, string? reason, string reviewUrl)
     {
         var content = renderer.RenderTicketTransferTeamNotification(senderName, receiverName, receiverEmail, ticketLabel, reason, reviewUrl);
@@ -250,7 +222,6 @@ public sealed class EmailMessageFactory(IEmailRenderer renderer) : IEmailMessage
             "ticket_transfer_team", MessageCategory.System);
     }
 
-    /// <inheritdoc />
     public EmailMessage TicketTransferDecision(string toEmail, string toName, bool successful, string ticketLabel, string receiverName, string? reason, string? culture = null)
     {
         var content = renderer.RenderTicketTransferDecision(toName, successful, ticketLabel, receiverName, reason, culture);

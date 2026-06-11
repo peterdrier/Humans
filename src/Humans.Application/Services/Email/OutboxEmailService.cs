@@ -32,7 +32,6 @@ public sealed class OutboxEmailService(
     ICommunicationPreferenceService commPrefService,
     ILogger<OutboxEmailService> logger) : IEmailService
 {
-    /// <inheritdoc />
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);

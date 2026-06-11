@@ -58,9 +58,9 @@ public class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogger<SmtpEm
             }
             message.Body = bodyBuilder.ToMessageBody();
 
-            // Set Message-Id domain to match From address (avoids Docker container hostname)
-            var fromDomain = _settings.FromAddress.Contains('@', StringComparison.Ordinal)
-                ? _settings.FromAddress[(_settings.FromAddress.IndexOf('@', StringComparison.Ordinal) + 1)..]
+            var atIndex = _settings.FromAddress.IndexOf('@', StringComparison.Ordinal);
+            var fromDomain = atIndex >= 0
+                ? _settings.FromAddress[(atIndex + 1)..]
                 : "nobodies.team";
             message.MessageId = $"{Guid.NewGuid()}@{fromDomain}";
 

@@ -50,10 +50,6 @@ internal static class EmailInfrastructureExtensions
 
         services.AddScoped<IEmailRenderer, EmailRenderer>();
 
-        // Email section — §15 repository pattern (issue #548).
-        // The outbox repository owns email_outbox_messages + the IsEmailSendingPaused
-        // system_settings row. Registered Singleton (IDbContextFactory-based) so the
-        // Application-layer services can inject it directly.
         services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddSingleton<IEmailBodyComposer, InfrastructureEmailBodyComposer>();
         services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();

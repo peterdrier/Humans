@@ -1,14 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using Humans.Application.Architecture;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces.Email;
-
-using Humans.Application.Interfaces.Users;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Controllers;
 
@@ -98,7 +97,6 @@ public class EmailController(
         var settings = emailSettings.Value;
         var cultures = new[] { "en", "es", "de", "fr", "it", "ca" };
 
-        // Per-locale persona stubs for realistic previews
         var personas = new Dictionary<string, (string Name, string Email)>(StringComparer.Ordinal)
         {
             ["en"] = ("Sally Smith", "sally@example.com"),
@@ -189,5 +187,4 @@ public class EmailController(
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
     }
-
 }
