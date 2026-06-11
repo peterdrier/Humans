@@ -31,7 +31,6 @@ public class CampContactService(
         IReadOnlyList<Guid> leadUserIds,
         string campDetailsUrl)
     {
-        // Rate limit: one message per camp per user per 10 minutes
         var rateLimitKey = CacheKeys.CampContactRateLimit(senderUserId, campId);
         if (!await cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
         {
@@ -57,7 +56,24 @@ public class CampContactService(
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
                 senderUserId);
 
-            await SendLeadNotificationAsync(campId, campDisplayName, leadUserIds, campDetailsUrl);
+            if (leadUserIds.Count > 0)
+            {
+                try
+                {
+                    await notificationEmitter.SendAsync(
+                        NotificationSource.FacilitatedMessageReceived,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"New message for {campDisplayName} - check your email",
+                        leadUserIds,
+                        actionUrl: campDetailsUrl,
+                        actionLabel: "View camp");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId}", campId);
+                }
+            }
 
             return new CampContactResult(Success: true, RateLimited: false);
         }
@@ -66,34 +82,6 @@ public class CampContactService(
             cache.InvalidateCampContactRateLimit(senderUserId, campId);
             logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
             throw;
-        }
-    }
-
-    private async Task SendLeadNotificationAsync(
-        Guid campId,
-        string campDisplayName,
-        IReadOnlyList<Guid> leadUserIds,
-        string campDetailsUrl)
-    {
-        if (leadUserIds.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await notificationEmitter.SendAsync(
-                NotificationSource.FacilitatedMessageReceived,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                $"New message for {campDisplayName} - check your email",
-                leadUserIds,
-                actionUrl: campDetailsUrl,
-                actionLabel: "View camp");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId}", campId);
         }
     }
 }

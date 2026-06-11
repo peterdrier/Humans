@@ -34,8 +34,6 @@ public class CampController(
     private readonly IUserServiceRead _userService = userService;
     private readonly IClock _clock = clock;
 
-    // --- Public routes ---
-
     [AllowAnonymous]
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters, CancellationToken ct = default)
@@ -53,12 +51,38 @@ public class CampController(
             ? new HashSet<Guid>()
             : camps.Where(camp => camp.IsLead(user.Id)).Select(camp => camp.Id).ToHashSet();
 
-        var cards = ApplyCampDirectoryFilters(
-                camps
-                    .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
-                    .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
-                    .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries)),
-                filters)
+        var directoryCards = camps
+            .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+            .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
+            .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries));
+        if (filters?.Vibe.HasValue == true)
+        {
+            directoryCards = directoryCards.Where(card => card.Vibes.Contains(filters.Vibe.Value));
+        }
+
+        if (filters?.SoundZone.HasValue == true)
+        {
+            directoryCards = directoryCards.Where(card => card.SoundZone == filters.SoundZone.Value);
+        }
+
+        if (filters?.KidsFriendly == true)
+        {
+            directoryCards = directoryCards.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
+        }
+
+        if (filters?.AcceptingMembers == true)
+        {
+            directoryCards = directoryCards.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters?.Search))
+        {
+            var q = filters.Search.Trim();
+            directoryCards = directoryCards.Where(card =>
+                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var cards = directoryCards
             .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
             .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -90,40 +114,6 @@ public class CampController(
         };
 
         return View(viewModel);
-    }
-
-    private static IEnumerable<CampCardViewModel> ApplyCampDirectoryFilters(
-        IEnumerable<CampCardViewModel> camps,
-        CampFilterViewModel? filter)
-    {
-        if (filter?.Vibe.HasValue == true)
-        {
-            camps = camps.Where(card => card.Vibes.Contains(filter.Vibe.Value));
-        }
-
-        if (filter?.SoundZone.HasValue == true)
-        {
-            camps = camps.Where(card => card.SoundZone == filter.SoundZone.Value);
-        }
-
-        if (filter?.KidsFriendly == true)
-        {
-            camps = camps.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
-        }
-
-        if (filter?.AcceptingMembers == true)
-        {
-            camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter?.Search))
-        {
-            var q = filter.Search.Trim();
-            camps = camps.Where(card =>
-                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return camps;
     }
 
     private static CampCardViewModel MapCampCard(
@@ -235,8 +225,6 @@ public class CampController(
         };
     }
 
-    // --- Facilitated Contact ---
-
     [Authorize]
     [HttpGet("{slug}/Contact")]
     public async Task<IActionResult> Contact(string slug)
@@ -309,8 +297,6 @@ public class CampController(
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
-
-    // --- Registration ---
 
     [Authorize]
     [HttpGet("Register")]
@@ -399,8 +385,6 @@ public class CampController(
             return View(model);
         }
     }
-
-    // --- Edit ---
 
     [Authorize]
     [HttpGet("{slug}/Edit")]
@@ -585,8 +569,6 @@ public class CampController(
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // --- Season opt-in ---
-
     [Authorize]
     [HttpPost("{slug}/OptIn/{year:int}")]
     [ValidateAntiForgeryToken]
@@ -662,15 +644,10 @@ public class CampController(
         return RedirectToAction(nameof(Details), new { slug });
     }
 
-    // --- Lead management ---
-    //
     // The legacy AddLead / RemoveLead actions were retired in
     // issue nobodies-collective/Humans#753 (Camp Lead retired into the
     // CampRoleAssignment system role). Lead assignment is now performed via
     // the Camp Lead row in the unified Roles panel on the Members page.
-
-
-    // --- Historical name management ---
 
     [Authorize]
     [HttpPost("{slug}/HistoricalNames/Add")]
@@ -723,8 +700,6 @@ public class CampController(
 
         return RedirectToAction(nameof(Edit), new { slug });
     }
-
-    // --- Image management ---
 
     [Authorize]
     [HttpPost("{slug}/Images/Upload")]
@@ -812,8 +787,6 @@ public class CampController(
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    // --- Camp membership per season (see nobodies-collective/Humans#488) ---
-
     [Authorize]
     [HttpPost("{slug}/Members/Request")]
     [ValidateAntiForgeryToken]
@@ -826,26 +799,20 @@ public class CampController(
         if (currentUserError is not null) return currentUserError;
 
         var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
-        SetCampMemberRequestNotice(result);
-
-        return RedirectToAction(nameof(Details), new { slug });
-    }
-
-    private void SetCampMemberRequestNotice(CampMemberRequestResult result)
-    {
         if (result.NoticeLevel == CampMemberRequestNoticeLevel.Success)
         {
             SetSuccess(result.Message);
-            return;
         }
-
-        if (result.NoticeLevel == CampMemberRequestNoticeLevel.Info)
+        else if (result.NoticeLevel == CampMemberRequestNoticeLevel.Info)
         {
             SetInfo(result.Message);
-            return;
+        }
+        else
+        {
+            SetError(result.Message);
         }
 
-        SetError(result.Message);
+        return RedirectToAction(nameof(Details), new { slug });
     }
 
     [Authorize]
@@ -977,19 +944,14 @@ public class CampController(
             camp.Id, campMemberId, granted, user.Id, cancellationToken);
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
-        ApplyEarlyEntryFlash(outcome, granted);
-        return RedirectToAction(nameof(Members), new { slug });
-    }
-
-    private void ApplyEarlyEntryFlash(SetEarlyEntryOutcome outcome, bool granted)
-    {
         if (outcome == SetEarlyEntryOutcome.Success)
             SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
         else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
             SetError("Cannot grant Early Entry: slot cap reached for this camp.");
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
             SetError("Only Active camp members can hold Early Entry.");
-        // NoChange: silent � UI already reflected the state.
+
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -1018,8 +980,6 @@ public class CampController(
 
         return RedirectToAction(nameof(Members), new { slug });
     }
-
-    // --- Per-camp role assignments (see nobodies-collective/Humans#489) ---
 
     [Authorize]
     [HttpPost("{slug}/Roles/Assign")]
@@ -1125,8 +1085,6 @@ public class CampController(
 
         return RedirectToAction(nameof(Members), new { slug });
     }
-
-    // --- Helper methods ---
 
     private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
     {
@@ -1243,7 +1201,11 @@ public class CampController(
             Id = camp.Id,
             Slug = camp.Slug,
             Name = season.Name,
-            Links = CreateCampLinks(camp),
+            Links = camp.Links is { Count: > 0 }
+                ? [.. camp.Links]
+                : camp.WebOrSocialUrl is not null
+                    ? [new CampLink { Url = camp.WebOrSocialUrl }]
+                    : [],
             IsSwissCamp = camp.IsSwissCamp,
             HideHistoricalNames = camp.HideHistoricalNames,
             TimesAtNowhere = camp.TimesAtNowhere,
@@ -1277,18 +1239,6 @@ public class CampController(
             Membership = membership
         };
 
-    private static List<CampLink> CreateCampLinks(CampInfo camp)
-    {
-        if (camp.Links is { Count: > 0 })
-        {
-            return [.. camp.Links];
-        }
-
-        return camp.WebOrSocialUrl is not null
-            ? [new CampLink { Url = camp.WebOrSocialUrl }]
-            : [];
-    }
-
     /// <summary>
     /// Fills the read-only Roles panel and (for full-camp viewers) the Roster on the
     /// detail VM. Sourced from CampRoleAssignment — the same data as /Edit/Members —
@@ -1301,7 +1251,7 @@ public class CampController(
     {
         if (currentUser is null)
         {
-            return; // anonymous viewers do not see cards
+            return;
         }
 
         vm.RolesPanel = await BuildRolesPanelAsync(
@@ -1335,7 +1285,9 @@ public class CampController(
         var parsedLinks = links
             .Where(link => !string.IsNullOrWhiteSpace(link))
             .Select(link => link!.Trim())
-            .Where(IsHttpUrl)
+            .Where(link => Uri.TryCreate(link, UriKind.Absolute, out var parsed)
+                && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal)
+                    || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
             .Select(link => new CampLink
             {
                 Url = link,
@@ -1344,12 +1296,5 @@ public class CampController(
             .ToList();
 
         return parsedLinks.Count > 0 ? parsedLinks : null;
-    }
-
-    private static bool IsHttpUrl(string url)
-    {
-        return Uri.TryCreate(url, UriKind.Absolute, out var parsed)
-            && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal)
-                || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }

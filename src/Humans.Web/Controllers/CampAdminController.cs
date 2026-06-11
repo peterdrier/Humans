@@ -200,17 +200,25 @@ public class CampAdminController(
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
-        var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
-        if (!ok)
+        LocalDate? parsed = null;
+        if (!string.IsNullOrWhiteSpace(eeStartDate))
         {
-            SetError(parseError!);
-            return RedirectToAction(nameof(Index));
+            var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(eeStartDate);
+            if (!parseResult.Success)
+            {
+                SetError("Invalid date format. Use yyyy-MM-dd.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            parsed = parseResult.Value;
         }
 
         try
         {
             await campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
-            SetSuccess(EeStartDateSuccessMessage(parsed));
+            SetSuccess(parsed.HasValue
+                ? $"EE start date set to {parsed.Value.ToDate()}."
+                : "EE start date cleared.");
         }
         catch (Exception ex)
         {
@@ -219,18 +227,6 @@ public class CampAdminController(
         }
 
         return RedirectToAction(nameof(Index));
-    }
-
-    private static string EeStartDateSuccessMessage(LocalDate? date) =>
-        date.HasValue ? $"EE start date set to {date.Value.ToDate()}." : "EE start date cleared.";
-
-    private static (bool Ok, LocalDate? Value, string? Error) TryParseEeStartDate(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input)) return (true, null, null);
-        var result = NodaTime.Text.LocalDatePattern.Iso.Parse(input);
-        return result.Success
-            ? (true, result.Value, null)
-            : (false, null, "Invalid date format. Use yyyy-MM-dd.");
     }
 
     [HttpPost("Reactivate/{seasonId:guid}")]
@@ -373,12 +369,6 @@ public class CampAdminController(
         return View("RoleDrillDown", vm);
     }
 
-    private IActionResult RedirectToRolesWithSuccess(string message)
-    {
-        SetSuccess(message);
-        return RedirectToAction(nameof(Roles));
-    }
-
     [HttpGet("Roles/Create")]
     public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
 
@@ -446,12 +436,18 @@ public class CampAdminController(
             var input = new UpdateCampRoleDefinitionInput(
                 form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             var result = await campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
-            return result.Status switch
+            if (result.Status == UpdateCampRoleDefinitionStatus.Updated)
             {
-                UpdateCampRoleDefinitionStatus.Updated => RedirectToRolesWithSuccess(result.SuccessMessage),
-                UpdateCampRoleDefinitionStatus.NotFound => NotFound(),
-                _ => throw new InvalidOperationException($"Unexpected camp role update status '{result.Status}'.")
-            };
+                SetSuccess(result.SuccessMessage);
+                return RedirectToAction(nameof(Roles));
+            }
+
+            if (result.Status == UpdateCampRoleDefinitionStatus.NotFound)
+            {
+                return NotFound();
+            }
+
+            throw new InvalidOperationException($"Unexpected camp role update status '{result.Status}'.");
         }
         catch (InvalidOperationException ex)
         {
