@@ -36,24 +36,6 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
             _campService, _teamService, _userService);
     }
 
-    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
-        user: new User
-        {
-            Id = profile.UserId,
-            DisplayName = profile.BurnerName,
-            PreferredLanguage = "en",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
-        },
-        userEmails: [],
-        eventParticipations: [],
-        externalLogins: [],
-        profile: profile,
-        contactFields: [],
-        profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
-
     // --- Helpers ---
 
     private void SetupCampSettings(int publicYear = 2026)
@@ -646,30 +628,6 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var updated = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task GetUserDisplayNameAsync_ReturnsProfileBurnerName()
-    {
-        var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(new Profile { UserId = userId, BurnerName = "Burner Name" }));
-
-        var result = await _sut.GetUserDisplayNameAsync(userId);
-
-        result.Should().Be("Burner Name");
-    }
-
-    [HumansFact]
-    public async Task GetUserDisplayNameAsync_ReturnsNull_WhenNoProfile()
-    {
-        var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((UserInfo?)null);
-
-        var result = await _sut.GetUserDisplayNameAsync(userId);
-
-        result.Should().BeNull();
     }
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>

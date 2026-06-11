@@ -54,13 +54,6 @@ public sealed class CityPlanningService(
             .ToList();
     }
 
-    public async Task<string?> GetUserDisplayNameAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        return info?.Profile?.BurnerName;
-    }
-
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(
         int year, CancellationToken cancellationToken = default)
     {

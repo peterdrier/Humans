@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace Humans.Web.Hubs;
 
 [Authorize]
-public class CityPlanningHub(ICityPlanningService cityPlanningService, UserManager<User> userManager) : Hub
+public class CityPlanningHub(IUserServiceRead userService, UserManager<User> userManager) : Hub
 {
     private static readonly ConcurrentDictionary<string, string> _displayNames = new(StringComparer.Ordinal);
 
@@ -17,7 +17,7 @@ public class CityPlanningHub(ICityPlanningService cityPlanningService, UserManag
         var userId = userManager.GetUserId(Context.User!);
         if (userId != null)
         {
-            var burnerName = await cityPlanningService.GetUserDisplayNameAsync(Guid.Parse(userId));
+            var burnerName = (await userService.GetUserInfoAsync(Guid.Parse(userId)))?.Profile?.BurnerName;
             _displayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)
                 ? burnerName
                 : Context.User?.Identity?.Name ?? "Unknown";

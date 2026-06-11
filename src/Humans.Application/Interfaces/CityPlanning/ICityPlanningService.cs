@@ -11,7 +11,6 @@ public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationSe
     Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default);
     Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(int year, CancellationToken cancellationToken = default);
     Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Writes
     Task<CampPolygonSaveResult> SaveCampPolygonAsync(
