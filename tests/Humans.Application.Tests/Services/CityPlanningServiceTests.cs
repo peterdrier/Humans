@@ -201,12 +201,14 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var userId = NewUserId();
         const string originalGeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
-        var (_, historyEntry) = await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId);
+        await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId);
+        var originalHistory = await Db.CampPolygonHistories.AsNoTracking()
+            .SingleAsync(h => h.CampSeasonId == campSeasonId);
         Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[5,0],[5,5],[0,0]]]}}""", 999.0, userId);
         Clock.Advance(Duration.FromSeconds(1));
 
-        await _sut.RestoreCampPolygonVersionAsync(campSeasonId, historyEntry.Id, userId);
+        await _sut.RestoreCampPolygonVersionAsync(campSeasonId, originalHistory.Id, userId);
 
         var polygon = await Db.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
         var latestHistory = await Db.CampPolygonHistories.AsNoTracking()

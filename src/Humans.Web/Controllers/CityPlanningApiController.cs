@@ -104,7 +104,7 @@ public class CityPlanningApiController(
             return BadRequest("Invalid GeoJSON.");
         }
 
-        var (polygon, _) = await cityPlanningService.SaveCampPolygonAsync(
+        var saved = await cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
             note: request.Note ?? "Saved",
             cancellationToken: cancellationToken);
@@ -115,14 +115,14 @@ public class CityPlanningApiController(
         try
         {
             await hubContext.Clients.All.SendAsync(
-                "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+                "CampPolygonUpdated", campSeasonId, saved.GeoJson, saved.AreaSqm, soundZoneValue, campName, cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
         }
 
-        return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
+        return Ok(new { campSeasonId, geoJson = saved.GeoJson, areaSqm = saved.AreaSqm });
     }
 
     /// <summary>Restore a camp polygon to a historical version. Map admins only.</summary>
@@ -139,7 +139,7 @@ public class CityPlanningApiController(
             return Forbid();
         }
 
-        var (polygon, _) = await cityPlanningService.RestoreCampPolygonVersionAsync(
+        var restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
 
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
@@ -148,14 +148,14 @@ public class CityPlanningApiController(
         try
         {
             await hubContext.Clients.All.SendAsync(
-                "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+                "CampPolygonUpdated", campSeasonId, restored.GeoJson, restored.AreaSqm, soundZoneValue, campName, cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
         }
 
-        return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
+        return Ok(new { campSeasonId, geoJson = restored.GeoJson, areaSqm = restored.AreaSqm });
     }
 
     /// <summary>Export all camp polygons for a year as GeoJSON FeatureCollection. Map admins only.</summary>

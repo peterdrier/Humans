@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using NodaTime;
@@ -15,11 +14,11 @@ public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationSe
     Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Writes
-    Task<(CampPolygon polygon, CampPolygonHistory history)> SaveCampPolygonAsync(
+    Task<CampPolygonSaveResult> SaveCampPolygonAsync(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
         string note = "Saved", CancellationToken cancellationToken = default);
 
-    Task<(CampPolygon polygon, CampPolygonHistory history)> RestoreCampPolygonVersionAsync(
+    Task<CampPolygonSaveResult> RestoreCampPolygonVersionAsync(
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default);
 
@@ -71,6 +70,13 @@ public record CampPolygonHistoryEntryDto(
     double AreaSqm,
     string Note,
     string GeoJson);
+
+/// <summary>
+/// The persisted polygon facts a save/restore returns to callers: the current
+/// GeoJson and area. Keeps EF entities (CampPolygon / CampPolygonHistory) from
+/// crossing the service boundary into the Web layer.
+/// </summary>
+public sealed record CampPolygonSaveResult(string GeoJson, double AreaSqm);
 
 public record CityPlanningSettingsDto(
     Guid Id,
