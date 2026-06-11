@@ -841,21 +841,29 @@ public sealed class ExpenseReportService(
     public async Task<ExpenseMutationResult> ReopenSepaWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default)
     {
-        var now = clock.GetCurrentInstant();
-        var ok = await repo.ReopenSepaAsync(reportId, now, ct);
-        if (!ok)
+        try
         {
-            logger.LogWarning("ReopenSepa guard failed for report {ReportId}: not in SepaSent status", reportId);
-            return ExpenseMutationResult.Failure("Report is not in SepaSent status and cannot be reopened.");
+            var now = clock.GetCurrentInstant();
+            var ok = await repo.ReopenSepaAsync(reportId, now, ct);
+            if (!ok)
+            {
+                logger.LogWarning("ReopenSepa guard failed for report {ReportId}: not in SepaSent status", reportId);
+                return ExpenseMutationResult.Failure("Report is not in SepaSent status and cannot be reopened.");
+            }
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseSepaReopened,
+                "ExpenseReport", reportId,
+                "Reopened from SepaSent to Approved — download failed, batch can be regenerated.",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
         }
-
-        await auditLogService.LogAsync(
-            AuditAction.ExpenseSepaReopened,
-            "ExpenseReport", reportId,
-            "Reopened from SepaSent to Approved — download failed, batch can be regenerated.",
-            actorUserId);
-
-        return ExpenseMutationResult.Success;
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reopening SEPA for report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
     }
 
     internal async Task<bool> MarkPaidAsync(
