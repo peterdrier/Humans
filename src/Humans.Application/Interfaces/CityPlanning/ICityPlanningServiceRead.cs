@@ -1,5 +1,3 @@
-using Humans.Application.Architecture;
-
 namespace Humans.Application.Interfaces.CityPlanning;
 
 /// <summary>
@@ -9,7 +7,6 @@ namespace Humans.Application.Interfaces.CityPlanning;
 /// City Planning team-membership check — no EF entities, no writes.
 /// See <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
-[SurfaceBudget(3)]
 public interface ICityPlanningServiceRead
 {
     /// <summary>

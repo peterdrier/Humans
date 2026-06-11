@@ -17,7 +17,7 @@ public class CityPlanningHub(IUserServiceRead userService, UserManager<User> use
         var userId = userManager.GetUserId(Context.User!);
         if (userId != null)
         {
-            var burnerName = (await userService.GetUserInfoAsync(Guid.Parse(userId)))?.Profile?.BurnerName;
+            var burnerName = (await userService.GetUserInfoAsync(Guid.Parse(userId)))?.BurnerName;
             _displayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)
                 ? burnerName
                 : Context.User?.Identity?.Name ?? "Unknown";
