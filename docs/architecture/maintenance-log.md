@@ -52,9 +52,10 @@ refactor-swarm coordinator does this in one wave-end docs commit; /section-align
 /section-read-split update their own section's row in the PR. Each wave also re-snapshots the
 Score column for all sections from `reforge surface-score --format compact` so deltas stay honest.
 
-Scores below are the 2026-06-11 snapshot (solution combined: 58939). Post-Lane Score is seeded "—"
-for lanes that predate this table — no built post-lane scores were recorded for the
-2026-05-24→06-01 wave, so the 2026-06-11 snapshot is everyone's baseline.
+Scores below are the 2026-06-11 wave-end snapshot (solution combined: 59182, built at c698496bc
+after the Events #967 merge; CityPlanning #970 still open, so its Score is pre-merge). Post-Lane
+Score is seeded "—" for lanes that predate this table — no built post-lane scores were recorded
+for the 2026-05-24→06-01 wave, so the 2026-06-11 snapshot is everyone's baseline.
 
 | Section | Score | Post-Lane Score | Last Lane | What |
 |---------|-------|-----------------|-----------|------|
@@ -62,30 +63,30 @@ for lanes that predate this table — no built post-lane scores were recorded fo
 | Shifts | 5335 | — | 2026-05-30 | #820 service+repo surface refactor; ShiftRepository convergence #882 (06-04); /section-align 05-12 |
 | Teams | 4385 | — | 2026-06-01 | #850 route consumers onto ITeamServiceRead + TeamInfo; read-split reference #678 |
 | Camps | 3688 | — | 2026-05-29 | #822 cached read model + read surface |
-| GoogleIntegration | 3457 | — | 2026-05-30 | #835 Reforge surface reduction; /section-align 05-12 (#500) |
+| GoogleIntegration | 3586 | — | 2026-05-30 | #835 Reforge surface reduction; /section-align 05-12 (#500) |
 | Tickets | 3293 | — | 2026-05-30 | #833 Reforge surface reduction; ticket read service #744 (05-25); buyer-fallback retirement #953 (06-11) |
-| Events | 3254 | — | — | never served |
-| Platform | 2207 | — | — | never served as a lane (table-component work #929/#932 was shared-UI feature work) |
+| Events | 3218 | 3218 | 2026-06-11 | #967 refactor-swarm deep lane: dead-surface cleanup (GetPreferenceAsync + EventPreferenceInfo DTO, IsSubmissionOpenAsync, duplicate IUserServiceRead DI); boundary already clean — read-split done previously |
+| Platform | 2227 | 2207 | 2026-06-11 | refactor-swarm deep lane closed at stasis, 0 commits — group is orchestrator-protected cross-cutting infra (jobs/seeders/cache plumbing); genuine debt (jobs injecting foreign repositories) is owned by other sections, needs cross-section lanes |
 | Email | 2123 | — | 2026-05-30 | #837 Reforge surface reduction; IEmailService collapse to SendAsync(EmailMessage) #844 |
 | (ungrouped) | 1870 | — | 2026-05-29 | #829 assigned ungrouped surface-score ownership |
 | Budget | 1805 | — | 2026-05-30 | #836 Reforge surface reduction; ticketing-budget repo surface removal #815 (05-28) |
 | Governance | 1634 | — | 2026-06-01 | #851 read/write split (IApplicationServiceRead + IMembershipCalculatorRead) + dead-surface trim |
-| Expenses | 1632 | — | 2026-05-30 | #830 service surface refactor |
-| Store | 1551 | — | — | never served |
+| Expenses | 1680 | — | 2026-05-30 | #830 service surface refactor |
+| Store | 1628 | — | — | never served |
 | Agent | 1318 | — | 2026-05-31 | #849 dead-parameter drop (minor) |
 | Consent | 1292 | — | 2026-06-01 | #854 duplicate-read collapse + dead consent-workflow surface deletion |
 | Campaigns | 1233 | — | 2026-05-31 | #847 ICampaignServiceRead carve |
-| Admin | 1223 | — | 2026-05-30 | #842 admin-nav realign (nav holder, not a section — lanes belong to the owning sections) |
+| Admin | 1226 | — | 2026-05-30 | #842 admin-nav realign (nav holder, not a section — lanes belong to the owning sections) |
 | Auth | 1091 | — | — | never served (horizontal — lanes need extra care) |
 | Notifications | 1012 | — | 2026-06-01 | #852 dead-surface deletion + emit-only consumer narrowing; badge-count caching move #954 (06-11) |
 | Issues | 1011 | — | 2026-05-31 | #848 forwarding-overload collapse |
-| CityPlanning | 975 | — | — | never served |
+| CityPlanning | 975 | 906 | 2026-06-11 | #970 refactor-swarm deep lane: ICityPlanningServiceRead carve (4 consumers routed), CampPolygonSaveResult entity-leak fix, duplicated GeoJSON upload pipeline collapse, dead surface deletions (7 commits, −69) |
 | Finance | 899 | — | — | never served |
 | AuditLog | 876 | — | — | never served (horizontal — lanes need extra care) |
 | Feedback | 873 | — | — | never served |
 | Calendar | 769 | — | — | never served |
 | Containers | 687 | — | — | never served |
 | Dashboard | 451 | — | — | never served |
-| Cantina | 302 | — | — | never served |
+| Cantina | 304 | — | — | never served |
 | Search | 132 | — | 2026-06-07 | #906 relevance-ranked, cache-only search rewrite |
 | Gdpr | 81 | — | — | never served |
