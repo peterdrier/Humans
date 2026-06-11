@@ -80,11 +80,11 @@ public class NotificationServiceTests : IDisposable
             "Added to team",
             [user1, user2],
             body: "You were added to Logistics",
-            actionUrl: "/Teams/logistics");
+            actionUrl: "/Teams/logistics", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var notifications = await _dbContext.Notifications
             .Include(n => n.Recipients)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
         notifications.Should().HaveCount(2);
         notifications.Should().AllSatisfy(n =>
@@ -112,9 +112,9 @@ public class NotificationServiceTests : IDisposable
             "Coverage gap",
             [userId],
             actionLabel: "Find cover →",
-            targetGroupName: "Coordinators");
+            targetGroupName: "Coordinators", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notification = await _dbContext.Notifications.SingleAsync();
+        var notification = await _dbContext.Notifications.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         notification.ActionLabel.Should().Be("Find cover →");
         notification.TargetGroupName.Should().Be("Coordinators");
     }
@@ -127,9 +127,9 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Test",
-            []);
+            [], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync();
+        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -147,16 +147,16 @@ public class NotificationServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant(),
             UpdateSource = "Test"
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendAsync(
             NotificationSource.TeamMemberAdded, // maps to TeamUpdates
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Added to team",
-            [userId]);
+            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync();
+        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -174,16 +174,16 @@ public class NotificationServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant(),
             UpdateSource = "Test"
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendAsync(
             NotificationSource.ConsentReviewNeeded, // maps to System
             NotificationClass.Actionable,
             NotificationPriority.High,
             "Consent review needed",
-            [userId]);
+            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync();
+        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
 
@@ -202,11 +202,11 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.Normal,
             "New tier application submitted",
             "Board",
-            actionUrl: "/Governance/BoardVoting");
+            actionUrl: "/Governance/BoardVoting", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var notifications = await _dbContext.Notifications
             .Include(n => n.Recipients)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
         notifications.Should().HaveCount(1);
         var notification = notifications.Single();
@@ -226,7 +226,7 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Test",
-            [userId]);
+            [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(userId), out _).Should().BeFalse();
 
@@ -237,7 +237,7 @@ public class NotificationServiceTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Test2",
-            [Guid.NewGuid()]);
+            [Guid.NewGuid()], cancellationToken: Xunit.TestContext.Current.CancellationToken);
         _cache.TryGetValue(CacheKeys.NavBadgeCounts, out _).Should().BeTrue();
     }
 }

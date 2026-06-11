@@ -14,7 +14,7 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
     [HumansFact(Timeout = 30000)]
     public async Task Anonymous_GET_Store_redirects_to_login()
     {
-        var resp = await Client.GetAsync("/Store");
+        var resp = await Client.GetAsync("/Store", Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized);
     }
 
@@ -24,10 +24,10 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
         var year = await SeedActiveProductAsync("Test product");
 
-        var resp = await Client.GetAsync("/Store");
+        var resp = await Client.GetAsync("/Store", Xunit.TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadAsStringAsync();
+        var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         body.Should().Contain("Test product");
         body.Should().Contain(year.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
@@ -38,10 +38,10 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         await SeedActiveProductAsync("Volunteer-visible product");
 
-        var resp = await Client.GetAsync("/Store");
+        var resp = await Client.GetAsync("/Store", Xunit.TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadAsStringAsync();
+        var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         body.Should().Contain("Volunteer-visible product");
     }
 
@@ -63,7 +63,7 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
 
         var resp = await Client.PostAsync(
             $"/Store/Order/Create/{seasonId}",
-            BuildForm(("label", "should-not-create")));
+            BuildForm(("label", "should-not-create")), Xunit.TestContext.Current.CancellationToken);
 
         // Anti-forgery / forbid produce non-2xx outcomes; assert it isn't a happy redirect to /Store/Order/{id}.
         ((int)resp.StatusCode).Should().BeGreaterThanOrEqualTo(300);
@@ -78,9 +78,9 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var year = (await db.CampSettings.FirstAsync()).PublicYear;
+        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
 
-        if (await db.StoreProducts.AnyAsync(p => p.Year == year && p.Name == name))
+        if (await db.StoreProducts.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
             return year;
 
         db.StoreProducts.Add(new StoreProduct
@@ -97,7 +97,7 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
             CreatedAt = SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = SystemClock.Instance.GetCurrentInstant()
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return year;
     }
 
@@ -105,10 +105,10 @@ public class StoreControllerTests(HumansWebApplicationFactory factory) : Integra
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var year = (await db.CampSettings.FirstAsync()).PublicYear;
+        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var season = await db.Set<CampSeason>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Year == year && s.Camp.Slug == "barrio-1");
+            .FirstOrDefaultAsync(s => s.Year == year && s.Camp.Slug == "barrio-1", Xunit.TestContext.Current.CancellationToken);
         return season?.Id ?? Guid.Empty;
     }
 

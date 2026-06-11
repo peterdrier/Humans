@@ -42,9 +42,9 @@ public class SyncSettingsServiceTests : IDisposable
     public async Task GetAllAsync_ReturnsAllSettings()
     {
         SeedSettings(3);
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAllAsync();
+        var result = await _service.GetAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(3);
         var googleDriveRow = result.First(r => r.ServiceType == Enum.GetValues<SyncServiceType>()[0]);
@@ -62,9 +62,9 @@ public class SyncSettingsServiceTests : IDisposable
             SyncMode = SyncMode.None,
             UpdatedAt = _clock.GetCurrentInstant()
         });
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetModeAsync(SyncServiceType.GoogleDrive);
+        var result = await _service.GetModeAsync(SyncServiceType.GoogleDrive, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(SyncMode.None);
     }
@@ -80,13 +80,13 @@ public class SyncSettingsServiceTests : IDisposable
             SyncMode = SyncMode.None,
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         });
-        await _seedContext.SaveChangesAsync();
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.UpdateModeAsync(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove, actorId);
+        await _service.UpdateModeAsync(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove, actorId, Xunit.TestContext.Current.CancellationToken);
 
         await using var verify = _factory.CreateDbContext();
         var updated = await verify.SyncServiceSettings
-            .FirstAsync(s => s.ServiceType == SyncServiceType.GoogleGroups);
+            .FirstAsync(s => s.ServiceType == SyncServiceType.GoogleGroups, Xunit.TestContext.Current.CancellationToken);
         updated.SyncMode.Should().Be(SyncMode.AddAndRemove);
         updated.UpdatedByUserId.Should().Be(actorId);
         updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -98,7 +98,7 @@ public class SyncSettingsServiceTests : IDisposable
         var actorId = Guid.NewGuid();
 
         var act = () => _service.UpdateModeAsync(
-            SyncServiceType.Discord, SyncMode.AddAndRemove, actorId);
+            SyncServiceType.Discord, SyncMode.AddAndRemove, actorId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Discord*");
@@ -108,7 +108,7 @@ public class SyncSettingsServiceTests : IDisposable
     public async Task GetModeAsync_ReturnsNone_WhenServiceTypeNotFound()
     {
         // No settings seeded at all
-        var result = await _service.GetModeAsync(SyncServiceType.Discord);
+        var result = await _service.GetModeAsync(SyncServiceType.Discord, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(SyncMode.None);
     }

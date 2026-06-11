@@ -12,7 +12,7 @@ public class MailerLiteClientWriteGuardTests
     {
         var client = NewClient(new ScriptedHandler());
 
-        var act = async () => await client.CreateGroupAsync("Newsletter", CancellationToken.None);
+        var act = async () => await client.CreateGroupAsync("Newsletter", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Humans - *");
@@ -28,7 +28,7 @@ public class MailerLiteClientWriteGuardTests
             """{"data":[{"id":"99","name":"Newsletter","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""");
         var client = NewClient(handler);
 
-        var act = async () => await client.AssignSubscriberToGroupAsync("sub-1", "99", CancellationToken.None);
+        var act = async () => await client.AssignSubscriberToGroupAsync("sub-1", "99", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Humans - *");
@@ -43,7 +43,7 @@ public class MailerLiteClientWriteGuardTests
             """{"data":[{"id":"99","name":"Newsletter","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""");
         var client = NewClient(handler);
 
-        var act = async () => await client.UnassignSubscriberFromGroupAsync("sub-1", "99", CancellationToken.None);
+        var act = async () => await client.UnassignSubscriberFromGroupAsync("sub-1", "99", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
@@ -58,7 +58,7 @@ public class MailerLiteClientWriteGuardTests
         var client = NewClient(handler);
 
         var act = async () => await client.BulkImportSubscribersToGroupAsync(
-            "99", ["a@example.com"], CancellationToken.None);
+            "99", ["a@example.com"], Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

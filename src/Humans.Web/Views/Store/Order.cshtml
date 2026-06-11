@@ -44,7 +44,7 @@
             <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Lines subtotal</h6>
-                    <h4 class="card-title mb-0">&euro;@order.LinesSubtotalEur.ToString("N2")</h4>
+                    <h4 class="card-title mb-0">@order.LinesSubtotalEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -52,7 +52,7 @@
             <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">VAT</h6>
-                    <h4 class="card-title mb-0">&euro;@order.VatTotalEur.ToString("N2")</h4>
+                    <h4 class="card-title mb-0">@order.VatTotalEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -60,7 +60,7 @@
             <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Deposits</h6>
-                    <h4 class="card-title mb-0">&euro;@order.DepositTotalEur.ToString("N2")</h4>
+                    <h4 class="card-title mb-0">@order.DepositTotalEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
             <div class="card text-center h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Total payments</h6>
-                    <h4 class="card-title mb-0 text-success">&euro;@order.PaymentsTotalEur.ToString("N2")</h4>
+                    <h4 class="card-title mb-0 text-success">@order.PaymentsTotalEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -76,7 +76,7 @@
             <div class="card text-center bg-light h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Balance owed</h6>
-                    <h4 class="card-title mb-0 fw-bold">&euro;@order.BalanceEur.ToString("N2")</h4>
+                    <h4 class="card-title mb-0 fw-bold">@order.BalanceEur.ToEuro()</h4>
                 </div>
             </div>
         </div>
@@ -109,11 +109,11 @@
                     @if (!isTeamOrder)
                     {
                         <td class="text-end">
-                            &euro;@line.EffectiveUnitPriceInclVat.ToString("N2")
-                            <div class="text-muted small">(&euro;@line.EffectiveUnitPrice.ToString("N2") + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
+                            @line.EffectiveUnitPriceInclVat.ToEuro()
+                            <div class="text-muted small">(@line.EffectiveUnitPrice.ToEuro() + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
                         </td>
-                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
-                        <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
+                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? line.DepositEur.ToEuro() : "—")</td>
+                        <td class="text-end">@line.TotalEur.ToEuro()</td>
                     }
                     <td class="text-end">
                         @if (Model.CanEdit && Model.RemovableLineIds.Contains(line.Id))
@@ -159,7 +159,7 @@ else
                 <option value="">Choose a product…</option>
                 @foreach (var product in Model.Catalog)
                 {
-                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceInclVatEur.ToString("N2") incl. VAT (deadline @product.OrderableUntil.ToDate())</option>
+                    <option value="@product.Id">@product.Name — @product.UnitPriceInclVatEur.ToEuro() incl. VAT (deadline @product.OrderableUntil.ToDate())</option>
                 }
             </select>
         </div>
@@ -220,7 +220,7 @@ else
                             }
                         </td>
                         <td class="text-end @(payment.AmountEur < 0 ? "text-danger" : "")">
-                            &euro;@payment.AmountEur.ToString("N2")
+                            @payment.AmountEur.ToEuro()
                             @if (isPending)
                             {
                                 <div class="text-muted small">pending settlement</div>
@@ -232,7 +232,7 @@ else
             <tfoot>
                 <tr class="fw-bold">
                     <td colspan="4" class="text-end">Total cleared payments</td>
-                    <td class="text-end">&euro;@order.PaymentsTotalEur.ToString("N2")</td>
+                    <td class="text-end">@order.PaymentsTotalEur.ToEuro()</td>
                 </tr>
             </tfoot>
         </table>
@@ -240,7 +240,7 @@ else
         {
             <div class="alert alert-warning py-2">
                 <i class="fa-solid fa-clock me-1"></i>
-                &euro;@pendingTotal.ToString("N2") pending settlement (mandate captured, not yet cleared) &mdash;
+                @pendingTotal.ToEuro() pending settlement (mandate captured, not yet cleared) &mdash;
                 not counted toward the outstanding balance until Stripe confirms.
             </div>
         }

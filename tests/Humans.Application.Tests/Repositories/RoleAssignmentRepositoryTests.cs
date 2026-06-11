@@ -47,9 +47,9 @@ public class RoleAssignmentRepositoryTests : IDisposable
             CreatedByUserId = Guid.NewGuid(),
         };
 
-        await _repo.AddAsync(assignment);
+        await _repo.AddAsync(assignment, Xunit.TestContext.Current.CancellationToken);
 
-        var stored = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id);
+        var stored = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id, Xunit.TestContext.Current.CancellationToken);
         stored.UserId.Should().Be(userId);
         stored.RoleName.Should().Be(RoleNames.Board);
     }
@@ -61,12 +61,12 @@ public class RoleAssignmentRepositoryTests : IDisposable
             Guid.NewGuid(), RoleNames.Board,
             _clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
-        var tracked = await _repo.FindForMutationAsync(assignment.Id);
+        var tracked = await _repo.FindForMutationAsync(assignment.Id, Xunit.TestContext.Current.CancellationToken);
         tracked.Should().NotBeNull();
         tracked.ValidTo = _clock.GetCurrentInstant();
-        await _repo.UpdateAsync(tracked);
+        await _repo.UpdateAsync(tracked, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id);
+        var reloaded = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.ValidTo.Should().NotBeNull();
     }
 
@@ -77,7 +77,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
             Guid.NewGuid(), RoleNames.Admin,
             _clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
-        var result = await _repo.GetByIdAsync(assignment.Id);
+        var result = await _repo.GetByIdAsync(assignment.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(assignment.Id);
@@ -98,7 +98,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var current = await SeedAssignmentAsync(userId, RoleNames.Admin,
             _clock.GetCurrentInstant() - Duration.FromDays(5), null);
 
-        var result = await _repo.GetByUserIdAsync(userId);
+        var result = await _repo.GetByUserIdAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[0].Id.Should().Be(current.Id);
@@ -116,7 +116,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(Guid.NewGuid(), RoleNames.Admin, now - Duration.FromDays(1), null);
 
         var (items, total) = await _repo.GetFilteredAsync(
-            RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, now);
+            RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, now, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(2);
         items.Should().HaveCount(2);
@@ -131,7 +131,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Board, now - Duration.FromDays(10), null);
 
         var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board, now, validTo: null);
+            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         hasOverlap.Should().BeTrue();
     }
@@ -146,10 +146,10 @@ public class RoleAssignmentRepositoryTests : IDisposable
 
         var before = await _repo.HasOverlappingAssignmentAsync(
             userId, RoleNames.Board,
-            now - Duration.FromDays(40), validTo: now - Duration.FromDays(35));
+            now - Duration.FromDays(40), validTo: now - Duration.FromDays(35), ct: Xunit.TestContext.Current.CancellationToken);
         var after = await _repo.HasOverlappingAssignmentAsync(
             userId, RoleNames.Board,
-            now - Duration.FromDays(5), validTo: now);
+            now - Duration.FromDays(5), validTo: now, ct: Xunit.TestContext.Current.CancellationToken);
 
         before.Should().BeFalse();
         after.Should().BeFalse();
@@ -162,7 +162,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(1), null);
 
-        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now);
+        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -175,7 +175,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Admin,
             now - Duration.FromDays(10), now - Duration.FromDays(1));
 
-        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now);
+        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -190,7 +190,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.TeamsAdmin,
             now - Duration.FromDays(100), now - Duration.FromDays(50));
 
-        var result = await _repo.GetActiveForUserForMutationAsync(userId, now);
+        var result = await _repo.GetActiveForUserForMutationAsync(userId, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Select(r => r.Id).Should().Contain([active1.Id, active2.Id]);
@@ -199,9 +199,9 @@ public class RoleAssignmentRepositoryTests : IDisposable
         {
             ra.ValidTo = now;
         }
-        await _repo.UpdateManyAsync(result);
+        await _repo.UpdateManyAsync(result, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.RoleAssignments.AsNoTracking().Where(r => r.UserId == userId).ToListAsync();
+        var reloaded = await _dbContext.RoleAssignments.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         reloaded.All(r => r.ValidTo.HasValue).Should().BeTrue();
     }
 
@@ -218,7 +218,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
             CreatedByUserId = Guid.NewGuid(),
         };
         _dbContext.RoleAssignments.Add(ra);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
         return ra;
     }

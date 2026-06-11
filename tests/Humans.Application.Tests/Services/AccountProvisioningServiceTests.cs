@@ -566,7 +566,7 @@ public class AccountProvisioningServiceTests
     public async Task FindOrCreateUserByEmailAsync_CreatesNewUser_WhenNoExistingAccount()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "alice@example.com", "Alice Smith", ContactSource.TicketTailor);
+            "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
         // Per PR 1 of email-identity-decoupling spec: User.Email is no longer
@@ -611,7 +611,7 @@ public class AccountProvisioningServiceTests
         });
 
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "bob@example.com", "Bob Jones", ContactSource.TicketTailor);
+            "bob@example.com", "Bob Jones", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeFalse();
         result.User.Id.Should().Be(existingUser.Id);
@@ -655,7 +655,7 @@ public class AccountProvisioningServiceTests
 
         // Look up by secondary email
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "carol@secondary.com", "Carol", ContactSource.TicketTailor);
+            "carol@secondary.com", "Carol", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeFalse();
         result.User.Id.Should().Be(existingUser.Id);
@@ -666,13 +666,13 @@ public class AccountProvisioningServiceTests
     {
         // Create the first time
         var result1 = await _service.FindOrCreateUserByEmailAsync(
-            "dave@example.com", "Dave", ContactSource.TicketTailor);
+            "dave@example.com", "Dave", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result1.Created.Should().BeTrue();
 
         // Call again with the same email
         var result2 = await _service.FindOrCreateUserByEmailAsync(
-            "dave@example.com", "Dave Smith", ContactSource.MailerLite);
+            "dave@example.com", "Dave Smith", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result2.Created.Should().BeFalse();
         result2.User.Id.Should().Be(result1.User.Id);
@@ -683,14 +683,14 @@ public class AccountProvisioningServiceTests
     {
         // First call from TicketTailor
         var result1 = await _service.FindOrCreateUserByEmailAsync(
-            "emma@example.com", "Emma", ContactSource.TicketTailor);
+            "emma@example.com", "Emma", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result1.Created.Should().BeTrue();
         result1.User.ContactSource.Should().Be(ContactSource.TicketTailor);
 
         // Second call from MailerLite — should find existing, not re-create
         var result2 = await _service.FindOrCreateUserByEmailAsync(
-            "emma@example.com", "Emma Jones", ContactSource.MailerLite);
+            "emma@example.com", "Emma Jones", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result2.Created.Should().BeFalse();
         result2.User.Id.Should().Be(result1.User.Id);
@@ -726,7 +726,7 @@ public class AccountProvisioningServiceTests
         });
 
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "frank@example.com", "Frank", ContactSource.TicketTailor);
+            "frank@example.com", "Frank", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeFalse();
         result.User.Id.Should().Be(existingUser.Id);
@@ -738,7 +738,7 @@ public class AccountProvisioningServiceTests
     public async Task FindOrCreateUserByEmailAsync_UsesEmailPrefix_WhenDisplayNameEmpty()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "grace@example.com", null, ContactSource.MailerLite);
+            "grace@example.com", null, ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
         result.User.DisplayName.Should().Be("grace");
@@ -748,13 +748,13 @@ public class AccountProvisioningServiceTests
     public async Task FindOrCreateUserByEmailAsync_IsIdempotent_MultipleCalls()
     {
         var result1 = await _service.FindOrCreateUserByEmailAsync(
-            "henry@example.com", "Henry", ContactSource.TicketTailor);
+            "henry@example.com", "Henry", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         var result2 = await _service.FindOrCreateUserByEmailAsync(
-            "henry@example.com", "Henry", ContactSource.TicketTailor);
+            "henry@example.com", "Henry", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         var result3 = await _service.FindOrCreateUserByEmailAsync(
-            "henry@example.com", "Henry", ContactSource.TicketTailor);
+            "henry@example.com", "Henry", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result1.User.Id.Should().Be(result2.User.Id);
         result2.User.Id.Should().Be(result3.User.Id);
@@ -778,7 +778,7 @@ public class AccountProvisioningServiceTests
         // the IUserEmailService orchestrator — a newly-provisioned user gets
         // exactly one IsGoogle row (the one we just created).
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "ivy@example.com", "Ivy", ContactSource.TicketTailor);
+            "ivy@example.com", "Ivy", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
 
@@ -799,7 +799,7 @@ public class AccountProvisioningServiceTests
         // through IUserEmailService even though Users now owns the underlying
         // repository storage methods.
         var result = await _service.FindOrCreateUserByEmailAsync(
-            "jane@example.com", "Jane", ContactSource.MailerLite);
+            "jane@example.com", "Jane", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
         await _userEmailService.Received(1)
@@ -812,7 +812,7 @@ public class AccountProvisioningServiceTests
     public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
     {
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "magic@example.com", " Magic Human ", " Legal ", " Surname ");
+            "magic@example.com", " Magic Human ", " Legal ", " Surname ", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
         result.User.Should().NotBeNull();
@@ -849,7 +849,7 @@ public class AccountProvisioningServiceTests
         });
 
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "existing@example.com", "Ignored", "Ignored", "Ignored");
+            "existing@example.com", "Ignored", "Ignored", "Ignored", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
         result.User.Should().BeSameAs(user);
@@ -864,7 +864,7 @@ public class AccountProvisioningServiceTests
         _userEmailFake.ThrowOnAddVerified = true;
 
         var result = await _service.CompleteMagicLinkSignupAsync(
-            "rollback@example.com", "Rollback", "First", "Last");
+            "rollback@example.com", "Rollback", "First", "Last", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
         result.User.Should().BeNull();

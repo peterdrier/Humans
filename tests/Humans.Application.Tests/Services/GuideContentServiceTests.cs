@@ -51,7 +51,7 @@ public class GuideContentServiceTests
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var html = await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
         source.Calls.Should().BeGreaterThan(0);
@@ -63,9 +63,9 @@ public class GuideContentServiceTests
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
         var callsAfterFirst = source.Calls;
-        await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
         source.Calls.Should().Be(callsAfterFirst);
     }
@@ -75,10 +75,10 @@ public class GuideContentServiceTests
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
         var callsBefore = source.Calls;
 
-        await service.RefreshAllAsync(CancellationToken.None);
+        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         source.Calls.Should().BeGreaterThan(callsBefore);
     }
@@ -89,7 +89,7 @@ public class GuideContentServiceTests
         var source = new FakeSource();
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("DoesNotExist", CancellationToken.None);
+        var act = async () => await service.GetRenderedAsync("DoesNotExist", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
@@ -100,7 +100,7 @@ public class GuideContentServiceTests
         var source = new FakeSource { FailFor = _ => new InvalidOperationException("network down") };
         var service = CreateService(source, out _);
 
-        var act = async () => await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        var act = async () => await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<GuideContentUnavailableException>();
     }
@@ -110,14 +110,14 @@ public class GuideContentServiceTests
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
-        await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
         // Simulate TTL-expired warm cache by clearing only the sentinel, leaving stale entries.
         // Implementation detail: the service tracks a "populated" flag separately from entries.
         source.FailFor = _ => new InvalidOperationException("flaky");
-        await service.RefreshAllAsync(CancellationToken.None); // should NOT throw — stale content present
+        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken); // should NOT throw — stale content present
 
-        var html = await service.GetRenderedAsync("Profiles", CancellationToken.None);
+        var html = await service.GetRenderedAsync("Profiles", Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:Profiles]");
     }

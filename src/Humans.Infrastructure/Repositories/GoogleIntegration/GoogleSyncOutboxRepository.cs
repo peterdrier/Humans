@@ -39,9 +39,13 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbConte
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Include permanently-failed events (FailedPermanently=true) as well as
+        // transient-retry events (ProcessedAt=null && LastError!=null).
+        // Previously only the latter was counted, so dead-lettered events silently
+        // fell out of the badge to zero (nobodies-collective/Humans#847).
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
-            .CountAsync(e => e.ProcessedAt == null && e.LastError != null, ct);
+            .CountAsync(e => e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null), ct);
     }
 
     public async Task<int> CountPendingAsync(CancellationToken ct = default)
@@ -75,6 +79,40 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbConte
             .OrderBy(e => e.OccurredAt)
             .Take(batchSize)
             .ToListAsync(ct);
+    }
+
+    public async Task<bool> RequeueAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
+        if (entity is null || !entity.FailedPermanently)
+            return false;
+
+        entity.FailedPermanently = false;
+        entity.ProcessedAt = null;
+        entity.RetryCount = 0;
+        entity.LastError = null;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<int> RequeueAllFailedAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var failed = await ctx.GoogleSyncOutboxEvents
+            .Where(e => e.FailedPermanently)
+            .ToListAsync(ct);
+
+        foreach (var entity in failed)
+        {
+            entity.FailedPermanently = false;
+            entity.ProcessedAt = null;
+            entity.RetryCount = 0;
+            entity.LastError = null;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return failed.Count;
     }
 
     public async Task MarkProcessedAsync(Guid id, Instant processedAt, CancellationToken ct = default)

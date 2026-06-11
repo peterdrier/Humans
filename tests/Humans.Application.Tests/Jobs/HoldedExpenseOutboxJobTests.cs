@@ -17,7 +17,7 @@ public class HoldedExpenseOutboxJobTests
         var expenses = Substitute.For<IExpenseReportBackgroundProcessor>();
         var job = new HoldedExpenseOutboxJob(expenses);
 
-        await job.ExecuteAsync();
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await expenses.Received(1).DrainHoldedOutboxAsync(100, Arg.Any<CancellationToken>());
     }

@@ -83,7 +83,7 @@ public class OnboardingWidgetControllerNamesTests
         };
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
 
-        var result = await ctrl.Names(CancellationToken.None);
+        var result = await ctrl.Names(TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<NamesViewModel>(view.Model);
@@ -102,7 +102,7 @@ public class OnboardingWidgetControllerNamesTests
             .Returns(MakeUserInfo(userId, burner: "Saved", first: "Jean", last: "Dupont"));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Names(CancellationToken.None);
+        var result = await ctrl.Names(TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<NamesViewModel>(view.Model);
@@ -125,7 +125,7 @@ public class OnboardingWidgetControllerNamesTests
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
 
-        var result = await ctrl.Names(vm, CancellationToken.None);
+        var result = await ctrl.Names(vm, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
@@ -154,13 +154,13 @@ public class OnboardingWidgetControllerNamesTests
             .Returns(MakeUserInfo(userId, burner: "Existing", first: "Already", last: "Named"));
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
 
-        var result = await ctrl.Names(vm, CancellationToken.None);
+        var result = await ctrl.Names(vm, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
 
         await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            Guid.Empty, null!, null!, CancellationToken.None);
+            Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -179,7 +179,7 @@ public class OnboardingWidgetControllerNamesTests
         var ctrl = BuildSut(userId, currentStep: OnboardingWidgetStep.Complete);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
 
-        var result = await ctrl.Names(vm, CancellationToken.None);
+        var result = await ctrl.Names(vm, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
@@ -238,7 +238,7 @@ public class OnboardingWidgetControllerNamesTests
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Drifted", FirstName = "Has", LastName = "NowSet" };
 
-        var result = await ctrl.Names(vm, CancellationToken.None);
+        var result = await ctrl.Names(vm, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Shifts), redirect.ActionName);
@@ -259,12 +259,12 @@ public class OnboardingWidgetControllerNamesTests
         var ctrl = BuildSut(Guid.NewGuid());
         ctrl.ModelState.AddModelError(nameof(NamesViewModel.BurnerName), "required");
 
-        var result = await ctrl.Names(new NamesViewModel(), CancellationToken.None);
+        var result = await ctrl.Names(new NamesViewModel(), TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), view.ViewName ?? nameof(OnboardingWidgetController.Names));
 
         await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            Guid.Empty, null!, null!, CancellationToken.None);
+            Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
     }
 }

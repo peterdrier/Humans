@@ -123,7 +123,7 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = UserId, Iban = "ES1234567890123456789012" }));
 
-        var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         slices.Should().HaveCount(2);
 
@@ -144,7 +144,7 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         // PayeeIban in the report should be masked
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
@@ -161,7 +161,7 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
         reportsSlice.Data.Should().BeNull("null data is dropped by the GDPR orchestrator");
@@ -201,7 +201,7 @@ public class ExpenseReportServiceGdprTests
                 ct: Arg.Any<CancellationToken>())
             .Returns([entry]);
 
-        var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         var auditSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseAuditLog", StringComparison.Ordinal));
         auditSlice.Data.Should().NotBeNull();
@@ -225,7 +225,7 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var slices = await _sut.ContributeForUserAsync(UserId, CancellationToken.None);
+        var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
         var reportsSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseReports", StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(reportsSlice.Data);

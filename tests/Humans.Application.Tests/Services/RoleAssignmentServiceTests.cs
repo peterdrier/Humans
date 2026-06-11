@@ -52,7 +52,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant(), cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -67,7 +67,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             Clock.GetCurrentInstant() - Duration.FromDays(20),
             Clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant(), cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -82,7 +82,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             Clock.GetCurrentInstant() - Duration.FromDays(5),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant(), cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -97,7 +97,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             Clock.GetCurrentInstant() + Duration.FromDays(10),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant(), cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -112,7 +112,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             Clock.GetCurrentInstant() - Duration.FromDays(5),
             null);
 
-        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant());
+        var result = await _service.HasOverlappingAssignmentAsync(userId, "Board", Clock.GetCurrentInstant(), cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -126,7 +126,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         await SeedUserAsync(assignerId, "Admin User");
 
         var result = await _service.AssignRoleAsync(
-            userId, RoleNames.Board, assignerId, null);
+            userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
@@ -147,7 +147,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             null);
 
         var result = await _service.EndRoleAsync(
-            assignment.Id, enderId, null);
+            assignment.Id, enderId, null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
@@ -168,7 +168,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             null,
             creatorId);
 
-        var result = await _service.GetByUserIdAsync(userId);
+        var result = await _service.GetByUserIdAsync(userId, TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Id.Should().Be(assignment.Id);
@@ -190,7 +190,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         await AddAssignmentAsync(user2, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(2), null, creator);
 
         var (items, total) = await _service.GetFilteredAsync(
-            roleFilter: RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, Clock.GetCurrentInstant());
+            roleFilter: RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, Clock.GetCurrentInstant(), ct: TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
         total.Should().Be(2);
@@ -206,13 +206,13 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(10), null);
         await AddAssignmentAsync(userId, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(5), null);
 
-        var count = await _service.RevokeAllActiveAsync(userId);
+        var count = await _service.RevokeAllActiveAsync(userId, TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
         var remaining = await Db.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == userId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         remaining.All(ra => ra.ValidTo.HasValue).Should().BeTrue();
         _claimsInvalidator.Received(1).Invalidate(userId);
     }
@@ -226,7 +226,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         await SeedUserAsync(assignerId, "Admin");
         await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
-        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null);
+        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("RoleAlreadyActive");
@@ -235,7 +235,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task EndRoleAsync_NotFound_ReturnsFailure()
     {
-        var result = await _service.EndRoleAsync(Guid.NewGuid(), Guid.NewGuid(), null);
+        var result = await _service.EndRoleAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -259,9 +259,9 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
                 Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
                 validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
         }
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _service.IsUserAdminAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().Be(expected);
     }
@@ -283,9 +283,9 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
                 Clock.GetCurrentInstant() + Duration.FromDays(validFromDays),
                 validToDays.HasValue ? Clock.GetCurrentInstant() + Duration.FromDays(validToDays.Value) : null);
         }
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _service.IsUserBoardMemberAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().Be(expected);
     }
@@ -297,7 +297,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         await SeedUserAsync(userId, "Target");
         await AddAssignmentAsync(userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
 
-        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
@@ -316,7 +316,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         };
 
         Db.Users.Add(user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private async Task<RoleAssignment> AddAssignmentAsync(
@@ -335,7 +335,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
 
         Db.RoleAssignments.Add(assignment);
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return assignment;
     }
 }

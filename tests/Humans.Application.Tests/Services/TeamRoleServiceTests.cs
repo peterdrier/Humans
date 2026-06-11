@@ -90,11 +90,11 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateRoleDefinitionAsync(
             team.Id, "Designer", "Designs things", 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Name.Should().Be("Designer");
@@ -105,7 +105,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         result.Priorities.Should().HaveCount(2);
 
         var inDb = await Db.Set<TeamRoleDefinition>()
-            .FirstOrDefaultAsync(d => d.Id == result.Id);
+            .FirstOrDefaultAsync(d => d.Id == result.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
     }
 
@@ -115,16 +115,16 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateRoleDefinitionAsync(
             team.Id, "Coordinator", null, 1,
             [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
-            estimatedHours: 120);
+            estimatedHours: 120, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.EstimatedHours.Should().Be(120);
 
-        var inDb = await Db.Set<TeamRoleDefinition>().FirstAsync(d => d.Id == result.Id);
+        var inDb = await Db.Set<TeamRoleDefinition>().FirstAsync(d => d.Id == result.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.EstimatedHours.Should().Be(120);
     }
 
@@ -134,11 +134,11 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateRoleDefinitionAsync(
             team.Id, "Coordinator", null, 1,
-            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.EstimatedHours.Should().BeNull();
     }
@@ -149,22 +149,22 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var created = await _service.CreateRoleDefinitionAsync(
             team.Id, "Coordinator", null, 1,
-            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         var set = await _service.UpdateRoleDefinitionAsync(
             created.Id, "Coordinator", null, 1,
             [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
-            estimatedHours: 80);
+            estimatedHours: 80, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         set.EstimatedHours.Should().Be(80);
 
         var cleared = await _service.UpdateRoleDefinitionAsync(
             created.Id, "Coordinator", null, 1,
             [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
-            estimatedHours: null);
+            estimatedHours: null, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         cleared.EstimatedHours.Should().BeNull();
     }
 
@@ -174,14 +174,14 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.CreateRoleDefinitionAsync(
             team.Id, "Coordinator", null, 1,
             [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
-            estimatedHours: 200);
+            estimatedHours: 200, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var snapshots = await _service.GetRoleDefinitionsAsync(team.Id);
+        var snapshots = await _service.GetRoleDefinitionsAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
 
         snapshots.Should().ContainSingle(s => s.Name == "Coordinator")
             .Which.EstimatedHours.Should().Be(200);
@@ -201,9 +201,9 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user);
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.DeleteRoleDefinitionAsync(mgmtRole.Id, admin.Id);
+        var act = () => _service.DeleteRoleDefinitionAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*management role*");
@@ -226,11 +226,11 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var member2 = SeedMember(team, user2);
         SeedRoleAssignment(role, member1, slotIndex: 0);
         SeedRoleAssignment(role, member2, slotIndex: 1);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.UpdateRoleDefinitionAsync(
             role.Id, "Designer", null, 1,
-            [SlotPriority.Critical], 1, false, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical], 1, false, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot reduce slot count*");
@@ -244,11 +244,11 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var team = SeedTeam("Test Team");
         SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
         var otherRole = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.UpdateRoleDefinitionAsync(
             otherRole.Id, "Designer", null, 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, true, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical, SlotPriority.Important], 1, true, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*already marked as the management role*");
@@ -261,11 +261,11 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var role = SeedRoleDefinition(team, "Lead", slotCount: 1, sortOrder: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateRoleDefinitionAsync(
             role.Id, "Lead", null, 1,
-            [SlotPriority.Critical], 0, true, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical], 0, true, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.IsManagement.Should().BeTrue();
     }
@@ -277,12 +277,12 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         SeedAdminRole(admin);
         var team = SeedTeam("Test Team");
         var role = SeedRoleDefinition(team, "Lead", slotCount: 1, sortOrder: 0, isManagement: true);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateRoleDefinitionAsync(
             role.Id, "Lead", null, 1,
             [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
-            canToggleManagement: false);
+            canToggleManagement: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.IsManagement.Should().BeTrue();
     }
@@ -309,13 +309,13 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var member2 = SeedMember(team, user2);
         SeedRoleAssignment(role, member1, slotIndex: 0);
         SeedRoleAssignment(role, member2, slotIndex: 1);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Flip IsManagement from false -> true while the role has assignees.
         await _service.UpdateRoleDefinitionAsync(
             role.Id, "Lead", null, 2,
             [SlotPriority.Critical, SlotPriority.Critical], 0,
-            isManagement: true, RolePeriod.YearRound, admin.Id);
+            isManagement: true, RolePeriod.YearRound, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         ShiftAuthInvalidator.Received(1).Invalidate(user1.Id);
         ShiftAuthInvalidator.Received(1).Invalidate(user2.Id);
@@ -335,18 +335,18 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user, TeamMemberRole.Coordinator);
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id);
+        var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.IsManagement.Should().BeFalse();
 
         Db.ChangeTracker.Clear();
 
-        var roleInDb = await Db.Set<TeamRoleDefinition>().AsNoTracking().FirstOrDefaultAsync(r => r.Id == mgmtRole.Id);
+        var roleInDb = await Db.Set<TeamRoleDefinition>().AsNoTracking().FirstOrDefaultAsync(r => r.Id == mgmtRole.Id, Xunit.TestContext.Current.CancellationToken);
         roleInDb!.IsManagement.Should().BeFalse();
 
-        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
+        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
@@ -360,9 +360,9 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.ToggleRoleIsManagementAsync(role.Id, admin.Id);
+        var act = () => _service.ToggleRoleIsManagementAsync(role.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot set IsManagement*");
@@ -381,16 +381,16 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var user = SeedUser("User");
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         SeedMember(team, user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.TeamRoleDefinitionId.Should().Be(role.Id);
         result.SlotIndex.Should().Be(0);
 
         var inDb = await Db.Set<TeamRoleAssignment>()
-            .FirstOrDefaultAsync(a => a.Id == result.Id);
+            .FirstOrDefaultAsync(a => a.Id == result.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
     }
 
@@ -403,16 +403,16 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var user = SeedUser("User");
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         // Deliberately not adding user as team member
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.TeamRoleDefinitionId.Should().Be(role.Id);
 
         // Verify user was auto-added to team
         var memberInDb = await Db.TeamMembers
-            .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null);
+            .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
         memberInDb.Should().NotBeNull();
     }
 
@@ -427,15 +427,15 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var user = SeedUser("Outsider");
         var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
         // Deliberately not adding user as team member
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+        var act = () => _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*system team*");
 
         var memberInDb = await Db.TeamMembers
-            .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null);
+            .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
         memberInDb.Should().BeNull();
     }
 
@@ -450,9 +450,9 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var user = SeedUser("BoardMember");
         var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
         SeedMember(team, user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id);
+        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.TeamRoleDefinitionId.Should().Be(role.Id);
@@ -470,9 +470,9 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var member1 = SeedMember(team, user1);
         SeedMember(team, user2);
         SeedRoleAssignment(role, member1, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.AssignToRoleAsync(role.Id, user2.Id, admin.Id);
+        var act = () => _service.AssignToRoleAsync(role.Id, user2.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*slots*filled*");
@@ -487,13 +487,13 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var user = SeedUser("User");
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.AssignToRoleAsync(mgmtRole.Id, user.Id, admin.Id);
+        await _service.AssignToRoleAsync(mgmtRole.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         Db.ChangeTracker.Clear();
 
-        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
+        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.Role.Should().Be(TeamMemberRole.Coordinator);
     }
 
@@ -511,13 +511,13 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.UnassignFromRoleAsync(role.Id, member.Id, admin.Id);
+        await _service.UnassignFromRoleAsync(role.Id, member.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         var assignments = await Db.Set<TeamRoleAssignment>()
             .Where(a => a.TeamMemberId == member.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         assignments.Should().BeEmpty();
     }
 
@@ -531,13 +531,13 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user, TeamMemberRole.Coordinator);
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.UnassignFromRoleAsync(mgmtRole.Id, member.Id, admin.Id);
+        await _service.UnassignFromRoleAsync(mgmtRole.Id, member.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         Db.ChangeTracker.Clear();
 
-        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
+        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
@@ -555,21 +555,21 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var member2 = SeedMember(team2, user, TeamMemberRole.Coordinator);
         SeedRoleAssignment(mgmtRole1, member1, slotIndex: 0);
         SeedRoleAssignment(mgmtRole2, member2, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Unassign from team1's management role — but still coordinator on team2
-        await _service.UnassignFromRoleAsync(mgmtRole1.Id, member1.Id, admin.Id);
+        await _service.UnassignFromRoleAsync(mgmtRole1.Id, member1.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         Db.ChangeTracker.Clear();
 
         // member1's Role demotes because the demotion check uses TeamMemberId,
         // and member1 and member2 are different TeamMember entities.
         // member1 has no other management assignments → demotes.
-        var member1InDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member1.Id);
+        var member1InDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member1.Id, Xunit.TestContext.Current.CancellationToken);
         member1InDb!.Role.Should().Be(TeamMemberRole.Member);
 
         // member2 is unaffected
-        var member2InDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member2.Id);
+        var member2InDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member2.Id, Xunit.TestContext.Current.CancellationToken);
         member2InDb!.Role.Should().Be(TeamMemberRole.Coordinator);
     }
 
@@ -587,9 +587,9 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
         SeedRoleAssignment(role, member, slotIndex: 0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.LeaveTeamAsync(team.Id, user.Id);
+        await _service.LeaveTeamAsync(team.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
 
         // Service now persists via its own DbContext; detach the tracker so we
         // re-read from the store rather than seeing the stale in-memory entity.
@@ -598,10 +598,10 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
         var assignments = await Db.Set<TeamRoleAssignment>()
             .AsNoTracking()
             .Where(a => a.TeamMemberId == member.Id)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         assignments.Should().BeEmpty();
 
-        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
+        var memberInDb = await Db.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.LeftAt.Should().NotBeNull();
     }
 

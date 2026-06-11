@@ -42,18 +42,18 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
 
         var polygon = await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{"type":"Feature"}""", 100.0, userId, "Saved", now);
+            campSeasonId, """{"type":"Feature"}""", 100.0, userId, "Saved", now, Xunit.TestContext.Current.CancellationToken);
 
         polygon.CampSeasonId.Should().Be(campSeasonId);
         polygon.AreaSqm.Should().Be(100.0);
 
-        var history = await _repo.GetHistoryForCampSeasonAsync(campSeasonId);
+        var history = await _repo.GetHistoryForCampSeasonAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
         history.Should().ContainSingle();
         history[0].Note.Should().Be("Saved");
         history[0].CampSeasonId.Should().Be(campSeasonId);
 
-        (await _dbContext.CampPolygons.AsNoTracking().CountAsync()).Should().Be(1);
-        (await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync()).Should().Be(1);
+        (await _dbContext.CampPolygons.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -63,17 +63,17 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{"type":"Feature","v":1}""", 100.0, userId, "Saved", _clock.GetCurrentInstant());
+            campSeasonId, """{"type":"Feature","v":1}""", 100.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         _clock.Advance(Duration.FromSeconds(1));
         await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{"type":"Feature","v":2}""", 200.0, userId, "Saved", _clock.GetCurrentInstant());
+            campSeasonId, """{"type":"Feature","v":2}""", 200.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        (await _dbContext.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId))
+        (await _dbContext.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
-        (await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId))
+        (await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(2);
 
-        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync();
+        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         polygon.AreaSqm.Should().Be(200.0);
     }
 
@@ -89,11 +89,11 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _repo.SavePolygonAndAppendHistoryAsync(
-            matching, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant());
+            matching, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         await _repo.SavePolygonAndAppendHistoryAsync(
-            other, """{}""", 200.0, userId, "Saved", _clock.GetCurrentInstant());
+            other, """{}""", 200.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetPolygonsByCampSeasonIdsAsync([matching]);
+        var result = await _repo.GetPolygonsByCampSeasonIdsAsync([matching], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(matching);
@@ -102,7 +102,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetPolygonsByCampSeasonIdsAsync_EmptyInput_ReturnsEmpty()
     {
-        var result = await _repo.GetPolygonsByCampSeasonIdsAsync([]);
+        var result = await _repo.GetPolygonsByCampSeasonIdsAsync([], Xunit.TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
     }
 
@@ -114,9 +114,9 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _repo.SavePolygonAndAppendHistoryAsync(
-            withPolygon, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant());
+            withPolygon, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetCampSeasonIdsWithPolygonAsync([withPolygon, withoutPolygon]);
+        var result = await _repo.GetCampSeasonIdsWithPolygonAsync([withPolygon, withoutPolygon], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle().Which.Should().Be(withPolygon);
     }
@@ -132,12 +132,12 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant());
+            campSeasonId, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         _clock.Advance(Duration.FromSeconds(1));
         await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{}""", 200.0, userId, "Saved", _clock.GetCurrentInstant());
+            campSeasonId, """{}""", 200.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetHistoryForCampSeasonAsync(campSeasonId);
+        var result = await _repo.GetHistoryForCampSeasonAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Select(h => h.AreaSqm).Should().BeEquivalentTo([100.0, 200.0]);
@@ -146,7 +146,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetHistoryEntryAsync_ReturnsNull_WhenNotMatching()
     {
-        var result = await _repo.GetHistoryEntryAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await _repo.GetHistoryEntryAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         result.Should().BeNull();
     }
 
@@ -158,11 +158,11 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
 
         await _repo.SavePolygonAndAppendHistoryAsync(
-            a, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant());
-        var historyA = (await _repo.GetHistoryForCampSeasonAsync(a)).Single();
+            a, """{}""", 100.0, userId, "Saved", _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+        var historyA = (await _repo.GetHistoryForCampSeasonAsync(a, Xunit.TestContext.Current.CancellationToken)).Single();
 
         // Wrong campSeasonId should not return the row.
-        var result = await _repo.GetHistoryEntryAsync(b, historyA.Id);
+        var result = await _repo.GetHistoryEntryAsync(b, historyA.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -176,12 +176,12 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     {
         var now = _clock.GetCurrentInstant();
 
-        var result = await _repo.GetOrCreateSettingsAsync(2027, now);
+        var result = await _repo.GetOrCreateSettingsAsync(2027, now, Xunit.TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2027);
         result.IsPlacementOpen.Should().BeFalse();
         result.UpdatedAt.Should().Be(now);
-        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync(s => s.Year == 2027))
+        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync(s => s.Year == 2027, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
     }
 
@@ -189,10 +189,10 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     public async Task GetOrCreateSettingsAsync_IsIdempotent()
     {
         var now = _clock.GetCurrentInstant();
-        await _repo.GetOrCreateSettingsAsync(2027, now);
-        await _repo.GetOrCreateSettingsAsync(2027, now);
+        await _repo.GetOrCreateSettingsAsync(2027, now, Xunit.TestContext.Current.CancellationToken);
+        await _repo.GetOrCreateSettingsAsync(2027, now, Xunit.TestContext.Current.CancellationToken);
 
-        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync(s => s.Year == 2027))
+        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync(s => s.Year == 2027, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
     }
 
@@ -201,7 +201,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     {
         var now = _clock.GetCurrentInstant();
 
-        var result = await _repo.MutateSettingsAsync(2028, s => s.IsPlacementOpen = true, now);
+        var result = await _repo.MutateSettingsAsync(2028, s => s.IsPlacementOpen = true, now, Xunit.TestContext.Current.CancellationToken);
 
         result.IsPlacementOpen.Should().BeTrue();
         result.UpdatedAt.Should().Be(now);
@@ -216,7 +216,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
             IsPlacementOpen = false,
             UpdatedAt = _clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _clock.Advance(Duration.FromSeconds(10));
         var now = _clock.GetCurrentInstant();
@@ -228,7 +228,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
                 s.IsPlacementOpen = true;
                 s.OpenedAt = now;
             },
-            now);
+            now, Xunit.TestContext.Current.CancellationToken);
 
         result.IsPlacementOpen.Should().BeTrue();
         result.OpenedAt.Should().Be(now);

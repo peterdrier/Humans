@@ -11,7 +11,7 @@ Frame-only section. Provides the shared admin sidebar, breadcrumb, and dashboard
 ## Concepts
 
 - The **Admin Shell** is the persistent layout wrapper rendered for the admin dashboard and section admin pages: top-nav, left sidebar, breadcrumb, and page container.
-- The **Sidebar** is the left navigation panel inside the admin shell. It is divided into named groups; each group contains one or more items. Items and groups are filtered at render time by the current user's roles.
+- The **Sidebar** is the left navigation panel inside the admin shell. It is divided into named groups; each group contains one or more items. Items and groups are filtered at render time by the current user's roles. Groups are filed by owning section (per `docs/sections/_Index.md`), not by label similarity. Groups marked `System: true` (AdminOnly plumbing: Google, Agent, Legal, Diagnostics, Dev, Design, Temp) render below a divider and start collapsed on desktop unless they contain the active page; user toggles persist in `localStorage`. Below 768px the sidebar renders as a two-tier horizontal strip: group chips on top, the selected group's items beneath.
 - The **Breadcrumb** is the per-page path strip rendered inside the admin shell header. Each page sets its own breadcrumb via the shared `AdminShell` layout.
 - The **Dashboard skeleton** is the top-level `/Admin` landing page. It aggregates summary stats from multiple sections (humans in review, open feedback, pending shifts, recent audit events) via service calls.
 
@@ -25,19 +25,22 @@ The `/Admin` route is the shared dashboard. The `AdminLayout.cshtml` layout is s
 
 ## Actors & Roles
 
-Sidebar groups: Tickets, Members, Shifts, Barrios, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics (and Dev — env-gated to `!IsProduction()` — Design, Temp). Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging; system zone (collapsed by default): Google, Agent, Legal, Diagnostics, Dev (env-gated to `!IsProduction()`), Design, Temp. Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Scanner), Members (Humans, Roles), Governance (Voting, Applications, Surveys), Audit (Audit log) |
+| Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications), Audit (Audit log), Messaging (Surveys), Google (Resource sync) |
 | HumanAdmin | Members (Humans, Roles) |
-| TicketAdmin | Tickets (Tickets, Transfer requests, Scanner, Gate terminal) |
-| FinanceAdmin | Expenses (Expense Review), Finance (Finance) |
-| StoreAdmin | Store (Store catalog, Store summary, Store payments) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal) |
+| FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments) |
+| StoreAdmin | Money (Store catalog, Store summary, Store payments) |
+| FeedbackAdmin | Feedback (Feedback queue) |
 | ConsentCoordinator | Members (Review) |
-| VolunteerCoordinator | Members (Review) |
-| TeamsAdmin / CampAdmin / FeedbackAdmin / NoInfoAdmin | Reach the `/Admin` dashboard (member of `AnyAdminRole`) but have no sidebar items in the current tree — they act via the dashboard tiles and any direct links from member-facing pages |
+| VolunteerCoordinator | Tickets (Early entry), Members (Review), Shifts (Volunteer tracking, Workload, Post-event stats) |
+| TeamsAdmin | Google (Resource sync) |
+| CampAdmin | Barrios (Overview, Roles, Barrio map) |
+| NoInfoAdmin | Tickets (Early entry), Shifts (Volunteer tracking, Workload, Post-event stats) |
 
 ## Invariants
 

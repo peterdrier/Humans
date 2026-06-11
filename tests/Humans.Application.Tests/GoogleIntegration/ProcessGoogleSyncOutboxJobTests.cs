@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -26,6 +27,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
@@ -53,6 +55,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
@@ -63,6 +66,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             _userService,
             _teamService,
             _googleSyncService,
+            _notificationService,
             _metrics,
             _clock,
             logger);
@@ -80,14 +84,14 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     {
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _googleSyncService.Received(1).AddUserToTeamResourcesAsync(
             outboxEvent.TeamId,
             outboxEvent.UserId,
             Arg.Any<CancellationToken>());
 
-        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updatedEvent.ProcessedAt.Should().Be(_clock.GetCurrentInstant());
         updatedEvent.RetryCount.Should().Be(0);
         updatedEvent.LastError.Should().BeNull();
@@ -105,9 +109,9 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
                 Arg.Any<CancellationToken>()))
             .Do(_ => throw new InvalidOperationException("google timeout"));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updatedEvent.ProcessedAt.Should().BeNull();
         updatedEvent.RetryCount.Should().Be(1);
         updatedEvent.LastError.Should().Contain("google timeout");
@@ -127,9 +131,9 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
                 Arg.Any<CancellationToken>()))
             .Do(_ => throw new InvalidOperationException("google timeout"));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync();
+        var updatedEvent = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updatedEvent.RetryCount.Should().Be(10);
         updatedEvent.LastError.Should().Contain("google timeout");
         updatedEvent.FailedPermanently.Should().BeTrue();
@@ -150,7 +154,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         };
 
         _dbContext.GoogleSyncOutboxEvents.Add(outboxEvent);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return outboxEvent;
     }
 

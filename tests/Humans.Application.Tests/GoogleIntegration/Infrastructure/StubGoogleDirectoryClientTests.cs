@@ -19,7 +19,7 @@ public class StubGoogleDirectoryClientTests
     [HumansFact]
     public async Task ListDomainUsersAsync_ReturnsDeterministicDomainWithPrimaryEmails()
     {
-        var result = await _client.ListDomainUsersAsync();
+        var result = await _client.ListDomainUsersAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.Users.Should().NotBeNull().And.NotBeEmpty();
@@ -30,7 +30,7 @@ public class StubGoogleDirectoryClientTests
     [HumansFact]
     public async Task ListDomainGroupsAsync_ReturnsDeterministicGroupsWithIdsAndEmails()
     {
-        var result = await _client.ListDomainGroupsAsync();
+        var result = await _client.ListDomainGroupsAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.Groups.Should().NotBeNull().And.NotBeEmpty();

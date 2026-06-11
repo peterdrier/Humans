@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace Humans.Web.ViewComponents;
 
-public sealed record AdminNavGroup(string Label, IReadOnlyList<AdminNavItem> Items);
+public sealed record AdminNavGroup(string Label, IReadOnlyList<AdminNavItem> Items, bool System = false);
 
 public sealed record AdminNavItem(
     string Label,

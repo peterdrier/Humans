@@ -19,7 +19,7 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task ListMembershipsAsync_EmptyGroup_ReturnsEmptyList()
     {
-        var result = await _client.ListMembershipsAsync("group-1");
+        var result = await _client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.Memberships.Should().NotBeNull().And.BeEmpty();
@@ -28,7 +28,7 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task CreateMembershipAsync_NewMember_ReturnsAdded()
     {
-        var result = await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
+        var result = await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(GroupMembershipMutationOutcome.Added);
         result.Error.Should().BeNull();
@@ -37,9 +37,9 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task CreateMembershipAsync_DuplicateMember_ReturnsAlreadyExists()
     {
-        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
+        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
-        var second = await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
+        var second = await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         second.Outcome.Should().Be(GroupMembershipMutationOutcome.AlreadyExists,
             because: "the real client treats Google's HTTP 409 'already exists' as an idempotent success");
@@ -49,10 +49,10 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task ListMembershipsAsync_AfterAdds_ReturnsAllMembers()
     {
-        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
-        await _client.CreateMembershipAsync("group-1", "bob@nobodies.team");
+        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
+        await _client.CreateMembershipAsync("group-1", "bob@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _client.ListMembershipsAsync("group-1");
+        var result = await _client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
 
         result.Memberships.Should().NotBeNull();
         result.Memberships!.Select(m => m.MemberEmail)
@@ -65,21 +65,21 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task DeleteMembershipAsync_ExistingName_RemovesFromList()
     {
-        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
-        var listBefore = await _client.ListMembershipsAsync("group-1");
+        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
+        var listBefore = await _client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
         var resourceName = listBefore.Memberships!.Single().ResourceName;
 
-        var deleteError = await _client.DeleteMembershipAsync(resourceName);
+        var deleteError = await _client.DeleteMembershipAsync(resourceName, Xunit.TestContext.Current.CancellationToken);
 
         deleteError.Should().BeNull();
-        var listAfter = await _client.ListMembershipsAsync("group-1");
+        var listAfter = await _client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
         listAfter.Memberships.Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task DeleteMembershipAsync_MissingName_Returns404Error()
     {
-        var result = await _client.DeleteMembershipAsync("groups/missing/memberships/nope");
+        var result = await _client.DeleteMembershipAsync("groups/missing/memberships/nope", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.StatusCode.Should().Be(404,
@@ -89,11 +89,11 @@ public class StubGoogleGroupMembershipClientTests
     [HumansFact]
     public async Task MembershipOperations_AreIsolatedPerGroup()
     {
-        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
-        await _client.CreateMembershipAsync("group-2", "bob@nobodies.team");
+        await _client.CreateMembershipAsync("group-1", "alice@nobodies.team", Xunit.TestContext.Current.CancellationToken);
+        await _client.CreateMembershipAsync("group-2", "bob@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
-        var g1 = await _client.ListMembershipsAsync("group-1");
-        var g2 = await _client.ListMembershipsAsync("group-2");
+        var g1 = await _client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
+        var g2 = await _client.ListMembershipsAsync("group-2", Xunit.TestContext.Current.CancellationToken);
 
         g1.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo("alice@nobodies.team");
         g2.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo("bob@nobodies.team");

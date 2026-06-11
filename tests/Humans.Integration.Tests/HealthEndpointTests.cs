@@ -9,7 +9,7 @@ public class HealthEndpointTests(HumansWebApplicationFactory factory) : Integrat
     [HumansFact(Timeout = 30000)]
     public async Task LivenessEndpoint_ReturnsOk()
     {
-        var response = await Client.GetAsync("/health/live");
+        var response = await Client.GetAsync("/health/live", Xunit.TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -17,7 +17,7 @@ public class HealthEndpointTests(HumansWebApplicationFactory factory) : Integrat
     [HumansFact(Timeout = 30000)]
     public async Task ReadinessEndpoint_ReturnsResponse()
     {
-        var response = await Client.GetAsync("/health/ready");
+        var response = await Client.GetAsync("/health/ready", Xunit.TestContext.Current.CancellationToken);
 
         // Readiness checks external dependencies (SMTP, GitHub, Google Workspace).
         // In the test environment these are unavailable, so the endpoint returns 503.
@@ -28,12 +28,12 @@ public class HealthEndpointTests(HumansWebApplicationFactory factory) : Integrat
     [HumansFact(Timeout = 30000)]
     public async Task DetailedHealthEndpoint_ReturnsJsonWithStatus()
     {
-        var response = await Client.GetAsync("/health");
+        var response = await Client.GetAsync("/health", Xunit.TestContext.Current.CancellationToken);
 
         // The detailed endpoint may return 503 when external health checks fail,
         // but it should always return JSON with status information.
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         content.Should().Contain("\"status\"");
         content.Should().Contain("\"results\"");
     }

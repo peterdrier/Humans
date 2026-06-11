@@ -36,13 +36,13 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2, -1]);
 
         var record = await Db.GeneralAvailability
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.Should().NotBeNull();
         record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
     }
@@ -52,7 +52,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // First set
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
@@ -63,7 +63,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var records = await Db.GeneralAvailability
             .AsNoTracking()
             .Where(g => g.UserId == userId && g.EventSettingsId == esId)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         records.Should().HaveCount(1);
         records[0].AvailableDayOffsets.Should().BeEquivalentTo([0, 1, 2]);
     }
@@ -75,7 +75,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
         var user2Id = Guid.NewGuid();
         var user3Id = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SetAvailabilityAsync(user1Id, esId, [-3, -2, -1]);
         await _service.SetAvailabilityAsync(user2Id, esId, [-2, 0, 1]);
@@ -92,15 +92,15 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, true);
+            userId, esId, -2, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
-            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
     }
 
@@ -109,15 +109,15 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, false);
+            userId, esId, -2, false, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
-            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+            .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
     }
 
@@ -126,14 +126,14 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -1, true);
+            userId, esId, -1, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
         var rec = await Db.GeneralAvailability.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.Should().NotBeNull();
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-1]);
     }
@@ -143,14 +143,14 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, 2, true);
+            userId, esId, 2, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
         var rec = await Db.GeneralAvailability.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.Should().BeNull(); // no-op, no row created
     }
 
@@ -159,11 +159,11 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SetAvailabilityAsync(userId, esId, [-2]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, true);
+            userId, esId, -2, true, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
     }
@@ -173,11 +173,11 @@ public sealed class VolunteerTrackingAvailabilityTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SetAvailabilityAsync(userId, esId, [-3]);
 
         var changed = await _service.SetDayAvailabilityAsync(
-            userId, esId, -2, false);
+            userId, esId, -2, false, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
     }

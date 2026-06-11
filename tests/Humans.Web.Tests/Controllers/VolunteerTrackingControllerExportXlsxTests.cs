@@ -54,7 +54,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             endDate: null,
             period: ShiftPeriod.Event,
             subPeriod: null,
-            ct: default);
+            ct: Xunit.TestContext.Current.CancellationToken);
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;
         file.ContentType.Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -88,7 +88,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             endDate: null,
             period: ShiftPeriod.Build,
             subPeriod: BuildSubPeriod.SetupWeek,
-            ct: default);
+            ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<FileContentResult>();
         captured.Should().NotBeNull();

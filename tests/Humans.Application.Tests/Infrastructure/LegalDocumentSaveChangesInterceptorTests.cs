@@ -30,7 +30,7 @@ public class LegalDocumentSaveChangesInterceptorTests
 
         await using var ctx = BuildContext(dbName, invalidator);
         ctx.Set<LegalDocument>().Add(NewDocument());
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         invalidator.InvalidateAllCount.Should().Be(1);
     }
@@ -45,13 +45,13 @@ public class LegalDocumentSaveChangesInterceptorTests
         await using (var seed = BuildContext(dbName, new RecordingInvalidator()))
         {
             seed.Set<LegalDocument>().Add(doc);
-            await seed.SaveChangesAsync();
+            await seed.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
         await using var ctx = BuildContext(dbName, invalidator);
-        var loaded = await ctx.Set<LegalDocument>().FirstAsync(d => d.Id == doc.Id);
+        var loaded = await ctx.Set<LegalDocument>().FirstAsync(d => d.Id == doc.Id, Xunit.TestContext.Current.CancellationToken);
         loaded.Name = "Updated Name";
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         invalidator.InvalidateAllCount.Should().Be(1);
     }
@@ -66,13 +66,13 @@ public class LegalDocumentSaveChangesInterceptorTests
         await using (var seed = BuildContext(dbName, new RecordingInvalidator()))
         {
             seed.Set<LegalDocument>().Add(doc);
-            await seed.SaveChangesAsync();
+            await seed.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
         await using var ctx = BuildContext(dbName, invalidator);
-        var loaded = await ctx.Set<LegalDocument>().FirstAsync(d => d.Id == doc.Id);
+        var loaded = await ctx.Set<LegalDocument>().FirstAsync(d => d.Id == doc.Id, Xunit.TestContext.Current.CancellationToken);
         ctx.Set<LegalDocument>().Remove(loaded);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // The load-bearing case Codex flagged: post-save the Deleted entry
         // flips to Detached and disappears from ChangeTracker. The
@@ -87,7 +87,7 @@ public class LegalDocumentSaveChangesInterceptorTests
         await using var ctx = BuildContext(Guid.NewGuid().ToString(), invalidator);
 
         // No tracked changes — SaveChanges is a no-op for the interceptor.
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         invalidator.InvalidateAllCount.Should().Be(0);
     }

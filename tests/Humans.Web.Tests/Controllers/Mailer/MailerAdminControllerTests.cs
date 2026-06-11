@@ -105,7 +105,7 @@ public class MailerAdminControllerTests
 
         var ctrl = BuildSut(snapshot);
 
-        var result = await ctrl.Commit(maxPerOutcome: null, CancellationToken.None);
+        var result = await ctrl.Commit(maxPerOutcome: null, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Import), redirect.ActionName);
@@ -165,7 +165,7 @@ public class MailerAdminControllerTests
         var ctrl = BuildSut();
 
         // Act
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         // Assert: drift report should count 1 Humans-opted-out / ML-active disagreement.
         var view = Assert.IsType<ViewResult>(result);
@@ -210,7 +210,7 @@ public class MailerAdminControllerTests
         var ctrl = BuildSut();
 
         // Act
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         // Assert: page rendered with friendly error, Humans-side data preserved, no ML data.
         var view = Assert.IsType<ViewResult>(result);
@@ -233,7 +233,7 @@ public class MailerAdminControllerTests
     {
         var ctrl = BuildSut();
 
-        var result = await ctrl.Refresh(CancellationToken.None);
+        var result = await ctrl.Refresh(TestContext.Current.CancellationToken);
 
         await _mlService.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
         var redirect = Assert.IsType<RedirectToActionResult>(result);
@@ -252,7 +252,7 @@ public class MailerAdminControllerTests
 
         var ctrl = BuildSut();
 
-        var result = await ctrl.Refresh(CancellationToken.None);
+        var result = await ctrl.Refresh(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
@@ -272,7 +272,7 @@ public class MailerAdminControllerTests
 
         var ctrl = BuildSut();
 
-        var result = await ctrl.Refresh(CancellationToken.None);
+        var result = await ctrl.Refresh(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
@@ -314,7 +314,7 @@ public class MailerAdminControllerTests
 
         var ctrl = BuildSut(snapshot);
 
-        var result = await ctrl.Commit(maxPerOutcome: 1, CancellationToken.None);
+        var result = await ctrl.Commit(maxPerOutcome: 1, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
@@ -358,7 +358,7 @@ public class MailerAdminControllerTests
 
         var result = await ctrl.Debug(
             "ticket-no-shifts",
-            ct: CancellationToken.None);
+            ct: TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<MailerAudienceDebugViewModel>(view.Model);
@@ -381,7 +381,7 @@ public class MailerAdminControllerTests
     {
         var ctrl = BuildSut(audiences: []);
 
-        var result = await ctrl.Debug("missing", ct: CancellationToken.None);
+        var result = await ctrl.Debug("missing", ct: TestContext.Current.CancellationToken);
 
         Assert.IsType<NotFoundResult>(result);
     }

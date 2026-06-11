@@ -164,7 +164,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     // Testcontainers Postgres container.
     public async ValueTask InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await _postgres.StartAsync(TestContext.Current.CancellationToken);
     }
 
     public override async ValueTask DisposeAsync()
@@ -212,7 +212,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         //    issues the Identity auth cookie on the 302 response. Cookies are
         //    captured by WebApplicationFactory's default CookieContainer even
         //    with AllowAutoRedirect=false.
-        var loginResp = await client.GetAsync($"/dev/login/{slug}");
+        var loginResp = await client.GetAsync($"/dev/login/{slug}", TestContext.Current.CancellationToken);
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect
             or HttpStatusCode.OK))
         {
@@ -226,12 +226,12 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
         var email = $"dev-{slug}@localhost";
         var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(email)
+        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(email, TestContext.Current.CancellationToken)
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
         var user = await db.Users
             .AsNoTracking()
-            .FirstAsync(u => u.Id == userId);
+            .FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
 
         // 3) Seed ConsentRecord for every current required document version the
         //    user hasn't already consented to. ConsentRecord is append-only
@@ -256,7 +256,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                      && v.LegalDocument.IsActive
                      && v.EffectiveFrom <= now)
             .Select(v => new { v.Id, v.LegalDocumentId, v.EffectiveFrom, v.Content })
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         if (documentGroups.Count == 0)
             return;
@@ -270,7 +270,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             .AsNoTracking()
             .Where(c => c.UserId == userId)
             .Select(c => c.DocumentVersionId)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
         var alreadyConsented = alreadyConsentedIds.ToHashSet();
 
         foreach (var version in currentVersions)
@@ -297,7 +297,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             });
         }
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 }
 

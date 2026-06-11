@@ -62,10 +62,10 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _accountDeletionService.DidNotReceiveWithAnyArgs()
-            .AnonymizeExpiredAccountAsync(Guid.Empty, CancellationToken.None);
+            .AnonymizeExpiredAccountAsync(Guid.Empty, Arg.Any<CancellationToken>());
         _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
             null!, null!);
     }
@@ -87,7 +87,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
                 PreferredLanguage: "en",
                 CancelledSignupIds: [(signupId, shiftId)]));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(
             userId, Arg.Any<CancellationToken>());
@@ -124,7 +124,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
                 "other@example.com", "Other User", "es",
                 []));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).AccountDeleted(
             "other@example.com", "Other User", "es");
@@ -145,7 +145,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
                 PreferredLanguage: "en",
                 CancelledSignupIds: []));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceiveWithAnyArgs().AccountDeleted(
             null!, null!);
@@ -173,7 +173,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
                 "u2@example.com", "User Two", "en",
                 []));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         // User 2 still gets its email/audit despite user 1 failing.
         _emailMessages.Received(1).AccountDeleted(

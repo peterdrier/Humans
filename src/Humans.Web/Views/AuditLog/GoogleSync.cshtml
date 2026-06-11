@@ -5,13 +5,12 @@
     ViewData["Title"] = Model.Title;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Model.Title</h1>
+<page-header title="@Model.Title">
     @if (Model.BackUrl != null)
     {
         <a href="@Model.BackUrl" class="btn btn-outline-secondary">@(Model.BackLabel ?? "Back")</a>
     }
-</div>
+</page-header>
 
 @if (Model.Entries.Count == 0)
 {

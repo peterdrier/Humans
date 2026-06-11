@@ -1,6 +1,7 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Cantina;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +20,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]
 [Route("Cantina")]
-public sealed class CantinaController : Controller
+public sealed class CantinaController : HumansControllerBase
 {
     private readonly ICantinaRosterService _roster;
     private readonly IShiftManagementService _shiftMgmt;
@@ -30,7 +31,8 @@ public sealed class CantinaController : Controller
         ICantinaRosterService roster,
         IShiftManagementService shiftMgmt,
         IClock clock,
-        ILogger<CantinaController> logger)
+        ILogger<CantinaController> logger,
+        IUserServiceRead userService) : base(userService)
     {
         _roster = roster;
         _shiftMgmt = shiftMgmt;

@@ -26,23 +26,14 @@ public sealed class EventServiceTests
         _service = new EventService(_repo, _burnSettings, _clock, NullLogger<EventService>.Instance);
     }
 
-    [HumansFact]
-    public async Task IsSubmissionOpenAsync_ReturnsFalse_WhenSettingsMissing()
-    {
-        var result = await _service.IsSubmissionOpenAsync();
-
-        result.Should().BeFalse();
-    }
-
     [HumansTheory]
     [InlineData(11, false)]
     [InlineData(12, true)]
     [InlineData(13, true)]
     [InlineData(14, false)]
-    public async Task IsSubmissionOpenAsync_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
+    public void IsSubmissionOpenAt_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
     {
-        _clock.Reset(Instant.FromUtc(2026, 5, 5, hour, 0));
-        _repo.Settings = new EventGuideSettings
+        var settings = new EventGuideSettings
         {
             Id = Guid.NewGuid(),
             EventSettingsId = Guid.NewGuid(),
@@ -54,7 +45,7 @@ public sealed class EventServiceTests
             UpdatedAt = _clock.GetCurrentInstant()
         };
 
-        var result = await _service.IsSubmissionOpenAsync();
+        var result = settings.IsSubmissionOpenAt(Instant.FromUtc(2026, 5, 5, hour, 0));
 
         result.Should().Be(expected);
     }
@@ -86,7 +77,7 @@ public sealed class EventServiceTests
             submissionOpenAt: new LocalDateTime(2026, 5, 5, 12, 0),
             submissionCloseAt: new LocalDateTime(2026, 5, 6, 12, 0),
             guidePublishAt: new LocalDateTime(2026, 5, 7, 12, 0),
-            maxPrintSlots: 42);
+            maxPrintSlots: 42, ct: TestContext.Current.CancellationToken);
 
         _repo.Settings.Should().NotBeNull();
         _repo.Settings!.SubmissionOpenAt.Should().Be(Instant.FromUtc(2026, 5, 5, 10, 0));
@@ -107,7 +98,7 @@ public sealed class EventServiceTests
             new LocalDateTime(2026, 5, 5, 12, 0),
             new LocalDateTime(2026, 5, 6, 12, 0),
             new LocalDateTime(2026, 5, 7, 12, 0),
-            10);
+            10, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"EventSettings {eventSettingsId} not found.");
@@ -120,7 +111,7 @@ public sealed class EventServiceTests
         var second = new EventCategory { Id = Guid.NewGuid(), Name = "B", Slug = "b", DisplayOrder = 2 };
         _repo.Categories.AddRange([first, second]);
 
-        await _service.MoveCategoryAsync(second.Id, direction: -1);
+        await _service.MoveCategoryAsync(second.Id, direction: -1, ct: TestContext.Current.CancellationToken);
 
         second.DisplayOrder.Should().Be(1);
         first.DisplayOrder.Should().Be(2);
@@ -134,7 +125,7 @@ public sealed class EventServiceTests
         venue.Events.Add(new Event { Id = Guid.NewGuid(), Title = "Talk" });
         _repo.Venues.Add(venue);
 
-        var result = await _service.DeleteVenueAsync(venue.Id);
+        var result = await _service.DeleteVenueAsync(venue.Id, TestContext.Current.CancellationToken);
 
         result.Should().Be((false, 1));
         _repo.RemovedVenues.Should().BeEmpty();
@@ -147,7 +138,7 @@ public sealed class EventServiceTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
 
-        await _service.ToggleFavouriteAsync(userId, eventId);
+        await _service.ToggleFavouriteAsync(userId, eventId, TestContext.Current.CancellationToken);
 
         _repo.Favourites.Should().ContainSingle(f =>
             f.UserId == userId
@@ -168,7 +159,7 @@ public sealed class EventServiceTests
         };
         _repo.Favourites.Add(fav);
 
-        await _service.ToggleFavouriteAsync(fav.UserId, fav.GuideEventId);
+        await _service.ToggleFavouriteAsync(fav.UserId, fav.GuideEventId, TestContext.Current.CancellationToken);
 
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(1);
@@ -186,7 +177,7 @@ public sealed class EventServiceTests
             UpdatedAt = Instant.FromUtc(2026, 5, 1, 12, 0)
         };
 
-        await _service.SavePreferenceAsync(userId, ["adult", "spiritual"]);
+        await _service.SavePreferenceAsync(userId, ["adult", "spiritual"], TestContext.Current.CancellationToken);
 
         _repo.Preference.ExcludedCategorySlugs.Should().Be("[\"adult\",\"spiritual\"]");
         _repo.Preference.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -209,7 +200,7 @@ public sealed class EventServiceTests
             guideEvent.Id,
             actorUserId,
             EventModerationActionType.ResubmitRequested,
-            "Add location");
+            "Add location", TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -234,7 +225,7 @@ public sealed class EventServiceTests
             LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 13, 0)
         };
 
-        await _service.UpdateAndResubmitAsync(guideEvent);
+        await _service.UpdateAndResubmitAsync(guideEvent, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(submittedAt);
@@ -253,7 +244,7 @@ public sealed class EventServiceTests
             LastUpdatedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
         };
 
-        await _service.UpdateAndResubmitAsync(guideEvent);
+        await _service.UpdateAndResubmitAsync(guideEvent, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
@@ -276,7 +267,7 @@ public sealed class EventServiceTests
         _repo.Events.Add(guideEvent);
         var actorUserId = Guid.NewGuid();
 
-        await _service.AdminUpdateAsync(guideEvent, actorUserId, "fixed the start time");
+        await _service.AdminUpdateAsync(guideEvent, actorUserId, "fixed the start time", TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Approved); // never re-queued to Pending
         guideEvent.SubmittedAt.Should().Be(submittedAt);     // submission timestamp untouched
@@ -298,7 +289,7 @@ public sealed class EventServiceTests
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Withdrawn };
         _repo.Events.Add(guideEvent);
 
-        await _service.AdminUpdateAsync(guideEvent, Guid.NewGuid(), note);
+        await _service.AdminUpdateAsync(guideEvent, Guid.NewGuid(), note, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Withdrawn); // any state edited in place
         _repo.EventModerationActions.Should().ContainSingle(a =>
@@ -326,7 +317,7 @@ public sealed class EventServiceTests
             UpdatedAt = later
         };
 
-        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(GdprExportSections.Events);
@@ -336,7 +327,7 @@ public sealed class EventServiceTests
     [HumansFact]
     public async Task ContributeForUserAsync_ReturnsEmptySliceWhenUserHasNoData()
     {
-        var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), CancellationToken.None);
+        var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(GdprExportSections.Events);
@@ -351,7 +342,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, Guid.NewGuid(), [Row(title: "")],
-            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeTrue();
         result.Errors.Should().ContainSingle(e => e.Errors.Contains("Title is required."));
@@ -369,7 +360,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, submitter, [Row()],
-            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeFalse();
         result.CreatedCount.Should().Be(1);
@@ -392,7 +383,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, Guid.NewGuid(), [Row(id: existing.Id)],
-            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.HasErrors.Should().BeFalse();
         result.CreatedCount.Should().Be(0);
@@ -412,7 +403,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, Guid.NewGuid(), [Row(id: existing.Id, title: "New Title")],
-            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.UpdatedCount.Should().Be(1);
         existing.Title.Should().Be("New Title");
@@ -434,7 +425,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, Guid.NewGuid(), [Row(id: existing.Id, title: "Renamed")],
-            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc);
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.UpdatedCount.Should().Be(1);
         existing.Status.Should().Be(EventStatus.Pending);
@@ -458,7 +449,7 @@ public sealed class EventServiceTests
 
         var result = await _service.BulkImportAsync(
             campId, Guid.NewGuid(), [Row(id: existing.Id, isRecurring: true, recurrenceDays: dayName)],
-            gate, 6, DateTimeZone.Utc);
+            gate, 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
         result.UpdatedCount.Should().Be(0);
         existing.Status.Should().Be(EventStatus.Approved);

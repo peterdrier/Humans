@@ -5,8 +5,10 @@ namespace Humans.Application.Interfaces.Caching;
 /// <summary>
 /// Cross-section signal for the global role-assignment cache. Implemented
 /// by the Singleton <c>CachingRoleAssignmentService</c> decorator and
-/// consumed by the <c>RoleAssignmentSaveChangesInterceptor</c>, which
-/// fires after EF persists any write to <c>role_assignments</c>.
+/// called by <c>RoleAssignmentService</c>'s mutating methods (and, via
+/// <c>IRoleAssignmentService.InvalidateRoleAssignmentCache()</c>, by
+/// <c>AccountMergeService</c> after a merge fold). No EF interceptor —
+/// all <c>role_assignments</c> writes go through <c>RoleAssignmentService</c>.
 /// </summary>
 /// <remarks>
 /// Bag-shaped cache (whole-set replacement on rebuild) — same pattern as

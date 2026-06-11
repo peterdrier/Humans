@@ -30,7 +30,7 @@ public class MarketingNoTicketAudienceTests
             },
             ticketHolders: [optInWithTicket]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([optInNoTicket]);
     }
@@ -40,7 +40,7 @@ public class MarketingNoTicketAudienceTests
     {
         var audience = NewAudience([], []);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }

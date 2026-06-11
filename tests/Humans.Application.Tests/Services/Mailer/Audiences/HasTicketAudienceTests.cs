@@ -18,7 +18,7 @@ public class HasTicketAudienceTests
 
         var audience = NewAudience(ticketHolders: [userA, userB]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA, userB]);
     }
@@ -28,7 +28,7 @@ public class HasTicketAudienceTests
     {
         var audience = NewAudience(ticketHolders: []);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }

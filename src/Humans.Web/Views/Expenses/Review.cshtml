@@ -2,16 +2,7 @@
 @{
     ViewData["Title"] = "Expense Reports — Finance Review";
     Layout = "_AdminLayout";
-    var badgeClass = (ExpenseReportStatus s) => s switch
-    {
-        ExpenseReportStatus.Draft => "bg-secondary",
-        ExpenseReportStatus.Submitted => "bg-primary",
-        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-        ExpenseReportStatus.Approved => "bg-success",
-        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-        ExpenseReportStatus.Paid => "bg-success",
-        _ => "bg-secondary"
-    };
+    var badgeClass = (ExpenseReportStatus s) => s.GetBadgeClass();
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
@@ -76,7 +67,7 @@ else
                                 </a>
                             </td>
                             <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
-                            <td>€@r.Total.ToString("N2")</td>
+                            <td>@r.Total.ToEuro()</td>
                             <td>
                                 <span class="badge @badgeClass(r.Status)">@r.Status</span>
                             </td>
@@ -105,6 +96,14 @@ else
                                             <i class="fa-solid fa-xmark me-1"></i>Reject
                                         </button>
                                     }
+                                    @if (r.Status == ExpenseReportStatus.SepaSent)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#reopenSepaModal-@r.Id">
+                                            <i class="fa-solid fa-rotate-left me-1"></i>Reopen SEPA
+                                        </button>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -129,7 +128,7 @@ else
                         </div>
                         <div class="modal-body">
                             <p class="mb-3">
-                                Total: <strong>€@r.Total.ToString("N2")</strong>
+                                Total: <strong>@r.Total.ToEuro()</strong>
                             </p>
                             <div class="mb-3">
                                 <label class="form-label">Category override (optional)</label>
@@ -177,6 +176,37 @@ else
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-danger">Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    @foreach (var r in Model.Reports.Where(x => x.Status == ExpenseReportStatus.SepaSent))
+    {
+        <div class="modal fade" id="reopenSepaModal-@r.Id" tabindex="-1"
+             aria-labelledby="reopenSepaModalLabel-@r.Id" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="SepaReopen" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="reopenSepaModalLabel-@r.Id">Reopen SEPA Batch</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>
+                                Reopen report <strong>@r.Id.ToString()[..8]…</strong>?
+                            </p>
+                            <p class="text-muted mb-0">
+                                It will return to <strong>Approved</strong> status so you can include it in a new SEPA batch.
+                                Use this only if the previous download failed before the file reached your bank.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning">Reopen</button>
                         </div>
                     </form>
                 </div>

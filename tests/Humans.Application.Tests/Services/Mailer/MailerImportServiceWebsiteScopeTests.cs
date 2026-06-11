@@ -34,7 +34,7 @@ public class MailerImportServiceWebsiteScopeTests
             WebsiteScopeHarness.Active("in@x.com", inWebsite: true),
             WebsiteScopeHarness.Active("out@x.com", inWebsite: false));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.TotalPulled.Should().Be(1);
         plan.Decisions.Should().ContainSingle(d => d.Email == "in@x.com");
@@ -51,7 +51,7 @@ public class MailerImportServiceWebsiteScopeTests
         harness.SetUsers(Human(ghostId, "ghost@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Decisions.Should().ContainSingle(d =>
             d.Outcome == SubscriberOutcome.ResetMarketingFlag && d.TargetUserId == ghostId);
@@ -68,7 +68,7 @@ public class MailerImportServiceWebsiteScopeTests
         harness.SetUsers(Human(id, "member@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
     }
@@ -87,7 +87,7 @@ public class MailerImportServiceWebsiteScopeTests
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
         harness.MatchVerified("lapsed@x.com", id);
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
         plan.Decisions.Should().NotContain(d => d.Outcome == SubscriberOutcome.ResetMarketingFlag);
@@ -105,7 +105,7 @@ public class MailerImportServiceWebsiteScopeTests
         harness.SetUsers(Human(id, "early@x.com",
             optedOut: false, source: "MailerLiteSync", subscribedAt: BeforeCutoff));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
     }
@@ -120,7 +120,7 @@ public class MailerImportServiceWebsiteScopeTests
         harness.SetUsers(Human(id, "self@x.com",
             optedOut: false, source: "Profile", subscribedAt: AfterCutoff));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
     }
@@ -135,7 +135,7 @@ public class MailerImportServiceWebsiteScopeTests
         harness.SetUsers(Human(id, "out@x.com",
             optedOut: true, source: "MailerLiteSync", subscribedAt: null));
 
-        var plan = await harness.Service.BuildPlanAsync();
+        var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
     }
@@ -154,7 +154,7 @@ public class MailerImportServiceWebsiteScopeTests
             [new SubscriberDecision("ghost@x.com", "n/a", SubscriberOutcome.ResetMarketingFlag, ghostId, null, null)],
             TotalPulled: 1);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(1);
         await harness.Prefs.Received(1).ResetPreferenceAsync(
@@ -176,7 +176,7 @@ public class MailerImportServiceWebsiteScopeTests
             [new SubscriberDecision("self@x.com", "n/a", SubscriberOutcome.ResetMarketingFlag, id, null, null)],
             TotalPulled: 1);
 
-        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null);
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.MarketingFlagsReset.Should().Be(0);
         await harness.Prefs.DidNotReceive().ResetPreferenceAsync(
@@ -189,7 +189,7 @@ public class MailerImportServiceWebsiteScopeTests
         var harness = new WebsiteScopeHarness(includeWebsiteGroup: false);
         harness.SetSubscribers(WebsiteScopeHarness.Active("anyone@x.com", inWebsite: false));
 
-        var act = async () => await harness.Service.BuildPlanAsync();
+        var act = async () => await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Website*");

@@ -37,7 +37,7 @@ public class StubGoogleGroupProvisioningClientTests
     public async Task CreateGroupAsync_NewGroup_ReturnsNumericId()
     {
         var result = await _client.CreateGroupAsync(
-            "team-a@nobodies.team", "Team A", "Team A group");
+            "team-a@nobodies.team", "Team A", "Team A group", Xunit.TestContext.Current.CancellationToken);
 
         result.Error.Should().BeNull();
         result.GroupNumericId.Should().NotBeNullOrEmpty();
@@ -47,10 +47,10 @@ public class StubGoogleGroupProvisioningClientTests
     public async Task CreateGroupAsync_Duplicate_ReportsConflict()
     {
         await _client.CreateGroupAsync(
-            "team-a@nobodies.team", "Team A", "Team A group");
+            "team-a@nobodies.team", "Team A", "Team A group", Xunit.TestContext.Current.CancellationToken);
 
         var second = await _client.CreateGroupAsync(
-            "team-a@nobodies.team", "Team A", "Team A group");
+            "team-a@nobodies.team", "Team A", "Team A group", Xunit.TestContext.Current.CancellationToken);
 
         second.GroupNumericId.Should().BeNull();
         second.Error.Should().NotBeNull();
@@ -62,9 +62,9 @@ public class StubGoogleGroupProvisioningClientTests
     public async Task LookupGroupIdAsync_ExistingGroup_RoundTripsId()
     {
         var created = await _client.CreateGroupAsync(
-            "team-b@nobodies.team", "Team B", "Team B group");
+            "team-b@nobodies.team", "Team B", "Team B group", Xunit.TestContext.Current.CancellationToken);
 
-        var lookup = await _client.LookupGroupIdAsync("team-b@nobodies.team");
+        var lookup = await _client.LookupGroupIdAsync("team-b@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         lookup.Error.Should().BeNull();
         lookup.GroupNumericId.Should().Be(created.GroupNumericId);
@@ -73,7 +73,7 @@ public class StubGoogleGroupProvisioningClientTests
     [HumansFact]
     public async Task LookupGroupIdAsync_Missing_Returns404()
     {
-        var result = await _client.LookupGroupIdAsync("nope@nobodies.team");
+        var result = await _client.LookupGroupIdAsync("nope@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.GroupNumericId.Should().BeNull();
         result.Error.Should().NotBeNull();
@@ -83,7 +83,7 @@ public class StubGoogleGroupProvisioningClientTests
     [HumansFact]
     public async Task GetGroupSettingsAsync_BeforeUpdate_Returns404()
     {
-        var result = await _client.GetGroupSettingsAsync("team-c@nobodies.team");
+        var result = await _client.GetGroupSettingsAsync("team-c@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.Settings.Should().BeNull();
         result.Error.Should().NotBeNull();
@@ -94,11 +94,11 @@ public class StubGoogleGroupProvisioningClientTests
     public async Task UpdateThenGet_RoundTripsExpectedFields()
     {
         var expected = BuildExpected();
-        var updateError = await _client.UpdateGroupSettingsAsync("team-d@nobodies.team", expected);
+        var updateError = await _client.UpdateGroupSettingsAsync("team-d@nobodies.team", expected, Xunit.TestContext.Current.CancellationToken);
 
         updateError.Should().BeNull();
 
-        var fetched = await _client.GetGroupSettingsAsync("team-d@nobodies.team");
+        var fetched = await _client.GetGroupSettingsAsync("team-d@nobodies.team", Xunit.TestContext.Current.CancellationToken);
         fetched.Error.Should().BeNull();
         fetched.Settings.Should().NotBeNull();
         fetched.Settings!.WhoCanJoin.Should().Be(expected.WhoCanJoin);

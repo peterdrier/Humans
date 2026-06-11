@@ -31,6 +31,38 @@ public static class StatusBadgeExtensions
     }
 
     /// <summary>
+    /// Gets the Bootstrap badge CSS class for an expense report status.
+    /// </summary>
+    public static string GetBadgeClass(this ExpenseReportStatus status)
+    {
+        return status switch
+        {
+            ExpenseReportStatus.Draft => "bg-secondary",
+            ExpenseReportStatus.Submitted => "bg-primary",
+            ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
+            ExpenseReportStatus.Approved => "bg-success",
+            ExpenseReportStatus.SepaSent => "bg-warning text-dark",
+            ExpenseReportStatus.Paid => "bg-success",
+            ExpenseReportStatus.Withdrawn => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    /// <summary>
+    /// Gets the Bootstrap badge CSS class for a budget year status.
+    /// </summary>
+    public static string GetBadgeClass(this BudgetYearStatus status)
+    {
+        return status switch
+        {
+            BudgetYearStatus.Draft => "bg-warning text-dark",
+            BudgetYearStatus.Active => "bg-success",
+            BudgetYearStatus.Closed => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    /// <summary>
     /// Gets the Bootstrap badge CSS class for a membership status string.
     /// Also accepts display labels projected from <see cref="UserState"/> for the admin human list.
     /// </summary>

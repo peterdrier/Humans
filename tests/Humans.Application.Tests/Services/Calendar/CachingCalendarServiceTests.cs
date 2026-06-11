@@ -30,7 +30,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     private static Task WarmAsync(CachingCalendarService sut) =>
-        ((IHostedService)sut).StartAsync(CancellationToken.None);
+        ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
 
     [HumansFact]
     public async Task WarmAllAsync_LoadsCalendarEventInfosFromInnerReadSurface()
@@ -57,7 +57,7 @@ public sealed class CachingCalendarServiceTests
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        var detail = await sut.GetEventByIdAsync(info.Id);
+        var detail = await sut.GetEventByIdAsync(info.Id, Xunit.TestContext.Current.CancellationToken);
 
         detail.Should().NotBeNull();
         detail.Id.Should().Be(info.Id);
@@ -88,7 +88,7 @@ public sealed class CachingCalendarServiceTests
 
         var results = await sut.GetOccurrencesInWindowAsync(
             Instant.FromUtc(2026, 6, 1, 0, 0),
-            Instant.FromUtc(2026, 6, 30, 0, 0));
+            Instant.FromUtc(2026, 6, 30, 0, 0), ct: Xunit.TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(inWindow.Id);
@@ -123,7 +123,7 @@ public sealed class CachingCalendarServiceTests
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        var result = await sut.CreateEventAsync(dto, Guid.NewGuid());
+        var result = await sut.CreateEventAsync(dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(created);
         sut.ContainsKey(created.Id).Should().BeTrue();
@@ -141,7 +141,7 @@ public sealed class CachingCalendarServiceTests
         var sut = CreateSut();
         await WarmAsync(sut);
 
-        await sut.DeleteEventAsync(info.Id, Guid.NewGuid());
+        await sut.DeleteEventAsync(info.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         sut.ContainsKey(info.Id).Should().BeFalse();
         await _inner.Received(1).DeleteEventAsync(info.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>());

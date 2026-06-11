@@ -10,7 +10,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     [HumansFact(Timeout = 30000)]
     public async Task Homepage_IsAccessibleAnonymously()
     {
-        var response = await Client.GetAsync("/");
+        var response = await Client.GetAsync("/", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -18,7 +18,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     [HumansFact(Timeout = 30000)]
     public async Task AboutPage_IsAccessibleAnonymously()
     {
-        var response = await Client.GetAsync("/About");
+        var response = await Client.GetAsync("/About", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -26,7 +26,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     [HumansFact(Timeout = 30000)]
     public async Task PrivacyPage_IsAccessibleAnonymously()
     {
-        var response = await Client.GetAsync("/Home/Privacy");
+        var response = await Client.GetAsync("/Home/Privacy", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -34,7 +34,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     [HumansFact(Timeout = 30000)]
     public async Task TeamsPage_IsAccessibleAnonymously()
     {
-        var response = await Client.GetAsync("/Teams");
+        var response = await Client.GetAsync("/Teams", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -44,7 +44,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     {
         // Proves the route binds with the .ics literal suffix and that
         // AllowAnonymous holds — a bad token must 404, never bounce to login.
-        var response = await Client.GetAsync($"/api/ical/{Guid.NewGuid()}/{Guid.NewGuid()}.ics");
+        var response = await Client.GetAsync($"/api/ical/{Guid.NewGuid()}/{Guid.NewGuid()}.ics", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -55,7 +55,7 @@ public class AnonymousAccessTests(HumansWebApplicationFactory factory) : Integra
     [InlineData("/Consent")]
     public async Task ProtectedEndpoint_RedirectsToLogin_WhenAnonymous(string path)
     {
-        var response = await Client.GetAsync(path);
+        var response = await Client.GetAsync(path, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         response.Headers.Location!.PathAndQuery.Should().StartWith("/Account/Login");

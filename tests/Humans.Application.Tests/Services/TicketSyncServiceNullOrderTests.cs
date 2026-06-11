@@ -125,7 +125,7 @@ public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
             SyncedAt = Instant.FromUtc(2026, 1, 1, 0, 0)
         };
         Db.TicketAttendees.Add(existingAttendee);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Vendor returns the same ticket, but now with null VendorOrderId
         // (as happens when TT returns API-issued tickets with no order association).
@@ -144,12 +144,12 @@ public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
             .Returns(new List<VendorTicketDto> { ticket });
 
         // Act
-        var result = await _service.SyncOrdersAndAttendeesAsync();
+        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Assert — the attendee row was upserted (not skipped)
         result.AttendeesSynced.Should().Be(1);
 
-        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].VendorTicketId.Should().Be("tkt_api_issued");
         dbAttendees[0].AttendeeName.Should().Be("Bob Recipient Updated");
@@ -184,12 +184,12 @@ public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
             .Returns(new List<VendorTicketDto> { ticket });
 
         // Act
-        var result = await _service.SyncOrdersAndAttendeesAsync();
+        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Assert — skipped; no attendee rows written
         result.AttendeesSynced.Should().Be(0);
 
-        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().BeEmpty();
     }
 
@@ -237,17 +237,17 @@ public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
             .Returns(tickets);
 
         // Act
-        var result = await _service.SyncOrdersAndAttendeesAsync();
+        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Assert
         result.OrdersSynced.Should().Be(1);
         result.AttendeesSynced.Should().Be(1);
 
-        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync();
+        var dbAttendees = await Db.TicketAttendees.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].VendorTicketId.Should().Be("tkt_normal");
 
-        var dbOrders = await Db.TicketOrders.AsNoTracking().ToListAsync();
+        var dbOrders = await Db.TicketOrders.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().ContainSingle();
         dbOrders[0].VendorOrderId.Should().Be("ord_normal");
     }

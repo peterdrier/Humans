@@ -28,7 +28,7 @@ public class HasShiftAudienceTests
             [userD] = ShiftUserView.Empty(userD),
         });
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([userA, userB]);
     }
@@ -38,7 +38,7 @@ public class HasShiftAudienceTests
     {
         var audience = NewAudience(new Dictionary<Guid, ShiftUserView>());
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }

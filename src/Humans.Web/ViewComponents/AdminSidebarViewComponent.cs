@@ -61,7 +61,7 @@ public sealed class AdminSidebarViewComponent(
             }
 
             if (visibleItems.Count > 0)
-                visibleGroups.Add(new AdminSidebarGroupViewModel(group.Label, visibleItems));
+                visibleGroups.Add(new AdminSidebarGroupViewModel(group.Label, visibleItems, group.System));
         }
 
         return View(new AdminSidebarViewModel(visibleGroups));

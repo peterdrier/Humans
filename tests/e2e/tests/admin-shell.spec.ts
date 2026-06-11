@@ -10,30 +10,19 @@ import {
 } from '../helpers/auth';
 
 /**
- * Admin shell coverage (#604) — verifies the new sidebar-driven /Admin surface
- * delivered by peterdrier/Humans#349.
+ * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
  *
  * Source-of-truth for the sidebar group/item map is
  * src/Humans.Web/ViewComponents/AdminNavTree.cs. Per-item policies determine
  * which roles see which items; only role-based-policy items are asserted here
- * (no environment-gated Dev items, no claim-dependent variants).
+ * (no environment-gated Dev items, no requirement-based policies such as
+ * ShiftDepartmentManager or CampComplianceAccess, no claim-dependent variants).
+ *
+ * Markup notes: each group renders as section.nav-group[data-group="<label>"].
+ * System groups start collapsed on desktop (items attached but not visible),
+ * so item assertions use toBeAttached(). Group presence is asserted on the
+ * section element, which also covers the mobile chip row.
  */
-
-// Role -> sidebar group labels expected to be present (groups whose items the
-// role can see at all). Items inside each group are asserted per-role below.
-//
-// Derived from AdminNavTree policies:
-//   Operations       — TicketAdminBoardOrAdmin (TicketAdmin / Admin / Board)
-//   Members.Humans   — HumanAdminBoardOrAdmin
-//   Members.Review   — ReviewQueueAccess (ConsentCoord / VolunteerCoord / Board / Admin)
-//   Money.Finance    — FinanceAdminOrAdmin
-//   Money.Store      — StoreCatalogAdmin (StoreAdmin / FinanceAdmin / Admin)
-//   Governance       — BoardOrAdmin
-//   Integrations,
-//   Agent,
-//   People data,
-//   Diagnostics,
-//   Dev              — AdminOnly
 interface SidebarExpectation {
   name: string;
   login: (page: Page) => Promise<void>;
@@ -45,23 +34,35 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'admin',
     login: loginAsAdmin,
     groups: [
-      { label: 'Operations', items: ['Tickets', 'Scanner'] },
-      { label: 'Members', items: ['Humans', 'Roles', 'Review'] },
-      { label: 'Money', items: ['Finance', 'Store catalog'] },
-      { label: 'Governance', items: ['Voting', 'Board'] },
-      { label: 'Integrations', items: ['Google', 'Email preview', 'Email outbox', 'Campaigns', 'Workspace accounts'] },
-      { label: 'Agent', items: ['Agent Config', 'Agent History'] },
-      { label: 'People data', items: ['Merge requests', 'Duplicate detection', 'Audience segmentation', 'Legal documents', 'Stub Profile Backfill'] },
-      { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Cache stats', 'Configuration', 'Maintenance', 'Orphan signups', 'Hangfire', 'Health'] },
+      { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster', 'Campaigns', 'Scanner', 'Gate terminal', 'Early entry'] },
+      { label: 'Members', items: ['Humans', 'Roles', 'Review', 'Account merges', 'Email problems', 'Audience segmentation'] },
+      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats', 'Orphan signups'] },
+      { label: 'Barrios', items: ['Overview', 'Roles', 'Barrio map'] },
+      { label: 'Cantina', items: ['Roster'] },
+      { label: 'Money', items: ['Expense review', 'Finance', 'Store catalog', 'Store summary', 'Store payments'] },
+      { label: 'Event Guide', items: ['Dashboard', 'Moderation', 'Settings', 'Categories', 'Venues', 'Export'] },
+      { label: 'Governance', items: ['Voting', 'Applications'] },
+      { label: 'Audit', items: ['Audit log'] },
+      { label: 'Feedback', items: ['Feedback queue', 'Issues'] },
+      { label: 'Messaging', items: ['Email preview', 'Email outbox', 'Mailer', 'Surveys'] },
+      { label: 'Google', items: ['Overview', 'Workspace accounts', 'Sync outbox'] },
+      { label: 'Agent', items: ['Status', 'Config', 'History'] },
+      { label: 'Legal', items: ['Legal documents'] },
+      { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Timings', 'Hangfire', 'Health'] },
+      { label: 'Design', items: ['Color palette', 'Components', 'Date formats'] },
+      { label: 'Temp', items: ['Picture migration', 'Stub profile backfill'] },
     ],
   },
   {
     name: 'board',
     login: loginAsBoard,
     groups: [
-      { label: 'Operations', items: ['Tickets', 'Scanner'] },
+      { label: 'Tickets', items: ['Tickets', 'Onsite roster', 'Scanner'] },
       { label: 'Members', items: ['Humans', 'Roles', 'Review'] },
-      { label: 'Governance', items: ['Voting', 'Board'] },
+      { label: 'Governance', items: ['Voting', 'Applications'] },
+      { label: 'Audit', items: ['Audit log'] },
+      { label: 'Messaging', items: ['Surveys'] },
+      { label: 'Google', items: ['Resource sync'] },
     ],
   },
   {
@@ -75,7 +76,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'ticketAdmin',
     login: loginAsTicketAdmin,
     groups: [
-      { label: 'Operations', items: ['Tickets', 'Scanner'] },
+      { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster', 'Scanner', 'Gate terminal'] },
     ],
   },
   {
@@ -89,14 +90,16 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'volunteerCoordinator',
     login: loginAsVolunteerCoordinator,
     groups: [
+      { label: 'Tickets', items: ['Early entry'] },
       { label: 'Members', items: ['Review'] },
+      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
     ],
   },
   {
     name: 'financeAdmin',
     login: loginAsFinanceAdmin,
     groups: [
-      { label: 'Money', items: ['Finance', 'Store catalog'] },
+      { label: 'Money', items: ['Expense review', 'Finance', 'Store catalog', 'Store summary', 'Store payments'] },
     ],
   },
 ];
@@ -105,14 +108,23 @@ const sidebarMatrix: SidebarExpectation[] = [
 // (!env.IsProduction()), so the group renders for admins in QA/Preview, and
 // the comment at the top of this file scopes us to role-based-policy items.
 const ALL_GROUP_LABELS = [
-  'Operations',
+  'Tickets',
   'Members',
+  'Shifts',
+  'Barrios',
+  'Cantina',
   'Money',
+  'Event Guide',
   'Governance',
-  'Integrations',
+  'Audit',
+  'Feedback',
+  'Messaging',
+  'Google',
   'Agent',
-  'People data',
+  'Legal',
   'Diagnostics',
+  'Design',
+  'Temp',
 ];
 
 test.describe('Admin shell — sidebar visibility matrix', () => {
@@ -127,25 +139,25 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
       const expectedGroups = new Set(role.groups.map(g => g.label));
 
       for (const group of role.groups) {
-        await expect(
-          sidebar.locator('h4', { hasText: new RegExp(`^${escapeRegex(group.label)}$`) }),
-          `${role.name} should see group '${group.label}'`,
-        ).toBeVisible();
+        const section = sidebar.locator(`section.nav-group[data-group="${group.label}"]`);
+        await expect(section, `${role.name} should see group '${group.label}'`).toBeVisible();
 
         for (const item of group.items) {
+          // toBeAttached, not toBeVisible: system groups start collapsed on
+          // desktop, so their links render display:none until expanded.
           await expect(
-            sidebar.getByRole('link', { name: new RegExp(`^${escapeRegex(item)}\\b`) }),
+            section.getByRole('link', { name: new RegExp(`^${escapeRegex(item)}\\b`) }),
             `${role.name} should see item '${item}' in '${group.label}'`,
-          ).toBeVisible();
+          ).toBeAttached();
         }
       }
 
       for (const label of ALL_GROUP_LABELS) {
         if (expectedGroups.has(label)) continue;
         await expect(
-          sidebar.locator('h4', { hasText: new RegExp(`^${escapeRegex(label)}$`) }),
+          sidebar.locator(`section.nav-group[data-group="${label}"]`),
           `${role.name} should NOT see group '${label}'`,
-        ).not.toBeVisible();
+        ).toHaveCount(0);
       }
     });
   }
@@ -166,6 +178,11 @@ test.describe('Admin shell — breadcrumb regression (controller-only-match bug,
     const activeLinks = sidebar.locator('a.active');
     await expect(activeLinks).toHaveCount(1);
     await expect(activeLinks).toHaveText(/Logs/);
+
+    // The system group holding the active item must not start collapsed.
+    const diagnostics = sidebar.locator('section.nav-group[data-group="Diagnostics"]');
+    await expect(diagnostics).not.toHaveClass(/collapsed/);
+    await expect(activeLinks).toBeVisible();
   });
 
   test('breadcrumb on /Debug/DbStats shows Diagnostics / DB stats', async ({ page }) => {
@@ -180,6 +197,27 @@ test.describe('Admin shell — breadcrumb regression (controller-only-match bug,
     const activeLinks = sidebar.locator('a.active');
     await expect(activeLinks).toHaveCount(1);
     await expect(activeLinks).toHaveText(/DB stats/);
+  });
+});
+
+test.describe('Admin shell — desktop accordion', () => {
+  test('system groups start collapsed; toggling expands them', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/Admin');
+
+    const sidebar = page.locator('aside.sidebar');
+    const google = sidebar.locator('section.nav-group[data-group="Google"]');
+    await expect(google).toHaveClass(/collapsed/);
+    await expect(google.getByRole('link', { name: /^Workspace accounts\b/ })).not.toBeVisible();
+
+    await google.locator('.group-toggle').click();
+    await expect(google).not.toHaveClass(/collapsed/);
+    await expect(google.getByRole('link', { name: /^Workspace accounts\b/ })).toBeVisible();
+
+    // Operational groups start expanded.
+    const tickets = sidebar.locator('section.nav-group[data-group="Tickets"]');
+    await expect(tickets).not.toHaveClass(/collapsed/);
+    await expect(tickets.getByRole('link', { name: /^Scanner\b/ })).toBeVisible();
   });
 });
 
@@ -199,18 +237,29 @@ test.describe('Admin shell — maintenance page', () => {
 });
 
 test.describe('Admin shell — chrome', () => {
-  test('mobile viewport (<768px) renders sidebar without breaking the shell', async ({ page }) => {
+  test('mobile viewport (<768px) renders the two-tier strip and chips switch groups', async ({ page }) => {
     // Per src/Humans.Web/wwwroot/css/admin-shell.css the sub-768px design is a
-    // horizontal scroll strip beneath the topbar (NOT a Bootstrap offcanvas).
-    // We assert the shell still renders cleanly at narrow viewport.
+    // two-tier strip beneath the topbar (group chips above the selected
+    // group's items — NOT a Bootstrap offcanvas).
     // Log in at desktop width first — the nav dropdown the auth helper waits
     // for is collapsed behind the mobile hamburger at <768px.
     await loginAsAdmin(page);
     await page.setViewportSize({ width: 480, height: 800 });
     await page.goto('/Admin');
 
-    await expect(page.locator('aside.sidebar')).toBeVisible();
-    await expect(page.locator('aside.sidebar .sidebar-scroll')).toBeVisible();
+    const sidebar = page.locator('aside.sidebar');
+    await expect(sidebar).toBeVisible();
+    await expect(sidebar.locator('.group-chips')).toBeVisible();
+    // Exactly one item row is shown at a time.
+    await expect(sidebar.locator('section.nav-group.m-active')).toHaveCount(1);
+
+    // Tapping a chip switches the visible item row.
+    await sidebar.locator('.group-chip[data-group="Members"]').click();
+    await expect(sidebar.locator('section.nav-group.m-active')).toHaveAttribute('data-group', 'Members');
+    await expect(
+      sidebar.locator('section.nav-group[data-group="Members"]').getByRole('link', { name: /^Humans\b/ }),
+    ).toBeVisible();
+
     // Topbar exit-admin remains reachable.
     await expect(page.locator('a.exit-admin')).toBeVisible();
   });

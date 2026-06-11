@@ -121,16 +121,74 @@ body.admin-shell .sidebar-scroll {
     min-height: 100%;
 }
 
+/* Chip row (mobile group tabs) is hidden on desktop. */
+body.admin-shell .group-chips-wrap {
+    display: none;
+}
+
 body.admin-shell .sidebar h4 {
+    margin: 0;
+}
+
+/* Group header doubles as the accordion toggle on desktop. */
+body.admin-shell .sidebar .group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
     font-family: var(--h-font-display);
     font-style: italic;
     font-size: 0.72rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--h-gold);
-    margin: 22px 22px 8px;
+    padding: 8px 22px;
+    margin-top: 14px;
     font-weight: 400;
     opacity: 0.7;
+}
+
+body.admin-shell .sidebar .group-toggle:hover {
+    opacity: 1;
+}
+
+body.admin-shell .sidebar .group-toggle .chev {
+    margin-left: auto;
+    font-size: 0.6rem;
+    transition: transform 0.15s ease;
+}
+
+body.admin-shell .sidebar .group-toggle .pill {
+    margin-left: auto;
+}
+
+body.admin-shell .sidebar .group-toggle .pill ~ .chev {
+    margin-left: 8px;
+}
+
+body.admin-shell .nav-group.collapsed .group-toggle .chev {
+    transform: rotate(-90deg);
+}
+
+body.admin-shell .nav-group.collapsed .group-items {
+    display: none;
+}
+
+/* The group pill sums hidden item queues; while expanded the item pills are
+   visible, so the summary is redundant noise. */
+body.admin-shell .nav-group:not(.collapsed) .group-toggle .group-pill {
+    display: none;
+}
+
+/* System-zone divider: low-traffic plumbing groups sit below the line. */
+body.admin-shell .nav-group:not(.system) + .nav-group.system {
+    border-top: 1px solid rgba(255,245,221,0.12);
+    margin-top: 18px;
+    padding-top: 4px;
 }
 
 body.admin-shell .sidebar a {
@@ -455,10 +513,11 @@ body.admin-shell .split-panels {
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
 }
 
-/* Below 768px the sidebar collapses into a horizontal scroll strip beneath
-   the topbar — no offcanvas/hamburger. Edge-fade gradients indicate when
-   items are off-screen; site.js toggles data-scroll-start/end on .sidebar
-   to show/hide the gradients and scrolls the active item into view. */
+/* Below 768px the sidebar collapses into a two-tier strip beneath the topbar
+   — no offcanvas/hamburger. Row 1 is the group chips (one per nav group),
+   row 2 is the selected group's items. Edge-fade gradients indicate when a
+   row's entries are off-screen; site.js toggles data-scroll-start/end on the
+   row wrappers and scrolls the active chip/item into view. */
 @media (max-width: 767.98px) {
     /* minmax(0, 1fr) instead of 1fr — without min:0, the grid column
        sizes to the auto-min-content of .sidebar-scroll's flex children
@@ -479,14 +538,25 @@ body.admin-shell .split-panels {
         padding: 0;
         border-right: 0;
         border-bottom: 1px solid rgba(255,245,221,0.1);
-        position: relative;
         min-width: 0;
         overflow: hidden;
     }
     body.admin-shell .sidebar-scroll {
-        flex-direction: row;
-        align-items: center;
         min-height: 0;
+        padding: 0;
+    }
+    body.admin-shell .sidebar h4 { display: none; }
+
+    /* Row 1 — group chips. */
+    body.admin-shell .group-chips-wrap {
+        display: block;
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid rgba(255,245,221,0.1);
+    }
+    body.admin-shell .group-chips {
+        display: flex;
+        align-items: center;
         padding: 0 8px;
         overflow-x: auto;
         scrollbar-width: none;
@@ -495,8 +565,54 @@ body.admin-shell .split-panels {
         scroll-behavior: smooth;
         cursor: grab;
     }
-    body.admin-shell .sidebar-scroll::-webkit-scrollbar { display: none; }
-    body.admin-shell .sidebar h4 { display: none; }
+    body.admin-shell .group-chips::-webkit-scrollbar { display: none; }
+    body.admin-shell .group-chip {
+        background: none;
+        border: 0;
+        border-bottom: 3px solid transparent;
+        color: var(--h-gold);
+        opacity: 0.7;
+        font-family: var(--h-font-display);
+        font-style: italic;
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 12px 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+    }
+    body.admin-shell .group-chip.m-active {
+        opacity: 1;
+        border-bottom-color: var(--h-gold);
+    }
+
+    /* Row 2 — the selected group's items. Mobile selection (m-active) wins
+       over the desktop accordion's collapsed state. */
+    body.admin-shell .nav-group { display: none; }
+    body.admin-shell .nav-group.m-active {
+        display: block;
+        position: relative;
+        overflow: hidden;
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 0;
+    }
+    body.admin-shell .nav-group.m-active .group-items {
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scroll-behavior: smooth;
+        cursor: grab;
+    }
+    body.admin-shell .nav-group.m-active .group-items::-webkit-scrollbar { display: none; }
     body.admin-shell .sidebar a {
         padding: 14px 12px;
         border-left: 0;
@@ -513,13 +629,14 @@ body.admin-shell .split-panels {
     }
     body.admin-shell .sidebar .pill { font-size: 0.6rem; padding: 1px 6px; }
 
-    /* Edge-fade affordances. The overlay is over .sidebar (which has the
-       same bg as the strip), so fading from transparent to --h-aged-ink
-       creates a clean reveal/conceal of off-screen items. JS toggles the
-       data-scroll-start/end attributes; default state shows the right fade
-       (since pages typically load scrolled to the start). */
-    body.admin-shell .sidebar::before,
-    body.admin-shell .sidebar::after {
+    /* Edge-fade affordances, one pair per scrolling row. The overlay sits on
+       the row wrapper (same bg as the strip), so fading from transparent to
+       --h-aged-ink creates a clean reveal/conceal of off-screen entries. JS
+       toggles data-scroll-start/end on the wrapper. */
+    body.admin-shell .group-chips-wrap::before,
+    body.admin-shell .group-chips-wrap::after,
+    body.admin-shell .nav-group.m-active::before,
+    body.admin-shell .nav-group.m-active::after {
         content: '';
         position: absolute;
         top: 0;
@@ -530,14 +647,18 @@ body.admin-shell .split-panels {
         opacity: 0;
         transition: opacity 0.15s ease;
     }
-    body.admin-shell .sidebar::before {
+    body.admin-shell .group-chips-wrap::before,
+    body.admin-shell .nav-group.m-active::before {
         left: 0;
         background: linear-gradient(to right, var(--h-aged-ink), rgba(28,24,20,0));
     }
-    body.admin-shell .sidebar::after {
+    body.admin-shell .group-chips-wrap::after,
+    body.admin-shell .nav-group.m-active::after {
         right: 0;
         background: linear-gradient(to left, var(--h-aged-ink), rgba(28,24,20,0));
     }
-    body.admin-shell .sidebar[data-scroll-start="false"]::before { opacity: 1; }
-    body.admin-shell .sidebar[data-scroll-end="false"]::after { opacity: 1; }
+    body.admin-shell .group-chips-wrap[data-scroll-start="false"]::before,
+    body.admin-shell .nav-group.m-active[data-scroll-start="false"]::before { opacity: 1; }
+    body.admin-shell .group-chips-wrap[data-scroll-end="false"]::after,
+    body.admin-shell .nav-group.m-active[data-scroll-end="false"]::after { opacity: 1; }
 }

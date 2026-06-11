@@ -61,7 +61,7 @@ public sealed class OnboardingServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var result = await BuildSut().ClearConsentCheckAsync(userId, reviewerId, notes);
+        var result = await BuildSut().ClearConsentCheckAsync(userId, reviewerId, notes, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
         await _auditLogService.Received(1).LogAsync(
@@ -70,7 +70,7 @@ public sealed class OnboardingServiceTests
             userId,
             "Consent check cleared",
             reviewerId);
-        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default);
+        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -88,7 +88,7 @@ public sealed class OnboardingServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "AlreadyRejected"));
 
-        var result = await BuildSut().RejectSignupAsync(userId, reviewerId, "duplicate");
+        var result = await BuildSut().RejectSignupAsync(userId, reviewerId, "duplicate", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyRejected");
@@ -98,14 +98,14 @@ public sealed class OnboardingServiceTests
             userId,
             Arg.Any<string>(),
             reviewerId);
-        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default);
+        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
         _emailMessages.DidNotReceiveWithAnyArgs().SignupRejected(default!, default!, default);
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default,
             default,
             default,
             default!,
-            default!);
+            default!, cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -138,7 +138,7 @@ public sealed class OnboardingServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(userId);
+        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         set.Should().BeTrue();
         await _userService.Received(1).ApplyProfileOnboardingMutationAsync(
@@ -172,7 +172,7 @@ public sealed class OnboardingServiceTests
         StubReviewQueueDependencies(
             [UserInfoStubHelpers.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]);
 
-        var data = await BuildSut().GetReviewQueueAsync();
+        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
 
         data.Flagged.Should().ContainSingle(u => u.Id == approvedFlaggedId);
         data.Pending.Should().NotContain(u => u.Id == approvedFlaggedId);
@@ -202,7 +202,7 @@ public sealed class OnboardingServiceTests
         StubReviewQueueDependencies(
             [UserInfoStubHelpers.MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile)]);
 
-        var data = await BuildSut().GetReviewQueueAsync();
+        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
 
         data.Flagged.Should().NotContain(u => u.Id == rejectedFlaggedId);
         data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);

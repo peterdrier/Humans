@@ -107,6 +107,30 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
     /// </summary>
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // Admin outbox recovery
+    // ==========================================================================
+
+    /// <summary>
+    /// Requeues a single permanently-failed outbox event for retry.
+    /// Returns <c>true</c> if the event was found and reset.
+    /// </summary>
+    Task<bool> RequeueOutboxEventAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Requeues all permanently-failed outbox events.
+    /// Returns the number of events reset.
+    /// </summary>
+    Task<int> RequeueAllFailedOutboxEventsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enqueues <see cref="GoogleSyncOutboxEventTypes.AddUserToTeamResources"/> events
+    /// for all teams the given user currently belongs to, bypassing the
+    /// <see cref="GoogleEmailStatus.Rejected"/> guard so an admin can force a
+    /// re-attempt after fixing the user's email. Returns the number of events enqueued.
+    /// </summary>
+    Task<int> EnqueueUserSyncAsync(Guid userId, CancellationToken cancellationToken = default);
 }
 
 public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)

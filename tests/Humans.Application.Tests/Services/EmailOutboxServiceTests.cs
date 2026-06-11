@@ -32,7 +32,7 @@ public sealed class EmailOutboxServiceTests
         _repo.GetRecentAsync(2, Arg.Any<CancellationToken>())
             .Returns([newer, middle]);
 
-        var result = await _service.GetOutboxStatsAsync(recentMessageCount: 2);
+        var result = await _service.GetOutboxStatsAsync(recentMessageCount: 2, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.RecentMessages.Select(m => m.Id).Should().Equal(newer.Id, middle.Id);
     }
@@ -47,7 +47,7 @@ public sealed class EmailOutboxServiceTests
         _repo.GetForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns([newer, older]);
 
-        var result = await _service.GetMessagesForUserAsync(userId);
+        var result = await _service.GetMessagesForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Select(m => m.Id).Should().Equal(newer.Id, older.Id);
     }
@@ -60,7 +60,7 @@ public sealed class EmailOutboxServiceTests
                 Arg.Any<CancellationToken>())
             .Returns("true");
 
-        var result = await _service.IsEmailPausedAsync();
+        var result = await _service.IsEmailPausedAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -68,7 +68,7 @@ public sealed class EmailOutboxServiceTests
     [HumansFact]
     public async Task SetEmailPausedAsync_WritesSetting()
     {
-        await _service.SetEmailPausedAsync(true);
+        await _service.SetEmailPausedAsync(true, Xunit.TestContext.Current.CancellationToken);
 
         await _systemSettings.Received(1).SetValueAsync(
             SystemSettingKeys.IsEmailSendingPaused,

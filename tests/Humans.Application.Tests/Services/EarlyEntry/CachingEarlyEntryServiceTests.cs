@@ -32,8 +32,8 @@ public class CachingEarlyEntryServiceTests
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
              .Returns(Task.FromResult<UserEarlyEntry?>(entry));
 
-        var first = await sut.GetForUserAsync(userId, CancellationToken.None);
-        var second = await sut.GetForUserAsync(userId, CancellationToken.None);
+        var first = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var second = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         first.Should().NotBeNull();
         second.Should().NotBeNull();
@@ -49,8 +49,8 @@ public class CachingEarlyEntryServiceTests
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
              .Returns(Task.FromResult<UserEarlyEntry?>(null));
 
-        var first = await sut.GetForUserAsync(userId, CancellationToken.None);
-        var second = await sut.GetForUserAsync(userId, CancellationToken.None);
+        var first = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var second = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         first.Should().BeNull();
         second.Should().BeNull();
@@ -65,9 +65,9 @@ public class CachingEarlyEntryServiceTests
         inner.GetForUserAsync(userId, Arg.Any<CancellationToken>())
              .Returns(Task.FromResult<UserEarlyEntry?>(null));
 
-        _ = await sut.GetForUserAsync(userId, CancellationToken.None);
+        _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
         sut.InvalidateUser(userId);
-        _ = await sut.GetForUserAsync(userId, CancellationToken.None);
+        _ = await sut.GetForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await inner.Received(2).GetForUserAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -79,8 +79,8 @@ public class CachingEarlyEntryServiceTests
         inner.GetRosterAsync(Arg.Any<CancellationToken>())
              .Returns(Task.FromResult<IReadOnlyList<EarlyEntryRosterRow>>([]));
 
-        _ = await sut.GetRosterAsync(CancellationToken.None);
-        _ = await sut.GetRosterAsync(CancellationToken.None);
+        _ = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
+        _ = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
 
         await inner.Received(2).GetRosterAsync(Arg.Any<CancellationToken>());
     }

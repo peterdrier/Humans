@@ -36,9 +36,9 @@ public class AgentAdminStatusServiceTests
         // 30d-only: one message at now-25d
         SeedMessage(db, convB.Id, now - Duration.FromDays(25),
             prompt: 200, output: 100, cached: 0, fetched: ["agent"]);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var report = await BuildService(db, clock).GetStatusAsync(CancellationToken.None);
+        var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
         // 24h: one message, one unique user, prompt=100, output=50, cached=200
         report.Usage24h.MessageCount.Should().Be(1);
@@ -78,7 +78,7 @@ public class AgentAdminStatusServiceTests
         balance.GetBalanceAsync(Arg.Any<CancellationToken>())
             .Returns(new AgentBalanceStatus(BalanceUsd: null, UnavailableReason: "Admin API key not configured"));
 
-        var report = await BuildService(db, clock, balance: balance).GetStatusAsync(CancellationToken.None);
+        var report = await BuildService(db, clock, balance: balance).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.Balance.BalanceUsd.Should().BeNull();
         report.Balance.UnavailableReason.Should().Be("Admin API key not configured");
@@ -97,7 +97,7 @@ public class AgentAdminStatusServiceTests
             DailyMessageCap: 30, HourlyMessageCap: 10, DailyTokenCap: 50_000,
             RetentionDays: 90, UpdatedAt: Instant.MinValue));
 
-        var report = await BuildService(db, clock, settings: settings).GetStatusAsync(CancellationToken.None);
+        var report = await BuildService(db, clock, settings: settings).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
         report.SettingsStoreWarm.Should().BeFalse();
     }
 

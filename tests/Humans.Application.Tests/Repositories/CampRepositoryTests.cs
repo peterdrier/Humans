@@ -40,7 +40,7 @@ public sealed class CampRepositoryTests : IDisposable
     {
         var camp = await SeedCampAsync("test-camp");
 
-        var exists = await _repo.SlugExistsAsync(camp.Slug);
+        var exists = await _repo.SlugExistsAsync(camp.Slug, Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeTrue();
     }
@@ -48,7 +48,7 @@ public sealed class CampRepositoryTests : IDisposable
     [HumansFact]
     public async Task SlugExistsAsync_ReturnsFalse_WhenNoMatch()
     {
-        var exists = await _repo.SlugExistsAsync("no-such-camp");
+        var exists = await _repo.SlugExistsAsync("no-such-camp", Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeFalse();
     }
@@ -89,14 +89,14 @@ public sealed class CampRepositoryTests : IDisposable
             }
         };
 
-        await _repo.CreateCampAsync(camp, season, member, assignment, history);
+        await _repo.CreateCampAsync(camp, season, member, assignment, history, Xunit.TestContext.Current.CancellationToken);
 
-        var persistedCamp = await _dbContext.Camps.AsNoTracking().FirstAsync(c => c.Id == camp.Id);
+        var persistedCamp = await _dbContext.Camps.AsNoTracking().FirstAsync(c => c.Id == camp.Id, Xunit.TestContext.Current.CancellationToken);
         persistedCamp.Slug.Should().Be("new-camp");
-        (await _dbContext.CampSeasons.AsNoTracking().CountAsync(s => s.CampId == camp.Id)).Should().Be(1);
-        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.CampSeasonId == season.Id)).Should().Be(1);
-        (await _dbContext.CampRoleAssignments.AsNoTracking().CountAsync(a => a.CampSeasonId == season.Id)).Should().Be(1);
-        (await _dbContext.CampHistoricalNames.AsNoTracking().CountAsync(h => h.CampId == camp.Id)).Should().Be(1);
+        (await _dbContext.CampSeasons.AsNoTracking().CountAsync(s => s.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.CampSeasonId == season.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.CampRoleAssignments.AsNoTracking().CountAsync(a => a.CampSeasonId == season.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.CampHistoricalNames.AsNoTracking().CountAsync(h => h.CampId == camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // ==========================================================================
@@ -124,7 +124,7 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedLeadAssignmentAsync(camp1.Id, workshopDef.Id, Guid.NewGuid());
         await SeedLeadAssignmentAsync(camp1.Id, regularDef.Id, Guid.NewGuid());
 
-        var result = await _repo.GetActiveLeadUserIdsAsync();
+        var result = await _repo.GetActiveLeadUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo([userA, userB]);
     }
@@ -139,7 +139,7 @@ public sealed class CampRepositoryTests : IDisposable
         var camp = await SeedCampAsync("season-camp");
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Pending);
 
-        (await _repo.SeasonExistsAsync(camp.Id, 2026)).Should().BeTrue();
+        (await _repo.SeasonExistsAsync(camp.Id, 2026, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -148,7 +148,7 @@ public sealed class CampRepositoryTests : IDisposable
         var camp = await SeedCampAsync("other-year");
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Active);
 
-        (await _repo.SeasonExistsAsync(camp.Id, 2027)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, 2027, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -158,7 +158,7 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedSeasonAsync(camp.Id, 2025, CampSeasonStatus.Withdrawn);
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Pending);
 
-        (await _repo.HasApprovedSeasonAsync(camp.Id)).Should().BeTrue();
+        (await _repo.HasApprovedSeasonAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -168,7 +168,7 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedSeasonAsync(camp.Id, 2025, CampSeasonStatus.Rejected);
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Pending);
 
-        (await _repo.HasApprovedSeasonAsync(camp.Id)).Should().BeFalse();
+        (await _repo.HasApprovedSeasonAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     // ==========================================================================
@@ -187,7 +187,7 @@ public sealed class CampRepositoryTests : IDisposable
         var pendingCamp = await SeedCampAsync("pending");
         await SeedSeasonAsync(pendingCamp.Id, 2026, CampSeasonStatus.Pending);
 
-        var result = await _repo.GetAllCampsForYearAsync(2026);
+        var result = await _repo.GetAllCampsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         result.Where(c => c.HasPublicSeasonForYear(2026)).Select(c => c.Slug)
             .Should().BeEquivalentTo("active", "full");
@@ -221,9 +221,9 @@ public sealed class CampRepositoryTests : IDisposable
             SortOrder = 1,
             UploadedAt = _clock.GetCurrentInstant()
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _repo.CountImagesAsync(camp.Id)).Should().Be(2);
+        (await _repo.CountImagesAsync(camp.Id, Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     // ==========================================================================
@@ -239,9 +239,9 @@ public sealed class CampRepositoryTests : IDisposable
             PublicYear = 2026,
             OpenSeasons = [2026]
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var settings = await _repo.GetSettingsReadOnlyAsync();
+        var settings = await _repo.GetSettingsReadOnlyAsync(Xunit.TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
         settings.PublicYear.Should().Be(2026);
@@ -252,10 +252,10 @@ public sealed class CampRepositoryTests : IDisposable
     {
         await SeedSettingsAsync();
 
-        var changed = await _repo.OpenSeasonAsync(2027);
+        var changed = await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeTrue();
-        var settings = await _dbContext.CampSettings.AsNoTracking().FirstAsync();
+        var settings = await _dbContext.CampSettings.AsNoTracking().FirstAsync(Xunit.TestContext.Current.CancellationToken);
         settings.OpenSeasons.Should().Contain(2027);
     }
 
@@ -263,9 +263,9 @@ public sealed class CampRepositoryTests : IDisposable
     public async Task OpenSeasonAsync_NoOp_WhenAlreadyOpen()
     {
         await SeedSettingsAsync();
-        await _repo.OpenSeasonAsync(2027);
+        await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
 
-        var changed = await _repo.OpenSeasonAsync(2027);
+        var changed = await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
 
         changed.Should().BeFalse();
     }
@@ -278,14 +278,14 @@ public sealed class CampRepositoryTests : IDisposable
     {
         var camp = BuildCamp(slug);
         _dbContext.Camps.Add(camp);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return camp;
     }
 
     private async Task SeedSeasonAsync(Guid campId, int year, CampSeasonStatus status)
     {
         _dbContext.CampSeasons.Add(BuildSeason(campId, status, year));
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private async Task SeedSettingsAsync()
@@ -296,7 +296,7 @@ public sealed class CampRepositoryTests : IDisposable
             PublicYear = 2026,
             OpenSeasons = [2026]
         });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
     private Camp BuildCamp(string slug) => new()
@@ -347,7 +347,7 @@ public sealed class CampRepositoryTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant(),
         };
         _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
     }
 
@@ -366,7 +366,7 @@ public sealed class CampRepositoryTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant(),
         };
         _dbContext.CampRoleDefinitions.Add(def);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
     }
 
@@ -380,7 +380,7 @@ public sealed class CampRepositoryTests : IDisposable
         {
             season = BuildSeason(campId, CampSeasonStatus.Active, year: 2026);
             _dbContext.CampSeasons.Add(season);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         }
 
         var member = new CampMember
@@ -404,6 +404,6 @@ public sealed class CampRepositoryTests : IDisposable
             AssignedByUserId = userId,
         };
         _dbContext.CampRoleAssignments.Add(assignment);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

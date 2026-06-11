@@ -126,7 +126,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
-        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
+        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).GoogleAccessRemovalSecondaryCleanup(
             removedEmail,
@@ -155,7 +155,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         _groupMembership.DeleteMembershipAsync("groups/01abc/memberships/m1", Arg.Any<CancellationToken>())
             .Returns(new GoogleClientError(StatusCode: 500, RawMessage: "boom"));
 
-        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
+        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().GoogleGroupRemovalLossOfAccess(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),

@@ -157,7 +157,6 @@ public sealed class UserInfoSaveChangesInterceptor(
 
     private static User CloneUserInfoFields(User user)
     {
-#pragma warning disable HUM_USER_DISPLAYNAME // DisplayName is part of the cached legacy user-column mirror.
         return new User
         {
             Id = user.Id,
@@ -181,7 +180,6 @@ public sealed class UserInfoSaveChangesInterceptor(
             MergedAt = user.MergedAt,
             Email = user.IdentityEmailColumn,
         };
-#pragma warning restore HUM_USER_DISPLAYNAME
     }
 
     private sealed class PendingUserInfoInvalidations

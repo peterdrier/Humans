@@ -37,9 +37,9 @@ public sealed class ContainerPlacementPhaseTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
 
-        await _sut.OpenContainerPlacementAsync(userId);
+        await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        var settings = await _sut.GetSettingsAsync();
+        var settings = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
         settings.IsContainerPlacementOpen.Should().BeTrue();
         settings.ContainerPlacementOpenedAt.Should().Be(Clock.GetCurrentInstant());
         settings.ContainerPlacementClosedAt.Should().BeNull();
@@ -49,11 +49,11 @@ public sealed class ContainerPlacementPhaseTests : ServiceTestHarness
     public async Task CloseContainerPlacement_SetsIsClosedAndTimestamp()
     {
         var userId = Guid.NewGuid();
-        await _sut.OpenContainerPlacementAsync(userId);
+        await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        await _sut.CloseContainerPlacementAsync(userId);
+        await _sut.CloseContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        var settings = await _sut.GetSettingsAsync();
+        var settings = await _sut.GetSettingsAsync(Xunit.TestContext.Current.CancellationToken);
         settings.IsContainerPlacementOpen.Should().BeFalse();
         settings.ContainerPlacementClosedAt.Should().Be(Clock.GetCurrentInstant());
     }

@@ -62,7 +62,7 @@ public class EarlyEntryRosterControllerTests
             });
 
         var ctrl = BuildSut();
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         var model = view.Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;

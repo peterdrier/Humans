@@ -33,7 +33,7 @@ public class AgentUserSnapshotProviderTests
 
         var provider = MakeProvider(userId, ev, signups);
 
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.UpcomingShifts.Should().HaveCount(1);
         var entry = snapshot.UpcomingShifts[0];
@@ -57,7 +57,7 @@ public class AgentUserSnapshotProviderTests
 
         var provider = MakeProvider(userId, ev, [signup]);
 
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.UpcomingShifts.Should().HaveCount(1);
         var entry = snapshot.UpcomingShifts[0];
@@ -77,7 +77,7 @@ public class AgentUserSnapshotProviderTests
 
         var provider = MakeProvider(userId, ev, [pastSignup]);
 
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.UpcomingShifts.Should().BeEmpty();
     }
@@ -96,7 +96,7 @@ public class AgentUserSnapshotProviderTests
         var cancelled = MakeSignup(userId, null, MakeShift(rota, dayOffset: 5, isAllDay: true), SignupStatus.Cancelled);
 
         var provider = MakeProvider(userId, ev, [pending, confirmed, refused, bailed, cancelled]);
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.UpcomingShifts.Should().HaveCount(2);
         snapshot.UpcomingShifts.Select(e => e.Status).Should().BeEquivalentTo([SignupStatus.Pending, SignupStatus.Confirmed
@@ -108,7 +108,7 @@ public class AgentUserSnapshotProviderTests
     {
         var userId = Guid.NewGuid();
         var provider = MakeProvider(userId, activeEvent: null, signups: []);
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
         snapshot.UpcomingShifts.Should().BeEmpty();
     }
 
@@ -120,7 +120,7 @@ public class AgentUserSnapshotProviderTests
         var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
         var provider = MakeProvider(userId, ev, [], openTicketIds: ids);
 
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.OpenTicketIds.Should().BeEquivalentTo(ids);
     }
@@ -137,7 +137,7 @@ public class AgentUserSnapshotProviderTests
         };
         var provider = MakeProvider(userId, ev, [], teamMemberships: memberships);
 
-        var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.Teams.Should().BeEquivalentTo(memberships);
     }

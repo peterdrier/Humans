@@ -70,7 +70,7 @@ public class OnboardingWidgetControllerDispatcherTests
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(step);
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(action, redirect.ActionName);
@@ -85,7 +85,7 @@ public class OnboardingWidgetControllerDispatcherTests
             .Returns(OnboardingWidgetStep.Complete);
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Index(CancellationToken.None);
+        var result = await ctrl.Index(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);

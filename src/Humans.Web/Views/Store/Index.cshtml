@@ -79,9 +79,9 @@ else
                                     <td><span class="badge bg-secondary">@order.State</span></td>
                                     @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
                                     {
-                                        <td class="text-end">&euro;@((order.LinesSubtotalEur + order.VatTotalEur).ToString("N2"))</td>
-                                        <td class="text-end">&euro;@order.DepositTotalEur.ToString("N2")</td>
-                                        <td class="text-end fw-bold">&euro;@order.BalanceEur.ToString("N2")</td>
+                                        <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>
+                                        <td class="text-end">@order.DepositTotalEur.ToEuro()</td>
+                                        <td class="text-end fw-bold">@order.BalanceEur.ToEuro()</td>
                                     }
                                     else
                                     {
@@ -128,8 +128,8 @@ else
         @<text>@Html.SanitizedMarkdown(item.Description)</text>;
     Func<Humans.Application.Services.Store.Dtos.ProductDto, IHtmlContent> catalogPriceCell =
         @<text>
-            &euro;@item.UnitPriceInclVatEur.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
-            <div class="text-muted small">(&euro;@item.UnitPriceEur.ToString("N2", System.Globalization.CultureInfo.CurrentCulture) + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
+            @item.UnitPriceInclVatEur.ToEuro()
+            <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
         </text>;
     var catalogTable = TableModel.For(Model.Catalog)
         .Column("Name", r => r.Name)

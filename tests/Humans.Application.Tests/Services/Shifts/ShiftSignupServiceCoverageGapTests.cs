@@ -85,7 +85,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
-        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA);
+        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA, Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var result = await _service.BailAsync(signupA.Id, userA, reason: null);
@@ -117,7 +117,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
-        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA);
+        var signupA = await Db.ShiftSignups.FirstAsync(s => s.UserId == userA, Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var result = await _service.BailAsync(signupA.Id, userA, reason: null);
@@ -219,7 +219,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             UpdatedAt = TestNow
         });
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift, userA, userB);
     }
 

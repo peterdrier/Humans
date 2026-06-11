@@ -31,7 +31,7 @@
             {
                 <a asp-action="YearDetail" asp-route-id="@y.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     @y.Name
-                    <span class="badge bg-@(y.Status == BudgetYearStatus.Draft ? "warning" : "secondary")">@y.Status</span>
+                    <span class="badge @y.Status.GetBadgeClass()">@y.Status</span>
                 </a>
             }
         </div>

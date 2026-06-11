@@ -75,16 +75,6 @@ public sealed class CachingEventService(
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
 
-    public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
-    {
-        var view = await GetSettingsViewAsync(ct);
-        if (view is null) return false;
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-        return view.IsSubmissionOpenAt(clock.GetCurrentInstant());
-    }
-
     public Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
         WithInner(inner => inner.GetEventSettingsOptionsAsync(ct));
 
@@ -357,9 +347,6 @@ public sealed class CachingEventService(
 
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
-
-    public Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default) =>
-        WithInner(inner => inner.GetPreferenceAsync(userId, ct));
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
         WithInner(inner => inner.SavePreferenceAsync(userId, slugs, ct));

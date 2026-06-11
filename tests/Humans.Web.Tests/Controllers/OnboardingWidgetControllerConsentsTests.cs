@@ -138,7 +138,7 @@ public class OnboardingWidgetControllerConsentsTests
             .Returns(new ConsentSubmitResult(Success: true));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
@@ -160,7 +160,7 @@ public class OnboardingWidgetControllerConsentsTests
             .Returns(new ConsentSubmitResult(Success: false, ErrorKey: "AlreadyConsented"));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
@@ -180,7 +180,7 @@ public class OnboardingWidgetControllerConsentsTests
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, isStub: true);
 
-        var result = await ctrl.Consents(CancellationToken.None);
+        var result = await ctrl.Consents(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
@@ -195,7 +195,7 @@ public class OnboardingWidgetControllerConsentsTests
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, isStub: true);
 
-        var result = await ctrl.SignConsent(Guid.NewGuid(), explicitConsent: true, CancellationToken.None);
+        var result = await ctrl.SignConsent(Guid.NewGuid(), explicitConsent: true, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
@@ -221,7 +221,7 @@ public class OnboardingWidgetControllerConsentsTests
         // we want to specifically exercise the SubmitConsentAsync return path.
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
@@ -239,7 +239,7 @@ public class OnboardingWidgetControllerConsentsTests
         var docVersionId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: false, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: false, TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
@@ -281,7 +281,7 @@ public class OnboardingWidgetControllerConsentsTests
                 UserFullName: null));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Consents(CancellationToken.None);
+        var result = await ctrl.Consents(TestContext.Current.CancellationToken);
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<ConsentsStepViewModel>(view.Model);
@@ -311,7 +311,7 @@ public class OnboardingWidgetControllerConsentsTests
             .Returns(rows);
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Consents(CancellationToken.None);
+        var result = await ctrl.Consents(TestContext.Current.CancellationToken);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);

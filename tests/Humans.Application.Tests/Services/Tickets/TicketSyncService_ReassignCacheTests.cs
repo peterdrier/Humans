@@ -65,7 +65,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             targetUserId,
             actorUserId: Guid.NewGuid(),
             updatedAt: Instant.FromUtc(2026, 5, 16, 12, 0),
-            CancellationToken.None);
+            Xunit.TestContext.Current.CancellationToken);
 
         invalidator.Received(1).InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }

@@ -82,11 +82,11 @@ public class CleanupNotificationsJobTests : IDisposable
         };
 
         await _dbContext.Notifications.AddRangeAsync(oldResolved, recentResolved, unresolvedActionable);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.Notifications.ToListAsync();
+        var remaining = await _dbContext.Notifications.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().HaveCount(2);
         remaining.Select(n => n.Title).Should().Contain("Recent resolved");
         remaining.Select(n => n.Title).Should().Contain("Unresolved actionable");
@@ -131,11 +131,11 @@ public class CleanupNotificationsJobTests : IDisposable
         };
 
         await _dbContext.Notifications.AddRangeAsync(staleInformational, recentInformational, oldActionable);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var remaining = await _dbContext.Notifications.ToListAsync();
+        var remaining = await _dbContext.Notifications.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().HaveCount(2);
         remaining.Select(n => n.Title).Should().Contain("Recent informational");
         remaining.Select(n => n.Title).Should().Contain("Old actionable");

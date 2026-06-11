@@ -60,9 +60,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     public async Task EmptyEvent_ReturnsEmptyList()
     {
         var (es, _, _) = SeedDeptScenario();
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -74,9 +74,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var rota = AddRota(es, art);
         AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 2.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].TeamId.Should().Be(art.Id);
@@ -94,9 +94,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         var artPie = result.Single(r => r.TeamId == art.Id);
@@ -115,9 +115,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].TeamId.Should().Be(art.Id);
@@ -133,9 +133,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].TeamId.Should().Be(art.Id);
@@ -152,9 +152,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var rota = AddRota(es, art);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         AddConfirmedSignup(shift); // 1/3 → 33.3% → 33 (away from zero)
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result[0].FillPercent.Should().Be(33);
     }
@@ -215,9 +215,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
 
         foreach (var t in new[] { mango, appleSlice, banana })
             AddShift(AddRota(es, t), dayOffset: 0, maxVolunteers: 1, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Select(r => r.TeamName).Should().Equal("Apple Slice", "Banana", "Mango");
         result.Single(r => string.Equals(r.TeamName, "Apple Slice", StringComparison.Ordinal))
@@ -237,9 +237,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 2, durationHours: 4.0);
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0, adminOnly: true);
         AddShift(hiddenRota, dayOffset: 0, maxVolunteers: 10, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result[0].RequestedHours.Should().Be(8m);
         result[0].FilledHours.Should().Be(0m);
@@ -252,9 +252,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var rota = AddRota(es, art);
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         for (var i = 0; i < 7; i++) AddConfirmedSignup(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result[0].RequestedHours.Should().Be(20m);
         result[0].FilledHours.Should().Be(20m); // capped, not 28
@@ -287,9 +287,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         result[0].RequestedHours.Should().Be(40m);
         result[0].FilledHours.Should().Be(12m);
@@ -304,9 +304,9 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         shift.Duration = Duration.FromHours(24);
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
         // AllDayWindowStart=08:00, AllDayWindowEnd=18:00 → 10h per slot
         result[0].RequestedHours.Should().Be(40m); // 4 × 10
@@ -321,12 +321,12 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(rota, dayOffset: -7, maxVolunteers: 1, durationHours: 4.0);
         AddShift(rota, dayOffset: 2, maxVolunteers: 1, durationHours: 4.0);
         AddShift(rota, dayOffset: 8, maxVolunteers: 1, durationHours: 4.0);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(
             es.Id,
             fromDate: new LocalDate(2026, 6, 17),
-            toDate: new LocalDate(2026, 6, 30));
+            toDate: new LocalDate(2026, 6, 30), ct: Xunit.TestContext.Current.CancellationToken);
 
         result[0].RequestedHours.Should().Be(4m);
     }

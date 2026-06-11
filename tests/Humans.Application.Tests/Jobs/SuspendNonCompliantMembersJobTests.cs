@@ -94,7 +94,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SuspendProfilesForMissingConsentAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
@@ -108,7 +108,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -132,7 +132,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -159,7 +159,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -179,7 +179,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).AccessSuspended(
             "test@example.com",
@@ -196,7 +196,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.AccessSuspended,
@@ -223,7 +223,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
             teamId, user.Id, Arg.Any<CancellationToken>());
@@ -237,7 +237,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.MemberSuspended,
@@ -257,7 +257,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
@@ -281,7 +281,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(Task.FromException(new InvalidOperationException("Google API error")));
 
         // Should not throw — Google sync failures are caught and logged.
-        await _job.ExecuteAsync();
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Audit entry should still be written despite Google failure.
         await _auditLogService.Received(1).LogAsync(

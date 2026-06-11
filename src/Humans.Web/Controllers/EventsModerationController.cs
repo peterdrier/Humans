@@ -26,7 +26,6 @@ public class EventsModerationController(
     IUserServiceRead userService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    IUserServiceRead users,
     ICampServiceRead camps,
     ILogger<EventsModerationController> logger) : HumansControllerBase(userService)
 {
@@ -50,7 +49,7 @@ public class EventsModerationController(
             : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
-        var submitterInfoById = await LoadSubmittersAsync(users, events.Select(e => e.SubmitterUserId).Distinct());
+        var submitterInfoById = await LoadSubmittersAsync(UserService, events.Select(e => e.SubmitterUserId).Distinct());
 
         var model = new ModerationQueueViewModel
         {
@@ -359,7 +358,7 @@ public class EventsModerationController(
         logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
             moderator.Id, actionLabel, guideEvent.Title, eventId);
 
-        var submitterInfo = await users.GetUserInfoAsync(guideEvent.SubmitterUserId);
+        var submitterInfo = await UserService.GetUserInfoAsync(guideEvent.SubmitterUserId);
         var submitterEmail = submitterInfo?.Email;
         var submitterName = submitterInfo?.BurnerName ?? "Unknown";
 

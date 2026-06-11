@@ -50,7 +50,7 @@ public class TicketsOnsiteAdminControllerTests
 
         var ctrl = NewController(users, shifts, roster);
 
-        var result = await ctrl.Index(camp: null, team: null, role: null, ct: default);
+        var result = await ctrl.Index(camp: null, team: null, role: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<OnsiteRosterViewModel>().Subject;
@@ -86,7 +86,7 @@ public class TicketsOnsiteAdminControllerTests
 
         var ctrl = NewController(users, shifts, roster);
 
-        var result = await ctrl.Index(camp: null, team: null, role: null, ct: default);
+        var result = await ctrl.Index(camp: null, team: null, role: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<OnsiteRosterViewModel>().Subject;
@@ -108,7 +108,7 @@ public class TicketsOnsiteAdminControllerTests
 
         var ctrl = NewController(users, shifts, roster);
 
-        await ctrl.Index(camp: "Cosmic Camp", team: "Gate", role: "Board", ct: default);
+        await ctrl.Index(camp: "Cosmic Camp", team: "Gate", role: "Board", ct: Xunit.TestContext.Current.CancellationToken);
 
         await roster.Received(1).GetRosterAsync(
             2026, "Cosmic Camp", "Gate", "Board", Arg.Any<CancellationToken>());

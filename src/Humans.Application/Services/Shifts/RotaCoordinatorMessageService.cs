@@ -354,8 +354,8 @@ public sealed class RotaCoordinatorMessageService(
         var local = zoned.LocalDateTime;
         // Invariant culture: stable parseable shape for short ops notices.
         return isAllDay
-            ? DateFormattingExtensions.OpsNoticeDatePattern.Format(local)
-            : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
+            ? DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)
+            : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
     }
 
     private static string Truncate(string text, int max) =>

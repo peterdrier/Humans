@@ -37,9 +37,9 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var user = await SeedUserAsync(UserState.Bare);
         var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
 
-        await _repo.AddAsync(profile, CancellationToken.None);
+        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.State.Should().Be(UserState.Active);
     }
 
@@ -49,17 +49,17 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
         _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
 
-        var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id);
+        var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
         detached.FirstName = "";
         detached.State = ProfileState.Stub;
         detached.UpdatedAt = _clock.GetCurrentInstant();
 
-        await _repo.UpdateAsync(detached, CancellationToken.None);
+        await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.State.Should().Be(UserState.Bare);
     }
 
@@ -93,7 +93,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
                 CreatedAt = now,
                 UpdatedAt = now
             });
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Advance clock so UpdatedAt on the updated entry differs from CreatedAt
         _clock.AdvanceSeconds(60);
@@ -105,7 +105,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
             new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, CancellationToken.None);
+        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, Xunit.TestContext.Current.CancellationToken);
 
         // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
         // store directly rather than returning stale entities from _dbContext's identity map.
@@ -113,7 +113,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
             .OrderBy(v => v.Date)
-            .ToListAsync();
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
         persisted.Should().HaveCount(2);
 
@@ -148,8 +148,8 @@ public sealed class UserRepositoryProfileTests : IDisposable
             Description = "unchanged",
             CreatedAt = seededAt,
             UpdatedAt = seededAt,
-        });
-        await _dbContext.SaveChangesAsync();
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Advance the clock — if UpdatedAt were bumped unconditionally, we'd see the new time.
         _clock.AdvanceSeconds(60);
@@ -158,12 +158,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, CancellationToken.None);
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
-            .SingleAsync();
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
         persisted.UpdatedAt.Should().Be(seededAt);
     }
 
@@ -186,8 +186,8 @@ public sealed class UserRepositoryProfileTests : IDisposable
             Description = "desc",
             CreatedAt = createdAt,
             UpdatedAt = createdAt,
-        });
-        await _dbContext.SaveChangesAsync();
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _clock.AdvanceSeconds(60);
         var afterAdvance = _clock.GetCurrentInstant();
@@ -197,12 +197,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
         };
-        await _repo.ReconcileCVEntriesAsync(profileId, entries, CancellationToken.None);
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
-            .SingleAsync();
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Same row — Id and CreatedAt preserved
         persisted.Id.Should().Be(entryId);
@@ -225,7 +225,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             State = state,
         };
         _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user;
     }
 

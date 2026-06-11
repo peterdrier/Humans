@@ -117,11 +117,11 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "Test").Email = "t@t.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "Something broke",
-            "/Teams/test", "Mozilla/5.0", null, null);
+            "/Teams/test", "Mozilla/5.0", null, null, Xunit.TestContext.Current.CancellationToken);
 
         report.Id.Should().NotBeEmpty();
         report.Category.Should().Be(FeedbackCategory.Bug);
@@ -137,11 +137,11 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@test.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await _service.SubmitFeedbackAsync(
             userId, FeedbackCategory.Bug, "desc", "/page", "UA",
-            "Volunteer, Coordinator", null);
+            "Volunteer, Coordinator", null, Xunit.TestContext.Current.CancellationToken);
 
         report.AdditionalContext.Should().Be("Volunteer, Coordinator");
     }
@@ -151,11 +151,11 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@test.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await _service.SubmitUserFeedbackAsync(
             userId, FeedbackCategory.Bug, "desc", "/page", "UA",
-            ["Volunteer", "Admin", "Coordinator"], null);
+            ["Volunteer", "Admin", "Coordinator"], null, Xunit.TestContext.Current.CancellationToken);
 
         report.AdditionalContext.Should().Be("Admin, Coordinator, Volunteer");
     }
@@ -165,10 +165,10 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var report = await CreateTestReport();
 
-        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, Guid.NewGuid());
+        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         var updated = await Db.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == report.Id);
+            .FirstAsync(r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(FeedbackStatus.Resolved);
         updated.ResolvedAt.Should().NotBeNull();
         updated.ResolvedByUserId.Should().NotBeNull();
@@ -179,11 +179,11 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var actorId = Guid.NewGuid();
         var report = await CreateTestReport();
-        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, actorId);
-        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Open, actorId);
+        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Open, actorId, Xunit.TestContext.Current.CancellationToken);
 
         var updated = await Db.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == report.Id);
+            .FirstAsync(r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken);
         updated.Status.Should().Be(FeedbackStatus.Open);
         updated.ResolvedAt.Should().BeNull();
         updated.ResolvedByUserId.Should().BeNull();
@@ -196,7 +196,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         await CreateTestReport();
         await CreateTestReport(FeedbackStatus.Resolved);
 
-        var results = await _service.GetFeedbackListAsync(status: FeedbackStatus.Open);
+        var results = await _service.GetFeedbackListAsync(status: FeedbackStatus.Open, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(2);
     }
@@ -206,12 +206,12 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "Alice").Email = "a@a.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SubmitFeedbackAsync(
-            userId, FeedbackCategory.Bug, "a", "/a", null, null, null);
+            userId, FeedbackCategory.Bug, "a", "/a", null, null, null, Xunit.TestContext.Current.CancellationToken);
 
-        var results = await _service.GetFeedbackListAsync();
+        var results = await _service.GetFeedbackListAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].ReporterName.Should().Be("Alice");
@@ -224,12 +224,12 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
         // BurnerName-is-the-display-name rule: ReporterName must render Profile.BurnerName.
         var userId = Guid.NewGuid();
         SeedUser(userId, "Sparkle").Email = "a@a.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SubmitFeedbackAsync(
-            userId, FeedbackCategory.Bug, "a", "/a", null, null, null);
+            userId, FeedbackCategory.Bug, "a", "/a", null, null, null, Xunit.TestContext.Current.CancellationToken);
 
-        var results = await _service.GetFeedbackListAsync();
+        var results = await _service.GetFeedbackListAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].ReporterName.Should().Be("Sparkle");
@@ -253,16 +253,16 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.FeedbackReports.Add(report);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var adminId = Guid.NewGuid();
-        var message = await _service.PostMessageAsync(report.Id, adminId, "Looking into it", isAdmin: true);
+        var message = await _service.PostMessageAsync(report.Id, adminId, "Looking into it", isAdmin: true, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         message.Content.Should().Be("Looking into it");
         message.SenderUserId.Should().Be(adminId);
 
         var updated = await Db.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == report.Id);
+            .FirstAsync(r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken);
         updated.LastAdminMessageAt.Should().NotBeNull();
         updated.LastReporterMessageAt.Should().BeNull();
 
@@ -287,12 +287,12 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetFeedbackByIdForViewerAsync(
             Db.FeedbackReports.Single().Id,
             Guid.NewGuid(),
-            isAdmin: false);
+            isAdmin: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -315,13 +315,13 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.FeedbackReports.Add(report);
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var message = await _service.PostMessageAsync(report.Id, userId, "More details", isAdmin: false);
+        var message = await _service.PostMessageAsync(report.Id, userId, "More details", isAdmin: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         message.Content.Should().Be("More details");
         var updated = await Db.FeedbackReports.AsNoTracking()
-            .FirstAsync(r => r.Id == report.Id);
+            .FirstAsync(r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken);
         updated.LastReporterMessageAt.Should().NotBeNull();
         updated.LastAdminMessageAt.Should().BeNull();
 
@@ -380,9 +380,9 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
             ResolvedAt = now
         });
 
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _service.GetActionableCountAsync();
+        var count = await _service.GetActionableCountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(2);
     }
 
@@ -427,9 +427,9 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now
         });
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var reporters = await _service.GetDistinctReportersAsync();
+        var reporters = await _service.GetDistinctReportersAsync(Xunit.TestContext.Current.CancellationToken);
 
         reporters.Should().HaveCount(2);
         reporters[0].DisplayName.Should().Be("Alice");
@@ -442,14 +442,14 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "Test").Email = $"{userId}@test.com";
-        await Db.SaveChangesAsync();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await _service.SubmitFeedbackAsync(
-            userId, FeedbackCategory.Bug, "Test bug", "/test", null, null, null);
+            userId, FeedbackCategory.Bug, "Test bug", "/test", null, null, null, Xunit.TestContext.Current.CancellationToken);
 
         if (status != FeedbackStatus.Open)
         {
-            await _service.UpdateStatusAsync(report.Id, status, Guid.NewGuid());
+            await _service.UpdateStatusAsync(report.Id, status, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
         }
 
         return report;

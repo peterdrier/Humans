@@ -25,7 +25,7 @@ public class MarketingAudienceTests
             UserWithoutMarketingPref(noPrefRow),
         });
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEquivalentTo([optedIn]);
     }
@@ -35,7 +35,7 @@ public class MarketingAudienceTests
     {
         var audience = NewAudience([]);
 
-        var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
+        var members = await audience.ComputeMemberUserIdsAsync(Xunit.TestContext.Current.CancellationToken);
 
         members.Should().BeEmpty();
     }
