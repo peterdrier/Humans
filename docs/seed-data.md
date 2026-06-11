@@ -25,6 +25,8 @@
 
 **Migration SQL** — e.g., `20260311161510_SeedLeadRoleDefinitions.cs`. One-off backfills tied to schema changes.
 
+**Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Domain.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
+
 **Dev-only runtime seeders** — on-demand endpoints behind `DevAuth:Enabled` + non-production environment check:
 - `/dev/seed/budget` — creates demo budget year with teams, categories, and line items via `IBudgetService`
 - `/dev/seed/tickets` — triggers a sync cycle against `StubTicketVendorService`, which returns canned sample data processed through the real `TicketSyncService` pipeline

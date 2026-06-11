@@ -100,7 +100,7 @@ ContactFieldType:
 
 ContactFieldVisibility:
   BoardOnly = 0        // Most restrictive
-  LeadsAndBoard = 1
+  CoordinatorsAndBoard = 1
   MyTeams = 2
   AllActiveProfiles = 3 // Least restrictive
 ```
@@ -120,7 +120,7 @@ GetViewerAccessLevel(ownerUserId, viewerUserId):
 
   2. Board member → BoardOnly (sees everything)
 
-  3. Any coordinator (of any team) → LeadsAndBoard
+  3. Any coordinator (of any team) → CoordinatorsAndBoard
 
   4. Shares team with owner → MyTeams
 
@@ -131,10 +131,10 @@ GetViewerAccessLevel(ownerUserId, viewerUserId):
 
 A viewer with access level X can see fields where `Visibility >= X`.
 
-| Viewer Access | Sees BoardOnly | Sees LeadsAndBoard | Sees MyTeams | Sees AllActive |
-|---------------|----------------|-------------------|--------------|----------------|
+| Viewer Access | Sees BoardOnly | Sees CoordinatorsAndBoard | Sees MyTeams | Sees AllActive |
+|---------------|----------------|--------------------------|--------------|----------------|
 | BoardOnly (0) | Yes | Yes | Yes | Yes |
-| LeadsAndBoard (1) | No | Yes | Yes | Yes |
+| CoordinatorsAndBoard (1) | No | Yes | Yes | Yes |
 | MyTeams (2) | No | No | Yes | Yes |
 | AllActiveProfiles (3) | No | No | No | Yes |
 
@@ -147,15 +147,15 @@ Alice (board member) views Bob's profile:
 
 ### Scenario 2: Team Coordinator Viewing
 Carol (coordinator of Art team) views Bob's profile:
-- Access level: LeadsAndBoard (1)
-- Sees: Fields with visibility LeadsAndBoard, MyTeams, or AllActiveProfiles
+- Access level: CoordinatorsAndBoard (1)
+- Sees: Fields with visibility CoordinatorsAndBoard, MyTeams, or AllActiveProfiles
 - Cannot see: Fields with BoardOnly visibility
 
 ### Scenario 3: Teammate Viewing
 Dave (member of same team as Bob) views Bob's profile:
 - Access level: MyTeams (2)
 - Sees: Fields with visibility MyTeams or AllActiveProfiles
-- Cannot see: Fields with BoardOnly or LeadsAndBoard visibility
+- Cannot see: Fields with BoardOnly or CoordinatorsAndBoard visibility
 
 ### Scenario 4: Regular Member Viewing
 Eve (active member, no shared teams) views Bob's profile:
@@ -184,7 +184,7 @@ Eve (active member, no shared teams) views Bob's profile:
 | Visibility | Icon | Tooltip |
 |------------|------|---------|
 | BoardOnly | Lock | "Visible to board members only" |
-| LeadsAndBoard | User Shield | "Visible to team coordinators and board" |
+| CoordinatorsAndBoard | User Shield | "Visible to team coordinators and board" |
 | MyTeams | Users | "Visible to members of your teams" |
 | AllActiveProfiles | Globe | "Visible to all active members" |
 

@@ -14,6 +14,7 @@ public sealed class TableColumnOptions
 {
     internal CellFormat? FormatOverride { get; private set; }
     internal string? SortKeyValue { get; private set; }
+    internal bool SortDescFirstValue { get; private set; }
     internal bool ClientSortableValue { get; private set; } = true;
     internal ColumnFilterKind FilterKindValue { get; private set; }
     internal string? FilterParamNameValue { get; private set; }
@@ -22,8 +23,17 @@ public sealed class TableColumnOptions
     internal string? CellCssValue { get; private set; }
     internal string? HeaderCssValue { get; private set; }
 
-    /// <summary>Server mode: make this column sortable under the given sortBy key.</summary>
-    public TableColumnOptions Sort(string serverKey) { SortKeyValue = serverKey; return this; }
+    /// <summary>
+    /// Server mode: make this column sortable under the given sortBy key.
+    /// <paramref name="descendingFirst"/> makes the first click sort descending —
+    /// the convention for date/amount/count columns (newest/largest first).
+    /// </summary>
+    public TableColumnOptions Sort(string serverKey, bool descendingFirst = false)
+    {
+        SortKeyValue = serverKey;
+        SortDescFirstValue = descendingFirst;
+        return this;
+    }
 
     /// <summary>Client mode: exclude this column from the site.js sort engine.</summary>
     public TableColumnOptions NoSort() { ClientSortableValue = false; return this; }
@@ -89,6 +99,7 @@ public sealed class TableColumn<TRow>(
     public string Header { get; } = header;
     public CellFormat Format { get; } = options.FormatOverride ?? format;
     public string? SortKey => options.SortKeyValue;
+    public bool SortDescFirst => options.SortDescFirstValue;
     public bool ClientSortable => options.ClientSortableValue;
     public ColumnFilterKind FilterKind => options.FilterKindValue;
     public string? FilterParamName => options.FilterParamNameValue;

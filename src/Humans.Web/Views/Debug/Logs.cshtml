@@ -7,6 +7,7 @@
 
     var startedAt = ViewBag.SinkStartedAt is DateTimeOffset sa ? sa : DateTimeOffset.UtcNow;
     var totalEvents = ViewBag.TotalEvents is long te ? te : 0L;
+    var minLevel = ViewBag.MinLevel as string;
     var uptime = DateTimeOffset.UtcNow - startedAt;
     if (uptime < TimeSpan.Zero) { uptime = TimeSpan.Zero; }
 
@@ -42,6 +43,23 @@
             <div>Showing @Model.Count of last 1000 (in-memory buffer)</div>
             <div><small>@eventsPerHour.ToString("#,##0") events/hour</small></div>
         </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+        @{
+            var filterLinks = new[]
+            {
+                (Label: "All", Value: (string?)null),
+                (Label: "Errors only", Value: "Error"),
+            };
+        }
+        @foreach (var (label, value) in filterLinks)
+        {
+            var isActive = string.Equals(minLevel, value, StringComparison.OrdinalIgnoreCase)
+                           || (value == null && minLevel == null);
+            <a asp-action="Logs" asp-route-minLevel="@value"
+               class="btn btn-sm @(isActive ? "btn-secondary" : "btn-outline-secondary")">@label</a>
+        }
     </div>
 
     <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">

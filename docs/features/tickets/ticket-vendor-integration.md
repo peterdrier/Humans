@@ -74,7 +74,7 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 | `/Tickets/Orders` | Paginated order list with search/sort/filter |
 | `/Tickets/Attendees` | Paginated attendee list with search/sort/filter |
 | `/Tickets/Codes` | Discount code redemption tracking tied to campaigns |
-| `/Tickets/GateList` | Stub for June implementation |
+| `/Tickets/GateList` | Placeholder page (gate lookup is handled via `/Scanner/Tickets` — gate-terminal login, #930) |
 | `/Tickets/WhoHasntBought` | Active humans without ticket purchases |
 | `/Tickets/SalesAggregates` | Weekly (Mon–Sun) and quarterly (Spanish tax Q1–Q4) aggregate reports with real VAT/donation data |
 | `/Welcome` | Public post-purchase landing — TicketTailor redirect target, sign-in CTA → `/Shifts` |

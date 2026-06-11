@@ -914,7 +914,7 @@
     <value>¿Fusionar cuentas?</value>
   </data>
   <data name="Emails_MergeWarningBody" xml:space="preserve">
-    <value>La fusión de cuentas sirve para combinar dos cuentas que pertenecen a la misma persona (por ejemplo, un correo antiguo y uno nuevo, ambos tuyos). No es una forma de compartir o transferir entradas, reservas u otros elementos entre dos personas distintas. La transferencia de entradas entre humanos es una función aparte, próximamente.</value>
+    <value>La fusión de cuentas sirve para combinar dos cuentas que pertenecen a la misma persona (por ejemplo, un correo antiguo y uno nuevo, ambos tuyos). No es una forma de compartir o transferir entradas, reservas u otros elementos entre dos personas distintas. Para transferir una entrada a otro humano, utiliza la función de transferencia de entradas en /Tickets/Transfers.</value>
   </data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Se enviará un correo de verificación a esta dirección.</value>
@@ -1745,6 +1745,14 @@
   </data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve">
     <value>Acerca de su registro</value>
+  </data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve">
+    <value>Por favor, completa: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve">
+    <value>Recordatorio: {0}</value>
+    <comment>{0} = survey title</comment>
   </data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
     <value>Acción requerida: {0} actualizado</value>
@@ -2741,6 +2749,22 @@
 &lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
   </data>
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Te invitamos a completar la encuesta &lt;strong&gt;{1}&lt;/strong&gt;. Solo te llevará unos minutos.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
+  <data name="Email_SurveyReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Solo un recordatorio de que la encuesta &lt;strong&gt;{1}&lt;/strong&gt; aún espera tu respuesta.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
     <value>&lt;h2&gt;Actualización de documentos legales&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
@@ -2946,6 +2970,24 @@
   <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
     <value>Transferida el</value>
   </data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve">
+    <value>Entró el</value>
+  </data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve">
+    <value>Entrada anticipada por</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve">
+    <value>Todos los consentimientos firmados</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve">
+    <value>Consentimientos pendientes</value>
+  </data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve">
+    <value>Se ha apuntado a aportar</value>
+  </data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
+    <value>Sin turnos ni actividades</value>
+  </data>
   <data name="TeamAdmin_AddMember" xml:space="preserve">
     <value>Agregar miembro</value>
   </data>
@@ -2963,6 +3005,10 @@
   </data>
   <data name="TeamAdmin_Add" xml:space="preserve">
     <value>Agregar</value>
+  </data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve">
+    <value>Entrada #{0}</value>
+    <comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment>
   </data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
     <value>Mensaje de Humans de: {0}</value>
@@ -3261,6 +3307,28 @@
   </data>
   <data name="Login_MagicLink_Submit" xml:space="preserve">
     <value>Enviarme un enlace de inicio de sesión</value>
+  </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Terminal de puerta</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Inicia sesión en el portátil compartido de puerta para consultar entradas. Pide las credenciales al equipo de entradas.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Nombre de usuario</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Nombre de usuario o contraseña incorrectos. El nombre de usuario es "gate"; la contraseña la establece el equipo de entradas — pídeles la actual.</value>
+  </data>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>El inicio de sesión desde esta red está pausado durante {0} segundos: se hicieron demasiados intentos con contraseña incorrecta desde aquí. Si no fuiste tú, alguien que comparte esta conexión está probando contraseñas en esta página. Espera, y luego introduce la contraseña correcta — pregunta al equipo de entradas si no estás seguro. La cuenta NO está bloqueada; los administradores de entradas pueden comprobar o cambiar la contraseña en Tickets → Gate terminal.</value>
+    <comment>{0}=seconds remaining</comment>
   </data>
   <data name="MagicLinkSent_Title" xml:space="preserve">
     <value>Revisa tu correo</value>
@@ -4565,6 +4633,9 @@
   </data>
   <data name="Nav_Staff" xml:space="preserve">
     <value>Equipo</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Ayuda</value>
   </data>
   <data name="ProfileCard_Suspended" xml:space="preserve">
     <value>Suspendido</value>
@@ -5937,6 +6008,37 @@
   <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Solo visible para ti y los No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Tus respuestas pueden ser revisadas y analizadas, incluso mediante herramientas automatizadas, para mejorar el colectivo.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Encuesta</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>Tienes respuestas en curso — continúa donde lo dejaste.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>¿Cómo quieres responder?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identificado</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>vinculado a ti; puedes parar y continuar más tarde.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Participación registrada</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>tus respuestas no se vinculan a ti, pero tu participación se registra.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anónimo</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>sin ningún vínculo contigo.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Las respuestas anónimas y con participación registrada no se pueden retomar, y aún podrías recibir un recordatorio. Solo una respuesta identificada se puede pausar y continuar más tarde.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Empezar</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Por favor, responde las preguntas obligatorias antes de continuar.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>Esta pregunta es obligatoria.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Atrás</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Siguiente</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Encuesta no disponible</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>Esta encuesta está cerrada</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Gracias por tu interés — esta encuesta ya no acepta respuestas.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Este enlace ya no es válido</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>El enlace de la encuesta no es válido o ha caducado. Si crees que es un error, solicita un enlace nuevo.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Gracias</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Gracias por tu respuesta.</value></data>
   <data name="AccountStatus_Title" xml:space="preserve"><value>Estado de la cuenta</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Tu cuenta ha sido suspendida</value></data>
   <data name="AccountStatus_HeadingRejected" xml:space="preserve"><value>Tu cuenta ha sido rechazada</value></data>

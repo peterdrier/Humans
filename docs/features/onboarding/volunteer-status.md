@@ -138,6 +138,7 @@ Only controllers a non-Active user must still reach are exempt:
 - **Language** — language switching
 - **Guest** — profileless account dashboard
 - **GovernanceApplications**, **Feedback**, **Notifications** — any logged-in user
+- **Survey** — tokenised survey answering; invited non-Active users must reach it (`[AllowAnonymous]`)
 
 Role-gated app controllers are reached only after the `UserState == Active` gate passes; `[AllowAnonymous]`/API-key controllers use anonymous pass-through.
 

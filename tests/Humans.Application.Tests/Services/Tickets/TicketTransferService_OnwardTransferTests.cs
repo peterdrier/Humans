@@ -99,8 +99,11 @@ public sealed class TicketTransferService_OnwardTransferTests
     }
 
     [HumansFact]
-    public async Task GetMyAttendees_AllowsBuyer_WhenAttendeeUnmatched()
+    public async Task GetMyAttendees_DeniesTransfer_WhenAttendeeUnmatched()
     {
+        // Buyer-fallback removed in nobodies-collective/Humans#856.
+        // An unmatched attendee (MatchedUserId == null) has no owner, so the buyer
+        // cannot send the ticket — it would be orphaned until matched via AttendeeContactImportService.
         var attendee = new TicketAttendee
         {
             Id = Guid.NewGuid(),
@@ -115,7 +118,9 @@ public sealed class TicketTransferService_OnwardTransferTests
 
         var rows = await _service.GetMyAttendeesAsync(UserA);
 
-        rows[0].CanSendTransfer.Should().BeTrue();
+        rows.Should().HaveCount(1);
+        rows[0].IsCurrentOwner.Should().BeFalse();
+        rows[0].CanSendTransfer.Should().BeFalse();
     }
 
     [HumansFact]

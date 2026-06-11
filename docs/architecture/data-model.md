@@ -54,6 +54,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
+| Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../sections/survey.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
@@ -84,8 +85,9 @@ Users/Identity
   ← ShiftSignup.User / EnrolledByUser / ReviewedByUser, GeneralAvailability, VolunteerEventProfile (Shifts)
   ← FeedbackReport.User / ResolvedByUser / AssignedToUser, FeedbackMessage.SenderUser (Feedback)
   ← BudgetAuditLog.ActorUser, BudgetCategory.Team.* (Budget)
-  ← SyncServiceSettings.UpdatedByUser, GoogleSyncOutboxEvent (Google Integration)
+  ← SyncServiceSettings.UpdatedByUserId, GoogleSyncOutboxEvent (Google Integration)
   ← AccountMergeRequest.TargetUser / SourceUser / ResolvedByUser (Admin)
+  ← Survey.CreatedByUserId, SurveyInvitation.UserId, SurveyResponse.UserId (Survey — bare Guid FKs, no navs, no cross-section EF FK constraints)
 
 Team (Teams)
   ← Rota.Team (Shifts)
@@ -93,6 +95,7 @@ Team (Teams)
   ← CalendarEvent.OwningTeam (Calendar)
   ← LegalDocument.Team (Legal & Consent)
   ← FeedbackReport.AssignedToTeam (Feedback)
+  ← Survey.AudienceTeamId (Survey — bare Guid FK, no nav, no cross-section EF FK constraint)
 
 BudgetCategory (Budget)
   ← HoldedTransaction.BudgetCategory (Finance — FK only, no nav)

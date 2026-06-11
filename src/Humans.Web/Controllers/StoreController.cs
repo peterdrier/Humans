@@ -7,6 +7,7 @@ using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 
 using Humans.Application.Interfaces.Users;
 
@@ -77,7 +78,49 @@ public class StoreController(
         var canPay = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded;
         var canDeleteAuth = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
-        return View(StoreOrderViewModel.FromPageData(pageData, canDeleteAuth && order.BalanceEur == 0m));
+        var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
+        return View(StoreOrderViewModel.FromPageData(
+            pageData, canDeleteAuth && order.BalanceEur == 0m, catalog, removableLineIds));
+    }
+
+    /// <summary>
+    /// Per-row line-edit affordances, resolved against <see cref="StoreOrderAuthorizationHandler"/>
+    /// (same pattern as the index's per-counterparty gating): the add-line catalog keeps only
+    /// products the viewer may still add, and Remove buttons render only for lines the viewer
+    /// may still remove — past the product deadline that's Store admins only.
+    /// </summary>
+    private async Task<(IReadOnlyList<ProductDto> Catalog, IReadOnlyCollection<Guid> RemovableLineIds)>
+        FilterLineEditAffordancesAsync(OrderDto order, IReadOnlyList<ProductDto> catalog, bool canEdit, CancellationToken ct)
+    {
+        if (!canEdit)
+            return ([], []);
+
+        var allowedProducts = new List<ProductDto>();
+        foreach (var product in catalog)
+        {
+            var auth = await authService.AuthorizeAsync(
+                User, new StoreOrderLineContext(order, product.OrderableUntil), StoreOrderOperationRequirement.AddLine);
+            if (auth.Succeeded)
+                allowedProducts.Add(product);
+        }
+
+        var removable = new List<Guid>();
+        var deadlineByProduct = new Dictionary<Guid, LocalDate?>();
+        foreach (var line in order.Lines)
+        {
+            if (!deadlineByProduct.TryGetValue(line.ProductId, out var deadline))
+            {
+                deadline = (await storeService.GetProductAsync(line.ProductId, ct))?.OrderableUntil;
+                deadlineByProduct[line.ProductId] = deadline;
+            }
+            // Missing product: leave the button visible; the service rejects authoritatively.
+            object resource = deadline is { } d ? new StoreOrderLineContext(order, d) : order;
+            var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.RemoveLine);
+            if (auth.Succeeded)
+                removable.Add(line.Id);
+        }
+
+        return (allowedProducts, removable);
     }
 
     [HttpPost("Order/{id:guid}/Pay")]
@@ -197,7 +240,11 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine);
+        // Authorize against the product's order deadline when known; an unknown product
+        // falls back to the plain order resource and the service rejects it as not found.
+        var product = await storeService.GetProductAsync(productId, ct);
+        object resource = product is null ? order : new StoreOrderLineContext(order, product.OrderableUntil);
+        var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
 
         var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
@@ -219,7 +266,12 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.RemoveLine);
+        // Authorize against the line's product deadline when known; an unknown line/product
+        // falls back to the plain order resource and the service rejects it authoritatively.
+        var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
+        var product = lineProductId is { } pid ? await storeService.GetProductAsync(pid, ct) : null;
+        object resource = product is null ? order : new StoreOrderLineContext(order, product.OrderableUntil);
+        var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();
 
         var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);

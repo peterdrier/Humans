@@ -1,4 +1,6 @@
 @using Humans.Web.Models.CampAdmin
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model CampRoleDrillDownViewModel
 @{
     ViewData["Title"] = $"{Model.RoleName} — {Model.Year}";
@@ -84,40 +86,27 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Barrio</th>
-                        <th>Assignees</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Camps)
+        Func<CampRoleDrillDownCampRowViewModel, IHtmlContent> barrioCell =
+            @<text><a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.CampSlug">@item.CampName</a></text>;
+        Func<CampRoleDrillDownCampRowViewModel, IHtmlContent> assigneesCell = @<text>
+            @if (item.Assignees.Count == 0)
+            {
+                <span class="text-muted small">— none —</span>
+            }
+            else
+            {
+                <div class="d-flex flex-wrap gap-3 align-items-center">
+                    @foreach (var a in item.Assignees)
                     {
-                        <tr>
-                            <td>
-                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug">@row.CampName</a>
-                            </td>
-                            <td>
-                                @if (row.Assignees.Count == 0)
-                                {
-                                    <span class="text-muted small">— none —</span>
-                                }
-                                else
-                                {
-                                    <div class="d-flex flex-wrap gap-3 align-items-center">
-                                        @foreach (var a in row.Assignees)
-                                        {
-                                            <vc:human user-id="@a.UserId" layout="AvatarName" size="40" />
-                                        }
-                                    </div>
-                                }
-                            </td>
-                        </tr>
+                        <vc:human user-id="@a.UserId" layout="AvatarName" size="40" />
                     }
-                </tbody>
-            </table>
-        </div>
+                </div>
+            }
+        </text>;
+        var rosterTable = TableModel.For(Model.Camps)
+            .Template("Barrio", barrioCell)
+            .Template("Assignees", assigneesCell)
+            .Build();
+        <partial name="_Table" model="rosterTable" />
     }
 </div>

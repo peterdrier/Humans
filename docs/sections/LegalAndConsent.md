@@ -85,7 +85,6 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 
 **Unique index:** `(UserId, DocumentVersionId)` — prevents duplicate consents for the same version.
 
-Cross-domain nav `ConsentRecord.User` — still declared on the entity (`ConsentRecord.cs:24`); no current `.Include` walks it in the Application layer. Strip is a follow-up.
 Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared (`ConsentRecord.cs:34`) and walked by `ConsentRepository.GetAllForUserIdsAsync` (`.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:73–74`) to surface document name + version number on the user's consent-history view.
 
 Per-user reads on `consent_records` chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge by design — DB triggers make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them.
@@ -183,7 +182,6 @@ Three controllers serve this section.
 - **Cross-domain navs still declared (strip deferred):**
   - `LegalDocument.Team` (`LegalDocument.cs:30`) — walked by `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` (`.Include(d => d.Team)`, `LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` groups by `g.First().Team`. Strip requires moving to a stitched DTO via `ITeamService`.
   - `Team.LegalDocuments` (`Team.cs:160`) — reverse collection on the Teams entity; not walked by this section. Strip follows the `LegalDocument.Team` strip.
-  - `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but no current `.Include` walks it in the Application layer.
   - `ConsentRecord.DocumentVersion` (`ConsentRecord.cs:34`) — walked by `ConsentRepository.GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:74`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
   - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared and configured (`DocumentVersionConfiguration.cs:46`); not navigated by any current service path.
 - **Cross-section calls:** `IProfileService`, `IOnboardingService`, `ITeamService`, `INotificationService`, `INotificationInboxService`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`.
@@ -192,6 +190,5 @@ Three controllers serve this section.
 ### Touch-and-clean guidance
 
 - `LegalDocumentRepository.cs:101` — `.Include(d => d.Team)` inside `GetActiveRequiredDocumentsForTeamsAsync`. T-04 sidesteps this path on the hot read (the cache stitches team names via `ITeamService` at warm time), but `LegalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync` still feeds the cache miss / fallback path and the `ConsentService.GetConsentDashboardAsync` dashboard view, both of which still read `Team.Name` off the included nav. Strip is still required to drop `LegalDocument.Team`, `Team.LegalDocuments`, and the Include — stitch via `ITeamService.GetTeamNamesByIdsAsync` in the remaining callers.
-- `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but unused. Can be stripped in isolation; no callers need updating.
 - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared but not navigated by any service. Can be stripped once confirmed no callers in views or tests depend on it.
 - `ConsentArchitectureTests.cs` summary comment (lines 28–32) says Legal services "remain in Infrastructure" — this is stale; all four services are in Application post-migration. Update or remove when next touching that file.

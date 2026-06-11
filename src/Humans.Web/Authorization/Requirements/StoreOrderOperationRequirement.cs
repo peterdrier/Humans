@@ -1,4 +1,6 @@
+using Humans.Application.Services.Store.Dtos;
 using Microsoft.AspNetCore.Authorization;
+using NodaTime;
 
 namespace Humans.Web.Authorization.Requirements;
 
@@ -34,3 +36,11 @@ public sealed class StoreOrderOperationRequirement : IAuthorizationRequirement
 /// <c>CampSeason</c> or <c>Team</c>. Exactly one of the two ids is non-null.
 /// </summary>
 public sealed record StoreOrderCreateContext(Guid? CampSeasonId, Guid? TeamId = null);
+
+/// <summary>
+/// Resource passed to <see cref="StoreOrderAuthorizationHandler"/> when authorizing an
+/// AddLine/RemoveLine operation against a specific product: carries the product's
+/// <c>OrderableUntil</c> so the handler can deny non-admin line edits past the order
+/// deadline. Store admins are exempt (the admin path succeeds before the deadline gate).
+/// </summary>
+public sealed record StoreOrderLineContext(OrderDto Order, LocalDate ProductOrderableUntil);

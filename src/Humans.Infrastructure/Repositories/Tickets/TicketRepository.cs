@@ -444,11 +444,13 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
+        // Buyer-visibility arm (a.TicketOrder.MatchedUserId == userId) removed in
+        // nobodies-collective/Humans#856: it returned attendees owned by other accounts
+        // to the buyer, leaking cross-account ticket data. Ownership is attendee-only.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
-            .Include(a => a.TicketOrder)
-            .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
+            .Where(a => a.MatchedUserId == userId)
             .ToListAsync(ct);
     }
 

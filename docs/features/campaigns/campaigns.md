@@ -42,7 +42,7 @@ A "send wave" assigns ungranted codes to eligible humans and queues the email de
 2. Service collects all active members of those teams.
 3. Exclusions applied automatically:
    - Humans already granted a code for this campaign
-   - Humans who have unsubscribed from campaigns (`User.UnsubscribedFromCampaigns = true`)
+   - Humans who are opted out of the `CampaignCodes` message category (checked via `ICommunicationPreferenceService.IsOptedOutAsync`)
 4. Remaining eligible humans are matched to available codes (one each).
 5. A `CampaignGrant` record is created per assignment.
 6. An `EmailOutboxMessage` is queued per grant, referencing `CampaignGrantId`.

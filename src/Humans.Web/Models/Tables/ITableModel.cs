@@ -51,6 +51,9 @@ public interface ITableColumn
     /// <summary>Server mode: the sortBy query value for this column; null = not server-sortable.</summary>
     string? SortKey { get; }
 
+    /// <summary>Server mode: first click on an inactive column sorts descending (date/amount convention).</summary>
+    bool SortDescFirst { get; }
+
     /// <summary>Client mode: whether the site.js sort engine binds to this header. Default true.</summary>
     bool ClientSortable { get; }
 

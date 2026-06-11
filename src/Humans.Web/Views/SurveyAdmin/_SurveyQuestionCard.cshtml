@@ -1,0 +1,100 @@
+@using Humans.Domain.Enums
+@model SurveyQuestionCardModel
+@{
+    var key = Model.Key;
+    var q = Model.Question;
+    var prefix = $"Questions[{key}]";
+}
+<div class="question-card card mb-3" data-qkey="@key">
+    <input type="hidden" name="Questions.Index" value="@key" />
+    @* Always rendered: new questions get a client-generated id (Builder JS) so show-if clauses can
+       reference them before the first save — the service honours supplied ids. *@
+    <input type="hidden" name="@(prefix).Id" value="@q.Id" class="question-id" />
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <strong class="small text-muted">Question</strong>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-question">Remove</button>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 mb-2">
+            <div class="col-auto">
+                <label class="form-label small mb-0">Page</label>
+                <input type="number" min="1" name="@(prefix).PageNumber" class="form-control form-control-sm" style="width:5rem;" value="@(q.PageNumber <= 0 ? 1 : q.PageNumber)" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Type</label>
+                <select name="@(prefix).Type" class="form-select form-select-sm question-type">
+                    @foreach (var t in Enum.GetValues<SurveyQuestionType>())
+                    {
+                        <option value="@t" selected="@(q.Type == t ? "selected" : null)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto align-self-end">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="req-@key" name="@(prefix).IsRequired" value="true" @(q.IsRequired ? "checked" : null) />
+                    <label class="form-check-label small" for="req-@key">Required</label>
+                </div>
+            </div>
+        </div>
+
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.Prompt", "Prompt", q.Prompt))" />
+        <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.HelpText", "Help text (optional)", q.HelpText, Multiline: true))" />
+
+        <div class="rating-section border-top pt-2 mt-2">
+            <div class="row g-2">
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Rating min</label>
+                    <input type="number" name="@(prefix).RatingMin" class="form-control form-control-sm" style="width:6rem;" value="@(q.RatingMin)" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Rating max</label>
+                    <input type="number" name="@(prefix).RatingMax" class="form-control form-control-sm" style="width:6rem;" value="@(q.RatingMax)" />
+                </div>
+            </div>
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMinLabel", "Min label", q.RatingMinLabel))" />
+            <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.RatingMaxLabel", "Max label", q.RatingMaxLabel))" />
+        </div>
+
+        <div class="options-section border-top pt-2 mt-2">
+            <label class="form-label small fw-semibold">Options</label>
+            <div class="options-container">
+                @foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
+                {
+                    <partial name="_SurveyOptionRow" model="@(new SurveyOptionRowModel(key, i.ToString(), opt))" />
+                }
+            </div>
+            <template class="option-template">
+                <partial name="_SurveyOptionRow" model="@(new SurveyOptionRowModel(key, "__OKEY__", new SurveyOptionBuilderViewModel()))" />
+            </template>
+            <button type="button" class="btn btn-outline-secondary btn-sm add-option">+ Add option</button>
+        </div>
+
+        <div class="border-top pt-2 mt-2 showif-section">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <label class="form-label small fw-semibold mb-0">Visibility</label>
+                <select class="form-select form-select-sm w-auto showif-mode">
+                    <option value="always" selected="@(q.ShowIfClauses.Count == 0 ? "selected" : null)">Always shown</option>
+                    <option value="conditional" selected="@(q.ShowIfClauses.Count > 0 ? "selected" : null)">Only shown when&hellip;</option>
+                </select>
+                <select name="@(prefix).ShowIfCombine" class="form-select form-select-sm w-auto showif-combine"
+                        style="@(q.ShowIfClauses.Count > 1 ? "" : "display:none")">
+                    <option value="@BranchCombine.All" selected="@(q.ShowIfCombine == BranchCombine.All ? "selected" : null)">all conditions match</option>
+                    <option value="@BranchCombine.Any" selected="@(q.ShowIfCombine == BranchCombine.Any ? "selected" : null)">any condition matches</option>
+                </select>
+            </div>
+            <div class="showif-clauses" style="@(q.ShowIfClauses.Count == 0 ? "display:none" : "")">
+                <div class="clauses-container">
+                    @foreach (var (c, ci) in q.ShowIfClauses.Select((c, i) => (c, i.ToString())))
+                    {
+                        <partial name="_SurveyBranchClauseRow" model="@(new SurveyBranchClauseRowModel(key, ci, c))" />
+                    }
+                </div>
+                <template class="clause-template">
+                    <partial name="_SurveyBranchClauseRow" model="@(new SurveyBranchClauseRowModel(key, "__CKEY__", new SurveyBranchClauseBuilderViewModel()))" />
+                </template>
+                <button type="button" class="btn btn-outline-secondary btn-sm add-clause">+ Add condition</button>
+                <div class="form-text">Conditions may only reference earlier questions (checked on save).</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -71,4 +71,4 @@ Combine with `[Obsolete]` when both apply — `[Obsolete]` carries the migration
 
 | Symbol                  | Date       | Grace | Tracking issue |
 | ----------------------- | ---------- | ----- | -------------- |
-| `User.NormalizedEmail`  | 2026-05-18 | 7     | #635           |
+| `User.NormalizedEmail`  | 2026-09-01 | 7     | #635           |

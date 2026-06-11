@@ -409,18 +409,27 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_rejects_after_orderable_until()
+    public async Task AddLineAsync_allows_past_deadline_and_notes_it_in_audit()
     {
+        // The deadline gate is authorization (StoreOrderAuthorizationHandler) — the
+        // service is auth-free and only annotates the audit trail.
         var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
         var product = MakeProduct(orderableUntil: new LocalDate(2026, 1, 1));
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         // _clock = 2026-03-14, so 2026-01-01 is past.
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid()));
-        ex.Message.Should().Contain("deadline");
+        await _service.AddLineAsync(orderId, product.Id, 1, actor);
+
+        await _repo.Received(1).AddLineAsync(
+            Arg.Is<StoreOrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineAdded, nameof(StoreOrderLine), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("past order deadline")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -515,17 +524,25 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_rejects_after_orderable_until()
+    public async Task RemoveLineAsync_allows_past_deadline_and_notes_it_in_audit()
     {
+        // The deadline gate is authorization (StoreOrderAuthorizationHandler) — the
+        // service is auth-free and only annotates the audit trail.
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new StoreLineContext(
                 lineId, orderId, Guid.NewGuid(),
                 StoreOrderState.Open, new LocalDate(2026, 1, 1)));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid()));
+        await _service.RemoveLineAsync(orderId, lineId, actor);
+
+        await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
+            Arg.Is<string>(d => d.Contains("past order deadline")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

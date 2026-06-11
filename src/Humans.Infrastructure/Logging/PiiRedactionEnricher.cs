@@ -23,15 +23,24 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         "To",
     };
 
+    private const string ICalFeedPathPrefix = "/api/ical/";
+
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
         var keysToRedact = new List<string>();
+        var pathsToScrub = new List<(string Key, string Scrubbed)>();
 
         foreach (var property in logEvent.Properties)
         {
             if (ShouldRedact(property.Key))
             {
                 keysToRedact.Add(property.Key);
+            }
+            else if (IsRequestPathProperty(property.Key) &&
+                     property.Value is ScalarValue { Value: string path } &&
+                     ScrubICalFeedToken(path) is { } scrubbed)
+            {
+                pathsToScrub.Add((property.Key, scrubbed));
             }
         }
 
@@ -41,6 +50,35 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
             var redacted = RedactValue(key, original);
             logEvent.AddOrUpdateProperty(propertyFactory.CreateProperty(key, redacted));
         }
+
+        foreach (var (key, scrubbed) in pathsToScrub)
+        {
+            logEvent.AddOrUpdateProperty(propertyFactory.CreateProperty(key, scrubbed));
+        }
+    }
+
+    private static bool IsRequestPathProperty(string propertyName)
+    {
+        return propertyName.Equals("RequestPath", StringComparison.OrdinalIgnoreCase) ||
+               propertyName.Equals("Path", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The iCal feed URL carries the user's feed token as a path segment
+    /// (<c>/api/ical/{userId}/{token}.ics</c>). Keep the userId (IDs stay
+    /// intact for debugging) but redact the token so request logs aren't a
+    /// credential store. Returns null when the path isn't an iCal feed path.
+    /// </summary>
+    private static string? ScrubICalFeedToken(string path)
+    {
+        if (!path.StartsWith(ICalFeedPathPrefix, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var userIdEnd = path.IndexOf('/', ICalFeedPathPrefix.Length);
+        if (userIdEnd < 0)
+            return null; // no token segment present — nothing to scrub
+
+        return $"{path[..userIdEnd]}/[redacted].ics";
     }
 
     private static bool ShouldRedact(string propertyName)

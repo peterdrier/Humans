@@ -10,7 +10,8 @@ namespace Humans.Web.ViewComponents;
 /// <summary>
 /// Renders a compact card of approved events with the Browse-style per-row
 /// favourite toggle. Scoped to exactly one of: a camp (the camp detail page's
-/// events card) or a user's submitted events (their profile page). Invoked with
+/// events card) or a user's personal (non-camp) submitted events — their
+/// profile page; camp events they submitted live on the camp's page. Invoked with
 /// ids only — no Event types cross into the host section's views. The favourite
 /// toggle bounces back to the current request's URL. Auth-gated at the call
 /// site (logged-in Humans users); returns empty content when the Events feature
@@ -41,7 +42,7 @@ public class EventsCardViewComponent(
 
             var approved = await events.GetApprovedEventsAsync(campId, null, null, null, []);
             if (userId is not null)
-                approved = approved.Where(e => e.SubmitterUserId == userId).ToList();
+                approved = approved.Where(e => e.SubmitterUserId == userId && e.CampId is null).ToList();
             if (approved.Count == 0)
                 return Content(string.Empty);
 

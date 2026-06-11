@@ -77,8 +77,9 @@
                 <label class="form-label">Human</label>
                 <vc:human-search field-name="UserId"
                                  instance-key="team-ee-add"
-                                 placeholder="Search humans by name…"
-                                 scope="Name" />
+                                 placeholder="Search by name or ticket #…"
+                                 scope="Name"
+                                 ticket-lookup-url="@Url.Action("LookupTicket", "TeamAdmin", new { slug = Model.Slug })" />
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="ee-add-date">Entry date</label>

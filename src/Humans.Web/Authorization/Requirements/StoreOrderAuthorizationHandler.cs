@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
+using NodaTime;
 
 namespace Humans.Web.Authorization.Requirements;
 
@@ -24,11 +26,16 @@ namespace Humans.Web.Authorization.Requirements;
 ///   Mutating operations (AddLine, RemoveLine, EditCounterparty) are gated on
 ///   order being Open (per Store invariant: "A Camp Lead cannot edit lines or
 ///   counterparty on an order in InvoiceIssued state").
+/// - Product order deadline: when the resource is a <see cref="StoreOrderLineContext"/>,
+///   non-admin line edits are denied past the product's OrderableUntil. Store admins are
+///   exempt — they may still add/remove lines past the deadline on an Open order.
 /// - Everyone else: deny.
 /// </summary>
 public class StoreOrderAuthorizationHandler(
     ICampServiceRead campService,
-    ITeamServiceRead teamService) : IAuthorizationHandler
+    ITeamServiceRead teamService,
+    IShiftManagementService shiftService,
+    IClock clock) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
@@ -52,6 +59,12 @@ public class StoreOrderAuthorizationHandler(
             return;
         }
 
+        // Non-admin paths below deny line edits once the product's order deadline has
+        // passed — only Store admins (handled above) may cross OrderableUntil.
+        var pastDeadline = resource.ProductOrderableUntil is { } until
+            && pending.Any(IsLineEdit)
+            && await TodayInEventZoneAsync() > until;
+
         // TeamsAdmin: read any order; manage team orders only (camp orders stay
         // view-only). Additive — fall through so a TeamsAdmin who is also a camp
         // lead still picks up camp-edit rights in the lead/coordinator block below.
@@ -70,7 +83,7 @@ public class StoreOrderAuthorizationHandler(
                     continue;
                 // Line edits require an Open order, matching the coordinator path and the
                 // StoreService guard ("Cannot add/remove lines from an issued order").
-                if (IsLineEdit(req) && !IsOpenOrCreate(resource))
+                if (IsLineEdit(req) && (!IsOpenOrCreate(resource) || pastDeadline))
                     continue;
                 context.Succeed(req);
             }
@@ -118,8 +131,21 @@ public class StoreOrderAuthorizationHandler(
             {
                 continue;
             }
+            if (IsLineEdit(req) && pastDeadline)
+            {
+                continue;
+            }
             context.Succeed(req);
         }
+    }
+
+    private async Task<LocalDate> TodayInEventZoneAsync()
+    {
+        var activeEvent = await shiftService.GetActiveAsync();
+        var tz = activeEvent is null
+            ? DateTimeZone.Utc
+            : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
+        return clock.GetCurrentInstant().InZone(tz).Date;
     }
 
     private static bool TryResolveResource(
@@ -139,6 +165,13 @@ public class StoreOrderAuthorizationHandler(
                     create.CampSeasonId,
                     create.TeamId,
                     State: null);
+                return true;
+            case StoreOrderLineContext line:
+                resource = new StoreOrderAuthorizationResource(
+                    line.Order.CampSeasonId,
+                    line.Order.TeamId,
+                    line.Order.State,
+                    line.ProductOrderableUntil);
                 return true;
             default:
                 resource = new StoreOrderAuthorizationResource(null, null, null);
@@ -164,7 +197,8 @@ public class StoreOrderAuthorizationHandler(
     private sealed record StoreOrderAuthorizationResource(
         Guid? CampSeasonId,
         Guid? TeamId,
-        StoreOrderState? State)
+        StoreOrderState? State,
+        LocalDate? ProductOrderableUntil = null)
     {
         public bool IsTeamOrder => TeamId is not null;
     }

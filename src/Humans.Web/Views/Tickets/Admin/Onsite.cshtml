@@ -1,3 +1,6 @@
+@using Humans.Application.Interfaces.Tickets
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.Tickets.OnsiteRosterViewModel
 @{
     ViewData["Title"] = "Who's Onsite";
@@ -59,28 +62,15 @@ else
     }
     else
     {
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th>Human</th>
-                    <th>Checked in at</th>
-                    <th>Camps</th>
-                    <th>Teams</th>
-                    <th>Governance roles</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.Rows)
-                {
-                    <tr>
-                        <td><vc:human user-id="@row.UserId" /></td>
-                        <td>@row.CheckedInAt.ToDateTime()</td>
-                        <td>@(row.CampNames.Count == 0 ? "—" : string.Join(", ", row.CampNames))</td>
-                        <td>@(row.TeamNames.Count == 0 ? "—" : string.Join(", ", row.TeamNames))</td>
-                        <td>@(row.RoleNames.Count == 0 ? "—" : string.Join(", ", row.RoleNames))</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        Func<OnsiteRosterRow, IHtmlContent> humanCell =
+            @<text><vc:human user-id="@item.UserId" /></text>;
+        var table = TableModel.For(Model.Rows.ToList())
+            .Template("Human", humanCell)
+            .Column("Checked in at", r => r.CheckedInAt, c => c.DateTime())
+            .Column("Camps", r => r.CampNames.Count == 0 ? "—" : string.Join(", ", r.CampNames))
+            .Column("Teams", r => r.TeamNames.Count == 0 ? "—" : string.Join(", ", r.TeamNames))
+            .Column("Governance roles", r => r.RoleNames.Count == 0 ? "—" : string.Join(", ", r.RoleNames))
+            .Build();
+        <partial name="_Table" model="table" />
     }
 }

@@ -6,7 +6,7 @@
 
 # Holded — Section Invariants
 
-Thin typed-`HttpClient` surface to the Holded accounting API. Owned narrowly: v1 ships only the four methods the Expenses section needs. The broader Finance/Holded reconciliation described in `Finance.md` is forward-looking and will extend this same surface without breaking consumers.
+Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListChartOfAccountsAsync`, and `ListPaymentsAsync`. The broader Finance/Holded reconciliation described in `Finance.md` may extend this surface further without breaking consumers.
 
 ## Concepts
 
@@ -66,7 +66,7 @@ None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will
 
 When the broader Finance/Holded sync described in `docs/sections/Finance.md` ships, it adds:
 - a recurring pull job (`HoldedSyncJob`) that imports purchase docs into a `holded_transactions` table,
-- additional client methods (list / search / update payments) on the same `IHoldedClient` surface,
+- additional client methods on the same `IHoldedClient` surface,
 - the unmatched-queue UI under `/Finance`.
 
-The current four-method surface stays stable; new methods get added alongside.
+The current surface stays stable; new methods get added alongside.

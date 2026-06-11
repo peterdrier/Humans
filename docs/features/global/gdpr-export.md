@@ -64,7 +64,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  15 section services, each implementing          │
+│  16 section services, each implementing          │
 │  IUserDataContributor:                            │
 │                                                   │
 │    ProfileService            UserService          │
@@ -74,7 +74,7 @@ change.
 │    FeedbackService           NotificationInboxService
 │    TicketQueryService        CampaignService      │
 │    CampService               AuditLogService      │
-│    BudgetService                                  │
+│    BudgetService             SurveyService        │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -135,6 +135,7 @@ service has no data for this user are omitted.
 | `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"). |
 | `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
 | `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
+| `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.

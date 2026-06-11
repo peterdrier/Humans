@@ -1,86 +1,93 @@
 # Freshness sweep report
 
-**Run:** 2026-06-09 (UTC)
+**Run:** 2026-06-10 (UTC)
 **Mode:** diff
-**Previous anchor:** `0f52d8a63`
-**New anchor:** `989786372` (upstream/main HEAD at sweep start)
-**Worktree base:** `b2a000d76` (origin/main HEAD at sweep start; includes #920 ahead of upstream)
-**Window contents:** #916 scanner/ticket barcode, #915/#909 camp events card, #900 expense travel lines + IOU, #906 relevance-ranked cache-only search, #908 onboarding Names-save fix, 5 Dependabot bumps
-**Entries:** 60 dirty (9 mechanical + 51 editorial docs); 29 updated, rest verified no-drift
+**Previous anchor:** `989786372`
+**New anchor:** `upstream/main` @ `523a44c3e`
+**Worktree base:** `origin/main` @ `b7c0e2282`
+**Dirty:** 11/11 mechanical entries, 113 editorial docs (the TableModel view sweep #932 touched ~100 views, so nearly every doc triggered; semantic drivers were Survey #884, iCal feed #931, gate-terminal login #930, events-admin-edit, and the new HUM0031/HUM0032 analyzers).
 
 ## Updated automatically
 
-### Mechanical
+Mechanical (8 updated, 3 verified-current):
 
-- `dev-stats` — +2 daily rows (2026-06-08, 2026-06-09)
-- `reforge-history` — +2 daily rows
-- `about-page-packages` — bumped Anthropic 12.27.0, Google.Apis.Auth 1.75.0, Magick.NET 14.14.0 in the license table; analyzer/test-only bumps not displayed
-- `docs-readme-index` — 3 drifted descriptions refreshed (global-search Events bucket, ticket-transfer manual processing, guide/Events moderator wording)
-- `authorization-inventory` — full re-scan: #900 Expenses guard surface (ExpenseReportOperation View/Endorse/CoordinatorReject/Approve/FinanceReject/IncludeInSepaPayout + submitter owner-checks), #916 Scanner barcode actions + ProfileApi search endpoints, UsersAdminController class-level policy + AdminOnly overrides, TeamController.EditTeam IsSensitive guard, ~15 drifted view line numbers
-- `controller-architecture-audit` — added ScannerController.Tickets/Card, ExpensesController.AddMileage/AddPerDiem, EventsController.ToggleCampFavourite; removed stale ProfileController.ImportGooglePhoto (#745) and ProfileAdminController.EmailProblemsCompare/Merge (#899) missed by the prior regen
-- `dependency-graph` — removed stale NotifResolver→Team edge and deleted GeneralAvailabilityService node, added missing OnboardingWidgetState node (5 edges), recomputed linkStyle indices
-- `service-data-access-map` — #906 cache-only search, #916 barcode + transfer-cache invalidation, #915 IEventServiceRead read-split, #900 TravelReimbursementConfig; no new cross-section table violations
-- `data-model-index` — no change needed (column-level changes only)
-- `guid-reservations` — no change needed
-- `code-analysis-suppressions` — not dirty (no trigger files changed)
+- `dev-stats` — +1 daily row (2026-06-10, script)
+- `reforge-history` — +1 daily row (script)
+- `docs-readme-index` — indexed `sections/survey.md` + `features/scanner/gate-terminal-login.md`; Scanner description now points at `/Scanner/Tickets`
+- `authorization-inventory` — Survey section (SurveyController `[AllowAnonymous]`, SurveyAdminController BoardOrAdmin, SurveysApiController API-key filter), ICalFeedApiController (secret-in-URL), AccountController.GateLogin, TicketsGateAdminController; ScannerController policy corrected to `ScannerAccess`
+- `controller-architecture-audit` — 5 new controllers + 2 GateLogin actions; controller count → 87
+- `dependency-graph` — ICalFeedService + GoogleTranslationService nodes/edges; linkStyle indices 274..291; UserService fan-in → 56
+- `service-data-access-map` — Surveys section (SurveyService + 6 `survey_*` tables), ICalFeed (pure fan-out orchestrator, no owned tables), GoogleTranslationService; GDPR contributor list updated
+- `data-model-index` — Survey row (6 entities); `SyncServiceSettings.UpdatedByUser` nav ref → `UpdatedByUserId`; Survey cross-section FK entries
+- `about-page-packages` — verified current, no change (all 45 packages match `Directory.Packages.props`)
+- `guid-reservations` — verified current, no change (block `0004` gate-terminal already present)
+- `code-analysis-suppressions` — verified current, no change (HUM0031 went to `WarningsNotAsErrors`, outside the NoWarn block)
 
-### Editorial drift-fix (16 docs)
+Editorial drift-fix (26 docs changed across 14 cluster subagents):
 
-- **Tickets/Scanner (#916):** `sections/Tickets.md` (vendor-metadata claim removed; transfer cache invalidation documented), `features/tickets/ticket-transfer.md` (ti_ serial dropped from stub), `features/tickets/ticket-vendor-integration.md` (Barcode field + TicketTailor capture), `guide/Tickets.md` (attendee search by barcode; gate lookup at /Scanner/Tickets)
-- **Expenses (#900):** `sections/Expenses.md` (travel lines non-editable invariant), `guide/Expenses.md` (travel items section, receipt claims scoped to purchases, IOU view)
-- **Search (#906):** `features/profiles/profile-search-detail.md` (uncapped/relevance-ranked), `features/profiles/burner-name-collision-warning.md` (stale cap reference), `features/global/global-search.md` (relevance sort, cache-only Humans/Teams/Camps buckets)
-- **Onboarding (#908):** `features/onboarding/onboarding-pipeline.md` (profile-prefill not OAuth claims; step-guard removal)
-- **Events/Camps (#915/#909/#919):** `sections/Camps.md` (cache-only search; events card + Events cross-section dependency), `features/camps/camps.md` (US-20.2 events-card AC), `guide/Camps.md`, `guide/Events.md` (events card on camp page)
-- **Architecture:** `design-rules.md` (§15a/§15c cache-only search carve-out; §8 missing Expenses row added; EventGuideService→EventService; Scanner row refresh), `conventions.md` (Scanner AJAX-partial exception; `<vc:…>` tag-helper form; §15 caching pointer)
+- `sections/Tickets.md` — MatchedUser navs on TicketOrder/TicketAttendee recorded as stripped (no longer "target"); ITicketRepository description updated; transfer cache-invalidation trigger now covers all four lifecycle transitions (create/cancel/reject/approve)
+- `sections/Auth.md` — Survey added to MembershipRequiredFilter exempt list
+- `sections/Users.md` — EventParticipation.User forward nav removed; GateLogin routes added
+- `features/auth/authentication.md` — User entity diagram: stripped navs removed, MagicLinkSentAt added
+- `sections/Shifts.md` — ShiftSignupService implements ICalendarFeedContributor (iCal feed #931)
+- `sections/Events.md` — CampEventsViewComponent → EventsCardViewComponent; ToggleCampFavourite → ToggleCardFavourite (`POST /Events/Card/Favourite/{eventId}` with returnUrl); EventService implements ICalendarFeedContributor
+- `sections/Store.md` + `features/store/store.md` — Admin Summary reprices Open orders to live catalog (matches order page, #937)
+- `sections/GoogleIntegration.md` — SyncServiceSettings.UpdatedByUser nav removal; GoogleTranslationService/IGoogleTranslationClient registered in owning-services/external-API/connector lists
+- `sections/LegalAndConsent.md` — ConsentRecord.User nav recorded as stripped (3 places)
+- `sections/Governance.md` — CastBoardVoteAsync controller switch: NotSubmitted arm collapsed into default
+- `sections/Camps.md` + `sections/CityPlanning.md` — CreatedByUser/ReviewedByUser/LastModifiedByUser/ModifiedByUser navs recorded as stripped
+- `features/onboarding/volunteer-status.md` — Survey added to exempt-controllers list
+- `sections/admin-shell.md` — Gate terminal in TicketAdmin sidebar row; Surveys in Board/Governance row
+- `features/global/background-jobs.md` — SendSurveyReminderJob added to catalog
+- `features/global/gdpr-export.md` — SurveyResponses GDPR section added (16 contributors)
+- `features/global/global-search.md` — IEventService → IEventServiceRead
+- `features/debug/client-stats.md` — Bots breakdown table added
+- `features/guide/in-app-guide.md` — guide file count 17 → 28
+- `sections/Notifications.md` — dropped cross-domain navs; meter-provider dependency refresh
+- `sections/AuditLog.md` + `features/audit-log/audit-log.md` — GateTerminalPasswordSet + Survey AuditAction values
+- `docs/architecture/design-rules.md` — §15i repository inventory 33 → 34 (+ SurveyRepository row)
+- `docs/architecture/roslyn-analysis.md` — next-free analyzer id → HUM0033; shipped range → HUM0024–HUM0032
+- `docs/seed-data.md` — gate-terminal well-known-account seeding pattern (GateTerminalAccountSeeder / SystemUserIds.GateTerminal)
 
-### Orphan-ref cleanup (prune allowlist)
-
-- `features/47-volunteer-tracking.md` — 3 dead links retargeted (25-shift-management → shifts/shift-management.md, 26-shift-signup-visibility → shifts/shift-signup-visibility.md, event-participation → tickets/event-participation.md)
-- `features/global/background-jobs.md` — 02-profiles.md → profiles/profiles.md
-- `features/profiles/communication-preferences.md` — notification-inbox.md → notifications/notification-inbox.md
-- `authorization-inventory.md` — dead link to pruned 2026-04-03 transition plan edited out (2 spots)
+Verified clean (no drift): `sections/survey.md` (full check of new section doc against landed code), Calendar/Cantina/Profiles/Issues/Feedback/Campaigns/guide trees — their matched changes were mechanical refactors (TableModel sweep, nav strips, extract-method).
 
 ## Pruned
 
-| Husk | Lines | Evidence |
-|---|---|---|
-| `docs/superpowers/plans/2026-05-08-volunteer-tracking.md` | 2,040 | All chaff. Surviving rationale lives in the staying spec (2026-05-07-volunteer-tracking-design.md), `features/47-volunteer-tracking.md`, `sections/Shifts.md`, design-rules §8. Plan's blocked-days self-service, today-capped gap algorithm, and repo design were all superseded (day-off redesign 2026-05-09, #882). Zero inbound refs. |
-| `docs/superpowers/plans/2026-05-10-expense-reports.md` | 3,354 | All chaff. Lifecycle/IBAN/SEPA/outbox rationale lives in the staying spec (2026-05-10-expense-reports-design.md); Holded vendor facts in `sections/Holded.md`; invariants in `sections/Expenses.md`; IBAN-mask rule in `memory/code/iban-mask-in-logs.md`. Plan's dedicated attachment storage and per-doc paid-polling were superseded in code (shared IFileStorage; creditor-balance reconciliation). One inbound ref retargeted. |
+**Wheat migrated:**
+- `docs/superpowers/plans/2026-05-10-early-entry-camps.md` §Task 11 → `docs/sections/Camps.md` (Membership invariants): RejectCampMemberAsync intentionally passes `cascadeRoleAssignments: false` — Pending members can hold no role assignments. Verified against `CampService.cs:1212`.
 
-**Wheat migrated:** none — every candidate wheat item was verified against current code and found either already covered by a surviving doc or factually superseded. Verification details in the table above.
+**Husks deleted:**
+- `docs/superpowers/plans/2026-05-10-early-entry-camps.md` (1,689 lines) — feature shipped (#490); all design decisions live in the surviving spec `2026-05-10-early-entry-camps-design.md`; section invariants already in `Camps.md`; remainder was task lists, TDD steps, and code samples now in `src/`. Deferred from the previous sweep by budget; processed this sweep.
 
-**Retargeted refs:** `sections/Expenses.md:23` plan → spec (`2026-05-10-expense-reports-design.md`).
+**Inbound refs:** none needed retargeting (the only ref was in the prior `last-report.md`, replaced by this report).
 
-**Budget:** total docs 83,065 lines; target ~4,153 (5%), hard cap 5,814 (7%); deleted 5,394. `docs/superpowers/plans/2026-05-10-early-entry-camps.md` (1,689 lines, 30 days old today) deferred to the next sweep — starting it would exceed the cap (budget decision, not a punt). `docs/architecture/tech-debt-2026-04-23.md` ineligible: multiple items still tagged `[OPEN]`.
+**Budget:** total docs 82,453 lines; 5% target 4,122; 7% cap 5,771; deleted 1,689 (~2.0%). Under target because the allowlist is exhausted: no `docs/plans/` file is >30 days old, no spec is >60 days old, and `tech-debt-2026-04-23.md` still has `[OPEN]` items (ineligible). Largest next-sweep candidates: the 2026-05-12/13/14 `docs/plans/section-align-*.md` files (eligible from 2026-06-12).
 
 ## Flagged for human review
 
-Presented to Peter inline in Phase 7.5 — **all 10 resolved same-session** (his dispositions in bold):
+All 12 items were delivered to Peter inline (Phase 7.5); he approved fixing all 12, and all were applied on this PR branch in the follow-up commit.
 
-1. **`sections/Tickets.md` vs code — NotAttending overwrite:** doc said NotAttending rows "are never overwritten by ticket sync"; code flips NotAttending → Ticketed on a matched ticket. **Peter: code is correct — "a ticket is a physical thing, overriding any intentions."** Doc sentence rewritten to match code.
-2. **`features/global/global-search.md`** `IProfileService.SearchProfilesAsync` → `IUserServiceRead.SearchUsersAsync`. **Fixed** (AC bullet, diagram, DTO row; verified against SearchService.cs).
-3. **`features/tickets/ticket-vendor-integration.md`** `/Tickets/GateList — Stub for June implementation`. **Peter: still a stub — no change.**
-4. **Onboarding docs naming** `ProfileService.SaveProfileAsync` → `IProfileEditorService.SaveProfileAsync`. **Fixed** (onboarding-pipeline.md + 2 spots in sections/Onboarding.md).
-5. **`features/profiles/profile-pictures-birthdays.md`** dual-write claims. **Fixed**: storage approach, read path, flow diagram, computed property now FS-only with the `[Obsolete]` DB column pending #702 (citation corrected from #527). Additionally excised the removed US-14.5 Google-photo import (route row, user story → removal tombstone, localization table → orphaned-keys note) — verified `ImportGooglePhoto` no longer exists in src (#745).
-6. **`design-rules.md` §15i repositories.** **Refreshed**: count corrected 26→33; added 11 missing repos; removed nonexistent UserEmailRepository/DriveActivityMonitorRepository; adjacent Shifts migration bullet's stale `IShiftSignupRepository`/`GeneralAvailabilityService` fragment corrected.
-7. **`dependency-graph.md` prose.** **Fixed**: fan-in counts (UserService 55, TeamService 27, ShiftManagementService 16, MembershipCalculator 4 — OnboardingWidgetState consumers noted); GeneralAvailability annotated as deleted (#820).
-8. **`sections/Shifts.md` §VolunteerBuildStatus.** **Fixed**: `DayOffs` (`List<DayOffEntry>`: DayOffset/Reason/MarkedByUserId/MarkedAt), `SetByUserId`/`SetAt` + Notes(500), rendering/write-path corrected; audit-action and service-method names verified already accurate.
-9. **`sections/Events.md`.** **Fixed**: freshness markers added (29 verified trigger paths); #915/#919 surface documented (Favourite route, Camps consumer bullet, IEventServiceRead read-split). Follow-on naming drift also fixed: full rename pass to verified code symbols (GuideEvent→Event, EventGuideService→EventService, EventGuideRepository→EventRepository, GuideApiController→EventsApiController, etc., with real EF table names kept); phantom `IsAllDay`/`CreatedAt` rows removed, `AdminNotes` added, missing `Draft` status added, false cross-section-navs sentence corrected. The flagged "decorator writes via repository?" concern was verified FALSE — CachingEventService routes through the keyed inner `IEventService` (doc already correct).
-10. **`sections/Scanner.md`.** **Fixed**: freshness:triggers + flag-on-change markers added (controller, views, scanner JS, view model).
-
-**Informational (no decision needed):**
-- No `docs/guide/Scanner.md` exists; the /Scanner/Tickets lookup is covered by a sentence in guide/Tickets.md. Consider a guide page if Scanner grows.
-- `SearchService` injects full `IEventService` rather than `IEventServiceRead` (the new read interface is only consumed in the Web layer). Possible future read-split migration.
-- Other unmarked editorial docs (no freshness markers): `sections/Agent.md`, `sections/Mailer.md`, `sections/_Index.md`.
+1. `features/auth/magic-link-auth.md` — `User.NormalizedEmail` / `FindByEmailAsync` fallback. — **fixed**: lookup flow rewritten to `IUserEmailService.FindVerifiedEmailWithUserAsync` throughout diagrams and examples.
+2. `features/tickets/ticket-vendor-integration.md` — `/Tickets/GateList` "Stub for June implementation". — **fixed**: note now points at the live `/Scanner/Tickets` gate lookup (#930); GateList remains a placeholder.
+3. `sections/Holded.md` — "v1 ships only the four methods" stale. — **fixed**: replaced with the current eleven-method `IHoldedClient` surface.
+4. `features/profiles/contact-fields.md` — `LeadsAndBoard` vs enum `CoordinatorsAndBoard`. — **fixed**: all 8 occurrences renamed (plus one in preferred-email.md US-11.4).
+5. `features/profiles/preferred-email.md` — removed `User.GoogleEmail` / `GetEffectiveEmail()` / `GetGoogleServiceEmail()` still documented. — **fixed**: stale subsections replaced with the FullProfile-based read path; sync/jobs notes updated.
+6. `features/profiles/dietary-medical-nudge.md` — fields documented on VolunteerEventProfile. — **fixed**: Data Model + Cross-section dependencies rewritten — fields live on Profile (VEP columns are retained-only tombstones); saves via `IProfileEditorService.SaveDietaryMedicalAsync`.
+7. `features/profiles/profiles.md` — BurnerName nullability. — **fixed**: `string? (256)` → `string (256)`.
+8. `sections/Profiles.md` — `Services.Profile` vs `Services.Profiles`. — **fixed**: 3 occurrences corrected including the dead freshness trigger glob (`Services/Profiles/**` now matches).
+9. `features/campaigns/campaigns.md` — wave-send exclusion attribution. — **fixed**: now `ICommunicationPreferenceService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes)`; the separate Unsubscribe-route section (which legitimately sets `User.UnsubscribedFromCampaigns`) verified accurate and left alone.
+10. `features/expires-on-deadline.md` — `User.NormalizedEmail` deadline 2026-05-18 past. — **fixed**: the `[ExpiresOn]` in `User.cs` was extended to 2026-09-01; table row updated to match (symbol still exists).
+11. `features/notifications/notification-inbox.md` — Cleanup rules + Sources table out of sync. — **fixed**: 30-day unresolved-Informational rule + actionable-never-deleted rule added; 8 missing sources added.
+12. `design-rules.md` — ICalendarFeedContributor fanout undocumented. — **fixed**: new §8b "Cross-Section Fanout — Contributor Pattern" generalizes the shape (orchestrator owns no tables, sections opt in via contributor interface) and tables both instances (GDPR `IUserDataContributor`, iCal `ICalendarFeedContributor`).
 
 ## Proposed for review
 
-None — all candidates resolved this sweep (prune candidates verified against code; no uncertain wheat queued).
+None — all candidates resolved this sweep.
 
 ## Questions
 
-All asked and answered inline in Phase 7.5 — see resolutions above. Two carried Peter rulings worth remembering: a matched ticket overrides a NotAttending declaration (item 1), and `/Tickets/GateList` remains a stub (item 3).
+None pending — all 12 inline questions answered ("fix all 12") and applied.
 
 ## Skipped (errors)
 
-None.
+None — all 11 mechanical entries and all 14 editorial cluster subagents completed.

@@ -300,10 +300,10 @@ public sealed class TicketTransferServiceTests
 
     // ── helpers ─────────────────────────────────────────────────────────────────
 
-    private void StubAttendee(TicketAttendeeStatus status, Guid orderMatchedUserId)
+    private void StubAttendee(TicketAttendeeStatus status, Guid attendeeMatchedUserId)
     {
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(MakeAttendee(_attendeeId, _orderId, orderMatchedUserId, status));
+            .Returns(MakeAttendee(_attendeeId, _orderId, attendeeMatchedUserId, status));
     }
 
     private static User MakeUser(Guid id, string displayName) => new()
@@ -328,8 +328,10 @@ public sealed class TicketTransferServiceTests
         communicationPreferences: []);
 
     private static TicketAttendee MakeAttendee(
-        Guid id, Guid orderId, Guid orderMatchedUserId, TicketAttendeeStatus status)
+        Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status)
     {
+        // Buyer-fallback removed in nobodies-collective/Humans#856.
+        // Ownership is determined by TicketAttendee.MatchedUserId only.
         var order = new TicketOrder
         {
             Id = orderId,
@@ -342,7 +344,7 @@ public sealed class TicketTransferServiceTests
             VendorEventId = "ev_test",
             PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            MatchedUserId = orderMatchedUserId,
+            MatchedUserId = attendeeMatchedUserId,
         };
 
         return new TicketAttendee
@@ -358,6 +360,7 @@ public sealed class TicketTransferServiceTests
             Status = status,
             VendorEventId = "ev_test",
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            MatchedUserId = attendeeMatchedUserId,
         };
     }
 

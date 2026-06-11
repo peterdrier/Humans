@@ -108,9 +108,6 @@ Human enters email on login page
   │                 ├── Token valid → sign in, update LastLoginAt, redirect
   │                 └── Token expired/used → show error + "Request new link"
   │
-  ├── Email found on User.NormalizedEmail (Identity field) → existing user
-  │     └── Same as above (fallback for edge cases where UserEmail row is missing)
-  │
   └── Email does NOT match any User or UserEmail
         └── Send magic link with signup token (DataProtection, not Identity)
               └── Human clicks link
@@ -119,7 +116,7 @@ Human enters email on login page
                                 └── Redirect to onboarding
 ```
 
-**Email lookup order:** Check `UserEmails` table first (where `IsVerified = true`), then fall back to `User.NormalizedEmail`. This ensures a user with 3 verified emails can log in with any of them.
+**Email lookup order:** Check `UserEmails` table via `IUserEmailService.FindVerifiedEmailWithUserAsync` (where `IsVerified = true`). This ensures a user with 3 verified emails can log in with any of them.
 
 ### Google OAuth with Account Linking
 
@@ -129,7 +126,7 @@ Google OAuth callback
   ├── User found by provider key → sign in (existing flow)
   │
   └── No user by provider key
-        ├── User found by verified UserEmail match OR User.NormalizedEmail
+        ├── User found by verified UserEmail match (IUserEmailService.FindVerifiedEmailWithUserAsync)
         │     └── Link Google login (AddLoginAsync) → sign in
         │
         └── No user by email → create new user (existing flow)
@@ -202,11 +199,8 @@ No `userId` in the URL because the user doesn't exist yet. The encrypted email i
 The magic link request endpoint must search for emails across both tables:
 
 ```csharp
-// 1. Check UserEmails first (covers all verified addresses including non-primary)
-var userEmail = await _dbContext.UserEmails
-    .Include(ue => ue.User)
-    .FirstOrDefaultAsync(ue => ue.IsVerified &&
-        ue.Email.ToLower() == email.ToLower(), ct);
+// 1. Check UserEmails (covers all verified addresses including non-primary)
+var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
 
 if (userEmail is not null)
 {
@@ -215,16 +209,7 @@ if (userEmail is not null)
     return;
 }
 
-// 2. Fallback: check User.NormalizedEmail (edge case: user exists but UserEmail row missing)
-var user = await _userManager.FindByEmailAsync(email);
-if (user is not null)
-{
-    // Generate Identity token for user
-    // Send magic link to user.Email
-    return;
-}
-
-// 3. No match — send signup token
+// 2. No match — send signup token
 ```
 
 The same lookup pattern applies to the Google OAuth account linking in `ExternalLoginCallback`.
@@ -251,9 +236,7 @@ Modify `ExternalLoginCallback` in `AccountController`:
 ```
 Current: no user by provider key → create new user
 New:     no user by provider key
-           → check UserEmails for verified match
-           → if found: AddLoginAsync + sign in (same user)
-           → else check User.NormalizedEmail
+           → check UserEmails for verified match (IUserEmailService.FindVerifiedEmailWithUserAsync)
            → if found: AddLoginAsync + sign in (same user)
            → else: create new user (existing flow)
 ```

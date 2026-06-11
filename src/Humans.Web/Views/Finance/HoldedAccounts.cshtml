@@ -1,4 +1,7 @@
 @model Humans.Application.Services.Finance.Dtos.HoldedProvisioningPlan
+@using Humans.Application.Services.Finance.Dtos
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Holded Account Provisioning";
     var blockStart = (int)(ViewBag.BlockStart ?? 62900100);
@@ -74,47 +77,42 @@
         <i class="fa-solid fa-table me-1"></i>Provisioning Plan
         <span class="badge bg-secondary ms-2">@Model.Rows.Count rows</span>
     </div>
-    <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Group</th>
-                    <th>Category</th>
-                    <th>State</th>
-                    <th class="text-end">Existing #</th>
-                    <th class="text-end">Proposed #</th>
-                    <th>Tag</th>
-                    <th>Notes</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.Rows.OrderBy(r => r.GroupName, StringComparer.Ordinal).ThenBy(r => r.CategoryName, StringComparer.Ordinal))
+    @{
+        Func<HoldedProvisioningRow, IHtmlContent> stateCell = @<text>
+            @{
+                var badgeClass = item.State switch
                 {
-                    var badgeClass = row.State switch
-                    {
-                        "Mapped"  => "bg-success",
-                        "ToAdd"   => "bg-primary",
-                        "Orphan"  => "bg-warning text-dark",
-                        _         => "bg-secondary"
-                    };
-                    <tr>
-                        <td>@row.GroupName</td>
-                        <td>@row.CategoryName</td>
-                        <td><span class="badge @badgeClass">@row.State</span></td>
-                        <td class="text-end text-muted">@(row.ExistingAccountNum?.ToString() ?? "—")</td>
-                        <td class="text-end">@(row.ProposedAccountNum?.ToString() ?? "—")</td>
-                        <td><code class="small">@row.Tag</code></td>
-                        <td class="text-muted small">
-                            @if (row.State == "Orphan")
-                            {
-                                <span>Account exists in Holded but has no matching category — archived locally, not deleted from Holded.</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                    "Mapped" => "bg-success",
+                    "ToAdd"  => "bg-primary",
+                    "Orphan" => "bg-warning text-dark",
+                    _        => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass">@item.State</span>
+        </text>;
+        Func<HoldedProvisioningRow, IHtmlContent> tagCell =
+            @<text><code class="small">@item.Tag</code></text>;
+        Func<HoldedProvisioningRow, IHtmlContent> notesCell = @<text>
+            @if (string.Equals(item.State, "Orphan", StringComparison.Ordinal))
+            {
+                <span>Account exists in Holded but has no matching category — archived locally, not deleted from Holded.</span>
+            }
+        </text>;
+        var planRows = Model.Rows
+            .OrderBy(r => r.GroupName, StringComparer.Ordinal)
+            .ThenBy(r => r.CategoryName, StringComparer.Ordinal)
+            .ToList();
+        var planTable = TableModel.For(planRows)
+            .Column("Group", r => r.GroupName)
+            .Column("Category", r => r.CategoryName)
+            .Template("State", stateCell)
+            .Column("Existing #", r => r.ExistingAccountNum, c => c.End())
+            .Column("Proposed #", r => r.ProposedAccountNum, c => c.End())
+            .Template("Tag", tagCell)
+            .Template("Notes", notesCell)
+            .Build();
+    }
+    <partial name="_Table" model="planTable" />
 </div>
 
 <script>

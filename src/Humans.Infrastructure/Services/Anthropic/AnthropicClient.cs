@@ -3,6 +3,7 @@ using System.Text.Json;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
 using Humans.Application.Configuration;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Models;
 using Microsoft.Extensions.Logging;
@@ -33,6 +34,7 @@ public sealed class AnthropicClient : IAnthropicClient
         AnthropicRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        using var timer = _logger.TimeOperation();
         var sdkRequest = new MessageCreateParams
         {
             Model = request.Model,

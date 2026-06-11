@@ -1,3 +1,4 @@
+@using Humans.Web.Models.Tables
 @model Humans.Web.Models.Events.EventsDashboardViewModel
 @{
     ViewData["Title"] = "Event Guide Dashboard";
@@ -98,25 +99,11 @@
             </div>
             @if (Model.CoverageByDay.Count > 0)
             {
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th class="text-end">Approved</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Model.CoverageByDay)
-                            {
-                                <tr>
-                                    <td>@row.DayLabel</td>
-                                    <td class="text-end">@row.ApprovedCount</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                var dayTable = TableModel.For(Model.CoverageByDay)
+                    .Column("Day", r => r.DayLabel)
+                    .Column("Approved", r => r.ApprovedCount, c => c.End())
+                    .Build();
+                <partial name="_Table" model="dayTable" />
             }
             else
             {
@@ -130,31 +117,16 @@
             <div class="card-header">
                 <i class="fa-solid fa-tags me-1"></i>Coverage by Category
             </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead>
-                        <tr>
-                            <th>Category</th>
-                            <th class="text-end">Sub</th>
-                            <th class="text-end">App</th>
-                            <th class="text-end">Pen</th>
-                            <th class="text-end">Rej</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in Model.CoverageByCategory)
-                        {
-                            <tr>
-                                <td>@row.CategoryName</td>
-                                <td class="text-end">@row.SubmittedCount</td>
-                                <td class="text-end">@row.ApprovedCount</td>
-                                <td class="text-end">@row.PendingCount</td>
-                                <td class="text-end">@row.RejectedCount</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            @{
+                var categoryTable = TableModel.For(Model.CoverageByCategory)
+                    .Column("Category", r => r.CategoryName)
+                    .Column("Sub", r => r.SubmittedCount, c => c.End())
+                    .Column("App", r => r.ApprovedCount, c => c.End())
+                    .Column("Pen", r => r.PendingCount, c => c.End())
+                    .Column("Rej", r => r.RejectedCount, c => c.End())
+                    .Build();
+            }
+            <partial name="_Table" model="categoryTable" />
         </div>
     </div>
 
@@ -165,29 +137,13 @@
             </div>
             @if (Model.TopCamps.Count > 0)
             {
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Camp</th>
-                                <th class="text-end">Sub</th>
-                                <th class="text-end">App</th>
-                                <th class="text-end">Pen</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Model.TopCamps)
-                            {
-                                <tr>
-                                    <td>@row.CampName</td>
-                                    <td class="text-end">@row.SubmittedCount</td>
-                                    <td class="text-end">@row.ApprovedCount</td>
-                                    <td class="text-end">@row.PendingCount</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                var campsTable = TableModel.For(Model.TopCamps)
+                    .Column("Camp", r => r.CampName)
+                    .Column("Sub", r => r.SubmittedCount, c => c.End())
+                    .Column("App", r => r.ApprovedCount, c => c.End())
+                    .Column("Pen", r => r.PendingCount, c => c.End())
+                    .Build();
+                <partial name="_Table" model="campsTable" />
             }
             else
             {

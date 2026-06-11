@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-09
+**Generated:** 2026-06-10
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -68,10 +68,12 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 33. [Dashboard](#dashboard)
 34. [Gdpr](#gdpr)
 35. [AuditLog](#auditlog)
-36. [Cross-Section Analysis](#cross-section-analysis)
-37. [Cache Inventory](#cache-inventory)
-38. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
-39. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
+36. [Surveys](#surveys)
+37. [ICalFeed](#icalfeed)
+38. [Cross-Section Analysis](#cross-section-analysis)
+39. [Cache Inventory](#cache-inventory)
+40. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
+41. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
 
 ---
 
@@ -724,6 +726,14 @@ is read/written through the owning SystemSettings section's
 No repository. Wraps `IUserEmailService` + `IUserService` +
 `IEmailService` to send notifications when access is removed. No direct
 DB access, no cache.
+
+### GoogleTranslationService (Scoped)
+
+No repository. Thin §15-compliant facade over `IGoogleTranslationClient`
+(Infrastructure). Exists so cross-section callers (Survey authoring —
+`SurveyService.PreFillTranslationsAsync`) depend on a GoogleIntegration
+service interface rather than the raw connector client. No DB access,
+no cache.
 
 ---
 
@@ -2011,7 +2021,8 @@ Camps (`CampService`), Shifts (`ShiftSignupService`), Tickets
 (`BudgetService`), Campaigns (`CampaignService`), Feedback
 (`FeedbackService`), Issues (`IssuesService`), Events (`EventService`),
 Expenses (`ExpenseReportService`), Agent (`AgentService`), Teams
-(`TeamService`), Consent (`ConsentService`). No direct DB access, no cache.
+(`TeamService`), Consent (`ConsentService`), Surveys (`SurveyService` —
+identified responses only, #884). No direct DB access, no cache.
 
 ---
 
@@ -2039,6 +2050,92 @@ no cache.
 
 `AuditEvent` and `AuditEventTextualizer` are value types / pure
 formatters with no DI dependencies.
+
+---
+
+## Surveys
+
+Folder: `src/Humans.Application/Services/Surveys/`. Owns `surveys`,
+`survey_questions`, `survey_question_options`, `survey_invitations`,
+`survey_responses`, `survey_answers`. **New section (#884)** — GDPR-compliant
+first-party survey platform with authoring, invite/reminder dispatch, wizard
+flow, results aggregation, and full GDPR Article 15 export of identified
+responses.
+
+`SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
+pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
+response data is write-heavy and append-only; no hot read path merits a
+`TrackedCache` at ~500-user scale). `ISurveyServiceRead` is empty in v1 — no
+cross-section consumer has appeared yet; the interface is pre-registered so a
+future consumer does not need to open the service surface.
+
+### SurveyService (Scoped — `ISurveyService`, `ISurveyServiceRead`, `IUserDataContributor`)
+
+Repository: `ISurveyRepository`.
+
+| Table | R/W |
+|-------|-----|
+| surveys | R/W |
+| survey_questions | R/W |
+| survey_question_options | R/W |
+| survey_invitations | R/W |
+| survey_responses | R/W |
+| survey_answers | R/W |
+
+Cross-section calls via `ITeamServiceRead` (audience resolution — team
+members for `SurveyAudienceType.Team`), `IUserServiceRead` (active-member
+enumeration, display-name stitching in results / export), `ITicketServiceRead`
+(audience resolution — current-event ticket holders for
+`SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
+shift participants for `SurveyAudienceType.ShiftParticipants`),
+`IUserEmailService` (notification email per invitee), `IEmailService` (outbox
+enqueue), `IEmailMessageFactory` (invite and reminder templates),
+`ISurveyInviteTokenProvider` (Infrastructure — HMAC invite tokens),
+`IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
+helper), `IAuditLogService`.
+
+Implements `IUserDataContributor` (GDPR export slice
+`GdprExportSections.SurveyResponses` — identified responses only; anonymous
+and CompletionTracked rows carry no `UserId` and are excluded). No
+`IMemoryCache`.
+
+### SurveyBranchingEvaluator / SurveyWizardFlow
+
+Pure static helpers — no DI dependencies, no DB access. `SurveyBranchingEvaluator`
+validates and evaluates `ShowIf` branching conditions; `SurveyWizardFlow` drives
+the multi-page wizard navigation (visible-page resolution, required-answer
+validation).
+
+---
+
+## ICalFeed
+
+Folder: `src/Humans.Application/Services/ICalFeed/`. **New section (#931)** —
+personal iCal feed orchestrator. Owns no DB tables; fans out over
+`IEnumerable<ICalendarFeedContributor>` implementations registered by other
+sections. Requires a valid `User.ICalToken` stored in the `Users` table (accessed
+read-only through `IUserServiceRead`).
+
+### ICalFeedService (Scoped)
+
+No repository. Injects `IUserServiceRead` (token validation and user guard —
+reads `UserInfo.ICalToken` from the `CachingUserService` TrackedCache) and
+`IEnumerable<ICalendarFeedContributor>`.
+
+| Table | R/W |
+|-------|-----|
+| _(none — token check via `IUserServiceRead.GetUserInfoAsync`, no direct DB access)_ | — |
+
+Current `ICalendarFeedContributor` implementations (registered by their owning
+sections in `ShiftsSectionExtensions` and `EventsSectionExtensions`):
+
+- **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
+- **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.
+
+Sequential fan-out (contributors share the scoped `HumansDbContext`; EF is not
+thread-safe — same pattern as `GdprExportService` and `EarlyEntryService`). No
+`IMemoryCache` — the section's DB reads are contributor-owned; the user-info
+token check comes from the warm `CachingUserService` TrackedCache.
 
 ---
 
@@ -2202,6 +2299,24 @@ former HUM0025 `[Grandfathered]` markers have been retired:
     enumerable-injection pattern. This keeps the orchestrator
     section-agnostic; new contributors register a single service
     interface in their section's DI extension.
+
+12. **Surveys section uses cross-section read-split surfaces exclusively
+    (#884).** `SurveyService` fans out over `ITeamServiceRead`,
+    `IUserServiceRead`, `ITicketServiceRead`, and `IShiftView` for
+    audience resolution and display-name stitching — never a foreign
+    repository. `IGoogleTranslationService` (GoogleIntegration section)
+    is the translation bridge for the admin pre-fill helper. No
+    cross-section table reads; `ISurveyServiceRead` is registered but
+    empty pending a consumer.
+
+13. **ICalFeed is a pure fan-out orchestrator (#931).** `ICalFeedService`
+    owns no repository and touches no table directly. Token validation
+    routes through `IUserServiceRead.GetUserInfoAsync` (the
+    `CachingUserService` TrackedCache — no DB round-trip on cache hit).
+    Shift and Event items are contributed by `ShiftSignupService` and
+    `EventService` respectively, each reading their own owned tables through
+    their own repositories. The sequential fan-out pattern (shared scoped
+    `HumansDbContext`) mirrors `GdprExportService` and `EarlyEntryService`.
 
 ---
 

@@ -1,4 +1,6 @@
 @using Humans.Web.Models.CampAdmin
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model CampRoleDefinitionListViewModel
 @{
     ViewData["Title"] = "Camp roles";
@@ -35,102 +37,74 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Sort</th>
-                        <th>Name</th>
-                        <th class="text-end">Slots</th>
-                        <th class="text-end">Min required</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Active)
-                    {
-                        <tr>
-                            <td>@row.SortOrder</td>
-                            <td>
-                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(row.Slug) ? row.Id.ToString() : row.Slug)"><strong>@row.Name</strong></a>
-                                @if (!string.IsNullOrWhiteSpace(row.GroupEmail))
-                                {
-                                    <small class="text-muted ms-2"><code>@row.GroupEmail</code></small>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(row.Description))
-                                {
-                                    <br />
-                                    <small class="text-muted">@Html.SanitizedMarkdown(row.Description)</small>
-                                }
-                            </td>
-                            <td class="text-end">@row.SlotCount</td>
-                            <td class="text-end">@row.MinimumRequired</td>
-                            <td class="text-end">
-                                <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(row.Slug) ? row.Id.ToString() : row.Slug)" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fa-solid fa-table-list me-1"></i>Roster
-                                </a>
-                                <a asp-controller="CampAdmin" asp-action="EditRole" asp-route-id="@row.Id" class="btn btn-outline-primary btn-sm">
-                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit
-                                </a>
-                                <form asp-controller="CampAdmin" asp-action="DeactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Deactivate this role? Existing assignments will remain but it will no longer be assignable.">
-                                        <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        Func<CampRoleDefinitionListRowViewModel, IHtmlContent> activeNameCell = @<text>
+            <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(item.Slug) ? item.Id.ToString() : item.Slug)"><strong>@item.Name</strong></a>
+            @if (!string.IsNullOrWhiteSpace(item.GroupEmail))
+            {
+                <small class="text-muted ms-2"><code>@item.GroupEmail</code></small>
+            }
+            @if (!string.IsNullOrWhiteSpace(item.Description))
+            {
+                <br />
+                <small class="text-muted">@Html.SanitizedMarkdown(item.Description)</small>
+            }
+        </text>;
+        Func<CampRoleDefinitionListRowViewModel, IHtmlContent> activeActionsCell = @<text>
+            <a asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@(string.IsNullOrWhiteSpace(item.Slug) ? item.Id.ToString() : item.Slug)" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-table-list me-1"></i>Roster
+            </a>
+            <a asp-controller="CampAdmin" asp-action="EditRole" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+            </a>
+            <form asp-controller="CampAdmin" asp-action="DeactivateRole" asp-route-id="@item.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Deactivate this role? Existing assignments will remain but it will no longer be assignable.">
+                    <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
+                </button>
+            </form>
+        </text>;
+        var activeTable = TableModel.For(Model.Active)
+            .Column("Sort", r => r.SortOrder)
+            .Template("Name", activeNameCell)
+            .Column("Slots", r => r.SlotCount, c => c.End())
+            .Column("Min required", r => r.MinimumRequired, c => c.End())
+            .Template("Actions", activeActionsCell, c => c.NoSort().End())
+            .Build();
+        <partial name="_Table" model="activeTable" />
     }
 </div>
 
 @if (Model.Deactivated.Count > 0)
 {
+    Func<CampRoleDefinitionListRowViewModel, IHtmlContent> deactivatedNameCell = @<text>
+        <strong>@item.Name</strong>
+        @if (!string.IsNullOrWhiteSpace(item.Description))
+        {
+            <br />
+            <small class="text-muted">@Html.SanitizedMarkdown(item.Description)</small>
+        }
+    </text>;
+    Func<CampRoleDefinitionListRowViewModel, IHtmlContent> reactivateCell =
+        @<text>
+            <form asp-controller="CampAdmin" asp-action="ReactivateRole" asp-route-id="@item.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-success btn-sm">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
+                </button>
+            </form>
+        </text>;
+    var deactivatedTable = TableModel.For(Model.Deactivated)
+        .RowCss(_ => "text-muted")
+        .Column("Sort", r => r.SortOrder)
+        .Template("Name", deactivatedNameCell)
+        .Column("Slots", r => r.SlotCount, c => c.End())
+        .Column("Min required", r => r.MinimumRequired, c => c.End())
+        .Template("Actions", reactivateCell, c => c.NoSort().End())
+        .Build();
     <div class="card">
         <div class="card-header">
             <i class="fa-solid fa-circle-pause me-2"></i>Deactivated (@Model.Deactivated.Count)
         </div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Sort</th>
-                        <th>Name</th>
-                        <th class="text-end">Slots</th>
-                        <th class="text-end">Min required</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Deactivated)
-                    {
-                        <tr class="text-muted">
-                            <td>@row.SortOrder</td>
-                            <td>
-                                <strong>@row.Name</strong>
-                                @if (!string.IsNullOrWhiteSpace(row.Description))
-                                {
-                                    <br />
-                                    <small class="text-muted">@Html.SanitizedMarkdown(row.Description)</small>
-                                }
-                            </td>
-                            <td class="text-end">@row.SlotCount</td>
-                            <td class="text-end">@row.MinimumRequired</td>
-                            <td class="text-end">
-                                <form asp-controller="CampAdmin" asp-action="ReactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-success btn-sm">
-                                        <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="deactivatedTable" />
     </div>
 }

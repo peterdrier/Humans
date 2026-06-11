@@ -1,5 +1,6 @@
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Services;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,7 @@ public sealed class GoogleDirectoryClient(
 
     public async Task<DirectoryUserListResult> ListDomainUsersAsync(CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var service = await GetDirectoryServiceAsync(ct);
@@ -72,6 +74,7 @@ public sealed class GoogleDirectoryClient(
 
     public async Task<DirectoryGroupListResult> ListDomainGroupsAsync(CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var service = await GetDirectoryServiceAsync(ct);

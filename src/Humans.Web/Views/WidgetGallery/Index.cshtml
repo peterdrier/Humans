@@ -573,6 +573,23 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups + favourited events). Never shows the secret feed URL.</div>
+                    @ParamsBlock(
+                        ("userId", "<code>Guid</code> — required")
+                    )
+                    <div class="wg-card-example">
+                        <vc:user-calendar user-id="@Model.CurrentUserId" />
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:things-to-do&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -999,7 +1016,8 @@
                         ("exclude-user-ids", "<code>IEnumerable&lt;Guid&gt;?</code> — hide these users from results"),
                         ("scope", "<code>HumanSearchScope</code> — <code>Name</code> narrows to burner-name match; <code>All</code> (default) = full-text"),
                         ("selected-user-id", "<code>Guid?</code> — prefill the picker with this user (default null = empty)"),
-                        ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces")
+                        ("allow-email", "<code>bool</code> — when true (default false), an <code>@@</code>-containing query resolves by exact, case-insensitive verified email (0-or-1 result, no enumeration leak); safe on non-admin surfaces"),
+                        ("ticket-lookup-url", "<code>string?</code> — when set, the picker also queries this URL (<code>?q=…</code>) in parallel and merges any rows after the profile results; used by the Early Entry card for ticket-barcode lookup (default null = disabled)")
                     )
                     <div class="wg-card-example" style="max-width: 400px;">
                         <vc:human-search field-name="exampleUserId"

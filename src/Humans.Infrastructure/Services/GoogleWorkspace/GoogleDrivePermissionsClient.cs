@@ -1,5 +1,6 @@
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -42,6 +43,7 @@ public sealed class GoogleDrivePermissionsClient(
         string? parentFolderId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -80,6 +82,7 @@ public sealed class GoogleDrivePermissionsClient(
         string fileId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -128,6 +131,7 @@ public sealed class GoogleDrivePermissionsClient(
         string role,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -174,6 +178,7 @@ public sealed class GoogleDrivePermissionsClient(
         string permissionId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -195,6 +200,7 @@ public sealed class GoogleDrivePermissionsClient(
         string fileId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -227,6 +233,7 @@ public sealed class GoogleDrivePermissionsClient(
         bool disabled,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);
@@ -253,6 +260,7 @@ public sealed class GoogleDrivePermissionsClient(
         string driveId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var drive = await GetDriveServiceAsync(ct);

@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.AdminApplicationListViewModel
 
 <nav aria-label="breadcrumb">
@@ -44,51 +46,35 @@
 
 <div class="card">
     <div class="card-body p-0">
-        @if (Model.Applications.Count == 0)
-        {
-            <p class="text-muted text-center py-4 mb-0">@Localizer["AdminApp_NoApplicationsFound"]</p>
+        @{
+            Func<Humans.Web.Models.AdminApplicationViewModel, IHtmlContent> applicantCell =
+                @<text>
+                    <vc:human user-id="@item.UserId" />
+                    <div><small class="text-muted">@item.UserEmail</small></div>
+                </text>;
+            Func<Humans.Web.Models.AdminApplicationViewModel, IHtmlContent> tierCell =
+                @<text><span class="badge bg-info">@item.MembershipTier</span></text>;
+            Func<Humans.Web.Models.AdminApplicationViewModel, IHtmlContent> statusCell =
+                @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+            Func<Humans.Web.Models.AdminApplicationViewModel, IHtmlContent> previewCell =
+                @<text><small class="text-muted">@item.MotivationPreview</small></text>;
+            Func<Humans.Web.Models.AdminApplicationViewModel, IHtmlContent> detailCell =
+                @<text>
+                    <a asp-action="AdminDetail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                        @Localizer["AdminApp_Review"]
+                    </a>
+                </text>;
+            var appTable = TableModel.For(Model.Applications)
+                .Template(Localizer["AdminApp_Applicant"].Value, applicantCell)
+                .Template(Localizer["BoardVoting_Tier"].Value, tierCell, c => c.NoSort())
+                .Column(Localizer["Governance_Submitted"].Value, a => a.SubmittedAt.ToDate())
+                .Template(Localizer["Common_Status"].Value, statusCell, c => c.NoSort())
+                .Template(Localizer["AdminApp_Preview"].Value, previewCell)
+                .Template("", detailCell, c => c.NoSort().End())
+                .Empty(Localizer["AdminApp_NoApplicationsFound"].Value)
+                .ServerMode(null, false, new PagerViewModel(Model.TotalPages, Model.PageNumber, "Admin") { NavCssClass = "mt-4" })
+                .Build();
         }
-        else
-        {
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@Localizer["AdminApp_Applicant"]</th>
-                        <th>@Localizer["BoardVoting_Tier"]</th>
-                        <th>@Localizer["Governance_Submitted"]</th>
-                        <th>@Localizer["Common_Status"]</th>
-                        <th>@Localizer["AdminApp_Preview"]</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var app in Model.Applications)
-                    {
-                        <tr>
-                            <td>
-                                <vc:human user-id="@app.UserId" />
-                                <div><small class="text-muted">@app.UserEmail</small></div>
-                            </td>
-                            <td><span class="badge bg-info">@app.MembershipTier</span></td>
-                            <td>@app.SubmittedAt.ToDate()</td>
-                            <td>
-                                <span class="badge @app.StatusBadgeClass">@app.Status</span>
-                            </td>
-                            <td>
-                                <small class="text-muted">@app.MotivationPreview</small>
-                            </td>
-                            <td class="text-end">
-                                <a asp-action="AdminDetail" asp-route-id="@app.Id" class="btn btn-sm btn-outline-primary">
-                                    @Localizer["AdminApp_Review"]
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
+        <partial name="_Table" model="appTable" />
     </div>
 </div>
-
-@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Admin") { NavCssClass = "mt-4" }; }
-<partial name="_Pager" model="pagerModel" />

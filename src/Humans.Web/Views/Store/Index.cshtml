@@ -1,3 +1,5 @@
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.StoreIndexViewModel
 @{
     ViewData["Title"] = "Store";
@@ -122,30 +124,19 @@ else
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th class="text-end">Unit price (incl. VAT)</th>
-                <th class="text-end">Deposit</th>
-                <th>Order by</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var product in Model.Catalog)
-            {
-                <tr>
-                    <td>@product.Name</td>
-                    <td>@Html.SanitizedMarkdown(product.Description)</td>
-                    <td class="text-end">
-                        @product.UnitPriceInclVatEur.ToEuro()
-                        <div class="text-muted small">(@product.UnitPriceEur.ToEuro() + @product.VatRatePercent.ToString("0.##")% VAT)</div>
-                    </td>
-                    <td class="text-end">@(product.DepositAmountEur.HasValue ? product.DepositAmountEur.Value.ToEuro() : "—")</td>
-                    <td>@product.OrderableUntil.ToDate()</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    Func<Humans.Application.Services.Store.Dtos.ProductDto, IHtmlContent> catalogDescriptionCell =
+        @<text>@Html.SanitizedMarkdown(item.Description)</text>;
+    Func<Humans.Application.Services.Store.Dtos.ProductDto, IHtmlContent> catalogPriceCell =
+        @<text>
+            @item.UnitPriceInclVatEur.ToEuro()
+            <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
+        </text>;
+    var catalogTable = TableModel.For(Model.Catalog)
+        .Column("Name", r => r.Name)
+        .Template("Description", catalogDescriptionCell)
+        .Template("Unit price (incl. VAT)", catalogPriceCell, c => c.NoSort().End())
+        .Column("Deposit", r => r.DepositAmountEur, c => c.Currency().End())
+        .Column("Order by", r => r.OrderableUntil.ToDate())
+        .Build();
+    <partial name="_Table" model="catalogTable" />
 }

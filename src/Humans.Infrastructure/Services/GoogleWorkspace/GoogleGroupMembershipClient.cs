@@ -1,6 +1,7 @@
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Services;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -40,6 +41,7 @@ public sealed class GoogleGroupMembershipClient(
         string groupGoogleId,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var memberships = new List<GroupMembership>();
         string? pageToken = null;
 
@@ -88,6 +90,7 @@ public sealed class GoogleGroupMembershipClient(
         string memberEmail,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var directory = await GetDirectoryServiceAsync(ct);
@@ -127,6 +130,7 @@ public sealed class GoogleGroupMembershipClient(
         string membershipResourceName,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         // Resource name shape: groups/{groupKey}/memberships/{memberKey}.
         // The Directory delete needs the group and member keys separately.
         var parts = membershipResourceName.Split('/');

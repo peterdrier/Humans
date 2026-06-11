@@ -280,6 +280,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
 | **Event Guide** | `EventService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
+| **Survey** | `SurveyService` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 
 **`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 
@@ -318,6 +319,25 @@ The architecture test suite in `GdprExportDependencyInjectionTests.cs` enforces 
 **Provenance FKs are not user-scoped data.** A section's tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, etc.) without the section's data being user-scoped. The rule of thumb: if you delete the user, do their rows go with them, or do they belong to a different aggregate (a camp, a team, an event) and merely lose their actor reference? If the latter, the section is not user-scoped — the FKs are provenance and belong to audit-style "what happened" data, not to the user's "what's mine" export. The **Store** section is the canonical example: store orders, lines, payments, and invoices belong to a camp season; the user FKs only record which lead clicked which button. Store data flows out of GDPR export through the audit log, not through a Store-section contributor.
 
 See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
+
+### 8b. Cross-Section Fanout — Contributor Pattern
+
+§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially (the contributors share the scoped `HumansDbContext`, which is not thread-safe) and never appears in §8's table-ownership map.
+
+Two fanouts exist today:
+
+| Orchestrator | Contributor interface | Sections that opt in | Merged result |
+|--------------|----------------------|----------------------|---------------|
+| `IGdprExportService` | `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
+| `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Application.Interfaces.ICalFeed`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
+
+Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
+
+```csharp
+services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventService>());
+```
+
+**Invariant:** a new cross-section need of this shape — assembling per-user (or per-aggregate) rows from several sections into one document — MUST follow the contributor pattern (orchestrator owning no tables, fanning out over a contributor interface that sections opt into) rather than the orchestrator making direct cross-section service calls section-by-section. Direct calls couple the orchestrator to every contributing section and bypass the opt-in registration that keeps the fanout list honest.
 
 ## 9. Cross-Service Communication
 
@@ -626,7 +646,7 @@ For the Google Workspace section in particular, the cached projection isn't a ta
     - Google Workspace (all services — `GoogleWorkspaceSyncService` moved to the Application layer in §15 Part 2b / #575; cross-domain includes retired in favour of sibling-service batched reads)
     - Calendar
   - **§15i landmark — landed (issue #635, 2026-05-04)** — `UserInfo` is now the canonical "everything-about-a-person" read path: new derived properties `PrimaryEmail` / `AllVerifiedEmails` / `GoogleEmail` populated by `CachingUserService` from already-loaded `UserEmail` rows (no new repo lookups). `Profile.State` (`Stub`/`Active`/`Suspended`) is the lifecycle marker, lazily computed and written back by the caching decorator on first read. `Profile.IsSuspended` is `[Obsolete]` (custom diagnostic id `HUM_PROFILE_ISSUSPENDED`); `User.NormalizedEmail` is `[Obsolete]` (custom diagnostic id `HUM_USER_NORMALIZEDEMAIL`). Stub Profile invariant — every newly created User gets a Stub Profile inline (`AccountController.ExternalLoginCallback`/`CompleteSignup`, `AccountProvisioningService.FindOrCreateUserByEmailAsync`, `ProfileService.SaveProfileAsync`); the Stub→Active transition fires when `BurnerName`/`FirstName`/`LastName` populate. `/Profile/Admin/Backfill` admin tool materializes Stub Profiles for legacy profile-less users (idempotent). `UserEmail.IsPrimary` invariant is service-enforced via `UserEmailService.EnsurePrimaryInvariantAsync` — no DB index, per [`memory/architecture/db-enforcement-minimal.md`](../../memory/architecture/db-enforcement-minimal.md). **User-side nav strip — landed.** Six cross-domain navs deleted from `User`: `Profile`, `RoleAssignments`, `ConsentRecords`, `Applications`, `TeamMemberships`, `CommunicationPreferences`. The `GetEffectiveEmail()` method is also gone — was a literal alias for `Email`. The seventh nav, `UserEmails`, **stays** because the `User.Email` override depends on it per the issue's AC ("computed via override (UserEmails.FirstOrDefault...)"). Inverse-side EF configurations on each owning entity now own the schema-level FK definitions (verified non-destructive: a fresh `dotnet ef migrations add` produces an empty `Up()`/`Down()`). Cross-domain readers migrated: `GetEffectiveEmail()` callsites (12) replaced with `user.Email`; `user.UserEmails` reads in `GoogleWorkspaceSyncService` / `GoogleAdminService` / `GoogleController` / `ProfileController` now go through `IUserEmailRepository.GetByUserIdReadOnlyAsync` / `IUserService.GetByIdsWithEmailsAsync` / `UserInfo.GoogleEmail`. Arch test `User_HasNoCrossDomainNavigationProperties` enforces.
-- **33 repositories** exist today (the dedicated `TicketingBudgetRepository` was removed in #815 — the Tickets→Budget bridge is now repository-free; `UserEmailRepository` was folded into `UserRepository` as a `.UserEmails` partial; `DriveActivityMonitorRepository` no longer exists). Target: one per domain (~20 total, some sections need two):
+- **34 repositories** exist today (the dedicated `TicketingBudgetRepository` was removed in #815 — the Tickets→Budget bridge is now repository-free; `UserEmailRepository` was folded into `UserRepository` as a `.UserEmails` partial; `DriveActivityMonitorRepository` no longer exists; `SurveyRepository` added in #884). Target: one per domain (~20 total, some sections need two):
   - `AccountMergeRepository` (Users)
   - `AdminDatabaseDiagnosticsRepository` (Admin)
   - `AgentRepository` (Agent)
@@ -653,6 +673,7 @@ For the Google Workspace section in particular, the cached projection isn't a ta
   - `RoleAssignmentRepository`
   - `ShiftRepository` (single concrete, partial across `.Management` + `.Signups` files; implements the partial `IShiftManagementRepository` — the former `IShiftSignupRepository` was folded into it)
   - `StoreRepository` (Store)
+  - `SurveyRepository` (Survey)
   - `SyncSettingsRepository`
   - `SystemSettingsRepository` (SystemSettings)
   - `TeamRepository`

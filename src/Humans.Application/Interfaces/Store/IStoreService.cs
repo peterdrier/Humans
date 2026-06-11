@@ -47,8 +47,15 @@ public interface IStoreService : IApplicationService
     /// Returns the team's order for the active event year, or null if none exists.
     /// </summary>
     Task<OrderDto?> GetOrderForTeamAsync(Guid teamId, CancellationToken ct = default);
+    /// <summary>
+    /// The product's <c>OrderableUntil</c> deadline is an authorization concern
+    /// (<c>StoreOrderAuthorizationHandler</c> denies non-admin line edits past it); the service
+    /// only annotates the audit entry when a line is edited past the deadline. The Open-state
+    /// requirement is a service invariant: an issued invoice is frozen for everyone.
+    /// </summary>
     Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
     Task<StoreMutationResult> AddLineWithResultAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
+    /// <inheritdoc cref="AddLineAsync"/>
     Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);
     Task<StoreMutationResult> RemoveLineWithResultAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);
 

@@ -1,4 +1,7 @@
+@using Humans.Application.Interfaces.Campaigns
+@using Humans.Web.Models.Tables
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Html
 @using Humans.Web.Authorization
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.AdminHumanDetailViewModel
@@ -228,6 +231,7 @@
         </div>
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+        <vc:user-calendar user-id="@Model.UserId" />
 
         <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
         <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
@@ -236,42 +240,31 @@
 
         @if (campaignGrants.Any())
         {
+            Func<CampaignGrantSummary, IHtmlContent> codeCell =
+                @<text><code>@item.Code</code></text>;
+            Func<CampaignGrantSummary, IHtmlContent> statusCell = @<text>
+                @if (item.LatestEmailStatus.HasValue)
+                {
+                    var badgeClass = item.LatestEmailStatus switch
+                    {
+                        EmailOutboxStatus.Sent => "bg-success",
+                        EmailOutboxStatus.Failed => "bg-danger",
+                        EmailOutboxStatus.Queued => "bg-warning",
+                        _ => "bg-secondary"
+                    };
+                    <span class="badge @badgeClass">@item.LatestEmailStatus</span>
+                }
+            </text>;
+            var campaignCodesTable = TableModel.For(campaignGrants.ToList())
+                .Column("Campaign", g => g.CampaignTitle)
+                .Template("Code", codeCell)
+                .Column("Assigned", g => g.AssignedAt, c => c.Date())
+                .Template("Status", statusCell)
+                .Build();
             <div class="card mb-4">
                 <div class="card-header"><h6 class="mb-0">Campaign Codes</h6></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Campaign</th>
-                                <th>Code</th>
-                                <th>Assigned</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var grant in campaignGrants)
-                            {
-                                var badgeClass = grant.LatestEmailStatus switch
-                                {
-                                    EmailOutboxStatus.Sent => "bg-success",
-                                    EmailOutboxStatus.Failed => "bg-danger",
-                                    EmailOutboxStatus.Queued => "bg-warning",
-                                    _ => "bg-secondary"
-                                };
-                                <tr>
-                                    <td>@grant.CampaignTitle</td>
-                                    <td><code>@grant.Code</code></td>
-                                    <td>@grant.AssignedAt.ToDate()</td>
-                                    <td>
-                                        @if (grant.LatestEmailStatus.HasValue)
-                                        {
-                                            <span class="badge @badgeClass">@grant.LatestEmailStatus</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <partial name="_Table" model="campaignCodesTable" />
                 </div>
             </div>
         }

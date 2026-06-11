@@ -81,6 +81,11 @@ if (!builder.Environment.IsProduction())
     builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
+// All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
+// + the per-source-IP sign-in failure throttle for /Account/GateLogin.
+builder.Services.AddScoped<GateTerminalAccountSeeder>();
+builder.Services.AddSingleton<GateLoginThrottle>();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
@@ -265,7 +270,8 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<GitHubHealthCheck>("github")
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
     .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable")
-    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs");
+    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
+    .AddCheck<TicketVendorHealthCheck>("ticket-vendor");
 
 // Hangfire health check reads JobStorage.Current; only register it when
 // the rest of the Hangfire stack is wired (i.e. outside Testing).

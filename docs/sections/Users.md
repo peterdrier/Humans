@@ -81,7 +81,7 @@ Per-user, per-year record of event involvement. Derived from ticket sync, user s
 | Property | Type | Purpose |
 |----------|------|---------|
 | Id | Guid | PK (`init`) |
-| UserId | Guid | FK → User. The `User` nav is declared on the entity for EF; the inverse `User.EventParticipations` collection is also declared. |
+| UserId | Guid | FK → User. The inverse `User.EventParticipations` collection is declared on `User`; there is no forward `EventParticipation.User` nav. |
 | Year | int | Year of the event |
 | Status | ParticipationStatus | `NotAttending` (0), `Ticketed` (1), `Attended` (2), `NoShow` (3). Stored as string. |
 | Source | ParticipationSource | `UserDeclared` (0), `TicketSync` (1), `AdminBackfill` (2). Stored as string. |
@@ -117,6 +117,8 @@ Two controllers serve this section:
 - `POST /Account/MagicLink` — verifies token and signs in
 - `GET /Account/MagicLinkSignup` — displays signup form after token verification
 - `POST /Account/CompleteSignup` — creates new user via magic link
+- `GET /Account/GateLogin` — gate-terminal username/password form (shared kiosk)
+- `POST /Account/GateLogin` — authenticates the shared gate account, `isPersistent: true`; throttled by source IP via `GateLoginThrottle`
 - `POST /Account/Logout`
 - `GET /Account/AccessDenied`
 

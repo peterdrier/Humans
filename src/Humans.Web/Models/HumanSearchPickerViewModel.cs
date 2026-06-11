@@ -36,6 +36,14 @@ public class HumanSearchPickerViewModel
     /// </summary>
     public bool AllowEmail { get; set; }
 
+    /// <summary>
+    /// Optional. When set, the picker also queries this URL (<c>?q=…</c>) in parallel
+    /// with the profile search and merges any returned rows into the same dropdown.
+    /// Used by the Early Entry card to resolve a human from a ticket number. Null for
+    /// every other caller — the second fetch is never wired up.
+    /// </summary>
+    public string? TicketLookupUrl { get; set; }
+
     /// <summary>Optional prefill — the picked user id (null = empty picker).</summary>
     public Guid? SelectedUserId { get; set; }
 

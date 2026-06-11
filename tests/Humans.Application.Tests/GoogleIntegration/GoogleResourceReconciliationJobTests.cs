@@ -1,7 +1,9 @@
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
@@ -58,5 +60,18 @@ public class GoogleResourceReconciliationJobTests : IDisposable
             .SyncResourcesByTypeAsync(GoogleResourceType.Group, Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_PropagatesCancellation_InsteadOfTreatingItAsPhaseFailure()
+    {
+        _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        Func<Task> act = () => _job.ExecuteAsync();
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        await _googleGroupSync.DidNotReceive()
+            .ReconcileAllAsync(Arg.Any<SyncAction>(), Arg.Any<CancellationToken>());
     }
 }

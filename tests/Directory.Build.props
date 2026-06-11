@@ -53,10 +53,13 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Shared HumansFact / HumansTheory attributes (5s default timeout, infinite forbidden). -->
+  <!-- Shared HumansFact / HumansTheory attributes (5s default timeout, infinite forbidden)
+       plus BrokenFact and DebuggerOnlyFact skip helpers. -->
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansFactAttribute.cs" Link="Humans.Testing\HumansFactAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\BrokenFactAttribute.cs" Link="Humans.Testing\BrokenFactAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\DebuggerOnlyFactAttribute.cs" Link="Humans.Testing\DebuggerOnlyFactAttribute.cs" />
     <Using Include="Humans.Testing" />
   </ItemGroup>
 

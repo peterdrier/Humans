@@ -1,5 +1,7 @@
 @model Humans.Web.Models.ShiftSummaryViewModel
 @using Humans.Application.DTOs.Shifts
+@using Humans.Web.Models.Tables
+@using Microsoft.AspNetCore.Html
 
 @{
     ViewData["Title"] = "Shift summary by camp";
@@ -38,66 +40,40 @@
             }
             else
             {
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped align-middle">
-                        <thead>
-                            <tr>
-                                <th>Human</th>
-                                <th>Camp</th>
-                                <th class="text-end">Hours</th>
-                                <th class="text-end">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var h in Model.Humans)
-                            {
-                                <tr>
-                                    <td><vc:human user-id="@h.UserId" /></td>
-                                    <td>
-                                        @if (h.CampId is null)
-                                        {
-                                            <span class="text-muted">@NoCamp</span>
-                                        }
-                                        else
-                                        {
-                                            @h.CampName
-                                        }
-                                    </td>
-                                    <td class="text-end">@Hours(h.Hours)</td>
-                                    <td class="text-end">@h.Count</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                Func<ShiftSummaryHumanRow, IHtmlContent> humanCell =
+                    @<text><vc:human user-id="@item.UserId" /></text>;
+                Func<ShiftSummaryHumanRow, IHtmlContent> campCell = @<text>
+                    @if (item.CampId is null)
+                    {
+                        <span class="text-muted">@NoCamp</span>
+                    }
+                    else
+                    {
+                        @item.CampName
+                    }
+                </text>;
+                var humanTable = TableModel.For(Model.Humans)
+                    .Template("Human", humanCell)
+                    .Template("Camp", campCell)
+                    .Column("Hours", r => Hours(r.Hours), c => c.End())
+                    .Column("Count", r => r.Count, c => c.Number().End())
+                    .Build();
+                <partial name="_Table" model="humanTable" />
             }
         </div>
 
         <div class="col-xl-6">
             <h2 class="h5">By camp</h2>
-            <div class="table-responsive">
-                <table class="table table-sm table-striped align-middle">
-                    <thead>
-                        <tr>
-                            <th>Camp</th>
-                            <th class="text-end">People</th>
-                            <th class="text-end">Hours</th>
-                            <th class="text-end">Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var c in Model.Camps)
-                        {
-                            <tr class="@(c.CampId is null ? "text-muted" : null)">
-                                <td>@(c.CampName ?? NoCamp)</td>
-                                <td class="text-end">@c.People</td>
-                                <td class="text-end">@Hours(c.Hours)</td>
-                                <td class="text-end">@c.Count</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            @{
+                var campTable = TableModel.For(Model.Camps)
+                    .Column("Camp", r => r.CampName ?? NoCamp)
+                    .Column("People", r => r.People, c => c.Number().End())
+                    .Column("Hours", r => Hours(r.Hours), c => c.End())
+                    .Column("Count", r => r.Count, c => c.Number().End())
+                    .RowCss(r => r.CampId is null ? "text-muted" : null)
+                    .Build();
+            }
+            <partial name="_Table" model="campTable" />
         </div>
     </div>
 

@@ -132,6 +132,13 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.TicketAdminOrAdmin, RoleNames.Board, false },
         { PolicyNames.TicketAdminOrAdmin, RoleNames.TeamsAdmin, false },
 
+        { PolicyNames.ScannerAccess, RoleNames.TicketAdmin, true },
+        { PolicyNames.ScannerAccess, RoleNames.Board, true },
+        { PolicyNames.ScannerAccess, RoleNames.Admin, true },
+        { PolicyNames.ScannerAccess, RoleNames.TeamsAdmin, false },
+        { PolicyNames.ScannerAccess, RoleNames.HumanAdmin, false },
+        { PolicyNames.ScannerAccess, "SomeNonAdminRole", false },
+
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.FeedbackAdmin, true },
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Admin, true },
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Board, false },
@@ -194,7 +201,8 @@ public class AuthorizationPolicyTests : IDisposable
     [
         PolicyNames.AdminOnly,
         PolicyNames.AnyAdminRole,
-        PolicyNames.BoardOnly
+        PolicyNames.BoardOnly,
+        PolicyNames.ScannerAccess
     ];
 
     public static TheoryData<string[], bool> HumanAdminOnlyCases => new()
@@ -371,6 +379,25 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var result = await AuthorizeAsync(PolicyNames.TicketAdminOrAdmin, role);
         result.Succeeded.Should().Be(expected);
+    }
+
+    // --- ScannerAccess (gate terminal) ---
+
+    [HumansFact]
+    public async Task ScannerAccess_AllowsGateTerminalAccountById()
+    {
+        // The gate account holds no roles; the policy admits it by well-known id.
+        var user = CreateUserWithIdAndRoles(SystemUserIds.GateTerminal);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ScannerAccess);
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ScannerAccess_DeniesOrdinaryUserWithNoRoles()
+    {
+        var user = CreateUserWithIdAndRoles(Guid.NewGuid());
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ScannerAccess);
+        result.Succeeded.Should().BeFalse();
     }
 
     // --- FeedbackAdminOrAdmin ---

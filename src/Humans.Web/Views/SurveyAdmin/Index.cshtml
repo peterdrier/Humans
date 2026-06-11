@@ -1,0 +1,71 @@
+@using Humans.Application.Interfaces.Surveys
+@using Humans.Domain.Enums
+@model SurveyAdminIndexViewModel
+
+@{
+    ViewData["Title"] = "Surveys";
+
+    static string StatusBadge(SurveyStatus s) => s switch
+    {
+        SurveyStatus.Open => "bg-success",
+        SurveyStatus.Closed => "bg-secondary",
+        _ => "bg-warning text-dark",
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Surveys</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Surveys</h1>
+    <a asp-controller="SurveyAdmin" asp-action="Create" class="btn btn-primary btn-sm">New survey</a>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th class="text-end">Invited</th>
+                    <th class="text-end">Responses</th>
+                    <th class="text-end">Rate</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Surveys.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">No surveys yet.</td></tr>
+                }
+                @foreach (var s in Model.Surveys)
+                {
+                    var rate = s.InvitedCount > 0 ? (int)Math.Round(100.0 * s.ResponseCount / s.InvitedCount) : 0;
+                    <tr>
+                        <td>
+                            <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id">
+                                @(string.IsNullOrWhiteSpace(s.Title) ? "(untitled)" : s.Title)
+                            </a>
+                        </td>
+                        <td><span class="badge @StatusBadge(s.Status)">@s.Status</span></td>
+                        <td class="text-end">@s.InvitedCount</td>
+                        <td class="text-end">@s.ResponseCount</td>
+                        <td class="text-end">@(s.InvitedCount > 0 ? $"{rate}%" : "—")</td>
+                        <td class="text-end">
+                            <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-primary btn-sm">Edit</a>
+                            <a asp-controller="SurveyAdmin" asp-action="Send" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">Send</a>
+                            <a asp-controller="SurveyAdmin" asp-action="Results" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">Results</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

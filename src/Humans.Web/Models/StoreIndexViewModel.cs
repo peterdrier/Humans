@@ -31,18 +31,29 @@ public sealed class StoreOrderViewModel
     /// <summary>True when the current user is a Store admin AND the order's balance is zero. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
+    /// <summary>
+    /// Line ids whose Remove button renders, resolved per line against the order authorization
+    /// handler in the controller: past the product's order deadline only Store admins qualify.
+    /// </summary>
+    public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
+
     /// <summary>Price-change audit events for this order's items since it was created (#816).</summary>
     public IReadOnlyList<AuditLogEntrySnapshot> PriceChanges { get; init; } = [];
 
-    public static StoreOrderViewModel FromPageData(StoreOrderPageData pageData, bool canDelete) => new()
-    {
-        Order = pageData.Order,
-        Catalog = pageData.Catalog,
-        CounterpartyDisplayName = pageData.CounterpartyDisplayName,
-        CanEdit = pageData.CanEdit,
-        CanPay = pageData.CanPay,
-        IsStripeConfigured = pageData.IsStripeConfigured,
-        CanDelete = canDelete,
-        PriceChanges = pageData.PriceChanges
-    };
+    public static StoreOrderViewModel FromPageData(
+        StoreOrderPageData pageData,
+        bool canDelete,
+        IReadOnlyList<ProductDto> catalog,
+        IReadOnlyCollection<Guid> removableLineIds) => new()
+        {
+            Order = pageData.Order,
+            Catalog = catalog,
+            CounterpartyDisplayName = pageData.CounterpartyDisplayName,
+            CanEdit = pageData.CanEdit,
+            RemovableLineIds = removableLineIds,
+            CanPay = pageData.CanPay,
+            IsStripeConfigured = pageData.IsStripeConfigured,
+            CanDelete = canDelete,
+            PriceChanges = pageData.PriceChanges
+        };
 }

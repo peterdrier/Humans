@@ -308,6 +308,50 @@ public class StoreSummaryAggregateTests
     }
 
     [HumansFact]
+    public async Task Open_order_reprices_to_current_catalog_like_the_order_page()
+    {
+        var seasonId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(seasonId, "Camp Alpha", "alpha")]);
+
+        // Catalog price dropped to 8 after the line was added at 10.
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new StoreProduct { Id = productId, Year = 2026, Name = "Tent", Description = "x",
+                UnitPriceEur = 8m, VatRatePercent = 21m, OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
+        ]);
+
+        var order = new StoreOrder
+        {
+            Id = orderId,
+            CampSeasonId = seasonId,
+            State = StoreOrderState.Open,
+            Lines =
+            {
+                new StoreOrderLine
+                {
+                    Id = Guid.NewGuid(), OrderId = orderId, ProductId = productId,
+                    Qty = 3, UnitPriceSnapshot = 10m, VatRateSnapshot = 21m
+                }
+            }
+        };
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([order]);
+
+        var result = await _service.GetStoreSummaryAsync(2026);
+
+        // 3 × 8 = 24.00 + 21% VAT 5.04 = 29.04 — the live total the order page
+        // shows for an Open order, not the 36.30 the add-time snapshot would give.
+        var row = result.ByCounterparty.Single();
+        row.TotalDueEur.Should().Be(29.04m);
+        row.BalanceEur.Should().Be(29.04m);
+        result.ByItem.Single().TotalRevenueEur.Should().Be(29.04m);
+    }
+
+    [HumansFact]
     public async Task Order_for_camp_season_not_in_year_is_excluded()
     {
         // Camp service returns ONE season for 2026; the repo gets that season's id.

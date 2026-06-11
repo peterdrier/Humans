@@ -1,0 +1,37 @@
+@using Humans.Domain.Enums
+@model SurveyBranchClauseRowModel
+
+@{
+    var c = Model.Clause;
+    var prefix = $"Questions[{Model.QuestionKey}].ShowIfClauses";
+    var needsValues = c.Operator is BranchOperator.Is or BranchOperator.IsNot;
+}
+@* One structured show-if condition. The question dropdown renders only the saved selection —
+   Builder.cshtml's JS fills in the available questions (and the option values) from the live form. *@
+<div class="clause-row d-flex flex-wrap gap-2 align-items-center mb-1">
+    <input type="hidden" name="@(prefix).Index" value="@Model.ClauseKey" />
+    <select name="@(prefix)[@Model.ClauseKey].QuestionId" class="form-select form-select-sm w-auto clause-question">
+        @if (c.QuestionId is { } qid)
+        {
+            <option value="@qid" selected>…</option>
+        }
+        else
+        {
+            <option value="">— choose a question —</option>
+        }
+    </select>
+    <select name="@(prefix)[@Model.ClauseKey].Operator" class="form-select form-select-sm w-auto clause-operator">
+        <option value="@BranchOperator.Is" selected="@(c.Operator == BranchOperator.Is ? "selected" : null)">is any of</option>
+        <option value="@BranchOperator.IsNot" selected="@(c.Operator == BranchOperator.IsNot ? "selected" : null)">is none of</option>
+        <option value="@BranchOperator.Answered" selected="@(c.Operator == BranchOperator.Answered ? "selected" : null)">has an answer</option>
+        <option value="@BranchOperator.NotAnswered" selected="@(c.Operator == BranchOperator.NotAnswered ? "selected" : null)">has no answer</option>
+    </select>
+    <select name="@(prefix)[@Model.ClauseKey].OptionValues" multiple size="3"
+            class="form-select form-select-sm w-auto clause-options" style="@(needsValues ? "" : "display:none")">
+        @foreach (var v in c.OptionValues)
+        {
+            <option value="@v" selected>@v</option>
+        }
+    </select>
+    <button type="button" class="btn btn-outline-danger btn-sm remove-clause" title="Remove condition">&times;</button>
+</div>

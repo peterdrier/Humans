@@ -26,6 +26,7 @@ Several system operations need to run automatically without user interaction: sy
 | ProcessGoogleSyncOutboxJob | Frequent | Process Google sync outbox (add/remove from Groups and Drive) |
 | TicketSyncJob | Every 15 min (configurable) | Sync ticket orders from TicketTailor |
 | TicketingBudgetSyncJob | Daily 4:30 AM | Materialize weekly ticket actuals into budget line items |
+| SendSurveyReminderJob | Daily 9:00 AM | Send 7-day reminder to survey invitees who haven't responded |
 | SendAdminDailyDigestJob | Daily | Email digest to Admin: sync health, anomalies |
 | SendBoardDailyDigestJob | Every other day 2:00 AM | Email digest to Board: pending signups, applications |
 | CleanupNotificationsJob | Daily | Delete resolved notifications older than 7 days |

@@ -370,7 +370,7 @@
   <data name="Emails_YourEmails" xml:space="preserve"><value>Your Email Addresses</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
   <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
-  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. Ticket transfer between humans is a separate feature, coming soon.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To transfer a ticket to another human, use the ticket transfer feature at /Tickets/Transfers.</value></data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
@@ -698,6 +698,8 @@
   <data name="Email_ApplicationApproved_Heading" xml:space="preserve"><value>Your Application Has Been Approved!</value></data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve"><value>Regarding Your Membership Application</value></data>
   <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Please complete: {0}</value><comment>{0} = survey title</comment></data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Reminder: {0}</value><comment>{0} = survey title</comment></data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve"><value>Action Required: Updated {0}</value><comment>{0} = document name</comment></data>
   <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve"><value>Action Required: Multiple Legal Documents Updated</value></data>
   <data name="Email_ReConsentReminder_Subject" xml:space="preserve"><value>Reminder: {0} days to review updated documents</value><comment>{0} = days remaining</comment></data>
@@ -1131,6 +1133,19 @@
 {1}
 &lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
+
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;You're invited to complete the survey &lt;strong&gt;{1}&lt;/strong&gt;. It only takes a few minutes.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
+
+  <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Just a reminder that the survey &lt;strong&gt;{1}&lt;/strong&gt; is still waiting for your response.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Open the survey&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = survey title, {2} = answer URL</comment></data>
+
   <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Legal Document Update&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;We have updated the following required documents:&lt;/p&gt;
@@ -1251,6 +1266,12 @@
   <data name="Scanner_Tickets_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Scanner_Tickets_TransferredTo" xml:space="preserve"><value>Transferred to</value></data>
   <data name="Scanner_Tickets_TransferredOn" xml:space="preserve"><value>Transferred on</value></data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve"><value>Checked in at</value></data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve"><value>Early entry via</value></data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve"><value>All consents signed</value></data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve"><value>Missing consents</value></data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve"><value>Signed up to provide</value></data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve"><value>No shifts or events</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Add Member</value></data>
@@ -1259,6 +1280,7 @@
   <data name="TeamAdmin_MemberAdded" xml:space="preserve"><value>Member added successfully.</value></data>
   <data name="TeamAdmin_NoResults" xml:space="preserve"><value>No matching humans found</value></data>
   <data name="TeamAdmin_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve"><value>Ticket #{0}</value><comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment></data>
 
   <!-- Facilitated Messaging -->
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Message from: {0}</value><comment>{0} = sender name</comment></data>
@@ -1379,6 +1401,13 @@
   <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>
   <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
   <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Send me a login link</value></data>
+  <data name="GateLogin_Title" xml:space="preserve"><value>Gate terminal</value></data>
+  <data name="GateLogin_Description" xml:space="preserve"><value>Sign in the shared gate laptop to look up tickets. Ask the ticket team for the credentials.</value></data>
+  <data name="GateLogin_Username" xml:space="preserve"><value>Username</value></data>
+  <data name="GateLogin_Password" xml:space="preserve"><value>Password</value></data>
+  <data name="GateLogin_SignIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="GateLogin_Invalid" xml:space="preserve"><value>Wrong username or password. The username is "gate"; the password is set by the ticket team — ask them for the current one.</value></data>
+  <data name="GateLogin_Throttled" xml:space="preserve"><value>Sign-in from this network is paused for {0} seconds: too many wrong-password attempts came from here. If that wasn't you, someone sharing this internet connection is trying passwords on this page. Wait it out, then enter the correct password — ask the ticket team if you're not sure of it. The account itself is NOT locked; ticket admins can check or change the password under Tickets → Gate terminal.</value><comment>{0}=seconds remaining</comment></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Check your email</value></data>
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>We've sent a link to that email address from humans@nobodies.team. Check your inbox (and spam folder).</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Link expired or invalid</value></data>
@@ -1843,6 +1872,7 @@
   <data name="ShiftDash_ScheduleConflict" xml:space="preserve"><value>Schedule conflict</value></data>
   <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
   <data name="Nav_Staff" xml:space="preserve"><value>Staff</value></data>
+  <data name="Nav_Guide" xml:space="preserve"><value>Help</value></data>
   <data name="ProfileCard_Suspended" xml:space="preserve"><value>Suspended</value></data>
   <data name="ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>
@@ -2394,6 +2424,37 @@
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Only visible to you and No-Info Admins.</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Your responses may be reviewed and analysed, including by automated tooling, to improve the collective.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Survey</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>You have answers in progress — continue where you left off.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>How would you like to respond?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identified</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>linked to you; you can stop and resume later.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Completion tracked</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>your answers are not linked to you, but participation is counted.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anonymous</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>no link to you at all.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Anonymous and completion-tracked responses can't be resumed, and you may still receive one reminder. Only an identified response can be paused and continued later.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Please answer the required questions before continuing.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>This question is required.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Submit</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Survey unavailable</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>This survey is closed</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Thanks for your interest — this survey is no longer accepting responses.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>This link is no longer valid</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>The survey link you used is invalid or has expired. If you think this is a mistake, please request a new link.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Thank you</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Thank you for your response.</value></data>
   <data name="AccountStatus_Title" xml:space="preserve"><value>Account status</value></data>
   <data name="AccountStatus_HeadingSuspended" xml:space="preserve"><value>Your account has been suspended</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Your account has been suspended by an administrator</value></data>
