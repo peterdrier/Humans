@@ -592,7 +592,26 @@ public class TeamController(
 
         // Parent-then-children flat list; children inherit the parent's bucket.
         List<AdminTeamViewModel>? currentBucket = null;
-        foreach (var team in result.Teams.Select(MapAdminTeamSummary))
+        foreach (var team in result.Teams.Select(summary => new AdminTeamViewModel
+        {
+            Id = summary.Id,
+            Name = summary.Name,
+            Slug = summary.Slug,
+            IsActive = summary.IsActive,
+            RequiresApproval = summary.RequiresApproval,
+            IsSystemTeam = summary.IsSystemTeam,
+            SystemTeamType = Enum.TryParse<SystemTeamType>(summary.SystemTeamType, out var stt) ? stt : null,
+            MemberCount = summary.MemberCount,
+            PendingRequestCount = summary.PendingRequestCount,
+            HasMailGroup = summary.HasMailGroup,
+            GoogleGroupEmail = summary.GoogleGroupEmail,
+            DriveResourceCount = summary.DriveResourceCount,
+            RoleSlotCount = summary.RoleSlotCount,
+            CreatedAt = summary.CreatedAt.ToDateTimeUtc(),
+            IsChildTeam = summary.IsChildTeam,
+            PendingShiftSignupCount = summary.PendingShiftSignupCount,
+            IsHidden = summary.IsHidden
+        }))
         {
             if (!team.IsChildTeam)
             {
@@ -810,27 +829,6 @@ public class TeamController(
 
         return RedirectToAction(nameof(Summary));
     }
-
-    private static AdminTeamViewModel MapAdminTeamSummary(AdminTeamSummary team) => new()
-    {
-        Id = team.Id,
-        Name = team.Name,
-        Slug = team.Slug,
-        IsActive = team.IsActive,
-        RequiresApproval = team.RequiresApproval,
-        IsSystemTeam = team.IsSystemTeam,
-        SystemTeamType = Enum.TryParse<SystemTeamType>(team.SystemTeamType, out var stt) ? stt : null,
-        MemberCount = team.MemberCount,
-        PendingRequestCount = team.PendingRequestCount,
-        HasMailGroup = team.HasMailGroup,
-        GoogleGroupEmail = team.GoogleGroupEmail,
-        DriveResourceCount = team.DriveResourceCount,
-        RoleSlotCount = team.RoleSlotCount,
-        CreatedAt = team.CreatedAt.ToDateTimeUtc(),
-        IsChildTeam = team.IsChildTeam,
-        PendingShiftSignupCount = team.PendingShiftSignupCount,
-        IsHidden = team.IsHidden
-    };
 
     [HttpGet("{teamId:guid}/GoogleResources")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]

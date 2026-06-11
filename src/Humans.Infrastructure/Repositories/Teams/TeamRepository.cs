@@ -1256,7 +1256,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
 
         await using var db = await factory.CreateDbContextAsync(ct);
 
-        // Inserts
         foreach (var userId in userIdsToAdd)
         {
             db.TeamMembers.Add(new TeamMember
@@ -1283,7 +1282,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
 
             foreach (var member in members)
             {
-                // Clean up role slot assignments before ending the membership.
                 if (member.RoleAssignments.Count > 0)
                 {
                     db.Set<TeamRoleAssignment>().RemoveRange(member.RoleAssignments);
