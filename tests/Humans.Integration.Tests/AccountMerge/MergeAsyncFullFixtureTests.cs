@@ -63,7 +63,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         await using (var actScope = factory.Services.CreateAsyncScope())
         {
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.MergeAsync(targetId, sourceId, adminId);
+            await mergeService.MergeAsync(targetId, sourceId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
         // Assert — all six post-conditions from the EmailProblems spec case 5.
@@ -74,39 +74,39 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         // Post-condition 1: exactly one UserEmail row per normalized email.
         // ----------------------------------------------------------------
         var sourceEmailRows = await db.UserEmails.AsNoTracking()
-            .Where(e => e.Email == sourceEmail).ToListAsync();
+            .Where(e => e.Email == sourceEmail).ToListAsync(TestContext.Current.CancellationToken);
         sourceEmailRows.Should().ContainSingle(
             "the source-only email should exist exactly once (re-FK'd to target)");
         sourceEmailRows[0].UserId.Should().Be(targetId,
             "source-only email must be re-FK'd onto the target user");
 
         var targetEmailRows = await db.UserEmails.AsNoTracking()
-            .Where(e => e.Email == targetEmail).ToListAsync();
+            .Where(e => e.Email == targetEmail).ToListAsync(TestContext.Current.CancellationToken);
         targetEmailRows.Should().ContainSingle(
             "target's primary email should exist exactly once");
 
         // ----------------------------------------------------------------
         // Post-condition 2: source has zero UserEmail rows.
         // ----------------------------------------------------------------
-        (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId))
+        (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all UserEmails must be moved off the source user");
 
         // ----------------------------------------------------------------
         // Post-condition 3: source has zero AspNetUserLogins rows.
         // ----------------------------------------------------------------
-        (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId))
+        (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all logins must be re-FK'd to target");
 
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking()
                 .AnyAsync(l => l.UserId == targetId
-                    && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey))
+                    && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey, TestContext.Current.CancellationToken))
             .Should().BeTrue("source login must be re-FK'd to target");
 
         // ----------------------------------------------------------------
         // Post-condition 4: target's pre-existing IsPrimary / IsGoogle preserved.
         // ----------------------------------------------------------------
         var survivingTargetEmail = await db.UserEmails.AsNoTracking()
-            .FirstOrDefaultAsync(e => e.UserId == targetId && e.Email == targetEmail);
+            .FirstOrDefaultAsync(e => e.UserId == targetId && e.Email == targetEmail, TestContext.Current.CancellationToken);
         survivingTargetEmail.Should().NotBeNull();
         survivingTargetEmail.IsPrimary.Should().BeTrue(
             "target's pre-existing IsPrimary must remain true after fold");
@@ -116,7 +116,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         // ----------------------------------------------------------------
         // Post-condition 5: source tombstoned with MergedToUserId + MergedAt.
         // ----------------------------------------------------------------
-        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId);
+        var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.MergedToUserId.Should().Be(targetId,
             "source must be tombstoned pointing at the target");
@@ -132,7 +132,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
             .FirstOrDefaultAsync(a =>
                 a.Action == AuditAction.AccountMergeAccepted
                 && a.EntityType == nameof(User)
-                && a.EntityId == sourceId);
+                && a.EntityId == sourceId, TestContext.Current.CancellationToken);
         auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the archived account");
         auditRow.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
             "the audit description records the archived→survivor fold");
@@ -140,11 +140,11 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
         // Bonus: source's team membership and role assignment moved to target.
         (await db.TeamMembers.AsNoTracking()
                 .AnyAsync(tm => tm.UserId == targetId && tm.TeamId == sourceOnlyTeamId
-                    && tm.LeftAt == null))
+                    && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only team membership must be re-FK'd to target");
 
         (await db.RoleAssignments.AsNoTracking()
-                .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole))
+                .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role assignment must be re-FK'd to target");
     }
 
@@ -186,7 +186,7 @@ public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : I
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

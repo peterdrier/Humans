@@ -12,7 +12,7 @@ public class StoreSummaryControllerTests(HumansWebApplicationFactory factory)
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var resp = await Client.GetAsync("/Store/Admin/Summary");
+        var resp = await Client.GetAsync("/Store/Admin/Summary", Xunit.TestContext.Current.CancellationToken);
 
         ((int)resp.StatusCode).Should().BeOneOf(
             (int)HttpStatusCode.Forbidden,
@@ -25,10 +25,10 @@ public class StoreSummaryControllerTests(HumansWebApplicationFactory factory)
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("store-admin"));
 
-        var resp = await Client.GetAsync("/Store/Admin/Summary");
+        var resp = await Client.GetAsync("/Store/Admin/Summary", Xunit.TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadAsStringAsync();
+        var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         body.Should().Contain("By counterparty");
         body.Should().Contain("By item");
         body.Should().Contain("Counterparties × products");

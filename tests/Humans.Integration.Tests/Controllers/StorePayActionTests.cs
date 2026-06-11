@@ -91,10 +91,10 @@ public class StorePayActionTests(HumansWebApplicationFactory factory) : Integrat
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var year = (await db.CampSettings.FirstAsync()).PublicYear;
+        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var seasonId = await db.Set<CampSeason>().AsNoTracking()
             .Where(s => s.Camp.Slug == "barrio-1")
-            .Select(s => s.Id).FirstAsync();
+            .Select(s => s.Id).FirstAsync(Xunit.TestContext.Current.CancellationToken);
 
         var product = new StoreProduct
         {
@@ -137,7 +137,7 @@ public class StorePayActionTests(HumansWebApplicationFactory factory) : Integrat
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Subtotal 25 + VAT 21% = 30.25 EUR balance.
         return (orderId, 30.25m);
@@ -145,11 +145,11 @@ public class StorePayActionTests(HumansWebApplicationFactory factory) : Integrat
 
     private async Task<(string FormToken, string Cookie)> GetAntiforgeryAsync(string url)
     {
-        var resp = await Client.GetAsync(url);
+        var resp = await Client.GetAsync(url, Xunit.TestContext.Current.CancellationToken);
         resp.StatusCode.Should().Be(HttpStatusCode.OK,
             $"GET {url} must render so we can harvest its antiforgery token (got {(int)resp.StatusCode}).");
 
-        var html = await resp.Content.ReadAsStringAsync();
+        var html = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
         var match = Regex.Match(
             html,
             @"name=""__RequestVerificationToken""[^>]*value=""(?<v>[^""]+)""",
@@ -178,6 +178,6 @@ public class StorePayActionTests(HumansWebApplicationFactory factory) : Integrat
         using var content = new FormUrlEncodedContent(withToken);
         using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
-        return await Client.SendAsync(req);
+        return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }
 }

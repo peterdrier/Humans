@@ -40,7 +40,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
 
-        var rows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: null, ct: default);
+        var rows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: null, ct: TestContext.Current.CancellationToken);
 
         rows.Should().OnlyContain(r => r.UserId != Guid.Empty);
         // The seed creates 2 Confirmed signups total (one TeamA, one TeamB), plus a Pending
@@ -63,7 +63,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
             new LocalDate(2026, 1, 1),
             new LocalDate(2026, 1, 2),
             departmentId: null,
-            ct: default);
+            ct: TestContext.Current.CancellationToken);
 
         rows.Should().BeEmpty();
     }
@@ -80,8 +80,8 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
 
-        var teamARows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamAId, ct: default);
-        var teamBRows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamBId, ct: default);
+        var teamARows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamAId, ct: TestContext.Current.CancellationToken);
+        var teamBRows = await repo.GetConfirmedShiftsInRangeAsync(eventId, start, end, departmentId: teamBId, ct: TestContext.Current.CancellationToken);
 
         teamARows.Should().OnlyContain(r => r.TeamId == teamAId);
         teamBRows.Should().OnlyContain(r => r.TeamId == teamBId);
@@ -103,7 +103,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
             new LocalDate(2026, 7, 7),
             new LocalDate(2026, 7, 7),
             departmentId: null,
-            ct: default);
+            ct: TestContext.Current.CancellationToken);
 
         rows.Should().NotBeEmpty();
     }
@@ -187,7 +187,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
         // TeamB 7/8: Confirmed (user1)
         db.ShiftSignups.Add(NewSignup(user1.Id, shiftB78.Id, SignupStatus.Confirmed, now));
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return (es.Id, teamA.Id, teamB.Id, user1.Id);
     }
 
