@@ -1,13 +1,12 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-
-using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -222,7 +221,6 @@ public class BudgetController(
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }
 
-    /// <summary>Load category + auth-check Edit; returns IActionResult on deny, null on allow.</summary>
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)
     {
         var category = await budgetService.GetCategoryByIdAsync(categoryId);

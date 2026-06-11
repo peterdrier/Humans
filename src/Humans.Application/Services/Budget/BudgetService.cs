@@ -288,7 +288,6 @@ public sealed class BudgetService(
         if (category is null)
             return null;
 
-        // Stitch team names via ITeamService.
         var teamIds = category.LineItems
             .Select(li => li.ResponsibleTeamId)
             .Where(tid => tid.HasValue)
@@ -573,9 +572,7 @@ public sealed class BudgetService(
 
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups)
     {
-        var groupsList = groups;
-
-        var budgetLineItems = groupsList
+        var budgetLineItems = groups
             .SelectMany(g => g.Categories)
             .SelectMany(c => c.LineItems)
             .Where(li => !li.IsCashflowOnly)
@@ -599,7 +596,7 @@ public sealed class BudgetService(
         var totalExpenses = expenses - vatExpenses;
         var netBalance = totalIncome + totalExpenses;
 
-        var incomeCategories = groupsList
+        var incomeCategories = groups
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
             .Where(c => c.Total > 0)
@@ -619,7 +616,7 @@ public sealed class BudgetService(
             })
             .ToList();
 
-        var expenseCategories = groupsList
+        var expenseCategories = groups
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
             .Where(c => c.Total > 0)
@@ -658,11 +655,10 @@ public sealed class BudgetService(
 
     public BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups)
     {
-        var groupList = groups;
-        var summary = ComputeBudgetSummary(groupList);
+        var summary = ComputeBudgetSummary(groups);
 
         // Per-group buffer: allocated minus line-item total (negative = expense, positive = income).
-        var groupBuffers = groupList
+        var groupBuffers = groups
             .Where(g => !g.IsTicketingGroup)
             .Select(g => new
             {
@@ -827,13 +823,10 @@ public sealed class BudgetService(
 
             var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
             var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
-            if (isFirstWeek && projectionStart <= projection.StartDate.Value)
+            if (isFirstWeek)
             {
-                weekTickets += initialBurst;
-                isFirstWeek = false;
-            }
-            else
-            {
+                if (projectionStart <= projection.StartDate.Value)
+                    weekTickets += initialBurst;
                 isFirstWeek = false;
             }
             if (weekTickets <= 0) weekTickets = 1;
@@ -845,7 +838,7 @@ public sealed class BudgetService(
 
             projections.Add(new TicketingWeekProjection
             {
-                WeekLabel = FormatTicketingWeekLabel(weekStart, weekEnd),
+                WeekLabel = $"{weekStart.ToWeekdayDayMonth()}–{weekEnd.ToWeekdayDayMonth()}",
                 WeekStart = weekStart,
                 WeekEnd = weekEnd,
                 ProjectedTickets = weekTickets,
@@ -903,11 +896,6 @@ public sealed class BudgetService(
         // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
         var dayOfWeek = (int)date.DayOfWeek;
         return date.PlusDays(-(dayOfWeek - 1));
-    }
-
-    private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
-    {
-        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

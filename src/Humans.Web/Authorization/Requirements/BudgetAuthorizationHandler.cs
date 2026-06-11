@@ -24,28 +24,22 @@ public class BudgetAuthorizationHandler(IBudgetService budgetService)
         BudgetOperationRequirement requirement,
         BudgetCategorySnapshot resource)
     {
-        // Admin and FinanceAdmin can edit any budget category
         if (RoleChecks.IsFinanceAdmin(context.User))
         {
             context.Succeed(requirement);
             return;
         }
 
-        // Non-admin: deny on deleted budget years
         if (resource.BudgetGroup?.BudgetYear?.IsDeleted == true)
             return;
 
-        // Non-admin: deny on restricted groups
         if (resource.BudgetGroup?.IsRestricted == true)
             return;
 
-        // Category must be linked to a team for coordinator-based access
         if (!resource.TeamId.HasValue)
             return;
 
-        // Check if user is a coordinator for the category's department
-        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId);
