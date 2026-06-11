@@ -12,9 +12,9 @@ namespace Humans.Application.Tests.Architecture;
 ///
 /// <para>
 /// Notifications chose <b>Option A</b> (no caching decorator, no dict cache):
-/// in-app dispatch is fire-and-forget and reads go through the inbox service
-/// whose nav-badge counts are already cached at the view-component layer via
-/// short-TTL <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/>.
+/// in-app dispatch is fire-and-forget and reads go through the inbox service.
+/// Nav-badge counts are cached inside <c>NotificationInboxService.GetUnreadBadgeCountsAsync</c>
+/// via short-TTL <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/> (§15).
 /// The same rationale used by Users (#243), Governance (#242), Budget (#544),
 /// City Planning (#543), and Audit Log (#552) when they skipped the decorator.
 /// </para>
