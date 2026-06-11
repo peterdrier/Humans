@@ -75,9 +75,17 @@ public interface IStoreService : IApplicationService
     /// <summary>
     /// Insert a Stripe-method payment from a verified <c>checkout.session.completed</c> webhook.
     /// Idempotent on <paramref name="paymentIntentId"/> — duplicate webhook deliveries are no-ops.
-    /// Audit-logged with job actor "StripeWebhook" (no human actor).
+    /// Audit-logged with job actor "StripeWebhook" (no human actor). <paramref name="status"/> is
+    /// <see cref="StorePaymentStatus.Paid"/> for a settled sync payment (and for reconciliation,
+    /// which only records confirmed-paid sessions) and <see cref="StorePaymentStatus.Pending"/> for
+    /// an async mandate that has not yet cleared — a Pending row does not count toward the balance.
     /// </summary>
-    Task RecordStripePaymentAsync(Guid orderId, string paymentIntentId, decimal amountEur, CancellationToken ct = default);
+    Task RecordStripePaymentAsync(
+        Guid orderId,
+        string paymentIntentId,
+        decimal amountEur,
+        StorePaymentStatus status = StorePaymentStatus.Paid,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Handle a verified Store Stripe Checkout webhook event. The Stripe connector owns

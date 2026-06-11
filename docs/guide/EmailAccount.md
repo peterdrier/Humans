@@ -1,25 +1,44 @@
 # Your `@nobodies.team` email
 
-Everyone who volunteers gets their own email address that ends in
-`@nobodies.team` — for example `rosa@nobodies.team`. It's a real, full email
-account (it's Google underneath, so it looks and works just like Gmail). It's
-yours for as long as you're active with us.
+Some volunteers have their own email address ending in `@nobodies.team` — for
+example `rosa@nobodies.team`. It's a real, full email account (it's Google
+underneath, so it looks and works just like Gmail). It's yours for as long as
+you're active with us.
 
-The short version: **use your `@nobodies.team` address for anything to do with
-the org**, and keep your personal email for your personal life. That way the
-right people can reach you, and when someone hands a job on to the next person,
-the email history goes with the role instead of getting lost in someone's
-private inbox.
+These accounts aren't handed out to everyone. They're granted where there's an
+**actual use** for one: your role needs it (coordinating, externally facing —
+ticketing, comms, production), or you're handling other humans' personal data.
+
+If you have one, the short version is: **use your `@nobodies.team` address for
+anything to do with the org**, and keep your personal email for your personal
+life. That way the right people can reach you, and when someone hands a job on
+to the next person, the email history goes with the role instead of getting
+lost in someone's private inbox.
+
+## Before you take one on
+
+An account comes with real responsibility, so know what you're signing up for:
+
+- **Two-step verification is required** — genuine sign-in friction you'll live
+  with from day one (see [Two-step verification](TwoStepVerification.md)).
+- **It becomes your primary account for everything you do through Humans** —
+  the app uses it as your Google service email, so every team's Drive folders
+  and group emails flow through it from then on.
+- **You'll be running two email accounts side by side.** Chrome handles
+  multiple accounts well, but if you're not used to juggling accounts, be wary
+  — it's easy to miss things in the inbox you don't check.
+
+If your role doesn't need one, you're not missing out: the app and your team's
+emails work fine with your personal address.
 
 ## How to get one
 
-- **Signed up recently?** You were asked which address you'd like
-  (`firstname@…`, `firstname.lastname@…`, or similar) and it was set up for you
-  automatically.
-- **Been around a while and don't have one yet?** Just ask. Your team
-  coordinator can set one up for you from the app, or you can use the help
-  button (the round button, bottom-right of any page) or email
-  [humans@nobodies.team](mailto:humans@nobodies.team).
+Accounts are set up for you — there's nothing to do yourself. If your role
+needs one, your team coordinator can create it from your team's page in the
+app (they pick the address with you, e.g. `firstname@…` or
+`firstname.lastname@…`), and admins can do the same. Unsure whether your role
+qualifies? Ask your coordinator, or use the help button (the round button,
+bottom-right of any page).
 
 ## Signing in for the first time
 
@@ -79,12 +98,12 @@ like that for your team, ask your coordinator whether it's set up.
 
 | If you're wondering… | Here's the answer |
 |---|---|
-| I never got my `@nobodies.team` details | Ask your coordinator (they can set one up), or use the help button in the app, or email [humans@nobodies.team](mailto:humans@nobodies.team) |
+| I never got my `@nobodies.team` details | They're granted where a role needs one, not to everyone. If yours does, ask your coordinator (they can set one up) or use the help button in the app |
 | I forgot my password | Go to [accounts.google.com](https://accounts.google.com), choose "forgot password", and use your `@nobodies.team` address |
 | Can I just use my normal Gmail? | For personal things, sure. For anything org-related (vendors, other teams, the wider community), please use your `@nobodies.team` address |
 | What's my team's shared address? | It's on your team's page in the app, or ask your coordinator |
-| I'm not getting the team's emails | First check with your coordinator that you're actually on the team in the app. If you are and they're still not arriving, use the help button or email [humans@nobodies.team](mailto:humans@nobodies.team) |
-| I don't have a Google account of my own | You don't need one to use the app — any email works to sign in. You still get a `@nobodies.team` address as part of joining |
+| I'm not getting the team's emails | First check with your coordinator that you're actually on the team in the app. If you are and they're still not arriving, use the help button; [humans@nobodies.team](mailto:humans@nobodies.team) is the last resort |
+| I don't have a Google account of my own | You don't need one to use the app — any email works to sign in. A `@nobodies.team` address only enters the picture if your role needs one |
 
 ## Related
 

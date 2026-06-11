@@ -24,6 +24,7 @@ Tracks when recurring maintenance processes were last run.
 | Access matrix verification | 2026-03-18 | 2026-03-25 | Weekly | — | Compare `AccessMatrixDefinitions.cs` against actual controller auth checks |
 | Service ownership migration | 2026-04-15 | As needed | Per-section | — | Governance landed as first full end-to-end spike in PR #503. Profile is §15a Step 0 next. |
 | User guide created | 2026-04-20 | — | One-time | — | `docs/guide/` with 14 section guides + README, GettingStarted, Glossary. Plan: `docs/superpowers/plans/2026-04-20-user-guide.md`. |
+| Section refactor history snapshot | 2026-06-11 | Each swarm wave | Per-wave | — | See "Section Refactor History" table below. Re-snapshot scores (`reforge surface-score --format compact`) and update Last Lane rows whenever a refactor wave lands. |
 | Screenshot review | 2026-04-20 | 2026-05-20 | Monthly | — | Review outstanding `TODO: screenshot` placeholders in `docs/guide/` and spot-check existing screenshots against the live UI at `nuc.home`. Process: `docs/architecture/screenshot-maintenance.md`. |
 | Community calendar slice 1 | 2026-04-21 | — | One-time | — | New entities `CalendarEvent`, `CalendarEventException`. Added `Ical.Net` 5.2.1 (MIT) for RFC 5545 RRULE expansion. Plan: `docs/superpowers/plans/2026-04-21-community-calendar-slice1.md`. |
 | xUnit v2 → v3 upgrade | 2026-04-24 | — | One-time | — | Bumped `xunit` 2.9.3 → `xunit.v3` 3.2.2 (keeps `xunit.runner.visualstudio` 3.1.5). Added `tests/xunit.runner.json` with `longRunningTestSeconds: 1`, `--blame-hang-timeout 2m` on CI, and a skipped `GlobalTimeoutDemoTest` to prove per-test `[Fact(Timeout = N)]`. Suppressed `xUnit1051` (CancellationToken-threading advisory; 1700+ pre-existing call sites — follow-up cleanup). See nobodies-collective/Humans#586. |
@@ -32,3 +33,59 @@ Tracks when recurring maintenance processes were last run.
 | /section-align shifts | 2026-05-12 | Per-section | Per-section | sonnet+opus: ~6% | First section-align run on Shifts. Plan: `docs/plans/2026-05-12-section-align-shifts.md`. Findings: Shifts section is unusually clean (zero inbound/outbound cross-section DB access). Phase 1: VolunteerTrackingController route prefix realigned to `/Shifts/Dashboard/VolunteerTracking`; 7 service test files moved into canonical `tests/.../Services/Shifts/`. Phase 2: new `VolunteerTrackingArchitectureTests`; `[SurfaceBudget(N)]` declarations on `IShiftSignupService`/`IGeneralAvailabilityService`/`IVolunteerTrackingService`; 8 new invariant/trigger tests (singleton, medical gating, rota delete, rota move audit, coverage gap, dashboard mutex, sub-period narrowing, dev seeder gating); doc-drift fix on `Shifts.md` + `design-rules.md §8` (both omitted `VolunteerTrackingService` + `volunteer_build_statuses`; §8 also had `general_availabilities` plural typo + missing `rota_shift_tags`). Phase 3: Stryker mutation pass at `local/stryker-runs/shifts/`; `ShiftManagementService` has 482 surviving mutants worth a dedicated coverage follow-up; `ShiftSignupService` + `VolunteerTrackingService` 0-killed flagged as MTP-runner test-discovery bug. Zero follow-up /section-align targets. |
 | `/section-align` — GoogleIntegration | 2026-05-12 | — | Per-section | — | Branch `align/google-integration`, PR #500. Consolidated DI into `GoogleIntegrationSectionExtensions`; moved controller-base helpers into `GoogleController`; regrouped ViewModels under `Models/Google/`; relocated service/repo tests into `GoogleIntegration/`; added `ITeamResourceService.GetResourceNamesByIdsAsync`; pinned invariant + architecture tests; trimmed `IGoogleSyncService` (20 → 16 methods). Three consumer-side gaps flagged for follow-up: AuditLog (nav strip), Teams (typed-FK), Users/Profiles (cache invalidation API). |
 | §15i FullProfile landmark (issue #635) | 2026-05-04 | Drop-column follow-up | One-time | — | Full §15i landmark shipped in PR #403. Phase 2/3/4/5/7/11 (foundations) + Phase 8 (caller-log via `[CallerMemberName]`/`[CallerFilePath]` attributes — not stack-walk) + Phase 9 (reader migration: 12 `GetEffectiveEmail()` callsites replaced with `user.Email`; `user.UserEmails` reads in Google services + ProfileController + GoogleController routed through `IUserEmailRepository` / `IUserService.GetByIdsWithEmailsAsync` / `FullProfile.GoogleEmail`; `TryGetGoogleEmail` no longer traverses `tm.User.UserEmails`) + Phase 10 (six User-side cross-domain navs deleted: `Profile`, `RoleAssignments`, `ConsentRecords`, `Applications`, `TeamMemberships`, `CommunicationPreferences`; plus the `GetEffectiveEmail()` method; UserEmails kept for the User.Email override). Inverse-side EF configurations on each owning entity now own the schema-level FK constraints — verified non-destructive: a fresh `dotnet ef migrations add` produces an empty `Up()`/`Down()`. Arch test `User_HasNoCrossDomainNavigationProperties` enforces. Phase 6 alt: `LoggingUserStoreDecorator` shipped as an observability shim (WRN log on every `Identity.FindByEmailAsync` / `FindByNameAsync`); retired via issue #701 once soak data confirmed Identity does not internally call these. Migration is additive only (`AddColumn`). Drifts: (a) `User.UserEmails` nav stays despite spec's strip list — User.Email override depends on it per AC; (b) the spec's `HumansUserStore` is replaced by the Phase 6 alt logging shim per Peter's option-#1 choice; (c+d) `UserEmail.IsNotificationTarget` and `User.GoogleEmail` C# properties were already consolidated in prior PRs so the strip ACs are mooted. **Drop-column follow-ups still pending:** `Profile.IsSuspended`, `UserEmail.IsNotificationTarget`, promote `Profile.State` to NOT NULL — file after prod soak. |
+
+## Section Refactor History
+
+Tracks per-section surface-refactor lanes (refactor-swarm, Reforge-guided reductions, read-splits,
+section-aligns) so targeting doesn't default to "biggest score wins" — the biggest sections have
+also absorbed the most refactoring attention, and score-only ranking starves the small sections
+indefinitely.
+
+**Selection rule for new waves:** never-served sections first (current score descending); among
+already-served sections, prioritize by score growth since the last lane (Score − Post-Lane Score —
+a large delta means the section is re-accumulating debt fastest), tie-break by Last Lane ascending.
+Skip sections with in-flight or imminently-planned feature work (check the active sprint plan).
+
+**Maintaining the table:** each lane records its Post-Lane Score (the section's built
+`reforge surface-score` after the final accepted commit) and Last Lane (date + PR) — the
+refactor-swarm coordinator does this in one wave-end docs commit; /section-align and
+/section-read-split update their own section's row in the PR. Each wave also re-snapshots the
+Score column for all sections from `reforge surface-score --format compact` so deltas stay honest.
+
+Scores below are the 2026-06-11 snapshot (solution combined: 58939). Post-Lane Score is seeded "—"
+for lanes that predate this table — no built post-lane scores were recorded for the
+2026-05-24→06-01 wave, so the 2026-06-11 snapshot is everyone's baseline.
+
+| Section | Score | Post-Lane Score | Last Lane | What |
+|---------|-------|-----------------|-----------|------|
+| Users | 8480 | — | 2026-05-30 | #838 Reforge surface reduction; dead cross-section nav strip #920 (06-09); account-merge consolidation #899 (06-07) |
+| Shifts | 5335 | — | 2026-05-30 | #820 service+repo surface refactor; ShiftRepository convergence #882 (06-04); /section-align 05-12 |
+| Teams | 4385 | — | 2026-06-01 | #850 route consumers onto ITeamServiceRead + TeamInfo; read-split reference #678 |
+| Camps | 3688 | — | 2026-05-29 | #822 cached read model + read surface |
+| GoogleIntegration | 3457 | — | 2026-05-30 | #835 Reforge surface reduction; /section-align 05-12 (#500) |
+| Tickets | 3293 | — | 2026-05-30 | #833 Reforge surface reduction; ticket read service #744 (05-25); buyer-fallback retirement #953 (06-11) |
+| Events | 3254 | — | — | never served |
+| Platform | 2207 | — | — | never served as a lane (table-component work #929/#932 was shared-UI feature work) |
+| Email | 2123 | — | 2026-05-30 | #837 Reforge surface reduction; IEmailService collapse to SendAsync(EmailMessage) #844 |
+| (ungrouped) | 1870 | — | 2026-05-29 | #829 assigned ungrouped surface-score ownership |
+| Budget | 1805 | — | 2026-05-30 | #836 Reforge surface reduction; ticketing-budget repo surface removal #815 (05-28) |
+| Governance | 1634 | — | 2026-06-01 | #851 read/write split (IApplicationServiceRead + IMembershipCalculatorRead) + dead-surface trim |
+| Expenses | 1632 | — | 2026-05-30 | #830 service surface refactor |
+| Store | 1551 | — | — | never served |
+| Agent | 1318 | — | 2026-05-31 | #849 dead-parameter drop (minor) |
+| Consent | 1292 | — | 2026-06-01 | #854 duplicate-read collapse + dead consent-workflow surface deletion |
+| Campaigns | 1233 | — | 2026-05-31 | #847 ICampaignServiceRead carve |
+| Admin | 1223 | — | 2026-05-30 | #842 admin-nav realign (nav holder, not a section — lanes belong to the owning sections) |
+| Auth | 1091 | — | — | never served (horizontal — lanes need extra care) |
+| Notifications | 1012 | — | 2026-06-01 | #852 dead-surface deletion + emit-only consumer narrowing; badge-count caching move #954 (06-11) |
+| Issues | 1011 | — | 2026-05-31 | #848 forwarding-overload collapse |
+| CityPlanning | 975 | — | — | never served |
+| Finance | 899 | — | — | never served |
+| AuditLog | 876 | — | — | never served (horizontal — lanes need extra care) |
+| Feedback | 873 | — | — | never served |
+| Calendar | 769 | — | — | never served |
+| Containers | 687 | — | — | never served |
+| Dashboard | 451 | — | — | never served |
+| Cantina | 302 | — | — | never served |
+| Search | 132 | — | 2026-06-07 | #906 relevance-ranked, cache-only search rewrite |
+| Gdpr | 81 | — | — | never served |

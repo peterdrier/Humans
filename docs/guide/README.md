@@ -31,8 +31,10 @@ with for support; nothing else relies on it.
 
 The app is at [humans.nobodies.team](https://humans.nobodies.team/),
 available in English, Español, Deutsch, Français, Italiano, and Català.
-Questions go to [humans@nobodies.team](mailto:humans@nobodies.team) or
-[#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord.
+Questions: start with the in-app help button (AI helper, issue filing,
+feedback) or ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord.
+[humans@nobodies.team](mailto:humans@nobodies.team) is third-level support —
+email it only when nothing else worked.
 
 ## Start here
 

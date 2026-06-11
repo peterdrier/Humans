@@ -9,11 +9,14 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">My Expense Reports</h1>
     <div class="d-flex gap-2">
-        @if (Model.CoordinatorQueueCount > 0)
+        @if (Model.IsCoordinator)
         {
             <a asp-action="Coordinator" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-list-check me-1"></i>Coordinator queue
-                <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>
+                @if (Model.CoordinatorQueueCount > 0)
+                {
+                    <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>
+                }
             </a>
         }
         @if (Model.HasActiveYear)

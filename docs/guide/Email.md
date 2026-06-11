@@ -24,7 +24,9 @@ different things both get called "email" and people mix them up constantly,
 so it's worth keeping them straight:
 
 1. **Personal mailboxes** — `yourname@nobodies.team`. A full Workspace account
-   with its own inbox, archive, and password. One per [human](Glossary.md#human).
+   with its own inbox, archive, and password. Granted to a
+   [human](Glossary.md#human) when their role or data access needs one — not
+   to everyone.
 2. **Group emails** — `teamname@nobodies.team`. A shared address that fans
    out to every member of a [team](Glossary.md#team). Not an inbox you log
    into by default; some teams may also have a single shared inbox they all
@@ -68,11 +70,18 @@ not the person.
 
 ### Assign a `@nobodies.team` address to someone on your team
 
-If a member of your team doesn't have a `@nobodies.team` address yet, you
-can assign one for them from the Humans app. The flow lives on the human's
-profile admin page; if you can't find it, ask in the app's feedback button
-(three dots in a speech bubble, bottom right) or email
-[humans@nobodies.team](mailto:humans@nobodies.team).
+If a member of your team needs a `@nobodies.team` address, you can provision
+one for them from your team's members page (`/Teams/{slug}/Members`) — you
+choose the address prefix as part of the flow. If you can't find it, use the
+round help button (bottom right).
+
+> **Provision on need, not by default.** Grant an address when the person's
+> role calls for it (externally facing, coordinating) or they're handling
+> other humans' personal data — not as a perk. It carries required 2FA, and
+> once provisioned it becomes their primary account for everything they do
+> through Humans (Drive, group email). Make sure they know what they're
+> taking on — point them at
+> [Your `@nobodies.team` email](EmailAccount.md#before-you-take-one-on).
 
 ### Group email membership follows team membership
 

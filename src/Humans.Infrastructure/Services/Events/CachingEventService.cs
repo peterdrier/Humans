@@ -4,6 +4,7 @@ using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Threading;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,7 +62,7 @@ public sealed class CachingEventService(
     private volatile IReadOnlyList<EventVenueView> _venues = [];
     private volatile EventGuideSettingsView? _settings;
 
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private readonly TrackedLock _loadLock = new("CachingEventService.Load");
     private volatile bool _isLoaded;
 
     /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
@@ -448,34 +449,27 @@ public sealed class CachingEventService(
     {
         if (_isLoaded) return;
 
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            if (_isLoaded) return;
+        using var _ = await _loadLock.AcquireAsync(logger, ct);
+        if (_isLoaded) return;
 
-            // Snapshot holds ALL rows (active + inactive) — admin Edit pages
-            // and slug-uniqueness must see inactive rows, matching the DB.
-            // Active-only filtering happens at projection time in
-            // GetActiveCategoriesAsync / GetActiveVenuesAsync.
-            var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
-            var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
-            var settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
-            var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
+        // Snapshot holds ALL rows (active + inactive) — admin Edit pages
+        // and slug-uniqueness must see inactive rows, matching the DB.
+        // Active-only filtering happens at projection time in
+        // GetActiveCategoriesAsync / GetActiveVenuesAsync.
+        var categories = await WithInner(inner => inner.GetAllCategoriesAsync(ct));
+        var venues = await WithInner(inner => inner.GetAllVenuesAsync(ct));
+        var settings = await WithInner(inner => inner.GetGuideSettingsAsync(ct));
+        var approved = await WithInner(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
-            _categories = categories.Select(ManageInfoToCategoryView).ToList();
-            _venues = venues.Select(ManageInfoToVenueView).ToList();
-            _settings = settings;
+        _categories = categories.Select(ManageInfoToCategoryView).ToList();
+        _venues = venues.Select(ManageInfoToVenueView).ToList();
+        _settings = settings;
 
-            _eventCache.Clear();
-            foreach (var ev in approved)
-                _eventCache.Set(ev.Id, ev);
+        _eventCache.Clear();
+        foreach (var ev in approved)
+            _eventCache.Set(ev.Id, ev);
 
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
+        _isLoaded = true;
     }
 
     private async Task EnsureLoadedAsync(CancellationToken ct)

@@ -13,7 +13,7 @@ see it**:
 - **Board only** — just the Board.
 - **Coordinators and Board** — team coordinators plus the Board.
 - **My teams** — only people who share a team with you.
-- **All active humans** — anyone active in the system (this is the default).
+- **All active humans** — anyone active in the system.
 
 You set these on your profile's edit page (`/Profile/Me/Edit`). When someone
 looks at your profile, they only see the things your settings allow — so you can,

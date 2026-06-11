@@ -67,7 +67,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`authorization-conventions`](code/authorization-conventions.md) — `[Authorize(Policy = PolicyNames.X)]` on controllers; `authorize-policy="X"` tag helper or injected `IAuthorizationService` in views; never raw `Roles = "..."` or inline `User.IsInRole` chains
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — reusable views/components inject `IAuthorizationService` and resolve their own gates; don't pre-compute `Can…` bools on view models
 - [`controller-base-conventions`](code/controller-base-conventions.md) — inherit `HumansControllerBase`; use `GetCurrentUserAsync`/`SetSuccess`/`SetError`. No raw `_userManager` or `TempData["..."]`.
-- [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
+- [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `ClampPageSize()` instead of inline `Math.Clamp`
+- [`csv-use-csvhelper`](code/csv-use-csvhelper.md) — ALL CSV reads/writes go through CsvHelper via the shared `HumansCsv` config (BOM, CRLF, invariant, injection escaping, delimiter detection); hand-rolled splitting/quoting/escaping is not allowed
 - [`hangfire-method-signature-stable`](code/hangfire-method-signature-stable.md) — methods invoked through Hangfire need a frozen serialization signature; pin the call site to a no-defaults overload and never add/reorder/change params on it (PR #663 incident — orphaned in-flight jobs after adding an optional `bool`)
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — which formatter to call: `ToDate`/`ToWeekdayDayMonth` (display, culture-ordered) vs `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` (machine); no inline format strings (HUM0030)
@@ -142,9 +143,14 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`birthday-not-dob`](product/birthday-not-dob.md) — store birthday (month + day only); UI says "birthday", never "date of birth"
 - [`coolify-build-constraint`](product/coolify-build-constraint.md) — Coolify strips `.git`; never `COPY .git` in Dockerfile; use `SOURCE_COMMIT` build arg
+- [`humans-at-is-third-level`](product/humans-at-is-third-level.md) — humans@ is Peter, 3rd-level support; copy ladder = help button → coordinator/Discord → humans@ last resort
 - [`humans-terminology`](product/humans-terminology.md) — UI uses "humans"; never "members"/"volunteers"/"users". Stays English in es/de/fr/it.
+- [`member-copy-distractions`](product/member-copy-distractions.md) — member-facing copy: no Google-avatar mentions; no Consent Coordinator narrative in the volunteer journey
+- [`nobodies-email-need-based`](product/nobodies-email-need-based.md) — @nobodies.team accounts granted on need (role/PII), never default; copy must carry the 2FA/primary-account caution
 - [`no-event-name-nowhere`](product/no-event-name-nowhere.md) — never use "Nowhere" in user-facing text (legal); "Elsewhere" is the current event name
+- [`no-ranking-language`](product/no-ranking-language.md) — never "tier status"/"standing"/"level"; tiers are commitments, not ranks. Say "membership tier".
 - [`no-url-aliases`](product/no-url-aliases.md) — single canonical URL per page; only sanctioned alias is Barrios↔Camps
+- [`placement-not-polygon`](product/placement-not-polygon.md) — member-facing copy says a camp's "placement", never "polygon" (jargon). Code entities unaffected.
 - [`profile-visibility-acceptable`](product/profile-visibility-acceptable.md) — basic profile info visible to other authenticated users (incl. suspended/unapproved) is intentional, not a security finding
 - [`vol-being-removed`](product/vol-being-removed.md) — TRANSITIONAL. `/Vol/*` is being removed; don't extend new UX or flag inconsistency with `/Shifts`
 - [`voting-not-prominent`](product/voting-not-prominent.md) — Voting/Review/Applications serve ~8 people; don't headline. Default order = daily-traffic-across-the-whole-audience.

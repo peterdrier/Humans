@@ -368,6 +368,17 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default);
+
+    // === Post-Event Stats ===
+
+    /// <summary>
+    /// Builds post-event statistics: completion and no-show rates for every shift
+    /// in the event, aggregated globally and broken down by department and period.
+    /// Returns null when <paramref name="eventSettingsId"/> resolves to no event.
+    /// </summary>
+    Task<PostEventStats?> GetPostEventStatsAsync(
+        Guid eventSettingsId,
+        CancellationToken ct = default);
 }
 
 /// <summary>

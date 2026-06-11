@@ -1,4 +1,6 @@
+using CsvHelper.Configuration;
 using Humans.Application.Architecture;
+using Humans.Application.Csv;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
@@ -15,7 +17,6 @@ using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Web.Extensions;
 using static Humans.Web.Helpers.EventsLookupHelpers;
 using static Humans.Web.Helpers.EventsTimeHelpers;
 
@@ -878,72 +879,75 @@ public class EventsController(
 
         var categoryNames = string.Join(", ", categories.Select(c => c.Name));
 
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
-        sb.AppendLine("# ELSEWHERE EVENT GUIDE — Bulk Upload Template");
-        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
-        sb.AppendLine("#");
-        sb.AppendLine("# HOW TO USE");
-        sb.AppendLine("#   1. Fill in new rows leaving Id blank — a new event will be created.");
-        sb.AppendLine("#   2. Existing rows already have an Id filled in. You may edit their fields,");
-        sb.AppendLine("#      but DO NOT change or delete the Id — that is how we match the event.");
-        sb.AppendLine("#      Changing an Id will cause the upload to fail.");
-        sb.AppendLine("#   3. To leave an existing event unchanged, keep its row as-is.");
-        sb.AppendLine("#      Events not present in the CSV are left untouched.");
-        sb.AppendLine("#   4. Save as CSV (comma-separated, UTF-8) before uploading.");
-        sb.AppendLine("#      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)");
-        sb.AppendLine("#      In Numbers: File → Export To → CSV");
-        sb.AppendLine("#");
-        sb.AppendLine("# FIELDS");
-        sb.AppendLine("#   Id             Leave empty for new events. Do not edit for existing ones.");
-        sb.AppendLine("#   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.");
-        sb.AppendLine("#   Status         Informational only — shows the current event status. Ignored on upload.");
-        sb.AppendLine("#                  If you upload a row without changing any fields, the status is kept as-is.");
-        sb.AppendLine("#                  If you edit fields on an existing event, it will be re-queued for moderation.");
-        sb.AppendLine("#   Category       Must match exactly one of the valid categories listed below.");
-        sb.AppendLine("#   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)");
-        sb.AppendLine("#   StartTime      Format: HH:mm       (e.g. 09:30)");
-        sb.AppendLine("#   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).");
-        sb.AppendLine("#   IsRecurring    true or false.");
-        sb.AppendLine("#   RecurrenceDays  Only used when IsRecurring is true.");
-        sb.AppendLine("#                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun");
-        sb.AppendLine("#                  Example: Mon Wed Fri means the event repeats on those days.");
-        sb.AppendLine("#");
-        sb.AppendLine($"# VALID CATEGORIES");
-        sb.AppendLine($"#   {categoryNames}");
-        sb.AppendLine("#");
-        sb.AppendLine("# ─────────────────────────────────────────────────────────────────────────────");
-
-        sb.AppendLine("\"Id\",\"Barrio\",\"Status\",\"Title\",\"Description\",\"Category\",\"Date\",\"StartTime\",\"DurationMinutes\",\"LocationNote\",\"Host\",\"IsRecurring\",\"RecurrenceDays\",\"PriorityRank\"");
+        string[] banner =
+        [
+            " ─────────────────────────────────────────────────────────────────────────────",
+            " ELSEWHERE EVENT GUIDE — Bulk Upload Template",
+            " ─────────────────────────────────────────────────────────────────────────────",
+            "",
+            " HOW TO USE",
+            "   1. Fill in new rows leaving Id blank — a new event will be created.",
+            "   2. Existing rows already have an Id filled in. You may edit their fields,",
+            "      but DO NOT change or delete the Id — that is how we match the event.",
+            "      Changing an Id will cause the upload to fail.",
+            "   3. To leave an existing event unchanged, keep its row as-is.",
+            "      Events not present in the CSV are left untouched.",
+            "   4. Save as CSV (UTF-8) before uploading. Columns may be in any order and",
+            "      extra columns are ignored — match the column names, not the layout.",
+            "      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)",
+            "      In Numbers: File → Export To → CSV",
+            "",
+            " FIELDS",
+            "   Id             Leave empty for new events. Do not edit for existing ones.",
+            "   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.",
+            "   Status         Informational only — shows the current event status. Ignored on upload.",
+            "                  If you upload a row without changing any fields, the status is kept as-is.",
+            "                  If you edit fields on an existing event, it will be re-queued for moderation.",
+            "   Category       Must match exactly one of the valid categories listed below.",
+            "   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)",
+            "   StartTime      Format: HH:mm       (e.g. 09:30)",
+            "   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).",
+            "   IsRecurring    true or false.",
+            "   RecurrenceDays  Only used when IsRecurring is true.",
+            "                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun",
+            "                  Example: Mon Wed Fri means the event repeats on those days.",
+            "",
+            " VALID CATEGORIES",
+            $"   {categoryNames}",
+            "",
+            " ─────────────────────────────────────────────────────────────────────────────",
+        ];
 
         var nonWithdrawn = campEvents
             .Where(e => e.Status != EventStatus.Withdrawn)
             .OrderByDescending(e => e.SubmittedAt)
             .ToList();
+
+        var records = new List<BulkEventCsvRecord>();
         foreach (var e in nonWithdrawn)
         {
             var localDt = ToLocalDateTime(e.StartAt, tz);
-            var date = localDt.ToInvariantDate();
-            var time = localDt.ToInvariantTime();
             var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
                 ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
                 : string.Empty;
 
-            sb.AppendCsvRow(
-                e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture),
-                campName,
-                e.Status.ToString(),
-                e.Title,
-                e.Description,
-                e.CategoryName,
-                date,
-                time,
-                e.DurationMinutes,
-                e.LocationNote ?? string.Empty,
-                e.Host ?? string.Empty,
-                e.IsRecurring ? "true" : "false",
-                recDays,
-                e.PriorityRank);
+            records.Add(new BulkEventCsvRecord
+            {
+                Id = e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture),
+                Barrio = campName,
+                Status = e.Status.ToString(),
+                Title = e.Title,
+                Description = e.Description,
+                Category = e.CategoryName,
+                Date = localDt.ToInvariantDate(),
+                StartTime = localDt.ToInvariantTime(),
+                DurationMinutes = e.DurationMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                LocationNote = e.LocationNote ?? string.Empty,
+                Host = e.Host ?? string.Empty,
+                IsRecurring = e.IsRecurring ? "true" : "false",
+                RecurrenceDays = recDays,
+                PriorityRank = e.PriorityRank.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            });
         }
 
         if (nonWithdrawn.Count == 0)
@@ -951,25 +955,35 @@ public class EventsController(
             var exampleDate = gateDate.HasValue
                 ? gateDate.Value.ToInvariantDate()
                 : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
-            var firstCategory = categories.FirstOrDefault()?.Name ?? "Workshop";
-            sb.AppendCsvRow(
-                string.Empty,
-                campName,
-                string.Empty,
-                "Example Event",
-                "Describe your event here.",
-                firstCategory,
-                exampleDate,
-                "12:00",
-                60,
-                string.Empty,
-                string.Empty,
-                "false",
-                string.Empty,
-                1);
+            records.Add(new BulkEventCsvRecord
+            {
+                Barrio = campName,
+                Title = "Example Event",
+                Description = "Describe your event here.",
+                Category = categories.FirstOrDefault()?.Name ?? "Workshop",
+                Date = exampleDate,
+                StartTime = "12:00",
+                DurationMinutes = "60",
+                IsRecurring = "false",
+                PriorityRank = "1",
+            });
         }
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var bytes = HumansCsv.WriteBytes(
+            csv =>
+            {
+                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
+                foreach (var line in banner)
+                {
+                    csv.WriteComment(line);
+                    csv.NextRecord();
+                }
+                csv.WriteRecords(records);
+            },
+            // Round-trip data file, not a spreadsheet report: injection escaping
+            // would prepend apostrophes that come back as data on re-upload,
+            // dirtying rows the user never touched.
+            config => config.InjectionOptions = InjectionOptions.None);
         return File(bytes, "text/csv", $"{slug}-events.csv");
     }
 

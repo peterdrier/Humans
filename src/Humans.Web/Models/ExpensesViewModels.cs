@@ -35,6 +35,9 @@ public sealed class ExpensesIndexViewModel
     public ExpenseIouSummary? Iou { get; init; }
     public IReadOnlyList<ExpenseLedgerRow> Ledger { get; init; } = [];
 
+    /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
+    public bool IsCoordinator { get; init; }
+
     /// <summary>Reports awaiting this member as camp coordinator; surfaces the queue entry point.</summary>
     public int CoordinatorQueueCount { get; init; }
 }

@@ -2002,4 +2002,98 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(sourceUserId);
         viewInvalidator.InvalidateUser(targetUserId);
     }
+
+    public async Task<PostEventStats?> GetPostEventStatsAsync(
+        Guid eventSettingsId,
+        CancellationToken ct = default)
+    {
+        var es = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        if (es is null)
+            return null;
+
+        // Load all shifts so we can compute totals (including shifts with zero signups).
+        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId,
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
+
+        // Load confirmed/no-show counts per shift from DB.
+        var signupCounts = await repo.GetSignupStatusCountsForEventAsync(eventSettingsId, ct);
+        var countsByShiftId = signupCounts.ToDictionary(r => r.ShiftId);
+
+        // Resolve team lookup so we can map shifts to their parent department.
+        var teamIdsOnRotas = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
+
+        Guid DeptIdOf(Shift s)
+        {
+            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return s.Rota.TeamId;
+            return team.ParentTeamId ?? team.Id;
+        }
+
+        string DeptNameOf(Guid deptId) =>
+            teamLookup.TryGetValue(deptId, out var t) ? t.Name : string.Empty;
+
+        string? DeptSlugOf(Guid deptId) =>
+            teamLookup.TryGetValue(deptId, out var t) ? t.Slug : null;
+
+        int totalConfirmed = 0;
+        int totalNoShow = 0;
+        int shiftsWithData = 0;
+
+        // Aggregate per shift into per-department, per-period buckets.
+        var deptBuckets = new Dictionary<Guid, Dictionary<ShiftPeriod, (int Confirmed, int NoShow)>>();
+
+        foreach (var shift in allShifts)
+        {
+            var deptId = DeptIdOf(shift);
+            var period = shift.GetShiftPeriod(es);
+
+            if (!deptBuckets.TryGetValue(deptId, out var periodBucket))
+            {
+                periodBucket = new Dictionary<ShiftPeriod, (int, int)>
+                {
+                    [ShiftPeriod.Build] = (0, 0),
+                    [ShiftPeriod.Event] = (0, 0),
+                    [ShiftPeriod.Strike] = (0, 0),
+                };
+                deptBuckets[deptId] = periodBucket;
+            }
+
+            if (!countsByShiftId.TryGetValue(shift.Id, out var counts))
+                continue;
+
+            totalConfirmed += counts.ConfirmedCount;
+            totalNoShow += counts.NoShowCount;
+            if (counts.ConfirmedCount + counts.NoShowCount > 0)
+                shiftsWithData++;
+
+            var cur = periodBucket[period];
+            periodBucket[period] = (cur.Confirmed + counts.ConfirmedCount, cur.NoShow + counts.NoShowCount);
+        }
+
+        PostEventPeriodRow ToPeriodRow(Dictionary<ShiftPeriod, (int Confirmed, int NoShow)> bucket, ShiftPeriod p)
+        {
+            var v = bucket[p];
+            return new PostEventPeriodRow(v.Confirmed, v.NoShow);
+        }
+
+        var departments = deptBuckets
+            .Select(kvp => new PostEventDepartmentRow(
+                DepartmentId: kvp.Key,
+                DepartmentName: DeptNameOf(kvp.Key),
+                DepartmentSlug: DeptSlugOf(kvp.Key),
+                TotalConfirmed: kvp.Value.Values.Sum(v => v.Confirmed),
+                TotalNoShow: kvp.Value.Values.Sum(v => v.NoShow),
+                Build: ToPeriodRow(kvp.Value, ShiftPeriod.Build),
+                Event: ToPeriodRow(kvp.Value, ShiftPeriod.Event),
+                Strike: ToPeriodRow(kvp.Value, ShiftPeriod.Strike)))
+            .ToList();
+
+        return new PostEventStats(
+            TotalShifts: allShifts.Count,
+            ShiftsWithData: shiftsWithData,
+            TotalConfirmed: totalConfirmed,
+            TotalNoShow: totalNoShow,
+            Departments: departments);
+    }
 }

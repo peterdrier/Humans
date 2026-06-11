@@ -252,6 +252,8 @@ If this is the first section being split (artifacts didn't exist in Phase 0.3), 
 
 2. If memory atom is missing, recreate from PR 678's content. If section-template addendum is missing, recreate from PR 678's content. **Both should already exist** — this is a defensive fallback only.
 
+3. `docs/architecture/maintenance-log.md` — update this section's **Section Refactor History** row: Last Lane (date + PR) and Post-Lane Score (the section's built `reforge surface-score` after the final commit).
+
 Commit: `docs(<section>): note read/write split + reference impl`
 
 ### Phase E — Open the PR

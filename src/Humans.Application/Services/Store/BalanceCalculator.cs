@@ -73,7 +73,12 @@ public static class BalanceCalculator
             lineTotals.Add(new LineTotals(line.Id, unitPrice, vatRate, depositPerUnit, lineSubtotal, lineVat, lineDeposit, lineTotal));
         }
 
-        var payments = order.Payments.Sum(p => p.AmountEur);
+        // Only settled money counts. Pending (mandate captured, not yet cleared) and Failed
+        // (mandate rejected / settlement bounced) are excluded so the balance reflects what Stripe
+        // has actually confirmed, never what the donor intended. See nobodies-collective/Humans#638.
+        var payments = order.Payments
+            .Where(p => p.Status == StorePaymentStatus.Paid)
+            .Sum(p => p.AmountEur);
         var balance = subtotal + vat + deposits - payments;
 
         return new Result(subtotal, vat, deposits, payments, balance, lineTotals);

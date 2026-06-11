@@ -614,7 +614,7 @@ Opus.
 - **Feature specs** (`docs/features/*.md`) — match implementation; rename if section name changed.
 - **`data-model.md`** — update owned-entity index.
 - **`todos.md`** — per `feedback_todos_update_after_commits`.
-- **`maintenance-log.md`** — if a recurring task ran.
+- **`maintenance-log.md`** — if a recurring task ran. Always update this section's **Section Refactor History** row: Last Lane (date + PR) and Post-Lane Score (the section's built `reforge surface-score` after the final commit).
 - **About page** — if dependencies changed.
 - **`/freshness-sweep`** — if catalog covers touched docs.
 

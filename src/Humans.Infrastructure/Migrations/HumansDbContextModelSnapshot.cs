@@ -3965,6 +3965,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid?>("RecordedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Paid");
+
                     b.Property<string>("StripePaymentIntentId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
