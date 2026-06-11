@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260611195627_AddEventFavouriteDayOffset")]
+    [Migration("20260611203803_AddEventFavouriteDayOffset")]
     partial class AddEventFavouriteDayOffset
     {
         /// <inheritdoc />
@@ -2077,6 +2077,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "GuideEventId", "DayOffset")
                         .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("UserId", "GuideEventId", "DayOffset"), false);
 
                     b.ToTable("event_favourites", (string)null);
                 });

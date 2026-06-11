@@ -2075,6 +2075,8 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("UserId", "GuideEventId", "DayOffset")
                         .IsUnique();
 
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("UserId", "GuideEventId", "DayOffset"), false);
+
                     b.ToTable("event_favourites", (string)null);
                 });
 

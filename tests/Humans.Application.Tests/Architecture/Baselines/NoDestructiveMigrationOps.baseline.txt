@@ -32,4 +32,4 @@ src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(
 # DayOffset requires dropping the old (UserId, GuideEventId) unique index in the same
 # migration — the old index forbids the per-occurrence rows the feature writes. Index-only,
 # no data touched. See memory/architecture/no-drops-until-prod-verified.md.
-src/Humans.Infrastructure/Migrations/20260611195627_AddEventFavouriteDayOffset.cs:DropIndex(name=IX_event_favourites_UserId_GuideEventId)#1
+src/Humans.Infrastructure/Migrations/20260611203803_AddEventFavouriteDayOffset.cs:DropIndex(name=IX_event_favourites_UserId_GuideEventId)#1

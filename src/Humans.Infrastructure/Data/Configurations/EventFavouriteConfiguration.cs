@@ -11,7 +11,9 @@ public class EventFavouriteConfiguration : IEntityTypeConfiguration<EventFavouri
         builder.ToTable("event_favourites");
         builder.HasKey(f => f.Id);
 
-        builder.HasIndex(f => new { f.UserId, f.GuideEventId, f.DayOffset }).IsUnique();
+        // NULLS NOT DISTINCT (PG15+) so a user can't hold two whole-event
+        // (null-day) favourites for the same event via a double-submit race.
+        builder.HasIndex(f => new { f.UserId, f.GuideEventId, f.DayOffset }).IsUnique().AreNullsDistinct(false);
 
         builder.HasOne(f => f.Event)
             .WithMany(e => e.EventFavourites)

@@ -24,7 +24,8 @@ namespace Humans.Infrastructure.Migrations
                 name: "IX_event_favourites_UserId_GuideEventId_DayOffset",
                 table: "event_favourites",
                 columns: new[] { "UserId", "GuideEventId", "DayOffset" },
-                unique: true);
+                unique: true)
+                .Annotation("Npgsql:NullsDistinct", false);
         }
 
         /// <inheritdoc />
