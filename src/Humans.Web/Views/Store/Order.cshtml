@@ -278,6 +278,10 @@ else
     {
         <p class="text-muted">No outstanding balance.</p>
     }
+    else if (pendingTotal > 0)
+    {
+        <p class="text-muted">Payment is disabled while a payment is pending settlement.</p>
+    }
     else
     {
         <p class="text-muted">Payments are recorded by the finance team.</p>

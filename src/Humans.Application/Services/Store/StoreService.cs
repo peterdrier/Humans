@@ -137,12 +137,17 @@ public class StoreService(
 
         var priceChanges = await LoadOrderPriceChangesAsync(order, ct);
 
+        // A pending async payment (e.g. SEPA mandate captured, not yet cleared) is excluded from
+        // BalanceEur, so without this guard the full balance would stay payable a second time
+        // while the mandate settles — a double-charge window.
+        var hasPendingPayment = order.Payments.Any(p => p.Status == StorePaymentStatus.Pending);
+
         return new StoreOrderPageData(
             order,
             catalog,
             order.CounterpartyDisplayName,
             canEdit,
-            canPayAuthorized && order.BalanceEur > 0 && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
+            canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == StoreOrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured,
             priceChanges);
     }
@@ -622,6 +627,9 @@ public class StoreService(
         if (amountEur > order.BalanceEur)
             throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
 
+        if (order.Payments.Any(p => p.Status == StorePaymentStatus.Pending))
+            throw new InvalidOperationException("A payment on this order is pending settlement. Wait for it to clear or fail before paying again.");
+
         var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}"
             + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
 
@@ -683,7 +691,7 @@ public class StoreService(
         var stripeQueried = sessionsOrNull is not null;
         var sessions = sessionsOrNull ?? [];
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
 
         // Resolve each distinct matched order once (Stripe-side and recorded-side) for its
         // display label and billable check.
@@ -704,7 +712,7 @@ public class StoreService(
             rows.Add(new StripeReconciliationRow(
                 s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
                 s.OrderId, order?.CounterpartyDisplayName,
-                ClassifyStripeSession(s, order, recordedPis)));
+                ClassifyStripeSession(s, order, recordedByPi)));
         }
 
         // Orphans: recorded Stripe payments whose PI is absent from the Stripe list — but only
@@ -731,12 +739,16 @@ public class StoreService(
     }
 
     private static StripeReconciliationStatus ClassifyStripeSession(
-        StoreCheckoutSessionData s, OrderDto? order, IReadOnlySet<string> recordedPis)
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, StorePaymentStatus> recordedByPi)
     {
         if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
             return StripeReconciliationStatus.Unpaid;
-        if (s.PaymentIntentId is { } pi && recordedPis.Contains(pi))
-            return StripeReconciliationStatus.Recorded;
+        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
+            // Stripe says paid but the local row hasn't settled — the amount is not in the
+            // balance yet, so it must not present as plain "Recorded".
+            return paymentStatus == StorePaymentStatus.Pending
+                ? StripeReconciliationStatus.RecordedPending
+                : StripeReconciliationStatus.Recorded;
         if (order is null || s.PaymentIntentId is null || order.CounterpartyType == StoreOrderCounterpartyType.Team)
             return StripeReconciliationStatus.Unmatched;
         return StripeReconciliationStatus.Missing;

@@ -12,6 +12,7 @@
     private static (string Css, string Label) StatusBadge(StripeReconciliationStatus status) => status switch
     {
         StripeReconciliationStatus.Recorded => ("bg-success", "Recorded"),
+        StripeReconciliationStatus.RecordedPending => ("bg-warning text-dark", "Recorded (pending settlement)"),
         StripeReconciliationStatus.Missing => ("bg-danger", "Missing"),
         StripeReconciliationStatus.Unmatched => ("bg-warning text-dark", "Unmatched"),
         _ => ("bg-secondary", "Unpaid"),
@@ -58,6 +59,10 @@ else if (!report.StripeQueried)
     <div class="card-body d-flex flex-wrap align-items-center gap-3">
         <div>
             <span class="badge bg-success">@report.RecordedCount recorded</span>
+            @if (report.RecordedPendingCount > 0)
+            {
+                <span class="badge bg-warning text-dark">@report.RecordedPendingCount pending settlement</span>
+            }
             <span class="badge bg-danger">@report.MissingCount missing</span>
             <span class="badge bg-warning text-dark">@report.UnmatchedCount unmatched</span>
         </div>

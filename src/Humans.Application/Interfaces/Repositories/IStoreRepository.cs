@@ -26,7 +26,8 @@ public record StoreRecordedStripePayment(
     string PaymentIntentId,
     Guid OrderId,
     decimal AmountEur,
-    Instant ReceivedAt);
+    Instant ReceivedAt,
+    StorePaymentStatus Status);
 
 /// <summary>
 /// Repository for the Store section's tables: <c>store_products</c>,

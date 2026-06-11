@@ -263,15 +263,19 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
+// "external" marks third-party reachability checks. They surface on /health for diagnostics
+// but are excluded from /health/ready — a vendor outage must never fail the readiness probe
+// and block or roll back a deploy.
+string[] external = ["external"];
 var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
     .AddCheck<ConfigurationHealthCheck>("configuration")
-    .AddCheck<SmtpHealthCheck>("smtp")
-    .AddCheck<GitHubHealthCheck>("github")
-    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
-    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable")
+    .AddCheck<SmtpHealthCheck>("smtp", tags: external)
+    .AddCheck<GitHubHealthCheck>("github", tags: external)
+    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: external)
+    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: external)
     .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
-    .AddCheck<TicketVendorHealthCheck>("ticket-vendor");
+    .AddCheck<TicketVendorHealthCheck>("ticket-vendor", tags: external);
 
 // Hangfire health check reads JobStorage.Current; only register it when
 // the rest of the Hangfire stack is wired (i.e. outside Testing).
@@ -619,7 +623,9 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
-    Predicate = _ => true // Readiness check - confirms all dependencies are available
+    // Readiness check - confirms our own stack (DB, config, Hangfire) is available.
+    // Third-party reachability ("external") is diagnostic-only on /health.
+    Predicate = r => !r.Tags.Contains("external")
 });
 
 app.MapPrometheusScrapingEndpoint("/metrics");

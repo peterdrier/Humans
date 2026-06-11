@@ -256,7 +256,7 @@ internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory
         return await ctx.StorePayments.AsNoTracking()
             .Where(p => p.StripePaymentIntentId != null)
             .Select(p => new StoreRecordedStripePayment(
-                p.StripePaymentIntentId!, p.OrderId, p.AmountEur, p.ReceivedAt))
+                p.StripePaymentIntentId!, p.OrderId, p.AmountEur, p.ReceivedAt, p.Status))
             .ToListAsync(ct);
     }
 

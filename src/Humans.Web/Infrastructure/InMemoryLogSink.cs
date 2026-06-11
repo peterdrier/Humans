@@ -17,6 +17,12 @@ public sealed class InMemoryLogSink(int warningCapacity = 1000, int errorCapacit
     private readonly ConcurrentQueue<LogEvent> _errors = new();
     private readonly ConcurrentDictionary<LogEventLevel, long> _lifetimeCounts = new();
 
+    // Writer-side locks: ConcurrentQueue.Count is a snapshot, so unlocked enqueue-then-trim
+    // lets two concurrent writers both see "over capacity" and over-evict. Readers enumerate
+    // the queues lock-free; that stays safe.
+    private readonly Lock _warningsLock = new();
+    private readonly Lock _errorsLock = new();
+
     /// <summary>UTC timestamp captured when the sink (and process) started.</summary>
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
 
@@ -25,19 +31,31 @@ public sealed class InMemoryLogSink(int warningCapacity = 1000, int errorCapacit
 
     public void Emit(LogEvent logEvent)
     {
+        // The pipeline filters at Warning today; this floor keeps a future lowered minimum
+        // (e.g. Information during a diagnostic session) from flooding the warning buffer
+        // and evicting the events this sink exists to retain.
+        if (logEvent.Level < LogEventLevel.Warning)
+            return;
+
         _lifetimeCounts.AddOrUpdate(logEvent.Level, 1, (_, count) => count + 1);
 
         if (logEvent.Level >= LogEventLevel.Error)
         {
-            _errors.Enqueue(logEvent);
-            while (_errors.Count > errorCapacity)
-                _errors.TryDequeue(out _);
+            lock (_errorsLock)
+            {
+                _errors.Enqueue(logEvent);
+                while (_errors.Count > errorCapacity)
+                    _errors.TryDequeue(out _);
+            }
         }
         else
         {
-            _warnings.Enqueue(logEvent);
-            while (_warnings.Count > warningCapacity)
-                _warnings.TryDequeue(out _);
+            lock (_warningsLock)
+            {
+                _warnings.Enqueue(logEvent);
+                while (_warnings.Count > warningCapacity)
+                    _warnings.TryDequeue(out _);
+            }
         }
     }
 

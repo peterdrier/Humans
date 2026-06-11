@@ -81,7 +81,7 @@ public class StoreServiceStripeReconciliationTests
         });
         _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
         {
-            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0)),
+            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), StorePaymentStatus.Paid),
         });
         _repo.GetOrderWithLinesAndPaymentsAsync(recordedOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(recordedOrder));
         _repo.GetOrderWithLinesAndPaymentsAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
@@ -99,13 +99,38 @@ public class StoreServiceStripeReconciliationTests
     }
 
     [HumansFact]
+    public async Task GetStripeReconciliationAsync_classifies_pending_local_row_as_recorded_pending()
+    {
+        var order = Guid.NewGuid();
+        // Stripe shows the session as paid, but the local row is still Pending (the
+        // async_payment_succeeded webhook hasn't landed) — must not present as plain Recorded.
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_pending", order, "pi_pending", 100m, "paid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
+        {
+            new("pi_pending", order, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), StorePaymentStatus.Pending),
+        });
+        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Rows.Should().ContainSingle()
+            .Which.Status.Should().Be(StripeReconciliationStatus.RecordedPending);
+        report.RecordedCount.Should().Be(0);
+        report.RecordedPendingCount.Should().Be(1);
+        report.MissingCount.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task GetStripeReconciliationAsync_flags_orphan_recorded_payment_absent_from_stripe()
     {
         var order = Guid.NewGuid();
         _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>());
         _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
         {
-            new("pi_orphan", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0)),
+            new("pi_orphan", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0), StorePaymentStatus.Paid),
         });
         _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
 
@@ -140,7 +165,7 @@ public class StoreServiceStripeReconciliationTests
             .Returns((IReadOnlyList<StoreCheckoutSessionData>?)null);
         _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
         {
-            new("pi_x", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0)),
+            new("pi_x", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0), StorePaymentStatus.Paid),
         });
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
@@ -167,7 +192,7 @@ public class StoreServiceStripeReconciliationTests
         });
         _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreRecordedStripePayment>
         {
-            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0)),
+            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), StorePaymentStatus.Paid),
         });
         _repo.GetOrderByIdAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
         _repo.GetOrderByIdAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));

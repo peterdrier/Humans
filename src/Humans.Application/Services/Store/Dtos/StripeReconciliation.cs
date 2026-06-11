@@ -10,6 +10,12 @@ public enum StripeReconciliationStatus
 {
     /// <summary>Paid session whose PaymentIntent is already a recorded payment.</summary>
     Recorded,
+    /// <summary>
+    /// Paid session whose PaymentIntent is recorded but still <c>Pending</c> locally — Stripe has
+    /// confirmed the money, the settlement webhook hasn't landed yet. The amount is NOT counted
+    /// toward the order balance, so don't read this as "accounted for".
+    /// </summary>
+    RecordedPending,
     /// <summary>Paid session, order resolved and billable, but not yet recorded — recordable.</summary>
     Missing,
     /// <summary>Paid session with no resolvable billable order (missing metadata, deleted order, or Team order).</summary>
@@ -57,6 +63,7 @@ public sealed record StripeReconciliationReport(
     IReadOnlyList<StripeOrphanPayment> Orphans)
 {
     public int RecordedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Recorded);
+    public int RecordedPendingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.RecordedPending);
     public int MissingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Missing);
     public int UnmatchedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Unmatched);
 
