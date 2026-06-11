@@ -86,14 +86,12 @@ public sealed class GateTerminalAccountSeeder(
     private async Task<User?> ProvisionAsync(Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
-#pragma warning disable HUM_USER_DISPLAYNAME // System-account seeding writes the legacy Identity fallback column (same as DevPersonaSeeder).
         var user = new User
         {
             Id = SystemUserIds.GateTerminal,
             DisplayName = SystemUserIds.GateTerminalDisplayName,
             CreatedAt = now
         };
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         var created = await userManager.CreateAsync(user);
         if (!created.Succeeded)
