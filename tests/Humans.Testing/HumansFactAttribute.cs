@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Humans.Testing;
 
-public sealed class HumansFactAttribute : FactAttribute
+public class HumansFactAttribute : FactAttribute
 {
     public HumansFactAttribute(
         [CallerFilePath] string? sourceFilePath = null,
