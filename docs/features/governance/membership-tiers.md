@@ -78,11 +78,11 @@ Volunteer is the default tier for everyone. No badge is displayed for Volunteers
 - User retains current tier/access while application is pending
 - On approval, tier is upgraded; on rejection, stays at current tier
 
-### US-15.3: View Tier Status
+### US-15.3: View My Tier and Application
 
 **As a** human
 **I want to** see my current tier and any pending application
-**So that** I understand my standing
+**So that** I know where my application stands
 
 **Acceptance Criteria:**
 - Dashboard shows Colaborador/Asociado badge if applicable (no badge for Volunteer)

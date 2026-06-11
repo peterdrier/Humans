@@ -144,7 +144,9 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`coolify-build-constraint`](product/coolify-build-constraint.md) — Coolify strips `.git`; never `COPY .git` in Dockerfile; use `SOURCE_COMMIT` build arg
 - [`humans-terminology`](product/humans-terminology.md) — UI uses "humans"; never "members"/"volunteers"/"users". Stays English in es/de/fr/it.
 - [`no-event-name-nowhere`](product/no-event-name-nowhere.md) — never use "Nowhere" in user-facing text (legal); "Elsewhere" is the current event name
+- [`no-ranking-language`](product/no-ranking-language.md) — never "tier status"/"standing"/"level"; tiers are commitments, not ranks. Say "membership tier".
 - [`no-url-aliases`](product/no-url-aliases.md) — single canonical URL per page; only sanctioned alias is Barrios↔Camps
+- [`placement-not-polygon`](product/placement-not-polygon.md) — member-facing copy says a camp's "placement", never "polygon" (jargon). Code entities unaffected.
 - [`profile-visibility-acceptable`](product/profile-visibility-acceptable.md) — basic profile info visible to other authenticated users (incl. suspended/unapproved) is intentional, not a security finding
 - [`vol-being-removed`](product/vol-being-removed.md) — TRANSITIONAL. `/Vol/*` is being removed; don't extend new UX or flag inconsistency with `/Shifts`
 - [`voting-not-prominent`](product/voting-not-prominent.md) — Voting/Review/Applications serve ~8 people; don't headline. Default order = daily-traffic-across-the-whole-audience.

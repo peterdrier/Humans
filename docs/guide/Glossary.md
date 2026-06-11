@@ -140,7 +140,7 @@ service to `None` is the fast kill switch. See
 
 A team the app manages automatically — Volunteers, Coordinators, Board,
 Asociados, Colaboradores, Barrio Leads. You can't join or leave a system team
-by hand; membership follows role assignments, tier status, and (for Barrio
+by hand; membership follows role assignments, membership tier, and (for Barrio
 Leads) active camp leadership. See [Teams](Teams.md).
 
 ## Team
