@@ -450,7 +450,6 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
-            .Include(a => a.TicketOrder)
             .Where(a => a.MatchedUserId == userId)
             .ToListAsync(ct);
     }
