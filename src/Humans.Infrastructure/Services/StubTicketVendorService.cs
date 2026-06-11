@@ -105,7 +105,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
         var orders = new List<VendorOrderDto>();
         var tickets = new List<VendorTicketDto>();
 
-        // Build the ticket pool with the defined mix
         var ticketPool = new List<(string Type, decimal Price)>();
         foreach (var (name, price, count) in TicketMix)
         {
@@ -113,14 +112,12 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 ticketPool.Add((name, price));
         }
 
-        // Deterministic shuffle
         ticketPool = ticketPool
             .Select((t, i) => (t, Sort: DeterministicHash($"shuffle:{i}")))
             .OrderBy(x => x.Sort)
             .Select(x => x.t)
             .ToList();
 
-        // Build orders: 1 fixed peter-order (2 tickets) + 149 two-ticket + 300 single-ticket = 600 total
         var orderSizes = Enumerable.Repeat(2, 149)
             .Concat(Enumerable.Repeat(1, 300))
             .Select((size, i) => (Size: size, Sort: DeterministicHash($"order-size:{i}")))
@@ -144,10 +141,13 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 : BuildPerson(orderIndex);
             var purchasedAt = BuildPurchaseInstant(saleStart, orderIndex, orderSizes.Count);
 
-            // Some orders get donations
-            var donation = GetDonation(orderIndex, orderTickets);
+            var hasVip = orderTickets.Any(t => string.Equals(t.Type, "VIP", StringComparison.Ordinal));
+            var donation = hasVip && orderIndex % 2 == 0
+                ? 100m
+                : orderIndex % 4 == 0
+                    ? 25m
+                    : 0m;
 
-            // Some orders get discount codes
             string? discountCode = null;
             decimal? discountAmount = null;
             if (orderIndex % 11 == 0)
@@ -219,7 +219,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
         Debug.Assert(ticketCursor == ticketPool.Count,
             $"Ticket pool size mismatch: cursor {ticketCursor} != pool size {ticketPool.Count}");
 
-        // Add a few non-paid orders
         var nonPaidStatuses = new[] { "pending", "pending", "refunded", "cancelled" };
         for (var i = 0; i < nonPaidStatuses.Length; i++)
         {
@@ -255,14 +254,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
         }
 
         return new SampleData(orders, tickets);
-    }
-
-    private static decimal GetDonation(int orderIndex, List<(string Type, decimal Price)> orderTickets)
-    {
-        var hasVip = orderTickets.Any(t => string.Equals(t.Type, "VIP", StringComparison.Ordinal));
-        if (hasVip && orderIndex % 2 == 0) return 100m;
-        if (orderIndex % 4 == 0) return 25m;
-        return 0m;
     }
 
     private static Instant BuildPurchaseInstant(LocalDate saleStart, int orderIndex, int totalOrders)

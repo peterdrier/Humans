@@ -16,7 +16,6 @@ public sealed class TicketTransferController(
     IUserServiceRead userService,
     ILogger<TicketTransferController> logger) : HumansControllerBase(userService)
 {
-    // Step A + B of the wizard: pick a ticket, pick a recipient.
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -34,7 +33,6 @@ public sealed class TicketTransferController(
         });
     }
 
-    // Step C: resolve the chosen (ticket, recipient) pair server-side and show the confirmation.
     [HttpPost("Confirm")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(Guid attendeeId, Guid receiverUserId, CancellationToken ct)
@@ -58,7 +56,6 @@ public sealed class TicketTransferController(
         });
     }
 
-    // Final submit.
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid attendeeId, Guid receiverUserId, string? reason, CancellationToken ct)

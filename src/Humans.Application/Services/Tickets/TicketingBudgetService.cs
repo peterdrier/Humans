@@ -38,7 +38,7 @@ public sealed class TicketingBudgetService(
                     return new TicketingWeeklyActuals(
                         Monday: monday,
                         Sunday: sunday,
-                        WeekLabel: FormatWeekLabel(monday, sunday),
+                        WeekLabel: $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}",
                         TicketCount: g.Sum(o => o.Attendees.Count(a =>
                             a.Status == TicketAttendeeStatus.Valid ||
                             a.Status == TicketAttendeeStatus.CheckedIn)),
@@ -103,8 +103,4 @@ public sealed class TicketingBudgetService(
         return date.PlusDays(-(dayOfWeek - 1));
     }
 
-    private static string FormatWeekLabel(LocalDate monday, LocalDate sunday)
-    {
-        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
-    }
 }
