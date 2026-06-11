@@ -96,12 +96,10 @@ public sealed class MembershipCalculator(
             missingVersionIds);
     }
 
-    public async Task<bool> HasAllRequiredConsentsAsync(
+    public Task<bool> HasAllRequiredConsentsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        return await HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
     public async Task<bool> HasAllRequiredConsentsForTeamAsync(
         Guid userId,
@@ -118,12 +116,10 @@ public sealed class MembershipCalculator(
         return requiredVersions.All(v => consentedVersionIds.Contains(v.Id));
     }
 
-    public async Task<bool> HasAnyExpiredConsentsAsync(
+    public Task<bool> HasAnyExpiredConsentsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        return await HasAnyExpiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        HasAnyExpiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
     public async Task<bool> HasAnyExpiredConsentsForTeamAsync(
         Guid userId,
@@ -134,13 +130,9 @@ public sealed class MembershipCalculator(
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
 
-        return requiredVersions
-            .Where(v => !consentedVersionIds.Contains(v.Id))
-            .Any(v =>
-            {
-                var gracePeriod = Duration.FromDays(v.LegalDocumentGracePeriodDays);
-                return v.EffectiveFrom + gracePeriod <= now;
-            });
+        return requiredVersions.Any(v =>
+            !consentedVersionIds.Contains(v.Id) &&
+            v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= now);
     }
 
     public async Task<IReadOnlyList<Guid>> GetMissingConsentVersionsAsync(
@@ -148,21 +140,18 @@ public sealed class MembershipCalculator(
         CancellationToken cancellationToken = default)
     {
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
-        var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
-
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
 
-        return requiredVersionIds
+        return requiredVersions
+            .Select(v => v.Id)
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
     }
 
-    public async Task<bool> HasActiveRolesAsync(
+    public Task<bool> HasActiveRolesAsync(
         Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        return await membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default)
@@ -174,12 +163,10 @@ public sealed class MembershipCalculator(
         return usersWithAnyExpiredConsents.ToList();
     }
 
-    public async Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsAsync(
+    public Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsAsync(
         IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default)
-    {
-        return await GetUsersWithAllRequiredConsentsForTeamAsync(userIds, SystemTeamIds.Volunteers, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        GetUsersWithAllRequiredConsentsForTeamAsync(userIds, SystemTeamIds.Volunteers, cancellationToken);
 
     public async Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
         IEnumerable<Guid> userIds,
@@ -193,16 +180,14 @@ public sealed class MembershipCalculator(
         }
 
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
-        var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
-
-        if (requiredVersionIds.Count == 0)
+        if (requiredVersions.Count == 0)
         {
             return userIdList.ToHashSet();
         }
 
         var consentsByUser = await ConsentService.GetConsentMapForUsersAsync(userIdList, ct);
 
-        var requiredSet = requiredVersionIds.ToHashSet();
+        var requiredSet = requiredVersions.Select(v => v.Id).ToHashSet();
         var result = new HashSet<Guid>();
 
         foreach (var userId in userIdList)
@@ -230,34 +215,24 @@ public sealed class MembershipCalculator(
         var now = clock.GetCurrentInstant();
 
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
-        var expiredVersions = requiredVersions
+        var expiredVersionIds = requiredVersions
             .Where(v =>
-            {
-                var gracePeriod = Duration.FromDays(v.LegalDocumentGracePeriodDays);
-                return v.EffectiveFrom + gracePeriod <= now;
-            })
-            .ToList();
+                v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= now)
+            .Select(v => v.Id)
+            .ToHashSet();
 
-        if (expiredVersions.Count == 0)
+        if (expiredVersionIds.Count == 0)
         {
             return new HashSet<Guid>();
         }
-
-        var expiredVersionIds = expiredVersions.Select(v => v.Id).ToHashSet();
 
         var consentsByUser = await ConsentService.GetConsentMapForUsersAsync(userIdList, cancellationToken);
 
         var result = new HashSet<Guid>();
         foreach (var userId in userIdList)
         {
-            if (consentsByUser.TryGetValue(userId, out var consented))
-            {
-                if (expiredVersionIds.Any(id => !consented.Contains(id)))
-                {
-                    result.Add(userId);
-                }
-            }
-            else
+            if (!consentsByUser.TryGetValue(userId, out var consented) ||
+                expiredVersionIds.Any(id => !consented.Contains(id)))
             {
                 result.Add(userId);
             }
