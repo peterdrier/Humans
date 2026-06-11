@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
+using Humans.Application.Threading;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -22,7 +23,7 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
     private const string HumansGroupPrefix = "Humans - ";
 
     private static readonly JsonSerializerOptions Json = BuildJson();
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly TrackedLock _gate = new("MailerLiteClient.Gate");
 
     private IReadOnlyList<MailerLiteSubscriber>? _subscribers;
     private MailerLiteAccountSummary? _summary;
@@ -63,15 +64,8 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
 
     public async Task RefreshAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
-        try
-        {
-            await PopulateLockedAsync(ct);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        using var _ = await _gate.AcquireAsync(logger, ct);
+        await PopulateLockedAsync(ct);
     }
 
     public async Task<MailerLiteGroup> CreateGroupAsync(string name, CancellationToken ct = default)
@@ -165,30 +159,19 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
     // Merge under the gate — nullifying would cascade into a full subscriber re-fetch.
     private async Task AppendToGroupsCacheAsync(MailerLiteGroup newGroup, CancellationToken ct)
     {
-        await _gate.WaitAsync(ct);
-        try
-        {
-            if (_groups is not null)
-                _groups = _groups.Append(newGroup).ToList();
-        }
-        finally { _gate.Release(); }
+        using var _ = await _gate.AcquireAsync(logger, ct);
+        if (_groups is not null)
+            _groups = _groups.Append(newGroup).ToList();
     }
 
     private async Task EnsurePopulatedAsync(CancellationToken ct)
     {
         if (_subscribers is not null && _summary is not null && _groups is not null)
             return;
-        await _gate.WaitAsync(ct);
-        try
-        {
-            if (_subscribers is not null && _summary is not null && _groups is not null)
-                return;
-            await PopulateLockedAsync(ct);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        using var _ = await _gate.AcquireAsync(logger, ct);
+        if (_subscribers is not null && _summary is not null && _groups is not null)
+            return;
+        await PopulateLockedAsync(ct);
     }
 
     // Throw leaves the prior cache intact; callers retry.

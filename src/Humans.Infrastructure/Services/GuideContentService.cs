@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
+using Humans.Application.Threading;
 using Humans.Infrastructure.Configuration;
 
 namespace Humans.Infrastructure.Services;
@@ -16,7 +17,7 @@ public sealed class GuideContentService(
 {
     private const string CacheKeyPrefix = "guide:";
 
-    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly TrackedLock _refreshLock = new("GuideContentService.Refresh");
 
     public async Task<string> GetRenderedAsync(string fileStem, CancellationToken cancellationToken = default)
     {
@@ -46,58 +47,52 @@ public sealed class GuideContentService(
 
     private async Task PopulateAsync(bool isRefresh, CancellationToken cancellationToken)
     {
-        await _refreshLock.WaitAsync(cancellationToken);
-        try
+        using var gate = await _refreshLock.AcquireAsync(logger, cancellationToken);
+
+        var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out string? _));
+
+        var settings1 = settings.Value;
+        var ttl = TimeSpan.FromHours(Math.Max(1, settings1.CacheTtlHours));
+        var anyFailures = false;
+        var newEntries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var stem in GuideFiles.All)
         {
-            var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out string? _));
-
-            var settings1 = settings.Value;
-            var ttl = TimeSpan.FromHours(Math.Max(1, settings1.CacheTtlHours));
-            var anyFailures = false;
-            var newEntries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var stem in GuideFiles.All)
+            try
             {
-                try
-                {
-                    var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
-                    var html = renderer.Render(markdown, stem);
-                    newEntries[stem] = html;
-                }
-                catch (Exception ex)
-                {
-                    anyFailures = true;
-                    logger.LogWarning(ex,
-                        "Failed to fetch or render guide file {FileStem}; {Outcome}",
-                        stem,
-                        hasStale ? "keeping stale cached copy" : "no stale copy available");
-                }
+                var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
+                var html = renderer.Render(markdown, stem);
+                newEntries[stem] = html;
             }
-
-            if (!hasStale && newEntries.Count == 0)
+            catch (Exception ex)
             {
-                throw new GuideContentUnavailableException(
-                    "Guide content is unavailable and the cache is cold.");
-            }
-
-            foreach (var (stem, html) in newEntries)
-            {
-                cache.Set(CacheKey(stem), html, new MemoryCacheEntryOptions
-                {
-                    SlidingExpiration = ttl
-                });
-            }
-
-            if (anyFailures)
-            {
-                logger.LogWarning(
-                    "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
-                    isRefresh);
+                anyFailures = true;
+                logger.LogWarning(ex,
+                    "Failed to fetch or render guide file {FileStem}; {Outcome}",
+                    stem,
+                    hasStale ? "keeping stale cached copy" : "no stale copy available");
             }
         }
-        finally
+
+        if (!hasStale && newEntries.Count == 0)
         {
-            _refreshLock.Release();
+            throw new GuideContentUnavailableException(
+                "Guide content is unavailable and the cache is cold.");
+        }
+
+        foreach (var (stem, html) in newEntries)
+        {
+            cache.Set(CacheKey(stem), html, new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = ttl
+            });
+        }
+
+        if (anyFailures)
+        {
+            logger.LogWarning(
+                "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
+                isRefresh);
         }
     }
 
