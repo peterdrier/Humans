@@ -58,6 +58,7 @@ public class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogger<SmtpEm
             }
             message.Body = bodyBuilder.ToMessageBody();
 
+            // Set Message-Id domain to match From address (avoids Docker container hostname)
             var atIndex = _settings.FromAddress.IndexOf('@', StringComparison.Ordinal);
             var fromDomain = atIndex >= 0
                 ? _settings.FromAddress[(atIndex + 1)..]
