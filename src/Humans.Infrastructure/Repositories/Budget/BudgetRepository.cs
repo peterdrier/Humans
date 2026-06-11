@@ -20,8 +20,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
     private const string TicketingGroupName = "Ticketing";
     private const string TicketingProjectedPrefix = "Projected: ";
 
-    // Budget Years — reads
-
     public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(
         bool includeArchived, CancellationToken ct = default)
     {
@@ -88,8 +86,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .FirstOrDefaultAsync(y => y.Id == activeId.Value, ct);
     }
 
-    // Budget Years — atomic mutations
-
     public async Task CreateYearWithScaffoldAsync(
         BudgetYearDraft draft, CancellationToken ct = default)
     {
@@ -107,7 +103,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
 
         ctx.BudgetYears.Add(budgetYear);
 
-        // Auto-create "Departments" group.
         var departmentGroup = new BudgetGroup
         {
             Id = Guid.NewGuid(),
@@ -121,7 +116,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         };
         ctx.BudgetGroups.Add(departmentGroup);
 
-        // Auto-create categories for teams with HasBudget.
         var deptSortOrder = 0;
         foreach (var team in draft.BudgetableTeams)
         {
@@ -139,7 +133,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             });
         }
 
-        // Auto-create "Ticketing" group + projection + default categories.
         var ticketingGroup = new BudgetGroup
         {
             Id = Guid.NewGuid(),
@@ -161,26 +154,7 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             UpdatedAt = draft.Now
         });
 
-        var ticketingCategories = new[]
-        {
-            (Name: TicketRevenueCategoryName, Sort: 0),
-            (Name: ProcessingFeesCategoryName, Sort: 1)
-        };
-
-        foreach (var (name, sort) in ticketingCategories)
-        {
-            ctx.BudgetCategories.Add(new BudgetCategory
-            {
-                Id = Guid.NewGuid(),
-                BudgetGroupId = ticketingGroup.Id,
-                Name = name,
-                AllocatedAmount = 0,
-                ExpenditureType = ExpenditureType.OpEx,
-                SortOrder = sort,
-                CreatedAt = draft.Now,
-                UpdatedAt = draft.Now
-            });
-        }
+        AddDefaultTicketingCategories(ctx, ticketingGroup.Id, draft.Now);
 
         AddDescriptionAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
             $"Created budget year '{draft.Name}' ({draft.Year})",
@@ -423,26 +397,7 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             UpdatedAt = now
         });
 
-        var ticketingCategories = new[]
-        {
-            (Name: TicketRevenueCategoryName, Sort: 0),
-            (Name: ProcessingFeesCategoryName, Sort: 1)
-        };
-
-        foreach (var (name, sort) in ticketingCategories)
-        {
-            ctx.BudgetCategories.Add(new BudgetCategory
-            {
-                Id = Guid.NewGuid(),
-                BudgetGroupId = ticketingGroup.Id,
-                Name = name,
-                AllocatedAmount = 0,
-                ExpenditureType = ExpenditureType.OpEx,
-                SortOrder = sort,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-        }
+        AddDefaultTicketingCategories(ctx, ticketingGroup.Id, now);
 
         AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
             "Added Ticketing group with projection parameters",
@@ -451,8 +406,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         await ctx.SaveChangesAsync(ct);
         return true;
     }
-
-    // Budget Groups — atomic mutations
 
     public async Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
@@ -572,8 +525,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         return true;
     }
 
-    // Budget Categories — reads
-
     public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -589,8 +540,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .Include(c => c.LineItems)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
-
-    // Budget Categories — atomic mutations
 
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
@@ -715,8 +664,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         return true;
     }
 
-    // Budget Line Items — reads
-
     public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -725,8 +672,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .AsNoTracking()
             .FirstOrDefaultAsync(li => li.Id == id, ct);
     }
-
-    // Budget Line Items — atomic mutations
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         BudgetLineItemDraft draft,
@@ -882,8 +827,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         return true;
     }
 
-    // Ticketing Projection — reads
-
     public async Task<TicketingProjection?> GetTicketingProjectionAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
@@ -902,8 +845,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == groupId, ct);
     }
-
-    // Ticketing Projection — atomic mutations
 
     public async Task<bool> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
@@ -1043,8 +984,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         return created;
     }
 
-    // Audit Log — reads (append-only per §12)
-
     public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default)
     {
@@ -1093,10 +1032,31 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             .ToListAsync(ct);
     }
 
-    // Private helpers
-
     // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
     private const int TicketingFeeVatRate = 21;
+
+    private static void AddDefaultTicketingCategories(
+        HumansDbContext ctx, Guid ticketingGroupId, Instant now)
+    {
+        foreach (var (name, sortOrder) in new[]
+        {
+            (Name: TicketRevenueCategoryName, SortOrder: 0),
+            (Name: ProcessingFeesCategoryName, SortOrder: 1)
+        })
+        {
+            ctx.BudgetCategories.Add(new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = ticketingGroupId,
+                Name = name,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                SortOrder = sortOrder,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+    }
 
     private static async Task EnsureYearNotClosedAsync(
         HumansDbContext ctx, Guid budgetYearId, CancellationToken ct)
@@ -1189,13 +1149,10 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
             var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
 
             var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
-            if (isFirstWeek && projectionStart <= projection.StartDate.Value)
+            if (isFirstWeek)
             {
-                weekTickets += initialBurst;
-                isFirstWeek = false;
-            }
-            else
-            {
+                if (projectionStart <= projection.StartDate.Value)
+                    weekTickets += initialBurst;
                 isFirstWeek = false;
             }
 
@@ -1206,7 +1163,7 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
                 + weekTickets * projection.StripeFeeFixed;
             var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
 
-            var weekLabel = FormatTicketingWeekLabel(weekStart, weekEnd);
+            var weekLabel = $"{weekStart.ToWeekdayDayMonth()}–{weekEnd.ToWeekdayDayMonth()}";
 
             created += UpsertTicketingLineItem(ctx, revenueCategory,
                 $"{TicketingProjectedPrefix}Week of {weekLabel}",
@@ -1236,11 +1193,6 @@ internal sealed class BudgetRepository(IDbContextFactory<HumansDbContext> factor
         // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
         var dayOfWeek = (int)date.DayOfWeek;
         return date.PlusDays(-(dayOfWeek - 1));
-    }
-
-    private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
-    {
-        return $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}";
     }
 
     private static void RemoveProjectedItems(HumansDbContext ctx, BudgetCategory category)
