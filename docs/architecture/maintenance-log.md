@@ -8,7 +8,7 @@ Tracks when recurring maintenance processes were last run.
 | Freshness sweep (diff) | — | — | Daily | — | `/freshness-sweep` — auto-refresh drift-prone docs against upstream/main diffs. First run pending. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |
 | Todo audit | 2026-03-08 | 2026-03-15 | Weekly | — | Stale items, completed moves |
-| Code simplification | 2026-02-24 | — | After features | codex: ~5% | Dead code, unused abstractions |
+| Code simplification | 2026-06-11 | — | After features | codex: ~5% | per-section pass: #969, #972, #973, #974, #975, #976, #977, #978, #979, #980 |
 | ReSharper InspectCode | 2026-06-10 | 2026-06-17 | Weekly | — | `/resharper` — fix Tier 1+2 warnings. Codex can't run `jb` in sandbox. 2026-06-10: #928 sweep (~800 redundant-code findings + dead Back-to-Admin link). |
 | Context cleanup | 2026-03-18 | 2026-04-18 | Monthly | — | CLAUDE.md, .claude/, todos.md |
 | Feature spec sync | 2026-04-05 | 2026-05-05 | Monthly | — | docs/features/ vs implementation |
