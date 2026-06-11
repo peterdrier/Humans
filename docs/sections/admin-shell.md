@@ -25,12 +25,12 @@ The `/Admin` route is the shared dashboard. The `AdminLayout.cshtml` layout is s
 
 ## Actors & Roles
 
-Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Feedback, Messaging; system zone (collapsed by default): Google, Agent, Legal, Diagnostics, Dev (env-gated to `!IsProduction()`), Design, Temp. Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging; system zone (collapsed by default): Google, Agent, Legal, Diagnostics, Dev (env-gated to `!IsProduction()`), Design, Temp. Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications, Audit log), Messaging (Surveys), Google (Resource sync) |
+| Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications), Audit (Audit log), Messaging (Surveys), Google (Resource sync) |
 | HumanAdmin | Members (Humans, Roles) |
 | TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal) |
 | FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments) |

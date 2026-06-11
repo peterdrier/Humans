@@ -80,7 +80,11 @@ public static class AdminNavTree
         new("Governance", [
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
-            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
+            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin)
+        ]),
+        // Audit is a Crosscut (memory/architecture/crosscut-purity.md), not Governance —
+        // Board usage is audience, never ownership (memory/architecture/governance-scope.md).
+        new("Audit", [
             new("Audit log", "AuditLog", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
         ]),
         new("Feedback", [
