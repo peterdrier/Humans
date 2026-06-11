@@ -175,9 +175,6 @@ public class TicketTailorService : ITicketVendorService
                 "TicketTailor event summary API returned {StatusCode} for event {EventId}",
                 (int)response.StatusCode, eventId);
 
-            if ((int)response.StatusCode >= 500)
-                return new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
-
             response.EnsureSuccessStatusCode();
         }
 
