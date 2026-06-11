@@ -13,7 +13,6 @@ public interface IEventService : IApplicationService, IEventServiceRead
 {
     // ── Settings ─────────────────────────────────────────────────────────
     // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
-    Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
     Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveGuideSettingsAsync(
@@ -96,7 +95,6 @@ public interface IEventService : IApplicationService, IEventServiceRead
 
     // ── Preferences ───────────────────────────────────────────────────────
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
-    Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
     Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default);
 
     // ── Moderation ────────────────────────────────────────────────────────
