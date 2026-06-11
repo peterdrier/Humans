@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Tickets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -57,6 +58,7 @@ public class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var orders = new List<VendorOrderDto>();
         string? cursor = null;
 
@@ -114,6 +116,7 @@ public class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var tickets = new List<VendorTicketDto>();
         string? cursor = null;
 
@@ -160,6 +163,7 @@ public class TicketTailorService : ITicketVendorService
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var cacheKey = CacheKeys.TicketEventSummary(eventId);
         if (_cache.TryGetValue<VendorEventSummaryDto>(cacheKey, out var cachedSummary) &&
             cachedSummary is not null)
@@ -205,6 +209,7 @@ public class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(
         DiscountCodeSpec spec, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var codes = new List<string>();
         for (var i = 0; i < spec.Count; i++)
         {
@@ -233,6 +238,7 @@ public class TicketTailorService : ITicketVendorService
     public async Task<IReadOnlyList<DiscountCodeStatusDto>> GetDiscountCodeUsageAsync(
         IEnumerable<string> codes, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var results = new List<DiscountCodeStatusDto>();
 
         foreach (var code in codes)

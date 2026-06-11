@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Microsoft.Extensions.Logging;
@@ -257,8 +258,10 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
         => SendAsync(method, url, content: null, ct);
 
     private async Task<HttpResponseMessage> SendAsync(
-        HttpMethod method, string url, HttpContent? content, CancellationToken ct)
+        HttpMethod method, string url, HttpContent? content, CancellationToken ct,
+        [CallerMemberName] string caller = "")
     {
+        using var _ = logger.TimeOperation(operation: caller);
         var http = httpFactory.CreateClient(HttpClientName);
         using var req = new HttpRequestMessage(method, url);
         if (content is not null) req.Content = content;

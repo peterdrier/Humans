@@ -5,10 +5,11 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.DriveActivity.v2;
 using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
+using Humans.Application.Extensions;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Humans.Infrastructure.Configuration;
-using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Services.GoogleWorkspace;
 
@@ -38,6 +39,7 @@ public sealed class GoogleDriveActivityClient(
 
     public async Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (_serviceAccountEmailResolved && _serviceAccountEmail is not null)
         {
             return _serviceAccountEmail;
@@ -60,6 +62,7 @@ public sealed class GoogleDriveActivityClient(
 
     public async Task<string?> GetServiceAccountClientIdAsync(CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (_serviceAccountClientIdResolved)
         {
             return _serviceAccountClientId;
@@ -84,6 +87,7 @@ public sealed class GoogleDriveActivityClient(
         string sinceIsoTimestamp,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var activityService = await GetActivityServiceAsync();
         string? pageToken = null;
 
@@ -121,6 +125,7 @@ public sealed class GoogleDriveActivityClient(
 
     public async Task<string?> TryResolvePersonEmailAsync(string peopleId, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (!peopleId.StartsWith("people/", StringComparison.Ordinal))
         {
             // Already an email, no lookup needed.

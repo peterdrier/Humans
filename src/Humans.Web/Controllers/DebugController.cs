@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Application.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
@@ -276,6 +277,38 @@ public class DebugController(
             StatusCodes: statusRows);
 
         return View(vm);
+    }
+
+    [HttpGet("Timings")]
+    public IActionResult Timings()
+    {
+        var registry = OperationTimingRegistry.Instance;
+
+        var entries = registry.GetTimings()
+            .OrderByDescending(t => t.TotalMs)
+            .Select(t => new TimingEntryViewModel
+            {
+                Operation = t.Key,
+                Count = t.Count,
+                LastMs = Math.Round(t.LastMs, 2),
+                AvgMs = Math.Round(t.AvgMs, 2),
+                MinMs = Math.Round(t.MinMs, 2),
+                MaxMs = Math.Round(t.MaxMs, 2),
+                TotalMs = Math.Round(t.TotalMs, 2),
+                LastAtUtc = t.LastAtUtc,
+            })
+            .ToList();
+
+        var swallowed = registry.GetSwallowed()
+            .OrderByDescending(s => s.Count)
+            .Select(s => new SwallowedEntryViewModel
+            {
+                Operation = s.Key,
+                Count = s.Count,
+            })
+            .ToList();
+
+        return View(new TimingsViewModel { Entries = entries, Swallowed = swallowed });
     }
 
     [HttpGet("FormatGallery")]

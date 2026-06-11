@@ -1,6 +1,9 @@
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Holded;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -10,13 +13,16 @@ public sealed class HoldedClient : IHoldedClient
 {
     private readonly HttpClient _http;
     private readonly HoldedClientOptions _options;
+    private readonly ILogger<HoldedClient> _logger;
 
     public HoldedClient(
         HttpClient http,
-        IOptions<HoldedClientOptions> options)
+        IOptions<HoldedClientOptions> options,
+        ILogger<HoldedClient> logger)
     {
         _http = http;
         _options = options.Value;
+        _logger = logger;
 
         if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
             _http.BaseAddress = new Uri(_options.BaseUrl);
@@ -259,8 +265,10 @@ public sealed class HoldedClient : IHoldedClient
         req.Headers.Add("key", _options.ApiKey);
 
     private async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage req, CancellationToken ct)
+        HttpRequestMessage req, CancellationToken ct,
+        [CallerMemberName] string caller = "")
     {
+        using var _ = _logger.TimeOperation(operation: caller);
         HttpResponseMessage resp;
         try
         {

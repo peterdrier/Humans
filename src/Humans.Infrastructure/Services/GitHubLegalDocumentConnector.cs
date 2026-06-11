@@ -1,9 +1,10 @@
 using System.Text.RegularExpressions;
+using Humans.Application.Extensions;
+using Humans.Application.Configuration;
+using Humans.Application.Interfaces.Legal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Infrastructure.Services;
 
@@ -47,6 +48,7 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
     public async Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
         string folderPath, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var languageFiles = new Dictionary<string, string>(StringComparer.Ordinal);
 
         try
@@ -88,6 +90,7 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
 
     public async Task<GitHubFileContent?> GetFileContentAsync(string path, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         try
         {
             var contents = await _client.Repository.Content.GetAllContentsByRef(
@@ -117,6 +120,7 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
 
     public async Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         try
         {
             var commit = await _client.Repository.Commit.Get(_settings.Owner, _settings.Repository, sha);
@@ -133,6 +137,7 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
 
     public async Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         try
         {
             var commits = await _client.Repository.Commit.GetAll(
@@ -152,6 +157,7 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
     public async Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
         string folderPath, string filePrefix, CancellationToken ct = default)
     {
+        using var _ = _logger.TimeOperation();
         var files = await _client.Repository.Content.GetAllContents(
             _settings.Owner,
             _settings.Repository,
