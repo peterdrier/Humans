@@ -26,12 +26,6 @@ public sealed class EventService(
         return settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
     }
 
-    public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
-    {
-        var settings = await repo.GetGuideSettingsAsync(ct);
-        return settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
-    }
-
     private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
     {
         // TimeZoneId is stitched in from the Shifts-owned event_settings row via
@@ -409,12 +403,6 @@ public sealed class EventService(
         var pref = await repo.GetPreferenceAsync(userId, ct);
         if (pref == null) return [];
         return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
-    }
-
-    public async Task<EventPreferenceInfo?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
-    {
-        var pref = await repo.GetPreferenceAsync(userId, ct);
-        return pref is null ? null : new EventPreferenceInfo(pref.UserId, pref.ExcludedCategorySlugs, pref.UpdatedAt);
     }
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)

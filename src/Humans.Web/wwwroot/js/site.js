@@ -433,83 +433,137 @@ function showToast(message, type) {
     }, true);
 })();
 
-// Admin sidebar mobile scroll affordances — toggles data-scroll-start/end
-// on the .sidebar so admin-shell.css can show/hide the edge fades, and
-// scrolls the active nav item into view on load when the strip overflows.
+// Admin sidebar — desktop accordion (collapse state in localStorage) and
+// mobile two-tier strip (group chips switch which item row is shown).
+// Horizontal scroll affordances per row: data-scroll-start/end on the row
+// wrapper drives the edge fades in admin-shell.css, plus mouse drag-to-scroll.
 (function () {
     var sidebar = document.querySelector('body.admin-shell .sidebar');
     if (!sidebar) return;
-    var scroll = sidebar.querySelector('.sidebar-scroll');
-    if (!scroll) return;
 
-    function update() {
-        var atStart = scroll.scrollLeft <= 1;
-        var atEnd = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 1;
-        sidebar.dataset.scrollStart = atStart ? 'true' : 'false';
-        sidebar.dataset.scrollEnd = atEnd ? 'true' : 'false';
-    }
+    // ── Desktop accordion ─────────────────────────────────────────────
+    var STORE_KEY = 'adminNavCollapsed';
+    var stored = {};
+    try { stored = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch (e) { /* corrupt state — fall back to defaults */ }
 
-    scroll.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-
-    // Mouse drag-to-scroll. Native overflow-x:auto handles touch panning on
-    // real phones, but a mouse on desktop (or DevTools mobile emulation
-    // without touch sim) can't drag-scroll without JS. Threshold is 5px so
-    // a tiny jitter during a click doesn't suppress navigation.
-    var dragStartX = 0;
-    var dragStartScroll = 0;
-    var dragMoved = 0;
-    var dragging = false;
-
-    scroll.addEventListener('mousedown', function (e) {
-        if (e.button !== 0) return;
-        dragging = true;
-        dragStartX = e.pageX;
-        dragStartScroll = scroll.scrollLeft;
-        dragMoved = 0;
-        scroll.style.cursor = 'grabbing';
-        scroll.style.userSelect = 'none';
-    });
-
-    document.addEventListener('mousemove', function (e) {
-        if (!dragging) return;
-        var dx = e.pageX - dragStartX;
-        if (Math.abs(dx) > Math.abs(dragMoved)) dragMoved = dx;
-        scroll.scrollLeft = dragStartScroll - dx;
-    });
-
-    function endDrag() {
-        if (!dragging) return;
-        dragging = false;
-        scroll.style.cursor = '';
-        scroll.style.userSelect = '';
-    }
-    document.addEventListener('mouseup', endDrag);
-    scroll.addEventListener('mouseleave', endDrag);
-
-    // Suppress the click that follows a real drag, so dragging across a
-    // nav link doesn't accidentally navigate.
-    scroll.addEventListener('click', function (e) {
-        if (Math.abs(dragMoved) > 5) {
-            e.preventDefault();
-            e.stopPropagation();
-            dragMoved = 0;
+    sidebar.querySelectorAll('.nav-group').forEach(function (section) {
+        var label = section.dataset.group;
+        var toggle = section.querySelector('.group-toggle');
+        if (!toggle) return;
+        // Apply the remembered state, but never hide the active page's group.
+        if (Object.prototype.hasOwnProperty.call(stored, label) && !section.querySelector('a.active')) {
+            section.classList.toggle('collapsed', !!stored[label]);
         }
-    }, true);
+        toggle.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+        toggle.addEventListener('click', function () {
+            var collapsed = section.classList.toggle('collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            stored[label] = collapsed;
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(stored)); } catch (e) { /* private mode */ }
+        });
+    });
 
-    // On mobile (horizontal strip), bring the active item into view if it's
-    // off-screen so users land on the right item without manual scrolling.
+    // ── Horizontal scroll affordances (mobile rows) ───────────────────
+    // Mouse drag-to-scroll: native overflow-x:auto handles touch panning on
+    // real phones, but a mouse (or DevTools mobile emulation without touch
+    // sim) can't drag-scroll without JS. Threshold is 5px so a tiny jitter
+    // during a click doesn't suppress navigation.
+    function attachHScroll(wrapper, scroll) {
+        function update() {
+            var atStart = scroll.scrollLeft <= 1;
+            var atEnd = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 1;
+            wrapper.dataset.scrollStart = atStart ? 'true' : 'false';
+            wrapper.dataset.scrollEnd = atEnd ? 'true' : 'false';
+        }
+
+        scroll.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+
+        var dragStartX = 0;
+        var dragStartScroll = 0;
+        var dragMoved = 0;
+        var dragging = false;
+
+        scroll.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            dragging = true;
+            dragStartX = e.pageX;
+            dragStartScroll = scroll.scrollLeft;
+            dragMoved = 0;
+            scroll.style.cursor = 'grabbing';
+            scroll.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!dragging) return;
+            var dx = e.pageX - dragStartX;
+            if (Math.abs(dx) > Math.abs(dragMoved)) dragMoved = dx;
+            scroll.scrollLeft = dragStartScroll - dx;
+        });
+
+        function endDrag() {
+            if (!dragging) return;
+            dragging = false;
+            scroll.style.cursor = '';
+            scroll.style.userSelect = '';
+        }
+        document.addEventListener('mouseup', endDrag);
+        scroll.addEventListener('mouseleave', endDrag);
+
+        // Suppress the click that follows a real drag, so dragging across a
+        // nav link doesn't accidentally navigate.
+        scroll.addEventListener('click', function (e) {
+            if (Math.abs(dragMoved) > 5) {
+                e.preventDefault();
+                e.stopPropagation();
+                dragMoved = 0;
+            }
+        }, true);
+
+        update();
+        return update;
+    }
+
+    var rowUpdates = {};
+    var chipsWrap = sidebar.querySelector('.group-chips-wrap');
+    var chipsRow = sidebar.querySelector('.group-chips');
+    if (chipsWrap && chipsRow) attachHScroll(chipsWrap, chipsRow);
+    sidebar.querySelectorAll('.nav-group').forEach(function (section) {
+        var items = section.querySelector('.group-items');
+        if (items) rowUpdates[section.dataset.group] = attachHScroll(section, items);
+    });
+
+    // ── Mobile group chips ────────────────────────────────────────────
+    sidebar.querySelectorAll('.group-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            sidebar.querySelectorAll('.group-chip').forEach(function (c) {
+                c.classList.toggle('m-active', c === chip);
+                c.setAttribute('aria-selected', c === chip ? 'true' : 'false');
+            });
+            sidebar.querySelectorAll('.nav-group').forEach(function (s) {
+                s.classList.toggle('m-active', s.dataset.group === chip.dataset.group);
+            });
+            // The newly shown row was display:none during initial measurement.
+            var refresh = rowUpdates[chip.dataset.group];
+            if (refresh) refresh();
+        });
+    });
+
+    // On mobile, bring the active chip and item into view if off-screen so
+    // users land on the right entry without manual scrolling.
     var horizontal = window.matchMedia('(max-width: 767.98px)');
     if (horizontal.matches) {
-        var active = scroll.querySelector('a.active');
-        if (active) {
-            var prev = scroll.style.scrollBehavior;
-            scroll.style.scrollBehavior = 'auto';
-            active.scrollIntoView({ inline: 'center', block: 'nearest' });
-            scroll.style.scrollBehavior = prev;
-        }
+        [sidebar.querySelector('.group-chip.m-active'), sidebar.querySelector('.nav-group.m-active a.active')]
+            .forEach(function (el) {
+                if (!el) return;
+                var row = el.closest('.group-chips') || el.closest('.group-items');
+                if (!row) return;
+                var prev = row.style.scrollBehavior;
+                row.style.scrollBehavior = 'auto';
+                el.scrollIntoView({ inline: 'center', block: 'nearest' });
+                row.style.scrollBehavior = prev;
+            });
     }
-    update();
 })();
 
 // Expand/collapse compressed date ranges in _BuildStrikeRotaTable.
