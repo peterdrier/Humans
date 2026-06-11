@@ -92,6 +92,152 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
     }
 
     // ==========================================================================
+    // async-payment state machine (nobodies-collective/Humans#638)
+    // ==========================================================================
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_completed_unpaid_records_pending_and_excludes_from_balance()
+    {
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_sepa_pending";
+
+        var payload = BuildCheckoutSessionCompletedJson(
+            sessionId: "cs_test_sepa_pending",
+            paymentIntentId: paymentIntentId,
+            amountTotalMinorUnits: 5000,
+            metadataOrderId: orderId.ToString(),
+            paymentStatus: "unpaid");
+        var sig = SignPayload(payload, HumansWebApplicationFactory.TestStripeWebhookSecret);
+
+        (await PostWithSignatureAsync(payload, sig)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var payment = await db.StorePayments.AsNoTracking()
+            .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId);
+        payment.Status.Should().Be(StorePaymentStatus.Pending);
+        payment.AmountEur.Should().Be(50m);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_async_payment_succeeded_transitions_pending_to_paid()
+    {
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_async_succeeded";
+
+        var completed = BuildCheckoutSessionCompletedJson(
+            "cs_async_succeeded", paymentIntentId, 5000, orderId.ToString(), paymentStatus: "unpaid");
+        (await PostWithSignatureAsync(completed, SignPayload(completed, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var succeeded = BuildCheckoutSessionEventJson(
+            "checkout.session.async_payment_succeeded", "cs_async_succeeded", paymentIntentId, 5000,
+            orderId.ToString(), paymentStatus: "paid");
+        (await PostWithSignatureAsync(succeeded, SignPayload(succeeded, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var payment = await db.StorePayments.AsNoTracking()
+            .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId);
+        payment.Status.Should().Be(StorePaymentStatus.Paid);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_async_payment_failed_after_completed_leaves_order_unpaid()
+    {
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_async_failed";
+
+        var completed = BuildCheckoutSessionCompletedJson(
+            "cs_async_failed", paymentIntentId, 5000, orderId.ToString(), paymentStatus: "unpaid");
+        (await PostWithSignatureAsync(completed, SignPayload(completed, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var failed = BuildCheckoutSessionEventJson(
+            "checkout.session.async_payment_failed", "cs_async_failed", paymentIntentId, 5000,
+            orderId.ToString(), paymentStatus: "unpaid");
+        (await PostWithSignatureAsync(failed, SignPayload(failed, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var payment = await db.StorePayments.AsNoTracking()
+            .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId);
+        payment.Status.Should().Be(StorePaymentStatus.Failed); // never paid-then-reversed
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_async_payment_succeeded_redelivery_is_idempotent()
+    {
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_async_dedup";
+
+        var completed = BuildCheckoutSessionCompletedJson(
+            "cs_async_dedup", paymentIntentId, 5000, orderId.ToString(), paymentStatus: "unpaid");
+        await PostWithSignatureAsync(completed, SignPayload(completed, HumansWebApplicationFactory.TestStripeWebhookSecret));
+
+        var succeeded = BuildCheckoutSessionEventJson(
+            "checkout.session.async_payment_succeeded", "cs_async_dedup", paymentIntentId, 5000,
+            orderId.ToString(), paymentStatus: "paid");
+        (await PostWithSignatureAsync(succeeded, SignPayload(succeeded, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await PostWithSignatureAsync(succeeded, SignPayload(succeeded, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var payments = await db.StorePayments.AsNoTracking()
+            .Where(p => p.StripePaymentIntentId == paymentIntentId)
+            .ToListAsync();
+        payments.Should().ContainSingle().Which.Status.Should().Be(StorePaymentStatus.Paid);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_async_payment_succeeded_out_of_order_records_paid_directly()
+    {
+        // async_payment_succeeded arrives before completed: no pending row yet. Record Paid now.
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_ooo";
+
+        var succeeded = BuildCheckoutSessionEventJson(
+            "checkout.session.async_payment_succeeded", "cs_ooo", paymentIntentId, 7500,
+            orderId.ToString(), paymentStatus: "paid");
+        (await PostWithSignatureAsync(succeeded, SignPayload(succeeded, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var payment = await db.StorePayments.AsNoTracking()
+            .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId);
+        payment.Status.Should().Be(StorePaymentStatus.Paid);
+        payment.AmountEur.Should().Be(75m);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task Webhook_expired_removes_orphan_pending_payment()
+    {
+        var orderId = await SeedOpenOrderAsync();
+        const string paymentIntentId = "pi_test_expired";
+
+        var completed = BuildCheckoutSessionCompletedJson(
+            "cs_expired", paymentIntentId, 5000, orderId.ToString(), paymentStatus: "unpaid");
+        await PostWithSignatureAsync(completed, SignPayload(completed, HumansWebApplicationFactory.TestStripeWebhookSecret));
+
+        var expired = BuildCheckoutSessionEventJson(
+            "checkout.session.expired", "cs_expired", paymentIntentId, 5000,
+            orderId.ToString(), paymentStatus: "unpaid");
+        (await PostWithSignatureAsync(expired, SignPayload(expired, HumansWebApplicationFactory.TestStripeWebhookSecret)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var exists = await db.StorePayments.AsNoTracking()
+            .AnyAsync(p => p.StripePaymentIntentId == paymentIntentId);
+        exists.Should().BeFalse();
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
@@ -160,7 +306,19 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
     }
 
     private static string BuildCheckoutSessionCompletedJson(
-        string sessionId, string paymentIntentId, long amountTotalMinorUnits, string metadataOrderId)
+        string sessionId, string paymentIntentId, long amountTotalMinorUnits, string metadataOrderId,
+        string paymentStatus = "paid")
+        => BuildCheckoutSessionEventJson(
+            "checkout.session.completed", sessionId, paymentIntentId, amountTotalMinorUnits, metadataOrderId, paymentStatus);
+
+    /// <summary>
+    /// Builds a <c>checkout.session.*</c> event for the given type. Shared by completed, the two
+    /// async-payment events, and expired so the state-machine integration tests exercise the real
+    /// signature + parse + persist path.
+    /// </summary>
+    private static string BuildCheckoutSessionEventJson(
+        string eventType, string sessionId, string paymentIntentId, long amountTotalMinorUnits,
+        string metadataOrderId, string paymentStatus)
     {
         var sessionJson = $$"""
         {
@@ -169,10 +327,11 @@ public class StoreStripeWebhookControllerTests(HumansWebApplicationFactory facto
           "payment_intent": "{{paymentIntentId}}",
           "amount_total": {{amountTotalMinorUnits.ToString(CultureInfo.InvariantCulture)}},
           "currency": "eur",
+          "payment_status": "{{paymentStatus}}",
           "metadata": { "humans_store_order_id": "{{metadataOrderId}}" }
         }
         """;
-        return BuildEventJson("checkout.session.completed", sessionJson);
+        return BuildEventJson(eventType, sessionJson);
     }
 
     /// <summary>

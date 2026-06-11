@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Text;
+using Humans.Application.Csv;
 using Humans.Application.Extensions;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Constants;
@@ -10,8 +10,8 @@ namespace Humans.Web.Cantina;
 /// <summary>
 /// Renders a <see cref="DailyMatrixDto"/> as a UTF-8 CSV byte payload — the
 /// per-day drill-down companion to <see cref="CantinaRosterCsvWriter"/>
-/// (feature #36 — docs/features/cantina/daily-roster.md). Same RFC 4180 +
-/// OWASP formula-escape rules via <see cref="CsvCellQuoting"/>.
+/// (feature #36 — docs/features/cantina/daily-roster.md). Quoting and OWASP
+/// injection escaping come from the shared <see cref="HumansCsv"/> conventions.
 ///
 /// <para>
 /// Output layout (top to bottom):
@@ -33,25 +33,17 @@ namespace Humans.Web.Cantina;
 /// </summary>
 public static class CantinaDailyMatrixCsvWriter
 {
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
-    private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
-
     public static byte[] Write(DailyMatrixDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
 
-        using var ms = new MemoryStream();
-        ms.Write(Utf8Bom, 0, Utf8Bom.Length);
-        using (var sw = new StreamWriter(ms, Utf8NoBom, leaveOpen: true) { NewLine = "\r\n" })
+        return HumansCsv.WriteBytes(csv =>
         {
             // ---- Header section (3 lines + blank separator) -----------------
-            sw.WriteLine(CsvCellQuoting.Quote(
-                string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatLongDate(dto.CalendarDate))));
-            sw.WriteLine(CsvCellQuoting.Quote(
-                string.Format(CultureInfo.InvariantCulture, "Total on site: {0}", dto.TotalOnSite)));
-            sw.WriteLine(CsvCellQuoting.Quote(
-                string.Format(CultureInfo.InvariantCulture, "Unanswered: {0}", dto.UnansweredCount)));
-            sw.WriteLine();
+            csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatLongDate(dto.CalendarDate)));
+            csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Total on site: {0}", dto.TotalOnSite));
+            csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Unanswered: {0}", dto.UnansweredCount));
+            csv.NextRecord();
 
             // ---- Column headers --------------------------------------------
             var diet = DietaryOptions.DietaryPreferences;
@@ -71,7 +63,7 @@ public static class CantinaDailyMatrixCsvWriter
             cols.AddRange(intoleranceChips);
             cols.Add("Other intolerance");
             cols.Add("Other intolerance text");
-            sw.WriteLine(string.Join(",", cols.Select(CsvCellQuoting.Quote)));
+            csv.WriteRow([.. cols]);
 
             // ---- People rows -----------------------------------------------
             foreach (var p in dto.People)
@@ -87,7 +79,7 @@ public static class CantinaDailyMatrixCsvWriter
                     row.Add(p.Intolerances.Contains(i) ? "x" : string.Empty);
                 row.Add(p.Intolerances.Contains(DietaryOptions.OtherOption) ? "x" : string.Empty);
                 row.Add(p.IntoleranceOtherText ?? string.Empty);
-                sw.WriteLine(string.Join(",", row.Select(CsvCellQuoting.Quote)));
+                csv.WriteRow([.. row]);
             }
 
             // ---- TOTALS row (only when there's at least one person) --------
@@ -104,11 +96,9 @@ public static class CantinaDailyMatrixCsvWriter
                     totals.Add(CountAsString(dto.People.Count(p => p.Intolerances.Contains(i))));
                 totals.Add(CountAsString(dto.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))));
                 totals.Add("—");
-                sw.WriteLine(string.Join(",", totals.Select(CsvCellQuoting.Quote)));
+                csv.WriteRow([.. totals]);
             }
-        }
-
-        return ms.ToArray();
+        });
     }
 
     private static List<string> WithoutOther(IReadOnlyList<string> options)

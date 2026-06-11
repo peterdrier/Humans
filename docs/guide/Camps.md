@@ -109,12 +109,12 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 | City Planning / Placement | Melo — via Discord or the city planning channel |
 | Water, LNT, power obligations | Barrio Support — comms go out via Humans to camp leads |
 | Barrio store / purchasing | Production & Logistics — [daniela@nobodies.team](mailto:daniela@nobodies.team) |
-| App issues | [humans@nobodies.team](mailto:humans@nobodies.team) |
+| App issues | The in-app help button (AI helper / file an issue); [humans@nobodies.team](mailto:humans@nobodies.team) only as a last resort |
 | General questions | [#🎪-barrios](https://discord.gg/rBZxDv8z) on Discord |
 
 ## Related sections
 
 - [Profiles](Profiles.md) — camp leads are linked to human accounts; a valid profile is required to be a lead.
-- [Governance](Governance.md) — Colaborador application is the prerequisite for becoming a camp lead.
+- [Governance](Governance.md) — many camp leads are also Colaboradores, but that is not a system requirement for registering or leading a camp.
 - [City Planning](CityPlanning.md) — what happens to the placement data your camp profile feeds in.
 - [Glossary](Glossary.md) — definitions for "barrio", "season", "Camp Lead", "sound zone", and other camp terms.

@@ -32,6 +32,7 @@ public static class AdminNavTree
             new("Summary by camp", "Shifts", "Summary", null, null, "fa-solid fa-campground",        PolicyNames.ShiftDepartmentManager),
             new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
             new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess),
+            new("Post-event stats", "ShiftDashboard", "PostEventStats", null, null, "fa-solid fa-chart-bar", PolicyNames.ShiftDashboardAccess),
             new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",  PolicyNames.AdminOnly)
         ]),
         new("Barrios", [

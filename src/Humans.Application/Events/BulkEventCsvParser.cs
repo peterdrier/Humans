@@ -1,101 +1,97 @@
 using System.Globalization;
-using System.Text;
+using CsvHelper;
+using Humans.Application.Csv;
 using Humans.Application.DTOs.Events;
 
 namespace Humans.Application.Events;
 
 /// <summary>
 /// Parses a barrio bulk-upload CSV (the format produced by the download
-/// template) into <see cref="BulkCsvRow"/> records. Comment lines (starting
-/// with <c>#</c>) and blank lines are skipped; the first remaining line is the
-/// header. Throws <see cref="FormatException"/> on malformed input.
+/// template) into <see cref="BulkCsvRow"/> records via CsvHelper and
+/// <see cref="BulkEventCsvRecordMap"/>. Columns are matched by header name in
+/// any order, unknown columns are ignored, the delimiter is auto-detected
+/// (Spanish Excel saves semicolons), comment lines (starting with <c>#</c>)
+/// are skipped, and quoted fields may span lines. Throws
+/// <see cref="FormatException"/> with ALL row errors (real file row numbers)
+/// on malformed input.
 /// </summary>
 public static class BulkEventCsvParser
 {
-    private const int ExpectedColumns = 14;
-
     public static List<BulkCsvRow> Parse(string csvText)
     {
-        var rows = new List<BulkCsvRow>();
-        var lines = csvText.Split('\n');
-        var dataLineNumber = 0;
-
-        foreach (var rawLine in lines)
+        var config = HumansCsv.ReadConfig();
+        config.AllowComments = true;
+        config.Comment = '#';
+        // CsvHelper's DetectDelimiter samples the comment banner too — its
+        // comma-rich prose outvotes semicolon data rows (the Spanish-Excel
+        // re-save). Sniff the header line instead.
+        config.DetectDelimiter = false;
+        config.Delimiter = SniffDelimiter(csvText);
+        // Ragged rows read missing trailing cells as empty instead of throwing;
+        // genuinely absent columns are caught by header validation below.
+        config.MissingFieldFound = null;
+        config.HeaderValidated = args =>
         {
-            var line = rawLine.TrimEnd('\r');
-            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#')) continue;
+            if (args.InvalidHeaders.Length == 0) return;
+            var missing = string.Join(", ", args.InvalidHeaders.SelectMany(h => h.Names));
+            throw new FormatException($"The CSV is missing required column(s): {missing}. Download a fresh template to see the expected columns.");
+        };
 
-            var fields = SplitCsvLine(line);
+        var rows = new List<BulkCsvRow>();
+        var errors = new List<string>();
 
-            // First non-comment line is the header — skip it.
-            if (dataLineNumber == 0)
+        using var reader = new StringReader(csvText);
+        using var csv = new CsvReader(reader, config);
+        csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
+
+        if (!csv.Read()) return rows;
+        csv.ReadHeader();
+        csv.ValidateHeader<BulkEventCsvRecord>();
+
+        while (csv.Read())
+        {
+            var record = csv.GetRecord<BulkEventCsvRecord>();
+            var fileRow = csv.Parser.RawRow;
+
+            Guid? id = null;
+            if (!string.IsNullOrWhiteSpace(record.Id))
             {
-                dataLineNumber++;
-                continue;
+                if (Guid.TryParse(record.Id, out var g)) id = g;
+                else errors.Add($"Row {fileRow}: Id is not a valid Guid.");
             }
 
-            if (fields.Count < ExpectedColumns)
-                throw new FormatException($"Row {dataLineNumber + 1}: expected {ExpectedColumns} columns, got {fields.Count}.");
+            if (!int.TryParse(record.DurationMinutes, CultureInfo.InvariantCulture, out var duration))
+                errors.Add($"Row {fileRow}: DurationMinutes is not an integer.");
+            if (!int.TryParse(record.PriorityRank, CultureInfo.InvariantCulture, out var priority))
+                errors.Add($"Row {fileRow}: PriorityRank is not an integer.");
 
-            // fields[1] = Barrio (ignored), fields[2] = Status (ignored)
-            Guid? id = string.IsNullOrWhiteSpace(fields[0])
-                ? null
-                : Guid.TryParse(fields[0], out var g) ? g : throw new FormatException($"Row {dataLineNumber + 1}: Id is not a valid Guid.");
-
-            if (!int.TryParse(fields[8], CultureInfo.InvariantCulture, out var duration))
-                throw new FormatException($"Row {dataLineNumber + 1}: DurationMinutes is not an integer.");
-            if (!int.TryParse(fields[13], CultureInfo.InvariantCulture, out var priority))
-                throw new FormatException($"Row {dataLineNumber + 1}: PriorityRank is not an integer.");
-
-            var isRecurring = string.Equals(fields[11], "true", StringComparison.OrdinalIgnoreCase);
+            var isRecurring = string.Equals(record.IsRecurring, "true", StringComparison.OrdinalIgnoreCase);
 
             rows.Add(new BulkCsvRow(
-                dataLineNumber + 1, id,
-                fields[3], fields[4], fields[5], fields[6], fields[7], duration,
-                string.IsNullOrWhiteSpace(fields[9]) ? null : fields[9],
-                string.IsNullOrWhiteSpace(fields[10]) ? null : fields[10],
+                fileRow, id,
+                record.Title, record.Description, record.Category, record.Date, record.StartTime, duration,
+                string.IsNullOrWhiteSpace(record.LocationNote) ? null : record.LocationNote,
+                string.IsNullOrWhiteSpace(record.Host) ? null : record.Host,
                 isRecurring,
-                string.IsNullOrWhiteSpace(fields[12]) ? null : fields[12],
+                string.IsNullOrWhiteSpace(record.RecurrenceDays) ? null : record.RecurrenceDays,
                 priority));
-            dataLineNumber++;
         }
+
+        if (errors.Count > 0)
+            throw new FormatException(string.Join(" ", errors));
 
         return rows;
     }
 
-    /// <summary>RFC-4180 single-line split: handles quoted fields and <c>""</c> escapes.</summary>
-    private static List<string> SplitCsvLine(string line)
+    /// <summary>Delimiter of the header line — the first non-comment, non-blank line.</summary>
+    private static string SniffDelimiter(string csvText)
     {
-        var fields = new List<string>();
-        var i = 0;
-        while (i <= line.Length)
+        foreach (var rawLine in csvText.Split('\n'))
         {
-            if (i == line.Length) { fields.Add(string.Empty); break; }
-            if (line[i] == '"')
-            {
-                i++;
-                var sb = new StringBuilder();
-                while (i < line.Length)
-                {
-                    if (line[i] == '"')
-                    {
-                        i++;
-                        if (i < line.Length && line[i] == '"') { sb.Append('"'); i++; }
-                        else break;
-                    }
-                    else { sb.Append(line[i]); i++; }
-                }
-                fields.Add(sb.ToString());
-                if (i < line.Length && line[i] == ',') i++;
-            }
-            else
-            {
-                var end = line.IndexOf(',', i);
-                if (end < 0) { fields.Add(line[i..]); break; }
-                fields.Add(line[i..end]);
-                i = end + 1;
-            }
+            var line = rawLine.TrimEnd('\r');
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#')) continue;
+            return line.Count(c => c == ';') > line.Count(c => c == ',') ? ";" : ",";
         }
-        return fields;
+        return ",";
     }
 }

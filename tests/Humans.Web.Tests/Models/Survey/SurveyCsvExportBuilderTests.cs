@@ -20,6 +20,7 @@ public sealed class SurveyCsvExportBuilderTests
 
     private static IReadOnlyList<string> Lines(byte[] bytes) =>
         Encoding.UTF8.GetString(bytes)
+            .TrimStart('﻿') // exports carry a UTF-8 BOM so Excel detects the encoding
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .TrimEnd('\n')
             .Split('\n');
@@ -59,7 +60,7 @@ public sealed class SurveyCsvExportBuilderTests
         var lines = Lines(SurveyCsvExportBuilder.Build(export));
 
         // Last column on the single data row is the choice cell — stable values joined by '|', not labels.
-        lines[1].Should().EndWith("\"a|b\"");
+        lines[1].Should().EndWith("a|b");
         lines[1].Should().NotContain("Apple");
     }
 
@@ -80,12 +81,12 @@ public sealed class SurveyCsvExportBuilderTests
         var lines = Lines(SurveyCsvExportBuilder.Build(export));
 
         // Header: response_id,anonymity,input_method,submitted_at,user_id,user_name,Comments
-        lines[0].Should().StartWith("\"response_id\",\"anonymity\",\"input_method\",\"submitted_at\",\"user_id\",\"user_name\"");
+        lines[0].Should().StartWith("response_id,anonymity,input_method,submitted_at,user_id,user_name");
 
         // user_id (col 5) and user_name (col 6) are empty for a CompletionTracked row.
         var cells = lines[1].Split(',');
-        cells[4].Should().Be("\"\"");   // user_id
-        cells[5].Should().Be("\"\"");   // user_name
+        cells[4].Should().BeEmpty();   // user_id
+        cells[5].Should().BeEmpty();   // user_name
     }
 
     [HumansFact]
@@ -106,6 +107,28 @@ public sealed class SurveyCsvExportBuilderTests
         var lines = Lines(SurveyCsvExportBuilder.Build(export));
 
         lines[1].Should().Contain(userId.ToString());
-        lines[1].Should().Contain("\"Sparkle\"");
+        lines[1].Should().Contain("Sparkle");
+    }
+
+    [HumansFact]
+    public void Escapes_formula_prefixed_freetext_per_owasp()
+    {
+        var textId = Guid.NewGuid();
+        var export = new SurveyResponseExport(
+            Guid.NewGuid(), "T", "en",
+            [Text(textId, "Comments")],
+            [
+                new SurveyExportRow(
+                    Guid.NewGuid(), ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en", Submitted, null, null,
+                    [new SurveyExportAnswer(textId, [], [], "=HYPERLINK(\"http://evil\")", null)]),
+            ]);
+
+        var lines = Lines(SurveyCsvExportBuilder.Build(export));
+
+        // The free-text cell must not reach a spreadsheet starting with '=' —
+        // the shared write config prepends an apostrophe.
+        var lastCell = lines[1][(lines[1].LastIndexOf(',') + 1)..];
+        lastCell.Should().NotStartWith("=");
+        lastCell.Should().Contain("'=");
     }
 }

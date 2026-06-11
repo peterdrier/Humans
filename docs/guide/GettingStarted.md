@@ -1,23 +1,23 @@
 # Getting Started
 
-This page walks you through your first session in the Humans app: signing up, completing your profile, consenting to the legal documents, and finding your way around. Four steps take you from a new account to an active [Volunteer](Glossary.md#volunteer) with the full app unlocked: sign up, complete your profile, consent to the legal documents, and wait for a [Consent Coordinator](Glossary.md#consent-coordinator) to clear you. Everything on this page is self-service; the only place another [human](Glossary.md#human) gets involved is the safety check at the end.
+This page walks you through your first session in the Humans app: signing up, completing your profile, consenting to the legal documents, and finding your way around. Three steps take you from a new account to an active [Volunteer](Glossary.md#volunteer) with the full app unlocked: sign up, complete your profile (your legal name is the key field), and consent to the legal documents. Everything is self-service and automatic.
 
 ## 1. Sign up
 
 Go to `/Account/Login`. You have two ways in:
 
-- **Sign in with Google.** Your display name and picture come across automatically. If your email was already imported from a mailing list, Google sign-in claims that existing record rather than creating a duplicate.
+- **Sign in with Google.** Your display name comes across automatically. If your email was already imported from a mailing list, Google sign-in claims that existing record rather than creating a duplicate.
 - **Email me a login link.** Type your address and the system mails you a one-time magic link that expires in 15 minutes. If you do not have an account yet, the same flow creates one and asks you to pick a display name.
 
-If you land on `/GuestDashboard`, that means you are signed in but have no profile yet — step 2 is next. The full signup pipeline is documented in [Onboarding](Onboarding.md). Can't get in, or stuck on the login link? See [Signing in & getting unstuck](SigningIn.md).
+If you land on `/Guest`, that means you are signed in but have no profile yet — step 2 is next. The full signup pipeline is documented in [Onboarding](Onboarding.md). Can't get in, or stuck on the login link? See [Signing in & getting unstuck](SigningIn.md).
 
 ## 2. Complete your profile
 
 Open `/Profile/Me/Edit` (the Home dashboard also nudges you here via its Getting Started checklist). You fill in:
 
 - Your name, pronouns, city, country, bio, and birthday (month and day).
-- A profile picture, if you want one that is not your Google avatar.
-- Any contact fields you want to share — Phone, Signal, Telegram, WhatsApp, Discord, or a custom "Other" handle. Each field has its own **visibility** setting: Board only, Coordinators and Board, My teams, or All active humans. Pick per field; the default is All active humans.
+- A profile picture, if you want one.
+- Any contact fields you want to share — Phone, Signal, Telegram, WhatsApp, Discord, or a custom "Other" handle. Each field has its own **visibility** setting: Board only, Coordinators and Board, My teams, or All active humans. You pick one per field when you add it.
 - An emergency contact (optional, recommended).
 - Your skills and shift preferences (you'll be nudged through `/Profile/Me/ShiftInfo` separately). **Fill these in honestly and fully** — coordinators search by skill to find the right person for a role, so a thin profile is harder to place.
 
@@ -29,13 +29,11 @@ Go to `/Consent`. You see the documents that apply to everyone, grouped by the V
 
 Your signature is written as an immutable record: the document version, a hash of the exact text, the timestamp, your IP, and your browser. Nobody can edit or delete that entry afterwards — not Admin, not the database owner. That is what makes the audit trail worth something.
 
-Once every required document is signed, your safety check automatically flips to **Pending** and a Consent Coordinator is notified. Profile completion and consent run in parallel — you can do them in either order. See [Legal and Consent](LegalAndConsent.md) for the full picture.
+Profile completion and consent run in parallel — you can do them in either order. See [Legal and Consent](LegalAndConsent.md) for the full picture.
 
 ## 4. You're a Volunteer
 
-A Consent Coordinator reviews your profile and either **clears** it or **flags** it. Clearing is the common path — flagging pauses onboarding until a Board member or Admin resolves the note the coordinator left.
-
-When your profile is cleared **and** every required document is signed, the app does the rest automatically: you are added to the Volunteers system team, the rest of the app unlocks, and a welcome notification appears in the app. No manual Board step is needed.
+Entering your legal name is what opens the app, and once you have also signed every required document, the scheduled sync adds you to the Volunteers system team automatically — no manual step, no waiting on a person. (Only suspension or a rejected signup removes access.)
 
 If an Admin has provisioned a `@nobodies.team` Google Workspace account for you, you also get a credentials email at your personal address with a temporary password and a 2FA setup prompt. That address then becomes your Google service email for every team you join. Teams with linked Google Groups or [Shared Drive](Glossary.md#shared-drive) folders grant you access on the next sync. See [Your `@nobodies.team` email](EmailAccount.md) for how the mailbox works and how to use your team's group address, and [Two-step verification (2FA)](TwoStepVerification.md) for that required sign-in step. [Email](Email.md) and [Google Integration](GoogleIntegration.md) cover the fuller reference and the sync mechanics underneath.
 
@@ -78,11 +76,11 @@ If an Admin has provisioned a `@nobodies.team` Google Workspace account for you,
 | [volunteers@nobodies.team](mailto:volunteers@nobodies.team) | General volunteer queries, finding a role |
 | [tickets@nobodies.team](mailto:tickets@nobodies.team) | Ticket questions |
 | [inclusion@nobodies.team](mailto:inclusion@nobodies.team) | Accessibility and low-income ticket programme |
-| [humans@nobodies.team](mailto:humans@nobodies.team) | Technical issues with the app or your `@nobodies.team` account |
+| [humans@nobodies.team](mailto:humans@nobodies.team) | **Last resort** for app or `@nobodies.team` account issues — use the in-app help button and Discord first |
 | [#🤝-recruitment-relationships](https://discord.gg/pcq2DRH6) on Discord | Quick questions and connecting with the team |
 | [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord | Humans app feedback and bug reports |
 
-You can also use the feedback button (three dots in a speech bubble, bottom right of the app) for anything related to the app itself.
+You can also use the round help button (question mark, bottom right of the app) for anything related to the app itself — it offers the AI helper, issue filing, and feedback.
 
 ## Key terms
 

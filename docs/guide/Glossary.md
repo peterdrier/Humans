@@ -52,9 +52,10 @@ application and a Board vote. 2-year term. See [Governance](Governance.md).
 
 ## Consent Coordinator
 
-The coordinator role that reviews a human's signed consents and clears them
-for activation as a Volunteer. See [Legal & Consent](LegalAndConsent.md) and
-[Onboarding](Onboarding.md).
+The coordinator role that reviews a new human's signed consents and records a
+clear or a flag. The review is an audit annotation — it does not gate Volunteer
+access or Volunteers-team membership. See [Legal & Consent](LegalAndConsent.md)
+and [Onboarding](Onboarding.md).
 
 ## Coordinator
 
@@ -138,8 +139,9 @@ service to `None` is the fast kill switch. See
 ## System team
 
 A team the app manages automatically — Volunteers, Coordinators, Board,
-Asociados, Colaboradores. You can't join or leave a system team by hand;
-membership follows role assignments and tier status. See [Teams](Teams.md).
+Asociados, Colaboradores, Barrio Leads. You can't join or leave a system team
+by hand; membership follows role assignments, membership tier, and (for Barrio
+Leads) active camp leadership. See [Teams](Teams.md).
 
 ## Team
 
@@ -149,12 +151,12 @@ See [Teams](Teams.md).
 
 ## Volunteer
 
-The default membership tier — the standard human. Everyone starts here after
-completing signup, profile setup, consent, and Consent Coordinator clearance.
-See [Onboarding](Onboarding.md).
+The default membership tier — the standard human. Everyone lands here after
+completing signup, entering their legal name, and signing the required
+documents; admission is automatic. See [Onboarding](Onboarding.md).
 
 ## Volunteer Coordinator
 
 The role that acts as a facilitation contact for onboarding, with read-only
 access to the onboarding review queue. Distinct from the Consent Coordinator,
-who clears consents. See [Onboarding](Onboarding.md).
+who reviews consents. See [Onboarding](Onboarding.md).

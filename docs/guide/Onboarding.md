@@ -24,13 +24,13 @@
 
 ## What this section is for
 
-Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers four things: creating your account, filling out your profile, consenting to the required legal documents, and being reviewed by a [Consent Coordinator](Glossary.md#consent-coordinator). Entering your legal name sets `UserState == Active`, which opens the app. Your legal name plus all required consents determine Volunteers-system-team provisioning for Google Workspace; the coordinator review is a parallel audit track and does not gate provisioning.
+Onboarding is the path from signing up to becoming an active [Volunteer](Glossary.md#volunteer). It covers three things: creating your account, filling out your profile, and consenting to the required legal documents. Entering your legal name sets `UserState == Active`, which opens the app. Your legal name plus all required consents determine Volunteers-system-team provisioning for Google Workspace.
 
 Onboarding is about Volunteer access only. Applying for **Colaborador** or **Asociado** is a separate tier application that runs in parallel through [Board](Glossary.md#board) voting — it never blocks your Volunteer access, and is covered in the Governance guide.
 
 If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 
-![TODO: screenshot — the "Things to do" checklist on the Home dashboard showing the three onboarding steps (Complete your profile / Accept agreements / Coordinator review) with a mix of completed and pending items]
+![TODO: screenshot — the "Things to do" checklist on the Home dashboard showing the onboarding steps (Complete your profile / Accept agreements) with a mix of completed and pending items]
 
 ## Key pages at a glance
 
@@ -47,7 +47,7 @@ If you are brand new, start with [GettingStarted.md](GettingStarted.md).
 
 You have two ways to create an account:
 
-- **Google OAuth.** Click "Sign in with Google" on the login page. Your display name and picture come across automatically. If you already have an account with the same email — verified or not — Google sign-in links to it rather than creating a duplicate (the OAuth callback checks verified UserEmails, then unverified UserEmails, then `User.Email`).
+- **Google OAuth.** Click "Sign in with Google" on the login page. Your display name comes across automatically. If you already have an account with the same email — verified or not — Google sign-in links to it rather than creating a duplicate (the OAuth callback checks verified UserEmails, then unverified UserEmails, then `User.Email`).
 - **Magic link.** Enter your email and click "Send me a login link". You receive a one-time link that expires in 15 minutes. If no account exists yet, the same flow creates one (via the "Complete signup" page) and asks you for a burner name and your first and last name. To prevent email-scanner replay, the link goes to a landing page with a confirm button — clicking the button is what actually signs you in.
 
 If your email was imported from a mailing list, your account already exists and clicking your first magic link claims it.
@@ -64,15 +64,11 @@ During this one-shot setup you also see a tier selector. Leave it on **Volunteer
 
 ### 3. Sign the required legal documents
 
-Visit `/Consent` and sign each required document. Signatures are append-only — they cannot be edited or deleted. Once every required document is signed, your **Coordinator review** task on the dashboard moves to pending and a Consent Coordinator is notified. The coordinator review and the legal-document signing run in parallel: the review is an audit track and does not gate Volunteers-team admission. You enter the Volunteers team once you have entered your legal name and signed all required documents.
+Visit `/Consent` and sign each required document. Signatures are append-only — they cannot be edited or deleted. You enter the Volunteers team once you have entered your legal name and signed all required documents.
 
-### 4. Wait for your Coordinator review to clear
+### 4. Become an active Volunteer
 
-A Consent Coordinator reviews your profile and either **clears** it or **flags** it. Both are audit annotations: a flag does not pause your Volunteers-team provisioning or your app access. Only a rejected signup (which records a rejection timestamp) removes you from the Volunteers team.
-
-### 5. Become an active Volunteer
-
-When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. If review flags your status, Board/Admin handles the review from `/OnboardingReview`; a rejected signup can also be handled from `/Users/Admin/{id}`.
+When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. Only a rejected signup (which records a rejection timestamp and reason) removes you from the Volunteers team.
 
 While you are still onboarding, you can reach your profile, consents, feedback, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
 

@@ -2,6 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.Profiles;
@@ -12,16 +13,16 @@ public sealed class ProfileEditorService(
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {
     // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
-    private static readonly SemaphoreSlim[] UserLocks = CreateUserLocks(32);
+    private static readonly TrackedLock[] UserLocks = CreateUserLocks(32);
 
-    private static SemaphoreSlim[] CreateUserLocks(int count)
+    private static TrackedLock[] CreateUserLocks(int count)
     {
-        var locks = new SemaphoreSlim[count];
-        for (var i = 0; i < count; i++) locks[i] = new SemaphoreSlim(1, 1);
+        var locks = new TrackedLock[count];
+        for (var i = 0; i < count; i++) locks[i] = new TrackedLock($"ProfileEditor.User[{i}]");
         return locks;
     }
 
-    private static SemaphoreSlim LockFor(Guid userId) =>
+    private static TrackedLock LockFor(Guid userId) =>
         UserLocks[(uint)userId.GetHashCode() % (uint)UserLocks.Length];
 
     public async Task<Guid> SaveProfileAsync(
@@ -30,25 +31,18 @@ public sealed class ProfileEditorService(
         ProfileSaveRequest request,
         CancellationToken ct = default)
     {
-        var gate = LockFor(userId);
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var storageResult = await userService.SaveProfileAsync(
-                userId,
-                ToUserProfileSaveCommand(displayName, request),
-                ct);
+        using var _ = await LockFor(userId).AcquireAsync(logger, ct);
 
-            await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
+        var storageResult = await userService.SaveProfileAsync(
+            userId,
+            ToUserProfileSaveCommand(displayName, request),
+            ct);
 
-            logger.LogInformation("User {UserId} updated their profile", userId);
+        await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
 
-            return storageResult.ProfileId;
-        }
-        finally
-        {
-            gate.Release();
-        }
+        logger.LogInformation("User {UserId} updated their profile", userId);
+
+        return storageResult.ProfileId;
     }
 
     private static UserProfileSaveCommand ToUserProfileSaveCommand(

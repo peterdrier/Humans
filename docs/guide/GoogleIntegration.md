@@ -40,7 +40,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 
 ### Why you may have a `@nobodies.team` account
 
-An admin can provision a `@nobodies.team` account for you. You get a credentials email at your **personal** address — username, temporary password, sign-in link — and on first login you must change the password and set up 2FA. That address then becomes your **Google service email** (the app's [service account](Glossary.md#service-account) uses it to add you to Groups and Shared Drive folders for every team). Until provisioning happens, your OAuth login email is used instead.
+A coordinator or admin can provision a `@nobodies.team` account for you when your role or data access needs one — accounts are granted on need, not to everyone. You get a credentials email at your **personal** address — username, temporary password, sign-in link — and on first login you must change the password and set up 2FA. That address then becomes your **Google service email** (the app's [service account](Glossary.md#service-account) uses it to add you to Groups and Shared Drive folders for every team). Until provisioning happens, your OAuth login email is used instead.
 
 For how to use the mailbox itself, set up two-factor auth, and send "as" your team's group address, see [Email](Email.md).
 

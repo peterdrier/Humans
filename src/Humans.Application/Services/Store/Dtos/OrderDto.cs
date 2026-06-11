@@ -31,6 +31,7 @@ public record OrderDto(
 public record OrderPaymentDto(
     decimal AmountEur,
     StorePaymentMethod Method,
+    StorePaymentStatus Status,
     string? StripePaymentIntentId,
     string? ExternalRef,
     Instant ReceivedAt,
