@@ -21,40 +21,27 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
         ExpenseReportOperationRequirement requirement,
         ExpenseReportDto resource)
     {
-        var userId = GetUserId(context.User);
-        if (userId is null)
+        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
         var op = requirement.Operation;
         var isFinanceAdmin = RoleChecks.IsFinanceAdmin(context.User); // includes Admin
-        var isSubmitter = resource.SubmitterUserId == userId.Value;
+        var isSubmitter = resource.SubmitterUserId == userId;
 
-        // ─── FinanceAdmin + Admin: broad access ────────────────────────────────
-        // Per docs/sections/Expenses.md actors table, FinanceAdmin has all coordinator
-        // capabilities (Endorse, CoordinatorReject — gated to Submitted) plus the
-        // finance-only operations. Admin is a superset of FinanceAdmin.
-        if (isFinanceAdmin)
-        {
-            if (op is ExpenseReportOperation.View
+        if (isFinanceAdmin
+            && (op is ExpenseReportOperation.View
                     or ExpenseReportOperation.Approve
                     or ExpenseReportOperation.FinanceReject
                     or ExpenseReportOperation.CategoryOverride
                     or ExpenseReportOperation.IncludeInSepaPayout
-                    or ExpenseReportOperation.ReopenSepa)
-            {
-                context.Succeed(requirement);
-                return;
-            }
-
-            if (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
-                && resource.Status == ExpenseReportStatus.Submitted)
-            {
-                context.Succeed(requirement);
-                return;
-            }
+                    or ExpenseReportOperation.ReopenSepa
+                || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
+                    && resource.Status == ExpenseReportStatus.Submitted)))
+        {
+            context.Succeed(requirement);
+            return;
         }
 
-        // ─── Submitter rules ───────────────────────────────────────────────────
         if (isSubmitter)
         {
             if (op == ExpenseReportOperation.View)
@@ -63,9 +50,6 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
                 return;
             }
 
-            // Submitter can only edit (header + lines) while in Draft.
-            // Lines are frozen at submission — ExpenseReportService.RequireEditableReportAsync
-            // enforces this, and the Edit GET/POST controllers also restrict to Draft.
             if (op == ExpenseReportOperation.Edit &&
                 resource.Status == ExpenseReportStatus.Draft)
             {
@@ -80,9 +64,6 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
                 return;
             }
 
-            // Submitter can withdraw from any non-terminal post-Draft status.
-            // Per docs/sections/Expenses.md invariant: terminal alternates include
-            // Withdrawn from Submitted/CoordinatorEndorsed/Approved.
             if (op == ExpenseReportOperation.Withdraw &&
                 resource.Status is ExpenseReportStatus.Submitted
                     or ExpenseReportStatus.CoordinatorEndorsed
@@ -93,36 +74,16 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
             }
         }
 
-        // ─── Coordinator checks (require async lookups) ────────────────────────
-        // Only relevant for Endorse, CoordinatorReject, or View
-        if (op is ExpenseReportOperation.Endorse
+        if ((op is ExpenseReportOperation.Endorse
                 or ExpenseReportOperation.CoordinatorReject
                 or ExpenseReportOperation.View)
+            && await IsCoordinatorOfReportCategoryAsync(userId, resource)
+            && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted))
         {
-            if (await IsCoordinatorOfReportCategoryAsync(userId.Value, resource))
-            {
-                // Coordinator may view any report in their category
-                if (op == ExpenseReportOperation.View)
-                {
-                    context.Succeed(requirement);
-                    return;
-                }
-
-                // Coordinator may endorse/reject only while in Submitted status
-                if (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
-                    && resource.Status == ExpenseReportStatus.Submitted)
-                {
-                    context.Succeed(requirement);
-                }
-            }
+            context.Succeed(requirement);
         }
     }
 
-    /// <summary>
-    /// Returns true iff the user is a coordinator of the team that owns the
-    /// report's budget category. Returns false if the category has no team,
-    /// or if the team lookup fails.
-    /// </summary>
     private async Task<bool> IsCoordinatorOfReportCategoryAsync(Guid userId, ExpenseReportDto report)
     {
         var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
@@ -131,12 +92,5 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
 
         var teamsById = await teamService.GetTeamsAsync();
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, category.TeamId.Value, userId);
-    }
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var claim = user.FindFirst(ClaimTypes.NameIdentifier);
-        if (claim is null) return null;
-        return Guid.TryParse(claim.Value, out var id) ? id : null;
     }
 }

@@ -3,10 +3,6 @@ using Humans.Domain.Entities;
 
 namespace Humans.Infrastructure.Repositories.Expenses;
 
-/// <summary>
-/// Static projection helpers that map EF entities to DTOs.
-/// Lives in Infrastructure (which owns EF) so the Application layer stays clean.
-/// </summary>
 internal static class ExpenseReportMapper
 {
     internal static ExpenseReportDto ToDto(ExpenseReport r) => new()
@@ -35,29 +31,27 @@ internal static class ExpenseReportMapper
         HoldedSupplierAccountNum = r.HoldedSupplierAccountNum,
         CreatedAt = r.CreatedAt,
         UpdatedAt = r.UpdatedAt,
-        Lines = r.Lines.Select(ToLineDto).ToList()
-    };
-
-    internal static ExpenseLineDto ToLineDto(ExpenseLine l) => new()
-    {
-        Id = l.Id,
-        ExpenseReportId = l.ExpenseReportId,
-        Description = l.Description,
-        Amount = l.Amount,
-        LineType = l.LineType,
-        AttachmentId = l.AttachmentId,
-        Attachment = l.Attachment is null ? null : ToAttachmentDto(l.Attachment),
-        SortOrder = l.SortOrder
-    };
-
-    internal static ExpenseAttachmentDto ToAttachmentDto(ExpenseAttachment a) => new()
-    {
-        Id = a.Id,
-        OriginalFileName = a.OriginalFileName,
-        Extension = a.Extension,
-        ContentType = a.ContentType,
-        SizeBytes = a.SizeBytes,
-        UploadedByUserId = a.UploadedByUserId,
-        UploadedAt = a.UploadedAt
+        Lines = r.Lines.Select(l => new ExpenseLineDto
+        {
+            Id = l.Id,
+            ExpenseReportId = l.ExpenseReportId,
+            Description = l.Description,
+            Amount = l.Amount,
+            LineType = l.LineType,
+            AttachmentId = l.AttachmentId,
+            Attachment = l.Attachment is null
+                ? null
+                : new ExpenseAttachmentDto
+                {
+                    Id = l.Attachment.Id,
+                    OriginalFileName = l.Attachment.OriginalFileName,
+                    Extension = l.Attachment.Extension,
+                    ContentType = l.Attachment.ContentType,
+                    SizeBytes = l.Attachment.SizeBytes,
+                    UploadedByUserId = l.Attachment.UploadedByUserId,
+                    UploadedAt = l.Attachment.UploadedAt
+                },
+            SortOrder = l.SortOrder
+        }).ToList()
     };
 }

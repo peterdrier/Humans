@@ -21,41 +21,29 @@ public sealed class IbanAccessHandler(IExpenseReportServiceRead expenseReports)
         AuthorizationHandlerContext context,
         IbanAccessRequirement requirement)
     {
-        var userId = GetUserId(context.User);
-        if (userId is null)
+        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
-        // Self access: the requester is the IBAN owner
-        if (userId.Value == requirement.TargetUserId)
+        if (userId == requirement.TargetUserId)
         {
             context.Succeed(requirement);
             return;
         }
 
-        // Admin on admin page (e.g. /Admin/Users/{id} with Reveal IBAN action)
         if (requirement.IsAdminPageContext && RoleChecks.IsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;
         }
 
-        // FinanceAdmin in a report context: allowed only if the report exists
-        // and is neither Draft nor Withdrawn
-        if (requirement.ReportId.HasValue && RoleChecks.IsFinanceAdmin(context.User))
+        if (requirement.ReportId is { } reportId && RoleChecks.IsFinanceAdmin(context.User))
         {
-            var report = await expenseReports.GetAsync(requirement.ReportId.Value);
+            var report = await expenseReports.GetAsync(reportId);
             if (report is not null &&
                 report.Status is not ExpenseReportStatus.Draft and not ExpenseReportStatus.Withdrawn)
             {
                 context.Succeed(requirement);
             }
         }
-    }
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var claim = user.FindFirst(ClaimTypes.NameIdentifier);
-        if (claim is null) return null;
-        return Guid.TryParse(claim.Value, out var id) ? id : null;
     }
 }

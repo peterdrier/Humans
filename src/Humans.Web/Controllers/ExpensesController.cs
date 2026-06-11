@@ -235,8 +235,7 @@ public sealed class ExpensesController(
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var editableStatuses = new[] { ExpenseReportStatus.Draft };
-            if (!editableStatuses.Contains(report.Status))
+            if (report.Status != ExpenseReportStatus.Draft)
             {
                 SetError("This report can no longer be edited.");
                 return RedirectToAction(nameof(Detail), new { id });
@@ -305,10 +304,7 @@ public sealed class ExpensesController(
         }
 
         var result = await service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
-        if (!result.Succeeded)
-            SetError($"Failed to add line: {result.ErrorMessage}");
-        else
-            SetSuccess("Line added.");
+        SetMutationResultWithDetails(result, "Line added.", "Failed to add line");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -332,10 +328,7 @@ public sealed class ExpensesController(
 
         var result = await service.AddMileageLineWithResultAsync(
             id, user.Id, input.Origin, input.Destination, input.Km);
-        if (!result.Succeeded)
-            SetError($"Failed to add mileage line: {result.ErrorMessage}");
-        else
-            SetSuccess("Mileage line added.");
+        SetMutationResultWithDetails(result, "Mileage line added.", "Failed to add mileage line");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -359,10 +352,7 @@ public sealed class ExpensesController(
 
         var result = await service.AddPerDiemLineWithResultAsync(
             id, user.Id, input.Kind, input.Days, input.Note);
-        if (!result.Succeeded)
-            SetError($"Failed to add per-diem line: {result.ErrorMessage}");
-        else
-            SetSuccess("Per-diem line added.");
+        SetMutationResultWithDetails(result, "Per-diem line added.", "Failed to add per-diem line");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -385,10 +375,7 @@ public sealed class ExpensesController(
         }
 
         var result = await service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
-        if (!result.Succeeded)
-            SetError($"Failed to update line: {result.ErrorMessage}");
-        else
-            SetSuccess("Line updated.");
+        SetMutationResultWithDetails(result, "Line updated.", "Failed to update line");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -405,10 +392,7 @@ public sealed class ExpensesController(
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.RemoveLineWithResultAsync(id, user.Id, lineId);
-        if (!result.Succeeded)
-            SetError($"Failed to remove line: {result.ErrorMessage}");
-        else
-            SetSuccess("Line removed.");
+        SetMutationResultWithDetails(result, "Line removed.", "Failed to remove line");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -435,10 +419,7 @@ public sealed class ExpensesController(
         var result = await service.AttachFileToLineWithResultAsync(
             id, user.Id, lineId, file.FileName, file.ContentType, stream);
 
-        if (result.Succeeded)
-            SetSuccess("Attachment uploaded.");
-        else
-            SetError(result.ErrorMessage ?? "Failed to upload attachment.");
+        SetMutationResult(result, "Attachment uploaded.", "Failed to upload attachment.");
 
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -479,10 +460,7 @@ public sealed class ExpensesController(
         if (report.SubmitterUserId != user.Id) return Forbid();
 
         var result = await service.SubmitWithResultAsync(id, user.Id);
-        if (result.Succeeded)
-            SetSuccess("Report submitted.");
-        else
-            SetError(result.ErrorMessage ?? "Could not submit the report.");
+        SetMutationResult(result, "Report submitted.", "Could not submit the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -496,11 +474,10 @@ public sealed class ExpensesController(
 
         var report = await expenseReadService.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid(); var result = await service.WithdrawWithResultAsync(id, user.Id);
-        if (result.Succeeded)
-            SetSuccess("Report withdrawn.");
-        else
-            SetError(result.ErrorMessage ?? "Could not withdraw this report.");
+        if (report.SubmitterUserId != user.Id) return Forbid();
+
+        var result = await service.WithdrawWithResultAsync(id, user.Id);
+        SetMutationResult(result, "Report withdrawn.", "Could not withdraw this report.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -626,10 +603,7 @@ public sealed class ExpensesController(
         if (!authResult.Succeeded) return Forbid();
 
         var result = await service.CoordinatorEndorseWithResultAsync(id, user.Id);
-        if (result.Succeeded)
-            SetSuccess("Report endorsed.");
-        else
-            SetError(result.ErrorMessage ?? "Could not endorse the report.");
+        SetMutationResult(result, "Report endorsed.", "Could not endorse the report.");
 
         return RedirectToAction(nameof(Coordinator));
     }
@@ -655,10 +629,7 @@ public sealed class ExpensesController(
         }
 
         var result = await service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
-        if (result.Succeeded)
-            SetSuccess("Report rejected.");
-        else
-            SetError(result.ErrorMessage ?? "Could not reject the report.");
+        SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Coordinator));
     }
@@ -697,10 +668,7 @@ public sealed class ExpensesController(
         if (!authResult.Succeeded) return Forbid();
 
         var result = await service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
-        if (result.Succeeded)
-            SetSuccess("Report approved.");
-        else
-            SetError(result.ErrorMessage ?? "Could not approve the report.");
+        SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
         return RedirectToAction(nameof(Review));
     }
@@ -727,10 +695,7 @@ public sealed class ExpensesController(
         }
 
         var result = await service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
-        if (result.Succeeded)
-            SetSuccess("Report rejected.");
-        else
-            SetError(result.ErrorMessage ?? "Could not reject the report.");
+        SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Review));
     }
@@ -777,7 +742,32 @@ public sealed class ExpensesController(
 
         try
         {
-            return await ExecuteSepaGenerateAsync(ids, user.Id, ct);
+            var eligible = await ResolveEligibleForSepaAsync(ids, ct);
+            if (eligible.Count == 0)
+            {
+                SetError("None of the selected reports could be included in the SEPA payout. Reports must be in Approved status.");
+                return RedirectToAction(nameof(Review));
+            }
+
+            // XML before flip so failure at either step leaves a retry-safe state.
+            var now = clock.GetCurrentInstant();
+            var xml = sepaBuilder.BuildPain001(sepaConfig.Value, now, eligible);
+
+            var flippedIds = await service.MarkSepaSentAsync(
+                eligible.Select(r => r.Id).ToList(), user.Id, ct);
+            if (flippedIds.Count == 0)
+            {
+                SetError("No reports were transitioned to SEPA Sent. They may have already been processed.");
+                return RedirectToAction(nameof(Review));
+            }
+
+            var fileName = $"sepa-{now.ToDateTimeUtc().ToFileTimestamp()}.xml";
+
+            logger.LogInformation(
+                "SEPA pain.001 generated by {UserId}: {EligibleCount} eligible, {FlippedCount} flipped to SepaSent",
+                user.Id, eligible.Count, flippedIds.Count);
+
+            return File(Encoding.UTF8.GetBytes(xml), "application/xml", fileName);
         }
         catch (Exception ex)
         {
@@ -785,37 +775,6 @@ public sealed class ExpensesController(
             SetError("Failed to generate SEPA file.");
             return RedirectToAction(nameof(Review));
         }
-    }
-
-    private async Task<IActionResult> ExecuteSepaGenerateAsync(
-        List<Guid> ids, Guid actorUserId, CancellationToken ct)
-    {
-        var eligible = await ResolveEligibleForSepaAsync(ids, ct);
-        if (eligible.Count == 0)
-        {
-            SetError("None of the selected reports could be included in the SEPA payout. Reports must be in Approved status.");
-            return RedirectToAction(nameof(Review));
-        }
-
-        // XML before flip so failure at either step leaves a retry-safe state.
-        var now = clock.GetCurrentInstant();
-        var xml = sepaBuilder.BuildPain001(sepaConfig.Value, now, eligible);
-
-        var flippedIds = await service.MarkSepaSentAsync(
-            eligible.Select(r => r.Id).ToList(), actorUserId, ct);
-        if (flippedIds.Count == 0)
-        {
-            SetError("No reports were transitioned to SEPA Sent. They may have already been processed.");
-            return RedirectToAction(nameof(Review));
-        }
-
-        var fileName = $"sepa-{now.ToDateTimeUtc().ToFileTimestamp()}.xml";
-
-        logger.LogInformation(
-            "SEPA pain.001 generated by {UserId}: {EligibleCount} eligible, {FlippedCount} flipped to SepaSent",
-            actorUserId, eligible.Count, flippedIds.Count);
-
-        return File(Encoding.UTF8.GetBytes(xml), "application/xml", fileName);
     }
 
     private async Task<List<ExpenseReportDto>> ResolveEligibleForSepaAsync(
@@ -867,6 +826,24 @@ public sealed class ExpensesController(
                 .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(c => new BudgetCategoryOption(c.Id, g.Name, c.Name)))
             .ToList();
+    }
+
+    private void SetMutationResult(
+        ExpenseMutationResult result, string successMessage, string fallbackErrorMessage)
+    {
+        if (result.Succeeded)
+            SetSuccess(successMessage);
+        else
+            SetError(result.ErrorMessage ?? fallbackErrorMessage);
+    }
+
+    private void SetMutationResultWithDetails(
+        ExpenseMutationResult result, string successMessage, string errorPrefix)
+    {
+        if (result.Succeeded)
+            SetSuccess(successMessage);
+        else
+            SetError(result.ErrorMessage is null ? errorPrefix : $"{errorPrefix}: {result.ErrorMessage}");
     }
 
     private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId)
