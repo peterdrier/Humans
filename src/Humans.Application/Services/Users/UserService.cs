@@ -259,13 +259,6 @@ public sealed class UserService(
                 return false;
         }
 
-        return await SetGoogleEmailStatusInternalAsync(userId, status, ct);
-    }
-
-    // Private write — Try variant is the only external entry point (sync-driven; Rejected is terminal).
-    private async Task<bool> SetGoogleEmailStatusInternalAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
-    {
         return await repo.SetGoogleEmailStatusAsync(userId, status, ct);
     }
 
