@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Application.Diagnostics;
 
 /// <summary>
@@ -67,7 +69,7 @@ public sealed class OperationTimingRegistry
         private double _minMs = double.MaxValue;
         private double _maxMs;
         private double _lastMs;
-        private DateTime _lastAtUtc;
+        private Instant _lastAt;
 
         public void Add(double ms)
         {
@@ -76,7 +78,7 @@ public sealed class OperationTimingRegistry
             if (ms < _minMs) _minMs = ms;
             if (ms > _maxMs) _maxMs = ms;
             _lastMs = ms;
-            _lastAtUtc = DateTime.UtcNow;
+            _lastAt = SystemClock.Instance.GetCurrentInstant();
         }
 
         public OperationTimingSnapshot ToSnapshot(string key) => new(
@@ -86,7 +88,7 @@ public sealed class OperationTimingRegistry
             MinMs: _count > 0 ? _minMs : 0,
             MaxMs: _maxMs,
             LastMs: _lastMs,
-            LastAtUtc: _lastAtUtc);
+            LastAt: _lastAt);
     }
 }
 
@@ -97,7 +99,7 @@ public sealed record OperationTimingSnapshot(
     double MinMs,
     double MaxMs,
     double LastMs,
-    DateTime LastAtUtc)
+    Instant LastAt)
 {
     public double AvgMs => Count > 0 ? TotalMs / Count : 0;
 }

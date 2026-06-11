@@ -295,7 +295,7 @@ public class DebugController(
                 MinMs = Math.Round(t.MinMs, 2),
                 MaxMs = Math.Round(t.MaxMs, 2),
                 TotalMs = Math.Round(t.TotalMs, 2),
-                LastAtUtc = t.LastAtUtc,
+                LastAtUtc = t.LastAt.ToDateTimeUtc(),
             })
             .ToList();
 

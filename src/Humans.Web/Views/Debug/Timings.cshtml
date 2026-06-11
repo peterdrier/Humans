@@ -32,7 +32,7 @@ else
         .Column("Min (ms)", r => r.MinMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
         .Column("Max (ms)", r => r.MaxMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
         .Column("Total (ms)", r => r.TotalMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
-        .Column("Last At (UTC)", r => r.LastAtUtc == default ? "—" : r.LastAtUtc.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture), c => c.End())
+        .Column("Last At (UTC)", r => r.LastAtUtc == default ? "—" : r.LastAtUtc.ToInvariantTimestamp(), c => c.End())
         .Id("timingsTable")
         .Build();
     <partial name="_Table" model="timingsTable" />
