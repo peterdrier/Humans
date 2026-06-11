@@ -66,7 +66,7 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <strong>Expense lines</strong>
-        <span class="badge bg-secondary">@r.Lines.Count line(s) — &euro;@r.Total.ToString("N2")</span>
+        <span class="badge bg-secondary">@r.Lines.Count line(s) — @r.Total.ToEuro()</span>
     </div>
     <div class="card-body p-0">
         @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
@@ -75,7 +75,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                         <strong>@line.Description</strong>
-                        <span class="ms-2 text-muted">&euro;@line.Amount.ToString("N2")</span>
+                        <span class="ms-2 text-muted">@line.Amount.ToEuro()</span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap justify-content-end">
                         @if (Model.CanEditLines)

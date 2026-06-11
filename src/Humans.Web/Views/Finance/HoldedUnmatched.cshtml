@@ -34,7 +34,7 @@
 else
 {
     Func<HoldedUnmatchedRow, IHtmlContent> totalCell =
-        @<text><span class="text-danger">&euro;@item.Total.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span></text>;
+        @<text><span class="text-danger">@item.Total.ToEuro()</span></text>;
     Func<HoldedUnmatchedRow, IHtmlContent> linkCell =
         @<text><a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded</a></text>;
     var unmatchedTable = TableModel.For(Model)

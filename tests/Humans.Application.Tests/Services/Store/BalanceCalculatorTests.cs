@@ -86,6 +86,56 @@ public class BalanceCalculatorTests
             new BalanceCalculator.LineTotals(lineId, 100m, 21m, null, 100m, 21m, 0m, 121m));
     }
 
+    // ── Payment status exclusion (nobodies-collective/Humans#638) ───────────────
+    // Only Paid rows count. A Pending mandate (captured, not yet cleared) and a Failed
+    // settlement (bounced) must NOT reduce the order balance.
+
+    [HumansFact]
+    public void Only_paid_payments_count_toward_balance()
+    {
+        var lineId = Guid.NewGuid();
+        var order = new StoreOrder
+        {
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = lineId, Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 0m }
+            },
+            Payments = new List<StorePayment>
+            {
+                new() { AmountEur = 40m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid },
+                new() { AmountEur = 30m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending },
+                new() { AmountEur = 25m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Failed }
+            }
+        };
+
+        var r = BalanceCalculator.Compute(order);
+
+        r.PaymentsTotalEur.Should().Be(40m);   // only the Paid row
+        r.BalanceEur.Should().Be(60m);          // 100 due − 40 cleared
+    }
+
+    [HumansFact]
+    public void Pending_only_order_is_not_treated_as_paid()
+    {
+        // SEPA mandate captured at checkout but not yet cleared: the order is still fully owed.
+        var order = new StoreOrder
+        {
+            Lines = new List<StoreOrderLine>
+            {
+                new() { Id = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 50m, VatRateSnapshot = 0m }
+            },
+            Payments = new List<StorePayment>
+            {
+                new() { AmountEur = 50m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending }
+            }
+        };
+
+        var r = BalanceCalculator.Compute(order);
+
+        r.PaymentsTotalEur.Should().Be(0m);
+        r.BalanceEur.Should().Be(50m); // mandate ≠ payment — still fully owed
+    }
+
     // ── Repricing (nobodies-collective/Humans#816) ──────────────────────────────
     // Open orders are a running tab: totals track the *current* catalog price.
     // Issued orders are frozen and read their add-time snapshots forever.

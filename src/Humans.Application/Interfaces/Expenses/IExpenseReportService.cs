@@ -70,6 +70,15 @@ public interface IExpenseReportService : IExpenseReportServiceRead, IApplication
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Reverts a <see cref="ExpenseReportStatus.SepaSent"/> report back to
+    /// <see cref="ExpenseReportStatus.Approved"/> so the admin can include it in a fresh SEPA
+    /// batch after a failed download. Returns <see cref="ExpenseMutationResult.Failure"/> if the
+    /// report is not in <c>SepaSent</c> status.
+    /// </summary>
+    Task<ExpenseMutationResult> ReopenSepaWithResultAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default);
+
     Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string origin, string destination, decimal km,

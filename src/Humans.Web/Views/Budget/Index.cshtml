@@ -39,7 +39,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Allocated</h6>
-                <h3 class="card-title mb-0">&euro;@totalAllocated.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@totalAllocated.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -47,7 +47,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
-                <h3 class="card-title mb-0">&euro;@totalLineItems.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@totalLineItems.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -56,7 +56,7 @@
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
                 <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    &euro;@unallocated.ToString("N2")
+                    @unallocated.ToEuro()
                 </h3>
             </div>
         </div>
@@ -91,7 +91,7 @@
                     <span class="badge bg-secondary ms-1"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
                 }
             </div>
-            <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
+            <span class="text-muted">@groupAllocated.ToEuro()</span>
         </div>
         <div id="@collapseId" class="collapse show">
             <div class="card-body p-0">
@@ -107,7 +107,7 @@
                     Func<BudgetCategoryDetail, IHtmlContent> unallocatedCell = @<text>
                         @{ var cellUnallocated = item.AllocatedAmount - item.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount); }
                         <span class="@(cellUnallocated < 0 ? "text-danger" : "")">
-                            &euro;@cellUnallocated.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+                            @cellUnallocated.ToEuro()
                         </span>
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> expenditureTypeCell = @<text>

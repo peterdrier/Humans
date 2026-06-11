@@ -73,7 +73,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Allocated <span class="text-muted">(incl. VAT/IVA)</span></h6>
-                <h3 class="card-title mb-0">&euro;@category.AllocatedAmount.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@category.AllocatedAmount.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -81,7 +81,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
-                <h3 class="card-title mb-0">&euro;@lineItemTotal.ToString("N2")</h3>
+                <h3 class="card-title mb-0">@lineItemTotal.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -90,7 +90,7 @@
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
                 <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    &euro;@unallocated.ToString("N2")
+                    @unallocated.ToEuro()
                 </h3>
             </div>
         </div>
@@ -152,7 +152,7 @@
                                     <span class="badge bg-info ms-1" title="Cashflow only — excluded from budget totals">Cashflow</span>
                                 }
                             </td>
-                            <td class="text-end @amountClass">&euro;@item.Amount.ToString("N2")</td>
+                            <td class="text-end @amountClass">@item.Amount.ToEuro()</td>
                             <td>
                                 @if (item.VatRate > 0)
                                 {
@@ -347,7 +347,7 @@
                                 VAT on @vat.SourceDescription
                             </td>
                             <td class="text-end @(vat.IsExpense ? "text-danger" : "text-success")">
-                                @(vat.IsExpense ? "-" : "+")&euro;@vat.VatAmount.ToString("N2")
+                                @(vat.IsExpense ? "-" : "+")@vat.VatAmount.ToEuro()
                             </td>
                             <td><span class="badge bg-warning text-dark">@vat.VatRate%</span></td>
                             <td>

@@ -297,8 +297,33 @@
         <div class="card mb-4">
             <div class="card-header">Google Sync</div>
             <div class="card-body">
+                @{
+                    var googleSyncBadgeClass = Model.GoogleEmailStatus switch
+                    {
+                        GoogleEmailStatus.Valid => "bg-success",
+                        GoogleEmailStatus.Rejected => "bg-danger",
+                        _ => "bg-secondary"
+                    };
+                }
+                <div class="mb-2">
+                    <span class="badge @googleSyncBadgeClass me-1">@Model.GoogleEmailStatus</span>
+                    @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+                    {
+                        <small class="text-danger">Email rejected by Google sync</small>
+                    }
+                </div>
+                @if (isAdmin)
+                {
+                    <form asp-controller="Google" asp-action="RerunGoogleSync" asp-route-id="@Model.UserId" method="post" class="mb-2"
+                          data-confirm="Re-run Google sync for this user? This enqueues AddUserToTeamResources for all their teams.">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                            <i class="fa-solid fa-rotate-right me-1"></i>Re-run Google Sync
+                        </button>
+                    </form>
+                }
                 <a asp-controller="AuditLog" asp-action="Human" asp-route-id="@Model.UserId"
-                   class="btn btn-outline-secondary w-100">View Google Sync Audit</a>
+                   class="btn btn-outline-secondary btn-sm w-100">View Google Sync Audit</a>
             </div>
         </div>
 

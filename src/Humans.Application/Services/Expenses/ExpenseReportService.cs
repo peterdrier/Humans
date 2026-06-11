@@ -838,6 +838,34 @@ public sealed class ExpenseReportService(
         return flippedIds;
     }
 
+    public async Task<ExpenseMutationResult> ReopenSepaWithResultAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var ok = await repo.ReopenSepaAsync(reportId, now, ct);
+            if (!ok)
+            {
+                logger.LogWarning("ReopenSepa guard failed for report {ReportId}: not in SepaSent status", reportId);
+                return ExpenseMutationResult.Failure("Report is not in SepaSent status and cannot be reopened.");
+            }
+
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseSepaReopened,
+                "ExpenseReport", reportId,
+                "Reopened from SepaSent to Approved — download failed, batch can be regenerated.",
+                actorUserId);
+
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reopening SEPA for report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
+    }
+
     internal async Task<bool> MarkPaidAsync(
         Guid reportId, Instant paidAt, CancellationToken ct = default)
     {
@@ -1238,6 +1266,7 @@ public sealed class ExpenseReportService(
             AuditAction.ExpenseWithdraw,
             AuditAction.ExpenseCategoryOverride,
             AuditAction.ExpenseSepaSent,
+            AuditAction.ExpenseSepaReopened,
             AuditAction.ExpensePaid,
             AuditAction.ExpenseAttachmentUploaded,
             AuditAction.ExpenseAttachmentRemoved,

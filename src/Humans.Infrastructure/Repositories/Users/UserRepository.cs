@@ -123,9 +123,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-#pragma warning disable HUM_USER_DISPLAYNAME // Repository mutates the legacy Identity fallback column.
         user.DisplayName = displayName;
-#pragma warning restore HUM_USER_DISPLAYNAME
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -276,9 +274,7 @@ internal sealed partial class UserRepository : IUserRepository
         user.MergedToUserId = targetUserId;
         user.MergedAt = now;
 
-#pragma warning disable HUM_USER_DISPLAYNAME // Merge tombstone label is an allowed legacy column write.
         user.DisplayName = "Merged User";
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         // Scrub the legacy Identity email/username PII from the tombstone. The address
         // already moved to the survivor's UserEmail rows during the fan-out, so keeping
@@ -486,7 +482,6 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return null;
 
-#pragma warning disable HUM_USER_DISPLAYNAME // Purge returns and rewrites the legacy label for audit/debug flows.
         var displayName = user.DisplayName;
 
         // Drop external logins so a returning Google user can land on a fresh
@@ -497,7 +492,6 @@ internal sealed partial class UserRepository : IUserRepository
         ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
 
         user.DisplayName = $"Purged ({displayName})";
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         user.LockoutEnabled = true;
         user.LockoutEnd = DateTimeOffset.MaxValue;
@@ -541,12 +535,10 @@ internal sealed partial class UserRepository : IUserRepository
             return null;
 
         var originalEmail = user.Email;
-#pragma warning disable HUM_USER_DISPLAYNAME // Deletion export records the original legacy label before anonymization.
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         // Scrub the legacy Identity email/username PII. The address was already removed
         // from UserEmail rows (RemoveAllUserEmailsForUserAndSaveAsync runs first), but the

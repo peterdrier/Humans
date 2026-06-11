@@ -148,7 +148,7 @@ public class StoreServiceTeamOrdersTests
         _repo.StripePaymentIntentExistsAsync("pi_x", Arg.Any<CancellationToken>()).Returns(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, TestContext.Current.CancellationToken));
+            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken));
     }
 
     // ==========================================================================

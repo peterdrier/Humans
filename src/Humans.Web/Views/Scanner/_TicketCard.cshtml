@@ -44,7 +44,7 @@ else
             @if (Model.TransferredAt.HasValue)
             {
                 <dt class="col-sm-4">@Localizer["Scanner_Tickets_TransferredOn"]</dt>
-                <dd class="col-sm-8">@Model.TransferredAt.Value.ToDate(DateTimeZone.Utc)</dd>
+                <dd class="col-sm-8">@Model.TransferredAt.Value.ToDate(tz)</dd>
             }
         }
     </dl>

@@ -52,9 +52,10 @@ public interface IMailerLiteService : IApplicationService
     Task UnassignSubscriberFromGroupAsync(string subscriberId, string groupId, CancellationToken ct = default);
 
     /// <summary>
-    /// Bulk-creates-or-updates subscribers from a list of emails and assigns them
-    /// to the target group in one MailerLite call (chunked per
-    /// <c>MailerLiteOptions.BulkImportChunkSize</c> by the implementation).
+    /// Creates-or-updates each email as a MailerLite subscriber (via individual
+    /// POST /api/subscribers calls) and assigns them to the target group.
+    /// Partial failure is possible: <see cref="BulkImportResult.Errors"/> counts
+    /// per-email failures; successfully processed emails are still assigned.
     /// Same prefix guard as assign.
     /// </summary>
     Task<BulkImportResult> BulkImportSubscribersToGroupAsync(

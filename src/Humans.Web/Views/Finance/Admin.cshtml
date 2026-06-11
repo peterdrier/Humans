@@ -53,7 +53,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <div>
                 <strong>@budgetYear.Name</strong>
-                <span class="badge bg-@(budgetYear.Status == BudgetYearStatus.Active ? "success" : budgetYear.Status == BudgetYearStatus.Draft ? "warning" : "secondary") ms-2">@budgetYear.Status</span>
+                <span class="badge @budgetYear.Status.GetBadgeClass() ms-2">@budgetYear.Status</span>
                 @if (budgetYear.IsDeleted)
                 {
                     <span class="badge bg-dark ms-1">Archived</span>

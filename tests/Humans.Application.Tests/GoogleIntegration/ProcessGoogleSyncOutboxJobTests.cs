@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -26,6 +27,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
@@ -53,6 +55,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
@@ -63,6 +66,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             _userService,
             _teamService,
             _googleSyncService,
+            _notificationService,
             _metrics,
             _clock,
             logger);

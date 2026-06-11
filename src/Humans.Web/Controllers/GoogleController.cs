@@ -7,6 +7,7 @@ using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Web.Models.Google;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
@@ -645,6 +646,83 @@ public class GoogleController(
         ViewBag.TeamLookup = teamLookup;
         ViewBag.ResourceLookup = resourceLookup;
         return View(events);
+    }
+
+    [HttpPost("SyncOutbox/{id:guid}/Requeue")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequeueOutboxEvent(
+        Guid id,
+        [FromServices] IAuditLogService auditLogService)
+    {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var requeued = await googleSyncService.RequeueOutboxEventAsync(id);
+        if (!requeued)
+        {
+            SetError("Event not found or not in a failed state.");
+            return RedirectToAction(nameof(SyncOutbox));
+        }
+
+        await auditLogService.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "GoogleSyncOutboxEvent",
+            id,
+            $"Admin manually requeued Google sync outbox event {id}",
+            currentUser.Id);
+
+        SetSuccess("Event requeued for retry.");
+        return RedirectToAction(nameof(SyncOutbox));
+    }
+
+    [HttpPost("SyncOutbox/RequeueAll")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequeueAllFailedOutboxEvents(
+        [FromServices] IAuditLogService auditLogService)
+    {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var count = await googleSyncService.RequeueAllFailedOutboxEventsAsync();
+
+        await auditLogService.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "GoogleSyncOutbox",
+            Guid.Empty,
+            $"Admin requeued all {count} permanently-failed Google sync outbox event(s)",
+            currentUser.Id);
+
+        SetSuccess(count == 0
+            ? "No permanently-failed events to requeue."
+            : $"Requeued {count} event(s) for retry.");
+        return RedirectToAction(nameof(SyncOutbox));
+    }
+
+    [HttpPost("Human/{id:guid}/RerunSync")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RerunGoogleSync(
+        Guid id,
+        [FromServices] IAuditLogService auditLogService)
+    {
+        var currentUser = await GetCurrentUserInfoAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var count = await googleSyncService.EnqueueUserSyncAsync(id);
+
+        await auditLogService.LogAsync(
+            AuditAction.GoogleSyncRetryScheduled,
+            "User",
+            id,
+            $"Admin enqueued Google sync re-run for user {id} ({count} team event(s))",
+            currentUser.Id);
+
+        SetSuccess(count == 0
+            ? "User is not a member of any teams — no sync events enqueued."
+            : $"Enqueued sync for {count} team(s). The job will process them shortly.");
+        return RedirectToAction(nameof(UsersAdminController.AdminDetail), "UsersAdmin", new { id });
     }
 
     // --- Email Rename Detection ---

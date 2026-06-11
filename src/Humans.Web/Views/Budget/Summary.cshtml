@@ -28,7 +28,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Income</h6>
-                <h3 class="card-title mb-0 text-success">&euro;@Model.TotalIncome.ToString("N2")</h3>
+                <h3 class="card-title mb-0 text-success">@Model.TotalIncome.ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -36,7 +36,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Total Expenses</h6>
-                <h3 class="card-title mb-0 text-danger">&euro;@Math.Abs(Model.TotalExpenses).ToString("N2")</h3>
+                <h3 class="card-title mb-0 text-danger">@Math.Abs(Model.TotalExpenses).ToEuro()</h3>
             </div>
         </div>
     </div>
@@ -45,7 +45,7 @@
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Net Balance</h6>
                 <h3 class="card-title mb-0 @(Model.NetBalance >= 0 ? "text-success" : "text-danger")">
-                    &euro;@Model.NetBalance.ToString("N2")
+                    @Model.NetBalance.ToEuro()
                 </h3>
             </div>
         </div>
