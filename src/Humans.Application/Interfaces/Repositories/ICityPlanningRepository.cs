@@ -83,12 +83,6 @@ public interface ICityPlanningRepository : IRepository
 
     /// <summary>
     /// Returns the <see cref="CityPlanningSettings"/> row for the given year,
-    /// or <c>null</c> if none exists. Read-only (AsNoTracking).
-    /// </summary>
-    Task<CityPlanningSettings?> GetSettingsByYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the <see cref="CityPlanningSettings"/> row for the given year,
     /// creating a new one (with <c>IsPlacementOpen = false</c>) if it does not
     /// exist yet. Always returns a detached, up-to-date row.
     /// </summary>

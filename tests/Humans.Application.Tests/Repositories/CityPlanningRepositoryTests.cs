@@ -168,13 +168,6 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetSettingsByYearAsync_ReturnsNull_WhenNotFound()
-    {
-        var result = await _repo.GetSettingsByYearAsync(2030);
-        result.Should().BeNull();
-    }
-
-    [HumansFact]
     public async Task GetOrCreateSettingsAsync_CreatesRow_WhenNotFound()
     {
         var now = _clock.GetCurrentInstant();

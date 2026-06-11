@@ -138,15 +138,6 @@ internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> 
     // Reads / Writes — CityPlanningSettings
     // ==========================================================================
 
-    public async Task<CityPlanningSettings?> GetSettingsByYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CityPlanningSettings
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Year == year, ct);
-    }
-
     public async Task<CityPlanningSettings> GetOrCreateSettingsAsync(
         int year, Instant now, CancellationToken ct = default)
     {
