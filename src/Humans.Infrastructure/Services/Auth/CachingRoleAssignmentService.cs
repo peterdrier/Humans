@@ -11,9 +11,12 @@ namespace Humans.Infrastructure.Services.Auth;
 /// Singleton caching decorator for <see cref="IRoleAssignmentService"/>.
 /// Caches the full set of <c>role_assignments</c> rows so cross-section reads
 /// such as <see cref="GetActiveCountsByRoleAsync"/> can be derived in memory
-/// at any clock instant. Invalidated wholesale by
-/// <c>RoleAssignmentSaveChangesInterceptor</c> after any persisted write
-/// to <c>role_assignments</c>.
+/// at any clock instant. Invalidated wholesale via explicit
+/// <c>IRoleAssignmentCacheInvalidator.InvalidateAll()</c> calls inside
+/// <c>RoleAssignmentService</c>'s mutating methods, and via
+/// <c>IRoleAssignmentService.InvalidateRoleAssignmentCache()</c> from
+/// <c>AccountMergeService</c> after a merge fold. No EF interceptor —
+/// all writes go through <c>RoleAssignmentService</c>.
 /// </summary>
 /// <remarks>
 /// Mirrors <c>CachingLegalDocumentSyncService</c>: warmed on startup via the

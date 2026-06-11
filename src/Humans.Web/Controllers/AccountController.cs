@@ -267,7 +267,6 @@ public class AccountController(
         string? name)
     {
         var newUserId = Guid.NewGuid();
-#pragma warning disable HUM_USER_DISPLAYNAME // OAuth signup seeds the legacy Identity fallback column.
         var user = new User
         {
             Id = newUserId,
@@ -275,7 +274,6 @@ public class AccountController(
             CreatedAt = clock.GetCurrentInstant(),
             LastLoginAt = clock.GetCurrentInstant()
         };
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         var createResult = await userManager.CreateAsync(user);
         if (!createResult.Succeeded)

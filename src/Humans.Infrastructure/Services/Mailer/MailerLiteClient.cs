@@ -277,11 +277,13 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
             };
             if (delay > TimeSpan.Zero)
             {
+                logger.LogWarning("MailerLite rate limit low ({Remaining} remaining); backing off {Delay:0.#}s before next call",
+                    remaining, delay.TotalSeconds);
                 try
                 {
                     await Task.Delay(delay, ct);
                 }
-                catch
+                catch (OperationCanceledException)
                 {
                     // Dispose so we don't leak the socket — caller never sees this response.
                     resp.Dispose();

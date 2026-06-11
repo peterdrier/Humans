@@ -906,7 +906,6 @@ public sealed class UserService(
             .FirstOrDefault();
         var effectiveEmail = SelectEffectiveEmail(userEmails, user.IdentityEmailColumn);
 
-#pragma warning disable HUM_USER_DISPLAYNAME // GDPR export must include the legacy Identity column value.
         var shaped = new
         {
             user.Id,
@@ -922,7 +921,6 @@ public sealed class UserService(
             CreatedAt = user.CreatedAt.ToIso8601(),
             LastLoginAt = user.LastLoginAt.ToIso8601()
         };
-#pragma warning restore HUM_USER_DISPLAYNAME
 
         var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var participationsShaped = participations
@@ -1220,9 +1218,7 @@ public sealed class UserService(
     {
         var suspended = command.Suspended!.Value;
 
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended = suspended;
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
 
         // Dual-write until IsSuspended is dropped. State is the canonical shape
         // exposed through UserInfo.
