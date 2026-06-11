@@ -99,9 +99,9 @@ public sealed class ShiftManagementService(
     public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId)
     {
         // Admin, NoInfoAdmin, and VolunteerCoordinator can approve signups system-wide
-        if (await HasActiveRoleAsync(userId, RoleNames.Admin) ||
-            await HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin) ||
-            await HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
+        if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin) ||
+            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin) ||
+            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
             return true;
 
         return await IsDeptCoordinatorAsync(userId, departmentTeamId);
@@ -115,11 +115,6 @@ public sealed class ShiftManagementService(
             return await TeamService.GetUserCoordinatedTeamIdsAsync(userId);
         });
         return result ?? [];
-    }
-
-    private async Task<bool> HasActiveRoleAsync(Guid userId, string roleName)
-    {
-        return await RoleAssignmentService.HasActiveRoleAsync(userId, roleName);
     }
 
     /// <summary>
@@ -1248,7 +1243,7 @@ public sealed class ShiftManagementService(
     {
         var es = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null)
-            return EmptyOverview();
+            return new DashboardOverview(0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
@@ -1323,9 +1318,6 @@ public sealed class ShiftManagementService(
                 ? 100.0 * v.FilledSlots / v.TotalSlots
                 : 0d;
     }
-
-    private static DashboardOverview EmptyOverview() => new(
-        0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,

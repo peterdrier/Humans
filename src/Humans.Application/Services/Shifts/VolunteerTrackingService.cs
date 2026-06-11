@@ -29,7 +29,10 @@ public sealed class VolunteerTrackingService(
         var all = await trackingRepo.GetAvailabilityForEventAsync(eventSettingsId);
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
-            .Select(ToSnapshot)
+            .Select(availability => new GeneralAvailabilitySnapshot(
+                availability.UserId,
+                availability.EventSettingsId,
+                availability.AvailableDayOffsets))
             .ToList();
     }
 
@@ -57,17 +60,11 @@ public sealed class VolunteerTrackingService(
         return true;
     }
 
-    private static GeneralAvailabilitySnapshot ToSnapshot(GeneralAvailability availability) =>
-        new(
-            availability.UserId,
-            availability.EventSettingsId,
-            availability.AvailableDayOffsets);
-
     public async Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default)
     {
         var es = await shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         if (es is null)
-            return EmptyTrackingViewModel();
+            return new VolunteerTrackingViewModel(false, 0, default, default, [], []);
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
         var today = clock.GetCurrentInstant().InZone(zone).Date;
@@ -101,15 +98,6 @@ public sealed class VolunteerTrackingService(
             mainRows,
             unbookedRows);
     }
-
-    private static VolunteerTrackingViewModel EmptyTrackingViewModel() =>
-        new(
-            false,
-            0,
-            default,
-            default,
-            [],
-            []);
 
     private static Dictionary<Guid, ParticipationStatus> BuildParticipationStatusMap(
         IEnumerable<UserInfo> users,
@@ -479,10 +467,6 @@ public sealed class VolunteerTrackingService(
             cells.Add(new VolunteerCell(day, state, rotaNames, declared));
         }
 
-        var dayOffSummaries = (bs?.DayOffs ?? [])
-            .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
-            .ToList();
-
         var row = new VolunteerHeatmapRow(
             userId,
             firstSignupDay,
@@ -490,7 +474,7 @@ public sealed class VolunteerTrackingService(
             bs?.BarrioSetupStartDate,
             gapCount,
             cells,
-            dayOffSummaries);
+            BuildDayOffSummaries(bs));
 
         return new VolunteerBuildStripDto(es.BuildStartOffset, es.GateOpeningDate, row);
     }

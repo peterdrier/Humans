@@ -53,7 +53,7 @@ public sealed class ShiftSignupService(
 
         var es = shift.Rota.EventSettings;
         var now = clock.GetCurrentInstant();
-        isPrivileged = isPrivileged || await IsPrivilegedAsync(userId, shift.Rota.TeamId);
+        isPrivileged = isPrivileged || await shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
 
         if (!es.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail("Shift browsing is not currently open.");
@@ -156,7 +156,7 @@ public sealed class ShiftSignupService(
         var now = clock.GetCurrentInstant();
         if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value)
         {
-            var isPrivileged = await IsPrivilegedAsync(reviewerUserId, signup.Shift.Rota.TeamId);
+            var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
             if (!isPrivileged)
                 return SignupResult.Fail("Cannot approve build shift signups after early entry close.");
         }
@@ -212,7 +212,7 @@ public sealed class ShiftSignupService(
         var es = signup.Shift.Rota.EventSettings;
         var now = clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
-        var isPrivileged = await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
+        var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(actorUserId, signup.Shift.Rota.TeamId);
 
         // Auth: must be signup owner or privileged (dept coordinator/NoInfoAdmin/Admin)
         if (!isOwner && !isPrivileged)
@@ -515,11 +515,18 @@ public sealed class ShiftSignupService(
 
         var es = rota.EventSettings;
         var now = clock.GetCurrentInstant();
-        isPrivileged = isPrivileged || await IsPrivilegedAsync(userId, rota.TeamId);
+        isPrivileged = isPrivileged || await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
 
-        var gateFailure = ValidateRangeSignupGate(rota, es, now, isPrivileged);
-        if (gateFailure is not null)
-            return gateFailure;
+        if (!es.IsShiftBrowsingOpen && !isPrivileged)
+            return SignupResult.Fail("Shift browsing is not currently open.");
+
+        if (rota.Period == RotaPeriod.Build
+            && es.EarlyEntryClose.HasValue
+            && now >= es.EarlyEntryClose.Value
+            && !isPrivileged)
+        {
+            return SignupResult.Fail("Early entry signups are closed.");
+        }
 
         var shiftsInRange = SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
@@ -543,14 +550,22 @@ public sealed class ShiftSignupService(
 
         shiftsInRange = conflictSelection.Shifts;
         if (shiftsInRange.Count == 0)
-            return BuildEmptyRangeSignupResult(conflictSelection.Warnings);
+            return conflictSelection.Warnings.Count > 0
+                ? SignupResult.Fail(string.Join(" ", conflictSelection.Warnings) + " Nothing to add.")
+                : SignupResult.Fail("No shifts found in the specified date range.");
 
         var capacitySelection = await SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
         if (capacitySelection.AvailableShifts.Count == 0)
             return SignupResult.Fail("All shifts in this range are at capacity.");
 
-        string? warning = CombineRangeWarnings(conflictSelection.Warnings);
-        warning = AppendFullDayRangeWarning(warning, capacitySelection.FullDayOffsets, es);
+        string? warning = conflictSelection.Warnings.Count > 0
+            ? string.Join(" ", conflictSelection.Warnings)
+            : null;
+        if (capacitySelection.FullDayOffsets.Count > 0)
+        {
+            var dayList = FormatRangeDayList(es, capacitySelection.FullDayOffsets);
+            warning = AppendRangeWarning(warning, $"Day(s) {dayList} are at capacity.");
+        }
 
         var availableShifts = capacitySelection.AvailableShifts;
 
@@ -580,26 +595,6 @@ public sealed class ShiftSignupService(
         }
 
         return SignupResult.Ok(createdSignups.LastSignup, warning);
-    }
-
-    private static SignupResult? ValidateRangeSignupGate(
-        Rota rota,
-        EventSettings eventSettings,
-        Instant now,
-        bool isPrivileged)
-    {
-        if (!eventSettings.IsShiftBrowsingOpen && !isPrivileged)
-            return SignupResult.Fail("Shift browsing is not currently open.");
-
-        if (rota.Period == RotaPeriod.Build
-            && eventSettings.EarlyEntryClose.HasValue
-            && now >= eventSettings.EarlyEntryClose.Value
-            && !isPrivileged)
-        {
-            return SignupResult.Fail("Early entry signups are closed.");
-        }
-
-        return null;
     }
 
     private static RangeSignupCandidateSelection PruneDuplicateRangeShifts(
@@ -690,11 +685,6 @@ public sealed class ShiftSignupService(
         return conflictingDays;
     }
 
-    private static SignupResult BuildEmptyRangeSignupResult(IReadOnlyList<string> warnings)
-        => warnings.Count > 0
-            ? SignupResult.Fail(string.Join(" ", warnings) + " Nothing to add.")
-            : SignupResult.Fail("No shifts found in the specified date range.");
-
     private async Task<RangeCapacitySelection> SelectCapacityAvailableRangeShiftsAsync(List<Shift> shiftsInRange)
     {
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
@@ -709,21 +699,6 @@ public sealed class ShiftSignupService(
             .ToList();
 
         return new RangeCapacitySelection(availableShifts, fullDays);
-    }
-
-    private static string? CombineRangeWarnings(IReadOnlyList<string> warnings)
-        => warnings.Count > 0 ? string.Join(" ", warnings) : null;
-
-    private static string? AppendFullDayRangeWarning(
-        string? warning,
-        IReadOnlyCollection<int> fullDays,
-        EventSettings eventSettings)
-    {
-        if (fullDays.Count == 0)
-            return warning;
-
-        var dayList = FormatRangeDayList(eventSettings, fullDays);
-        return AppendRangeWarning(warning, $"Day(s) {dayList} are at capacity.");
     }
 
     private async Task<string?> AppendEarlyEntryRangeWarningAsync(
@@ -846,7 +821,7 @@ public sealed class ShiftSignupService(
 
             if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value)
             {
-                var isPrivileged = await IsPrivilegedAsync(reviewerUserId, signup.Shift.Rota.TeamId);
+                var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
                 if (!isPrivileged)
                     return SignupResult.Fail("Cannot approve build shift signups after early entry close.");
             }
@@ -962,7 +937,7 @@ public sealed class ShiftSignupService(
         var es = firstSignup.Shift.Rota.EventSettings;
         var now = clock.GetCurrentInstant();
         var isOwner = firstSignup.UserId == actorUserId;
-        var isPrivileged = await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
+        var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
             throw new InvalidOperationException("Not authorized to bail this signup block.");
@@ -1041,12 +1016,9 @@ public sealed class ShiftSignupService(
     {
         var signups = await repo.GetForUsersAsync([userId]);
         return signups
-            .Where(IsActiveSignup)
+            .Where(signup => signup.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
     }
-
-    private static bool IsActiveSignup(ShiftSignup signup) =>
-        signup.Status is SignupStatus.Pending or SignupStatus.Confirmed;
 
     private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettings es)
     {
@@ -1103,11 +1075,6 @@ public sealed class ShiftSignupService(
             return "Early entry capacity reached.";
 
         return null;
-    }
-
-    private async Task<bool> IsPrivilegedAsync(Guid userId, Guid departmentTeamId)
-    {
-        return await shiftMgmt.CanApproveSignupsAsync(userId, departmentTeamId);
     }
 
     private async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)

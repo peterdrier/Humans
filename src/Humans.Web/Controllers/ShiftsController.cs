@@ -61,7 +61,7 @@ public class ShiftsController(
         var hasSignups = userSignups.Count > 0;
         var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
 
-        if (!CanBrowseShifts(es, isPrivileged, hasSignups))
+        if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
 
         var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
@@ -88,9 +88,6 @@ public class ShiftsController(
 
         return View(model);
     }
-
-    private static bool CanBrowseShifts(EventSettings eventSettings, bool isPrivileged, bool hasSignups) =>
-        eventSettings.IsShiftBrowsingOpen || isPrivileged || hasSignups;
 
     // No legal name → bounce to onboarding widget (Names step); signup needs it for the rota report.
     private IActionResult? RedirectIfNameMissing(UserInfo user)
@@ -295,7 +292,6 @@ public class ShiftsController(
         return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 
-    // True when the shift qualifies for a cantina meal and the user has no DietaryPreference yet.
     private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
     {
         var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
@@ -372,7 +368,15 @@ public class ShiftsController(
             SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted),
         };
 
-        var mineTeamNames = await LoadTeamNamesForSignupsAsync(signups);
+        var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
+        IReadOnlyDictionary<Guid, string> mineTeamNames = new Dictionary<Guid, string>();
+        if (teamIds.Count > 0)
+        {
+            var teamsById = await teamService.GetTeamsAsync();
+            mineTeamNames = teamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(id => id, id => teamsById[id].Name);
+        }
         var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now, onMissingSignupData: signup =>
             logger.LogWarning(
                 "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
@@ -383,34 +387,9 @@ public class ShiftsController(
         model.Pending = buckets.Pending;
         model.Past = buckets.Past;
 
-        PopulateAvailability(model, userView, es);
-        await EnsureICalUrlAsync(model, user);
-
-        return View(model);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> LoadTeamNamesForSignupsAsync(IReadOnlyList<ShiftSignup> signups)
-    {
-        var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
-        if (teamIds.Count == 0)
-            return new Dictionary<Guid, string>();
-        var teamsById = await teamService.GetTeamsAsync();
-        return teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-    }
-
-    private static void PopulateAvailability(MyShiftsViewModel model, ShiftUserView userView, EventSettings? eventSettings)
-    {
-        if (eventSettings is null) return;
-
-        // see #720: availability via cached ShiftUserView (null when no row for event).
-        if (userView.Availability is not null)
+        if (es is not null && userView.Availability is not null)
             model.AvailableDayOffsets = userView.Availability.AvailableDayOffsets.ToList();
-    }
 
-    private async Task EnsureICalUrlAsync(MyShiftsViewModel model, UserInfo user)
-    {
         var token = user.ICalToken;
         if (token is null)
         {
@@ -419,6 +398,8 @@ public class ShiftsController(
         }
 
         model.ICalUrl = $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{token}.ics";
+
+        return View(model);
     }
 
     [HttpPost("Mine/Availability")]
@@ -515,7 +496,12 @@ public class ShiftsController(
 
         var parsed = EventSettingsFormMapper.Parse(model);
         if (!parsed.Success)
-            return ViewWithFormErrors(model, parsed.Errors);
+        {
+            foreach (var error in parsed.Errors)
+                ModelState.AddModelError(error.FieldName, error.Message);
+
+            return View(model);
+        }
 
         var draft = parsed.Draft!;
 
@@ -534,14 +520,6 @@ public class ShiftsController(
 
         SetSuccess("Event settings saved.");
         return RedirectToAction(nameof(Settings));
-    }
-
-    private IActionResult ViewWithFormErrors(EventSettingsViewModel model, IReadOnlyList<EventSettingsFormError> errors)
-    {
-        foreach (var error in errors)
-            ModelState.AddModelError(error.FieldName, error.Message);
-
-        return View(model);
     }
 
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)

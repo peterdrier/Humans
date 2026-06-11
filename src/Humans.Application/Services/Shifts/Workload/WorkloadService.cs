@@ -266,7 +266,13 @@ public sealed class WorkloadService(
                 if (assignment.AssignedUserId is not { } userId) continue;
                 perUser.TryGetValue(userId, out var h);
                 h ??= new RolePersonHours(0, 0, 0, 0);
-                perUser[userId] = AddByPeriod(h, role.Period, est);
+                perUser[userId] = role.Period switch
+                {
+                    RolePeriod.Build => h with { Build = h.Build + est },
+                    RolePeriod.Event => h with { Event = h.Event + est },
+                    RolePeriod.Strike => h with { Strike = h.Strike + est },
+                    _ => h with { YearRound = h.YearRound + est },
+                };
             }
         }
         return perUser;
@@ -291,13 +297,4 @@ public sealed class WorkloadService(
         }
         return perTeam;
     }
-
-    private static RolePersonHours AddByPeriod(RolePersonHours h, RolePeriod period, int est) =>
-        period switch
-        {
-            RolePeriod.Build => h with { Build = h.Build + est },
-            RolePeriod.Event => h with { Event = h.Event + est },
-            RolePeriod.Strike => h with { Strike = h.Strike + est },
-            _ => h with { YearRound = h.YearRound + est },
-        };
 }

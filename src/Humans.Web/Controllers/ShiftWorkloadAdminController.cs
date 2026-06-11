@@ -1,4 +1,3 @@
-using Humans.Application.DTOs.Shifts.Workload;
 using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
@@ -17,33 +16,22 @@ public class ShiftWorkloadAdminController(IUserServiceRead userService, IWorkloa
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var report = await workloadService.GetForActiveEventAsync(ct);
-        return View(SortForDisplay(report));
-    }
+        if (report is null)
+            return View(report);
 
-    // Display sort at presentation layer (memory/architecture/display-sort-in-controllers.md).
-    private static WorkloadReport? SortForDisplay(WorkloadReport? report)
-    {
-        if (report is null) return null;
-
-        var byRota = report.ByRota
-            .OrderBy(r => r.TeamName, StringComparer.Ordinal)
-            .ThenBy(r => r.RotaName, StringComparer.Ordinal)
-            .ToList();
-
-        var byDepartment = report.ByDepartment
-            .OrderBy(r => r.TeamName, StringComparer.Ordinal)
-            .ToList();
-
-        var byPerson = report.ByPerson
-            .OrderByDescending(r => r.TotalHours)
-            .ThenBy(r => r.DisplayName, StringComparer.Ordinal)
-            .ToList();
-
-        return report with
+        return View(report with
         {
-            ByPerson = byPerson,
-            ByRota = byRota,
-            ByDepartment = byDepartment,
-        };
+            ByPerson = report.ByPerson
+                .OrderByDescending(r => r.TotalHours)
+                .ThenBy(r => r.DisplayName, StringComparer.Ordinal)
+                .ToList(),
+            ByRota = report.ByRota
+                .OrderBy(r => r.TeamName, StringComparer.Ordinal)
+                .ThenBy(r => r.RotaName, StringComparer.Ordinal)
+                .ToList(),
+            ByDepartment = report.ByDepartment
+                .OrderBy(r => r.TeamName, StringComparer.Ordinal)
+                .ToList(),
+        });
     }
 }

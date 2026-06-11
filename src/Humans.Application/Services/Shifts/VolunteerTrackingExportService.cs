@@ -38,13 +38,12 @@ public sealed class VolunteerTrackingExportService(
             .GroupBy(d => d.TeamId)
             .ToDictionary(g => g.Key, g => g.First().TeamName);
 
-        // Filtered team name (if filtered) for the filename + summary.
         string? filteredTeamName = request.DepartmentId is Guid deptId
             ? teamNames.GetValueOrDefault(deptId)
             : null;
 
         if (shifts.Count == 0)
-            return BuildEmptyModel(request, days, filteredTeamName);
+            return BuildModel(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
 
         // Look up the event time zone via the existing IShiftManagementService surface
         // (EventSettings.TimeZoneId is the IANA id). Avoids a new interface method.
@@ -58,7 +57,7 @@ public sealed class VolunteerTrackingExportService(
         // (2) Per user: primary team = team with most total hours; first-shift date.
         var userIds = perUserPerDay.Keys.Select(k => k.userId).Distinct().ToList();
         var playaNames = await LoadPlayaNamesAsync(userIds, ct);
-        var firstShiftDay = ComputeFirstShiftDay(shifts, zone);
+        var firstShiftDay = ShiftEarlyEntryProjection.FirstShiftDayByUser(shifts, zone);
         var primaryTeam = ComputePrimaryTeam(perUserPerDay);
 
         // (3) Build cells per user.
@@ -151,9 +150,6 @@ public sealed class VolunteerTrackingExportService(
         return result;
     }
 
-    private static Dictionary<Guid, LocalDate> ComputeFirstShiftDay(IReadOnlyList<ConfirmedShiftRow> shifts, DateTimeZone zone) =>
-        ShiftEarlyEntryProjection.FirstShiftDayByUser(shifts, zone);
-
     private static Dictionary<Guid, (Guid teamId, string teamName)> ComputePrimaryTeam(
         Dictionary<(Guid userId, LocalDate day), List<(Guid teamId, string teamName, double hours)>> bucket)
     {
@@ -196,7 +192,7 @@ public sealed class VolunteerTrackingExportService(
             var count = 0;
             foreach (var (userId, row) in rows)
             {
-                if (firstShiftDay[userId] > d) continue;        // hasn't arrived yet
+                if (firstShiftDay[userId] > d) continue;
                 if (row.Cells[i].Kind == CellKind.Worked) count++;
             }
             totals[i] = count;
@@ -211,11 +207,6 @@ public sealed class VolunteerTrackingExportService(
         for (var i = 0; i < count; i++) days[i] = start.PlusDays(i);
         return days;
     }
-
-    private static string BuildMethodologyBlurb() =>
-        "Rows = humans with >=1 confirmed shift in range. Cell color = the team they worked most " +
-        "hours that day. White cell = day before their first confirmed shift (arrival day). " +
-        "Totals row = humans on-site that day (used for meal counts). Names shown are playa names.";
 
     private static string BuildFileName(VolunteerExportRequest req, string? departmentSlug)
     {
@@ -282,11 +273,6 @@ public sealed class VolunteerTrackingExportService(
         return ShiftEarlyEntryProjection.Project(rows, zone, teamNames);
     }
 
-    private static VolunteerExportModel BuildEmptyModel(VolunteerExportRequest request, IReadOnlyList<LocalDate> days, string? filteredTeamName)
-    {
-        return BuildModel(request, days, Array.Empty<DepartmentGroup>(), new int[days.Count], filteredTeamName);
-    }
-
     private static VolunteerExportModel BuildModel(
         VolunteerExportRequest request,
         IReadOnlyList<LocalDate> days,
@@ -298,7 +284,9 @@ public sealed class VolunteerTrackingExportService(
         var periodLabel = request.Period?.ToString() ?? "custom";
         var slug = filteredTeamName is null ? null : SlugifyTeamName(filteredTeamName);
         return new VolunteerExportModel(
-            MethodologyBlurb: BuildMethodologyBlurb(),
+            MethodologyBlurb: "Rows = humans with >=1 confirmed shift in range. Cell color = the team they worked most " +
+                "hours that day. White cell = day before their first confirmed shift (arrival day). " +
+                "Totals row = humans on-site that day (used for meal counts). Names shown are playa names.",
             FilterSummary: $"Department: {deptName} - Range: {request.StartDate} -> {request.EndDate} ({periodLabel})",
             GeneratedAtUtc: request.GeneratedAtUtc,
             GeneratedByName: request.ActorPlayaName,

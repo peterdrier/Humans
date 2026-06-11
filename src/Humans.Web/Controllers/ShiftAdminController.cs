@@ -657,7 +657,13 @@ public class ShiftAdminController(
                 await GetShiftForTeamAsync(shiftId, team.Id),
                 query,
                 ShiftRoleChecks.CanViewMedical(User));
-            return ToVolunteerSearchActionResult(result);
+            return result.Status switch
+            {
+                VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
+                VolunteerSearchBuildStatus.NotFound => NotFound(),
+                VolunteerSearchBuildStatus.Success => Json(result.Results),
+                _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
+            };
         }
         catch (Exception ex)
         {
@@ -665,15 +671,6 @@ public class ShiftAdminController(
             return StatusCode(500, new { error = "Search failed." });
         }
     }
-
-    private IActionResult ToVolunteerSearchActionResult(VolunteerSearchBuildResult result) =>
-        result.Status switch
-        {
-            VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
-            VolunteerSearchBuildStatus.NotFound => NotFound(),
-            VolunteerSearchBuildStatus.Success => Json(result.Results),
-            _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
-        };
 
     [HttpPost("Voluntell")]
     [ValidateAntiForgeryToken]
