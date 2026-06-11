@@ -26,23 +26,14 @@ public sealed class EventServiceTests
         _service = new EventService(_repo, _burnSettings, _clock, NullLogger<EventService>.Instance);
     }
 
-    [HumansFact]
-    public async Task IsSubmissionOpenAsync_ReturnsFalse_WhenSettingsMissing()
-    {
-        var result = await _service.IsSubmissionOpenAsync();
-
-        result.Should().BeFalse();
-    }
-
     [HumansTheory]
     [InlineData(11, false)]
     [InlineData(12, true)]
     [InlineData(13, true)]
     [InlineData(14, false)]
-    public async Task IsSubmissionOpenAsync_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
+    public void IsSubmissionOpenAt_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
     {
-        _clock.Reset(Instant.FromUtc(2026, 5, 5, hour, 0));
-        _repo.Settings = new EventGuideSettings
+        var settings = new EventGuideSettings
         {
             Id = Guid.NewGuid(),
             EventSettingsId = Guid.NewGuid(),
@@ -54,7 +45,7 @@ public sealed class EventServiceTests
             UpdatedAt = _clock.GetCurrentInstant()
         };
 
-        var result = await _service.IsSubmissionOpenAsync();
+        var result = settings.IsSubmissionOpenAt(Instant.FromUtc(2026, 5, 5, hour, 0));
 
         result.Should().Be(expected);
     }

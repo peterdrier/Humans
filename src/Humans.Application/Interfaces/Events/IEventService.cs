@@ -13,7 +13,6 @@ public interface IEventService : IApplicationService, IEventServiceRead
 {
     // ── Settings ─────────────────────────────────────────────────────────
     // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
-    Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
     Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveGuideSettingsAsync(
