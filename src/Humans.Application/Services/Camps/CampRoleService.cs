@@ -120,13 +120,6 @@ public sealed class CampRoleService(
             definition.DeactivatedAt,
             definition.SpecialRole);
 
-    private static CampRoleAssignmentInfo CreateCampRoleAssignmentInfo(CampRoleAssignment assignment) =>
-        new(
-            assignment.Id,
-            assignment.CampSeasonId,
-            assignment.CampRoleDefinitionId,
-            assignment.CampMemberId);
-
     public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
@@ -337,7 +330,13 @@ public sealed class CampRoleService(
     public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
         var assignment = await repo.GetAssignmentByIdAsync(assignmentId, ct);
-        return assignment is null ? null : CreateCampRoleAssignmentInfo(assignment);
+        return assignment is null
+            ? null
+            : new CampRoleAssignmentInfo(
+                assignment.Id,
+                assignment.CampSeasonId,
+                assignment.CampRoleDefinitionId,
+                assignment.CampMemberId);
     }
 
     public async Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
@@ -428,21 +427,54 @@ public sealed class CampRoleService(
         foreach (var specialRole in Enum.GetValues<CampSpecialRole>())
         {
             if (specialRole == CampSpecialRole.None) continue;
-            var defaults = GetSpecialRoleSeedDefaults(specialRole);
-            var ensured = await EnsureSpecialRoleAsync(
-                specialRole,
-                defaults.Name,
-                defaults.Slug,
-                defaults.SortOrder,
-                defaults.SlotCount,
-                defaults.MinimumRequired,
-                defaults.Description,
-                actorUserId, now, ct);
-            if (ensured.Created) definitionsCreated++;
-            if (specialRole == CampSpecialRole.Lead) campLead = ensured.Definition;
+            var (name, slug, sortOrder, slotCount, minimumRequired, description) = specialRole switch
+            {
+                CampSpecialRole.Lead => (
+                    CampSystemRoles.CampLeadName,
+                    CampSystemRoles.CampLeadSlug,
+                    CampSystemRoles.CampLeadSortOrder,
+                    CampSystemRoles.CampLeadSlotCount,
+                    CampSystemRoles.CampLeadMinimumRequired,
+                    "Authorizes camp-management actions (Edit, members, roles, leads) and camp-event submission. Sort-to-top of the camp's Roles panel."),
+                CampSpecialRole.Workshop => (
+                    CampSystemRoles.WorkshopLeadName,
+                    CampSystemRoles.WorkshopLeadSlug,
+                    CampSystemRoles.WorkshopLeadSortOrder,
+                    CampSystemRoles.WorkshopLeadSlotCount,
+                    CampSystemRoles.WorkshopLeadMinimumRequired,
+                    "Authorizes camp-event submission alongside Camp Lead. Does not grant general camp-management authority."),
+                _ => throw new InvalidOperationException($"No seed defaults for special role '{specialRole}'."),
+            };
+
+            var definition = await repo.GetSpecialDefinitionAsync(specialRole, ct);
+            if (definition is null)
+            {
+                definition = new CampRoleDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    Name = name,
+                    Slug = slug,
+                    Description = description,
+                    SlotCount = slotCount,
+                    MinimumRequired = minimumRequired,
+                    SortOrder = sortOrder,
+                    SpecialRole = specialRole,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                await repo.AddDefinitionAsync(definition, ct);
+                await auditLog.LogAsync(
+                    AuditAction.CampRoleDefinitionCreated,
+                    nameof(CampRoleDefinition),
+                    definition.Id,
+                    $"Seeded system camp role '{name}'.",
+                    actorUserId);
+                definitionsCreated++;
+            }
+
+            if (specialRole == CampSpecialRole.Lead) campLead = definition;
         }
 
-        // (2) Walk legacy camp_leads → CampRoleAssignment against Camp Lead role.
         if (campLead is null)
             throw new InvalidOperationException("Camp Lead special role definition is missing after seed.");
         var leadSnapshots = await repo.GetLeadMigrationSnapshotsAsync(ct);
@@ -506,65 +538,6 @@ public sealed class CampRoleService(
             SkippedCampSlugs: skippedCampSlugs);
     }
 
-    private async Task<(CampRoleDefinition Definition, bool Created)> EnsureSpecialRoleAsync(
-        CampSpecialRole specialRole,
-        string name, string slug, int sortOrder, int slotCount, int minimumRequired,
-        string description, Guid actorUserId, Instant now, CancellationToken ct)
-    {
-        var existing = await repo.GetSpecialDefinitionAsync(specialRole, ct);
-        if (existing is not null) return (existing, false);
-
-        var def = new CampRoleDefinition
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Slug = slug,
-            Description = description,
-            SlotCount = slotCount,
-            MinimumRequired = minimumRequired,
-            SortOrder = sortOrder,
-            SpecialRole = specialRole,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        await repo.AddDefinitionAsync(def, ct);
-        await auditLog.LogAsync(
-            AuditAction.CampRoleDefinitionCreated,
-            nameof(CampRoleDefinition),
-            def.Id,
-            $"Seeded system camp role '{name}'.",
-            actorUserId);
-        return (def, true);
-    }
-
-    private static SpecialRoleSeedDefaults GetSpecialRoleSeedDefaults(CampSpecialRole specialRole) =>
-        specialRole switch
-        {
-            CampSpecialRole.Lead => new SpecialRoleSeedDefaults(
-                CampSystemRoles.CampLeadName,
-                CampSystemRoles.CampLeadSlug,
-                CampSystemRoles.CampLeadSortOrder,
-                CampSystemRoles.CampLeadSlotCount,
-                CampSystemRoles.CampLeadMinimumRequired,
-                "Authorizes camp-management actions (Edit, members, roles, leads) and camp-event submission. Sort-to-top of the camp's Roles panel."),
-            CampSpecialRole.Workshop => new SpecialRoleSeedDefaults(
-                CampSystemRoles.WorkshopLeadName,
-                CampSystemRoles.WorkshopLeadSlug,
-                CampSystemRoles.WorkshopLeadSortOrder,
-                CampSystemRoles.WorkshopLeadSlotCount,
-                CampSystemRoles.WorkshopLeadMinimumRequired,
-                "Authorizes camp-event submission alongside Camp Lead. Does not grant general camp-management authority."),
-            _ => throw new ArgumentOutOfRangeException(nameof(specialRole), specialRole, "No seed defaults for this special role."),
-        };
-
-    private sealed record SpecialRoleSeedDefaults(
-        string Name,
-        string Slug,
-        int SortOrder,
-        int SlotCount,
-        int MinimumRequired,
-        string Description);
-
     public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default)
     {
         var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
@@ -589,7 +562,20 @@ public sealed class CampRoleService(
                     ? list.Select(a =>
                     {
                         var userId = a.CampMember.UserId;
-                        var googleEmail = TryGetGoogleEmail(userId, emailsByUserId);
+                        string? googleEmail = null;
+                        if (emailsByUserId.TryGetValue(userId, out var emails))
+                        {
+                            googleEmail = emails
+                                .Where(e => e.IsVerified && e.IsGoogle)
+                                .Select(e => e.Email)
+                                .FirstOrDefault()
+                                ?? emails
+                                    .Where(e => e.IsVerified)
+                                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                                    .Select(e => e.Email)
+                                    .FirstOrDefault();
+                        }
+
                         return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);
                     }).ToList()
                     : new List<CampRoleDrillDownAssignee>();
@@ -698,20 +684,4 @@ public sealed class CampRoleService(
     public string BuildGroupKey(int year, string slug) =>
         $"barrios-{year}-{slug}@{_googleOptions.Domain}";
 
-    private static string? TryGetGoogleEmail(
-        Guid userId,
-        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
-    {
-        if (!emailsByUserId.TryGetValue(userId, out var emails))
-            return null;
-        return emails
-            .Where(e => e.IsVerified && e.IsGoogle)
-            .Select(e => e.Email)
-            .FirstOrDefault()
-            ?? emails
-                .Where(e => e.IsVerified)
-                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                .Select(e => e.Email)
-                .FirstOrDefault();
-    }
 }

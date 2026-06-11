@@ -42,7 +42,26 @@ public class CampComplianceController(
         var rows = camps
             .Select(c => c.GetSeasonForYear(resolvedYear))
             .Where(s => s is not null && ActiveStatuses.Contains(s.Status))
-            .Select(s => BuildRow(s!, roleColumns))
+            .Select(s =>
+            {
+                var season = s!;
+                var activeMembers = season.ActiveMembers;
+                var cells = roleColumns.Select(col =>
+                {
+                    var assignees = activeMembers
+                        .Where(m => m.Roles.Contains(col.Name, StringComparer.Ordinal))
+                        .Select(m => m.UserId)
+                        .ToList();
+                    return new CampComplianceRoleCell(assignees, col.MinimumRequired);
+                }).ToList();
+
+                return new CampComplianceRow(
+                    season.Name,
+                    season.CampSlug,
+                    season.JoinedMemberCount ?? 0,
+                    season.MemberCount,
+                    cells);
+            })
             .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -52,27 +71,5 @@ public class CampComplianceController(
             Roles = roleColumns,
             Rows = rows,
         });
-    }
-
-    private static CampComplianceRow BuildRow(
-        CampSeasonInfo season, IReadOnlyList<CampComplianceRoleColumn> roleColumns)
-    {
-        var activeMembers = season.ActiveMembers;
-
-        var cells = roleColumns.Select(col =>
-        {
-            var assignees = activeMembers
-                .Where(m => m.Roles.Contains(col.Name, StringComparer.Ordinal))
-                .Select(m => m.UserId)
-                .ToList();
-            return new CampComplianceRoleCell(assignees, col.MinimumRequired);
-        }).ToList();
-
-        return new CampComplianceRow(
-            season.Name,
-            season.CampSlug,
-            season.JoinedMemberCount ?? 0,
-            season.MemberCount,
-            cells);
     }
 }

@@ -62,8 +62,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         _logger = logger;
     }
 
-    // --- Registration ---
-
     public async Task<Camp> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
@@ -160,8 +158,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return camp;
     }
 
-    // --- Queries ---
-
     public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
@@ -227,17 +223,10 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
     }
 
-    private async Task<List<Camp>> GetCampEntitiesForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
-        return camps.ToList();
-    }
-
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
-        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
+        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
         // Canonical name lives on CampSeason (per-season), not Camp.
         return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
             (c.Id, s.Name, c.Slug, s.Id))).ToList();
@@ -249,7 +238,10 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         if (settings is null)
             throw new InvalidOperationException("Camp settings not found.");
 
-        var info = CreateCampSettingsInfo(settings);
+        var info = new CampSettingsInfo(
+            settings.PublicYear,
+            settings.OpenSeasons.ToList(),
+            settings.EeStartDate);
         if (info.OpenSeasons.Count == 0)
         {
             return info;
@@ -383,7 +375,18 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
                 .OrderBy(m => m.RequestedAt)
-                .Select(m => CreateCampSeasonMemberInfo(m, roles?.MemberRoleNames))
+                .Select(m => new CampSeasonMemberInfo(
+                    m.Id,
+                    m.UserId,
+                    m.Status,
+                    m.RequestedAt,
+                    m.ConfirmedAt,
+                    m.HasEarlyEntry)
+                {
+                    Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true
+                        ? names
+                        : []
+                })
                 .ToList(),
             LeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Lead, roles?.SpecialRoleUserIds),
             WorkshopLeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Workshop, roles?.SpecialRoleUserIds)
@@ -400,28 +403,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             ? userIds
             : [];
     }
-
-    private static CampSettingsInfo CreateCampSettingsInfo(CampSettings settings) =>
-        new(
-            settings.PublicYear,
-            settings.OpenSeasons.ToList(),
-            settings.EeStartDate);
-
-    private static CampSeasonMemberInfo CreateCampSeasonMemberInfo(
-        CampMember member,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>>? memberRoleNames = null) =>
-        new(
-            member.Id,
-            member.UserId,
-            member.Status,
-            member.RequestedAt,
-            member.ConfirmedAt,
-            member.HasEarlyEntry)
-        {
-            Roles = memberRoleNames is not null && memberRoleNames.TryGetValue(member.Id, out var names)
-                ? names
-                : []
-        };
 
     private static CampEditData CreateCampEditData(Camp camp, CampSeason season, LocalDate today)
     {
@@ -465,8 +446,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
                 .ToList());
     }
-
-    // --- Season management ---
 
     public async Task<CampSeason> OptInToSeasonAsync(
         Guid campId, int year, CancellationToken cancellationToken = default)
@@ -694,8 +673,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     }
 
-    // --- Camp updates ---
-
     public async Task<CampUpdateResult> UpdateCampAsync(
         CampUpdateInput input,
         CancellationToken cancellationToken = default)
@@ -725,7 +702,19 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 "CampService");
 
             await UpdateSeasonAsync(input.SeasonId, input.SeasonData, cancellationToken);
-            await ChangeSeasonNameIfAllowedAsync(input.SeasonId, input.SeasonName, cancellationToken);
+
+            var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken)
+                ?? throw new InvalidOperationException("Season not found.");
+
+            if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
+            {
+                var today = _clock.GetCurrentInstant().InUtc().Date;
+                var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
+                if (!nameLocked)
+                {
+                    await ChangeSeasonNameAsync(currentSeason.Id, input.SeasonName, cancellationToken);
+                }
+            }
 
             return CampUpdateResult.Success();
         }
@@ -733,29 +722,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         {
             return CampUpdateResult.Failure(ex.Message);
         }
-    }
-
-    private async Task ChangeSeasonNameIfAllowedAsync(
-        Guid seasonId,
-        string seasonName,
-        CancellationToken cancellationToken)
-    {
-        var currentSeason = await _repo.GetSeasonByIdAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-
-        if (string.Equals(currentSeason.Name, seasonName, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-        var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-        if (nameLocked)
-        {
-            return;
-        }
-
-        await ChangeSeasonNameAsync(currentSeason.Id, seasonName, cancellationToken);
     }
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
@@ -787,8 +753,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     }
 
-    // --- Historical names ---
-
     public async Task AddHistoricalNameAsync(
         Guid campId, string name, CancellationToken cancellationToken = default)
     {
@@ -814,8 +778,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         }
     }
 
-    // --- Cross-service queries (used by CityPlanningService) ---
-
     public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
@@ -833,8 +795,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         var row = await _repo.GetMemberLookupAsync(campMemberId, cancellationToken);
         return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
     }
-
-    // --- Images ---
 
     public async Task<CampImageUploadResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
@@ -917,8 +877,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
     }
 
-    // --- Settings (CampAdmin) ---
-
     public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
     {
         await _repo.SetPublicYearAsync(year, cancellationToken);
@@ -939,8 +897,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     {
         await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
     }
-
-    // --- Name change ---
 
     public async Task ChangeSeasonNameAsync(
         Guid seasonId, string newName, CancellationToken cancellationToken = default)
@@ -1000,8 +956,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     }
 
-    // --- Private helpers ---
-
     private static CampSeason CreateSeasonFromData(
         Guid campId, int year, string name, CampSeasonData data, Instant now)
     {
@@ -1030,18 +984,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             CreatedAt = now,
             UpdatedAt = now
         };
-    }
-
-    // --- Camp membership per season (see nobodies-collective/Humans#488) ---
-
-    private async Task<CampSeason?> ResolveOpenMembershipSeasonAsync(
-        Guid campId, CancellationToken cancellationToken)
-    {
-        var settings = await GetSettingsAsync(cancellationToken);
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        return camp?.Seasons.FirstOrDefault(s =>
-            s.Year == settings.PublicYear
-            && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
     }
 
     private async Task InvalidateLeadBadgesAsync(Guid campId, CancellationToken cancellationToken)
@@ -1099,7 +1041,11 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var season = await ResolveOpenMembershipSeasonAsync(campId, cancellationToken);
+        var settings = await GetSettingsAsync(cancellationToken);
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        var season = camp?.Seasons.FirstOrDefault(s =>
+            s.Year == settings.PublicYear
+            && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
         if (season is null)
         {
             return new CampMemberRequestResult(
@@ -1289,15 +1235,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return AddCampMemberOutcome.Added;
     }
 
-    private async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
-        Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var memberId = await EnsureActiveCampMemberAsync(campSeasonId, userId, actorUserId, cancellationToken);
-        return await _campRoleService.Value.AssignAsync(
-            campSeasonId, roleDefinitionId, memberId, actorUserId, cancellationToken);
-    }
-
     public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
@@ -1307,8 +1244,9 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         if (openSeason is null)
             return AssignCampRoleOutcome.SeasonNotFound;
 
-        return await AddMemberAndAssignRoleAsync(
-            openSeason.Id, roleDefinitionId, userId, actorUserId, cancellationToken);
+        var memberId = await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
+        return await _campRoleService.Value.AssignAsync(
+            openSeason.Id, roleDefinitionId, memberId, actorUserId, cancellationToken);
     }
 
     public async Task WithdrawCampMembershipRequestAsync(
@@ -1354,8 +1292,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return CampMembershipMutationResult.Success();
     }
 
-    // --- Account-merge fold ---
-
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
@@ -1369,8 +1305,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         _leadBadgeInvalidator.Invalidate(sourceUserId);
         _leadBadgeInvalidator.Invalidate(targetUserId);
     }
-
-    // --- IUserDataContributor — GDPR export ---
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
