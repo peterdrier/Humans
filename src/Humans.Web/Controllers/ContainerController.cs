@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 public class ContainerController(
     ICampServiceRead campService,
     IContainerService containerService,
-    ICityPlanningService cityPlanningService,
+    ICityPlanningServiceRead cityPlanningService,
     IAuthorizationService authorizationService,
     IUserServiceRead userService,
     ILogger<ContainerController> logger) : HumansControllerBase(userService)

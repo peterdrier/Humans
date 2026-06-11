@@ -19,6 +19,7 @@ internal static class CityPlanningSectionExtensions
         // (camps, teams, profiles, users) route through the owning service interfaces.
         services.AddSingleton<ICityPlanningRepository, CityPlanningRepository>();
         services.AddScoped<ICityPlanningService, CityPlanningCityPlanningService>();
+        services.AddScoped<ICityPlanningServiceRead>(sp => sp.GetRequiredService<ICityPlanningService>());
 
         return services;
     }

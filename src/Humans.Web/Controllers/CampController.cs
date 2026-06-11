@@ -22,7 +22,7 @@ public class CampController(
     ICampService campService,
     ICampContactService campContactService,
     ICampRoleService campRoleService,
-    ICityPlanningService cityPlanningService,
+    ICityPlanningServiceRead cityPlanningService,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,

@@ -15,7 +15,7 @@ namespace Humans.Web.Authorization.Requirements;
 ///   <see cref="ContainerOperation.Place"/> the placement phase must also be open
 /// - Everyone else: deny
 /// </summary>
-public class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningService cityPlanningService)
+public class ContainerAuthorizationHandler(ICampServiceRead campService, ICityPlanningServiceRead cityPlanningService)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     protected override async Task HandleRequirementAsync(

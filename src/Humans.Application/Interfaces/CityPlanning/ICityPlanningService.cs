@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.CityPlanning;
 
-public interface ICityPlanningService : IApplicationService
+public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationService
 {
     // Queries
     Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default);
@@ -24,11 +24,10 @@ public interface ICityPlanningService : IApplicationService
         CancellationToken cancellationToken = default);
 
     // Authorization (global role checks belong at the controller level via claims)
+    // IsCityPlanningTeamMemberAsync is inherited from ICityPlanningServiceRead.
     Task<bool> CanUserEditAsync(Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    // Settings (creates row on demand for PublicYear)
-    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default);
+    // Settings (GetSettingsAsync is inherited from ICityPlanningServiceRead; creates row on demand for PublicYear)
     Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -41,7 +40,7 @@ public interface ICityPlanningService : IApplicationService
     Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(string? opensAt, string? closesAt, CancellationToken cancellationToken = default);
     Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default);
-    Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
+    // GetRegistrationInfoAsync is inherited from ICityPlanningServiceRead.
     Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
 
     // Export

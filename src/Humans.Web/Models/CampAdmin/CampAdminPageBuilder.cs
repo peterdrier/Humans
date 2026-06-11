@@ -7,7 +7,7 @@ namespace Humans.Web.Models.CampAdmin;
 public sealed class CampAdminPageBuilder(
     ICampServiceRead campService,
     ICampRoleService campRoleService,
-    ICityPlanningService cityPlanningService)
+    ICityPlanningServiceRead cityPlanningService)
 {
     public async Task<CampAdminViewModel> BuildAsync()
     {
