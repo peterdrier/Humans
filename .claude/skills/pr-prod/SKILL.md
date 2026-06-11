@@ -104,6 +104,19 @@ Substitute `N` with the actual commit count.
 
 `gh pr create` prints the URL on success — surface it to the user. Don't merge; promotion is Peter's call.
 
+### 7. Discord release notes
+
+After surfacing the PR URL, draft member-facing release notes for Discord and present them in the conversation as a single copy-paste-ready ```markdown code block (Claude does NOT post to Discord — Peter pastes it).
+
+Rules:
+
+- **Header**: `**🚀 Humans update — YYYY-MM-DD**` (today's date).
+- **Audience is regular members.** Lead with features regular users can see and use (paying for orders, shifts, events, tickets, profile, help). Internal/admin-only changes may be mentioned, but lower in the post and briefer.
+- **Translate, don't transcribe.** Rewrite commit subjects as benefits in plain language ("You can now pay camp orders with SEPA…"), never jargon ("async-payment state machine"). No SHAs, no PR/issue refs, no section names from the codebase.
+- **Skip entirely**: docs/maintenance commits, refactors with no behavior change, test-infra changes. A closing "🔧 Under the hood" bullet or two may summarize the invisible work in one breath.
+- **Group with emoji headers** by user-facing area (e.g. 🛒 Store & payments, 📅 Shifts & events, 🎟️ Tickets & door, 🧭 Admin & navigation, 🔧 Under the hood) — pick groups that fit the batch, don't force empty ones.
+- **Hard limit: 2,000 characters** (Discord's per-message cap). Count the draft; if over, cut admin/under-the-hood detail first, never the member-facing items.
+
 ## Sanity checks before submitting
 
 - [ ] Every `(#NNN)` from a commit subject is rewritten as `(peterdrier/Humans#NNN)` in the body.
@@ -111,9 +124,11 @@ Substitute `N` with the actual commit count.
 - [ ] Every inline `#NNN` reference is qualified (`peterdrier/Humans#NNN` or `nobodies-collective/Humans#NNN`) — no bare refs anywhere in the body.
 - [ ] Title is `Promote QA → production (<N> commits)` with the correct count.
 - [ ] No existing open PR was overlooked (step 2).
+- [ ] Discord release notes drafted (step 7), dated, member-features first, ≤ 2,000 characters.
 
 ## What this skill does NOT do
 
 - Merge the PR. Peter does that manually with rebase merge.
+- Post to Discord. The release notes are drafted in-conversation for Peter to paste.
 - Update fork main after merge. The `memory/process/after-prod-merge-reset.md` rule covers post-merge.
 - Open or modify per-feature PRs on `peterdrier/Humans`. Those land on the fork before promotion runs.
