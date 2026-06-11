@@ -1,12 +1,11 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -27,9 +26,15 @@ public sealed class TicketTransferAdminController(
             .OrderBy(r => r.RequestedAt)
             .ToList();
 
-        IReadOnlyList<TicketTransferRowDto> rows = string.Equals(tab, "all", StringComparison.Ordinal)
-            ? await BuildAllAsync(ct)
-            : pending;
+        IReadOnlyList<TicketTransferRowDto> rows = pending;
+        if (string.Equals(tab, "all", StringComparison.Ordinal))
+        {
+            var combined = new List<TicketTransferRowDto>();
+            foreach (var status in Enum.GetValues<TicketTransferStatus>())
+                combined.AddRange(await service.GetByStatusAsync(status, ct));
+
+            rows = combined.OrderByDescending(r => r.RequestedAt).ToList();
+        }
 
         var drift = (await ticketQueryService.GetOrderDriftAsync(ct))
             .OrderByDescending(r => r.IssuedCount - r.ValidCount)
@@ -40,15 +45,6 @@ public sealed class TicketTransferAdminController(
             PendingCount: pending.Count,
             Rows: rows,
             Drift: drift));
-    }
-
-    private async Task<IReadOnlyList<TicketTransferRowDto>> BuildAllAsync(CancellationToken ct)
-    {
-        var statuses = Enum.GetValues<TicketTransferStatus>();
-        var combined = new List<TicketTransferRowDto>();
-        foreach (var s in statuses)
-            combined.AddRange(await service.GetByStatusAsync(s, ct));
-        return combined.OrderByDescending(r => r.RequestedAt).ToList();
     }
 
     [HttpGet("Detail/{id:guid}")]

@@ -44,8 +44,8 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
-        var orders = await GetOrdersAsync(ct);
-        return orders.Values.ToList();
+        await _orders.EnsureWarmedForReadAsync(ct);
+        return _orders.AsReadOnlyDictionary.Values.ToList();
     }
 
     public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
@@ -144,13 +144,6 @@ public sealed class CachingTicketQueryService : ITicketService, ITicketCacheInva
     }
 
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
-
-    private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync(
-        CancellationToken ct = default)
-    {
-        await _orders.EnsureWarmedForReadAsync(ct);
-        return _orders.AsReadOnlyDictionary;
-    }
 
     private async Task<TResult> WithInner<TResult>(Func<ITicketService, Task<TResult>> action)
     {

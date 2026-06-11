@@ -835,8 +835,6 @@ public sealed class TicketQueryService(
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
-    // Invalidation no-ops on the inner; CachingTicketQueryService intercepts.
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         ticketRepository.GetOrderDriftAsync(ct);
-
 }

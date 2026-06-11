@@ -16,7 +16,6 @@ public sealed class TicketHoldingsViewComponent(
         if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
             return Content(string.Empty);
 
-        // The holder's own EE (earliest date across sources), shown on each of their stubs.
         var earlyEntry = await earlyEntryService.GetForUserAsync(userId, HttpContext.RequestAborted);
 
         var stubs = holdings.Tickets

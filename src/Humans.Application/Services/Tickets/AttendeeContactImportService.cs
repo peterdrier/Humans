@@ -119,7 +119,16 @@ public sealed class AttendeeContactImportService(
             }
         }
 
-        var result = BuildImportResult(importState, start);
+        var result = new AttendeeImportResult(
+            TotalAttempted: importState.Attempted,
+            UsersCreated: importState.Created,
+            AttachedToExistingVerified: importState.Attached,
+            UnverifiedRowsDeletedAndUserCreated: importState.Replaced,
+            AmbiguousSkipped: importState.Ambiguous,
+            NoEmailSkipped: importState.NoEmail,
+            VanishedBetweenPlanAndApply: importState.Vanished,
+            Errors: importState.Errors,
+            Elapsed: clock.GetCurrentInstant() - start);
 
         await audit.LogAsync(
             AuditAction.TicketContactsImported,
@@ -246,18 +255,6 @@ public sealed class AttendeeContactImportService(
 
         state.NewlyMatchedUserIds.Add(userId);
     }
-
-    private AttendeeImportResult BuildImportResult(AttendeeImportApplyState state, Instant start)
-        => new(
-            TotalAttempted: state.Attempted,
-            UsersCreated: state.Created,
-            AttachedToExistingVerified: state.Attached,
-            UnverifiedRowsDeletedAndUserCreated: state.Replaced,
-            AmbiguousSkipped: state.Ambiguous,
-            NoEmailSkipped: state.NoEmail,
-            VanishedBetweenPlanAndApply: state.Vanished,
-            Errors: state.Errors,
-            Elapsed: clock.GetCurrentInstant() - start);
 
     private async Task<AttendeeImportDecision> ClassifyAsync(
         TicketAttendee a,

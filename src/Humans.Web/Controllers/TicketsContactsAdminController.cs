@@ -1,11 +1,10 @@
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Tickets.Dtos;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -20,7 +19,16 @@ public sealed class TicketsContactsAdminController(
     {
         var plan = await import.BuildPlanAsync(ct);
         var rows = plan.Decisions
-            .OrderBy(d => SortKey(d.Outcome))
+            .OrderBy(d => d.Outcome switch
+            {
+                AttendeeImportOutcome.AmbiguousMultipleVerified => 0,
+                AttendeeImportOutcome.DeleteUnverifiedThenCreate => 1,
+                AttendeeImportOutcome.CreateNewUser => 2,
+                AttendeeImportOutcome.AttachVerified => 3,
+                AttendeeImportOutcome.SkipNoEmail => 4,
+                AttendeeImportOutcome.SkipVoided => 5,
+                _ => 99,
+            })
             .ThenBy(d => d.Email, StringComparer.OrdinalIgnoreCase)
             .Select(d => new AttendeeImportDecisionRow(
                 d.AttendeeId, d.Email, d.AttendeeName, d.VendorTicketId,
@@ -58,14 +66,4 @@ public sealed class TicketsContactsAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    private static int SortKey(AttendeeImportOutcome o) => o switch
-    {
-        AttendeeImportOutcome.AmbiguousMultipleVerified => 0,
-        AttendeeImportOutcome.DeleteUnverifiedThenCreate => 1,
-        AttendeeImportOutcome.CreateNewUser => 2,
-        AttendeeImportOutcome.AttachVerified => 3,
-        AttendeeImportOutcome.SkipNoEmail => 4,
-        AttendeeImportOutcome.SkipVoided => 5,
-        _ => 99,
-    };
 }

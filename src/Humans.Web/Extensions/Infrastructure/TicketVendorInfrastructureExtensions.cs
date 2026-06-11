@@ -11,7 +11,6 @@ internal static class TicketVendorInfrastructureExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        // Ticket vendor integration
         var ticketVendorApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
 
         services.Configure<TicketVendorSettings>(opts =>
@@ -29,7 +28,6 @@ internal static class TicketVendorInfrastructureExtensions
         }
         else
         {
-            // Stub is self-contained — fill in defaults so IsConfigured passes
             services.PostConfigure<TicketVendorSettings>(opts =>
             {
                 if (string.IsNullOrEmpty(opts.EventId)) opts.EventId = "stub-event";

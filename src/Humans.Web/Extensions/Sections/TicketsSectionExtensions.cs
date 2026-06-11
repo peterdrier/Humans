@@ -18,13 +18,11 @@ internal static class TicketsSectionExtensions
 {
     internal static IServiceCollection AddTicketsSection(this IServiceCollection services)
     {
-        // TicketSync — see #545c.
         services.AddSingleton<ITicketRepository, TicketRepository>();
         services.AddScoped<TicketsTicketSyncService>();
         services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
 
-        // T-07 keyed-inner + Singleton decorator. IUserDataContributor on the inner — GDPR contributor is one-per-section.
         services.AddKeyedScoped<ITicketService, TicketsTicketQueryService>(
             CachingTicketQueryService.InnerServiceKey);
         services.AddScoped<TicketsTicketQueryService>();
@@ -41,11 +39,9 @@ internal static class TicketsSectionExtensions
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<ITicketTransferService, TicketTransferService>();
 
-        // Orchestrates user provisioning from unmatched ticket attendees.
         services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
         services.AddScoped<TicketDashboardPageBuilder>();
 
-        // "Who's onsite" roster orchestrator (#736).
         services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();
 
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();

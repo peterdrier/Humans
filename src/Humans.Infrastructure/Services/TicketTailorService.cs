@@ -43,10 +43,9 @@ public class TicketTailorService : ITicketVendorService
     {
         _httpClient = httpClient;
         _cache = cache;
-        var settings1 = settings.Value;
         _logger = logger;
 
-        var apiKey = settings1.ApiKey;
+        var apiKey = settings.Value.ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:");
@@ -312,7 +311,6 @@ public class TicketTailorService : ITicketVendorService
         return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
-    // --- TicketTailor API response models ---
     // Must be internal (not private) for System.Text.Json deserialization
 
     internal sealed record TtPaginatedResponse<T>(
