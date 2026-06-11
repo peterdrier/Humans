@@ -49,9 +49,9 @@ public static class LoggerTimingExtensions
     {
         >= 30_000 => LogLevel.Error,
         >= 15_000 => LogLevel.Warning,
-        >= 5_000  => LogLevel.Information,
-        >= 1_000  => LogLevel.Debug,
-        _         => LogLevel.None,
+        >= 5_000 => LogLevel.Information,
+        >= 1_000 => LogLevel.Debug,
+        _ => LogLevel.None,
     };
 
     private static string DeriveClassName(string filePath)

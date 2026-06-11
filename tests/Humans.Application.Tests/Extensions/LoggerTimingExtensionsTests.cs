@@ -12,16 +12,16 @@ public class LoggerTimingExtensionsTests
     // ── SelectLogLevel threshold coverage ──────────────────────────────────
 
     [HumansTheory]
-    [InlineData(0,      LogLevel.None)]
-    [InlineData(999,    LogLevel.None)]
-    [InlineData(1000,   LogLevel.Debug)]
-    [InlineData(4999,   LogLevel.Debug)]
-    [InlineData(5000,   LogLevel.Information)]
-    [InlineData(14999,  LogLevel.Information)]
-    [InlineData(15000,  LogLevel.Warning)]
-    [InlineData(29999,  LogLevel.Warning)]
-    [InlineData(30000,  LogLevel.Error)]
-    [InlineData(60000,  LogLevel.Error)]
+    [InlineData(0, LogLevel.None)]
+    [InlineData(999, LogLevel.None)]
+    [InlineData(1000, LogLevel.Debug)]
+    [InlineData(4999, LogLevel.Debug)]
+    [InlineData(5000, LogLevel.Information)]
+    [InlineData(14999, LogLevel.Information)]
+    [InlineData(15000, LogLevel.Warning)]
+    [InlineData(29999, LogLevel.Warning)]
+    [InlineData(30000, LogLevel.Error)]
+    [InlineData(60000, LogLevel.Error)]
     public void SelectLogLevel_maps_elapsed_to_expected_level(double ms, LogLevel expected)
     {
         LoggerTimingExtensions.SelectLogLevel(ms).Should().Be(expected);
