@@ -81,7 +81,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> 
     // Writes — CampPolygon + CampPolygonHistory
     // ==========================================================================
 
-    public async Task<(CampPolygon polygon, CampPolygonHistory history)> SavePolygonAndAppendHistoryAsync(
+    public async Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
         Guid campSeasonId,
         string geoJson,
         double areaSqm,
@@ -130,8 +130,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> 
 
         // Detach so callers cannot accidentally mutate through a disposed context.
         ctx.Entry(polygon).State = EntityState.Detached;
-        ctx.Entry(history).State = EntityState.Detached;
-        return (polygon, history);
+        return polygon;
     }
 
     // ==========================================================================

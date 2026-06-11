@@ -156,7 +156,7 @@ public sealed class CityPlanningService(
             throw new ArgumentException("Invalid GeoJSON.", nameof(geoJson));
 
         var now = clock.GetCurrentInstant();
-        var (polygon, _) = await repo.SavePolygonAndAppendHistoryAsync(
+        var polygon = await repo.SavePolygonAndAppendHistoryAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);
         return new CampPolygonSaveResult(polygon.GeoJson, polygon.AreaSqm);
     }
