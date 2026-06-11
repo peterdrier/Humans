@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Application.Threading;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +14,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
 {
     private readonly ConcurrentDictionary<TKey, TValue> _dict = new();
     private readonly bool _warmOnStartup;
-    private readonly SemaphoreSlim _warmLock = new(1, 1);
+    private readonly TrackedLock _warmLock;
     private readonly ILogger _logger;
     private volatile bool _warmedUp;
     private long _hits;
@@ -32,6 +33,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         Name = name;
         _warmOnStartup = warmOnStartup;
         _logger = logger;
+        _warmLock = new TrackedLock($"{name}.WarmLock");
     }
 
     public int Entries => _dict.Count;
@@ -207,17 +209,10 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     protected async Task EnsureWarmedAsync(CancellationToken ct)
     {
         if (_warmedUp) return;
-        await _warmLock.WaitAsync(ct);
-        try
-        {
-            if (_warmedUp) return;
-            await WarmAllAsync(ct);
-            _warmedUp = true;
-        }
-        finally
-        {
-            _warmLock.Release();
-        }
+        using var _ = await _warmLock.AcquireAsync(_logger, ct);
+        if (_warmedUp) return;
+        await WarmAllAsync(ct);
+        _warmedUp = true;
     }
 
     Task IHostedService.StartAsync(CancellationToken ct) =>
