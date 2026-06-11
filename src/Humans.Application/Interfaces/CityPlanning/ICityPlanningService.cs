@@ -38,7 +38,6 @@ public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationSe
     Task UpdateOfficialZonesAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(string? opensAt, string? closesAt, CancellationToken cancellationToken = default);
-    Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default);
     // GetRegistrationInfoAsync is inherited from ICityPlanningServiceRead.
     Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
 

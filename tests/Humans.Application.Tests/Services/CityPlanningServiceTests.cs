@@ -591,8 +591,9 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         var opens = new LocalDateTime(2026, 4, 10, 18, 0);
         var closes = new LocalDateTime(2026, 4, 20, 23, 59);
 
-        await _sut.UpdatePlacementDatesAsync(opens, closes);
+        var result = await _sut.UpdatePlacementDatesAsync("2026-04-10T18:00", "2026-04-20T23:59");
 
+        result.Success.Should().BeTrue();
         var settings = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.PlacementOpensAt.Should().Be(opens);
         settings.PlacementClosesAt.Should().Be(closes);
@@ -608,8 +609,9 @@ public sealed class CityPlanningServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync();
         Db.Entry(seeded).State = EntityState.Detached;
 
-        await _sut.UpdatePlacementDatesAsync(null, (LocalDateTime?)null);
+        var result = await _sut.UpdatePlacementDatesAsync(null, null);
 
+        result.Success.Should().BeTrue();
         var updated = await Db.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.PlacementOpensAt.Should().BeNull();
         updated.PlacementClosesAt.Should().BeNull();

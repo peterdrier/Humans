@@ -377,7 +377,7 @@ public sealed class CityPlanningService(
             cancellationToken);
     }
 
-    public async Task UpdatePlacementDatesAsync(
+    private async Task UpdatePlacementDatesAsync(
         LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)
     {
         var campSettings = await campService.GetSettingsAsync(cancellationToken);

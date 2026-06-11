@@ -1,4 +1,3 @@
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Containers;
@@ -6,7 +5,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
@@ -176,28 +174,23 @@ public class CityPlanningController(
         var (error, _) = await RequireMapAdminAsync(cancellationToken);
         if (error is not null) return error;
 
-        var pattern = DateFormattingExtensions.PlacementDateTimePattern;
-
-        LocalDateTime? opens = null;
-        if (opensAt is { Length: > 0 })
+        var result = await cityPlanningService.UpdatePlacementDatesAsync(opensAt, closesAt, cancellationToken);
+        if (!result.Success)
         {
-            var result = pattern.Parse(opensAt);
-            if (!result.Success) { SetError("Invalid opens-at date format."); return RedirectToAction(nameof(Admin)); }
-            opens = result.Value;
+            SetError(PlacementDateErrorMessage(result.ErrorKey));
+            return RedirectToAction(nameof(Admin));
         }
 
-        LocalDateTime? closes = null;
-        if (closesAt is { Length: > 0 })
-        {
-            var result = pattern.Parse(closesAt);
-            if (!result.Success) { SetError("Invalid closes-at date format."); return RedirectToAction(nameof(Admin)); }
-            closes = result.Value;
-        }
-
-        await cityPlanningService.UpdatePlacementDatesAsync(opens, closes, cancellationToken);
         SetSuccess("Placement dates updated.");
         return RedirectToAction(nameof(Admin));
     }
+
+    private static string PlacementDateErrorMessage(string? errorKey) => errorKey switch
+    {
+        "InvalidOpensAt" => "Invalid opens-at date format.",
+        "InvalidClosesAt" => "Invalid closes-at date format.",
+        _ => "Invalid placement date format.",
+    };
 
     /// <summary>Shared GeoJSON upload (LimitZone / OfficialZones); callers differ only by label and service method.
     /// File read, size limit, and JSON validation are owned by the service's *FromUploadAsync method.</summary>
