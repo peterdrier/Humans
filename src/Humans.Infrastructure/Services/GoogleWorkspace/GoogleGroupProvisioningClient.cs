@@ -2,6 +2,7 @@ using Google.Apis.CloudIdentity.v1;
 using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Groupssettings.v1;
 using Google.Apis.Services;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,7 @@ public sealed class GoogleGroupProvisioningClient(
         string description,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
@@ -115,6 +117,7 @@ public sealed class GoogleGroupProvisioningClient(
         string groupEmail,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
@@ -139,6 +142,7 @@ public sealed class GoogleGroupProvisioningClient(
         string groupEmail,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
@@ -163,6 +167,7 @@ public sealed class GoogleGroupProvisioningClient(
         GroupSettingsExpected expected,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         try
         {
             var groupsSettings = await GetGroupsSettingsServiceAsync(ct);

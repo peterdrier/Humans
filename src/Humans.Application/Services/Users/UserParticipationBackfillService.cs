@@ -1,3 +1,5 @@
+using CsvHelper;
+using Humans.Application.Csv;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
@@ -32,18 +34,26 @@ public sealed class UserParticipationBackfillService(
         return ParticipationBackfillResult.Success(count, year);
     }
 
+    /// <summary>
+    /// Pasted rows of <c>UserId,Status</c> — an optional header row is skipped
+    /// and unparseable rows are silently dropped (the caller reports a count).
+    /// </summary>
     private static List<(Guid UserId, ParticipationStatus Status)> ParseEntries(string csvData)
     {
-        var entries = new List<(Guid UserId, ParticipationStatus Status)>();
-        var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var config = HumansCsv.ReadConfig();
+        config.HasHeaderRecord = false;
 
-        foreach (var line in lines)
+        var entries = new List<(Guid UserId, ParticipationStatus Status)>();
+        using var reader = new StringReader(csvData);
+        using var csv = new CsvReader(reader, config);
+
+        while (csv.Read())
         {
-            var parts = line.Split(',', StringSplitOptions.TrimEntries);
-            if (parts.Length < 2) continue;
-            if (string.Equals(parts[0], "UserId", StringComparison.OrdinalIgnoreCase)) continue;
-            if (!Guid.TryParse(parts[0], out var userId)) continue;
-            if (!Enum.TryParse<ParticipationStatus>(parts[1], ignoreCase: true, out var status)) continue;
+            if (csv.Parser.Count < 2) continue;
+            var first = csv.GetField(0);
+            if (string.Equals(first, "UserId", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!Guid.TryParse(first, out var userId)) continue;
+            if (!Enum.TryParse<ParticipationStatus>(csv.GetField(1), ignoreCase: true, out var status)) continue;
 
             entries.Add((userId, status));
         }

@@ -226,6 +226,15 @@ public partial interface IShiftManagementRepository : IRepository
         int? maxDayOffset,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns Confirmed and NoShow signup counts per shift for the given event.
+    /// Used by the post-event stats dashboard to compute completion/no-show rates.
+    /// Shifts with no Confirmed or NoShow signups are omitted from the result.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignupStatusCount>> GetSignupStatusCountsForEventAsync(
+        Guid eventSettingsId,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Shift tags
     // ==========================================================================
@@ -354,3 +363,13 @@ public sealed record ShiftEventQuery(
     int? MinDayOffset = null,
     int? MaxDayOffset = null,
     ShiftEventQueryFlags Flags = ShiftEventQueryFlags.None);
+
+/// <summary>
+/// Confirmed and NoShow counts for one shift, used by the post-event stats dashboard.
+/// </summary>
+public sealed record ShiftSignupStatusCount(
+    Guid ShiftId,
+    Guid RotaTeamId,
+    int DayOffset,
+    int ConfirmedCount,
+    int NoShowCount);

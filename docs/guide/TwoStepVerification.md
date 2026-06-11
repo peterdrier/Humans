@@ -57,10 +57,11 @@ Phones get lost, replaced, and dropped in the desert. Set up at least one backup
 Don't panic, and don't make a second account.
 
 1. If you saved **backup codes**, use one of those to get in.
-2. No backup codes and no phone? Email
-   [humans@nobodies.team](mailto:humans@nobodies.team) or use the help button in
-   the app (the round button, bottom-right). An admin can help sort out your
-   `@nobodies.team` account from the Google side.
+2. No backup codes and no phone? Use the help button in the app (the round
+   button, bottom-right — the app sign-in is separate from your email, so you
+   can still get in there) or ask in Discord. If nothing else worked, email
+   [humans@nobodies.team](mailto:humans@nobodies.team) as a last resort. An
+   admin can help sort out your `@nobodies.team` account from the Google side.
 
 ## Quick answers
 
@@ -68,8 +69,8 @@ Don't panic, and don't make a second account.
 |---|---|
 | Do I really have to? | Yes, on your `@nobodies.team` account — it's required and it's quick |
 | Does this change how I get into the app? | No. The app login is separate — see [Signing in & getting unstuck](SigningIn.md) |
-| What if I don't have a smartphone? | Backup codes work without a smartphone, and a phone that receives texts can also be used. If you're stuck, email [humans@nobodies.team](mailto:humans@nobodies.team) |
-| I got a new phone | Sign in with a backup code, then add the new phone under Security → 2-Step Verification. If you're locked out, email [humans@nobodies.team](mailto:humans@nobodies.team) |
+| What if I don't have a smartphone? | Backup codes work without a smartphone, and a phone that receives texts can also be used. If you're stuck, use the in-app help button |
+| I got a new phone | Sign in with a backup code, then add the new phone under Security → 2-Step Verification. If you're locked out, use the in-app help button; [humans@nobodies.team](mailto:humans@nobodies.team) is the last resort |
 | Is it on my personal Gmail too? | Only if you turn it on there yourself — which is a good idea, but separate from your `@nobodies.team` account |
 
 ## Related

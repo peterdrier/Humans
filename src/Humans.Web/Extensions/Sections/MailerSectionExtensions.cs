@@ -33,6 +33,7 @@ internal static class MailerSectionExtensions
         {
             var opts = sp.GetRequiredService<IOptions<MailerLiteOptions>>().Value;
             http.BaseAddress = new Uri(opts.BaseUrl);
+            http.Timeout = TimeSpan.FromSeconds(30);
             http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", opts.ApiKey);
             http.DefaultRequestHeaders.Add("X-Version", opts.ApiVersion);

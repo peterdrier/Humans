@@ -1,3 +1,4 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -76,6 +77,7 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
         string lineItemDescription,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (amountEur <= 0)
             throw new ArgumentOutOfRangeException(nameof(amountEur), "Checkout amount must be positive.");
         if (!_settings.IsStoreCheckoutConfigured)
@@ -140,6 +142,7 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
     public async Task<StripePaymentDetails?> GetPaymentDetailsAsync(
         string paymentIntentId, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var client = new StripeClient(_settings.TicketsKey);
         var piService = new PaymentIntentService(client);
 
@@ -197,6 +200,7 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
 
     public StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature)
     {
+        using var _ = logger.TimeOperation();
         if (!_settings.IsStoreWebhookConfigured)
         {
             logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
@@ -235,6 +239,7 @@ public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeServ
     public async Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (!_settings.IsStoreCheckoutConfigured)
         {
             logger.LogWarning("Store Checkout Session list requested while STRIPE_STORE_KEY is unset; Stripe not queried.");

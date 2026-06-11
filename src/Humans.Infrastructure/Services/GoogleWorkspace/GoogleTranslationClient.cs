@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,7 @@ public sealed class GoogleTranslationClient(
     public async Task<IReadOnlyList<string>> TranslateAsync(
         IReadOnlyList<string> texts, string sourceLanguage, string targetLanguage, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         if (texts.Count == 0) return [];
 
         var credential = await GoogleCredentialLoader.LoadScopedAsync(settings.Value, ct, Scope);

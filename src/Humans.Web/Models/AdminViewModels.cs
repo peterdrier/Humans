@@ -346,3 +346,27 @@ public class AudienceSegmentationViewModel
     /// <summary>Currently selected event year filter, or null for all time.</summary>
     public int? SelectedYear { get; set; }
 }
+
+public class TimingsViewModel
+{
+    public List<TimingEntryViewModel> Entries { get; set; } = [];
+    public List<SwallowedEntryViewModel> Swallowed { get; set; } = [];
+}
+
+public class TimingEntryViewModel
+{
+    public string Operation { get; set; } = string.Empty;
+    public long Count { get; set; }
+    public double LastMs { get; set; }
+    public double AvgMs { get; set; }
+    public double MinMs { get; set; }
+    public double MaxMs { get; set; }
+    public double TotalMs { get; set; }
+    public DateTime LastAtUtc { get; set; }
+}
+
+public class SwallowedEntryViewModel
+{
+    public string Operation { get; set; } = string.Empty;
+    public long Count { get; set; }
+}

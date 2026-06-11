@@ -2,9 +2,11 @@ using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
-using Microsoft.Extensions.Options;
-using Humans.Infrastructure.Configuration;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Services.GoogleWorkspace;
 
@@ -14,8 +16,9 @@ namespace Humans.Infrastructure.Services.GoogleWorkspace;
 /// service account. This is the only file that imports <c>Google.Apis.*</c> for
 /// user-account management; the Application-layer service never sees SDK types.
 /// </summary>
-public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSettings> settings)
-    : IWorkspaceUserDirectoryClient
+public sealed class WorkspaceUserDirectoryClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<WorkspaceUserDirectoryClient> logger) : IWorkspaceUserDirectoryClient
 {
     private readonly GoogleWorkspaceSettings _settings = settings.Value;
     private DirectoryService? _directoryService;
@@ -67,6 +70,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
     public async Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
         var accounts = new List<WorkspaceUserAccount>();
         string? pageToken = null;
@@ -99,6 +103,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
     public async Task<WorkspaceUserAccount?> GetAccountAsync(
         string primaryEmail, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         // Users.Get() returns 403 for our service account, but Users.List() with
         // a query filter works. Use that to check if an account exists.
         var service = await GetDirectoryServiceAsync();
@@ -121,6 +126,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
         string? recoveryEmail,
         CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
 
         var newUser = new User
@@ -149,6 +155,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
 
     public async Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
         var update = new User { Suspended = true };
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
@@ -156,6 +163,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
 
     public async Task ReactivateAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
         var update = new User { Suspended = false };
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
@@ -164,6 +172,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
     public async Task ResetPasswordAsync(
         string primaryEmail, string newPassword, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
         var update = new User
         {
@@ -176,6 +185,7 @@ public sealed class WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSetting
     public async Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
         string primaryEmail, CancellationToken ct = default)
     {
+        using var _ = logger.TimeOperation();
         var service = await GetDirectoryServiceAsync();
 
         // Generate issues a fresh set of codes. Google always issues 10 codes and

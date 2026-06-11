@@ -1,0 +1,57 @@
+@using Humans.Web.Models.Tables
+@model TimingsViewModel
+@{
+    ViewData["Title"] = "Operation Timings";
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="title">Operation Timings</h1>
+        <p class="sub">@Model.Entries.Count operation(s) recorded since last restart</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Admin
+        </a>
+    </div>
+</div>
+
+@if (Model.Entries.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No timing data recorded yet. Use the app to generate data.
+    </div>
+}
+else
+{
+    var timingsTable = TableModel.For(Model.Entries)
+        .Column("Operation", r => r.Operation)
+        .Column("Count", r => r.Count, c => c.Number().End())
+        .Column("Last (ms)", r => r.LastMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Avg (ms)", r => r.AvgMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Min (ms)", r => r.MinMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Max (ms)", r => r.MaxMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Total (ms)", r => r.TotalMs.ToString("F2", System.Globalization.CultureInfo.CurrentCulture), c => c.End())
+        .Column("Last At (UTC)", r => r.LastAtUtc == default ? "—" : r.LastAtUtc.ToInvariantTimestamp(), c => c.End())
+        .Id("timingsTable")
+        .Build();
+    <partial name="_Table" model="timingsTable" />
+}
+
+<h2 class="h5 mt-4">Swallowed Exceptions</h2>
+@if (Model.Swallowed.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No swallowed exceptions recorded.
+    </div>
+}
+else
+{
+    var swallowedTable = TableModel.For(Model.Swallowed)
+        .RowCss(_ => "table-danger")
+        .Column("Operation", r => r.Operation)
+        .Column("Count", r => r.Count, c => c.Number().End())
+        .Id("swallowedTable")
+        .Build();
+    <partial name="_Table" model="swallowedTable" />
+}

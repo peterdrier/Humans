@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using AwesomeAssertions;
 using Humans.Infrastructure.Services.Holded;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
@@ -12,7 +13,8 @@ public class HoldedClientReadTests
     private static HoldedClient Make(StubHandler handler) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
-            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }));
+            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
+            NullLogger<HoldedClient>.Instance);
 
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()

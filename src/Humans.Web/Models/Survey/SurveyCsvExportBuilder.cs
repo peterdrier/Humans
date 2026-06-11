@@ -1,8 +1,7 @@
 using System.Globalization;
-using System.Text;
+using Humans.Application.Csv;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Enums;
-using Humans.Web.Extensions;
 using NodaTime.Text;
 
 namespace Humans.Web.Models.Survey;
@@ -12,8 +11,8 @@ namespace Humans.Web.Models.Survey;
 /// leading identity columns then one column per question (header = resolved prompt, disambiguated with
 /// the short question id when prompts collide). Choice cells use the stable option <b>values</b>
 /// (<c>value|value</c>) — not labels — so the export joins cleanly against the question schema for
-/// analysis. Field escaping is RFC4180 (every field quoted, embedded quotes doubled) via
-/// <see cref="CsvExtensions.AppendCsvRow"/>; numbers/instants format with <see cref="CultureInfo.InvariantCulture"/>.
+/// analysis. Quoting, injection escaping, and invariant formatting come from the shared
+/// <see cref="HumansCsv"/> conventions.
 /// </summary>
 public static class SurveyCsvExportBuilder
 {
@@ -23,36 +22,35 @@ public static class SurveyCsvExportBuilder
     {
         ArgumentNullException.ThrowIfNull(export);
 
-        var csv = new StringBuilder();
-
-        // Header: fixed identity columns + one disambiguated column per question.
-        var header = new List<object?> { "response_id", "anonymity", "input_method", "submitted_at", "user_id", "user_name" };
-        header.AddRange(export.Questions.Select(q => (object?)QuestionHeader(q, export.Questions)));
-        csv.AppendCsvRow(header.ToArray());
-
-        foreach (var row in export.Rows)
+        return HumansCsv.WriteBytes(csv =>
         {
-            var byQuestion = row.Answers.ToDictionary(a => a.QuestionId);
+            // Header: fixed identity columns + one disambiguated column per question.
+            var header = new List<object?> { "response_id", "anonymity", "input_method", "submitted_at", "user_id", "user_name" };
+            header.AddRange(export.Questions.Select(q => (object?)QuestionHeader(q, export.Questions)));
+            csv.WriteRow(header.ToArray());
 
-            var cells = new List<object?>
+            foreach (var row in export.Rows)
             {
-                row.ResponseId,
-                row.Anonymity,
-                row.InputMethod,
-                row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : string.Empty,
-                row.UserId,            // blank for non-Identified rows (null → empty by AppendCsvRow)
-                row.UserName,          // blank for non-Identified rows
-            };
+                var byQuestion = row.Answers.ToDictionary(a => a.QuestionId);
 
-            foreach (var q in export.Questions)
-            {
-                cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? CellValue(q, answer) : string.Empty);
+                var cells = new List<object?>
+                {
+                    row.ResponseId,
+                    row.Anonymity,
+                    row.InputMethod,
+                    row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : string.Empty,
+                    row.UserId,            // blank for non-Identified rows (null → empty cell)
+                    row.UserName,          // blank for non-Identified rows
+                };
+
+                foreach (var q in export.Questions)
+                {
+                    cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? CellValue(q, answer) : string.Empty);
+                }
+
+                csv.WriteRow(cells.ToArray());
             }
-
-            csv.AppendCsvRow(cells.ToArray());
-        }
-
-        return Encoding.UTF8.GetBytes(csv.ToString());
+        });
     }
 
     /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, or the rating integer.</summary>

@@ -40,7 +40,7 @@ public sealed class TicketSyncService(
     {
         if (!_settings.IsConfigured)
         {
-            logger.LogDebug("Ticket vendor not configured (missing EventId or API key), skipping sync");
+            logger.LogWarning("Ticket vendor not configured (missing EventId or API key), skipping sync");
             return new TicketSyncResult(0, 0, 0, 0, 0);
         }
 

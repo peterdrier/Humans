@@ -21,7 +21,7 @@
 
 ## What this section is for
 
-Governance handles **tier applications** — applying to become a [**Colaborador**](Glossary.md#colaborador) or [**Asociado**](Glossary.md#asociado) — along with the [**Board vote**](Glossary.md#board-vote) that decides those applications and the **[coordinator](Glossary.md#coordinator) and admin [role assignments](Glossary.md#role-assignment)** that track who can do what. It is **not** how you become a [Volunteer](Glossary.md#volunteer). Volunteer access is a separate, parallel path handled through profile setup, consent, and a safety check by a Consent Coordinator — see [Onboarding.md](Onboarding.md) for that flow. Tier applications never block Volunteer access, and Volunteer access never depends on a [Board](Glossary.md#board) decision.
+Governance handles **tier applications** — applying to become a [**Colaborador**](Glossary.md#colaborador) or [**Asociado**](Glossary.md#asociado) — along with the [**Board vote**](Glossary.md#board-vote) that decides those applications and the **[coordinator](Glossary.md#coordinator) and admin [role assignments](Glossary.md#role-assignment)** that track who can do what. It is **not** how you become a [Volunteer](Glossary.md#volunteer). Volunteer access is a separate, parallel path handled through profile setup and consent — see [Onboarding.md](Onboarding.md) for that flow. Tier applications never block Volunteer access, and Volunteer access never depends on a [Board](Glossary.md#board) decision.
 
 Both tiers run on synchronized 2-year terms that expire on December 31 of the next appropriate odd year. Terms, votes, and role assignments all leave an audit trail on your profile and on the human detail page.
 
@@ -104,6 +104,6 @@ Application state history, past and present role assignments, and the collective
 ## Related sections
 
 - [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and is updated automatically on approval. (It is not auto-reset on term expiry — only the system-team membership changes then.)
-- [Legal and Consent](LegalAndConsent.md) — the Consent Coordinator safety check for Volunteer access, independent of Board voting.
+- [Legal and Consent](LegalAndConsent.md) — the consent signing flow, independent of Board voting.
 - [Onboarding](Onboarding.md) — how a new human becomes a Volunteer. Tier applications do not replace or block this.
 - [Teams](Teams.md) — the Colaboradors and Asociados system teams that approved applicants join.

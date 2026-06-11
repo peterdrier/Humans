@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.Application.Threading;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -24,15 +25,15 @@ public sealed class UserService(
     IClock clock,
     ILogger<UserService> logger) : IUserService, IUserDataContributor
 {
-    private static readonly SemaphoreSlim[] ProfileStubLocks = CreateProfileStubLocks(32);
-    private static SemaphoreSlim[] CreateProfileStubLocks(int count)
+    private static readonly TrackedLock[] ProfileStubLocks = CreateProfileStubLocks(32);
+    private static TrackedLock[] CreateProfileStubLocks(int count)
     {
-        var locks = new SemaphoreSlim[count];
-        for (var i = 0; i < count; i++) locks[i] = new SemaphoreSlim(1, 1);
+        var locks = new TrackedLock[count];
+        for (var i = 0; i < count; i++) locks[i] = new TrackedLock($"UserService.ProfileStub[{i}]");
         return locks;
     }
 
-    private static SemaphoreSlim ProfileStubLockFor(Guid userId) =>
+    private static TrackedLock ProfileStubLockFor(Guid userId) =>
         ProfileStubLocks[(uint)userId.GetHashCode() % (uint)ProfileStubLocks.Length];
 
     // --- User reads ---
@@ -304,49 +305,42 @@ public sealed class UserService(
         string? lastName = null,
         CancellationToken ct = default)
     {
-        var gate = ProfileStubLockFor(userId);
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var existing = await repo.GetByUserIdAsync(userId, ct);
+        if (existing is not null) return false;
+
+        var info = await GetUserInfoAsync(userId, ct);
+        if (info is null)
+            return false;
+
+        if (info.IsTombstone)
         {
-            var existing = await repo.GetByUserIdAsync(userId, ct);
-            if (existing is not null) return false;
-
-            var info = await GetUserInfoAsync(userId, ct);
-            if (info is null)
-                return false;
-
-            if (info.IsTombstone)
-            {
-                logger.LogError(
-                    "EnsureStubProfileAsync called for tombstone user {UserId} (MergedAt={MergedAt}) - refusing to create Stub Profile",
-                    userId, info.MergedAt);
-                return false;
-            }
-
-            var now = clock.GetCurrentInstant();
-            var profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                CreatedAt = now,
-                UpdatedAt = now,
-                BurnerName = (burnerName ?? string.Empty).Trim(),
-                FirstName = (firstName ?? string.Empty).Trim(),
-                LastName = (lastName ?? string.Empty).Trim(),
-            };
-
-            // Seeded names (magic-link signup) promote straight to Active, mirroring
-            // SaveProfileAsync; import/OAuth paths pass no names and stay Stub. see #635 / #812.
-            profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-
-            await repo.AddAsync(profile, ct);
-            InvalidateClaims(userId);
-            return true;
+            logger.LogError(
+                "EnsureStubProfileAsync called for tombstone user {UserId} (MergedAt={MergedAt}) - refusing to create Stub Profile",
+                userId, info.MergedAt);
+            return false;
         }
-        finally
+
+        var now = clock.GetCurrentInstant();
+        var profile = new Profile
         {
-            gate.Release();
-        }
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            BurnerName = (burnerName ?? string.Empty).Trim(),
+            FirstName = (firstName ?? string.Empty).Trim(),
+            LastName = (lastName ?? string.Empty).Trim(),
+        };
+
+        // Seeded names (magic-link signup) promote straight to Active, mirroring
+        // SaveProfileAsync; import/OAuth paths pass no names and stay Stub. see #635 / #812.
+        profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
+
+        await repo.AddAsync(profile, ct);
+        InvalidateClaims(userId);
+        return true;
     }
 
     public async Task<bool> SetMembershipTierAsync(
@@ -421,100 +415,93 @@ public sealed class UserService(
         UserProfileSaveCommand command,
         CancellationToken ct = default)
     {
-        var gate = ProfileStubLockFor(userId);
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var now = clock.GetCurrentInstant();
+        var profile = await repo.GetByUserIdAsync(userId, ct);
+
+        if (profile is null)
         {
-            var now = clock.GetCurrentInstant();
-            var profile = await repo.GetByUserIdAsync(userId, ct);
-
-            if (profile is null)
+            profile = new Profile
             {
-                profile = new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    State = ProfileState.Stub,
-                };
-                await repo.AddAsync(profile, ct);
-            }
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+                State = ProfileState.Stub,
+            };
+            await repo.AddAsync(profile, ct);
+        }
 
-            var previousPictureContentType = profile.ProfilePictureContentType;
+        var previousPictureContentType = profile.ProfilePictureContentType;
 
-            profile.BurnerName = command.BurnerName;
-            profile.FirstName = command.FirstName;
-            profile.LastName = command.LastName;
-            profile.City = command.City;
-            profile.CountryCode = command.CountryCode;
-            profile.Latitude = command.Latitude;
-            profile.Longitude = command.Longitude;
-            profile.PlaceId = command.PlaceId;
-            profile.Bio = command.Bio?.TrimEnd();
-            profile.Pronouns = command.Pronouns;
-            profile.ContributionInterests = command.ContributionInterests?.TrimEnd();
-            profile.BoardNotes = command.BoardNotes?.TrimEnd();
-            profile.EmergencyContactName = command.EmergencyContactName;
-            profile.EmergencyContactPhone = command.EmergencyContactPhone;
-            profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
-            profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
+        profile.BurnerName = command.BurnerName;
+        profile.FirstName = command.FirstName;
+        profile.LastName = command.LastName;
+        profile.City = command.City;
+        profile.CountryCode = command.CountryCode;
+        profile.Latitude = command.Latitude;
+        profile.Longitude = command.Longitude;
+        profile.PlaceId = command.PlaceId;
+        profile.Bio = command.Bio?.TrimEnd();
+        profile.Pronouns = command.Pronouns;
+        profile.ContributionInterests = command.ContributionInterests?.TrimEnd();
+        profile.BoardNotes = command.BoardNotes?.TrimEnd();
+        profile.EmergencyContactName = command.EmergencyContactName;
+        profile.EmergencyContactPhone = command.EmergencyContactPhone;
+        profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
+        profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
 
-            // Edit page owns meal preference + allergies (not intolerances/medical —
-            // those are written via SaveDietaryMedicalAsync). Only touch these when
-            // the command carries them, so a non-dietary save path can't clobber.
-            if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
+        // Edit page owns meal preference + allergies (not intolerances/medical —
+        // those are written via SaveDietaryMedicalAsync). Only touch these when
+        // the command carries them, so a non-dietary save path can't clobber.
+        if (command.DietaryPreference is not null || command.Allergies is not null || command.AllergyOtherText is not null)
+        {
+            profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
+            profile.Allergies = command.Allergies ?? [];
+            profile.AllergyOtherText = command.AllergyOtherText;
+        }
+
+        profile.UpdatedAt = now;
+
+        // LocalDate year=4 lets Feb 29 validate.
+        if (command.BirthdayMonth is >= 1 and <= 12 && command.BirthdayDay is >= 1 and <= 31)
+        {
+            try
             {
-                profile.DietaryPreference = string.IsNullOrWhiteSpace(command.DietaryPreference) ? null : command.DietaryPreference;
-                profile.Allergies = command.Allergies ?? [];
-                profile.AllergyOtherText = command.AllergyOtherText;
+                profile.DateOfBirth = new LocalDate(4, command.BirthdayMonth.Value, command.BirthdayDay.Value);
             }
-
-            profile.UpdatedAt = now;
-
-            // LocalDate year=4 lets Feb 29 validate.
-            if (command.BirthdayMonth is >= 1 and <= 12 && command.BirthdayDay is >= 1 and <= 31)
-            {
-                try
-                {
-                    profile.DateOfBirth = new LocalDate(4, command.BirthdayMonth.Value, command.BirthdayDay.Value);
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    profile.DateOfBirth = null;
-                }
-            }
-            else
+            catch (ArgumentOutOfRangeException)
             {
                 profile.DateOfBirth = null;
             }
-
-            profile.ProfilePictureContentType = command.PictureMutation switch
-            {
-                UserProfilePictureMutation.Remove => null,
-                UserProfilePictureMutation.Set => command.ProfilePictureContentType,
-                _ => profile.ProfilePictureContentType,
-            };
-
-            // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
-            if (!IsSuspendedState(profile.State))
-            {
-                profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
-            }
-
-            await repo.UpdateAsync(profile, ct);
-            await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
-            InvalidateClaims(userId);
-
-            return new UserProfileSaveResult(
-                profile.Id,
-                previousPictureContentType,
-                profile.ProfilePictureContentType);
         }
-        finally
+        else
         {
-            gate.Release();
+            profile.DateOfBirth = null;
         }
+
+        profile.ProfilePictureContentType = command.PictureMutation switch
+        {
+            UserProfilePictureMutation.Remove => null,
+            UserProfilePictureMutation.Set => command.ProfilePictureContentType,
+            _ => profile.ProfilePictureContentType,
+        };
+
+        // see #635 (section 15i) - Stub->Active promotion (mirrors UserInfo.HasRequiredNameFields).
+        if (!IsSuspendedState(profile.State))
+        {
+            profile.State = HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
+        }
+
+        await repo.UpdateAsync(profile, ct);
+        await repo.UpdateDisplayNameAsync(userId, command.DisplayName, ct);
+        InvalidateClaims(userId);
+
+        return new UserProfileSaveResult(
+            profile.Id,
+            previousPictureContentType,
+            profile.ProfilePictureContentType);
     }
 
     public async Task SaveDietaryMedicalAsync(
@@ -522,39 +509,32 @@ public sealed class UserService(
         UserProfileDietaryMedicalCommand command,
         CancellationToken ct = default)
     {
-        var gate = ProfileStubLockFor(userId);
-        await gate.WaitAsync(ct).ConfigureAwait(false);
-        try
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var now = clock.GetCurrentInstant();
+        var profile = await repo.GetByUserIdAsync(userId, ct);
+        if (profile is null)
         {
-            var now = clock.GetCurrentInstant();
-            var profile = await repo.GetByUserIdAsync(userId, ct);
-            if (profile is null)
+            profile = new Profile
             {
-                profile = new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    State = ProfileState.Stub,
-                };
-                await repo.AddAsync(profile, ct);
-            }
-
-            profile.DietaryPreference = command.DietaryPreference;
-            profile.Allergies = command.Allergies;
-            profile.AllergyOtherText = command.AllergyOtherText;
-            profile.Intolerances = command.Intolerances;
-            profile.IntoleranceOtherText = command.IntoleranceOtherText;
-            profile.MedicalConditions = command.MedicalConditions;
-            profile.UpdatedAt = now;
-
-            await repo.UpdateAsync(profile, ct);
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+                State = ProfileState.Stub,
+            };
+            await repo.AddAsync(profile, ct);
         }
-        finally
-        {
-            gate.Release();
-        }
+
+        profile.DietaryPreference = command.DietaryPreference;
+        profile.Allergies = command.Allergies;
+        profile.AllergyOtherText = command.AllergyOtherText;
+        profile.Intolerances = command.Intolerances;
+        profile.IntoleranceOtherText = command.IntoleranceOtherText;
+        profile.MedicalConditions = command.MedicalConditions;
+        profile.UpdatedAt = now;
+
+        await repo.UpdateAsync(profile, ct);
     }
 
     public async Task<UserProfilePictureContentTypeResult> SetProfilePictureContentTypeAsync(

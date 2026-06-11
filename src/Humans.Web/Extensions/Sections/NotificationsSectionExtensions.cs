@@ -14,8 +14,8 @@ internal static class NotificationsSectionExtensions
     {
         // Notifications section — §15 repository pattern (issue #550).
         // No caching decorator: in-app notification dispatch is fire-and-forget
-        // and reads go through the inbox service whose nav-badge counts are
-        // already cached at the view-component layer via short-TTL IMemoryCache.
+        // and reads go through the inbox service. Nav-badge counts are cached
+        // inside NotificationInboxService.GetUnreadBadgeCountsAsync (§15 Option A).
         // INotificationRepository is Singleton (IDbContextFactory-based) so the
         // services can inject it directly.
         services.AddSingleton<INotificationRepository, NotificationRepository>();

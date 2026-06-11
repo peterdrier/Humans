@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Application.Diagnostics;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
@@ -9,6 +10,7 @@ using Humans.Web.Infrastructure;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog.Events;
 
 namespace Humans.Web.Controllers;
 
@@ -30,14 +32,24 @@ public class DebugController(
     IAdminDatabaseDiagnosticsService databaseDiagnostics) : HumansControllerBase(userService)
 {
     [HttpGet("Logs")]
-    public IActionResult Logs(int count = 1000)
+    public IActionResult Logs(int count = 1000, string? minLevel = null)
     {
         count = Math.Clamp(count, 1, 1000);
+
+        LogEventLevel? minLogLevel = minLevel?.ToUpperInvariant() switch
+        {
+            "WARNING" => LogEventLevel.Warning,
+            "ERROR" => LogEventLevel.Error,
+            "FATAL" => LogEventLevel.Fatal,
+            _ => null
+        };
+
         var sink = InMemoryLogSink.Instance;
-        var events = sink.GetEvents(count);
+        var events = sink.GetEvents(count, minLogLevel);
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         ViewBag.SinkStartedAt = sink.StartedAt;
         ViewBag.TotalEvents = sink.TotalEvents;
+        ViewBag.MinLevel = minLevel;
         return View(events);
     }
 
@@ -276,6 +288,38 @@ public class DebugController(
             StatusCodes: statusRows);
 
         return View(vm);
+    }
+
+    [HttpGet("Timings")]
+    public IActionResult Timings()
+    {
+        var registry = OperationTimingRegistry.Instance;
+
+        var entries = registry.GetTimings()
+            .OrderByDescending(t => t.TotalMs)
+            .Select(t => new TimingEntryViewModel
+            {
+                Operation = t.Key,
+                Count = t.Count,
+                LastMs = Math.Round(t.LastMs, 2),
+                AvgMs = Math.Round(t.AvgMs, 2),
+                MinMs = Math.Round(t.MinMs, 2),
+                MaxMs = Math.Round(t.MaxMs, 2),
+                TotalMs = Math.Round(t.TotalMs, 2),
+                LastAtUtc = t.LastAt.ToDateTimeUtc(),
+            })
+            .ToList();
+
+        var swallowed = registry.GetSwallowed()
+            .OrderByDescending(s => s.Count)
+            .Select(s => new SwallowedEntryViewModel
+            {
+                Operation = s.Key,
+                Count = s.Count,
+            })
+            .ToList();
+
+        return View(new TimingsViewModel { Entries = entries, Swallowed = swallowed });
     }
 
     [HttpGet("FormatGallery")]

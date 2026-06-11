@@ -270,7 +270,8 @@ var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<GitHubHealthCheck>("github")
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
     .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable")
-    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs");
+    .AddCheck<AgentDocsHealthCheck>("agent-grounding-docs")
+    .AddCheck<TicketVendorHealthCheck>("ticket-vendor");
 
 // Hangfire health check reads JobStorage.Current; only register it when
 // the rest of the Hangfire stack is wired (i.e. outside Testing).

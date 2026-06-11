@@ -1,0 +1,180 @@
+@model Humans.Application.DTOs.PostEventStats
+
+@{
+    ViewData["Title"] = "Post-Event Stats";
+
+    static string CompletionBadgeClass(int pct) =>
+        pct >= 90 ? "bg-success" : pct >= 75 ? "bg-warning text-dark" : "bg-danger";
+
+    int totalSignups = Model.TotalConfirmed + Model.TotalNoShow;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shifts" asp-action="Index">Shifts</a></li>
+            <li class="breadcrumb-item"><a asp-controller="ShiftDashboard" asp-action="Index">Shift Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Post-Event Stats</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Post-Event Stats</h2>
+    </div>
+
+    <p class="text-muted mb-4">
+        Completion and no-show rates across all confirmed/no-show signups in the event.
+        Only shifts marked with <strong>NoShow</strong> by a coordinator are counted — shifts with no
+        outcome recorded are excluded from the no-show rate.
+    </p>
+
+    @* Summary counters *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Total Shifts</div>
+                    <div class="fs-3 fw-bold">@Model.TotalShifts</div>
+                    <div class="text-muted small">@Model.ShiftsWithData with outcome data</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Confirmed</div>
+                    <div class="fs-3 fw-bold text-success">@Model.TotalConfirmed</div>
+                    <div class="text-muted small">completed signups</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 @(Model.TotalNoShow > 0 ? "border-warning" : "")">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">No-Shows</div>
+                    <div class="fs-3 fw-bold @(Model.TotalNoShow > 0 ? "text-warning" : "")">@Model.TotalNoShow</div>
+                    <div class="text-muted small">recorded no-shows</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Completion Rate</div>
+                    @if (totalSignups > 0)
+                    {
+                        <div class="fs-3 fw-bold">@Model.CompletionPct%</div>
+                        <div class="text-muted small">@Model.NoShowPct% no-show rate</div>
+                    }
+                    else
+                    {
+                        <div class="fs-3 fw-bold text-muted">—</div>
+                        <div class="text-muted small">no outcome data recorded</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Department breakdown table *@
+    @if (Model.Departments.Count == 0)
+    {
+        <div class="alert alert-info">No departments with shift data found for this event.</div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header fw-semibold">Department Breakdown</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Department</th>
+                            <th class="text-end">Confirmed</th>
+                            <th class="text-end">No-Shows</th>
+                            <th class="text-end">Completion</th>
+                            <th class="text-center">Set-Up</th>
+                            <th class="text-center">Event</th>
+                            <th class="text-center">Strike</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var dept in Model.Departments)
+                    {
+                        int deptTotal = dept.TotalConfirmed + dept.TotalNoShow;
+
+                        <tr>
+                            <td>
+                                @if (dept.DepartmentSlug is not null)
+                                {
+                                    <a asp-controller="ShiftAdmin" asp-action="Index"
+                                       asp-route-slug="@dept.DepartmentSlug" class="text-decoration-none">
+                                        @dept.DepartmentName
+                                    </a>
+                                }
+                                else
+                                {
+                                    @dept.DepartmentName
+                                }
+                            </td>
+                            <td class="text-end">@dept.TotalConfirmed</td>
+                            <td class="text-end">@dept.TotalNoShow</td>
+                            <td class="text-end">
+                                @if (deptTotal > 0)
+                                {
+                                    <span class="badge @CompletionBadgeClass(dept.CompletionPct)">@dept.CompletionPct%</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (dept.Build.TotalConfirmed + dept.Build.TotalNoShow > 0)
+                                {
+                                    <span class="badge @CompletionBadgeClass(dept.Build.CompletionPct)" title="@dept.Build.TotalConfirmed confirmed, @dept.Build.TotalNoShow no-shows">
+                                        @dept.Build.CompletionPct%
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (dept.Event.TotalConfirmed + dept.Event.TotalNoShow > 0)
+                                {
+                                    <span class="badge @CompletionBadgeClass(dept.Event.CompletionPct)" title="@dept.Event.TotalConfirmed confirmed, @dept.Event.TotalNoShow no-shows">
+                                        @dept.Event.CompletionPct%
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (dept.Strike.TotalConfirmed + dept.Strike.TotalNoShow > 0)
+                                {
+                                    <span class="badge @CompletionBadgeClass(dept.Strike.CompletionPct)" title="@dept.Strike.TotalConfirmed confirmed, @dept.Strike.TotalNoShow no-shows">
+                                        @dept.Strike.CompletionPct%
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p class="text-muted small mt-2">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Period badges show completion rate (green ≥ 90%, amber ≥ 75%, red &lt; 75%).
+            AdminOnly shifts and hidden rotas are excluded.
+        </p>
+    }
+</div>

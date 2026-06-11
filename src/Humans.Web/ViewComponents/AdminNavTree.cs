@@ -32,6 +32,7 @@ public static class AdminNavTree
             new("Summary by camp", "Shifts", "Summary", null, null, "fa-solid fa-campground",        PolicyNames.ShiftDepartmentManager),
             new("Workload",  "ShiftWorkloadAdmin", "Index",   null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
             new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open",       PolicyNames.ShiftDashboardAccess),
+            new("Post-event stats", "ShiftDashboard", "PostEventStats", null, null, "fa-solid fa-chart-bar", PolicyNames.ShiftDashboardAccess),
             new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",  PolicyNames.AdminOnly)
         ]),
         new("Barrios", [
@@ -101,6 +102,7 @@ public static class AdminNavTree
             new("DB stats",        "Debug", "DbStats",       null, null, "fa-solid fa-database",            PolicyNames.AdminOnly),
             new("Cache stats",     "Debug", "CacheStats",    null, null, "fa-solid fa-bolt",                PolicyNames.AdminOnly),
             new("Client stats",    "Debug", "ClientStats",   null, null, "fa-solid fa-display",             PolicyNames.AdminOnly),
+            new("Timings",         "Debug", "Timings",       null, null, "fa-solid fa-stopwatch",           PolicyNames.AdminOnly),
             new("All users (debug)", "UsersAdminDebug", "Index", null, null, "fa-solid fa-bug-slash", PolicyNames.AdminOnly),
             new("Configuration",   "Debug", "Configuration", null, null, "fa-solid fa-gear",                PolicyNames.AdminOnly),
             new("Maintenance",     "Debug", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",  PolicyNames.AdminOnly),

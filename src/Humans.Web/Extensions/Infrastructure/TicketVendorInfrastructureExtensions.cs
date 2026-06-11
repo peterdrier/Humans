@@ -22,7 +22,10 @@ internal static class TicketVendorInfrastructureExtensions
 
         if (environment.IsProduction())
         {
-            services.AddHttpClient<ITicketVendorService, TicketTailorService>();
+            services.AddHttpClient<ITicketVendorService, TicketTailorService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
         }
         else
         {
