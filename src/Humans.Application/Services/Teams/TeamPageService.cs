@@ -40,9 +40,9 @@ public sealed class TeamPageService(
                 detail.IsAuthenticated ? member.JoinedAt : null))
             .ToList();
 
-        var pageContentUpdatedByDisplayName = await GetPageContentUpdatedByDisplayNameAsync(
-            detail.Team.PageContentUpdatedByUserId,
-            cancellationToken);
+        var pageContentUpdatedBy = detail.Team.PageContentUpdatedByUserId.HasValue
+            ? await userService.GetUserInfoAsync(detail.Team.PageContentUpdatedByUserId.Value, cancellationToken)
+            : null;
 
         var resources = detail.IsAuthenticated
             ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
@@ -75,21 +75,8 @@ public sealed class TeamPageService(
             detail.CanCurrentUserEditTeam,
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
-            pageContentUpdatedByDisplayName,
+            pageContentUpdatedBy?.BurnerName,
             shiftsSummary);
-    }
-
-    private async Task<string?> GetPageContentUpdatedByDisplayNameAsync(
-        Guid? userId,
-        CancellationToken cancellationToken)
-    {
-        if (!userId.HasValue)
-        {
-            return null;
-        }
-
-        var user = await userService.GetUserInfoAsync(userId.Value, cancellationToken);
-        return user?.BurnerName;
     }
 
     private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(
@@ -116,41 +103,24 @@ public sealed class TeamPageService(
         }
 
         var activeChildTeamIds = childTeams.Select(c => c.Id).ToList();
+        var teamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
+        teamIds.AddRange(activeChildTeamIds);
 
-        if (activeChildTeamIds.Count > 0)
-        {
-            var allTeamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
-            allTeamIds.AddRange(activeChildTeamIds);
-
-            var aggregatedData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, allTeamIds);
-            if (aggregatedData is null)
-            {
-                return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
-            }
-
-            var childTeamCountWithShifts = activeChildTeamIds
-                .Count(aggregatedData.TeamIdsWithShifts.Contains);
-
-            return new TeamPageShiftsSummary(
-                aggregatedData.TotalSlots,
-                aggregatedData.ConfirmedCount,
-                aggregatedData.PendingCount,
-                aggregatedData.UniqueVolunteerCount,
-                canManageShifts,
-                childTeamCountWithShifts);
-        }
-
-        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);
+        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds);
         if (summaryData is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
+
+        var childTeamCountWithShifts = activeChildTeamIds
+            .Count(summaryData.TeamIdsWithShifts.Contains);
 
         return new TeamPageShiftsSummary(
             summaryData.TotalSlots,
             summaryData.ConfirmedCount,
             summaryData.PendingCount,
             summaryData.UniqueVolunteerCount,
-            canManageShifts);
+            canManageShifts,
+            childTeamCountWithShifts);
     }
 }

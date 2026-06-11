@@ -433,7 +433,10 @@ public class TeamAdminController(
         }
 
         var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
-        SetDriveResourceLinkResult(result);
+        if (result.Success)
+            SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
+        else
+            SetError(BuildResourceLinkError(result, "Failed to link Drive resource."));
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -466,7 +469,10 @@ public class TeamAdminController(
         }
 
         var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
-        SetGroupResourceLinkResult(result);
+        if (result.Success)
+            SetSuccess(string.Format(localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
+        else
+            SetError(BuildResourceLinkError(result, localizer["TeamAdmin_GroupLinkFailed"].Value));
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -572,9 +578,6 @@ public class TeamAdminController(
     [HttpPost("Resources/{resourceId}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
-        => await SyncResourceCoreAsync(slug, resourceId);
-
-    private async Task<IActionResult> SyncResourceCoreAsync(string slug, Guid resourceId)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
         if (currentUserNotFound is not null)
@@ -599,7 +602,10 @@ public class TeamAdminController(
                 resourceId,
                 SyncAction.Execute,
                 HttpContext.RequestAborted);
-            SetResourceSyncResult(diff.ErrorMessage);
+            if (diff.ErrorMessage is not null)
+                SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, diff.ErrorMessage));
+            else
+                SetSuccess(localizer["TeamAdmin_ResourceSynced"].Value);
         }
         catch (Exception ex)
         {
@@ -608,36 +614,6 @@ public class TeamAdminController(
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
-    }
-
-    private void SetResourceSyncResult(string? syncError)
-    {
-        if (syncError is not null)
-            SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, syncError));
-        else
-            SetSuccess(localizer["TeamAdmin_ResourceSynced"].Value);
-    }
-
-    private void SetDriveResourceLinkResult(LinkResourceResult result)
-    {
-        if (result.Success)
-        {
-            SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
-            return;
-        }
-
-        SetError(BuildResourceLinkError(result, "Failed to link Drive resource."));
-    }
-
-    private void SetGroupResourceLinkResult(LinkResourceResult result)
-    {
-        if (result.Success)
-        {
-            SetSuccess(string.Format(localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
-            return;
-        }
-
-        SetError(BuildResourceLinkError(result, localizer["TeamAdmin_GroupLinkFailed"].Value));
     }
 
     private string BuildResourceLinkError(LinkResourceResult result, string defaultMessage)
@@ -748,7 +724,7 @@ public class TeamAdminController(
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
         if (teamError is not null)
         {
-            return RoleEditTeamError(isAjax, teamError);
+            return isAjax ? Unauthorized() : teamError;
         }
 
         try
@@ -763,30 +739,21 @@ public class TeamAdminController(
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
                 model.IsPublic, canToggleManagement, model.EstimatedHours);
 
-            return RoleEditSuccess(isAjax, slug, $"Role '{model.Name}' updated.");
+            if (isAjax)
+                return Json(new { success = true, message = $"Role '{model.Name}' updated." });
+
+            SetSuccess($"Role '{model.Name}' updated.");
+            return RedirectToAction(nameof(Roles), new { slug });
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            return RoleEditError(isAjax, slug, ex.Message);
+            if (isAjax)
+                return Json(new { success = false, message = ex.Message });
+
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Roles), new { slug });
         }
-    }
-
-    private IActionResult RoleEditTeamError(bool isAjax, IActionResult teamError) =>
-        isAjax ? Unauthorized() : teamError;
-
-    private IActionResult RoleEditSuccess(bool isAjax, string slug, string message)
-    {
-        if (isAjax) return Json(new { success = true, message });
-        SetSuccess(message);
-        return RedirectToAction(nameof(Roles), new { slug });
-    }
-
-    private IActionResult RoleEditError(bool isAjax, string slug, string message)
-    {
-        if (isAjax) return Json(new { success = false, message });
-        SetError(message);
-        return RedirectToAction(nameof(Roles), new { slug });
     }
 
     [HttpPost("Roles/{roleId}/Delete")]
@@ -916,7 +883,6 @@ public class TeamAdminController(
 
         var canBePublic = !teamEntity.IsSystemTeam && !teamEntity.ParentTeamId.HasValue;
 
-        // Ensure we always show 3 CTA slots
         var ctas = (teamEntity.CallsToAction ?? [])
             .Select(c => new CallToActionViewModel { Text = c.Text, Url = c.Url, Style = c.Style })
             .ToList();
