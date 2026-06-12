@@ -322,11 +322,6 @@ public class EventsModerationController(
             guideEvent.GuideSharedVenueId = model.VenueId;
     }
 
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 29 statements, cc 18.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {
         var moderator = await GetCurrentUserInfoAsync();
@@ -358,49 +353,50 @@ public class EventsModerationController(
         logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
             moderator.Id, actionLabel, guideEvent.Title, eventId);
 
-        var submitterInfo = await UserService.GetUserInfoAsync(guideEvent.SubmitterUserId);
-        var submitterEmail = submitterInfo?.Email;
-        var submitterName = submitterInfo?.BurnerName ?? "Unknown";
-
-        if (submitterEmail != null)
-        {
-            string? campSlug = null;
-            if (guideEvent.CampId.HasValue)
-            {
-                var guideSettings = await guide.GetGuideSettingsAsync();
-                var eventSettings = guideSettings != null
-                    ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
-                    : null;
-                var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
-                campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
-            }
-
-            var editUrl = guideEvent.CampId.HasValue
-                ? Url.Action("BarrioEdit", "Events", new { slug = campSlug, eventId }, Request.Scheme)!
-                : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
-
-            var lifecycleStatus = actionType switch
-            {
-                EventModerationActionType.Approved => (EventStatus?)EventStatus.Approved,
-                EventModerationActionType.Rejected => EventStatus.Rejected,
-                EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
-                _ => null
-            };
-            if (lifecycleStatus.HasValue)
-            {
-                await emailService.SendAsync(emailMessages.EventLifecycle(
-                    new EventLifecycleNotification(
-                        NewStatus: lifecycleStatus.Value,
-                        UserName: submitterName,
-                        EventTitle: guideEvent.Title,
-                        Reason: reason,
-                        ActionUrl: editUrl),
-                    submitterEmail));
-            }
-        }
+        await NotifySubmitterAsync(guideEvent, eventId, actionType, reason);
 
         SetSuccess($"Event \"{guideEvent.Title}\" {actionLabel}.");
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task NotifySubmitterAsync(Event guideEvent, Guid eventId, EventModerationActionType actionType, string? reason)
+    {
+        var submitterInfo = await UserService.GetUserInfoAsync(guideEvent.SubmitterUserId);
+        var submitterEmail = submitterInfo?.Email;
+        if (submitterEmail == null) return;
+
+        var lifecycleStatus = actionType switch
+        {
+            EventModerationActionType.Approved => (EventStatus?)EventStatus.Approved,
+            EventModerationActionType.Rejected => EventStatus.Rejected,
+            EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
+            _ => null
+        };
+        if (!lifecycleStatus.HasValue) return;
+
+        string? campSlug = null;
+        if (guideEvent.CampId.HasValue)
+        {
+            var guideSettings = await guide.GetGuideSettingsAsync();
+            var eventSettings = guideSettings != null
+                ? await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+                : null;
+            var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+            campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
+        }
+
+        var editUrl = guideEvent.CampId.HasValue
+            ? Url.Action("BarrioEdit", "Events", new { slug = campSlug, eventId }, Request.Scheme)!
+            : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
+
+        await emailService.SendAsync(emailMessages.EventLifecycle(
+            new EventLifecycleNotification(
+                NewStatus: lifecycleStatus.Value,
+                UserName: submitterInfo?.BurnerName ?? "Unknown",
+                EventTitle: guideEvent.Title,
+                Reason: reason,
+                ActionUrl: editUrl),
+            submitterEmail));
     }
 
     private static ModerationEventRowViewModel BuildRow(
