@@ -6,33 +6,42 @@
 # Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
 # HUM0009, HUM0020, HUM0025, HUM0029, HUM0032. The staleness check re-creates
 # a theme if any of these is ever grandfathered again.
+# Deliberately excluded from staleness/inventory (not fixable debt):
+# NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
+# history; the baseline guards against NEW destructive ops, it is not a backlog.
 version: 1
-recent_sections: []
+recent_sections: [Events]
 themes:
   - id: grandfathered-hum0024-nav-strip
     title: Cross-section EF navigations in entity configurations (HUM0024)
     detect: "build:HUM0024"
     review: panel
-    last_swept: never
+    last_swept: 2026-06-12
     remaining: 34
     notes: >-
-      Code-side work: migrate readers off the nav to service stitching
-      (StitchMemberUserSlicesAsync pattern), then drop the nav + config.
-      The EF drift gate decides per item whether a nav drop changes the model —
-      pending model changes means schema work: skip + Phase 7 question.
-      34 = [Grandfathered] sites; distinct warning count differs (one attribute
-      can cover several configured navs).
+      SCHEMA-BLOCKED (verified empirically, sweep 2026-06-12): dropping any
+      HasOne config fires `dotnet ef migrations has-pending-model-changes` —
+      the config blocks own the DB-level FK + cascade behavior, so every fix
+      is an FK-constraint-drop migration, out of sweep scope entirely.
+      Rotation skips this theme until Peter decides the path (dedicated
+      migration PRs outside the sweep). Reader migration off the navs is the
+      cs0618-pragma-nav-reads theme, not this one.
   - id: grandfathered-hum0031-controller-logic
     title: Controller business logic over ratchet thresholds (HUM0031)
     detect: "build:HUM0031"
     review: light
-    last_swept: never
-    remaining: 26
+    last_swept: 2026-06-12
+    remaining: 7
     notes: >-
-      Move decision logic into the section's application service. New service
-      methods are interface additions (skip-and-ask) — prefer existing
-      methods/orchestrators. Biggest offenders: ProfileController.Edit
-      (78 stmts / cc 46), EventsController.Browse, ProfileController.BuildEmailsViewModelAsync.
+      Move decision logic into the section's application service, or reshape
+      in place when it is genuinely controller turf (formatting/sorting/VM
+      assembly): VM From-factories, table-driven sort maps, focused private
+      helpers. New service methods are interface additions (skip-and-ask).
+      Remaining 7 grandfathers are the hard tail: AccountController (107
+      stmts / cc 33), ProfileController.Edit (78/46),
+      BuildEmailsViewModelAsync (46/27), DietaryMedical (36/21),
+      EventsController.Browse (38/23), EmailController.EmailPreview (51/2),
+      TeamController.Details (33/19).
   - id: grandfathered-hum0028-invalidators
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"
@@ -103,7 +112,7 @@ themes:
     detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
     review: per-item
     last_swept: never
-    remaining: 9
+    remaining: 10
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
@@ -137,4 +146,7 @@ inbox:
     review: panel
   - added: 2026-06-12
     what: "Retire docs/architecture/tech-debt-2026-04-23.md once its open items are all ledgered/done (doc itself is freshness-sweep prune territory)"
+    review: light
+  - added: 2026-06-12
+    what: "Flaky integration test: UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid fails under full-suite parallel load (TaskCanceledException in test cleanup), passes in isolation — observed in sweep 2026-06-12"
     review: light
