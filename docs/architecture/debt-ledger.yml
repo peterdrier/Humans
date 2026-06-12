@@ -1,0 +1,164 @@
+# Rotation state for /debt-sweep (.claude/skills/debt-sweep/SKILL.md).
+# Pick = oldest last_swept (never sorts first) with remaining > 0.
+# detect "build:<CODE>" = distinct sites of that warning code in one fresh build log.
+# Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
+# last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
+version: 1
+recent_sections: []
+themes:
+  - id: grandfathered-hum0024-nav-strip
+    title: Cross-section EF navigations in entity configurations (HUM0024)
+    detect: "build:HUM0024"
+    review: panel
+    last_swept: never
+    remaining: 35
+    notes: >-
+      Code-side work: migrate readers off the nav to service stitching
+      (StitchMemberUserSlicesAsync pattern), then drop the nav + config.
+      The EF drift gate decides per item whether a nav drop changes the model —
+      pending model changes means schema work: skip + Phase 7 question.
+      35 = [Grandfathered] sites; distinct warning count differs (one attribute
+      can cover several configured navs).
+  - id: grandfathered-hum0031-controller-logic
+    title: Controller business logic over ratchet thresholds (HUM0031)
+    detect: "build:HUM0031"
+    review: light
+    last_swept: never
+    remaining: 26
+    notes: >-
+      Move decision logic into the section's application service. New service
+      methods are interface additions (skip-and-ask) — prefer existing
+      methods/orchestrators. Biggest offenders: ProfileController.Edit
+      (78 stmts / cc 46), EventsController.Browse, ProfileController.BuildEmailsViewModelAsync.
+  - id: grandfathered-hum0028-invalidators
+    title: Invalidator interface ratchet (HUM0028)
+    detect: "build:HUM0028"
+    review: panel
+    last_swept: never
+    remaining: 17
+    notes: >-
+      17 grandfathered invalidator interfaces
+      (memory/architecture/orchestrator-marker.md). Consolidation is design
+      work — which invalidators fold into the owning service's cached accessor
+      vs. stay. Panel judges each consolidation.
+  - id: grandfathered-hum0009-dbcontext-in-services
+    title: Application services injecting DbContext (HUM0009)
+    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0009\"'"
+    review: panel
+    last_swept: never
+    remaining: 3
+    notes: >-
+      Repo extraction usually needs new repository interface methods —
+      skip-and-ask applies (memory/architecture/interface-method-additions-are-debt.md).
+  - id: grandfathered-hum0020-decorator-repo
+    title: Caching decorator calling a repository (HUM0020)
+    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0020\"'"
+    review: panel
+    last_swept: never
+    remaining: 1
+    notes: Decorator may only depend on its inner interface (memory/architecture/decorators-talk-only-to-inner.md).
+  - id: grandfathered-hum0025-shared-tables
+    title: Multiple repositories owning one table (HUM0025)
+    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0025\"'"
+    review: panel
+    last_swept: never
+    remaining: 3
+    notes: Table-ownership judgment — a table must only exist in one repository (hard rule).
+  - id: grandfathered-hum0029-entity-in-read-interface
+    title: ServiceRead interface exposing entities (HUM0029)
+    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0029\"'"
+    review: panel
+    last_swept: never
+    remaining: 1
+    notes: Convert the signature to DTO/Info projections (memory/architecture/service-read-no-ef.md).
+  - id: grandfathered-hum0032-full-service-injection
+    title: Cross-section full-service injections (HUM0032)
+    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0032\"'"
+    review: panel
+    last_swept: never
+    remaining: 2
+    notes: >-
+      Switch read-only cross-section consumers to I<Section>ServiceRead;
+      /section-read-split is the reference process (Teams, PR 678).
+  - id: obsolete-user-displayname
+    title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
+    detect: "build:HUM_USER_DISPLAYNAME"
+    review: light
+    last_swept: never
+    remaining: 12
+    notes: >-
+      Migrate to UserInfo.BurnerName / <vc:human> per
+      memory/architecture/burnername-is-the-display-name.md. The obsolete
+      message names legitimate consumers (creation-time fallback, merge/purge
+      labels, GDPR export, debug screens) — those are not debt; leave them.
+  - id: cs0618-pragma-nav-reads
+    title: Pragma-wrapped CS0618 cross-section nav reads
+    detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
+    review: panel
+    last_swept: never
+    remaining: 27
+    notes: >-
+      Replace pragma-wrapped [Obsolete] nav reads with service stitching — the
+      cross-section fix done on both sides at once. Closely coupled to
+      grandfathered-hum0024-nav-strip; working one may shrink the other.
+      The deferred NavStitching.Suppress consolidation idea lives here too.
+  - id: baseline-entity-read-returns
+    title: Application services returning entities from reads
+    detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
+    review: panel
+    last_swept: never
+    remaining: 21
+    notes: >-
+      Convert to DTO/Info returns (read-model pattern, design-rules §15).
+      Remove each fixed locator line from the baseline file — never add lines.
+  - id: baseline-display-sort
+    title: Display sorting below the presentation layer
+    detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
+    review: light
+    last_swept: never
+    remaining: 71
+    notes: >-
+      Move OrderBy to controllers / view-model assembly per
+      memory/architecture/display-sort-in-controllers.md. Pagination
+      tie-breakers, top-N, and identity-ordered streams stay, marked
+      `// arch:db-sort-ok`. Remove fixed lines from the baseline.
+  - id: inbox
+    title: One-off inbox items
+    detect: "grep -c 'added:' docs/architecture/debt-ledger.yml"
+    review: per-item
+    last_swept: never
+    remaining: 9
+    notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
+inbox:
+  # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  # Excluded from seed: User.GoogleEmail unique index (schema work — out of
+  # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
+  # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
+  # grandfathered-hum0024-nav-strip).
+  - added: 2026-06-12
+    what: "ViewComponents injecting IMemoryCache directly (3 sites) — owning service exposes a cached accessor instead (memory/code/viewcomponent-no-cache.md)"
+    review: light
+  - added: 2026-06-12
+    what: "UsersAdminController.Audience direct DbContext reads — route through IAdminDatabaseDiagnosticsService"
+    review: panel
+  - added: 2026-06-12
+    what: "HumansMetricsService migration out of Infrastructure (touches 6+ sections)"
+    review: panel
+  - added: 2026-06-12
+    what: "FeedbackService IFormFile/FileStream refactor to IFeedbackScreenshotStorage (one-IFileStorage rule)"
+    review: panel
+  - added: 2026-06-12
+    what: "GoogleWorkspaceHealthCheck direct Google.Apis imports — extract IHealthCheckGoogleClient"
+    review: panel
+  - added: 2026-06-12
+    what: "UserService.PurgeAsync transactional atomicity (TransactionScope)"
+    review: panel
+  - added: 2026-06-12
+    what: "TeamService.FindRequestForMutationAsync re-fetch simplification — subtle concurrency semantics"
+    review: panel
+  - added: 2026-06-12
+    what: "AuditLogRepository / UserRepository.PurgeAsync / AccountMergeRepository cross-domain data access — needs one coordinated pass"
+    review: panel
+  - added: 2026-06-12
+    what: "Retire docs/architecture/tech-debt-2026-04-23.md once its open items are all ledgered/done (doc itself is freshness-sweep prune territory)"
+    review: light

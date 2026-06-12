@@ -82,6 +82,10 @@ Rules: [`no-direct-to-main`](memory/process/no-direct-to-main.md) · [`issue-ref
 
 `/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs. Catalog at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml). Spec at `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.
 
+## Tech Debt
+
+`/debt-sweep` works one debt theme per run (rotation, time-boxed) and PRs the result. Ledger at [`docs/architecture/debt-ledger.yml`](docs/architecture/debt-ledger.yml) — record newly-found debt there per [`memory/process/debt-ledger-additions.md`](memory/process/debt-ledger-additions.md). Spec at `docs/superpowers/specs/2026-06-12-debt-sweep-design.md`.
+
 After running any recurring maintenance process, update [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — see [`memory/process/maintenance-log-update.md`](memory/process/maintenance-log-update.md).
 
 ## Extended Docs
