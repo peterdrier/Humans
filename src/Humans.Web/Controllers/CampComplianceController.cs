@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models.CampAdmin;
 using Microsoft.AspNetCore.Authorization;
@@ -22,54 +21,30 @@ public class CampComplianceController(
     ICampRoleService campRoleService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
-    private static readonly HashSet<CampSeasonStatus> ActiveStatuses =
-        [CampSeasonStatus.Active, CampSeasonStatus.Full];
-
     [HttpGet("Compliance")]
     public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
     {
         var settings = await campService.GetSettingsAsync(ct);
-        var resolvedYear = year ?? settings.PublicYear;
-
-        var roleColumns = (await campRoleService.ListDefinitionsAsync(includeDeactivated: false, ct))
-            .OrderBy(d => d.SortOrder)
-            .ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(d => new CampComplianceRoleColumn(d.Id, d.Name, d.MinimumRequired))
-            .ToList();
-
-        var camps = await campService.GetCampsForYearAsync(resolvedYear, ct);
-
-        var rows = camps
-            .Select(c => c.GetSeasonForYear(resolvedYear))
-            .Where(s => s is not null && ActiveStatuses.Contains(s.Status))
-            .Select(s =>
-            {
-                var season = s!;
-                var activeMembers = season.ActiveMembers;
-                var cells = roleColumns.Select(col =>
-                {
-                    var assignees = activeMembers
-                        .Where(m => m.Roles.Contains(col.Name, StringComparer.Ordinal))
-                        .Select(m => m.UserId)
-                        .ToList();
-                    return new CampComplianceRoleCell(assignees, col.MinimumRequired);
-                }).ToList();
-
-                return new CampComplianceRow(
-                    season.Name,
-                    season.CampSlug,
-                    season.JoinedMemberCount ?? 0,
-                    season.MemberCount,
-                    cells);
-            })
-            .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var matrix = await campRoleService.BuildComplianceMatrixAsync(year ?? settings.PublicYear, ct);
 
         return View(new CampComplianceViewModel
         {
-            Year = resolvedYear,
-            Roles = roleColumns,
-            Rows = rows,
+            Year = matrix.Year,
+            Roles = matrix.Roles
+                .Select(r => new CampComplianceRoleColumn(r.Id, r.Name, r.MinimumRequired))
+                .ToList(),
+            Rows = matrix.Rows
+                .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => new CampComplianceRow(
+                    r.CampName,
+                    r.CampSlug,
+                    r.JoinedMemberCount,
+                    r.TargetMemberCount,
+                    r.AssigneeUserIdsByRole
+                        .Select((assignees, i) => new CampComplianceRoleCell(
+                            assignees, matrix.Roles[i].MinimumRequired))
+                        .ToList()))
+                .ToList(),
         });
     }
 }

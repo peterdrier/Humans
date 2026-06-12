@@ -71,6 +71,14 @@ public interface ICampRoleService : IApplicationService
         GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default);
 
     /// <summary>
+    /// Role-compliance matrix for one year: active definitions as columns, Active/Full
+    /// camp seasons as rows, assignees joined by <see cref="CampRoleAssignment.CampRoleDefinitionId"/>
+    /// (never by role name, which breaks silently on definition rename). Read-only;
+    /// caller authorizes. Powers <c>/Barrios/Admin/Compliance</c>.
+    /// </summary>
+    Task<CampComplianceMatrixData> BuildComplianceMatrixAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
     /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
     /// value of <see cref="CampSpecialRole"/> has a matching system role definition
     /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>), then walks the

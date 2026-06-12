@@ -480,7 +480,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, (int?)null)]);
 
         var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -498,11 +498,104 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, (int?)null)]);
 
         var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         summaries[season.Id].Single().Should().BeEquivalentTo(new CampDirectoryRoleSummary("LNT", 0, 1));
+    }
+
+    [HumansFact]
+    public async Task BuildComplianceMatrix_joins_assignees_by_definition_id_with_columns_in_sort_order()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        // Sort order puts "LNT" before "Consent Lead" regardless of name.
+        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
+        var lnt = await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
+        lnt.SortOrder = -5;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = consent.Id,
+            CampMemberId = member.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 25, (int?)7)]);
+
+        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+
+        matrix.Year.Should().Be(2026);
+        matrix.Roles.Select(r => r.Name).Should().Equal("LNT", "Consent Lead");
+
+        var row = matrix.Rows.Single();
+        row.CampName.Should().Be(season.Name);
+        row.CampSlug.Should().Be(camp.Slug);
+        row.JoinedMemberCount.Should().Be(7);
+        row.TargetMemberCount.Should().Be(25);
+        row.AssigneeUserIdsByRole.Should().HaveCount(2);
+        row.AssigneeUserIdsByRole[0].Should().BeEmpty();
+        row.AssigneeUserIdsByRole[1].Should().Equal(member.UserId);
+    }
+
+    [HumansFact]
+    public async Task BuildComplianceMatrix_excludes_seasons_that_are_not_active_or_full()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        await SeedDefinitionAsync();
+
+        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([
+                (camp.Id, "Active Camp", camp.Slug, season.Id, CampSeasonStatus.Active, 10, (int?)null),
+                (camp.Id, "Full Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Full, 10, (int?)null),
+                (camp.Id, "Pending Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Pending, 10, (int?)null),
+            ]);
+
+        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+
+        matrix.Rows.Select(r => r.CampName).Should().BeEquivalentTo(["Active Camp", "Full Camp"]);
+    }
+
+    [HumansFact]
+    public async Task BuildComplianceMatrix_excludes_assignments_of_inactive_members()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var def = await SeedDefinitionAsync();
+
+        var removedMember = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Removed,
+            RequestedAt = Clock.GetCurrentInstant(),
+            RemovedAt = Clock.GetCurrentInstant(),
+        };
+        Db.CampMembers.Add(removedMember);
+        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = def.Id,
+            CampMemberId = removedMember.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = _actorUserId,
+        });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 10, (int?)null)]);
+
+        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+
+        matrix.Rows.Single().AssigneeUserIdsByRole.Single().Should().BeEmpty();
     }
 
     [HumansFact]

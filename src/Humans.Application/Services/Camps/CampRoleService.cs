@@ -405,6 +405,40 @@ public sealed class CampRoleService(
                 .ToList());
     }
 
+    public async Task<CampComplianceMatrixData> BuildComplianceMatrixAsync(int year, CancellationToken ct = default)
+    {
+        var definitions = (await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
+            .OrderBy(d => d.SortOrder)
+            .ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(CreateCampRoleDefinitionInfo)
+            .ToList();
+
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
+        // Already filtered to active definitions and Active camp members; joins by
+        // CampRoleDefinitionId so definition renames cannot empty the matrix.
+        var assignments = await repo.GetActiveAssignmentsForYearsAsync([year], ct);
+        var assigneesBySeasonAndDefinition = assignments
+            .GroupBy(a => (a.CampSeasonId, a.CampRoleDefinitionId))
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<Guid>)g.Select(a => a.CampMember.UserId).Distinct().ToList());
+
+        var rows = seasons
+            .Where(s => s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full)
+            .Select(s => new CampComplianceMatrixRow(
+                s.CampName,
+                s.CampSlug,
+                s.JoinedMemberCount ?? 0,
+                s.TargetMemberCount,
+                definitions
+                    .Select(def => assigneesBySeasonAndDefinition
+                        .GetValueOrDefault((s.CampSeasonId, def.Id), []))
+                    .ToList()))
+            .ToList();
+
+        return new CampComplianceMatrixData(year, definitions, rows);
+    }
+
     public async Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default)
     {
         var existing = await repo.GetExistingSpecialRolesAsync(ct);
