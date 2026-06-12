@@ -191,17 +191,36 @@ public sealed class EventService(
         Event guideEvent, EventStatus newStatus, string? reason, string actionUrl, CancellationToken ct)
     {
         var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
-        var submitterEmail = submitter?.Email;
-        if (submitterEmail is null) return;
+        if (submitter?.Email is null)
+        {
+            logger.LogWarning(
+                "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
+                guideEvent.Id, guideEvent.SubmitterUserId);
+            return;
+        }
 
-        await emailService.SendAsync(emailMessages.EventLifecycle(
-            new EventLifecycleNotification(
-                NewStatus: newStatus,
-                UserName: submitter?.BurnerName ?? submitterEmail,
-                EventTitle: guideEvent.Title,
-                Reason: reason,
-                ActionUrl: actionUrl),
-            submitterEmail));
+        var submitterEmail = submitter.Email;
+
+        // The mutation is already persisted by the caller — a degraded email
+        // service must not fail the submit/moderation operation (and, via the
+        // caching decorator, must not skip cache invalidation).
+        try
+        {
+            await emailService.SendAsync(emailMessages.EventLifecycle(
+                new EventLifecycleNotification(
+                    NewStatus: newStatus,
+                    UserName: submitter.BurnerName,
+                    EventTitle: guideEvent.Title,
+                    Reason: reason,
+                    ActionUrl: actionUrl),
+                submitterEmail));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send lifecycle email for event {EventId} (status {Status})",
+                guideEvent.Id, newStatus);
+        }
     }
 
     public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)

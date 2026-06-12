@@ -314,6 +314,32 @@ public sealed class EventServiceTests
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>());
     }
 
+    [HumansFact]
+    public async Task ApplyModerationAsync_EmailFailure_DoesNotFailModeration()
+    {
+        // The decision is already persisted when the email goes out — a degraded
+        // email service must not surface as a failed moderation (or skip the
+        // caching decorator's invalidation).
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Title = "Fire show",
+            Status = EventStatus.Pending,
+        };
+        _repo.Events.Add(guideEvent);
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("SMTP down")));
+
+        var act = () => _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+            "Too loud", "https://x/edit", TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+        guideEvent.Status.Should().Be(EventStatus.Rejected);
+    }
+
     private Guid StubSubmitterWithEmail(string email, string burnerName)
     {
         var userId = Guid.NewGuid();
