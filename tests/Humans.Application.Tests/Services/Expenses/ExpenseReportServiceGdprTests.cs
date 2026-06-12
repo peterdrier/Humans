@@ -58,9 +58,11 @@ public class ExpenseReportServiceGdprTests
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             Substitute.For<IHoldedFinanceService>(),
+            new SepaPaymentFileBuilder(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()),
+            Options.Create(new SepaConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(

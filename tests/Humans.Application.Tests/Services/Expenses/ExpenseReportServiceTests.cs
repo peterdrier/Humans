@@ -52,9 +52,11 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             AuditLog,
             _holdedClient,
             _holdedFinance,
+            new SepaPaymentFileBuilder(),
             Clock,
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()),
+            Options.Create(new SepaConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -1164,6 +1166,48 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         await AuditLog.DidNotReceive().LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", bId,
             Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayoutAsync_FiltersToApproved_BuildsXml_ThenFlips()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var approvedId = Guid.NewGuid();
+        var submittedId = Guid.NewGuid();
+        await SeedReportWithStatus(approvedId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
+        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
+
+        var result = await _sut.GenerateSepaPayoutAsync([approvedId, submittedId], actor, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.FlippedIds.Should().BeEquivalentTo([approvedId]);
+        result.Xml.Should().Contain("pain.001.001.09");
+        result.FileName.Should().StartWith("sepa-").And.EndWith(".xml");
+        (await _sut.GetAsync(approvedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
+        (await _sut.GetAsync(submittedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseSepaSent, "ExpenseReport", approvedId,
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayoutAsync_NoEligibleReports_FailsWithoutFlipping()
+    {
+        var (_, category) = SetupActiveYear();
+        var submittedId = Guid.NewGuid();
+        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+
+        var result = await _sut.GenerateSepaPayoutAsync([submittedId], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Approved");
+        result.Xml.Should().BeNull();
+        (await _sut.GetAsync(submittedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.ExpenseSepaSent, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
