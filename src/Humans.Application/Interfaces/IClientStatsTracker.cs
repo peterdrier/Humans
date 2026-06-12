@@ -23,6 +23,19 @@ public interface IClientStatsTracker
 
     /// <summary>Snapshot of all counts since process start.</summary>
     ClientStatsSnapshot GetSnapshot();
+
+    /// <summary>
+    /// Record one error response (status &gt; 399, or an aborted request recorded
+    /// as 499) into the rolling buffer. URL and User-Agent are truncated on
+    /// storage to bound memory.
+    /// </summary>
+    void RecordError(ClientErrorEntry entry);
+
+    /// <summary>
+    /// The most recent error responses, newest first, up to <paramref name="count"/>,
+    /// plus lifetime per-status-code counts that survive buffer eviction.
+    /// </summary>
+    ClientErrorsSnapshot GetErrorsSnapshot(int count);
 }
 
 /// <summary>Immutable view of the client-stats counters at a point in time.</summary>
@@ -37,3 +50,23 @@ public sealed record ClientStatsSnapshot(
 
 /// <summary>A single labelled count (e.g. <c>"Windows" → 42</c>).</summary>
 public sealed record ClientStatCount(string Label, long Count);
+
+/// <summary>
+/// One error response captured for the <c>/Debug/HttpErrors</c> rolling buffer.
+/// <paramref name="UserId"/> is the authenticated user's id when the request
+/// carried one — bot noise and anonymous traffic leave it null.
+/// </summary>
+public sealed record ClientErrorEntry(
+    DateTimeOffset Timestamp,
+    int StatusCode,
+    string Method,
+    string Url,
+    string IpAddress,
+    Guid? UserId,
+    string UserAgent);
+
+/// <summary>Rolling-buffer view: recent entries (newest first) plus lifetime per-code counts.</summary>
+public sealed record ClientErrorsSnapshot(
+    long TotalErrors,
+    IReadOnlyDictionary<int, long> LifetimeCounts,
+    IReadOnlyList<ClientErrorEntry> Recent);

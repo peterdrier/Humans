@@ -54,6 +54,31 @@ public class DebugController(
         return View(events);
     }
 
+    [HttpGet("HttpErrors")]
+    public IActionResult HttpErrors(int count = 1000)
+    {
+        count = Math.Clamp(count, 1, 1000);
+
+        var snapshot = clientStats.GetErrorsSnapshot(count);
+
+        var vm = new HttpErrorsViewModel(
+            TotalErrors: snapshot.TotalErrors,
+            LifetimeCounts: snapshot.LifetimeCounts
+                .OrderBy(kv => kv.Key)
+                .Select(kv => new HttpErrorCountRow(kv.Key, kv.Value))
+                .ToList(),
+            Entries: snapshot.Recent.Select(e =>
+            {
+                var c = Humans.Infrastructure.Services.UserAgentClassifier.Classify(e.UserAgent);
+                var label = c.BotName
+                    ?? (c is { Browser: "Unknown", Os: "Unknown" } ? "Unknown" : $"{c.Browser} · {c.Os}");
+                return new HttpErrorRow(
+                    e.Timestamp, e.StatusCode, e.Method, e.Url, e.IpAddress, e.UserId, label, e.UserAgent);
+            }).ToList());
+
+        return View(vm);
+    }
+
     [HttpGet("Maintenance")]
     public IActionResult Maintenance() => View();
 

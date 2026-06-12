@@ -123,6 +123,7 @@ public static class AdminNavTree
         ]),
         new("Diagnostics", System: true, Items: [
             new("Logs",            "Debug", "Logs",          null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            new("HTTP errors",     "Debug", "HttpErrors",    null, null, "fa-solid fa-circle-exclamation",  PolicyNames.AdminOnly),
             new("DB stats",        "Debug", "DbStats",       null, null, "fa-solid fa-database",            PolicyNames.AdminOnly),
             new("Cache stats",     "Debug", "CacheStats",    null, null, "fa-solid fa-bolt",                PolicyNames.AdminOnly),
             new("Client stats",    "Debug", "ClientStats",   null, null, "fa-solid fa-display",             PolicyNames.AdminOnly),

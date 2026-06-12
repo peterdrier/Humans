@@ -84,6 +84,53 @@ public class ClientStatsTrackerTests
         snap.Resolutions.Should().BeEmpty();
     }
 
+    private static Humans.Application.Interfaces.ClientErrorEntry Error(
+        int status = 404, string url = "/missing", string ua = WinChrome)
+        => new(DateTimeOffset.UtcNow, status, "GET", url, "203.0.113.7", null, ua);
+
+    [HumansFact]
+    public void RecordError_KeepsNewestThousand_AndLifetimeCountsSurviveEviction()
+    {
+        var tracker = new ClientStatsTracker();
+
+        for (var i = 0; i < 1050; i++)
+            tracker.RecordError(Error(url: $"/missing/{i}"));
+
+        var snap = tracker.GetErrorsSnapshot(1000);
+        snap.TotalErrors.Should().Be(1050);
+        snap.LifetimeCounts[404].Should().Be(1050);
+        snap.Recent.Should().HaveCount(1000);
+        // Newest first; the 50 oldest entries were evicted.
+        snap.Recent[0].Url.Should().Be("/missing/1049");
+        snap.Recent[^1].Url.Should().Be("/missing/50");
+    }
+
+    [HumansFact]
+    public void GetErrorsSnapshot_RespectsCount()
+    {
+        var tracker = new ClientStatsTracker();
+
+        for (var i = 0; i < 10; i++)
+            tracker.RecordError(Error(url: $"/missing/{i}"));
+
+        var snap = tracker.GetErrorsSnapshot(3);
+        snap.Recent.Should().HaveCount(3);
+        snap.Recent[0].Url.Should().Be("/missing/9");
+        snap.TotalErrors.Should().Be(10);
+    }
+
+    [HumansFact]
+    public void RecordError_TruncatesUrlAndUserAgent()
+    {
+        var tracker = new ClientStatsTracker();
+
+        tracker.RecordError(Error(url: new string('u', 500), ua: new string('a', 500)));
+
+        var entry = tracker.GetErrorsSnapshot(1).Recent[0];
+        entry.Url.Should().HaveLength(200);
+        entry.UserAgent.Should().HaveLength(150);
+    }
+
     [HumansFact]
     public void RecordResolution_BeyondCap_FoldsIntoOther()
     {

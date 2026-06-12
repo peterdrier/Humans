@@ -1,0 +1,116 @@
+@model HttpErrorsViewModel
+@{
+    ViewData["Title"] = "HTTP Errors";
+}
+
+<div class="container-fluid px-4">
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+            <li class="breadcrumb-item active" aria-current="page">HTTP Errors</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>HTTP Errors</h1>
+        <div class="text-muted text-end">
+            <div>Showing @Model.Entries.Count of last 1000 (in-memory buffer)</div>
+            <div><small>@Model.TotalErrors.ToString("#,##0") error responses since app start</small></div>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Every response with status &gt; 399 across <em>all</em> traffic (pages, assets, API, probes);
+        aborted requests are recorded as <strong>499</strong>. In-memory — resets on every
+        restart/redeploy. Requests Kestrel rejects before the pipeline (malformed HTTP) are not
+        captured here, so these counts can run slightly below the
+        <a asp-action="ClientStats">ClientStats</a> status-code tally.
+    </div>
+
+    @if (Model.LifetimeCounts.Count > 0)
+    {
+        <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+            @foreach (var c in Model.LifetimeCounts)
+            {
+                var btnClass = c.StatusCode >= 500 ? "btn-danger" : "btn-warning";
+                <button type="button" class="btn btn-sm status-toggle @btnClass" data-status="@c.StatusCode" aria-pressed="true">@c.StatusCode: @c.Count.ToString("#,##0")</button>
+            }
+            <small class="text-muted align-self-center">(lifetime counts since app start — click to hide/show rows)</small>
+        </div>
+    }
+
+    @if (Model.Entries.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle"></i> No error responses in the buffer.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover font-monospace" style="font-size: 0.8rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 160px;">Timestamp (UTC)</th>
+                        <th style="width: 60px;">Code</th>
+                        <th style="width: 70px;">Method</th>
+                        <th>URL</th>
+                        <th style="width: 130px;">IP</th>
+                        <th style="width: 160px;">User</th>
+                        <th style="width: 180px;">Client</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Entries)
+                    {
+                        var rowClass = e.StatusCode >= 500 ? "table-danger" : "table-warning";
+                        <tr class="@rowClass" data-status="@e.StatusCode">
+                            <td class="text-nowrap">@e.Timestamp.UtcDateTime.ToInvariantTimestamp()</td>
+                            <td>@e.StatusCode</td>
+                            <td>@e.Method</td>
+                            <td class="text-break">@e.Url</td>
+                            <td>@e.IpAddress</td>
+                            <td>
+                                @if (e.UserId.HasValue)
+                                {
+                                    <vc:human user-id="@e.UserId.Value" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td><span title="@e.UserAgent">@e.ClientLabel</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .status-toggle.status-off {
+            opacity: 0.45;
+            text-decoration: line-through;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.status-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var status = btn.getAttribute('data-status');
+                var hide = !btn.classList.contains('status-off');
+                btn.classList.toggle('status-off', hide);
+                btn.setAttribute('aria-pressed', (!hide).toString());
+                document.querySelectorAll('tbody tr[data-status="' + status + '"]').forEach(function (row) {
+                    row.classList.toggle('d-none', hide);
+                });
+            });
+        });
+    </script>
+}

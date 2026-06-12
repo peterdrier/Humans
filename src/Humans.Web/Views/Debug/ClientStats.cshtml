@@ -46,6 +46,8 @@
 <p class="text-muted small">
     @Model.TotalResponses.ToString("N0") responses since startup, across <em>all</em> traffic
     (pages, assets, API, probes) — observed from ASP.NET Core's request metric.
+    Per-request detail for the error responses is on
+    <a asp-action="HttpErrors">HTTP errors</a>.
 </p>
 
 @if (Model.StatusCodes.Count == 0)

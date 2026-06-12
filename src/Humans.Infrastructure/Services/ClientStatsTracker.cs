@@ -19,6 +19,17 @@ public sealed class ClientStatsTracker : IClientStatsTracker
     private const int MaxResolutionBuckets = 200;
     private readonly ConcurrentDictionary<string, long> _resolutions = new(StringComparer.Ordinal);
 
+    // Rolling buffer of error responses, same enqueue-then-trim-under-lock pattern
+    // as InMemoryLogSink (ConcurrentQueue.Count is a snapshot, so unlocked writers
+    // could both see "over capacity" and over-evict; readers stay lock-free).
+    // URL and UA are truncated on storage: 1000 entries × ~600 B stays under 1 MB.
+    private const int ErrorCapacity = 1000;
+    private const int MaxUrlLength = 200;
+    private const int MaxUserAgentLength = 150;
+    private readonly ConcurrentQueue<ClientErrorEntry> _errors = new();
+    private readonly Lock _errorsLock = new();
+    private readonly ConcurrentDictionary<int, long> _errorCounts = new();
+
     private long _totalPageViews;
     private long _totalResolutionSamples;
 
@@ -53,6 +64,30 @@ public sealed class ClientStatsTracker : IClientStatsTracker
             Bump(_resolutions, "Other");
     }
 
+    public void RecordError(ClientErrorEntry entry)
+    {
+        _errorCounts.AddOrUpdate(entry.StatusCode, 1, static (_, v) => v + 1);
+
+        entry = entry with
+        {
+            Url = Truncate(entry.Url, MaxUrlLength),
+            UserAgent = Truncate(entry.UserAgent, MaxUserAgentLength)
+        };
+
+        lock (_errorsLock)
+        {
+            _errors.Enqueue(entry);
+            while (_errors.Count > ErrorCapacity)
+                _errors.TryDequeue(out _);
+        }
+    }
+
+    public ClientErrorsSnapshot GetErrorsSnapshot(int count) => new(
+        TotalErrors: _errorCounts.Values.Sum(),
+        LifetimeCounts: _errorCounts.ToDictionary(kv => kv.Key, kv => kv.Value),
+        // Queue enumeration is oldest-first; reverse for newest-first display.
+        Recent: _errors.Reverse().Take(count).ToList());
+
     public ClientStatsSnapshot GetSnapshot() => new(
         TotalPageViews: Interlocked.Read(ref _totalPageViews),
         OperatingSystems: Rank(_operatingSystems),
@@ -64,6 +99,9 @@ public sealed class ClientStatsTracker : IClientStatsTracker
 
     private static void Bump(ConcurrentDictionary<string, long> map, string key)
         => map.AddOrUpdate(key, 1, static (_, v) => v + 1);
+
+    private static string Truncate(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..maxLength];
 
     private static IReadOnlyList<ClientStatCount> Rank(ConcurrentDictionary<string, long> map)
         => map.Select(kv => new ClientStatCount(kv.Key, kv.Value))
