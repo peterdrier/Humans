@@ -395,7 +395,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task RequestToJoinTeamAsync_InvalidatesCache()
+    public async Task JoinTeamAsync_InvalidatesCache()
     {
         var team = SeedTeam("Alpha");
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -404,7 +404,7 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
         await _service.GetTeamAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
         var before = _service.BulkInvalidations;
 
-        await _service.RequestToJoinTeamAsync(team.Id, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        await _service.JoinTeamAsync(team.Id, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
 
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }

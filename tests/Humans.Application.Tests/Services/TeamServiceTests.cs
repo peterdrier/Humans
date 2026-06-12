@@ -791,6 +791,40 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     // ==========================================================================
+    // JoinTeamAsync (T13 — dispatch on the team's join policy)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task JoinTeamAsync_ApprovalRequiredTeam_CreatesPendingRequest()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Gate", requiresApproval: true);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.JoinTeamAsync(team.Id, user.Id, "Pick me", Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(TeamJoinOutcome.RequestSubmitted);
+        (await Db.TeamJoinRequests.SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .UserId.Should().Be(user.Id);
+        (await Db.TeamMembers.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task JoinTeamAsync_OpenTeam_JoinsImmediately()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Open Crew", requiresApproval: false);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.JoinTeamAsync(team.Id, user.Id, message: null, Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(TeamJoinOutcome.Joined);
+        (await Db.TeamMembers.SingleAsync(Xunit.TestContext.Current.CancellationToken))
+            .UserId.Should().Be(user.Id);
+        (await Db.TeamJoinRequests.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
+    // ==========================================================================
     // RequestToJoinTeamAsync
     // ==========================================================================
 

@@ -507,16 +507,10 @@ public class TeamController(
 
         try
         {
-            if (team.RequiresApproval)
-            {
-                await teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
-                SetSuccess(localizer["Team_JoinRequestSubmitted"].Value);
-            }
-            else
-            {
-                await teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
-                SetSuccess(localizer["Team_Joined"].Value);
-            }
+            var outcome = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
+            SetSuccess(outcome == TeamJoinOutcome.RequestSubmitted
+                ? localizer["Team_JoinRequestSubmitted"].Value
+                : localizer["Team_Joined"].Value);
 
             return RedirectToAction(nameof(Details), new { slug });
         }

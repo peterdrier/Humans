@@ -568,6 +568,27 @@ public sealed class TeamService(
             teamId, team.Name, closedCount);
     }
 
+    public async Task<TeamJoinOutcome> JoinTeamAsync(
+        Guid teamId,
+        Guid userId,
+        string? message,
+        CancellationToken cancellationToken = default)
+    {
+        var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
+            ?? throw new InvalidOperationException($"Team {teamId} not found");
+
+        // The join policy is the team's decision, not the caller's: approval-required
+        // teams queue a request, open teams join immediately.
+        if (team.RequiresApproval)
+        {
+            await RequestToJoinTeamAsync(teamId, userId, message, cancellationToken);
+            return TeamJoinOutcome.RequestSubmitted;
+        }
+
+        await JoinTeamDirectlyAsync(teamId, userId, cancellationToken);
+        return TeamJoinOutcome.Joined;
+    }
+
     public async Task<TeamJoinRequest> RequestToJoinTeamAsync(
         Guid teamId,
         Guid userId,

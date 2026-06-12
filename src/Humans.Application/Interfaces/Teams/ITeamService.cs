@@ -306,20 +306,14 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Requests to join a team (for teams that require approval).
+    /// Joins a team, dispatching on the team's join policy: approval-required
+    /// teams get a pending <c>TeamJoinRequest</c>, open teams an immediate
+    /// membership. The outcome tells the caller which happened.
     /// </summary>
-    Task<TeamJoinRequest> RequestToJoinTeamAsync(
+    Task<TeamJoinOutcome> JoinTeamAsync(
         Guid teamId,
         Guid userId,
         string? message,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Joins a team directly (for teams that don't require approval).
-    /// </summary>
-    Task<TeamMember> JoinTeamDirectlyAsync(
-        Guid teamId,
-        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -745,3 +739,13 @@ public sealed record TeamRoleAssignmentSnapshot(
     Guid TeamMemberId,
     int SlotIndex,
     Guid? AssignedUserId);
+
+/// <summary>What <see cref="ITeamService.JoinTeamAsync"/> did, per the team's join policy.</summary>
+public enum TeamJoinOutcome
+{
+    /// <summary>Open team — the user is now an active member.</summary>
+    Joined,
+
+    /// <summary>Approval-required team — a pending join request was created.</summary>
+    RequestSubmitted,
+}
