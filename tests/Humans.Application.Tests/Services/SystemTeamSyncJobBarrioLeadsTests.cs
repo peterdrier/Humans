@@ -160,4 +160,26 @@ public class SystemTeamSyncJobBarrioLeadsTests
             Arg.Any<Instant>(),
             Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task SyncMembershipForUserAsync_InvalidatesTeamCacheBeforeReading()
+    {
+        // Several services call the per-user sync from inside their own mutation,
+        // before CachingTeamService has invalidated — the job must drop the cache
+        // first or its eligibility reads see the pre-mutation team set.
+        var userId = Guid.NewGuid();
+        StubBarrioLeadsTeam();
+        _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var job = CreateJob();
+
+        await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, Xunit.TestContext.Current.CancellationToken);
+
+        Received.InOrder(() =>
+        {
+            _teamService.InvalidateActiveTeamsCache();
+            _ = _teamService.GetTeamsAsync(Arg.Any<CancellationToken>());
+        });
+    }
 }
