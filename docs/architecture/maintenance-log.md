@@ -6,7 +6,7 @@ Tracks when recurring maintenance processes were last run.
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-04-05 | 2026-04-12 | Weekly | — | `dotnet list package --vulnerable` |
 | Freshness sweep (diff) | — | — | Daily | — | `/freshness-sweep` — auto-refresh drift-prone docs against upstream/main diffs. First run pending. |
-| Debt sweep | 2026-06-12 | 2026-06-13 | Daily | — | `/debt-sweep` — rotation-picked themed debt bite, ledger at `docs/architecture/debt-ledger.yml`, report at `docs/debt/last-report.md`. 2026-06-12 (first run): HUM0031 controller-logic theme, 8 grandfathers removed (15 → 7); HUM0024 nav-strips found schema-blocked (FK-drop migrations — outside sweep scope). |
+| Debt sweep | 2026-06-12 | 2026-06-13 | Daily | — | `/debt-sweep` — rotation-picked themed debt bite, ledger at `docs/architecture/debt-ledger.yml`, report at `docs/debt/last-report.md`. 2026-06-12 (first run): HUM0024 nav-strips found schema-blocked (FK-drop migrations — outside sweep scope); HUM0031 helper-split fixes rejected on review and fully reverted (dodged the metric, moved no logic to services) — net 0 code fixes, ledger/report/skill corrections only. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |
 | Todo audit | 2026-03-08 | 2026-03-15 | Weekly | — | Stale items, completed moves |
 | Code simplification | 2026-06-11 | — | After features | codex: ~5% | per-section pass: #969, #972, #973, #974, #975, #976, #977, #978, #979, #980 |

@@ -10,7 +10,7 @@
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
 # history; the baseline guards against NEW destructive ops, it is not a backlog.
 version: 1
-recent_sections: [Events]
+recent_sections: []
 themes:
   - id: grandfathered-hum0024-nav-strip
     title: Cross-section EF navigations in entity configurations (HUM0024)
@@ -29,19 +29,24 @@ themes:
   - id: grandfathered-hum0031-controller-logic
     title: Controller business logic over ratchet thresholds (HUM0031)
     detect: "build:HUM0031"
-    review: light
+    review: panel
     last_swept: 2026-06-12
-    remaining: 7
+    remaining: 26
     notes: >-
-      Move decision logic into the section's application service, or reshape
-      in place when it is genuinely controller turf (formatting/sorting/VM
-      assembly): VM From-factories, table-driven sort maps, focused private
-      helpers. New service methods are interface additions (skip-and-ask).
-      Remaining 7 grandfathers are the hard tail: AccountController (107
-      stmts / cc 33), ProfileController.Edit (78/46),
-      BuildEmailsViewModelAsync (46/27), DietaryMedical (36/21),
-      EventsController.Browse (38/23), EmailController.EmailPreview (51/2),
-      TeamController.Details (33/19).
+      26 warning sites (15 of them grandfathered). The rule is "no business
+      logic in controllers"; the cc/statement metric is only a proxy
+      detector. Exactly two valid fixes: (a) move the domain decisions into
+      the section's application service — new/changed interface surface
+      needs per-item Peter approval (skip-and-ask); (b) the method is
+      genuinely presentation (sorting/filtering/paging/VM mapping) over a
+      low threshold — grandfather stays, record it as a
+      threshold-calibration finding. FORBIDDEN: splitting the method into
+      controller-local private helpers / VM factories to satisfy the metric
+      — tried 2026-06-12 on 12 methods, rejected and reverted (dodged the
+      metric, moved zero domain decisions). Litmus per statement: would a
+      Hangfire job doing the same operation need this line? Yes → service.
+      Form-apply model: DietaryMedicalViewModel.ToCommand() →
+      profileEditorService.SaveDietaryMedicalAsync(userId, command).
   - id: grandfathered-hum0028-invalidators
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"
