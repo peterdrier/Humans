@@ -14,50 +14,50 @@ To rebuild every row from scratch (e.g. after a schema change):
 
 | Metric | Value |
 |--------|------:|
-| Latest snapshot | 2026-05-15 |
-| App + Test lines | 288,420 |
-| App / Test lines | 204,942 / 83,478 |
-| C# code (no blanks/comments) | 104,966 |
-| C# comments | 23,481 |
-| Markdown lines | 154,117 |
-| Migration lines | 363,241 |
-| Files (app + test) | 1,898 |
-| Commits | 1,341 |
-| Test ratio | 28.9% |
-| 7-day delta | +58,229 app+test lines from 2026-05-09 to 2026-05-15 |
-| 7-day average | +9,705 lines/day over the same span |
+| Latest snapshot | 2026-06-12 |
+| App + Test lines | 365,737 |
+| App / Test lines | 252,324 / 113,413 |
+| C# code (no blanks/comments) | 119,880 |
+| C# comments | 24,409 |
+| Markdown lines | 92,264 |
+| Migration lines | 486,609 |
+| Files (app + test) | 2,353 |
+| Commits | 1,806 |
+| Test ratio | 31.0% |
+| 7-day delta | +24,491 app+test lines from 2026-06-05 to 2026-06-12 |
+| 7-day average | +3,499 lines/day over the same span |
 
 ## Language Breakdown
 
-Latest app-code mix at the 2026-05-15 snapshot:
+Latest app-code mix at the 2026-06-12 snapshot:
 
 | Language | Lines | Share of App Lines | Files |
 |----------|------:|-------------------:|------:|
-| C# | 148,019 | 72.2% | 1,188 |
-| Razor (`.cshtml`) | 40,226 | 19.6% | 318 |
-| RESX | 13,308 | 6.5% | 6 |
-| JavaScript | 3,389 | 1.7% | 27 |
+| C# | 166,096 | 65.8% | 1,448 |
+| Razor (`.cshtml`) | 46,213 | 18.3% | 386 |
+| RESX | 36,279 | 14.4% | 6 |
+| JavaScript | 3,736 | 1.5% | 30 |
 
 Tracked separately (not part of `App Lines`):
 
 | Category | Lines | Files | Notes |
 |----------|------:|------:|-------|
-| Markdown | 154,117 | 463 | Whole repo (docs, skills, root). Now exceeds raw C# total. |
-| EF Migrations | 363,241 | 191 | Auto-generated. ~1.8× the entire app source — overdue for consolidation. |
-| C# comments | 23,481 | — | Subset of `CS Lines`. ~15.9% of C# is comments. |
+| Markdown | 92,264 | 483 | Whole repo (docs, skills, root). Back below raw C# after the May–June docs prune. |
+| EF Migrations | 486,609 | 227 | Auto-generated. ~1.9× the entire app source — overdue for consolidation. |
+| C# comments | 24,409 | — | Subset of `CS Lines`. ~14.7% of C# is comments. |
 
 ## Highlights
 
 - **First commit:** 2026-02-04 (7.1k lines)
-- **Current:** 288k app+test lines across 1,898 files in 90 days with commits
-- **Growth rate:** ~3,205 lines/day average
-- **Biggest day:** 2026-05-15 (+30,845 lines) — new all-time high
-- **Busiest churn day:** 2026-04-22 (+29,432 / -10,883) — combined +/- still tops the list
-- **Test ratio:** 28.9% of codebase (83k test lines / 288k total) — climbing fast (was 21.5% on 04-26)
-- **Localization:** 1,788 resx keys (5 languages = ~8,940 translated strings)
-- **Architecture:** 1,750 classes, 180 interfaces, 76 controllers, 318 views, 92 entities
-- **Documentation weight:** 154k markdown lines — now exceeds the 148k of raw C# and dwarfs the 105k of C# code-only
-- **Migration debt:** 363k lines across 191 migration files — ~1.8× the entire app source, overdue for consolidation
+- **Current:** 366k app+test lines across 2,353 files in 116 days with commits
+- **Growth rate:** ~3,153 lines/day average
+- **Biggest day:** 2026-05-16 (+40,694 lines) — new all-time high
+- **Busiest churn day:** 2026-05-16 (+40,694 / -13,529) — same day tops both lists
+- **Test ratio:** 31.0% of codebase (113k test lines / 366k total) — still climbing (was 28.9% on 05-15)
+- **Localization:** 2,619 resx keys (5 languages = ~13,095 translated strings)
+- **Architecture:** 2,153 classes, 233 interfaces, 87 controllers, 386 views, 104 entities
+- **Documentation weight:** 92k markdown lines — back below the 166k of raw C# after the May–June docs prune (peaked at 154k on 05-15)
+- **Migration debt:** 487k lines across 227 migration files — ~1.9× the entire app source, overdue for consolidation
 
 ## Column Key
 
@@ -202,4 +202,4 @@ The Codebase Growth table is the LAST section in this file so `generate-stats.sh
 | 2026-06-09 | 238,346 | 106,224 | 344,570 | 158,134 | 114,004 | 23,209 | 44,522 | 32,085 | 3,605 | 96,788 | 457,246 | 9,995 | 4,138 | 2,251 | 2,007 | 222 | 82 | 366 | 98 | 1,975 | 1,735 | 91 | 65 |
 | 2026-06-10 | 246,850 | 111,355 | 358,205 | 165,289 | 119,155 | 24,196 | 45,461 | 32,427 | 3,673 | 96,177 | 464,975 | 10,371 | 4,344 | 2,360 | 2,134 | 232 | 87 | 383 | 104 | 2,013 | 1,754 | 22,471 | 6,058 |
 | 2026-06-11 | 248,214 | 113,271 | 361,485 | 165,918 | 119,756 | 24,372 | 46,009 | 32,560 | 3,727 | 96,222 | 486,609 | 10,444 | 4,600 | 2,350 | 2,088 | 223 | 87 | 385 | 104 | 2,021 | 1,801 | 12,243 | 8,582 |
-| 2026-06-12 | 248,304 | 113,412 | 361,716 | 165,949 | 119,772 | 24,386 | 46,027 | 32,592 | 3,736 | 96,237 | 486,609 | 10,448 | 4,606 | 2,350 | 2,088 | 223 | 87 | 385 | 104 | 2,023 | 1,804 | 262 | 16 |
+| 2026-06-12 | 252,324 | 113,413 | 365,737 | 166,096 | 119,880 | 24,409 | 46,213 | 36,279 | 3,736 | 92,264 | 486,609 | 10,864 | 4,607 | 2,353 | 2,153 | 233 | 87 | 386 | 104 | 2,619 | 1,806 | 5,296 | 4,994 |

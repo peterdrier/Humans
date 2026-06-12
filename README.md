@@ -152,6 +152,46 @@ The project grew quickly from the initial member portal into a broader operation
 | **Mar 24** | Feedback upgrade rollout and communication preference work |
 | **Mar 27** | Budget phase 1 foundation and related finance scaffolding |
 | **Mar 30-31** | Documentation refresh, repo stats update, and docs index expansion |
+| **Apr 1** | Notification inbox — full in-app notification center; staff directory and About pages |
+| **Apr 2** | Duplicate account detection and resolution workflow; community-focused homepage redesign |
+| **Apr 3** | Authorization overhaul foundation — auth inventory, Playwright auth test suite, sub-team manager role |
+| **Apr 4** | Catalan (ca) as sixth locale; communication preferences redesign; consolidated Finance view; authorization policy rollout across controllers |
+| **Apr 6** | City Planning — interactive polygon map for laying out barrios; EF query monitoring dashboard |
+| **Apr 7** | Resource-based authorization with scoped coordinator and camp-lead permissions |
+| **Apr 8** | Profileless (guest) account support — guest dashboard, GDPR-safe deletion; Google sync hardening |
+| **Apr 10** | Full i18n pass across user-facing views in 5 locales; GDPR export covering all user-linked entities; breadcrumbs on 29 dead-end pages |
+| **Apr 13** | Service-ownership migration continued (CityPlanning, Shifts, Tickets/Budget/Campaigns); event participation tracking with self-service opt-out |
+| **Apr 15** | Architecture docs reorganization; Governance migrated to the repository/store/decorator pattern |
+| **Apr 21-22** | Clean Architecture mega-migration — 20+ services extracted to the Application layer with the repository/store/decorator pattern across every section; Volunteer Coordinator dashboard |
+| **Apr 25** | In-app user Guide section; per-season camp membership; xUnit v3 upgrade |
+| **Apr 26** | Ticket scanner phase 1 — in-browser barcode decode; per-camp role assignments; City Planning GeoJSON bulk import |
+| **Apr 29** | Admin shell and left-nav redesign; filesystem-backed profile pictures; shifts browse UX overhaul with calendar availability picker |
+| **Apr 30** | Volunteer admission ungated from Consent Coordinator approval; email-identity decoupling begins |
+| **May 2** | Issues section launched (succeeds Feedback); account-merge fold-into-target redesign; hidden teams split into an admin-only section |
+| **May 3** | Barrios section — lead listings, role slots, lead-status tracking; Agent phase 1 — in-app AI assistant; post-purchase /Welcome landing |
+| **May 4** | Store section — catalog admin CRUD; 2FA status and backup codes on Accounts admin |
+| **May 9** | Email-identity decoupling completed — grid, link surface, admin parity; global person search consolidated |
+| **May 10** | Ticket transfer wizard between humans; global search across humans, teams, camps, and shifts; unified `<vc:human>` view component |
+| **May 11** | Expenses and Holded sections launched (budget actuals, category spend, SEPA batches); Roslyn analyzers replace IL-scan architecture tests |
+| **May 12** | Mailer section — MailerLite import, outbound sends, audience framework |
+| **May 13** | UserInfo cached read-model spanning User and Profile; Google Group membership sync orchestrator |
+| **May 15** | Event Guide — submission, moderation, browse, schedule, and admin; City Planning container placement map |
+| **May 16-17** | Cache migration sprint — every major section served from in-memory decorated caches; linked OAuth accounts dashboard; shift workload aggregations |
+| **May 18** | On-site ticket check-in view; Agent admin status page (usage, spend, refusals) |
+| **May 19** | CampLead folded into role assignments; Marketing/HasShift/HasTicket mailer audiences |
+| **May 22-23** | Cross-section read boundaries (`I<Section>ServiceRead`) introduced; burner + legal name model replaces DisplayName; shift availability calendar |
+| **May 25** | Architecture ratchet baselines converted to compile-time Roslyn analyzers; dietary and medical data moved to Profile |
+| **May 26** | Holded expense actuals matching and creditor balances; Early Entry cross-source roster with ticket stub self-view |
+| **May 27** | Repository consolidation across shifts, camps, profile, and user-email; WYSIWYG Markdown editor |
+| **May 29-30** | Surface-reduction sweep across Budget, Google, Users, Email, and Tickets sections; admin nav realigned to section structure |
+| **Jun 1** | Cross-section callers rerouted through read interfaces; Teams as an Early Entry provider |
+| **Jun 4** | Store — Stripe payment reconciliation admin and order repricing with audit trail; per-day instant shift signup toggle |
+| **Jun 5** | Barrios compliance page redesigned as a role-staffing matrix |
+| **Jun 6** | Account merge consolidated into one ordered engine and admin surface; expense travel lines (mileage/per-diem) with personal IOU view |
+| **Jun 7** | People/team/camp search made relevance-ranked, uncapped, and cache-only |
+| **Jun 9-10** | Survey section — first-party GDPR-compliant surveys; personal iCal feed for shifts and events; gate-terminal kiosk login for the ticket scanner |
+| **Jun 11** | Stripe async-payment checkout state machine; post-event shift stats dashboard; per-occurrence event favourites |
+| **Jun 12** | Ticket scanner manual barcode entry; 3,700-string i18n sweep across public pages and enums |
 
 ## Contributing
 
