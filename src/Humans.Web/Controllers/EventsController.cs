@@ -218,11 +218,6 @@ public class EventsController(
 
     [HttpPost("Submit/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 42 statements, cc 17.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -250,13 +245,36 @@ public class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
+            return await RedisplayIndividualFormAsync(model, eventId, eventSettings);
+
+        ApplyIndividualFormToEvent(guideEvent, model, GetTimeZone(eventSettings));
+
+        try
         {
-            model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
-            return View("IndividualEventForm", model);
+            await guide.UpdateAndResubmitAsync(guideEvent);
+        }
+        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return await RedisplayIndividualFormAsync(model, eventId, eventSettings);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
+
+        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    private async Task<IActionResult> RedisplayIndividualFormAsync(
+        IndividualEventFormViewModel model, Guid eventId, BurnSettingsInfo eventSettings)
+    {
+        model.Id = eventId;
+        await PopulateDropdownsAsync(model, eventSettings);
+        return View("IndividualEventForm", model);
+    }
+
+    private static void ApplyIndividualFormToEvent(Event guideEvent, IndividualEventFormViewModel model, DateTimeZone? tz)
+    {
         var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
         var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
 
@@ -270,23 +288,6 @@ public class EventsController(
         guideEvent.Host = model.Host;
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
-
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
-            return View("IndividualEventForm", model);
-        }
-
-        logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
-
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
-        return RedirectToAction(nameof(MySubmissions));
     }
 
     [HttpPost("Submit/{eventId:guid}/Withdraw")]
@@ -739,11 +740,6 @@ public class EventsController(
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 41 statements, cc 11.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
@@ -764,16 +760,39 @@ public class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         if (!ModelState.IsValid)
+            return await RedisplayBarrioFormAsync(model, eventId, camp, slug, eventSettings);
+
+        ApplyBarrioFormToEvent(guideEvent, model, GetTimeZone(eventSettings));
+
+        try
         {
-            model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
-            model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
-            return View("BarrioEventForm", model);
+            await guide.UpdateAndResubmitAsync(guideEvent);
+        }
+        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return await RedisplayBarrioFormAsync(model, eventId, camp, slug, eventSettings);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
+
+        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
+        return RedirectToAction(nameof(MySubmissions));
+    }
+
+    private async Task<IActionResult> RedisplayBarrioFormAsync(
+        CampEventFormViewModel model, Guid eventId, CampInfo camp, string slug, BurnSettingsInfo eventSettings)
+    {
+        model.Id = eventId;
+        model.CampId = camp.Id;
+        model.CampName = ResolveCampDisplayName(camp);
+        model.CampSlug = slug;
+        await PopulateBarrioDropdownsAsync(model, eventSettings);
+        return View("BarrioEventForm", model);
+    }
+
+    private static void ApplyBarrioFormToEvent(Event guideEvent, CampEventFormViewModel model, DateTimeZone? tz)
+    {
         guideEvent.Title = model.Title;
         guideEvent.Description = model.Description;
         guideEvent.CategoryId = model.CategoryId;
@@ -784,26 +803,6 @@ public class EventsController(
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
         guideEvent.PriorityRank = model.PriorityRank;
-
-        try
-        {
-            await guide.UpdateAndResubmitAsync(guideEvent);
-        }
-        catch (InvalidOperationException ex) when (IsSubmitStateException(ex))
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            model.Id = eventId;
-            model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
-            model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
-            return View("BarrioEventForm", model);
-        }
-
-        logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
-
-        SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
-        return RedirectToAction(nameof(MySubmissions));
     }
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Withdraw")]
