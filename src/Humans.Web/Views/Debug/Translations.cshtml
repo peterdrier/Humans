@@ -1,0 +1,148 @@
+@model Humans.Web.Models.TranslationsGalleryViewModel
+@{
+    ViewData["Title"] = "Translations gallery";
+}
+
+<page-header title="Translations gallery">
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</page-header>
+
+<div class="alert alert-info">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    Every <code>SharedResource</code> key in every supported culture, enumerated through the real
+    localizer — a new key can't hide from this audit. A <span class="badge bg-warning text-dark">—</span>
+    cell means the key is missing from that language file (the app falls back to English there).
+    Coordinator/admin-only key families are intentionally untranslated.
+</div>
+
+<div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+    <strong>@Model.TotalKeys keys</strong>
+    @foreach (var lang in Model.Languages)
+    {
+        var missing = Model.MissingByLanguage[lang];
+        <span>
+            <code>@lang</code>
+            @if (missing == 0)
+            {
+                <span class="badge bg-success">complete</span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark">@missing missing</span>
+            }
+        </span>
+    }
+</div>
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <input type="search" id="loc-filter" class="form-control form-control-sm" style="max-width: 320px"
+           placeholder="Filter by key or text…" autocomplete="off" />
+    <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox" id="loc-missing-only" />
+        <label class="form-check-label" for="loc-missing-only">Only rows with missing translations</label>
+    </div>
+</div>
+
+<nav class="d-flex flex-wrap gap-1 mb-4" aria-label="Key prefix groups">
+    @foreach (var group in Model.Groups)
+    {
+        var groupMissing = group.MissingByLanguage.Values.Sum();
+        <a class="btn btn-outline-secondary btn-sm" href="#loc-group-@group.Prefix">
+            @group.Prefix <span class="text-muted">(@group.Rows.Count)</span>
+            @if (groupMissing > 0)
+            {
+                <span class="badge bg-warning text-dark ms-1">@groupMissing</span>
+            }
+        </a>
+    }
+</nav>
+
+@if (Model.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
+{
+    <div class="alert alert-warning">
+        <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
+        <ul class="mb-0">
+            @foreach (var (lang, keys) in Model.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
+            {
+                <li><code>@lang</code>: @string.Join(", ", keys)</li>
+            }
+        </ul>
+    </div>
+}
+
+@foreach (var group in Model.Groups)
+{
+    <h2 class="h5 mt-4" id="loc-group-@group.Prefix">
+        @group.Prefix
+        <small class="text-muted">— @group.Rows.Count @(group.Rows.Count == 1 ? "key" : "keys")</small>
+    </h2>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle small loc-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 16rem">Key</th>
+                    <th>en</th>
+                    @foreach (var lang in Model.Languages)
+                    {
+                        <th>@lang</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in group.Rows)
+                {
+                    var hasMissing = row.Values.Values.Any(v => v is null);
+                    <tr data-loc-missing="@(hasMissing ? "1" : "0")">
+                        <td><code>@row.Key</code></td>
+                        <td>@row.English</td>
+                        @foreach (var lang in Model.Languages)
+                        {
+                            var value = row.Values[lang];
+                            @if (value is null)
+                            {
+                                <td class="table-warning text-center">—</td>
+                            }
+                            else
+                            {
+                                <td>@value</td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            const filter = document.getElementById('loc-filter');
+            const missingOnly = document.getElementById('loc-missing-only');
+            const rows = Array.from(document.querySelectorAll('.loc-table tbody tr'));
+
+            function apply() {
+                const needle = filter.value.trim().toLowerCase();
+                const onlyMissing = missingOnly.checked;
+                for (const row of rows) {
+                    const matchesText = needle === '' || row.textContent.toLowerCase().includes(needle);
+                    const matchesMissing = !onlyMissing || row.dataset.locMissing === '1';
+                    row.classList.toggle('d-none', !(matchesText && matchesMissing));
+                }
+                // Hide a group's heading and table when every row in it is filtered out.
+                for (const table of document.querySelectorAll('.loc-table')) {
+                    const wrapper = table.closest('.table-responsive');
+                    const heading = wrapper.previousElementSibling;
+                    const anyVisible = Array.from(table.tBodies[0].rows).some(r => !r.classList.contains('d-none'));
+                    wrapper.classList.toggle('d-none', !anyVisible);
+                    heading.classList.toggle('d-none', !anyVisible);
+                }
+            }
+
+            filter.addEventListener('input', apply);
+            missingOnly.addEventListener('change', apply);
+        })();
+    </script>
+}
