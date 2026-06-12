@@ -6010,4 +6010,626 @@
   <data name="AccountDeletion_ScheduledFor" xml:space="preserve"><value>Es wird am {0} endgültig gelöscht, sofern du nicht abbrichst.</value></data>
   <data name="AccountDeletion_Unscheduled" xml:space="preserve"><value>Es wird endgültig gelöscht, sofern du nicht abbrichst.</value></data>
   <data name="AccountDeletion_CancelButton" xml:space="preserve"><value>Löschanforderung abbrechen</value></data>
+  <data name="About_AdditionalHelp" xml:space="preserve"><value>Mit zusätzlicher Hilfe von</value></data>
+  <data name="About_AdditionalHelpAnd" xml:space="preserve"><value>und</value></data>
+  <data name="About_AnthropicNote" xml:space="preserve"><value>Antworten des Konversationsassistenten werden über die API von Anthropic erzeugt. Gemäß der DPA von Anthropic werden keine Daten zum Modelltraining verwendet.</value></data>
+  <data name="About_Cat_AILLM" xml:space="preserve"><value>KI/LLM</value></data>
+  <data name="About_Cat_BackgroundJobs" xml:space="preserve"><value>Hintergrundjobs</value></data>
+  <data name="About_Cat_Calendar" xml:space="preserve"><value>Kalender</value></data>
+  <data name="About_Cat_CSV" xml:space="preserve"><value>CSV</value></data>
+  <data name="About_Cat_Database" xml:space="preserve"><value>Datenbank</value></data>
+  <data name="About_Cat_DateTime" xml:space="preserve"><value>Datum/Uhrzeit</value></data>
+  <data name="About_Cat_Email" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="About_Cat_Framework" xml:space="preserve"><value>Framework</value></data>
+  <data name="About_Cat_GitHubAPI" xml:space="preserve"><value>GitHub-API</value></data>
+  <data name="About_Cat_GoogleAPIs" xml:space="preserve"><value>Google-APIs</value></data>
+  <data name="About_Cat_HealthChecks" xml:space="preserve"><value>Health Checks</value></data>
+  <data name="About_Cat_ImageProcessing" xml:space="preserve"><value>Bildverarbeitung</value></data>
+  <data name="About_Cat_Logging" xml:space="preserve"><value>Logging</value></data>
+  <data name="About_Cat_Markdown" xml:space="preserve"><value>Markdown</value></data>
+  <data name="About_Cat_Observability" xml:space="preserve"><value>Observability</value></data>
+  <data name="About_Cat_Payments" xml:space="preserve"><value>Zahlungen</value></data>
+  <data name="About_Cat_Resilience" xml:space="preserve"><value>Resilienz</value></data>
+  <data name="About_Cat_Sanitization" xml:space="preserve"><value>Bereinigung</value></data>
+  <data name="About_Cat_Spreadsheet" xml:space="preserve"><value>Tabellenkalkulation</value></data>
+  <data name="About_Cat_StateMachine" xml:space="preserve"><value>Zustandsautomat</value></data>
+  <data name="About_Cat_UserAgent" xml:space="preserve"><value>User-Agent</value></data>
+  <data name="About_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="About_ColLibrary" xml:space="preserve"><value>Bibliothek</value></data>
+  <data name="About_ColLicense" xml:space="preserve"><value>Lizenz</value></data>
+  <data name="About_ColPackage" xml:space="preserve"><value>Paket</value></data>
+  <data name="About_ColVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="About_DotNetDesc" xml:space="preserve"><value>ASP.NET Core MVC mit Razor-Views, Identity und dem gesamten Microsoft-Stack. Das Gerüst, das alles zusammenhält.</value></data>
+  <data name="About_FrontendHeading" xml:space="preserve"><value>Frontend-/CDN-Abhängigkeiten</value></data>
+  <data name="About_GoogleDesc" xml:space="preserve"><value>Admin Directory, Drive und Groups — Bereitstellung von Shared Drives, Ordnern und Verteilerlisten, damit das niemand von Hand machen muss.</value></data>
+  <data name="About_HangfireDesc" xml:space="preserve"><value>Hintergrundjobs für Sync, Abgleich und alles, was eine HTTP-Anfrage nicht blockieren sollte. PostgreSQL-gestützt, Dashboard inklusive.</value></data>
+  <data name="About_IngredientsHeading" xml:space="preserve"><value>Die Zutaten</value></data>
+  <data name="About_IngredientsIntro" xml:space="preserve"><value>Jede Werkstatt braucht ihr Material. Daraus ist Humans gebaut:</value></data>
+  <data name="About_Intro" xml:space="preserve"><value>Humans ist das Mitgliedschaftssystem, das Nobodies Collective am Laufen hält — Onboarding von Humans, Team-Bereitstellung, Governance-Tracking und all die Verkabelung, die es einem spanischen Verein ermöglicht, mit dem Organisationsgedächtnis von etwas Zehnmal so Großem zu arbeiten. Mit Sorgfalt gebaut, mit Sturheit gepflegt und mit gekreuzten Fingern ausgerollt.</value></data>
+  <data name="About_License_Apache2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis, eine Lizenzkopie und eine Angabe von Änderungen, falls modifiziert. Alle Pakete werden unverändert verwendet.</value></data>
+  <data name="About_License_BSD2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis in der Dokumentation.</value></data>
+  <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
+  <data name="About_License_ISC" xml:space="preserve"><value>permissiv, funktional gleichwertig zu BSD-2-Clause; Copyright-Hinweis erforderlich.</value></data>
+  <data name="About_License_LGPL30" xml:space="preserve"><value>die Bibliothek muss für die Endnutzer austauschbar sein. Wird als unveränderte NuGet-Pakete (dynamisch eingebunden) genutzt, was die LGPL-Verpflichtungen erfüllt.</value></data>
+  <data name="About_License_MIT" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
+  <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissiv, MIT-ähnlich; Copyright-Hinweis erforderlich.</value></data>
+  <data name="About_License_SILOFL" xml:space="preserve"><value>frei nutzbar und weiterverbreitbar; Schriften dürfen nicht eigenständig verkauft werden.</value></data>
+  <data name="About_LicenseBody" xml:space="preserve"><value>Humans ist freie Software, veröffentlicht unter der</value></data>
+  <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Zusammenfassung zur Lizenzkonformität</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle produktiven Abhängigkeiten nutzen permissive oder schwach-copyleft Lizenzen. Keine Verstöße gefunden.</value></data>
+  <data name="About_LicenseExplanation" xml:space="preserve"><value>Du darfst diese Software verwenden, studieren, verändern und weiterverbreiten. Wenn du eine veränderte Version betreibst und andere über ein Netzwerk damit interagieren lässt, musst du deinen veränderten Quellcode unter derselben Lizenz verfügbar machen.</value></data>
+  <data name="About_LicenseFullText" xml:space="preserve"><value>Vollständiger Lizenztext:</value></data>
+  <data name="About_LicenseHeading" xml:space="preserve"><value>Lizenz</value></data>
+  <data name="About_LicenseSourceCode" xml:space="preserve"><value>Quellcode:</value></data>
+  <data name="About_MadeBy" xml:space="preserve"><value>Gemacht von</value></data>
+  <data name="About_MadeByTail" xml:space="preserve"><value>mit Liebe für die Nobodies Community.</value></data>
+  <data name="About_MailKitDesc" xml:space="preserve"><value>Transaktionale E-Mails für Benachrichtigungen und Onboarding. Die eine Bibliothek, die SMTP fast angenehm anfühlen lässt.</value></data>
+  <data name="About_MeetTheStaff" xml:space="preserve"><value>Lerne das Team kennen</value></data>
+  <data name="About_NeedHelp" xml:space="preserve"><value>Brauchst du Hilfe?</value></data>
+  <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>NuGet-Pakete</value></data>
+  <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Open-Source-Lizenzen</value></data>
+  <data name="About_OpenSourceLicensesIntro" xml:space="preserve"><value>Humans steht auf den Schultern von Open-Source-Projekten. Die Tabelle unten listet jede produktive Abhängigkeit, ihre Version und Lizenz auf.</value></data>
+  <data name="About_OtelDesc" xml:space="preserve"><value>Strukturiertes Logging, verteilte Traces und Prometheus-Metriken. Denn „läuft auf meiner Maschine“ ist keine Monitoring-Strategie.</value></data>
+  <data name="About_PostgresDesc" xml:space="preserve"><value>Relationale Daten mit Entity Framework Core und Npgsql. NodaTime-Typen bis ganz nach unten — kein DateTime in Sicht.</value></data>
+  <data name="About_Staff_BackToAbout" xml:space="preserve"><value>Zurück zu Über uns</value></data>
+  <data name="About_Staff_Empty" xml:space="preserve"><value>Keine aktiven Rolleninhaber gefunden. Die Burg scheint leer zu sein.</value></data>
+  <data name="About_Staff_Intro" xml:space="preserve"><value>Jedes Kollektiv braucht seine Hüter. Das sind die Humans, die ihre Zeit und Energie spenden, um Nobodies am Laufen zu halten — von der Governance bis zum technischen Support, von Trust and Safety bis zur Ticket-Alchemie.</value></data>
+  <data name="About_Staff_Title" xml:space="preserve"><value>Die Humans hinter dem Vorhang</value></data>
+  <data name="About_Title" xml:space="preserve"><value>Über Humans</value></data>
+  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Dein Zugang ist gesperrt, bis du die erforderlichen rechtlichen Einwilligungen abschließt.</value></data>
+  <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Dein Konto wurde von einem Administrator gesperrt</value></data>
+  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Erforderliche Einwilligungen prüfen</value></data>
+  <data name="Budget_ColAmount" xml:space="preserve"><value>Betrag (€)</value></data>
+  <data name="Budget_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Budget_ColShare" xml:space="preserve"><value>Anteil</value></data>
+  <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Abteilungsdetails</value></data>
+  <data name="Budget_Expenses" xml:space="preserve"><value>Ausgaben</value></data>
+  <data name="Budget_ExpensesBreakdown" xml:space="preserve"><value>Aufschlüsselung der Ausgaben</value></data>
+  <data name="Budget_Income" xml:space="preserve"><value>Einnahmen</value></data>
+  <data name="Budget_IncomeBreakdown" xml:space="preserve"><value>Aufschlüsselung der Einnahmen</value></data>
+  <data name="Budget_NetBalance" xml:space="preserve"><value>Nettosaldo</value></data>
+  <data name="Budget_NoActiveBudget" xml:space="preserve"><value>Kein aktives Budget</value></data>
+  <data name="Budget_NoActiveBudgetSubtitle" xml:space="preserve"><value>Es gibt kein aktives Budgetjahr zum Anzeigen. Ein Finanz-Admin richtet eines ein, sobald die Budgetplanung beginnt.</value></data>
+  <data name="Budget_NoDataSubtitle" xml:space="preserve"><value>Budgetzuweisungen erscheinen hier, sobald sie vom Finanzteam eingerichtet wurden.</value></data>
+  <data name="Budget_NoDataYet" xml:space="preserve"><value>Budgetdaten noch nicht verfügbar</value></data>
+  <data name="Budget_NoExpenseItems" xml:space="preserve"><value>Noch keine Ausgabenposten.</value></data>
+  <data name="Budget_NoIncomeItems" xml:space="preserve"><value>Noch keine Einnahmenposten.</value></data>
+  <data name="Budget_OverviewSubtitle" xml:space="preserve"><value>Wie das {0}-Budget auf Abteilungen und Infrastruktur verteilt wird.</value></data>
+  <data name="Budget_OverviewTitle" xml:space="preserve"><value>Budget-Übersicht</value></data>
+  <data name="Budget_Title" xml:space="preserve"><value>Budget</value></data>
+  <data name="Budget_TitleYear" xml:space="preserve"><value>Budget - {0}</value></data>
+  <data name="Budget_TotalExpenses" xml:space="preserve"><value>Gesamtausgaben</value></data>
+  <data name="Budget_TotalIncome" xml:space="preserve"><value>Gesamteinnahmen</value></data>
+  <data name="Calendar_Agenda" xml:space="preserve"><value>Agenda</value></data>
+  <data name="Calendar_AllDay" xml:space="preserve"><value>ganztägig</value></data>
+  <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
+  <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Ganztägig</value></data>
+  <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle Teams (Monatsansicht)</value></data>
+  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten angezeigt in {0}.</value></data>
+  <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Zurück zum Kalender</value></data>
+  <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Nur diesen Termin absagen?</value></data>
+  <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Diesen absagen</value></data>
+  <data name="Calendar_ChangeHistory" xml:space="preserve"><value>Änderungsverlauf</value></data>
+  <data name="Calendar_Continues" xml:space="preserve"><value>fortlaufend</value></data>
+  <data name="Calendar_Created" xml:space="preserve"><value>Erstellt {0}</value></data>
+  <data name="Calendar_CreateEvent" xml:space="preserve"><value>Veranstaltung erstellen</value></data>
+  <data name="Calendar_DeleteConfirm" xml:space="preserve"><value>Diese Veranstaltung und alle ihre Termine löschen?</value></data>
+  <data name="Calendar_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Calendar_EditEvent" xml:space="preserve"><value>Veranstaltung bearbeiten</value></data>
+  <data name="Calendar_EditSingleOccurrence" xml:space="preserve"><value>Einzelnen Termin bearbeiten</value></data>
+  <data name="Calendar_EditSingleOccurrenceHeading" xml:space="preserve"><value>Einen einzelnen Termin bearbeiten</value></data>
+  <data name="Calendar_EditThisOccurrence" xml:space="preserve"><value>Diesen Termin bearbeiten</value></data>
+  <data name="Calendar_End" xml:space="preserve"><value>Ende</value></data>
+  <data name="Calendar_EndDate" xml:space="preserve"><value>Enddatum</value></data>
+  <data name="Calendar_EndDateHelp" xml:space="preserve"><value>Einschließlich — leer lassen für eine eintägige Veranstaltung.</value></data>
+  <data name="Calendar_EventTitle" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Calendar_FirstStart" xml:space="preserve"><value>Erster Beginn</value></data>
+  <data name="Calendar_FormTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Calendar_LastUpdated" xml:space="preserve"><value>· Zuletzt aktualisiert {0}</value></data>
+  <data name="Calendar_LocationUrl" xml:space="preserve"><value>Orts-URL</value></data>
+  <data name="Calendar_MoreCount" xml:space="preserve"><value>+{0} weitere</value></data>
+  <data name="Calendar_NewEvent" xml:space="preserve"><value>Neue Veranstaltung</value></data>
+  <data name="Calendar_Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Calendar_NoEventsInRange" xml:space="preserve"><value>Keine Veranstaltungen im ausgewählten Zeitraum.</value></data>
+  <data name="Calendar_OverrideDescription" xml:space="preserve"><value>Beschreibung überschreiben</value></data>
+  <data name="Calendar_OverrideEnd" xml:space="preserve"><value>Ende überschreiben</value></data>
+  <data name="Calendar_OverrideInstructions" xml:space="preserve"><value>Überschreibe nur diesen Termin der wiederkehrenden Veranstaltung. Lass ein Feld leer, um den Wert von der übergeordneten Veranstaltung zu übernehmen.</value></data>
+  <data name="Calendar_OverrideLocation" xml:space="preserve"><value>Ort überschreiben</value></data>
+  <data name="Calendar_OverrideLocationUrl" xml:space="preserve"><value>Orts-URL überschreiben</value></data>
+  <data name="Calendar_OverrideStart" xml:space="preserve"><value>Beginn überschreiben</value></data>
+  <data name="Calendar_OverrideTitle" xml:space="preserve"><value>Titel überschreiben</value></data>
+  <data name="Calendar_OwningTeam" xml:space="preserve"><value>Verantwortliches Team</value></data>
+  <data name="Calendar_Prev" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Calendar_Recurrence" xml:space="preserve"><value>Wiederholung</value></data>
+  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>IANA-Zeitzone, z. B.</value></data>
+  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zeitzone der Wiederholung</value></data>
+  <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zeitzone: {0}</value></data>
+  <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Wiederkehrende Veranstaltung</value></data>
+  <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
+  <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RFC 5545 RRULE. Leer lassen für eine einzelne Veranstaltung. Beispiel:</value></data>
+  <data name="Calendar_SaveOverride" xml:space="preserve"><value>Überschreibung speichern</value></data>
+  <data name="Calendar_Start" xml:space="preserve"><value>Beginn</value></data>
+  <data name="Calendar_StartDate" xml:space="preserve"><value>Startdatum</value></data>
+  <data name="Calendar_TeamFallback" xml:space="preserve"><value>Team</value></data>
+  <data name="Calendar_Title" xml:space="preserve"><value>Kalender</value></data>
+  <data name="Calendar_Today" xml:space="preserve"><value>Heute</value></data>
+  <data name="Calendar_UpcomingOccurrences" xml:space="preserve"><value>Kommende Termine</value></data>
+  <data name="Calendar_ViewAriaLabel" xml:space="preserve"><value>Kalenderansicht</value></data>
+  <data name="Calendar_ViewGrid" xml:space="preserve"><value>Raster</value></data>
+  <data name="Calendar_ViewList" xml:space="preserve"><value>Liste</value></data>
+  <data name="Calendar_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Camp_AboutHeading" xml:space="preserve"><value>Über dein {0}</value></data>
+  <data name="Camp_AcceptingMembersLabel" xml:space="preserve"><value>Neue Humans aufnehmen?</value></data>
+  <data name="Camp_AdultPlayspaceLabel" xml:space="preserve"><value>Adult Playspace</value></data>
+  <data name="Camp_BlurbLongLabel" xml:space="preserve"><value>Vollständige Beschreibung</value></data>
+  <data name="Camp_BlurbLongPlaceholder" xml:space="preserve"><value>Erzähl der Welt von deinem Camp.</value></data>
+  <data name="Camp_BlurbShortLabel" xml:space="preserve"><value>Kurzbeschreibung</value></data>
+  <data name="Camp_BlurbShortPlaceholder" xml:space="preserve"><value>Ein oder zwei Sätze über dein Camp (max. 300 Zeichen)</value></data>
+  <data name="Camp_CommunityHeading" xml:space="preserve"><value>Community</value></data>
+  <data name="Camp_ContactEmailLabel" xml:space="preserve"><value>Kontakt-E-Mail</value></data>
+  <data name="Camp_ContactPhoneLabel" xml:space="preserve"><value>Kontakttelefon</value></data>
+  <data name="Camp_ContactPhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
+  <data name="Camp_CultureHeading" xml:space="preserve"><value>Kultur &amp; Veranstaltungen</value></data>
+  <data name="Camp_Edit_AutoCreatedFromNameChange" xml:space="preserve"><value>Automatisch durch Namensänderung erstellt</value></data>
+  <data name="Camp_Edit_ContainersSeparate" xml:space="preserve"><value>Container werden jetzt separat verwaltet.</value></data>
+  <data name="Camp_Edit_HideHistoricalNames" xml:space="preserve"><value>Historische Namen ausblenden</value></data>
+  <data name="Camp_Edit_HistoricalNamesHeading" xml:space="preserve"><value>Historische Namen</value></data>
+  <data name="Camp_Edit_HistoricalNamesHelp" xml:space="preserve"><value>Namen, unter denen dieses Camp zuvor bekannt war.</value></data>
+  <data name="Camp_Edit_ImageAlt" xml:space="preserve"><value>Camp-Bild</value></data>
+  <data name="Camp_Edit_ImagesHeading" xml:space="preserve"><value>Bilder ({0}/{1})</value></data>
+  <data name="Camp_Edit_ImageUploadHelp" xml:space="preserve"><value>JPEG, PNG oder WebP. Max. 10 MB.</value></data>
+  <data name="Camp_Edit_ManageContainers" xml:space="preserve"><value>Container verwalten →</value></data>
+  <data name="Camp_Edit_MembersRolesDescription" xml:space="preserve"><value>Verwalte aktive Mitglieder, Rollen, Leads und ausstehende Beitrittsanfragen.</value></data>
+  <data name="Camp_Edit_MembersRolesHeading" xml:space="preserve"><value>Mitglieder &amp; Rollen</value></data>
+  <data name="Camp_Edit_NameLocked" xml:space="preserve"><value>Der Name ist für diese Saison gesperrt.</value></data>
+  <data name="Camp_Edit_OpenMembersRoles" xml:space="preserve"><value>Mitglieder &amp; Rollen öffnen</value></data>
+  <data name="Camp_Edit_OpenStore" xml:space="preserve"><value>Store öffnen</value></data>
+  <data name="Camp_Edit_PreviousNamePlaceholder" xml:space="preserve"><value>Früherer Camp-Name</value></data>
+  <data name="Camp_Edit_StoreDescription" xml:space="preserve"><value>Gib eine Bestellung für dieses Camp auf.</value></data>
+  <data name="Camp_Edit_StoreHeading" xml:space="preserve"><value>Store</value></data>
+  <data name="Camp_Edit_UploadImage" xml:space="preserve"><value>Bild hochladen</value></data>
+  <data name="Camp_ElectricalGridLabel" xml:space="preserve"><value>Stromnetz</value></data>
+  <data name="Camp_HistoryHeading" xml:space="preserve"><value>Verlauf</value></data>
+  <data name="Camp_Index_AcceptingMembersFilter" xml:space="preserve"><value>Nimmt Mitglieder auf</value></data>
+  <data name="Camp_Index_AllOption" xml:space="preserve"><value>Alle</value></data>
+  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Barrio-Guide 2026</value></data>
+  <data name="Camp_Index_FilterButton" xml:space="preserve"><value>Filtern</value></data>
+  <data name="Camp_Index_KidsWelcomeFilter" xml:space="preserve"><value>Kinder willkommen</value></data>
+  <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>Keine {0} für die ausgewählten Filter gefunden.</value></data>
+  <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Keine {0} entsprechen deiner Suche.</value></data>
+  <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>Genehmigung ausstehend</value></data>
+  <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Suche</value></data>
+  <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Gib einen {0}-Namen ein…</value></data>
+  <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Lead-Positionen anzeigen</value></data>
+  <data name="Camp_Index_SoundZoneLabel" xml:space="preserve"><value>Soundzone</value></data>
+  <data name="Camp_Index_VibeLabel" xml:space="preserve"><value>Vibe</value></data>
+  <data name="Camp_KidsAreaDescriptionLabel" xml:space="preserve"><value>Beschreibung des Kinderbereichs</value></data>
+  <data name="Camp_KidsAreaDescriptionPlaceholder" xml:space="preserve"><value>Beschreibe deinen Kinderbereich, falls vorhanden</value></data>
+  <data name="Camp_KidsVisitingLabel" xml:space="preserve"><value>Richtlinie für Kinderbesuche</value></data>
+  <data name="Camp_KidsWelcomeLabel" xml:space="preserve"><value>Kinder willkommen?</value></data>
+  <data name="Camp_LanguagesLabel" xml:space="preserve"><value>Gesprochene Sprachen</value></data>
+  <data name="Camp_LanguagesPlaceholder" xml:space="preserve"><value>z. B. Englisch, Spanisch, Deutsch</value></data>
+  <data name="Camp_MarkdownSupported" xml:space="preserve"><value>Markdown-Formatierung wird unterstützt</value></data>
+  <data name="Camp_MemberCountLabel" xml:space="preserve"><value>Erwartete Humans</value></data>
+  <data name="Camp_NoPreference" xml:space="preserve"><value>Keine Präferenz</value></data>
+  <data name="Camp_NotSure" xml:space="preserve"><value>Nicht sicher</value></data>
+  <data name="Camp_PerformanceSpaceLabel" xml:space="preserve"><value>Performance-Bereich</value></data>
+  <data name="Camp_PerformanceTypesLabel" xml:space="preserve"><value>Arten von Performances</value></data>
+  <data name="Camp_PerformanceTypesPlaceholder" xml:space="preserve"><value>z. B. Musik, Theater, Workshops</value></data>
+  <data name="Camp_PlacementHeading" xml:space="preserve"><value>Platzierung</value></data>
+  <data name="Camp_PreviousNamesHelp" xml:space="preserve"><value>Falls dein Camp in vergangenen Jahren andere Namen hatte, liste sie hier auf.</value></data>
+  <data name="Camp_PreviousNamesLabel" xml:space="preserve"><value>Frühere Namen</value></data>
+  <data name="Camp_PreviousNamesPlaceholder" xml:space="preserve"><value>Kommagetrennte Liste früherer Camp-Namen</value></data>
+  <data name="Camp_Register_Breadcrumb" xml:space="preserve"><value>Registrieren</value></data>
+  <data name="Camp_Register_Heading" xml:space="preserve"><value>Registriere dein {0}</value></data>
+  <data name="Camp_Register_ImportantInfo" xml:space="preserve"><value>Wichtige Informationen</value></data>
+  <data name="Camp_Register_Season" xml:space="preserve"><value>Saison</value></data>
+  <data name="Camp_Register_Submit" xml:space="preserve"><value>{0} registrieren</value></data>
+  <data name="Camp_SoundZoneLabel" xml:space="preserve"><value>Soundzonen-Präferenz</value></data>
+  <data name="Camp_SpaceRequirementLabel" xml:space="preserve"><value>Platzbedarf</value></data>
+  <data name="Camp_TimesParticipatingLabel" xml:space="preserve"><value>Anzahl der Teilnahmen</value></data>
+  <data name="Camp_VibesLabel" xml:space="preserve"><value>Vibes</value></data>
+  <data name="CampCard_AcceptingMembers" xml:space="preserve"><value>Nimmt Mitglieder auf</value></data>
+  <data name="CampCard_Full" xml:space="preserve"><value>Voll</value></data>
+  <data name="CampCard_KidsWelcome" xml:space="preserve"><value>Kinder willkommen</value></data>
+  <data name="CampCard_TimesAtNowhere" xml:space="preserve"><value>{0} Jahr(e)</value></data>
+  <data name="Common_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Common_Admin" xml:space="preserve"><value>Admin</value></data>
+  <data name="Common_Amount" xml:space="preserve"><value>Betrag</value></data>
+  <data name="Common_Clear" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="Common_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Common_Date" xml:space="preserve"><value>Datum</value></data>
+  <data name="Common_DeleteImage" xml:space="preserve"><value>Bild löschen</value></data>
+  <data name="Common_Department" xml:space="preserve"><value>Abteilung</value></data>
+  <data name="Common_MoveDown" xml:space="preserve"><value>Nach unten</value></data>
+  <data name="Common_MoveUp" xml:space="preserve"><value>Nach oben</value></data>
+  <data name="Common_Other" xml:space="preserve"><value>Sonstiges</value></data>
+  <data name="Common_Preview" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="Common_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Common_Required" xml:space="preserve"><value>(erforderlich)</value></data>
+  <data name="Common_Sender" xml:space="preserve"><value>Absender</value></data>
+  <data name="Common_Shift" xml:space="preserve"><value>Schicht</value></data>
+  <data name="Common_Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Common_View" xml:space="preserve"><value>Ansehen</value></data>
+  <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;du bist eingeladen, die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; auszufüllen. Es dauert nur ein paar Minuten.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Bitte ausfüllen: {0}</value></data>
+  <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;nur eine Erinnerung, dass die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; noch auf deine Antwort wartet.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Erinnerung: {0}</value></data>
+  <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — heilt sich beim nächsten OAuth-Login von selbst.</value></data>
+  <data name="EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
+  <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Nur nachts</value></data>
+  <data name="Enum_AdultPlayspacePolicy_No" xml:space="preserve"><value>Nein</value></data>
+  <data name="Enum_AdultPlayspacePolicy_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Adult</value></data>
+  <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Chill-out</value></data>
+  <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Elektronische Musik</value></data>
+  <data name="Enum_CampVibe_Games" xml:space="preserve"><value>Spiele</value></data>
+  <data name="Enum_CampVibe_Lecture" xml:space="preserve"><value>Vortrag</value></data>
+  <data name="Enum_CampVibe_LiveMusic" xml:space="preserve"><value>Live-Musik</value></data>
+  <data name="Enum_CampVibe_Queer" xml:space="preserve"><value>Queer</value></data>
+  <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Nüchtern</value></data>
+  <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Wellness</value></data>
+  <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Workshop</value></data>
+  <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
+  <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Sonstiges</value></data>
+  <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Telefon</value></data>
+  <data name="Enum_ContactFieldType_Signal" xml:space="preserve"><value>Signal</value></data>
+  <data name="Enum_ContactFieldType_Telegram" xml:space="preserve"><value>Telegram</value></data>
+  <data name="Enum_ContactFieldType_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
+  <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Alle aktiven Humans</value></data>
+  <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Nur Vorstand</value></data>
+  <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Koordinatoren + Vorstand</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Meine Teams (+ Koordinatoren &amp; Vorstand)</value></data>
+  <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
+  <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Eigene Versorgung</value></data>
+  <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Rot</value></data>
+  <data name="Enum_ElectricalGrid_Unknown" xml:space="preserve"><value>Unbekannt</value></data>
+  <data name="Enum_ElectricalGrid_Yellow" xml:space="preserve"><value>Gelb</value></data>
+  <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>In Warteschlange</value></data>
+  <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Gesendet</value></data>
+  <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Genehmigt</value></data>
+  <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
+  <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Abgelehnt</value></data>
+  <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Änderungen angefordert</value></data>
+  <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
+  <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Genehmigt</value></data>
+  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Vom Koordinator befürwortet</value></data>
+  <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
+  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Bezahlt</value></data>
+  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA gesendet</value></data>
+  <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
+  <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
+  <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>
+  <data name="Enum_FeedbackCategory_FeatureRequest" xml:space="preserve"><value>Feature-Wunsch</value></data>
+  <data name="Enum_FeedbackCategory_Question" xml:space="preserve"><value>Frage</value></data>
+  <data name="Enum_FeedbackStatus_Acknowledged" xml:space="preserve"><value>Bestätigt</value></data>
+  <data name="Enum_FeedbackStatus_Open" xml:space="preserve"><value>Offen</value></data>
+  <data name="Enum_FeedbackStatus_Resolved" xml:space="preserve"><value>Gelöst</value></data>
+  <data name="Enum_FeedbackStatus_WontFix" xml:space="preserve"><value>Wird nicht behoben</value></data>
+  <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
+  <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Feature</value></data>
+  <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Frage</value></data>
+  <data name="Enum_KidsVisitingPolicy_DaytimeOnly" xml:space="preserve"><value>Nur tagsüber</value></data>
+  <data name="Enum_KidsVisitingPolicy_No" xml:space="preserve"><value>Nein</value></data>
+  <data name="Enum_KidsVisitingPolicy_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_LanguageProficiency_Basic" xml:space="preserve"><value>Grundkenntnisse</value></data>
+  <data name="Enum_LanguageProficiency_Conversational" xml:space="preserve"><value>Konversationssicher</value></data>
+  <data name="Enum_LanguageProficiency_Fluent" xml:space="preserve"><value>Fließend</value></data>
+  <data name="Enum_LanguageProficiency_Native" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Enum_PerformanceSpaceStatus_No" xml:space="preserve"><value>Nein</value></data>
+  <data name="Enum_PerformanceSpaceStatus_WorkingOnIt" xml:space="preserve"><value>In Arbeit</value></data>
+  <data name="Enum_PerformanceSpaceStatus_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_RolePeriod_Build" xml:space="preserve"><value>Aufbau</value></data>
+  <data name="Enum_RolePeriod_Event" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Enum_RolePeriod_Strike" xml:space="preserve"><value>Abbau</value></data>
+  <data name="Enum_RolePeriod_YearRound" xml:space="preserve"><value>Ganzjährig</value></data>
+  <data name="Enum_SlotPriority_Critical" xml:space="preserve"><value>Kritisch</value></data>
+  <data name="Enum_SlotPriority_Important" xml:space="preserve"><value>Wichtig</value></data>
+  <data name="Enum_SlotPriority_NiceToHave" xml:space="preserve"><value>Wünschenswert</value></data>
+  <data name="Enum_SlotPriority_None" xml:space="preserve"><value>Keine</value></data>
+  <data name="Enum_SoundZone_Blue" xml:space="preserve"><value>Blau</value></data>
+  <data name="Enum_SoundZone_Green" xml:space="preserve"><value>Grün</value></data>
+  <data name="Enum_SoundZone_Orange" xml:space="preserve"><value>Orange</value></data>
+  <data name="Enum_SoundZone_Red" xml:space="preserve"><value>Rot</value></data>
+  <data name="Enum_SoundZone_Surprise" xml:space="preserve"><value>Überraschung</value></data>
+  <data name="Enum_SoundZone_Yellow" xml:space="preserve"><value>Gelb</value></data>
+  <data name="Enum_SpaceSize_Sqm1000" xml:space="preserve"><value>1000 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1200" xml:space="preserve"><value>1200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm150" xml:space="preserve"><value>150 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1500" xml:space="preserve"><value>1500 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1800" xml:space="preserve"><value>1800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2200" xml:space="preserve"><value>2200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2800" xml:space="preserve"><value>2800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm300" xml:space="preserve"><value>300 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
+  <data name="Enum_StoreOrderCounterpartyType_Camp" xml:space="preserve"><value>Camp</value></data>
+  <data name="Enum_StoreOrderCounterpartyType_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Abgeschlossen</value></data>
+  <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Storniert</value></data>
+  <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>Prüfung ausstehend</value></data>
+  <data name="Enum_TicketTransferStatus_Rejected" xml:space="preserve"><value>Vom Team storniert</value></data>
+  <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Vielleicht</value></data>
+  <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>Nein</value></data>
+  <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Events_AddBarrioEvent" xml:space="preserve"><value>Barrio-Veranstaltung hinzufügen</value></data>
+  <data name="Events_AddToFavourites" xml:space="preserve"><value>Zu Favoriten hinzufügen</value></data>
+  <data name="Events_AllCategories" xml:space="preserve"><value>Alle Kategorien</value></data>
+  <data name="Events_AllTimesIn" xml:space="preserve"><value>Alle Zeiten in {0}. Playa Time kann gelten!</value></data>
+  <data name="Events_AllTimesInShort" xml:space="preserve"><value>Alle Zeiten in {0}</value></data>
+  <data name="Events_AllVenues" xml:space="preserve"><value>Alle Orte</value></data>
+  <data name="Events_BrowseTitle" xml:space="preserve"><value>Veranstaltungen durchsuchen</value></data>
+  <data name="Events_ColActions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Events_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Events_ColDateTime" xml:space="preserve"><value>Datum &amp; Uhrzeit</value></data>
+  <data name="Events_ColEventName" xml:space="preserve"><value>Veranstaltungsname</value></data>
+  <data name="Events_ColPriority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Events_ConflictBadge" xml:space="preserve"><value>Zeitkonflikt mit einer anderen favorisierten Veranstaltung</value></data>
+  <data name="Events_DownloadCsv" xml:space="preserve"><value>Veranstaltungs-CSV herunterladen</value></data>
+  <data name="Events_DurationMin" xml:space="preserve"><value>{0} Min.</value></data>
+  <data name="Events_FavouritesOnly" xml:space="preserve"><value>Nur</value></data>
+  <data name="Events_FilterCategory" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Events_FilterDay" xml:space="preserve"><value>Tag</value></data>
+  <data name="Events_FilterSearch" xml:space="preserve"><value>Suche</value></data>
+  <data name="Events_FilterVenue" xml:space="preserve"><value>Ort</value></data>
+  <data name="Events_MyPersonalEvents" xml:space="preserve"><value>Meine persönlichen Veranstaltungen</value></data>
+  <data name="Events_MySchedule" xml:space="preserve"><value>Mein Programm</value></data>
+  <data name="Events_MySubmissions" xml:space="preserve"><value>Meine Einreichungen</value></data>
+  <data name="Events_MySubmissionsTitle" xml:space="preserve"><value>Meine eingereichten Veranstaltungen</value></data>
+  <data name="Events_NoBarrioEvents" xml:space="preserve"><value>Für dieses Barrio wurden noch keine Veranstaltungen eingereicht.</value></data>
+  <data name="Events_NoEventsFound" xml:space="preserve"><value>Keine Veranstaltungen gefunden. Passe deine Filter an.</value></data>
+  <data name="Events_NoPersonalEvents" xml:space="preserve"><value>Du hast noch keine persönlichen Veranstaltungen eingereicht.</value></data>
+  <data name="Events_RemoveFromFavourites" xml:space="preserve"><value>Aus Favoriten entfernen</value></data>
+  <data name="Events_RemoveFromSchedule" xml:space="preserve"><value>Aus dem Programm entfernen</value></data>
+  <data name="Events_RemoveFromScheduleConfirm" xml:space="preserve"><value>Diese Veranstaltung aus deinem Programm entfernen?</value></data>
+  <data name="Events_ScheduleEmpty" xml:space="preserve"><value>Du hast noch keine Veranstaltungen favorisiert. Durchsuche {0}, um Veranstaltungen zu deinem Programm hinzuzufügen.</value></data>
+  <data name="Events_ScheduleEmptyLink" xml:space="preserve"><value>den Veranstaltungsguide</value></data>
+  <data name="Events_ScheduleTitle" xml:space="preserve"><value>Mein Programm</value></data>
+  <data name="Events_SearchPlaceholder" xml:space="preserve"><value>Titel oder Beschreibung durchsuchen…</value></data>
+  <data name="Events_StatApproved" xml:space="preserve"><value>Genehmigt</value></data>
+  <data name="Events_StatPending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="Events_StatSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
+  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Einreichungsfrist:</value></data>
+  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>Die Einreichungsfrist ist derzeit nicht geöffnet. Wende dich an einen Admin, um die Guide-Einstellungen zu konfigurieren.</value></data>
+  <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Neue Veranstaltung einreichen</value></data>
+  <data name="Events_UploadColErrors" xml:space="preserve"><value>Fehler</value></data>
+  <data name="Events_UploadColEvent" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Events_UploadColRow" xml:space="preserve"><value>Zeile</value></data>
+  <data name="Events_UploadCsv" xml:space="preserve"><value>CSV hochladen</value></data>
+  <data name="Events_UploadFailed" xml:space="preserve"><value>Upload fehlgeschlagen.</value></data>
+  <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Behebe die folgenden Fehler und versuche es erneut. Es wurden keine Veranstaltungen gespeichert.</value></data>
+  <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Diese Veranstaltung zurückziehen?</value></data>
+  <data name="Expenses_ColReport" xml:space="preserve"><value>Abrechnung</value></data>
+  <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
+  <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Eingereicht von</value></data>
+  <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Koordinator-Warteschlange</value></data>
+  <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Spesenabrechnungen — Koordinator-Warteschlange</value></data>
+  <data name="Expenses_Endorse" xml:space="preserve"><value>Befürworten</value></data>
+  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Diese Spesenabrechnung befürworten?</value></data>
+  <data name="Expenses_FileFirst" xml:space="preserve"><value>Reiche deine erste Abrechnung ein</value></data>
+  <data name="Expenses_IouHeader" xml:space="preserve"><value>Was das Kollektiv dir schuldet</value></data>
+  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Letzte Zahlung</value></data>
+  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Dein Holded-Saldo enthält {0}, die nicht zu diesen Abrechnungen gehören (im Namen des Kollektivs ausgelegte Posten, Anpassungen usw.), daher ergeben die Zeilen unten nicht zwangsläufig diese Summe.</value></data>
+  <data name="Expenses_IouOwed" xml:space="preserve"><value>Dir geschuldet (Holded-Saldo)</value></data>
+  <data name="Expenses_IouPaid" xml:space="preserve"><value>Bisher bezahlt</value></data>
+  <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Position</value></data>
+  <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Meine Spesenabrechnungen</value></data>
+  <data name="Expenses_NewReport" xml:space="preserve"><value>Neue Abrechnung</value></data>
+  <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Es gibt derzeit kein aktives Budgetjahr. Spesenabrechnungen können erst eingereicht werden, wenn ein Budgetjahr aktiviert ist.</value></data>
+  <data name="Expenses_NoIban" xml:space="preserve"><value>Du hast deine Zahlungs-IBAN noch nicht hinterlegt. Du wirst beim Einreichen einer Abrechnung aufgefordert, sie anzugeben.</value></data>
+  <data name="Expenses_NoReports" xml:space="preserve"><value>Noch keine Spesenabrechnungen.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Keine Abrechnungen, die auf deine Befürwortung warten.</value></data>
+  <data name="Expenses_Reject" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Der Einreichende sieht diesen Grund. Erkläre klar, warum die Abrechnung nicht befürwortet werden kann.</value></data>
+  <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Abrechnung ablehnen</value></data>
+  <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Ablehnungsgrund</value></data>
+  <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>z. B. Fehlende Belege für Position 2</value></data>
+  <data name="Feedback_AssignedToName" xml:space="preserve"><value>Zugewiesen an {0}</value></data>
+  <data name="Feedback_CategoryOnPage" xml:space="preserve"><value>{0} auf {1}</value></data>
+  <data name="Feedback_TeamName" xml:space="preserve"><value>Team: {0}</value></data>
+  <data name="Issue_ColComments" xml:space="preserve"><value>Kommentare</value></data>
+  <data name="Issue_ColReporter" xml:space="preserve"><value>Melder</value></data>
+  <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Issue_ColTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Issue_ColUpdated" xml:space="preserve"><value>Aktualisiert</value></data>
+  <data name="Issue_CountSummary" xml:space="preserve"><value>{0} offen · {1} gesamt</value></data>
+  <data name="LinkedAccounts_Account" xml:space="preserve"><value>Konto</value></data>
+  <data name="LinkedAccounts_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="LinkedAccounts_ConfirmUnlink" xml:space="preserve"><value>Dieses Konto trennen? Du kannst dich dann nicht mehr damit anmelden.</value></data>
+  <data name="LinkedAccounts_Description" xml:space="preserve"><value>Derzeit mit deinem Konto verknüpfte OAuth-Anbieter. Du kannst dich mit jedem davon anmelden.</value></data>
+  <data name="LinkedAccounts_Empty" xml:space="preserve"><value>Keine verknüpften OAuth-Konten.</value></data>
+  <data name="LinkedAccounts_LastSignInMethod" xml:space="preserve"><value>Einzige Anmeldemethode — kann nicht getrennt werden.</value></data>
+  <data name="LinkedAccounts_LinkedOn" xml:space="preserve"><value>Verknüpft am</value></data>
+  <data name="LinkedAccounts_Provider" xml:space="preserve"><value>Anbieter</value></data>
+  <data name="LinkedAccounts_Title" xml:space="preserve"><value>Verknüpfte Konten</value></data>
+  <data name="LinkedAccounts_UnlinkBlockedLastSignInMethod" xml:space="preserve"><value>Trennen nicht möglich — dies ist deine einzige verbleibende Anmeldemethode.</value></data>
+  <data name="MarkdownHelp_Bold" xml:space="preserve"><value>fett</value></data>
+  <data name="MarkdownHelp_ColYouGet" xml:space="preserve"><value>Du erhältst</value></data>
+  <data name="MarkdownHelp_ColYouType" xml:space="preserve"><value>Du tippst</value></data>
+  <data name="MarkdownHelp_EmbeddedImage" xml:space="preserve"><value>eingebettetes Bild</value></data>
+  <data name="MarkdownHelp_First" xml:space="preserve"><value>erstens</value></data>
+  <data name="MarkdownHelp_Heading1" xml:space="preserve"><value>Überschrift 1</value></data>
+  <data name="MarkdownHelp_Heading2" xml:space="preserve"><value>Überschrift 2</value></data>
+  <data name="MarkdownHelp_InlineCode" xml:space="preserve"><value>Inline-Code</value></data>
+  <data name="MarkdownHelp_Intro" xml:space="preserve"><value>Markdown ist eine einfache Möglichkeit, Text zu formatieren. Gib die Syntax links ein, und sie wird wie rechts gezeigt dargestellt.</value></data>
+  <data name="MarkdownHelp_Italic" xml:space="preserve"><value>kursiv</value></data>
+  <data name="MarkdownHelp_ItemOne" xml:space="preserve"><value>Eintrag eins</value></data>
+  <data name="MarkdownHelp_ItemTwo" xml:space="preserve"><value>Eintrag zwei</value></data>
+  <data name="MarkdownHelp_LinkText" xml:space="preserve"><value>Linktext</value></data>
+  <data name="MarkdownHelp_QuoteText" xml:space="preserve"><value>Zitattext</value></data>
+  <data name="MarkdownHelp_Second" xml:space="preserve"><value>zweitens</value></data>
+  <data name="MarkdownHelp_Strikethrough" xml:space="preserve"><value>durchgestrichen</value></data>
+  <data name="MarkdownHelp_TableAdmin" xml:space="preserve"><value>Admin</value></data>
+  <data name="MarkdownHelp_TableHuman" xml:space="preserve"><value>Human</value></data>
+  <data name="MarkdownHelp_TableName" xml:space="preserve"><value>Name</value></data>
+  <data name="MarkdownHelp_TableRole" xml:space="preserve"><value>Rolle</value></data>
+  <data name="MarkdownHelp_TablesHeading" xml:space="preserve"><value>Tabellen</value></data>
+  <data name="MarkdownHelp_TaskDone" xml:space="preserve"><value>Erledigt</value></data>
+  <data name="MarkdownHelp_TaskListsHeading" xml:space="preserve"><value>Aufgabenlisten</value></data>
+  <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Zu erledigen</value></data>
+  <data name="MarkdownHelp_Title" xml:space="preserve"><value>Markdown-Kurzreferenz</value></data>
+  <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Der Name, den alle im System sehen. Eindeutigkeit hilft, ist aber nicht erforderlich, auch wenn es schwierig sein kann, „Bob“ unter den paar Tausend Humans hier zu finden, falls jemand nach dir sucht.</value></data>
+  <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Der Name, unter dem dich alle kennen werden.</value></data>
+  <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
+  <data name="Onboarding_Continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>nicht</value></data>
+  <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>und würden sie nur offenlegen, wenn das Gesetz oder eine förmliche Prüfung es erfordert.</value></data>
+  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wird intern gespeichert, ist nur für Admins sichtbar und wird nur dort verwendet, wo das spanische Recht es verlangt — zum Beispiel für unseren Prüfnachweis, dass du der Volunteer-Vereinbarung zu einem bestimmten Datum und einer bestimmten Uhrzeit zugestimmt hast. Wir exportieren diese Information ausdrücklich</value></data>
+  <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Bürgerlicher Name</value></data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
+  <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Zwei kurze Schritte, bevor du eine Schicht auswählst.</value></data>
+  <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Willkommen — fangen wir mit deinem Namen an</value></data>
+  <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritisch</value></data>
+  <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Wichtig</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Bei der Veranstaltung sind nur {0}% der „kritischen“ Schichten besetzt. Wenn diese nicht besetzt werden, könnte die Veranstaltung abgesagt werden, da es nicht möglich oder sicher wäre, sie durchzuführen.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Wenn du einige davon übernehmen kannst oder vor der Veranstaltung kommen bzw. zum Abbau bleiben kannst, priorisiere diese bitte bei der Auswahl deiner Schichten.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>WICHTIG:</value></data>
+  <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Es sind außerdem {0} „wichtige“ Schichten offen.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen. Wenn du vor der Veranstaltung kommen oder zum Abbau bleiben kannst, priorisiere diese bitte.</value></data>
+  <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Derzeit keine aktive Veranstaltung. Du kannst das Onboarding abschließen, ohne eine Schicht auszuwählen.</value></data>
+  <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Derzeit keine kritischen Schichten offen — probiere Wichtig oder Alle.</value></data>
+  <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Derzeit keine wichtigen Schichten offen — probiere Alle.</value></data>
+  <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Nicht jetzt</value></data>
+  <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Wähle eine Schicht</value></data>
+  <data name="Outbox_AdminTitle" xml:space="preserve"><value>E-Mails</value></data>
+  <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Zurück zur Administration</value></data>
+  <data name="Outbox_BackToProfile" xml:space="preserve"><value>Zurück zum Profil</value></data>
+  <data name="Outbox_DescriptionAdmin" xml:space="preserve"><value>E-Mails, die das System an diesen Human gesendet hat.</value></data>
+  <data name="Outbox_DescriptionSelf" xml:space="preserve"><value>E-Mails, die das System an dich gesendet hat (innerhalb der letzten 150 Tage).</value></data>
+  <data name="Outbox_Empty" xml:space="preserve"><value>Keine E-Mails vorhanden.</value></data>
+  <data name="Outbox_Subject" xml:space="preserve"><value>Betreff</value></data>
+  <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Datenschutzerklärung von Google</value></data>
+  <data name="Profile_Assigned" xml:space="preserve"><value>Zugewiesen</value></data>
+  <data name="Profile_Campaign" xml:space="preserve"><value>Kampagne</value></data>
+  <data name="Profile_Code" xml:space="preserve"><value>Code</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Dairy" xml:space="preserve"><value>Milchprodukte</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Egg" xml:space="preserve"><value>Ei</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Peanut" xml:space="preserve"><value>Erdnuss</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Sesame" xml:space="preserve"><value>Sesam</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Shellfish" xml:space="preserve"><value>Schalentiere</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soja</value></data>
+  <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Schalenfrucht</value></data>
+  <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Weizen/Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_FODMAP" xml:space="preserve"><value>FODMAP</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamin</value></data>
+  <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Laktose</value></data>
+  <data name="Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
+  <data name="Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
+  <data name="Profile_MyCodes" xml:space="preserve"><value>Meine Codes</value></data>
+  <data name="Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
+  <data name="Profile_NoSentMessages" xml:space="preserve"><value>Keine plattforminternen Nachrichten vorhanden.</value></data>
+  <data name="Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
+  <data name="Profile_OnsiteSince" xml:space="preserve"><value>Vor Ort seit {0}</value></data>
+  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Am Tor eingecheckt</value></data>
+  <data name="Profile_Redeemed" xml:space="preserve"><value>Eingelöst</value></data>
+  <data name="Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten ({0})</value></data>
+  <data name="Profile_ShiftInfo" xml:space="preserve"><value>Schichtinfo</value></data>
+  <data name="ProfileEdit_CityPlaceholder" xml:space="preserve"><value>Beginne, deine Stadt einzutippen…</value></data>
+  <data name="ProfileEdit_ContactType" xml:space="preserve"><value>Typ</value></data>
+  <data name="ProfileEdit_ContactValue" xml:space="preserve"><value>Wert</value></data>
+  <data name="ProfileEdit_ContactValuePlaceholder" xml:space="preserve"><value>Kontaktdaten eingeben</value></data>
+  <data name="ProfileEdit_ContactVisibility" xml:space="preserve"><value>Sichtbarkeit</value></data>
+  <data name="ProfileEdit_CustomLabelPlaceholder" xml:space="preserve"><value>z. B. Discord</value></data>
+  <data name="ProfileEdit_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="ProfileEdit_DescriptionPlaceholder" xml:space="preserve"><value>z. B. Gate Lead</value></data>
+  <data name="ProfileEdit_EventName" xml:space="preserve"><value>Veranstaltungsname</value></data>
+  <data name="ProfileEdit_EventNamePlaceholder" xml:space="preserve"><value>z. B. Burning Man 2024</value></data>
+  <data name="ProfileEdit_LanguageLabel" xml:space="preserve"><value>Sprache</value></data>
+  <data name="ProfileEdit_ProficiencyLabel" xml:space="preserve"><value>Kenntnisstand</value></data>
+  <data name="ProfileEdit_RelationshipPlaceholder" xml:space="preserve"><value>z. B. Partner, Elternteil</value></data>
+  <data name="ProfileEdit_RemoveContactField" xml:space="preserve"><value>Dieses Kontaktfeld entfernen</value></data>
+  <data name="ProfileEdit_RemoveEntry" xml:space="preserve"><value>Diesen Eintrag entfernen</value></data>
+  <data name="ProfileEdit_RemoveLanguage" xml:space="preserve"><value>Diese Sprache entfernen</value></data>
+  <data name="ProfileEdit_SelectLanguage" xml:space="preserve"><value>— Sprache wählen —</value></data>
+  <data name="Roster_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="Roster_ColAssignedTo" xml:space="preserve"><value>Zugewiesen an</value></data>
+  <data name="Roster_ColPeriod" xml:space="preserve"><value>Zeitraum</value></data>
+  <data name="Roster_ColPriority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Roster_ColRole" xml:space="preserve"><value>Rolle</value></data>
+  <data name="Roster_ColSlot" xml:space="preserve"><value>Slot</value></data>
+  <data name="Roster_ColTeam" xml:space="preserve"><value>Team</value></data>
+  <data name="Roster_NoSlots" xml:space="preserve"><value>Keine Rollen-Slots über die Teams hinweg definiert.</value></data>
+  <data name="Roster_PeriodFilter" xml:space="preserve"><value>Zeitraum: {0}</value></data>
+  <data name="Roster_PriorityFilter" xml:space="preserve"><value>Priorität: {0}</value></data>
+  <data name="Roster_SlotOpen" xml:space="preserve"><value>Offen</value></data>
+  <data name="Roster_StatusFilled" xml:space="preserve"><value>Besetzt</value></data>
+  <data name="Roster_StatusFilter" xml:space="preserve"><value>Status: {0}</value></data>
+  <data name="Roster_StatusOpen" xml:space="preserve"><value>Offen</value></data>
+  <data name="Roster_Title" xml:space="preserve"><value>Team-Dienstplan</value></data>
+  <data name="Search_FilterAll" xml:space="preserve"><value>Alle</value></data>
+  <data name="Search_FilterCamps" xml:space="preserve"><value>Camps</value></data>
+  <data name="Search_FilterEvents" xml:space="preserve"><value>Veranstaltungen</value></data>
+  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
+  <data name="Search_FilterShifts" xml:space="preserve"><value>Schichten</value></data>
+  <data name="Search_FilterTeams" xml:space="preserve"><value>Teams</value></data>
+  <data name="Search_GlobalHint" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps und Schichten zu durchsuchen.</value></data>
+  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps, Schichten und Veranstaltungen zu durchsuchen.</value></data>
+  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Keine Ergebnisse für {0}.</value></data>
+  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Humans, Teams, Camps, Schichten durchsuchen…</value></data>
+  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Humans, Teams, Camps, Schichten, Veranstaltungen durchsuchen…</value></data>
+  <data name="Search_GlobalTitle" xml:space="preserve"><value>Suche</value></data>
+  <data name="Store_AdminCatalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="Store_AdminPayments" xml:space="preserve"><value>Zahlungen</value></data>
+  <data name="Store_AdminSummary" xml:space="preserve"><value>Übersicht</value></data>
+  <data name="Store_CatalogHeading" xml:space="preserve"><value>Katalog ({0})</value></data>
+  <data name="Store_ColBalance" xml:space="preserve"><value>Saldo</value></data>
+  <data name="Store_ColDeposit" xml:space="preserve"><value>Anzahlung</value></data>
+  <data name="Store_ColDeposits" xml:space="preserve"><value>Anzahlungen</value></data>
+  <data name="Store_ColDescription" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Store_ColLines" xml:space="preserve"><value>Positionen</value></data>
+  <data name="Store_ColLinesVat" xml:space="preserve"><value>Positionen + MwSt.</value></data>
+  <data name="Store_ColName" xml:space="preserve"><value>Name</value></data>
+  <data name="Store_ColOrderBy" xml:space="preserve"><value>Bestellen bis</value></data>
+  <data name="Store_ColState" xml:space="preserve"><value>Status</value></data>
+  <data name="Store_ColUnitPrice" xml:space="preserve"><value>Einzelpreis (inkl. MwSt.)</value></data>
+  <data name="Store_CreateOrder" xml:space="preserve"><value>Bestellung erstellen</value></data>
+  <data name="Store_DeleteOrderConfirm" xml:space="preserve"><value>Diese Bestellung mit Saldo null löschen? Dies kann nicht rückgängig gemacht werden.</value></data>
+  <data name="Store_DeleteOrderTitle" xml:space="preserve"><value>Löschen (Saldo null)</value></data>
+  <data name="Store_NoCounterpartiesAlert" xml:space="preserve"><value>Du leitest keine Camps und koordinierst keine Abteilungen mit einer aktiven Saison in diesem Jahr. Der Katalog unten ist schreibgeschützt.</value></data>
+  <data name="Store_NoOrders" xml:space="preserve"><value>Noch keine Bestellungen.</value></data>
+  <data name="Store_NoProducts" xml:space="preserve"><value>Für {0} sind keine Produkte aktiv.</value></data>
+  <data name="Store_OpenOrder" xml:space="preserve"><value>Öffnen</value></data>
+  <data name="Store_StartOrder" xml:space="preserve"><value>Bestellung starten</value></data>
+  <data name="Store_Title" xml:space="preserve"><value>Store</value></data>
+  <data name="Teams_Departments" xml:space="preserve"><value>Abteilungen</value></data>
+  <data name="Teams_HiddenTeams" xml:space="preserve"><value>Versteckte Teams</value></data>
+  <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(nur für Admins sichtbar)</value></data>
+  <data name="Teams_Summary" xml:space="preserve"><value>Übersicht</value></data>
+  <data name="Teams_SyncStatus" xml:space="preserve"><value>Sync-Status</value></data>
+  <data name="Teams_SystemTeams" xml:space="preserve"><value>System-Teams</value></data>
+  <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Übertragung bereits ausstehend</value></data>
+  <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Anfrage stornieren</value></data>
+  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Bereits eingecheckt — kann nicht übertragen werden</value></data>
+  <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Damit wird die Übertragung von Ticket {0} ({1}) an {2} angefragt.</value></data>
+  <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>Unser Ticketing-Team bearbeitet dies und gibt dir in Kürze Bescheid.</value></data>
+  <data name="TicketTransfer_Continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="TicketTransfer_NoneTransferable" xml:space="preserve"><value>Keines deiner Tickets kann derzeit übertragen werden.</value></data>
+  <data name="TicketTransfer_NoRequests" xml:space="preserve"><value>Du hast keine Übertragungen angefragt.</value></data>
+  <data name="TicketTransfer_NoTickets" xml:space="preserve"><value>Du hast keine Tickets zum Übertragen.</value></data>
+  <data name="TicketTransfer_NotTransferable" xml:space="preserve"><value>Nicht übertragbar</value></data>
+  <data name="TicketTransfer_ReasonLabel" xml:space="preserve"><value>Grund für die Übertragung (optional, für das Ticket-Team sichtbar)</value></data>
+  <data name="TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Nach Namen suchen oder genaue E-Mail-Adresse einfügen…</value></data>
+  <data name="TicketTransfer_Requested" xml:space="preserve"><value>Angefragt</value></data>
+  <data name="TicketTransfer_RequestTransfer" xml:space="preserve"><value>Übertragung anfragen</value></data>
+  <data name="TicketTransfer_StatusApproved" xml:space="preserve"><value>Abgeschlossen</value></data>
+  <data name="TicketTransfer_StatusCancelled" xml:space="preserve"><value>Storniert</value></data>
+  <data name="TicketTransfer_StatusRejected" xml:space="preserve"><value>Vom Team storniert</value></data>
+  <data name="TicketTransfer_Step1" xml:space="preserve"><value>1. Wähle das zu übertragende Ticket</value></data>
+  <data name="TicketTransfer_Step2" xml:space="preserve"><value>2. An wen sendest du es?</value></data>
+  <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Bestätigen</value></data>
+  <data name="TicketTransfer_Title" xml:space="preserve"><value>Ticket übertragen</value></data>
+  <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Deine Übertragungsanfragen</value></data>
 </root>
