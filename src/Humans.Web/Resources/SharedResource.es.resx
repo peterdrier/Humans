@@ -2949,6 +2949,12 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Escanea una entrada para ver sus detalles.</value>
   </data>
+  <data name="Scanner_Tickets_ManualEntry_Placeholder" xml:space="preserve">
+    <value>Escribe o pega un código de barras</value>
+  </data>
+  <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
   <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
     <value>Escanea el código de barras de una entrada para ver el titular, el estado y el historial de transferencias.</value>
   </data>

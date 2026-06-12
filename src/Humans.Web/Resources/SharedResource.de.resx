@@ -2925,6 +2925,12 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Scanne ein Ticket, um seine Details zu sehen.</value>
   </data>
+  <data name="Scanner_Tickets_ManualEntry_Placeholder" xml:space="preserve">
+    <value>Barcode eingeben oder einfügen</value>
+  </data>
+  <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
   <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
     <value>Scanne den Barcode eines Tickets, um Inhaber, Status und Übertragungsverlauf zu sehen.</value>
   </data>

@@ -1259,6 +1259,8 @@
   <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>Your browser doesn't have a built-in barcode decoder and the fallback library failed to load. Try a recent mobile Chrome or Safari.</value></data>
   <data name="Scanner_Tickets_Title" xml:space="preserve"><value>Ticket lookup</value></data>
   <data name="Scanner_Tickets_Intro" xml:space="preserve"><value>Scan a ticket to see its details.</value></data>
+  <data name="Scanner_Tickets_ManualEntry_Placeholder" xml:space="preserve"><value>Type or paste a barcode</value></data>
+  <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve"><value>Look up</value></data>
   <data name="Scanner_Tickets_CardBlurb" xml:space="preserve"><value>Scan a ticket barcode to view the ticket holder, status, and transfer history.</value></data>
   <data name="Scanner_Tickets_Open" xml:space="preserve"><value>Open ticket lookup</value></data>
   <data name="Scanner_Tickets_NotFound" xml:space="preserve"><value>No ticket found for this code:</value></data>

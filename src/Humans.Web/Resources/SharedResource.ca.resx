@@ -2925,6 +2925,12 @@
   <data name="Scanner_Tickets_Intro" xml:space="preserve">
     <value>Escaneja una entrada per veure'n els detalls.</value>
   </data>
+  <data name="Scanner_Tickets_ManualEntry_Placeholder" xml:space="preserve">
+    <value>Escriu o enganxa un codi de barres</value>
+  </data>
+  <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
+    <value>Cerca</value>
+  </data>
   <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
     <value>Escaneja el codi de barres d'una entrada per veure el titular, l'estat i l'historial de transferències.</value>
   </data>

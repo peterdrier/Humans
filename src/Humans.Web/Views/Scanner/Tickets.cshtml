@@ -14,7 +14,7 @@
 <p class="text-muted">@Localizer["Scanner_Tickets_Intro"]</p>
 
 <div class="row g-3">
-    <div class="col-lg-7">
+    <div class="col-lg-5">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex gap-2 mb-3">
@@ -42,7 +42,23 @@
         </div>
     </div>
 
-    <div class="col-lg-5">
+    <div class="col-lg-7">
+        <form id="scanner-manual" class="mb-3">
+            <div class="input-group">
+                <input type="text"
+                       id="scanner-manual-input"
+                       class="form-control"
+                       autocomplete="off"
+                       autocapitalize="off"
+                       spellcheck="false"
+                       placeholder="@Localizer["Scanner_Tickets_ManualEntry_Placeholder"]"
+                       aria-label="@Localizer["Scanner_Tickets_ManualEntry_Placeholder"]">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fa-solid fa-magnifying-glass me-1" aria-hidden="true"></i>
+                    @Localizer["Scanner_Tickets_ManualEntry_Lookup"]
+                </button>
+            </div>
+        </form>
         <div id="scanner-card"></div>
     </div>
 </div>
@@ -58,6 +74,8 @@
             status: document.getElementById('scanner-status'),
             error: document.getElementById('scanner-error'),
             card: document.getElementById('scanner-card'),
+            manualForm: document.getElementById('scanner-manual'),
+            manualInput: document.getElementById('scanner-manual-input'),
             cardUrl: '@Url.Action("Card", "Scanner")',
             labels: {
                 starting: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Starting"].Value)),
