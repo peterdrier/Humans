@@ -6050,7 +6050,7 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis in der Dokumentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissiv, funktional gleichwertig zu BSD-2-Clause; Copyright-Hinweis erforderlich.</value></data>
-  <data name="About_License_LGPL30" xml:space="preserve"><value>die Bibliothek muss für die Endnutzer austauschbar sein. Wird als unveränderte NuGet-Pakete (dynamisch eingebunden) genutzt, was die LGPL-Verpflichtungen erfüllt.</value></data>
+  <data name="About_License_LGPL30" xml:space="preserve"><value>die Bibliothek muss für die Endnutzer austauschbar sein. Werden als unveränderte NuGet-Pakete (dynamisch eingebunden) genutzt, was die LGPL-Verpflichtungen erfüllt.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissiv, MIT-ähnlich; Copyright-Hinweis erforderlich.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>frei nutzbar und weiterverbreitbar; Schriften dürfen nicht eigenständig verkauft werden.</value></data>
@@ -6105,12 +6105,12 @@
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
   <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Ganztägig</value></data>
   <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle Teams (Monatsansicht)</value></data>
-  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten angezeigt in {0}.</value></data>
+  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten werden in {0} angezeigt.</value></data>
   <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Zurück zum Kalender</value></data>
   <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Nur diesen Termin absagen?</value></data>
   <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Diesen absagen</value></data>
   <data name="Calendar_ChangeHistory" xml:space="preserve"><value>Änderungsverlauf</value></data>
-  <data name="Calendar_Continues" xml:space="preserve"><value>fortlaufend</value></data>
+  <data name="Calendar_Continues" xml:space="preserve"><value>Fortsetzung</value></data>
   <data name="Calendar_Created" xml:space="preserve"><value>Erstellt {0}</value></data>
   <data name="Calendar_CreateEvent" xml:space="preserve"><value>Veranstaltung erstellen</value></data>
   <data name="Calendar_DeleteConfirm" xml:space="preserve"><value>Diese Veranstaltung und alle ihre Termine löschen?</value></data>
@@ -6264,7 +6264,7 @@
 &lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
   <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Erinnerung: {0}</value></data>
-  <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — heilt sich beim nächsten OAuth-Login von selbst.</value></data>
+  <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — korrigiert sich beim nächsten OAuth-Login von selbst.</value></data>
   <data name="EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
   <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Nur nachts</value></data>
   <data name="Enum_AdultPlayspacePolicy_No" xml:space="preserve"><value>Nein</value></data>
@@ -6401,8 +6401,8 @@
   <data name="Events_StatApproved" xml:space="preserve"><value>Genehmigt</value></data>
   <data name="Events_StatPending" xml:space="preserve"><value>Ausstehend</value></data>
   <data name="Events_StatSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
-  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Einreichungsfrist:</value></data>
-  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>Die Einreichungsfrist ist derzeit nicht geöffnet. Wende dich an einen Admin, um die Guide-Einstellungen zu konfigurieren.</value></data>
+  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Einreichungszeitraum:</value></data>
+  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>Der Einreichungszeitraum ist derzeit nicht geöffnet. Wende dich an einen Admin, um die Guide-Einstellungen zu konfigurieren.</value></data>
   <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Neue Veranstaltung einreichen</value></data>
   <data name="Events_UploadColErrors" xml:space="preserve"><value>Fehler</value></data>
   <data name="Events_UploadColEvent" xml:space="preserve"><value>Veranstaltung</value></data>
@@ -6586,8 +6586,8 @@
   <data name="Store_AdminSummary" xml:space="preserve"><value>Übersicht</value></data>
   <data name="Store_CatalogHeading" xml:space="preserve"><value>Katalog ({0})</value></data>
   <data name="Store_ColBalance" xml:space="preserve"><value>Saldo</value></data>
-  <data name="Store_ColDeposit" xml:space="preserve"><value>Anzahlung</value></data>
-  <data name="Store_ColDeposits" xml:space="preserve"><value>Anzahlungen</value></data>
+  <data name="Store_ColDeposit" xml:space="preserve"><value>Kaution</value></data>
+  <data name="Store_ColDeposits" xml:space="preserve"><value>Kautionen</value></data>
   <data name="Store_ColDescription" xml:space="preserve"><value>Beschreibung</value></data>
   <data name="Store_ColLines" xml:space="preserve"><value>Positionen</value></data>
   <data name="Store_ColLinesVat" xml:space="preserve"><value>Positionen + MwSt.</value></data>

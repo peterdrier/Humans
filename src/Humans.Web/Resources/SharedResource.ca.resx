@@ -6159,7 +6159,7 @@
   <data name="Calendar_ViewList" xml:space="preserve"><value>Llista</value></data>
   <data name="Calendar_Yes" xml:space="preserve"><value>Sí</value></data>
   <data name="Camp_AboutHeading" xml:space="preserve"><value>Sobre el teu {0}</value></data>
-  <data name="Camp_AcceptingMembersLabel" xml:space="preserve"><value>Accepteu nous humans?</value></data>
+  <data name="Camp_AcceptingMembersLabel" xml:space="preserve"><value>Acceptes nous humans?</value></data>
   <data name="Camp_AdultPlayspaceLabel" xml:space="preserve"><value>Espai de joc per a adults</value></data>
   <data name="Camp_BlurbLongLabel" xml:space="preserve"><value>Descripció completa</value></data>
   <data name="Camp_BlurbLongPlaceholder" xml:space="preserve"><value>Explica al món com és el teu barri.</value></data>
@@ -6192,7 +6192,7 @@
   <data name="Camp_HistoryHeading" xml:space="preserve"><value>Història</value></data>
   <data name="Camp_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accepta membres</value></data>
   <data name="Camp_Index_AllOption" xml:space="preserve"><value>Tots</value></data>
-  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Guia de barris 2026</value></data>
+  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Guia de Barrio 2026</value></data>
   <data name="Camp_Index_FilterButton" xml:space="preserve"><value>Filtra</value></data>
   <data name="Camp_Index_KidsWelcomeFilter" xml:space="preserve"><value>Nens benvinguts</value></data>
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No s'ha trobat cap {0} per als filtres seleccionats.</value></data>
@@ -6592,7 +6592,7 @@
   <data name="Store_ColLines" xml:space="preserve"><value>Línies</value></data>
   <data name="Store_ColLinesVat" xml:space="preserve"><value>Línies + IVA</value></data>
   <data name="Store_ColName" xml:space="preserve"><value>Nom</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Demana per</value></data>
+  <data name="Store_ColOrderBy" xml:space="preserve"><value>Demana abans del</value></data>
   <data name="Store_ColState" xml:space="preserve"><value>Estat</value></data>
   <data name="Store_ColUnitPrice" xml:space="preserve"><value>Preu unitari (IVA inclòs)</value></data>
   <data name="Store_CreateOrder" xml:space="preserve"><value>Crea una comanda</value></data>

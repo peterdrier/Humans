@@ -6325,7 +6325,7 @@
   <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Todos los humans activos</value></data>
   <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Solo la Junta</value></data>
   <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Coordinadores + Junta</value></data>
-  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Mis equipos (+ coordinadores y junta)</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Mis equipos (+ coordinadores y Junta)</value></data>
   <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
   <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Suministro propio</value></data>
   <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Roja</value></data>
@@ -6629,7 +6629,7 @@
   <data name="Store_ColLines" xml:space="preserve"><value>Líneas</value></data>
   <data name="Store_ColLinesVat" xml:space="preserve"><value>Líneas + IVA</value></data>
   <data name="Store_ColName" xml:space="preserve"><value>Nombre</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Pedir por</value></data>
+  <data name="Store_ColOrderBy" xml:space="preserve"><value>Pedir antes del</value></data>
   <data name="Store_ColState" xml:space="preserve"><value>Estado</value></data>
   <data name="Store_ColUnitPrice" xml:space="preserve"><value>Precio unitario (IVA incl.)</value></data>
   <data name="Store_CreateOrder" xml:space="preserve"><value>Crear pedido</value></data>
@@ -6649,7 +6649,7 @@
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Equipos del sistema</value></data>
   <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferencia ya pendiente</value></data>
   <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancelar solicitud</value></data>
-  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Ya ha hecho el check-in — no se puede transferir</value></data>
+  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Ya has hecho el check-in — no se puede transferir</value></data>
   <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Esto solicitará transferir la entrada {0} ({1}) a {2}.</value></data>
   <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>Nuestro equipo de entradas lo procesará y te avisará en breve.</value></data>
   <data name="TicketTransfer_Continue" xml:space="preserve"><value>Continuar</value></data>

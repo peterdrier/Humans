@@ -6076,9 +6076,9 @@
   <data name="About_Staff_Intro" xml:space="preserve"><value>Ogni collettivo ha bisogno dei suoi custodi. Questi sono gli humans che dedicano il loro tempo e la loro energia per far funzionare Nobodies — dalla governance al supporto tecnico, dalla trust and safety all'alchimia dei biglietti.</value></data>
   <data name="About_Staff_Title" xml:space="preserve"><value>Gli humans dietro le quinte</value></data>
   <data name="About_Title" xml:space="preserve"><value>Informazioni su Humans</value></data>
-  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Il Suo accesso è sospeso finché non completa i consensi legali richiesti.</value></data>
+  <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Il Suo accesso è sospeso finché non avrà completato i consensi legali richiesti.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Il Suo account è stato sospeso da un amministratore</value></data>
-  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Esamina i consensi richiesti</value></data>
+  <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Esamini i consensi richiesti</value></data>
   <data name="Budget_ColAmount" xml:space="preserve"><value>Importo (€)</value></data>
   <data name="Budget_ColCategory" xml:space="preserve"><value>Categoria</value></data>
   <data name="Budget_ColShare" xml:space="preserve"><value>Quota</value></data>
@@ -6192,7 +6192,7 @@
   <data name="Camp_HistoryHeading" xml:space="preserve"><value>Storia</value></data>
   <data name="Camp_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accetta membri</value></data>
   <data name="Camp_Index_AllOption" xml:space="preserve"><value>Tutti</value></data>
-  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Guida ai Barrios 2026</value></data>
+  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Guida ai Barrio 2026</value></data>
   <data name="Camp_Index_FilterButton" xml:space="preserve"><value>Filtra</value></data>
   <data name="Camp_Index_KidsWelcomeFilter" xml:space="preserve"><value>Bambini benvenuti</value></data>
   <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>Nessun {0} trovato per i filtri selezionati.</value></data>
@@ -6220,7 +6220,7 @@
   <data name="Camp_PreviousNamesHelp" xml:space="preserve"><value>Se il tuo camp ha avuto nomi diversi negli anni passati, elencali qui.</value></data>
   <data name="Camp_PreviousNamesLabel" xml:space="preserve"><value>Nomi precedenti</value></data>
   <data name="Camp_PreviousNamesPlaceholder" xml:space="preserve"><value>Elenco separato da virgole dei nomi precedenti del camp</value></data>
-  <data name="Camp_Register_Breadcrumb" xml:space="preserve"><value>Registra</value></data>
+  <data name="Camp_Register_Breadcrumb" xml:space="preserve"><value>Registrazione</value></data>
   <data name="Camp_Register_Heading" xml:space="preserve"><value>Registra il tuo {0}</value></data>
   <data name="Camp_Register_ImportantInfo" xml:space="preserve"><value>Informazioni importanti</value></data>
   <data name="Camp_Register_Season" xml:space="preserve"><value>stagione</value></data>
@@ -6288,7 +6288,7 @@
   <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Tutti gli humans attivi</value></data>
   <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Solo Consiglio</value></data>
   <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Coordinatori + Consiglio</value></data>
-  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>I miei team (+ coordinatori e consiglio)</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>I miei team (+ coordinatori e Consiglio)</value></data>
   <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
   <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Fornitura propria</value></data>
   <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Rosso</value></data>
@@ -6304,7 +6304,7 @@
   <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Modifiche richieste</value></data>
   <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Ritirato</value></data>
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Approvata</value></data>
-  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Approvata dal coordinatore</value></data>
+  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avallata dal coordinatore</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Bozza</value></data>
   <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Pagata</value></data>
   <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA inviato</value></data>
@@ -6416,8 +6416,8 @@
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentata da</value></data>
   <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Coda del coordinatore</value></data>
   <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Note spese — Coda del coordinatore</value></data>
-  <data name="Expenses_Endorse" xml:space="preserve"><value>Approva</value></data>
-  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Approvare questa nota spese?</value></data>
+  <data name="Expenses_Endorse" xml:space="preserve"><value>Avalla</value></data>
+  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Avallare questa nota spese?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta la tua prima nota</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
   <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Ultimo pagamento</value></data>
@@ -6430,9 +6430,9 @@
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Al momento non c'è alcun anno di budget attivo. Le note spese non possono essere presentate finché un anno di budget non viene attivato.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Non hai ancora impostato il tuo IBAN per i pagamenti. Ti verrà chiesto di impostarlo quando presenti una nota.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Ancora nessuna nota spese.</value></data>
-  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Nessuna nota in attesa della tua approvazione.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Nessuna nota in attesa del tuo avallo.</value></data>
   <data name="Expenses_Reject" xml:space="preserve"><value>Rifiuta</value></data>
-  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Chi ha presentato la nota vedrà questo motivo. Spiega chiaramente perché la nota non può essere approvata.</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Chi ha presentato la nota vedrà questo motivo. Spiega chiaramente perché la nota non può essere avallata.</value></data>
   <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Rifiuta nota</value></data>
   <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Motivo del rifiuto</value></data>
   <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>es. Ricevute mancanti per la riga 2</value></data>
@@ -6486,7 +6486,7 @@
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continua</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>non</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>esportiamo queste informazioni, e le divulgheremmo solo se richiesto dalla legge o da un audit formale.</value></data>
-  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservato internamente, visibile solo agli Admin e usato solo dove lo richiede la legge spagnola — per esempio, il nostro registro di audit attestante che hai accettato l'Accordo del Volontario in una data e ora specifiche. Esplicitamente</value></data>
+  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservato internamente, visibile solo agli Admin e usato solo dove lo richiede la legge spagnola — per esempio, il nostro registro di audit attestante che hai accettato l'Accordo di volontariato in una data e ora specifiche. Esplicitamente</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Nome legale</value></data>
   <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Aggiungi prima il tuo nome — ci serve prima che tu possa iscriverti ai turni.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Due brevi passaggi prima di scegliere un turno.</value></data>
@@ -6533,7 +6533,7 @@
   <data name="Profile_NoSentMessages" xml:space="preserve"><value>Nessun messaggio sulla piattaforma registrato.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>Cronologia assenze ({0})</value></data>
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Sul posto da {0}</value></data>
-  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Registrato all'ingresso</value></data>
+  <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Check-in effettuato al gate</value></data>
   <data name="Profile_Redeemed" xml:space="preserve"><value>Riscattato</value></data>
   <data name="Profile_SentMessages" xml:space="preserve"><value>Messaggi inviati ({0})</value></data>
   <data name="Profile_ShiftInfo" xml:space="preserve"><value>Info turno</value></data>
@@ -6592,7 +6592,7 @@
   <data name="Store_ColLines" xml:space="preserve"><value>Righe</value></data>
   <data name="Store_ColLinesVat" xml:space="preserve"><value>Righe + IVA</value></data>
   <data name="Store_ColName" xml:space="preserve"><value>Nome</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Ordina per</value></data>
+  <data name="Store_ColOrderBy" xml:space="preserve"><value>Ordina entro il</value></data>
   <data name="Store_ColState" xml:space="preserve"><value>Stato</value></data>
   <data name="Store_ColUnitPrice" xml:space="preserve"><value>Prezzo unitario (IVA incl.)</value></data>
   <data name="Store_CreateOrder" xml:space="preserve"><value>Crea ordine</value></data>
@@ -6612,7 +6612,7 @@
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Team di sistema</value></data>
   <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Trasferimento già in sospeso</value></data>
   <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Annulla richiesta</value></data>
-  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Già registrato — non può essere trasferito</value></data>
+  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Check-in già effettuato — non può essere trasferito</value></data>
   <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Questo richiederà il trasferimento del biglietto {0} ({1}) a {2}.</value></data>
   <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
   <data name="TicketTransfer_Continue" xml:space="preserve"><value>Continua</value></data>

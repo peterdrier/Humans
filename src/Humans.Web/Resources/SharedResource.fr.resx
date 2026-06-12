@@ -6050,7 +6050,7 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>exige une mention de copyright dans la documentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>exige une mention de copyright ; cette page satisfait cette obligation.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissive, fonctionnellement équivalente à BSD-2-Clause ; mention de copyright requise.</value></data>
-  <data name="About_License_LGPL30" xml:space="preserve"><value>la bibliothèque doit pouvoir être remplacée par l'utilisateur final. Consommées en tant que paquets NuGet non modifiés (liaison dynamique), ce qui satisfait les obligations de la LGPL.</value></data>
+  <data name="About_License_LGPL30" xml:space="preserve"><value>la bibliothèque doit pouvoir être remplacée par l'utilisateur final. Consommée en tant que paquets NuGet non modifiés (liaison dynamique), ce qui satisfait les obligations de la LGPL.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>exige une mention de copyright ; cette page satisfait cette obligation.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissive, semblable à MIT ; mention de copyright requise.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>libres d'utilisation et de redistribution ; les polices ne peuvent pas être vendues séparément.</value></data>
@@ -6288,9 +6288,9 @@
   <data name="Enum_ContactFieldVisibility_AllActiveProfiles" xml:space="preserve"><value>Tous les humans actifs</value></data>
   <data name="Enum_ContactFieldVisibility_BoardOnly" xml:space="preserve"><value>Conseil uniquement</value></data>
   <data name="Enum_ContactFieldVisibility_CoordinatorsAndBoard" xml:space="preserve"><value>Coordinateurs + Conseil</value></data>
-  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Mes équipes (+ coordinateurs &amp; conseil)</value></data>
+  <data name="Enum_ContactFieldVisibility_MyTeams" xml:space="preserve"><value>Mes équipes (+ coordinateurs &amp; Conseil)</value></data>
   <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
-  <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Alimentation propre</value></data>
+  <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Alimentation autonome</value></data>
   <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Rouge</value></data>
   <data name="Enum_ElectricalGrid_Unknown" xml:space="preserve"><value>Inconnu</value></data>
   <data name="Enum_ElectricalGrid_Yellow" xml:space="preserve"><value>Jaune</value></data>
@@ -6530,7 +6530,7 @@
   <data name="Profile_MarkedBy" xml:space="preserve"><value>Marqué par</value></data>
   <data name="Profile_MyCodes" xml:space="preserve"><value>Mes codes</value></data>
   <data name="Profile_MyEmails" xml:space="preserve"><value>Mes e-mails</value></data>
-  <data name="Profile_NoSentMessages" xml:space="preserve"><value>Aucun message dans la plateforme enregistré.</value></data>
+  <data name="Profile_NoSentMessages" xml:space="preserve"><value>Aucun message enregistré sur la plateforme.</value></data>
   <data name="Profile_NoShowHistory" xml:space="preserve"><value>Historique des absences ({0})</value></data>
   <data name="Profile_OnsiteSince" xml:space="preserve"><value>Sur place depuis {0}</value></data>
   <data name="Profile_OnsiteTitle" xml:space="preserve"><value>Enregistré à l'entrée</value></data>
@@ -6580,14 +6580,14 @@
   <data name="Search_GlobalNoResults" xml:space="preserve"><value>Aucun résultat pour {0}.</value></data>
   <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts…</value></data>
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts, événements…</value></data>
-  <data name="Search_GlobalTitle" xml:space="preserve"><value>Rechercher</value></data>
+  <data name="Search_GlobalTitle" xml:space="preserve"><value>Recherche</value></data>
   <data name="Store_AdminCatalog" xml:space="preserve"><value>Catalogue</value></data>
   <data name="Store_AdminPayments" xml:space="preserve"><value>Paiements</value></data>
   <data name="Store_AdminSummary" xml:space="preserve"><value>Résumé</value></data>
   <data name="Store_CatalogHeading" xml:space="preserve"><value>Catalogue ({0})</value></data>
   <data name="Store_ColBalance" xml:space="preserve"><value>Solde</value></data>
-  <data name="Store_ColDeposit" xml:space="preserve"><value>Acompte</value></data>
-  <data name="Store_ColDeposits" xml:space="preserve"><value>Acomptes</value></data>
+  <data name="Store_ColDeposit" xml:space="preserve"><value>Caution</value></data>
+  <data name="Store_ColDeposits" xml:space="preserve"><value>Cautions</value></data>
   <data name="Store_ColDescription" xml:space="preserve"><value>Description</value></data>
   <data name="Store_ColLines" xml:space="preserve"><value>Lignes</value></data>
   <data name="Store_ColLinesVat" xml:space="preserve"><value>Lignes + TVA</value></data>
