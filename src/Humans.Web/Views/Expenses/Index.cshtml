@@ -3,16 +3,16 @@
 @using Humans.Web.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "My Expense Reports";
+    ViewData["Title"] = Localizer["Expenses_MyReportsTitle"].Value;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">My Expense Reports</h1>
+    <h1 class="mb-0">@Localizer["Expenses_MyReportsTitle"]</h1>
     <div class="d-flex gap-2">
         @if (Model.IsCoordinator)
         {
             <a asp-action="Coordinator" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-list-check me-1"></i>Coordinator queue
+                <i class="fa-solid fa-list-check me-1"></i>@Localizer["Expenses_CoordinatorQueue"]
                 @if (Model.CoordinatorQueueCount > 0)
                 {
                     <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>
@@ -22,7 +22,7 @@
         @if (Model.HasActiveYear)
         {
             <a asp-action="New" class="btn btn-primary">
-                <i class="fa-solid fa-plus me-1"></i>New Report
+                <i class="fa-solid fa-plus me-1"></i>@Localizer["Expenses_NewReport"]
             </a>
         }
     </div>
@@ -32,19 +32,19 @@
 @if (Model.Iou is { } iou)
 {
     <div class="card mb-4 border-info">
-        <div class="card-header bg-info-subtle"><strong><i class="fa-solid fa-building-columns me-1"></i>What the collective owes you</strong></div>
+        <div class="card-header bg-info-subtle"><strong><i class="fa-solid fa-building-columns me-1"></i>@Localizer["Expenses_IouHeader"]</strong></div>
         <div class="card-body">
             <div class="row text-center">
                 <div class="col-md-4">
-                    <div class="text-muted small">Owed to you (Holded balance)</div>
+                    <div class="text-muted small">@Localizer["Expenses_IouOwed"]</div>
                     <div class="fs-4 fw-semibold">@iou.OwedToMember.ToEuro()</div>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-muted small">Paid to date</div>
+                    <div class="text-muted small">@Localizer["Expenses_IouPaid"]</div>
                     <div class="fs-4">@iou.TotalPaid.ToEuro()</div>
                 </div>
                 <div class="col-md-4">
-                    <div class="text-muted small">Last payment</div>
+                    <div class="text-muted small">@Localizer["Expenses_IouLastPayment"]</div>
                     <div class="fs-4">@(iou.LastPaymentDate is { } d ? d.ToInvariantDate() : "—")</div>
                 </div>
             </div>
@@ -52,8 +52,7 @@
             {
                 <p class="text-muted small mb-0 mt-3">
                     <i class="fa-solid fa-circle-info me-1"></i>
-                    Your Holded balance includes @iou.OtherAmount.ToEuro() unrelated to these reports
-                    (items fronted on the collective's behalf, adjustments, etc.), so the rows below won't necessarily sum to it.
+                    @Localizer["Expenses_IouOtherAmountNote", iou.OtherAmount.ToEuro()]
                 </p>
             }
         </div>
@@ -67,7 +66,7 @@
                 @item.Label
                 @if (item.Status is { } st)
                 {
-                    <span class="badge bg-secondary ms-1">@st</span>
+                    <span class="badge bg-secondary ms-1">@Localizer.EnumDisplay(st)</span>
                 }
             </text>;
             Func<ExpenseLedgerRow, IHtmlContent> ledgerAmountCell =
@@ -75,13 +74,13 @@
             Func<ExpenseLedgerRow, IHtmlContent> ledgerActionCell = @<text>
                 @if (item.ReportId is { } rid)
                 {
-                    <a asp-action="Detail" asp-route-id="@rid" class="btn btn-sm btn-outline-secondary">View</a>
+                    <a asp-action="Detail" asp-route-id="@rid" class="btn btn-sm btn-outline-secondary">@Localizer["Common_View"]</a>
                 }
             </text>;
             var ledgerTable = TableModel.For(Model.Ledger)
-                .Column("Date", r => r.Date.ToInvariantDate())
-                .Template("Item", ledgerItemCell)
-                .Template("Amount", ledgerAmountCell, c => c.NoSort().End())
+                .Column(Localizer["Common_Date"].Value, r => r.Date.ToInvariantDate())
+                .Template(Localizer["Expenses_LedgerColItem"].Value, ledgerItemCell)
+                .Template(Localizer["Common_Amount"].Value, ledgerAmountCell, c => c.NoSort().End())
                 .Template("", ledgerActionCell, c => c.NoSort().End())
                 .RowCss(r => r.IsPayment ? "table-success" : null)
                 .Build();
@@ -93,14 +92,14 @@
 @if (!Model.HasActiveYear)
 {
     <div class="alert alert-info">
-        There is no active budget year at the moment. Expense reports cannot be filed until a budget year is activated.
+        @Localizer["Expenses_NoActiveYear"]
     </div>
 }
 else if (!Model.HasIban)
 {
     <div class="alert alert-warning">
         <i class="fa-solid fa-circle-exclamation me-1"></i>
-        You have not yet set your payment IBAN. You will be prompted to set it when you submit a report.
+        @Localizer["Expenses_NoIban"]
     </div>
 }
 
@@ -109,10 +108,10 @@ else if (!Model.HasIban)
     <div class="card">
         <div class="card-body text-center text-muted py-5">
             <i class="fa-solid fa-receipt fa-2x mb-3 d-block"></i>
-            <p class="mb-0">No expense reports yet.</p>
+            <p class="mb-0">@Localizer["Expenses_NoReports"]</p>
             @if (Model.HasActiveYear)
             {
-                <a asp-action="New" class="btn btn-outline-primary mt-3">File your first report</a>
+                <a asp-action="New" class="btn btn-outline-primary mt-3">@Localizer["Expenses_FileFirst"]</a>
             }
         </div>
     </div>
@@ -120,13 +119,13 @@ else if (!Model.HasIban)
 else
 {
     Func<ExpenseReportDto, IHtmlContent> reportActionCell =
-        @<text><a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">View</a></text>;
+        @<text><a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">@Localizer["Common_View"]</a></text>;
     var reportRows = Model.Reports.OrderByDescending(x => x.CreatedAt).ToList();
     var reportsTable = TableModel.For(reportRows)
-        .Column("Created", r => r.CreatedAt, c => c.Date())
-        .Column("Category", r => Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())
-        .Column("Status", r => r.Status, c => c.EnumBadge())
-        .Column("Total", r => r.Total, c => c.Currency().End())
+        .Column(Localizer["Common_Created"].Value, r => r.CreatedAt, c => c.Date())
+        .Column(Localizer["Budget_ColCategory"].Value, r => Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())
+        .Column(Localizer["Common_Status"].Value, r => r.Status, c => c.EnumBadge())
+        .Column(Localizer["Common_Total"].Value, r => r.Total, c => c.Currency().End())
         .Template("", reportActionCell, c => c.NoSort().End())
         .Build();
     <partial name="_Table" model="reportsTable" />

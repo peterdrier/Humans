@@ -38,7 +38,7 @@
             </div>
             <div class="col-md-4">
                 <label asp-for="EmergencyContactRelationship" class="form-label">@Localizer["Profile_EmergencyContactRelationship"]</label>
-                <input asp-for="EmergencyContactRelationship" class="form-control" placeholder="e.g., Partner, Parent" />
+                <input asp-for="EmergencyContactRelationship" class="form-control" placeholder="@Localizer["ProfileEdit_RelationshipPlaceholder"].Value" />
                 <span asp-validation-for="EmergencyContactRelationship" class="text-danger"></span>
             </div>
         </div>

@@ -2,7 +2,7 @@
 @{
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;
-    ViewData["Title"] = isAdminView ? "Emails" : "My Emails";
+    ViewData["Title"] = isAdminView ? Localizer["Outbox_AdminTitle"].Value : Localizer["Profile_MyEmails"].Value;
     Layout = isAdminView ? "_AdminLayout" : "_Layout";
 }
 
@@ -13,25 +13,25 @@
             @if (isAdminView)
             {
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@humanId.Value" class="btn btn-outline-secondary btn-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Outbox_BackToAdmin"]
                 </a>
             }
             else
             {
                 <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Profile
+                    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Outbox_BackToProfile"]
                 </a>
             }
         </div>
 
 
         <p class="text-muted">
-            @(isAdminView ? "Emails the system has sent to this human." : "Emails the system has sent to you (within the last 150 days).")
+            @(isAdminView ? Localizer["Outbox_DescriptionAdmin"].Value : Localizer["Outbox_DescriptionSelf"].Value)
         </p>
 
         @if (!Model.Any())
         {
-            <div class="text-muted text-center py-5">No emails on record.</div>
+            <div class="text-muted text-center py-5">@Localizer["Outbox_Empty"]</div>
         }
         else
         {
@@ -40,9 +40,9 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Subject</th>
-                                <th>Status</th>
-                                <th>Date</th>
+                                <th>@Localizer["Outbox_Subject"]</th>
+                                <th>@Localizer["Common_Status"]</th>
+                                <th>@Localizer["Common_Date"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -59,7 +59,7 @@
                                 var collapseId = $"msg-body-{i}";
                                 <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
                                     <td>@msg.Subject</td>
-                                    <td><span class="badge @statusClass">@msg.Status</span></td>
+                                    <td><span class="badge @statusClass">@Localizer.EnumDisplay(msg.Status)</span></td>
                                     <td>@msg.CreatedAt.ToDateTimeUtc().ToDateTime()</td>
                                 </tr>
                                 <tr class="collapse" id="@collapseId">

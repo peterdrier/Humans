@@ -2,16 +2,16 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.Events.MySubmissionsViewModel
 @{
-    ViewData["Title"] = "My Event Submissions";
+    ViewData["Title"] = Localizer["Events_MySubmissionsTitle"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">My Event Submissions</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Events_MySubmissionsTitle"]</li>
     </ol>
 </nav>
 
-<h2 class="mb-4">My Event Submissions</h2>
+<h2 class="mb-4">@Localizer["Events_MySubmissionsTitle"]</h2>
 
 
 @if (!Model.IsSubmissionOpen)
@@ -20,7 +20,7 @@
         <i class="fa-solid fa-clock me-1"></i>
         @if (Model.SubmissionOpenAt.HasValue && Model.SubmissionCloseAt.HasValue)
         {
-            <text>Submission window: @Model.SubmissionOpenAt.Value.ToDateTime() — @Model.SubmissionCloseAt.Value.ToDateTime()</text>
+            <text>@Localizer["Events_SubmissionWindow"] @Model.SubmissionOpenAt.Value.ToDateTime() — @Model.SubmissionCloseAt.Value.ToDateTime()</text>
             if (Model.TimeZoneId != null)
             {
                 <text> (@Model.TimeZoneId)</text>
@@ -28,7 +28,7 @@
         }
         else
         {
-            <text>Submission window is not currently open. Contact an admin to configure guide settings.</text>
+            <text>@Localizer["Events_SubmissionWindowClosed"]</text>
         }
     </div>
 }
@@ -36,11 +36,11 @@
 @* ── Personal events block ── *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-user me-1"></i> My personal events</span>
+        <span><i class="fa-solid fa-user me-1"></i> @Localizer["Events_MyPersonalEvents"]</span>
         @if (Model.IsSubmissionOpen)
         {
             <a asp-action="Submit" class="btn btn-sm btn-primary">
-                <i class="fa-solid fa-plus me-1"></i>Submit new event
+                <i class="fa-solid fa-plus me-1"></i>@Localizer["Events_SubmitNewEvent"]
             </a>
         }
     </div>
@@ -50,7 +50,7 @@
                 <div class="card text-center border-0 bg-light">
                     <div class="card-body py-2">
                         <div class="fs-5 fw-bold">@Model.Personal.SubmittedCount</div>
-                        <small class="text-muted">Submitted</small>
+                        <small class="text-muted">@Localizer["Events_StatSubmitted"]</small>
                     </div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                 <div class="card text-center border-0 bg-light">
                     <div class="card-body py-2">
                         <div class="fs-5 fw-bold text-warning">@Model.Personal.PendingCount</div>
-                        <small class="text-muted">Pending</small>
+                        <small class="text-muted">@Localizer["Events_StatPending"]</small>
                     </div>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                 <div class="card text-center border-0 bg-light">
                     <div class="card-body py-2">
                         <div class="fs-5 fw-bold text-success">@Model.Personal.ApprovedCount</div>
-                        <small class="text-muted">Approved</small>
+                        <small class="text-muted">@Localizer["Events_StatApproved"]</small>
                     </div>
                 </div>
             </div>
@@ -74,22 +74,22 @@
 
         @if (Model.Personal.Events.Count == 0)
         {
-            <p class="text-muted mb-0">You haven't submitted any personal events yet.</p>
+            <p class="text-muted mb-0">@Localizer["Events_NoPersonalEvents"]</p>
         }
         else
         {
             Func<IndividualEventRowViewModel, IHtmlContent> personalStatusCell =
-                @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+                @<text><span class="badge @item.StatusBadgeClass">@Localizer.EnumDisplay(item.Status)</span></text>;
             Func<IndividualEventRowViewModel, IHtmlContent> personalActionsCell = @<text>
                 @if (item.CanEdit)
                 {
                     <a asp-action="Edit" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
-                        <i class="fa-solid fa-pen me-1"></i>Edit
+                        <i class="fa-solid fa-pen me-1"></i>@Localizer["Common_Edit"]
                     </a>
                 }
                 @if (item.CanWithdraw)
                 {
-                    <form method="post" asp-action="Withdraw" asp-route-eventId="@item.Id" class="d-inline" data-confirm="Withdraw this event?">
+                    <form method="post" asp-action="Withdraw" asp-route-eventId="@item.Id" class="d-inline" data-confirm="@Localizer["Events_WithdrawConfirm"].Value">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                             <i class="fa-solid fa-xmark"></i>
@@ -98,11 +98,11 @@
                 }
             </text>;
             var personalTable = TableModel.For(Model.Personal.Events)
-                .Column("Event name", r => r.Title)
-                .Column("Category", r => r.CategoryName)
-                .Column("Date & time", r => r.StartAt.ToMonthDayTime())
-                .Template("Status", personalStatusCell)
-                .Template("Actions", personalActionsCell, c => c.NoSort())
+                .Column(Localizer["Events_ColEventName"].Value, r => r.Title)
+                .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
+                .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
+                .Template(Localizer["Common_Status"].Value, personalStatusCell)
+                .Template(Localizer["Events_ColActions"].Value, personalActionsCell, c => c.NoSort())
                 .Build();
             <partial name="_Table" model="personalTable" />
         }
@@ -112,7 +112,7 @@
 @* ── Barrio blocks (one per led barrio) ── *@
 @{
     Func<CampEventRowViewModel, IHtmlContent> barrioStatusCell =
-        @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+        @<text><span class="badge @item.StatusBadgeClass">@Localizer.EnumDisplay(item.Status)</span></text>;
 }
 @foreach (var barrio in Model.Barrios)
 {
@@ -122,7 +122,7 @@
             @if (Model.IsSubmissionOpen)
             {
                 <a asp-action="BarrioSubmit" asp-route-slug="@barrio.CampSlug" class="btn btn-sm btn-primary">
-                    <i class="fa-solid fa-plus me-1"></i>Add barrio event
+                    <i class="fa-solid fa-plus me-1"></i>@Localizer["Events_AddBarrioEvent"]
                 </a>
             }
         </div>
@@ -132,7 +132,7 @@
                     <div class="card text-center border-0 bg-light">
                         <div class="card-body py-2">
                             <div class="fs-5 fw-bold">@barrio.SubmittedCount</div>
-                            <small class="text-muted">Submitted</small>
+                            <small class="text-muted">@Localizer["Events_StatSubmitted"]</small>
                         </div>
                     </div>
                 </div>
@@ -140,7 +140,7 @@
                     <div class="card text-center border-0 bg-light">
                         <div class="card-body py-2">
                             <div class="fs-5 fw-bold text-warning">@barrio.PendingCount</div>
-                            <small class="text-muted">Pending</small>
+                            <small class="text-muted">@Localizer["Events_StatPending"]</small>
                         </div>
                     </div>
                 </div>
@@ -148,7 +148,7 @@
                     <div class="card text-center border-0 bg-light">
                         <div class="card-body py-2">
                             <div class="fs-5 fw-bold text-success">@barrio.ApprovedCount</div>
-                            <small class="text-muted">Approved</small>
+                            <small class="text-muted">@Localizer["Events_StatApproved"]</small>
                         </div>
                     </div>
                 </div>
@@ -156,7 +156,7 @@
 
             @if (barrio.Events.Count == 0)
             {
-                <p class="text-muted mb-3">No events submitted yet for this barrio.</p>
+                <p class="text-muted mb-3">@Localizer["Events_NoBarrioEvents"]</p>
             }
             else
             {
@@ -164,12 +164,12 @@
                     @if (item.CanEdit)
                     {
                         <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="fa-solid fa-pen me-1"></i>Edit
+                            <i class="fa-solid fa-pen me-1"></i>@Localizer["Common_Edit"]
                         </a>
                     }
                     @if (item.CanWithdraw)
                     {
-                        <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="d-inline" data-confirm="Withdraw this event?">
+                        <form method="post" asp-action="BarrioWithdraw" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="d-inline" data-confirm="@Localizer["Events_WithdrawConfirm"].Value">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="fa-solid fa-xmark"></i>
@@ -178,12 +178,12 @@
                     }
                 </text>;
                 var barrioTable = TableModel.For(barrio.Events)
-                    .Column("Event name", r => r.Title)
-                    .Column("Category", r => r.CategoryName)
-                    .Column("Date & time", r => r.StartAt.ToMonthDayTime())
-                    .Column("Priority", r => r.PriorityRank)
-                    .Template("Status", barrioStatusCell)
-                    .Template("Actions", barrioActionsCell, c => c.NoSort())
+                    .Column(Localizer["Events_ColEventName"].Value, r => r.Title)
+                    .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
+                    .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
+                    .Column(Localizer["Events_ColPriority"].Value, r => r.PriorityRank)
+                    .Template(Localizer["Common_Status"].Value, barrioStatusCell)
+                    .Template(Localizer["Events_ColActions"].Value, barrioActionsCell, c => c.NoSort())
                     .Build();
                 <partial name="_Table" model="barrioTable" />
             }
@@ -191,13 +191,13 @@
             <hr class="my-3" />
             <div class="d-flex align-items-center gap-3 flex-wrap">
                 <a asp-action="BulkUploadTemplate" asp-route-slug="@barrio.CampSlug" class="btn btn-sm btn-outline-secondary">
-                    <i class="fa-solid fa-file-csv me-1"></i>Download events CSV
+                    <i class="fa-solid fa-file-csv me-1"></i>@Localizer["Events_DownloadCsv"]
                 </a>
                 <form method="post" asp-action="BulkUploadImport" asp-route-slug="@barrio.CampSlug" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
                     @Html.AntiForgeryToken()
                     <input type="file" name="file" accept=".csv" class="form-control form-control-sm" style="max-width: 260px;" />
                     <button type="submit" class="btn btn-sm btn-outline-primary">
-                        <i class="fa-solid fa-upload me-1"></i>Upload CSV
+                        <i class="fa-solid fa-upload me-1"></i>@Localizer["Events_UploadCsv"]
                     </button>
                 </form>
             </div>
@@ -205,15 +205,15 @@
             @if (barrio.BulkUploadErrors.Count > 0)
             {
                 <div class="alert alert-danger mt-3">
-                    <strong>Upload failed.</strong> Fix the errors below and try again. No events were saved.
+                    <strong>@Localizer["Events_UploadFailed"]</strong> @Localizer["Events_UploadFailedDetail"]
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle mb-0">
                         <thead class="table-danger">
                             <tr>
-                                <th style="width: 60px;">Row</th>
-                                <th>Event</th>
-                                <th>Errors</th>
+                                <th style="width: 60px;">@Localizer["Events_UploadColRow"]</th>
+                                <th>@Localizer["Events_UploadColEvent"]</th>
+                                <th>@Localizer["Events_UploadColErrors"]</th>
                             </tr>
                         </thead>
                         <tbody>

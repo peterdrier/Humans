@@ -19,8 +19,8 @@
             <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
             @if ((await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded)
             {
-                <a asp-action="Summary" class="btn btn-outline-secondary">Summary <i class="fa-solid fa-lock auth-lock-icon"></i></a>
-                <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">Sync Status <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Teams_Summary"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">@Localizer["Teams_SyncStatus"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             }
             @if (Model.CanCreateTeam)
             {
@@ -49,7 +49,7 @@
 
     @if (Model.Departments.Any())
     {
-        <h4 class="mb-3">Departments</h4>
+        <h4 class="mb-3">@Localizer["Teams_Departments"]</h4>
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             @foreach (var team in Model.Departments)
             {
@@ -60,7 +60,7 @@
 
     @if (Model.SystemTeams.Any())
     {
-        <h4 class="mb-3">System Teams</h4>
+        <h4 class="mb-3">@Localizer["Teams_SystemTeams"]</h4>
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             @foreach (var team in Model.SystemTeams)
             {
@@ -72,8 +72,8 @@
     @if (Model.HiddenTeams.Any())
     {
         <h4 class="mb-3">
-            Hidden Teams
-            <small class="text-muted fs-6">(visible to admins only)</small>
+            @Localizer["Teams_HiddenTeams"]
+            <small class="text-muted fs-6">@Localizer["Teams_HiddenTeamsNote"]</small>
             <i class="fa-solid fa-lock auth-lock-icon"></i>
         </h4>
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">

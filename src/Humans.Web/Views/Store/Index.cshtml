@@ -2,16 +2,16 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.StoreIndexViewModel
 @{
-    ViewData["Title"] = "Store";
+    ViewData["Title"] = Localizer["Store_Title"].Value;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Store</h1>
+    <h1 class="mb-0">@Localizer["Store_Title"]</h1>
     <div class="d-flex align-items-center gap-2">
         <div class="btn-group" authorize-policy="StoreCatalogAdmin">
-            <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">Catalog</a>
-            <a asp-controller="StoreAdmin" asp-action="Summary" class="btn btn-sm btn-outline-secondary">Summary</a>
-            <a asp-controller="StoreAdmin" asp-action="Payments" class="btn btn-sm btn-outline-secondary">Payments</a>
+            <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminCatalog"]</a>
+            <a asp-controller="StoreAdmin" asp-action="Summary" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminSummary"]</a>
+            <a asp-controller="StoreAdmin" asp-action="Payments" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminPayments"]</a>
         </div>
         <span class="badge bg-secondary fs-6">@Model.Year</span>
     </div>
@@ -21,8 +21,7 @@
 @if (!Model.Counterparties.Any())
 {
     <div class="alert alert-info">
-        You don't lead any camps or coordinate any departments with an active
-        season this year. The catalog below is read-only.
+        @Localizer["Store_NoCounterpartiesAlert"]
     </div>
 }
 else
@@ -33,14 +32,14 @@ else
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">
                     @cp.DisplayName
-                    <span class="badge bg-light text-dark ms-2">@cp.CounterpartyType</span>
+                    <span class="badge bg-light text-dark ms-2">@Localizer.EnumDisplay(cp.CounterpartyType)</span>
                 </h2>
                 @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
                 {
                     <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
                           method="post" class="d-flex gap-2 align-items-center mb-0">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-primary">Start order</button>
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Store_StartOrder"]</button>
                     </form>
                 }
                 else if (cp.CounterpartyType == StoreOrderCounterpartyType.Team && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
@@ -48,7 +47,7 @@ else
                     <form asp-action="CreateTeamOrder" asp-route-teamId="@cp.CounterpartyId"
                           method="post" class="mb-0">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-primary">Create order</button>
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Store_CreateOrder"]</button>
                     </form>
                 }
             </div>
@@ -58,16 +57,16 @@ else
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
-                                <th>State</th>
+                                <th>@Localizer["Store_ColState"]</th>
                                 @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
                                 {
-                                    <th class="text-end">Lines + VAT</th>
-                                    <th class="text-end">Deposits</th>
-                                    <th class="text-end">Balance</th>
+                                    <th class="text-end">@Localizer["Store_ColLinesVat"]</th>
+                                    <th class="text-end">@Localizer["Store_ColDeposits"]</th>
+                                    <th class="text-end">@Localizer["Store_ColBalance"]</th>
                                 }
                                 else
                                 {
-                                    <th class="text-end">Lines</th>
+                                    <th class="text-end">@Localizer["Store_ColLines"]</th>
                                 }
                                 <th></th>
                             </tr>
@@ -94,13 +93,13 @@ else
                                                 <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
                                                     @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                            title="Delete (zero balance)"
-                                                            data-confirm="Delete this zero-balance order? This cannot be undone.">
+                                                            title="@Localizer["Store_DeleteOrderTitle"]"
+                                                            data-confirm="@Localizer["Store_DeleteOrderConfirm"].Value">
                                                         <i class="fa-solid fa-trash"></i>
                                                     </button>
                                                 </form>
                                             }
-                                            <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                            <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">@Localizer["Store_OpenOrder"]</a>
                                         </div>
                                     </td>
                                 </tr>
@@ -110,17 +109,17 @@ else
                 }
                 else
                 {
-                    <div class="p-3 text-muted">No orders yet.</div>
+                    <div class="p-3 text-muted">@Localizer["Store_NoOrders"]</div>
                 }
             </div>
         </div>
     }
 }
 
-<h2 class="h4 mb-3">Catalog (@Model.Year)</h2>
+<h2 class="h4 mb-3">@Localizer["Store_CatalogHeading", Model.Year]</h2>
 @if (!Model.Catalog.Any())
 {
-    <div class="alert alert-secondary">No products are active for @Model.Year.</div>
+    <div class="alert alert-secondary">@Localizer["Store_NoProducts", Model.Year]</div>
 }
 else
 {
@@ -132,11 +131,11 @@ else
             <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
         </text>;
     var catalogTable = TableModel.For(Model.Catalog)
-        .Column("Name", r => r.Name)
-        .Template("Description", catalogDescriptionCell)
-        .Template("Unit price (incl. VAT)", catalogPriceCell, c => c.NoSort().End())
-        .Column("Deposit", r => r.DepositAmountEur, c => c.Currency().End())
-        .Column("Order by", r => r.OrderableUntil.ToDate())
+        .Column(Localizer["Store_ColName"].Value, r => r.Name)
+        .Template(Localizer["Store_ColDescription"].Value, catalogDescriptionCell)
+        .Template(Localizer["Store_ColUnitPrice"].Value, catalogPriceCell, c => c.NoSort().End())
+        .Column(Localizer["Store_ColDeposit"].Value, r => r.DepositAmountEur, c => c.Currency().End())
+        .Column(Localizer["Store_ColOrderBy"].Value, r => r.OrderableUntil.ToDate())
         .Build();
     <partial name="_Table" model="catalogTable" />
 }

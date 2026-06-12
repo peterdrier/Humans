@@ -31,10 +31,11 @@ internal sealed record RouteCandidate(string Url, Audience Audience, string Cont
 internal static class SweepRouteCatalog
 {
     // Dev/operational tooling that is not a localizable member page; GET to these is noise (and a
-    // GET to a seeder could mutate state), so they are excluded up front.
+    // GET to a seeder could mutate state), so they are excluded up front. ColorPalette is the
+    // anonymous design-reference page — developer-facing and English-only by design.
     private static readonly HashSet<string> ExcludedControllers = new(StringComparer.OrdinalIgnoreCase)
     {
-        "DevLogin", "DevSeed",
+        "DevLogin", "DevSeed", "ColorPalette",
     };
 
     public static SweepCatalog Build(IServiceProvider services)

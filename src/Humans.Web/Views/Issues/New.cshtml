@@ -32,11 +32,11 @@
                             {
                                 if (Model.Category == c)
                                 {
-                                    <option value="@c" selected>@IssuePresentation.CategoryEmoji(c) @c</option>
+                                    <option value="@c" selected>@IssuePresentation.CategoryEmoji(c) @Localizer.EnumDisplay(c)</option>
                                 }
                                 else
                                 {
-                                    <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                                    <option value="@c">@IssuePresentation.CategoryEmoji(c) @Localizer.EnumDisplay(c)</option>
                                 }
                             }
                         </select>

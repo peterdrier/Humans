@@ -1,22 +1,22 @@
 @model Humans.Web.Models.Events.ScheduleViewModel
 @{
-    ViewData["Title"] = "My Schedule";
+    ViewData["Title"] = Localizer["Events_ScheduleTitle"].Value;
 }
 
-<h2 class="mb-3">My Schedule</h2>
+<h2 class="mb-3">@Localizer["Events_ScheduleTitle"]</h2>
 
 
 @if (Model.TimeZoneId != null)
 {
     <p class="text-muted small">
-        <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>
+        <i class="fa-solid fa-clock me-1"></i>@Localizer["Events_AllTimesInShort", Model.TimeZoneId!]
     </p>
 }
 
 @if (Model.DayGroups.Count == 0)
 {
     <div class="alert alert-secondary">
-        You haven't favourited any events yet. Browse the <a asp-controller="Events" asp-action="Browse">event guide</a> to add events to your schedule.
+        @Html.Raw(string.Format(Localizer["Events_ScheduleEmpty"].Value, "<a href=\"" + Url.Action("Browse", "Events") + "\">" + Localizer["Events_ScheduleEmptyLink"].Value + "</a>"))
     </div>
 }
 else
@@ -32,23 +32,23 @@ else
                         <div>
                             @if (item.HasConflict)
                             {
-                                <span class="badge bg-warning text-dark me-1" title="Time conflict with another favourited event">
+                                <span class="badge bg-warning text-dark me-1" title="@Localizer["Events_ConflictBadge"]">
                                     <i class="fa-solid fa-triangle-exclamation"></i>
                                 </span>
                             }
                             <strong>@item.Title</strong>
                             <span class="badge bg-secondary ms-1">@item.CategoryName</span>
                         </div>
-                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" asp-route-day="@item.FavouriteDayOffset" class="d-inline" data-confirm="Remove this event from your schedule?">
+                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" asp-route-day="@item.FavouriteDayOffset" class="d-inline" data-confirm="@Localizer["Events_RemoveFromScheduleConfirm"].Value">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from schedule">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Events_RemoveFromSchedule"]">
                                 <i class="fa-solid fa-heart-crack"></i>
                             </button>
                         </form>
                     </div>
                     <div class="mt-1 small text-muted">
                         <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToTime() — @item.StartAt.AddMinutes(item.DurationMinutes).ToTime()
-                        (@item.DurationMinutes min)
+                        (@Localizer["Events_DurationMin", item.DurationMinutes])
                         @if (item.CampName != null)
                         {
                             <text> &middot; <i class="fa-solid fa-campground me-1"></i>@item.CampName</text>
@@ -69,5 +69,5 @@ else
 }
 
 <a asp-action="MySubmissions" class="btn btn-outline-secondary">
-    <i class="fa-solid fa-arrow-left me-1"></i>My Submissions
+    <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Events_MySubmissions"]
 </a>

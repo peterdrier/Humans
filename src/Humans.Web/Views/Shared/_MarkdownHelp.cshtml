@@ -4,50 +4,50 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="markdownHelpModalLabel">
-                    <i class="fa-solid fa-circle-info me-1"></i> Markdown Quick Reference
+                    <i class="fa-solid fa-circle-info me-1"></i> @Localizer["MarkdownHelp_Title"]
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p class="text-muted mb-3">
-                    Markdown is a simple way to format text. Type the syntax on the left and it renders as shown on the right.
+                    @Localizer["MarkdownHelp_Intro"]
                 </p>
 
                 <table class="table table-sm table-bordered align-middle">
                     <thead>
                         <tr>
-                            <th style="width: 50%;">You type</th>
-                            <th style="width: 50%;">You get</th>
+                            <th style="width: 50%;">@Localizer["MarkdownHelp_ColYouType"]</th>
+                            <th style="width: 50%;">@Localizer["MarkdownHelp_ColYouGet"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td><code>**bold**</code></td>
-                            <td><strong>bold</strong></td>
+                            <td><strong>@Localizer["MarkdownHelp_Bold"]</strong></td>
                         </tr>
                         <tr>
                             <td><code>*italic*</code></td>
-                            <td><em>italic</em></td>
+                            <td><em>@Localizer["MarkdownHelp_Italic"]</em></td>
                         </tr>
                         <tr>
                             <td><code>~~strikethrough~~</code></td>
-                            <td><del>strikethrough</del></td>
+                            <td><del>@Localizer["MarkdownHelp_Strikethrough"]</del></td>
                         </tr>
                         <tr>
                             <td><code>[link text](https://example.com)</code></td>
-                            <td><a href="#">link text</a></td>
+                            <td><a href="#">@Localizer["MarkdownHelp_LinkText"]</a></td>
                         </tr>
                         <tr>
                             <td><code>![description](https://…/photo.jpg)</code></td>
-                            <td><i class="fa-solid fa-image me-1 text-muted"></i><em>embedded image</em></td>
+                            <td><i class="fa-solid fa-image me-1 text-muted"></i><em>@Localizer["MarkdownHelp_EmbeddedImage"]</em></td>
                         </tr>
                         <tr>
                             <td><code># Heading 1</code></td>
-                            <td><strong style="font-size: 1.3em;">Heading 1</strong></td>
+                            <td><strong style="font-size: 1.3em;">@Localizer["MarkdownHelp_Heading1"]</strong></td>
                         </tr>
                         <tr>
                             <td><code>## Heading 2</code></td>
-                            <td><strong style="font-size: 1.1em;">Heading 2</strong></td>
+                            <td><strong style="font-size: 1.1em;">@Localizer["MarkdownHelp_Heading2"]</strong></td>
                         </tr>
                         <tr>
                             <td>
@@ -55,7 +55,7 @@
                                 <code>- item two</code>
                             </td>
                             <td>
-                                <ul class="mb-0"><li>item one</li><li>item two</li></ul>
+                                <ul class="mb-0"><li>@Localizer["MarkdownHelp_ItemOne"]</li><li>@Localizer["MarkdownHelp_ItemTwo"]</li></ul>
                             </td>
                         </tr>
                         <tr>
@@ -64,16 +64,16 @@
                                 <code>2. second</code>
                             </td>
                             <td>
-                                <ol class="mb-0"><li>first</li><li>second</li></ol>
+                                <ol class="mb-0"><li>@Localizer["MarkdownHelp_First"]</li><li>@Localizer["MarkdownHelp_Second"]</li></ol>
                             </td>
                         </tr>
                         <tr>
                             <td><code>&gt; quote text</code></td>
-                            <td><blockquote class="mb-0 ps-2 border-start border-3">quote text</blockquote></td>
+                            <td><blockquote class="mb-0 ps-2 border-start border-3">@Localizer["MarkdownHelp_QuoteText"]</blockquote></td>
                         </tr>
                         <tr>
                             <td><code>`inline code`</code></td>
-                            <td><code>inline code</code></td>
+                            <td><code>@Localizer["MarkdownHelp_InlineCode"]</code></td>
                         </tr>
                         <tr>
                             <td><code>---</code></td>
@@ -82,7 +82,7 @@
                     </tbody>
                 </table>
 
-                <h6 class="mt-4 mb-2">Tables</h6>
+                <h6 class="mt-4 mb-2">@Localizer["MarkdownHelp_TablesHeading"]</h6>
                 <div class="row">
                     <div class="col-md-6">
                         <pre class="bg-light p-2 rounded small mb-0">| Name   | Role  |
@@ -92,16 +92,16 @@
                     </div>
                     <div class="col-md-6">
                         <table class="table table-sm table-bordered mb-0">
-                            <thead><tr><th>Name</th><th>Role</th></tr></thead>
+                            <thead><tr><th>@Localizer["MarkdownHelp_TableName"]</th><th>@Localizer["MarkdownHelp_TableRole"]</th></tr></thead>
                             <tbody>
-                                <tr><td>Alice</td><td>Admin</td></tr>
-                                <tr><td>Bob</td><td>Human</td></tr>
+                                <tr><td>Alice</td><td>@Localizer["MarkdownHelp_TableAdmin"]</td></tr>
+                                <tr><td>Bob</td><td>@Localizer["MarkdownHelp_TableHuman"]</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <h6 class="mt-4 mb-2">Task Lists</h6>
+                <h6 class="mt-4 mb-2">@Localizer["MarkdownHelp_TaskListsHeading"]</h6>
                 <div class="row">
                     <div class="col-md-6">
                         <pre class="bg-light p-2 rounded small mb-0">- [x] Done
@@ -109,14 +109,14 @@
                     </div>
                     <div class="col-md-6">
                         <ul class="list-unstyled mb-0">
-                            <li><input type="checkbox" checked disabled /> Done</li>
-                            <li><input type="checkbox" disabled /> To do</li>
+                            <li><input type="checkbox" checked disabled /> @Localizer["MarkdownHelp_TaskDone"]</li>
+                            <li><input type="checkbox" disabled /> @Localizer["MarkdownHelp_TaskToDo"]</li>
                         </ul>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Close"]</button>
             </div>
         </div>
     </div>

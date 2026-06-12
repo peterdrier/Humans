@@ -1,70 +1,70 @@
 @model Humans.Web.Models.RosterSummaryViewModel
 
 @{
-    ViewData["Title"] = "Team Roster";
+    ViewData["Title"] = Localizer["Roster_Title"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Team Roster</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Roster_Title"]</li>
     </ol>
 </nav>
 
-<h2>Team Roster</h2>
+<h2>@Localizer["Roster_Title"]</h2>
 
 <div class="mb-3 d-flex gap-2">
     <div class="dropdown">
         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            Priority: @(Model.PriorityFilter ?? "All")
+            @Localizer["Roster_PriorityFilter", Model.PriorityFilter ?? Localizer["Roster_All"].Value]
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { status = Model.StatusFilter, period = Model.PeriodFilter })">All</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Critical", status = Model.StatusFilter, period = Model.PeriodFilter })">Critical</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Important", status = Model.StatusFilter, period = Model.PeriodFilter })">Important</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "NiceToHave", status = Model.StatusFilter, period = Model.PeriodFilter })">Nice to Have</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "None", status = Model.StatusFilter, period = Model.PeriodFilter })">None</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { status = Model.StatusFilter, period = Model.PeriodFilter })">@Localizer["Roster_All"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Critical", status = Model.StatusFilter, period = Model.PeriodFilter })">@Localizer["Enum_SlotPriority_Critical"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Important", status = Model.StatusFilter, period = Model.PeriodFilter })">@Localizer["Enum_SlotPriority_Important"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "NiceToHave", status = Model.StatusFilter, period = Model.PeriodFilter })">@Localizer["Enum_SlotPriority_NiceToHave"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "None", status = Model.StatusFilter, period = Model.PeriodFilter })">@Localizer["Enum_SlotPriority_None"]</a></li>
         </ul>
     </div>
     <div class="dropdown">
         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            Status: @(Model.StatusFilter ?? "All")
+            @Localizer["Roster_StatusFilter", Model.StatusFilter ?? Localizer["Roster_All"].Value]
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, period = Model.PeriodFilter })">All</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Open", period = Model.PeriodFilter })">Open</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Filled", period = Model.PeriodFilter })">Filled</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, period = Model.PeriodFilter })">@Localizer["Roster_All"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Open", period = Model.PeriodFilter })">@Localizer["Roster_StatusOpen"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Filled", period = Model.PeriodFilter })">@Localizer["Roster_StatusFilled"]</a></li>
         </ul>
     </div>
     <div class="dropdown">
         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            Period: @(Model.PeriodFilter ?? "All")
+            @Localizer["Roster_PeriodFilter", Model.PeriodFilter ?? Localizer["Roster_All"].Value]
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter })">All</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "YearRound" })">Year-round</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Build" })">Set-up</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Event" })">Event</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Strike" })">Strike</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter })">@Localizer["Roster_All"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "YearRound" })">@Localizer["Enum_RolePeriod_YearRound"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Build" })">@Localizer["Shifts_SetUp"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Event" })">@Localizer["Shifts_Event"]</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Strike" })">@Localizer["Shifts_Strike"]</a></li>
         </ul>
     </div>
 </div>
 
 @if (!Model.Slots.Any())
 {
-    <div class="alert alert-info">No role slots defined across teams.</div>
+    <div class="alert alert-info">@Localizer["Roster_NoSlots"]</div>
 }
 else
 {
     <table class="table table-hover">
         <thead>
             <tr>
-                <th>Team</th>
-                <th>Role</th>
-                <th>Period</th>
-                <th>Slot</th>
-                <th>Priority</th>
-                <th>Assigned To</th>
+                <th>@Localizer["Roster_ColTeam"]</th>
+                <th>@Localizer["Roster_ColRole"]</th>
+                <th>@Localizer["Roster_ColPeriod"]</th>
+                <th>@Localizer["Roster_ColSlot"]</th>
+                <th>@Localizer["Roster_ColPriority"]</th>
+                <th>@Localizer["Roster_ColAssignedTo"]</th>
             </tr>
         </thead>
         <tbody>
@@ -96,11 +96,11 @@ else
                             RolePeriod.Strike => "bg-secondary",
                             _ => "bg-light text-dark"
                         };
-                        var periodLabel = slot.Period switch { RolePeriod.YearRound => "Year-round", RolePeriod.Build => "Set-up", _ => slot.Period.ToString() };
+                        var periodLabel = Localizer.EnumDisplay(slot.Period);
                     }
                     <td><span class="badge @periodBadge">@periodLabel</span></td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
+                    <td><span class="badge @slot.PriorityBadgeClass">@Localizer.EnumDisplay(slot.Priority)</span></td>
                     <td>
                         @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                         {
@@ -112,7 +112,7 @@ else
                         }
                         else
                         {
-                            <span class="text-muted fst-italic">Open</span>
+                            <span class="text-muted fst-italic">@Localizer["Roster_SlotOpen"]</span>
                         }
                     </td>
                 </tr>
