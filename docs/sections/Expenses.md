@@ -123,7 +123,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/Sepa/Generate` | POST | FinanceAdminOrAdmin | Generate SEPA file (form on Review page) |
-| `/Expenses/{id}/ReopenSepa` | POST | FinanceAdminOrAdmin (resource-based: `ReopenSepa` operation) | Reopen a SepaSent report back to Approved (download failed — regenerate batch) |
+| `/Expenses/{id}/Sepa/Reopen` | POST | FinanceAdminOrAdmin (resource-based: `ReopenSepa` operation) | Reopen a SepaSent report back to Approved (download failed — regenerate batch) |
 | `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
 
 ## Actors & Roles
