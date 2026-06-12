@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.EarlyEntry;
@@ -21,6 +22,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
+    private readonly IUserServiceRead _userServiceRead;
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -33,6 +35,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
+        _userServiceRead = Substitute.For<IUserServiceRead>();
+
         _service = new CampService(
             repo,
             AuditLog,
@@ -42,6 +46,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             Substitute.For<IEarlyEntryInvalidator>(),
+            _userServiceRead,
             Clock,
             NullLogger<CampService>.Instance);
     }
@@ -370,6 +375,141 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         result.Succeeded.Should().BeTrue();
 
         var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // Entered-event guard — a grant is consumed once its holder is through the
+    // gate; it can no longer be revoked or freed by removal/leave.
+    // ==========================================================================
+
+    private void SetUserParticipation(Guid userId, int year, ParticipationStatus status)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Test",
+            PreferredLanguage = "en",
+            CreatedAt = Clock.GetCurrentInstant(),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        };
+        var participation = new EventParticipation
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = year,
+            Status = status,
+            Source = ParticipationSource.TicketSync,
+        };
+        _userServiceRead.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                user, [], [participation], [], null, [], [], [], [])));
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Revoke_ReturnsMemberAlreadyEntered_WhenHolderAttendedSeasonYear()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(member.UserId, season.Year, ParticipationStatus.Attended);
+
+        var outcome = await _service.SetEarlyEntryAsync(
+            camp.Id, member.Id, granted: false, Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.MemberAlreadyEntered);
+
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.HasEarlyEntry.Should().BeTrue();
+
+        await AuditLog.DidNotReceive().LogAsync(
+            AuditAction.CampEarlyEntryRevoked,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Revoke_Succeeds_WhenHolderOnlyTicketed()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(member.UserId, season.Year, ParticipationStatus.Ticketed);
+
+        var outcome = await _service.SetEarlyEntryAsync(
+            camp.Id, member.Id, granted: false, Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.Success);
+
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Revoke_Succeeds_WhenHolderAttendedDifferentYear()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(member.UserId, season.Year - 1, ParticipationStatus.Attended);
+
+        var outcome = await _service.SetEarlyEntryAsync(
+            camp.Id, member.Id, granted: false, Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.Success);
+    }
+
+    [HumansFact]
+    public async Task RemoveCampMemberAsync_RetainsHasEarlyEntry_WhenHolderAttended()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(member.UserId, season.Year, ParticipationStatus.Attended);
+
+        await _service.RemoveCampMemberAsync(camp.Id, member.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.Status.Should().Be(CampMemberStatus.Removed);
+        reloaded.HasEarlyEntry.Should().BeTrue("the consumed slot must keep counting against the cap");
+    }
+
+    [HumansFact]
+    public async Task LeaveCampAsync_RetainsHasEarlyEntry_WhenHolderAttended()
+    {
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(member.UserId, season.Year, ParticipationStatus.Attended);
+
+        var result = await _service.LeaveCampAsync(member.Id, member.UserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.HasEarlyEntry.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Grant_CountsConsumedSlots_FromRemovedAttendedMembers()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 1);
+        var entered = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        SetUserParticipation(entered.UserId, season.Year, ParticipationStatus.Attended);
+
+        // The cheat: remove the member who already entered, then try to hand
+        // the freed slot to someone else.
+        await _service.RemoveCampMemberAsync(camp.Id, entered.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var second = await SeedActiveMemberAsync(season.Id);
+
+        var outcome = await _service.SetEarlyEntryAsync(
+            camp.Id, second.Id, granted: true, Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
+
+        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == second.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 }

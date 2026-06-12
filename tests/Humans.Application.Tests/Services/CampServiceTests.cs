@@ -44,6 +44,7 @@ public sealed class CampServiceTests : ServiceTestHarness
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             Substitute.For<IEarlyEntryInvalidator>(),
+            Substitute.For<IUserServiceRead>(),
             Clock,
             NullLogger<CampService>.Instance);
     }

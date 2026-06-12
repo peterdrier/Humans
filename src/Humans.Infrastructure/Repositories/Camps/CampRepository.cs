@@ -716,11 +716,12 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
+        // No status filter: HasEarlyEntry survives on Removed rows when the
+        // holder had already entered the event (consumed slot) — counting them
+        // keeps remove-and-regrant from yielding extra early entries.
         await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
         return await ctx.CampMembers
-            .CountAsync(m => m.CampSeasonId == campSeasonId
-                          && m.HasEarlyEntry
-                          && m.Status == CampMemberStatus.Active,
+            .CountAsync(m => m.CampSeasonId == campSeasonId && m.HasEarlyEntry,
                         cancellationToken);
     }
 

@@ -950,6 +950,8 @@ public class CampController(
             SetError("Cannot grant Early Entry: slot cap reached for this camp.");
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
             SetError("Only Active camp members can hold Early Entry.");
+        else if (outcome == SetEarlyEntryOutcome.MemberAlreadyEntered)
+            SetError("Cannot revoke Early Entry: this member has already entered the event, so their slot is used.");
 
         return RedirectToAction(nameof(Members), new { slug });
     }

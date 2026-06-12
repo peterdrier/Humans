@@ -30,6 +30,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
+    private readonly IUserServiceRead _userServiceRead;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
 
@@ -47,6 +48,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
+        IUserServiceRead userServiceRead,
         IClock clock,
         ILogger<CampService> logger)
     {
@@ -58,6 +60,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
         _earlyEntryInvalidator = earlyEntryInvalidator;
+        _userServiceRead = userServiceRead;
         _clock = clock;
         _logger = logger;
     }
@@ -1024,11 +1027,17 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
                 member.Id, actorUserId, cancellationToken);
         }
 
+        // A grant whose holder already entered the event is consumed: keep the
+        // flag on the Removed row so the slot-cap count still includes it —
+        // otherwise removing the member frees the slot for a second entry.
+        var retainConsumedEeGrant = member.HasEarlyEntry
+            && await HasEnteredEventAsync(member.UserId, member.CampSeason.Year, cancellationToken);
+
         var now = _clock.GetCurrentInstant();
         member.Status = CampMemberStatus.Removed;
         member.RemovedAt = now;
         member.RemovedByUserId = actorUserId;
-        member.HasEarlyEntry = false;
+        member.HasEarlyEntry = retainConsumedEeGrant;
         await _repo.SaveMemberAsync(member, cancellationToken);
         _earlyEntryInvalidator.InvalidateUser(member.UserId);
 
@@ -1398,6 +1407,13 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             if (current >= member.CampSeason.EeSlotCount)
                 return SetEarlyEntryOutcome.SlotCapExceeded;
         }
+        else if (await HasEnteredEventAsync(member.UserId, member.CampSeason.Year, cancellationToken))
+        {
+            // The grant is consumed once the holder is through the gate —
+            // revoking it would free the slot for someone else, yielding
+            // N+1 early entries from N slots.
+            return SetEarlyEntryOutcome.MemberAlreadyEntered;
+        }
 
         member.HasEarlyEntry = granted;
         await _repo.SaveMemberAsync(member, cancellationToken);
@@ -1415,4 +1431,15 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return SetEarlyEntryOutcome.Success;
     }
 
+    /// <summary>
+    /// True when the user has an Attended participation row for the season's
+    /// year (gate check-in via ticket sync). Cross-section read off the cached
+    /// <see cref="UserInfo"/> per the I*ServiceRead pattern.
+    /// </summary>
+    private async ValueTask<bool> HasEnteredEventAsync(Guid userId, int year, CancellationToken ct)
+    {
+        var info = await _userServiceRead.GetUserInfoAsync(userId, ct);
+        return info?.EventParticipations.Any(p =>
+            p.Year == year && p.Status == ParticipationStatus.Attended) ?? false;
+    }
 }

@@ -7,4 +7,5 @@ public enum SetEarlyEntryOutcome
     SlotCapExceeded,
     MemberNotActive,
     MemberNotFound,
+    MemberAlreadyEntered,
 }
