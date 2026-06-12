@@ -4,7 +4,6 @@
 // is cleared when view models are built exclusively from service-layer DTOs.
 #pragma warning disable CS0618
 using System.ComponentModel.DataAnnotations;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -310,33 +309,6 @@ public class ResourceAccessViewModel
     public string? PermissionLevel { get; set; }
     public string? Url { get; set; }
     public string IconClass { get; set; } = string.Empty;
-
-    public static ResourceAccessViewModel From(GoogleResourceSnapshot r) => new()
-    {
-        Name = r.Name,
-        ResourceType = r.ResourceType switch
-        {
-            GoogleResourceType.DriveFolder => "Drive Folder",
-            GoogleResourceType.SharedDrive => "Shared Drive",
-            GoogleResourceType.DriveFile => "Drive File",
-            GoogleResourceType.Group => "Google Group",
-            _ => r.ResourceType.ToString()
-        },
-        PermissionLevel = r.ResourceType == GoogleResourceType.Group
-            ? null
-            : r.DrivePermissionLevel != DrivePermissionLevel.None
-                ? r.DrivePermissionLevel.ToString()
-                : null,
-        Url = r.Url,
-        IconClass = r.ResourceType switch
-        {
-            GoogleResourceType.DriveFolder => "fa-solid fa-folder",
-            GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
-            GoogleResourceType.DriveFile => "fa-solid fa-file",
-            GoogleResourceType.Group => "fa-solid fa-users",
-            _ => "fa-solid fa-link"
-        }
-    };
 }
 
 public class BirthdayCalendarViewModel

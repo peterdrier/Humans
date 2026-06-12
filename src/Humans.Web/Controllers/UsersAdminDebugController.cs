@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -35,32 +36,33 @@ public sealed class UsersAdminDebugController(IUserServiceRead userService) : Hu
         return View(new UsersDebugViewModel(paged, total, page, pageSize, sort, dir));
     }
 
-    // Null-first ascending semantics for tri-state booleans — null < false < true.
-    private static int NullableBool(bool? b) => b is null ? 0 : b.Value ? 2 : 1;
-
-    private static readonly Dictionary<string, Func<List<UserDebugRow>, IEnumerable<UserDebugRow>>> SortKeys =
-        new(StringComparer.Ordinal)
-        {
-            ["userId"] = rows => rows.OrderBy(r => r.UserId),
-            ["hasProfile"] = rows => rows.OrderBy(r => r.HasProfile),
-            ["hasTicket"] = rows => rows.OrderBy(r => r.HasTicket),
-            ["marketing"] = rows => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
-            ["burnerName"] = rows => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
-            ["legalName"] = rows => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
-            ["hasName"] = rows => rows.OrderBy(r => NullableBool(r.HasName)),
-            ["hasConsent"] = rows => rows.OrderBy(r => NullableBool(r.HasConsent)),
-            ["createdAt"] = rows => rows.OrderBy(r => r.CreatedAt),
-            ["lastLoginAt"] = rows => rows.OrderBy(r => r.LastLoginAt ?? NodaTime.Instant.MinValue),
-        };
-
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Sort-key switch over many columns — sorting is controller turf; reshape rather than relocate. 4 statements, cc 16.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     private static List<UserDebugRow> ApplySort(List<UserDebugRow> rows, string sort, string dir)
     {
-        var sorted = SortKeys.TryGetValue(sort, out var sorter)
-            ? sorter(rows)
-            : rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase);
+        var asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
 
-        return string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase)
-            ? sorted.ToList()
-            : sorted.Reverse().ToList();
+        // Null-first ascending semantics for tri-state booleans — null < false < true.
+        static int NullableBool(bool? b) => b is null ? 0 : b.Value ? 2 : 1;
+
+        IEnumerable<UserDebugRow> sorted = sort switch
+        {
+            "userId" => rows.OrderBy(r => r.UserId),
+            "hasProfile" => rows.OrderBy(r => r.HasProfile),
+            "hasTicket" => rows.OrderBy(r => r.HasTicket),
+            "marketing" => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
+            "burnerName" => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
+            "legalName" => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
+            "hasName" => rows.OrderBy(r => NullableBool(r.HasName)),
+            "hasConsent" => rows.OrderBy(r => NullableBool(r.HasConsent)),
+            "createdAt" => rows.OrderBy(r => r.CreatedAt),
+            "lastLoginAt" => rows.OrderBy(r => r.LastLoginAt ?? NodaTime.Instant.MinValue),
+            _ => rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
+        };
+
+        return asc ? sorted.ToList() : sorted.Reverse().ToList();
     }
 }

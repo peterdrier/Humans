@@ -90,6 +90,11 @@ public class TeamController(
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 33 statements, cc 19.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -167,67 +172,63 @@ public class TeamController(
 
         // Subteam member rollup: for departments, show child team members not already direct members
         if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())
-            await PopulateSubteamRollupAsync(viewModel, teamPage.ChildTeams);
-
-        return View(viewModel);
-    }
-
-    private async Task PopulateSubteamRollupAsync(
-        TeamDetailViewModel viewModel, IReadOnlyList<TeamPageTeamLink> childTeams)
-    {
-        var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
-        var addedUserIds = new HashSet<Guid>();
-
-        var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
-
-        var teamsById = await teamService.GetTeamsAsync();
-        var childMembersByTeam = childTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(
-                id => id,
-                id => teamsById[id].Members
-                    .Select(m => new TeamActiveMemberSnapshot(
-                        id, m.TeamMemberId, m.UserId,
-                        m.DisplayName, m.Email, m.ProfilePictureUrl,
-                        m.GoogleEmailStatus, m.Role, m.JoinedAt))
-                    .ToList());
-
-        foreach (var child in childTeams)
         {
-            if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
-                continue;
-            var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+            var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
+            var addedUserIds = new HashSet<Guid>();
 
-            foreach (var cm in childMembers)
+            var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
+            var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
+
+            var teamsById = await teamService.GetTeamsAsync();
+            var childMembersByTeam = childTeamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(
+                    id => id,
+                    id => teamsById[id].Members
+                        .Select(m => new TeamActiveMemberSnapshot(
+                            id, m.TeamMemberId, m.UserId,
+                            m.DisplayName, m.Email, m.ProfilePictureUrl,
+                            m.GoogleEmailStatus, m.Role, m.JoinedAt))
+                        .ToList());
+
+            foreach (var child in teamPage.ChildTeams)
             {
-                var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
+                if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+                    continue;
+                var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
 
-                if (isCoordinator)
+                foreach (var cm in childMembers)
                 {
-                    viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
+                    var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
+
+                    if (isCoordinator)
+                    {
+                        viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
+                        {
+                            UserId = cm.UserId,
+                            ChildTeamName = child.Name,
+                            ChildTeamSlug = child.Slug,
+                            IsCoordinator = true,
+                            RoleTitle = managementRoleName
+                        });
+                    }
+
+                    if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
+                        continue;
+
+                    viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug,
-                        IsCoordinator = true,
-                        RoleTitle = managementRoleName
+                        IsCoordinator = isCoordinator,
+                        RoleTitle = isCoordinator ? managementRoleName : null
                     });
                 }
-
-                if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
-                    continue;
-
-                viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
-                {
-                    UserId = cm.UserId,
-                    ChildTeamName = child.Name,
-                    ChildTeamSlug = child.Slug,
-                    IsCoordinator = isCoordinator,
-                    RoleTitle = isCoordinator ? managementRoleName : null
-                });
             }
         }
+
+        return View(viewModel);
     }
 
     private static TeamResourceLinkViewModel MapTeamResource(TeamPageResourceSummary resource) => new()

@@ -1568,6 +1568,11 @@ public class ProfileController(
 
     [HttpPost("Me/DietaryMedical")]
     [ValidateAntiForgeryToken]
+    [Grandfathered(
+        ruleId: "HUM0031",
+        justification: "Worst-offender at HUM0031 introduction: 36 statements, cc 21.",
+        since: "2026-06-09",
+        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
     {
         if (!ModelState.IsValid)
@@ -1608,11 +1613,43 @@ public class ProfileController(
             switch (model.ReturnAction)
             {
                 case "signup" when model.ShiftId is { } sid:
-                    return await ReplayShiftSignupAsync(user.Id, sid);
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var result = await shiftSignupService.SignUpAsync(
+                            user.Id,
+                            sid,
+                            actorUserId: null,
+                            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up successfully. Note: {result.Warning}"
+                                : "Signed up successfully!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
                 case "signuprange" when model.RotaId is { } rid
                                          && model.StartDayOffset is { } sd
                                          && model.EndDayOffset is { } ed:
-                    return await ReplayShiftRangeSignupAsync(user.Id, rid, sd, ed);
+                    {
+                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                        var flags = ShiftSignupRequestFlags.SkipConflicts;
+                        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
+                        var result = await shiftSignupService.SignUpRangeAsync(
+                            user.Id,
+                            rid,
+                            sd,
+                            ed,
+                            actorUserId: null,
+                            flags: flags);
+                        if (!result.Success)
+                            SetError(result.Error ?? "Shift range signup failed.");
+                        else
+                            SetSuccess(result.Warning is not null
+                                ? $"Signed up for date range. Note: {result.Warning}"
+                                : "Signed up for date range!");
+                        return RedirectToAction("Index", "Shifts");
+                    }
                 case "shifts":
                     SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
                     return RedirectToAction("Index", "Shifts");
@@ -1627,47 +1664,6 @@ public class ProfileController(
             SetError(localizer["Profile_DietaryMedical_SaveFailed"].Value);
             return View(model);
         }
-    }
-
-    // Signup-replay targets for the dietary gate (see DietaryMedical POST). The
-    // flash-mapping mirrors ShiftsController's two inline copies; extract on the
-    // third call site per project doctrine.
-    private async Task<IActionResult> ReplayShiftSignupAsync(Guid userId, Guid shiftId)
-    {
-        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await shiftSignupService.SignUpAsync(
-            userId,
-            shiftId,
-            actorUserId: null,
-            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-        if (!result.Success)
-            SetError(result.Error ?? "Shift signup failed.");
-        else
-            SetSuccess(result.Warning is not null
-                ? $"Signed up successfully. Note: {result.Warning}"
-                : "Signed up successfully!");
-        return RedirectToAction("Index", "Shifts");
-    }
-
-    private async Task<IActionResult> ReplayShiftRangeSignupAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset)
-    {
-        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var flags = ShiftSignupRequestFlags.SkipConflicts;
-        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-        var result = await shiftSignupService.SignUpRangeAsync(
-            userId,
-            rotaId,
-            startDayOffset,
-            endDayOffset,
-            actorUserId: null,
-            flags: flags);
-        if (!result.Success)
-            SetError(result.Error ?? "Shift range signup failed.");
-        else
-            SetSuccess(result.Warning is not null
-                ? $"Signed up for date range. Note: {result.Warning}"
-                : "Signed up for date range!");
-        return RedirectToAction("Index", "Shifts");
     }
 
     [HttpGet("Me/CommunicationPreferences")]
