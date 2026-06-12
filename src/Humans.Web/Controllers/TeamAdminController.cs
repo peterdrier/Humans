@@ -94,11 +94,6 @@ public class TeamAdminController(
     }
 
     [HttpGet("Members")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 23 statements, cc 19.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
         var pageSize = 20;
@@ -158,33 +153,6 @@ public class TeamAdminController(
             parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
         }
 
-        static ResourceAccessViewModel MapResource(GoogleResourceSnapshot r) => new()
-        {
-            Name = r.Name,
-            ResourceType = r.ResourceType switch
-            {
-                GoogleResourceType.DriveFolder => "Drive Folder",
-                GoogleResourceType.SharedDrive => "Shared Drive",
-                GoogleResourceType.DriveFile => "Drive File",
-                GoogleResourceType.Group => "Google Group",
-                _ => r.ResourceType.ToString()
-            },
-            PermissionLevel = r.ResourceType == GoogleResourceType.Group
-                ? null
-                : r.DrivePermissionLevel != DrivePermissionLevel.None
-                    ? r.DrivePermissionLevel.ToString()
-                    : null,
-            Url = r.Url,
-            IconClass = r.ResourceType switch
-            {
-                GoogleResourceType.DriveFolder => "fa-solid fa-folder",
-                GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
-                GoogleResourceType.DriveFile => "fa-solid fa-file",
-                GoogleResourceType.Group => "fa-solid fa-users",
-                _ => "fa-solid fa-link"
-            }
-        };
-
         var viewModel = new TeamMembersViewModel
         {
             TeamId = team.Id,
@@ -199,8 +167,8 @@ public class TeamAdminController(
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize,
-            TeamResources = teamResources.Select(MapResource).ToList(),
-            ParentDepartmentResources = parentDepartmentResources.Select(MapResource).ToList(),
+            TeamResources = teamResources.Select(ResourceAccessViewModel.From).ToList(),
+            ParentDepartmentResources = parentDepartmentResources.Select(ResourceAccessViewModel.From).ToList(),
             ParentDepartmentName = parentDepartmentName,
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
