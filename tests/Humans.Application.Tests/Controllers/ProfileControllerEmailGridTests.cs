@@ -605,9 +605,10 @@ public class ProfileControllerEmailGridTests
     public async Task UnlinkLinkedAccount_BlocksWhenLastSignInMethod()
     {
         // Auth-method invariant: user has exactly one verified UserEmail row
-        // and that row carries the OAuth tag. Unlinking would remove the row
-        // (via UnlinkAsync) and leave the user with zero verified emails —
-        // no magic-link, no OAuth, no way back in. Must be blocked.
+        // and that row carries the OAuth tag. Unlinking would leave the user
+        // with zero verified emails — no magic-link, no OAuth, no way back in.
+        // The guard lives in UserEmailService.UnlinkAsync (ValidationException);
+        // the controller surfaces it as an error flash and the linkage remains.
         var rowId = Guid.NewGuid();
         const string provider = "Google";
         const string providerKey = "google-sub-only";
@@ -619,13 +620,14 @@ public class ProfileControllerEmailGridTests
             .Returns([
                 Snapshot(_userId, rowId, "only@example.com", isVerified: true, provider, providerKey),
             ]);
+        _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
+            .Returns<bool>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException(
+                "Cannot unlink your last verified sign-in method."));
 
         var result = await _controller.UnlinkLinkedAccount(provider, providerKey, Xunit.TestContext.Current.CancellationToken);
 
-        // Must NOT call UnlinkAsync / RemoveLoginAsync — the action returns
-        // with an error flash and the linkage remains.
-        await _userEmailService.DidNotReceive().UnlinkAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        // The Identity login row must remain untouched — the service refused
+        // before any mutation, and the controller never bypasses it.
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         result.Should().BeOfType<RedirectToActionResult>()

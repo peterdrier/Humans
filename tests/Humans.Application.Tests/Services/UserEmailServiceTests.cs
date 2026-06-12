@@ -1161,6 +1161,12 @@ public class UserEmailServiceTests
         var user = new User { Id = userId };
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        // Another verified row remains, so the last-sign-in-method guard passes.
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([
+                row,
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true },
+            ]));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Success);
@@ -1176,6 +1182,70 @@ public class UserEmailServiceTests
             Arg.Any<string>(), userId,
             Arg.Any<string>(), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_LastVerifiedEmail_ThrowsAndMutatesNothing()
+    {
+        // Auth-method invariant (P5): unlinking the user's only verified email would
+        // lock them out completely — magic link also requires a verified address.
+        // The guard runs BEFORE RemoveLoginAsync, so a refusal leaves both stores intact.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "only@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-Z",
+            IsVerified = true,
+        };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([
+                row,
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "unverified@example.com", IsVerified = false },
+            ]));
+
+        var act = async () => await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>().WithMessage("*last verified sign-in method*");
+        await _userManager.DidNotReceive().RemoveLoginAsync(
+            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_UnverifiedRow_SkipsVerifiedFloorCheck()
+    {
+        // An unverified linked row was never a sign-in method — unlinking it can't
+        // lock anyone out, so it succeeds even when no other verified email exists.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "pending@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-P",
+            IsVerified = false,
+        };
+        var user = new User { Id = userId };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.RemoveLoginAsync(user, "Google", "sub-P")
+            .Returns(IdentityResult.Success);
+
+        var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        // No verified row remains anywhere, yet the unlink succeeds — the floor
+        // check applies only to verified rows.
+        result.Should().BeTrue();
+        await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1457,6 +1527,12 @@ public class UserEmailServiceTests
         var user = new User { Id = userId };
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        // Another verified row remains, so the last-sign-in-method guard passes.
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([
+                row,
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true },
+            ]));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Failed(

@@ -953,19 +953,11 @@ public class ProfileController(
         }
 
         // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
+        // The last-verified-sign-in-method invariant is enforced inside UnlinkAsync (ValidationException).
         var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        // Auth-method invariant: at least one verified UserEmail must remain after unlink (server source-of-truth).
-        var verifiedTotal = rawRows.Count(r => r.IsVerified);
-        var verifiedAfter = verifiedTotal - (matching?.IsVerified == true ? 1 : 0);
-        if (verifiedAfter < 1)
-        {
-            SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-            return RedirectToAction(nameof(Emails));
-        }
 
         try
         {
