@@ -1,4 +1,5 @@
 using CsvHelper.Configuration;
+using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.Csv;
 using Humans.Application.DTOs.Events;
@@ -409,11 +410,6 @@ public class EventsController(
     }
 
     [HttpGet("Browse")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 23.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
@@ -438,75 +434,13 @@ public class EventsController(
         var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
         var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds);
 
-        var items = new List<BrowseEventItem>();
-        foreach (var e in events)
-        {
-            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = camp?.Active?.Name ?? camp?.Slug;
-            var submitterName = e.CampId == null
-                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
-                : null;
-
-            foreach (var startInstant in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
-            {
-                var eventDayOffset = 0;
-                if (gateOpeningDate != null)
-                {
-                    LocalDate eventDate = tz != null
-                        ? startInstant.InZone(tz).Date
-                        : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
-                    eventDayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
-                }
-
-                if (filterDays != null && !filterDays.Contains(eventDayOffset)) continue;
-
-                // Hearts on recurring-event cards favourite that day's occurrence;
-                // non-recurring cards (and unexpanded ones) favourite the whole event.
-                var favouriteDayOffset = e.IsRecurring && gateOpeningDate.HasValue && tz != null
-                    ? eventDayOffset
-                    : (int?)null;
-
-                items.Add(new BrowseEventItem
-                {
-                    EventId = e.Id,
-                    Title = e.Title,
-                    Description = e.Description,
-                    CategoryName = e.CategoryName,
-                    CampName = campName,
-                    VenueName = e.VenueName,
-                    LocationNote = e.LocationNote,
-                    StartAt = ToLocalDateTime(startInstant, tz),
-                    DurationMinutes = e.DurationMinutes,
-                    DayOffset = eventDayOffset,
-                    FavouriteDayOffset = favouriteDayOffset,
-                    IsFavourited = favouriteDaysByEventId[e.Id].Any(d => d == null || d == favouriteDayOffset),
-                    SubmitterName = submitterName,
-                    DisplayHost = e.CampId == null
-                        ? (e.Host ?? submitterName)
-                        : e.Host
-                });
-            }
-        }
-
+        var items = ExpandBrowseItems(events, campsById, submitterInfoById, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
         if (favouritesOnly)
             items = items.Where(i => i.IsFavourited).ToList();
 
         var categories = await guide.GetActiveCategoriesAsync();
         var venues = await guide.GetActiveVenuesAsync();
-
-        var eventDays = new List<EventDayOptionViewModel>();
-        if (eventSettings != null)
-        {
-            for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
-            {
-                var date = eventSettings.GateOpeningDate.PlusDays(offset);
-                eventDays.Add(new EventDayOptionViewModel
-                {
-                    DayOffset = offset,
-                    Label = date.ToWeekdayDayMonth()
-                });
-            }
-        }
+        var eventDays = BuildEventDayOptions(eventSettings);
 
         var model = new BrowseViewModel
         {
@@ -533,6 +467,98 @@ public class EventsController(
         };
 
         return View(model);
+    }
+
+    // Expands approved events into per-day browse cards: recurring events get one
+    // card per occurrence inside the event window; day filtering happens here so
+    // unmatched occurrences never materialize.
+    private static List<BrowseEventItem> ExpandBrowseItems(
+        IReadOnlyList<ApprovedEventView> events,
+        IReadOnlyDictionary<Guid, CampInfo> campsById,
+        IReadOnlyDictionary<Guid, UserInfo> submitterInfoById,
+        ILookup<Guid, int?> favouriteDaysByEventId,
+        LocalDate? gateOpeningDate,
+        DateTimeZone? tz,
+        HashSet<int>? filterDays)
+    {
+        var items = new List<BrowseEventItem>();
+        foreach (var e in events)
+        {
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var campName = camp?.Active?.Name ?? camp?.Slug;
+            var submitterName = e.CampId == null
+                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
+                : null;
+
+            foreach (var startInstant in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+            {
+                var eventDayOffset = DayOffsetOf(startInstant, gateOpeningDate, tz);
+                if (filterDays != null && !filterDays.Contains(eventDayOffset)) continue;
+
+                items.Add(BuildBrowseItem(e, startInstant, eventDayOffset, campName, submitterName, favouriteDaysByEventId, gateOpeningDate, tz));
+            }
+        }
+
+        return items;
+    }
+
+    private static int DayOffsetOf(Instant startInstant, LocalDate? gateOpeningDate, DateTimeZone? tz)
+    {
+        if (gateOpeningDate == null) return 0;
+
+        LocalDate eventDate = tz != null
+            ? startInstant.InZone(tz).Date
+            : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
+        return Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
+    }
+
+    private static BrowseEventItem BuildBrowseItem(
+        ApprovedEventView e, Instant startInstant, int eventDayOffset, string? campName, string? submitterName,
+        ILookup<Guid, int?> favouriteDaysByEventId, LocalDate? gateOpeningDate, DateTimeZone? tz)
+    {
+        // Hearts on recurring-event cards favourite that day's occurrence;
+        // non-recurring cards (and unexpanded ones) favourite the whole event.
+        var favouriteDayOffset = e.IsRecurring && gateOpeningDate.HasValue && tz != null
+            ? eventDayOffset
+            : (int?)null;
+
+        return new BrowseEventItem
+        {
+            EventId = e.Id,
+            Title = e.Title,
+            Description = e.Description,
+            CategoryName = e.CategoryName,
+            CampName = campName,
+            VenueName = e.VenueName,
+            LocationNote = e.LocationNote,
+            StartAt = ToLocalDateTime(startInstant, tz),
+            DurationMinutes = e.DurationMinutes,
+            DayOffset = eventDayOffset,
+            FavouriteDayOffset = favouriteDayOffset,
+            IsFavourited = favouriteDaysByEventId[e.Id].Any(d => d == null || d == favouriteDayOffset),
+            SubmitterName = submitterName,
+            DisplayHost = e.CampId == null
+                ? (e.Host ?? submitterName)
+                : e.Host
+        };
+    }
+
+    private static List<EventDayOptionViewModel> BuildEventDayOptions(BurnSettingsInfo? eventSettings)
+    {
+        var eventDays = new List<EventDayOptionViewModel>();
+        if (eventSettings == null) return eventDays;
+
+        for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
+        {
+            var date = eventSettings.GateOpeningDate.PlusDays(offset);
+            eventDays.Add(new EventDayOptionViewModel
+            {
+                DayOffset = offset,
+                Label = date.ToWeekdayDayMonth()
+            });
+        }
+
+        return eventDays;
     }
 
     [HttpPost("Browse/Favourite/{eventId:guid}")]
