@@ -1,24 +1,19 @@
 @model Humans.Web.Models.OnboardingWidget.NamesViewModel
 @{
-    ViewData["Title"] = "Welcome — let's start with your name";
+    ViewData["Title"] = Localizer["Onboarding_NamesTitle"].Value;
 }
 
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-        <h1 class="mb-3">Welcome — let's start with your name</h1>
-        <p class="text-muted mb-4">Two short steps before you pick a shift.</p>
+        <h1 class="mb-3">@Localizer["Onboarding_NamesTitle"]</h1>
+        <p class="text-muted mb-4">@Localizer["Onboarding_NamesSubtitle"]</p>
 
         <div class="alert alert-info small" role="note">
             <p class="mb-2">
-                <strong>Legal name</strong> — Kept internally, visible only to Admins, and used only
-                where Spanish law requires it — for example, our audit record that you agreed to the
-                Volunteer Agreement on a specific date and time. We explicitly do <strong>not</strong>
-                export this information, and would only disclose it if required by law or a formal audit.
+                <strong>@Localizer["Onboarding_LegalNameLabel"]</strong> — @Localizer["Onboarding_LegalNameExplainerPre"] <strong>@Localizer["Onboarding_LegalNameExplainerEmphasis"]</strong> @Localizer["Onboarding_LegalNameExplainerPost"]
             </p>
             <p class="mb-0">
-                <strong>Burner name</strong> — The name everyone in the system sees. Uniqueness helps
-                but isn't required, though it may be hard to find "Bob" among the few thousand humans
-                here if someone comes looking for you.
+                <strong>@Localizer["Onboarding_BurnerNameLabel"]</strong> — @Localizer["Onboarding_BurnerNameExplainer"]
             </p>
         </div>
 
@@ -38,11 +33,11 @@
             <div class="mb-4">
                 <label asp-for="BurnerName" class="form-label"></label>
                 <input asp-for="BurnerName" class="form-control" />
-                <small class="form-text text-muted">The name everyone will know you by.</small>
+                <small class="form-text text-muted">@Localizer["Onboarding_BurnerNameHelp"]</small>
                 <span asp-validation-for="BurnerName" class="text-danger"></span>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg">Continue</button>
+            <button type="submit" class="btn btn-primary btn-lg">@Localizer["Onboarding_Continue"]</button>
         </form>
     </div>
 </div>

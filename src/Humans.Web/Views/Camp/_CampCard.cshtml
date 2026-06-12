@@ -30,34 +30,34 @@
             <div class="d-flex flex-wrap gap-1 mb-2">
                 @foreach (var vibe in Model.Vibes)
                 {
-                    <span class="badge bg-secondary">@vibe</span>
+                    <span class="badge bg-secondary">@Localizer.EnumDisplay(vibe)</span>
                 }
                 @if (Model.SoundZone.HasValue)
                 {
                     <span class="badge bg-info">
-                        <i class="fa-solid fa-volume-high me-1"></i>@Model.SoundZone
+                        <i class="fa-solid fa-volume-high me-1"></i>@Localizer.EnumDisplay(Model.SoundZone.Value)
                     </span>
                 }
             </div>
             <div class="d-flex flex-wrap gap-1 mt-auto">
                 @if (Model.AcceptingMembers == YesNoMaybe.Yes)
                 {
-                    <span class="badge bg-success">Accepting Members</span>
+                    <span class="badge bg-success">@Localizer["CampCard_AcceptingMembers"]</span>
                 }
                 @if (Model.KidsWelcome == YesNoMaybe.Yes)
                 {
                     <span class="badge bg-primary">
-                        <i class="fa-solid fa-children me-1"></i>Kids Welcome
+                        <i class="fa-solid fa-children me-1"></i>@Localizer["CampCard_KidsWelcome"]
                     </span>
                 }
                 @if (Model.Status == CampSeasonStatus.Full)
                 {
-                    <span class="badge bg-warning text-dark">Full</span>
+                    <span class="badge bg-warning text-dark">@Localizer["CampCard_Full"]</span>
                 }
                 @if (Model.TimesAtNowhere > 0)
                 {
                     <span class="badge bg-light text-dark border">
-                        <i class="fa-solid fa-fire text-warning me-1"></i>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "")
+                        <i class="fa-solid fa-fire text-warning me-1"></i>@Localizer["CampCard_TimesAtNowhere", Model.TimesAtNowhere]
                     </span>
                 }
             </div>

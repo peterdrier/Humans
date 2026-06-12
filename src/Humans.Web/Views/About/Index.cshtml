@@ -3,32 +3,29 @@
 }
 
 <div class="text-center my-5">
-    <h1 class="display-4">About Humans</h1>
+    <h1 class="display-4">@Localizer["About_Title"]</h1>
     <p class="lead mt-3">
-        Made by <a href="https://github.com/peterdrier" target="_blank" rel="noopener noreferrer">Peter</a> with love for the Nobodies Community.
+        @Localizer["About_MadeBy"] <a href="https://github.com/peterdrier" target="_blank" rel="noopener noreferrer">Peter</a> @Localizer["About_MadeByTail"]
     </p>
     <p class="text-muted" style="max-width: 640px; margin: 0 auto;">
-        Humans is the membership system that keeps Nobodies Collective running — human onboarding,
-        team provisioning, governance tracking, and all the plumbing that lets a Spanish nonprofit
-        operate with the organisational memory of something ten times its size.
-        Built with care, maintained with stubbornness, and deployed with crossed fingers.
+        @Localizer["About_Intro"]
     </p>
     <p class="mt-3 mb-0">
-        Need help? <a href="mailto:humans@nobodies.team">humans@nobodies.team</a>
+        @Localizer["About_NeedHelp"] <a href="mailto:humans@nobodies.team">humans@nobodies.team</a>
     </p>
     <p class="mt-4 mb-0 text-muted">
-        With additional help from
+        @Localizer["About_AdditionalHelp"]
         <a href="https://github.com/jokin" target="_blank" rel="noopener noreferrer">Jokin</a>,
         <a href="https://github.com/veryaaron" target="_blank" rel="noopener noreferrer">Aaron</a>,
         <a href="https://github.com/davinov" target="_blank" rel="noopener noreferrer">David</a>,
         <a href="https://github.com/laugongim" target="_blank" rel="noopener noreferrer">Laura</a>,
-        and <a href="https://github.com/swombat" target="_blank" rel="noopener noreferrer">Daniel</a>.
+        @Localizer["About_AdditionalHelpAnd"] <a href="https://github.com/swombat" target="_blank" rel="noopener noreferrer">Daniel</a>.
     </p>
     @if (User.Identity?.IsAuthenticated == true)
     {
         <p class="mt-4">
             <a asp-controller="About" asp-action="Staff" class="btn btn-outline-primary">
-                <i class="fa-solid fa-users me-1"></i> Meet the Staff
+                <i class="fa-solid fa-users me-1"></i> @Localizer["About_MeetTheStaff"]
             </a>
         </p>
     }
@@ -36,19 +33,17 @@
 
 <div class="card border-primary mb-5" style="max-width: 720px; margin: 0 auto;">
     <div class="card-body">
-        <h5 class="card-title"><i class="fa-solid fa-section me-2"></i>License</h5>
+        <h5 class="card-title"><i class="fa-solid fa-section me-2"></i>@Localizer["About_LicenseHeading"]</h5>
         <p class="mb-2">
-            Humans is free software, released under the
+            @Localizer["About_LicenseBody"]
             <strong>GNU Affero General Public License v3.0</strong> (AGPL-3.0).
         </p>
         <p class="mb-2 small text-muted">
-            You may use, study, modify, and redistribute this software. If you run a modified version
-            and let others interact with it over a network, you must make your modified source available
-            under the same license.
+            @Localizer["About_LicenseExplanation"]
         </p>
         <p class="mb-0 small">
-            Full license text: <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">gnu.org/licenses/agpl-3.0</a>
-            &middot; Source code: <a href="https://github.com/peterdrier/Humans" target="_blank" rel="noopener noreferrer">github.com/peterdrier/Humans</a>
+            @Localizer["About_LicenseFullText"] <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">gnu.org/licenses/agpl-3.0</a>
+            &middot; @Localizer["About_LicenseSourceCode"] <a href="https://github.com/peterdrier/Humans" target="_blank" rel="noopener noreferrer">github.com/peterdrier/Humans</a>
         </p>
     </div>
 </div>
@@ -56,51 +51,45 @@
 <hr />
 
 <section class="my-5">
-    <h2><i class="fa-solid fa-flask-vial me-2"></i>The Ingredients</h2>
+    <h2><i class="fa-solid fa-flask-vial me-2"></i>@Localizer["About_IngredientsHeading"]</h2>
     <p>
-        Every workshop needs its materials. Here is what Humans is built from:
+        @Localizer["About_IngredientsIntro"]
     </p>
     <div class="row g-4 mt-2">
         <div class="col-md-4">
             <h5><i class="fa-brands fa-microsoft me-1"></i>.NET 10</h5>
             <p class="text-muted small mb-0">
-                ASP.NET Core MVC with Razor views, Identity, and the whole Microsoft stack.
-                The frame that holds everything together.
+                @Localizer["About_DotNetDesc"]
             </p>
         </div>
         <div class="col-md-4">
             <h5><i class="fa-solid fa-database me-1"></i>PostgreSQL + EF Core</h5>
             <p class="text-muted small mb-0">
-                Relational data with Entity Framework Core and Npgsql.
-                NodaTime types all the way down — no <code>DateTime</code> in sight.
+                @Localizer["About_PostgresDesc"]
             </p>
         </div>
         <div class="col-md-4">
             <h5><i class="fa-brands fa-google me-1"></i>Google Workspace APIs</h5>
             <p class="text-muted small mb-0">
-                Admin Directory, Drive, and Groups — provisioning Shared Drives,
-                folders, and mailing lists so nobody has to do it by hand.
+                @Localizer["About_GoogleDesc"]
             </p>
         </div>
         <div class="col-md-4">
             <h5><i class="fa-solid fa-clock me-1"></i>Hangfire</h5>
             <p class="text-muted small mb-0">
-                Background jobs for sync, reconciliation, and anything that shouldn't
-                block an HTTP request. PostgreSQL-backed, dashboard included.
+                @Localizer["About_HangfireDesc"]
             </p>
         </div>
         <div class="col-md-4">
             <h5><i class="fa-solid fa-chart-line me-1"></i>OpenTelemetry + Serilog</h5>
             <p class="text-muted small mb-0">
-                Structured logging, distributed traces, and Prometheus metrics.
-                Because "it works on my machine" isn't a monitoring strategy.
+                @Localizer["About_OtelDesc"]
             </p>
         </div>
         <div class="col-md-4">
             <h5><i class="fa-solid fa-envelope me-1"></i>MailKit</h5>
             <p class="text-muted small mb-0">
-                Transactional email for notifications and onboarding.
-                The one library that makes SMTP feel almost pleasant.
+                @Localizer["About_MailKitDesc"]
             </p>
         </div>
     </div>
@@ -109,30 +98,29 @@
 <hr />
 
 <section class="my-5">
-    <h2><i class="fa-solid fa-scale-balanced me-2"></i>Open Source Licenses</h2>
+    <h2><i class="fa-solid fa-scale-balanced me-2"></i>@Localizer["About_OpenSourceLicensesHeading"]</h2>
     <p>
-        Humans is built on the shoulders of open-source projects.
-        The table below lists every production dependency, its version, and license.
+        @Localizer["About_OpenSourceLicensesIntro"]
     </p>
 
-    <h4 class="mt-4">NuGet Packages</h4>
+    <h4 class="mt-4">@Localizer["About_NuGetPackagesHeading"]</h4>
     <p class="small text-muted">
-        Conversational helper responses are produced by Anthropic's API. No data is used for model training per Anthropic's DPA.
+        @Localizer["About_AnthropicNote"]
     </p>
     <div class="table-responsive">
         <table class="table table-sm table-striped align-middle">
             <thead class="table-dark">
                 <tr>
-                    <th>Category</th>
-                    <th>Package</th>
-                    <th>Version</th>
-                    <th>License</th>
+                    <th>@Localizer["About_ColCategory"]</th>
+                    <th>@Localizer["About_ColPackage"]</th>
+                    <th>@Localizer["About_ColVersion"]</th>
+                    <th>@Localizer["About_ColLicense"]</th>
                 </tr>
             </thead>
             <tbody>
                 @* — AI/LLM — *@
                 <tr>
-                    <td>AI/LLM</td>
+                    <td>@Localizer["About_Cat_AILLM"]</td>
                     <td><a href="https://www.nuget.org/packages/Anthropic" target="_blank" rel="noopener noreferrer">Anthropic</a></td>
                     <td>12.27.0</td>
                     <td>MIT</td>
@@ -140,43 +128,43 @@
 
                 @* — Framework — *@
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Identity.EntityFrameworkCore" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Identity.EntityFrameworkCore</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.Google" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Authentication.Google</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.DataProtection.EntityFrameworkCore</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.DataProtection.Extensions" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.DataProtection.Extensions</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore" target="_blank" rel="noopener noreferrer">Microsoft.EntityFrameworkCore</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
                 </tr>
                 <tr>
-                    <td>Framework</td>
+                    <td>@Localizer["About_Cat_Framework"]</td>
                     <td><a href="https://www.nuget.org/packages/Microsoft.Extensions.Localization" target="_blank" rel="noopener noreferrer">Microsoft.Extensions.Localization</a></td>
                     <td>10.0.8</td>
                     <td>MIT</td>
@@ -184,13 +172,13 @@
 
                 @* — Database — *@
                 <tr>
-                    <td>Database</td>
+                    <td>@Localizer["About_Cat_Database"]</td>
                     <td><a href="https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL" target="_blank" rel="noopener noreferrer">Npgsql.EntityFrameworkCore.PostgreSQL</a></td>
                     <td>10.0.1</td>
                     <td>PostgreSQL</td>
                 </tr>
                 <tr>
-                    <td>Database</td>
+                    <td>@Localizer["About_Cat_Database"]</td>
                     <td><a href="https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" target="_blank" rel="noopener noreferrer">Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime</a></td>
                     <td>10.0.1</td>
                     <td>PostgreSQL</td>
@@ -198,13 +186,13 @@
 
                 @* — Date/Time — *@
                 <tr>
-                    <td>Date/Time</td>
+                    <td>@Localizer["About_Cat_DateTime"]</td>
                     <td><a href="https://www.nuget.org/packages/NodaTime" target="_blank" rel="noopener noreferrer">NodaTime</a></td>
                     <td>3.3.2</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Date/Time</td>
+                    <td>@Localizer["About_Cat_DateTime"]</td>
                     <td><a href="https://www.nuget.org/packages/NodaTime.Serialization.SystemTextJson" target="_blank" rel="noopener noreferrer">NodaTime.Serialization.SystemTextJson</a></td>
                     <td>1.3.1</td>
                     <td>Apache-2.0</td>
@@ -212,7 +200,7 @@
 
                 @* — Calendar — *@
                 <tr>
-                    <td>Calendar</td>
+                    <td>@Localizer["About_Cat_Calendar"]</td>
                     <td><a href="https://www.nuget.org/packages/Ical.Net" target="_blank" rel="noopener noreferrer">Ical.Net</a></td>
                     <td>5.2.2</td>
                     <td>MIT</td>
@@ -220,7 +208,7 @@
 
                 @* — Spreadsheet — *@
                 <tr>
-                    <td>Spreadsheet</td>
+                    <td>@Localizer["About_Cat_Spreadsheet"]</td>
                     <td><a href="https://www.nuget.org/packages/ClosedXML" target="_blank" rel="noopener noreferrer">ClosedXML</a></td>
                     <td>0.105.0</td>
                     <td>MIT</td>
@@ -228,7 +216,7 @@
 
                 @* — CSV — *@
                 <tr>
-                    <td>CSV</td>
+                    <td>@Localizer["About_Cat_CSV"]</td>
                     <td><a href="https://www.nuget.org/packages/CsvHelper" target="_blank" rel="noopener noreferrer">CsvHelper</a></td>
                     <td>33.1.0</td>
                     <td>MS-PL / Apache-2.0</td>
@@ -236,7 +224,7 @@
 
                 @* — State Machine — *@
                 <tr>
-                    <td>State Machine</td>
+                    <td>@Localizer["About_Cat_StateMachine"]</td>
                     <td><a href="https://www.nuget.org/packages/Stateless" target="_blank" rel="noopener noreferrer">Stateless</a></td>
                     <td>5.20.1</td>
                     <td>Apache-2.0</td>
@@ -244,19 +232,19 @@
 
                 @* — Background Jobs — *@
                 <tr>
-                    <td>Background Jobs</td>
+                    <td>@Localizer["About_Cat_BackgroundJobs"]</td>
                     <td><a href="https://www.nuget.org/packages/Hangfire.Core" target="_blank" rel="noopener noreferrer">Hangfire.Core</a></td>
                     <td>1.8.23</td>
                     <td>LGPL-3.0</td>
                 </tr>
                 <tr>
-                    <td>Background Jobs</td>
+                    <td>@Localizer["About_Cat_BackgroundJobs"]</td>
                     <td><a href="https://www.nuget.org/packages/Hangfire.AspNetCore" target="_blank" rel="noopener noreferrer">Hangfire.AspNetCore</a></td>
                     <td>1.8.23</td>
                     <td>LGPL-3.0</td>
                 </tr>
                 <tr>
-                    <td>Background Jobs</td>
+                    <td>@Localizer["About_Cat_BackgroundJobs"]</td>
                     <td><a href="https://www.nuget.org/packages/Hangfire.PostgreSql" target="_blank" rel="noopener noreferrer">Hangfire.PostgreSql</a></td>
                     <td>1.21.1</td>
                     <td>LGPL-3.0</td>
@@ -264,7 +252,7 @@
 
                 @* — Email — *@
                 <tr>
-                    <td>Email</td>
+                    <td>@Localizer["About_Cat_Email"]</td>
                     <td><a href="https://www.nuget.org/packages/MailKit" target="_blank" rel="noopener noreferrer">MailKit</a></td>
                     <td>4.17.0</td>
                     <td>MIT</td>
@@ -272,7 +260,7 @@
 
                 @* — GitHub API — *@
                 <tr>
-                    <td>GitHub API</td>
+                    <td>@Localizer["About_Cat_GitHubAPI"]</td>
                     <td><a href="https://www.nuget.org/packages/Octokit" target="_blank" rel="noopener noreferrer">Octokit</a></td>
                     <td>14.0.0</td>
                     <td>MIT</td>
@@ -280,37 +268,37 @@
 
                 @* — Google APIs — *@
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.Admin.Directory.directory_v1" target="_blank" rel="noopener noreferrer">Google.Apis.Admin.Directory.directory_v1</a></td>
                     <td>1.74.0.4159</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.CloudIdentity.v1" target="_blank" rel="noopener noreferrer">Google.Apis.CloudIdentity.v1</a></td>
                     <td>1.74.0.4161</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.Drive.v3" target="_blank" rel="noopener noreferrer">Google.Apis.Drive.v3</a></td>
                     <td>1.74.0.4135</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.DriveActivity.v2" target="_blank" rel="noopener noreferrer">Google.Apis.DriveActivity.v2</a></td>
                     <td>1.74.0.3880</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.Groupssettings.v1" target="_blank" rel="noopener noreferrer">Google.Apis.Groupssettings.v1</a></td>
                     <td>1.74.0.2721</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Google APIs</td>
+                    <td>@Localizer["About_Cat_GoogleAPIs"]</td>
                     <td><a href="https://www.nuget.org/packages/Google.Apis.Auth" target="_blank" rel="noopener noreferrer">Google.Apis.Auth</a></td>
                     <td>1.75.0</td>
                     <td>Apache-2.0</td>
@@ -318,7 +306,7 @@
 
                 @* — Resilience — *@
                 <tr>
-                    <td>Resilience</td>
+                    <td>@Localizer["About_Cat_Resilience"]</td>
                     <td><a href="https://www.nuget.org/packages/Polly" target="_blank" rel="noopener noreferrer">Polly</a></td>
                     <td>8.6.6</td>
                     <td>BSD-3-Clause</td>
@@ -326,43 +314,43 @@
 
                 @* — Observability — *@
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Exporter.OpenTelemetryProtocol" target="_blank" rel="noopener noreferrer">OpenTelemetry.Exporter.OpenTelemetryProtocol</a></td>
                     <td>1.15.3</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Exporter.Prometheus.AspNetCore" target="_blank" rel="noopener noreferrer">OpenTelemetry.Exporter.Prometheus.AspNetCore</a></td>
                     <td>1.15.0-beta.1</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting" target="_blank" rel="noopener noreferrer">OpenTelemetry.Extensions.Hosting</a></td>
                     <td>1.15.3</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.AspNetCore" target="_blank" rel="noopener noreferrer">OpenTelemetry.Instrumentation.AspNetCore</a></td>
                     <td>1.15.2</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.EntityFrameworkCore" target="_blank" rel="noopener noreferrer">OpenTelemetry.Instrumentation.EntityFrameworkCore</a></td>
                     <td>1.15.0-beta.1</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.Http" target="_blank" rel="noopener noreferrer">OpenTelemetry.Instrumentation.Http</a></td>
                     <td>1.15.1</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Observability</td>
+                    <td>@Localizer["About_Cat_Observability"]</td>
                     <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.Runtime" target="_blank" rel="noopener noreferrer">OpenTelemetry.Instrumentation.Runtime</a></td>
                     <td>1.15.1</td>
                     <td>Apache-2.0</td>
@@ -370,25 +358,25 @@
 
                 @* — Logging — *@
                 <tr>
-                    <td>Logging</td>
+                    <td>@Localizer["About_Cat_Logging"]</td>
                     <td><a href="https://www.nuget.org/packages/Serilog" target="_blank" rel="noopener noreferrer">Serilog</a></td>
                     <td>4.3.1</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Logging</td>
+                    <td>@Localizer["About_Cat_Logging"]</td>
                     <td><a href="https://www.nuget.org/packages/Serilog.AspNetCore" target="_blank" rel="noopener noreferrer">Serilog.AspNetCore</a></td>
                     <td>10.0.0</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Logging</td>
+                    <td>@Localizer["About_Cat_Logging"]</td>
                     <td><a href="https://www.nuget.org/packages/Serilog.Sinks.Debug" target="_blank" rel="noopener noreferrer">Serilog.Sinks.Debug</a></td>
                     <td>3.0.0</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Logging</td>
+                    <td>@Localizer["About_Cat_Logging"]</td>
                     <td><a href="https://www.nuget.org/packages/Serilog.Sinks.OpenTelemetry" target="_blank" rel="noopener noreferrer">Serilog.Sinks.OpenTelemetry</a></td>
                     <td>4.2.0</td>
                     <td>Apache-2.0</td>
@@ -396,7 +384,7 @@
 
                 @* — Image Processing — *@
                 <tr>
-                    <td>Image Processing</td>
+                    <td>@Localizer["About_Cat_ImageProcessing"]</td>
                     <td><a href="https://www.nuget.org/packages/Magick.NET-Q8-AnyCPU" target="_blank" rel="noopener noreferrer">Magick.NET-Q8-AnyCPU</a></td>
                     <td>14.14.0</td>
                     <td>Apache-2.0</td>
@@ -404,13 +392,13 @@
 
                 @* — Markdown / Sanitization — *@
                 <tr>
-                    <td>Markdown</td>
+                    <td>@Localizer["About_Cat_Markdown"]</td>
                     <td><a href="https://www.nuget.org/packages/Markdig" target="_blank" rel="noopener noreferrer">Markdig</a></td>
                     <td>1.2.0</td>
                     <td>BSD-2-Clause</td>
                 </tr>
                 <tr>
-                    <td>Sanitization</td>
+                    <td>@Localizer["About_Cat_Sanitization"]</td>
                     <td><a href="https://www.nuget.org/packages/HtmlSanitizer" target="_blank" rel="noopener noreferrer">HtmlSanitizer</a></td>
                     <td>9.0.892</td>
                     <td>MIT</td>
@@ -418,7 +406,7 @@
 
                 @* — User-Agent — *@
                 <tr>
-                    <td>User-Agent</td>
+                    <td>@Localizer["About_Cat_UserAgent"]</td>
                     <td><a href="https://www.nuget.org/packages/MyCSharp.HttpUserAgentParser" target="_blank" rel="noopener noreferrer">MyCSharp.HttpUserAgentParser</a></td>
                     <td>3.1.6</td>
                     <td>MIT</td>
@@ -426,7 +414,7 @@
 
                 @* — Payments — *@
                 <tr>
-                    <td>Payments</td>
+                    <td>@Localizer["About_Cat_Payments"]</td>
                     <td><a href="https://www.nuget.org/packages/Stripe.net" target="_blank" rel="noopener noreferrer">Stripe.net</a></td>
                     <td>51.1.0</td>
                     <td>Apache-2.0</td>
@@ -434,19 +422,19 @@
 
                 @* — Health Checks — *@
                 <tr>
-                    <td>Health Checks</td>
+                    <td>@Localizer["About_Cat_HealthChecks"]</td>
                     <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.NpgSql" target="_blank" rel="noopener noreferrer">AspNetCore.HealthChecks.NpgSql</a></td>
                     <td>9.0.0</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Health Checks</td>
+                    <td>@Localizer["About_Cat_HealthChecks"]</td>
                     <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.Hangfire" target="_blank" rel="noopener noreferrer">AspNetCore.HealthChecks.Hangfire</a></td>
                     <td>9.0.0</td>
                     <td>Apache-2.0</td>
                 </tr>
                 <tr>
-                    <td>Health Checks</td>
+                    <td>@Localizer["About_Cat_HealthChecks"]</td>
                     <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.Uris" target="_blank" rel="noopener noreferrer">AspNetCore.HealthChecks.Uris</a></td>
                     <td>9.0.0</td>
                     <td>Apache-2.0</td>
@@ -455,14 +443,14 @@
         </table>
     </div>
 
-    <h4 class="mt-4">Frontend / CDN Dependencies</h4>
+    <h4 class="mt-4">@Localizer["About_FrontendHeading"]</h4>
     <div class="table-responsive">
         <table class="table table-sm table-striped align-middle">
             <thead class="table-dark">
                 <tr>
-                    <th>Library</th>
-                    <th>Version</th>
-                    <th>License</th>
+                    <th>@Localizer["About_ColLibrary"]</th>
+                    <th>@Localizer["About_ColVersion"]</th>
+                    <th>@Localizer["About_ColLicense"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -520,23 +508,22 @@
         </table>
     </div>
 
-    <h4 class="mt-4">License Compliance Summary</h4>
+    <h4 class="mt-4">@Localizer["About_LicenseComplianceHeading"]</h4>
     <div class="card">
         <div class="card-body">
-            <p class="mb-2"><strong>All production dependencies use permissive or weak-copyleft licenses. No violations found.</strong></p>
+            <p class="mb-2"><strong>@Localizer["About_LicenseComplianceSummary"]</strong></p>
             <ul class="mb-0 small">
-                <li><strong>MIT</strong> &mdash; requires copyright notice; this page satisfies that obligation.</li>
-                <li><strong>BSD-3-Clause</strong> (MapLibre GL JS) &mdash; requires copyright notice; this page satisfies that obligation.</li>
-                <li><strong>ISC</strong> (maplibre-gl-draw) &mdash; permissive, functionally equivalent to BSD-2-Clause; copyright notice required.</li>
-                <li><strong>Apache-2.0</strong> &mdash; requires copyright notice, license copy, and statement of changes if modified. All packages are used unmodified.</li>
-                <li><strong>BSD-2-Clause / BSD-3-Clause</strong> &mdash; requires copyright notice in documentation.</li>
-                <li><strong>PostgreSQL License</strong> &mdash; permissive, MIT-like; copyright notice required.</li>
+                <li><strong>MIT</strong> &mdash; @Localizer["About_License_MIT"]</li>
+                <li><strong>BSD-3-Clause</strong> (MapLibre GL JS) &mdash; @Localizer["About_License_BSD3MapLibre"]</li>
+                <li><strong>ISC</strong> (maplibre-gl-draw) &mdash; @Localizer["About_License_ISC"]</li>
+                <li><strong>Apache-2.0</strong> &mdash; @Localizer["About_License_Apache2"]</li>
+                <li><strong>BSD-2-Clause / BSD-3-Clause</strong> &mdash; @Localizer["About_License_BSD2"]</li>
+                <li><strong>PostgreSQL License</strong> &mdash; @Localizer["About_License_PostgreSQL"]</li>
                 <li>
-                    <strong>LGPL-3.0</strong> (Hangfire) &mdash; the library must be replaceable by the end user. Consumed as
-                    unmodified NuGet packages (dynamically linked), satisfying LGPL obligations.
+                    <strong>LGPL-3.0</strong> (Hangfire) &mdash; @Localizer["About_License_LGPL30"]
                     Source available at <a href="https://github.com/HangfireIO/Hangfire" target="_blank" rel="noopener noreferrer">github.com/HangfireIO/Hangfire</a>.
                 </li>
-                <li><strong>SIL OFL 1.1</strong> (fonts) &mdash; free to use and redistribute; fonts cannot be sold standalone.</li>
+                <li><strong>SIL OFL 1.1</strong> (fonts) &mdash; @Localizer["About_License_SILOFL"]</li>
             </ul>
         </div>
     </div>

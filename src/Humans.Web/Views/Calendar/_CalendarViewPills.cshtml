@@ -3,8 +3,8 @@
     string Cls(string v) => "btn btn-sm " + (string.Equals(v, active, StringComparison.Ordinal) ? "btn-primary" : "btn-outline-secondary");
 }
 
-<div class="btn-group mb-3" role="group" aria-label="Calendar view">
-    <a class="@Cls("grid")" asp-action="Index">Grid</a>
-    <a class="@Cls("list")" asp-action="List">List</a>
-    <a class="@Cls("agenda")" asp-action="Agenda">Agenda</a>
+<div class="btn-group mb-3" role="group" aria-label="@Localizer["Calendar_ViewAriaLabel"]">
+    <a class="@Cls("grid")" asp-action="Index">@Localizer["Calendar_ViewGrid"]</a>
+    <a class="@Cls("list")" asp-action="List">@Localizer["Calendar_ViewList"]</a>
+    <a class="@Cls("agenda")" asp-action="Agenda">@Localizer["Calendar_Agenda"]</a>
 </div>

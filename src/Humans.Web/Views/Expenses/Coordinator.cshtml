@@ -3,24 +3,24 @@
 @using Humans.Web.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "Expense Reports — Coordinator Queue";
+    ViewData["Title"] = Localizer["Expenses_CoordinatorQueueTitle"].Value;
 }
 
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">Coordinator Queue</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_CoordinatorQueue"]</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Coordinator Queue</h1>
+    <h1>@Localizer["Expenses_CoordinatorQueue"]</h1>
 </div>
 
 
 @if (!Model.Reports.Any())
 {
     <div class="alert alert-info">
-        <i class="fa-solid fa-inbox me-2"></i>No reports awaiting your endorsement.
+        <i class="fa-solid fa-inbox me-2"></i>@Localizer["Expenses_NoReportsAwaiting"]
     </div>
 }
 else
@@ -32,32 +32,32 @@ else
     Func<ExpenseReportDto, IHtmlContent> actionsCell = @<text>
         <div class="d-flex gap-2 justify-content-end">
             <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
-                <i class="fa-solid fa-eye me-1"></i>View
+                <i class="fa-solid fa-eye me-1"></i>@Localizer["Common_View"]
             </a>
             @if (item.Status == ExpenseReportStatus.Submitted)
             {
                 <form asp-action="Endorse" asp-route-id="@item.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-success"
-                            data-confirm="Endorse this expense report?">
-                        <i class="fa-solid fa-check me-1"></i>Endorse
+                            data-confirm="@Localizer["Expenses_EndorseConfirm"].Value">
+                        <i class="fa-solid fa-check me-1"></i>@Localizer["Expenses_Endorse"]
                     </button>
                 </form>
                 <button type="button" class="btn btn-sm btn-outline-danger"
                         data-bs-toggle="modal"
                         data-bs-target="#rejectModal-@item.Id">
-                    <i class="fa-solid fa-xmark me-1"></i>Reject
+                    <i class="fa-solid fa-xmark me-1"></i>@Localizer["Expenses_Reject"]
                 </button>
             }
         </div>
     </text>;
     var table = TableModel.For(Model.Reports)
-        .Template("Report", reportCell)
-        .Column("Submitted by", r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")
-        .Column("Total", r => r.Total, c => c.Currency().End())
-        .Column("Status", r => r.Status, c => c.EnumBadge())
-        .Template("Submitted", submittedAtCell)
-        .Template("Actions", actionsCell, c => c.NoSort().End())
+        .Template(Localizer["Expenses_ColReport"].Value, reportCell)
+        .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : Localizer["Common_Unknown"].Value)
+        .Column(Localizer["Common_Total"].Value, r => r.Total, c => c.Currency().End())
+        .Column(Localizer["Common_Status"].Value, r => r.Status, c => c.EnumBadge())
+        .Template(Localizer["Expenses_ColSubmitted"].Value, submittedAtCell)
+        .Template(Localizer["Common_Actions"].Value, actionsCell, c => c.NoSort().End())
         .Build();
     <partial name="_Table" model="table" />
 
@@ -70,23 +70,23 @@ else
                     <form asp-action="CoordinatorReject" asp-route-id="@r.Id" method="post">
                         @Html.AntiForgeryToken()
                         <div class="modal-header">
-                            <h5 class="modal-title" id="rejectModalLabel-@r.Id">Reject Report</h5>
+                            <h5 class="modal-title" id="rejectModalLabel-@r.Id">@Localizer["Expenses_RejectModalTitle"]</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             <p class="text-muted">
-                                The submitter will see this reason. Explain clearly why the report cannot be endorsed.
+                                @Localizer["Expenses_RejectModalBody"]
                             </p>
                             <div class="mb-3">
-                                <label for="reason-@r.Id" class="form-label fw-semibold">Rejection reason <span class="text-danger">*</span></label>
+                                <label for="reason-@r.Id" class="form-label fw-semibold">@Localizer["Expenses_RejectReasonLabel"] <span class="text-danger">*</span></label>
                                 <textarea class="form-control" id="reason-@r.Id" name="Reason"
                                           rows="3" maxlength="1000" required
-                                          placeholder="e.g. Missing receipts for line 2"></textarea>
+                                          placeholder="@Localizer["Expenses_RejectReasonPlaceholder"].Value"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-danger">Reject</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                            <button type="submit" class="btn btn-danger">@Localizer["Expenses_Reject"]</button>
                         </div>
                     </form>
                 </div>

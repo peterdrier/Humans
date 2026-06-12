@@ -8,7 +8,7 @@
         <div>
             <h2 class="mb-1">@Localizer["Issue_PageTitle"]</h2>
             <p class="text-muted small mb-0">
-                @Model.OpenCount open · @Model.TotalCount total
+                @Localizer["Issue_CountSummary", Model.OpenCount, Model.TotalCount]
             </p>
         </div>
         <a class="btn btn-primary" asp-action="New">
@@ -106,11 +106,11 @@
             <table class="table table-hover table-sm align-middle issues-table mb-0">
                 <thead class="visually-hidden">
                     <tr>
-                        <th>Status</th>
-                        <th>Title</th>
-                        <th>Reporter</th>
-                        <th>Updated</th>
-                        <th>Comments</th>
+                        <th>@Localizer["Issue_ColStatus"]</th>
+                        <th>@Localizer["Issue_ColTitle"]</th>
+                        <th>@Localizer["Issue_ColReporter"]</th>
+                        <th>@Localizer["Issue_ColUpdated"]</th>
+                        <th>@Localizer["Issue_ColComments"]</th>
                     </tr>
                 </thead>
                 <tbody>

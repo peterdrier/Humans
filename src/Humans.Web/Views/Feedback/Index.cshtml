@@ -13,11 +13,11 @@
             {
                 if (Model.StatusFilter == s)
                 {
-                    <option value="@s" selected>@s</option>
+                    <option value="@s" selected>@Localizer.EnumDisplay(s)</option>
                 }
                 else
                 {
-                    <option value="@s">@s</option>
+                    <option value="@s">@Localizer.EnumDisplay(s)</option>
                 }
             }
         </select>
@@ -27,11 +27,11 @@
             {
                 if (Model.CategoryFilter == c)
                 {
-                    <option value="@c" selected>@c</option>
+                    <option value="@c" selected>@Localizer.EnumDisplay(c)</option>
                 }
                 else
                 {
-                    <option value="@c">@c</option>
+                    <option value="@c">@Localizer.EnumDisplay(c)</option>
                 }
             }
         </select>
@@ -127,7 +127,7 @@
                      data-report-id="@report.Id"
                      style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="fw-semibold small">@report.Category on @(report.PageUrl.Length > 30 ? report.PageUrl[..30] + "..." : report.PageUrl)</span>
+                        <span class="fw-semibold small">@Localizer["Feedback_CategoryOnPage", Localizer.EnumDisplay(report.Category), (report.PageUrl.Length > 30 ? report.PageUrl[..30] + "..." : report.PageUrl)]</span>
                         @{
                             var badgeClass = report.Status switch
                             {
@@ -137,7 +137,7 @@
                                 _ => "bg-secondary"
                             };
                         }
-                        <span class="badge @badgeClass" style="font-size: 0.7rem;">@report.Status</span>
+                        <span class="badge @badgeClass" style="font-size: 0.7rem;">@Localizer.EnumDisplay(report.Status)</span>
                     </div>
                     @if (Model.IsAdmin)
                     {
@@ -155,14 +155,14 @@
                                 @if (!string.IsNullOrEmpty(report.AssignedToName))
                                 {
                                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size: 0.65rem;"
-                                          title="Assigned to @report.AssignedToName">
+                                          title="@Localizer["Feedback_AssignedToName", report.AssignedToName]">
                                         <i class="fa-solid fa-user fa-xs"></i> @(report.AssignedToName.Length > 12 ? report.AssignedToName[..12] + "..." : report.AssignedToName)
                                     </span>
                                 }
                                 @if (!string.IsNullOrEmpty(report.AssignedToTeamName))
                                 {
                                     <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle" style="font-size: 0.65rem;"
-                                          title="Team: @report.AssignedToTeamName">
+                                          title="@Localizer["Feedback_TeamName", report.AssignedToTeamName]">
                                         <i class="fa-solid fa-users fa-xs"></i> @(report.AssignedToTeamName.Length > 12 ? report.AssignedToTeamName[..12] + "..." : report.AssignedToTeamName)
                                     </span>
                                 }

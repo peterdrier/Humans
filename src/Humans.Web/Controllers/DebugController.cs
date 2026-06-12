@@ -10,6 +10,7 @@ using Humans.Web.Infrastructure;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Serilog.Events;
 
 namespace Humans.Web.Controllers;
@@ -324,6 +325,10 @@ public class DebugController(
 
     [HttpGet("FormatGallery")]
     public IActionResult FormatGallery() => View(FormatGalleryModelBuilder.Build());
+
+    [HttpGet("Translations")]
+    public IActionResult Translations([FromServices] IStringLocalizer<SharedResource> localizer) =>
+        View(TranslationsGalleryModelBuilder.Build(localizer));
 
     private static string StatusCategory(int statusCode) => statusCode switch
     {

@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.Web.Models.BudgetSummaryViewModel
 @{
-    ViewData["Title"] = $"Budget - {Model.YearName}";
+    ViewData["Title"] = Localizer["Budget_TitleYear", Model.YearName].Value;
     var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
     var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
     var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
@@ -11,23 +11,23 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Budget Overview</h1>
+    <h1 class="mb-0">@Localizer["Budget_OverviewTitle"]</h1>
     @if (Model.IsCoordinator)
     {
         <a asp-action="Index" class="btn btn-outline-primary">
-            <i class="fa-solid fa-list me-1"></i>Department Detail
+            <i class="fa-solid fa-list me-1"></i>@Localizer["Budget_DepartmentDetail"]
         </a>
     }
 </div>
 
 
-<p class="text-muted mb-4">How the @Model.YearName budget is allocated across departments and infrastructure.</p>
+<p class="text-muted mb-4">@Localizer["Budget_OverviewSubtitle", Model.YearName]</p>
 
 <div class="row mb-4">
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total Income</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalIncome"]</h6>
                 <h3 class="card-title mb-0 text-success">@Model.TotalIncome.ToEuro()</h3>
             </div>
         </div>
@@ -35,7 +35,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total Expenses</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalExpenses"]</h6>
                 <h3 class="card-title mb-0 text-danger">@Math.Abs(Model.TotalExpenses).ToEuro()</h3>
             </div>
         </div>
@@ -43,7 +43,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Net Balance</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_NetBalance"]</h6>
                 <h3 class="card-title mb-0 @(Model.NetBalance >= 0 ? "text-success" : "text-danger")">
                     @Model.NetBalance.ToEuro()
                 </h3>
@@ -58,7 +58,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
                 <div class="card-header">
-                    <i class="fa-solid fa-arrow-trend-up me-1 text-success"></i>Income
+                    <i class="fa-solid fa-arrow-trend-up me-1 text-success"></i>@Localizer["Budget_Income"]
                 </div>
                 <div class="card-body">
                     @if (Model.IncomeSlices.Any())
@@ -69,7 +69,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
-                            <p class="mb-0">No income line items yet.</p>
+                            <p class="mb-0">@Localizer["Budget_NoIncomeItems"]</p>
                         </div>
                     }
                 </div>
@@ -79,7 +79,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
                 <div class="card-header">
-                    <i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i>Expenses
+                    <i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i>@Localizer["Budget_Expenses"]
                 </div>
                 <div class="card-body">
                     @if (Model.ExpenseSlices.Any())
@@ -90,7 +90,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
-                            <p class="mb-0">No expense line items yet.</p>
+                            <p class="mb-0">@Localizer["Budget_NoExpenseItems"]</p>
                         </div>
                     }
                 </div>
@@ -103,13 +103,13 @@
         {
             <div class="col-lg-6 mb-4">
                 <div class="card">
-                    <div class="card-header">Income Breakdown</div>
+                    <div class="card-header">@Localizer["Budget_IncomeBreakdown"]</div>
                     <div class="card-body p-0">
                         @{
                             var incomeTable = TableModel.For(Model.IncomeSlices)
-                                .Column("Category", r => r.Name)
-                                .Column("Amount (€)", r => r.Amount, c => c.Currency().End())
-                                .Column("Share", r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
+                                .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
                                 .Build();
                         }
                         <partial name="_Table" model="incomeTable" />
@@ -121,13 +121,13 @@
         {
             <div class="col-lg-6 mb-4">
                 <div class="card">
-                    <div class="card-header">Expenses Breakdown</div>
+                    <div class="card-header">@Localizer["Budget_ExpensesBreakdown"]</div>
                     <div class="card-body p-0">
                         @{
                             var expenseTable = TableModel.For(Model.ExpenseSlices)
-                                .Column("Category", r => r.Name)
-                                .Column("Amount (€)", r => r.Amount, c => c.Currency().End())
-                                .Column("Share", r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
+                                .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
                                 .Build();
                         }
                         <partial name="_Table" model="expenseTable" />
@@ -232,8 +232,8 @@ else
     <div class="card">
         <div class="card-body text-center py-5">
             <i class="fa-solid fa-chart-pie fa-3x text-muted mb-3"></i>
-            <h4 class="text-muted">Budget data not available yet</h4>
-            <p class="text-muted mb-0">Budget allocations will appear here once they are set up by the finance team.</p>
+            <h4 class="text-muted">@Localizer["Budget_NoDataYet"]</h4>
+            <p class="text-muted mb-0">@Localizer["Budget_NoDataSubtitle"]</p>
         </div>
     </div>
 }

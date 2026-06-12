@@ -15,16 +15,16 @@
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
-                    <i class="fa-solid fa-user-shield"></i> Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
+                    <i class="fa-solid fa-user-shield"></i> @Localizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </a>
             </div>
         </div>
 
         @if (Model.CanViewOnsiteChip && Model.OnsiteSince is not null)
         {
-            <span class="badge text-bg-success mb-2" title="Checked in at the gate">
+            <span class="badge text-bg-success mb-2" title="@Localizer["Profile_OnsiteTitle"].Value">
                 <i class="fa-solid fa-circle-check"></i>
-                Onsite since @Model.OnsiteSince.Value.ToDateTime()
+                @Localizer["Profile_OnsiteSince", Model.OnsiteSince.Value.ToDateTime()]
             </span>
         }
 
@@ -93,16 +93,16 @@
         {
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> No-Show History (@Model.NoShowHistory!.Count)</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
                 </div>
                 <div class="card-body p-0">
                     @{
                         var noShowTable = TableModel.For(Model.NoShowHistory!)
-                            .Column("Shift", r => r.ShiftLabel)
-                            .Column("Department", r => r.DepartmentName)
-                            .Column("Date", r => r.ShiftDateLabel)
-                            .Column("Marked By", r => r.MarkedByName)
-                            .Column("Marked At", r => r.MarkedAtLabel)
+                            .Column(Localizer["Common_Shift"].Value, r => r.ShiftLabel)
+                            .Column(Localizer["Common_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Common_Date"].Value, r => r.ShiftDateLabel)
+                            .Column(Localizer["Profile_MarkedBy"].Value, r => r.MarkedByName)
+                            .Column(Localizer["Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
                             .Build();
                     }
                     <partial name="_Table" model="noShowTable" />
@@ -114,11 +114,11 @@
         {
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-envelope me-1"></i> Sent messages (@(Model.SentMessages?.Count ?? 0))</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-envelope me-1"></i> @Localizer["Profile_SentMessages", Model.SentMessages?.Count ?? 0]</h5>
                 </div>
                 @if (Model.SentMessages is null || Model.SentMessages.Count == 0)
                 {
-                    <div class="card-body text-muted">No in-platform messages on record.</div>
+                    <div class="card-body text-muted">@Localizer["Profile_NoSentMessages"]</div>
                 }
                 else
                 {
@@ -126,9 +126,9 @@
                         <table class="table table-sm mb-0">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Sender</th>
-                                    <th>Preview</th>
+                                    <th>@Localizer["Common_Date"]</th>
+                                    <th>@Localizer["Common_Sender"]</th>
+                                    <th>@Localizer["Common_Preview"]</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -151,7 +151,7 @@
         {
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="mb-0">My Codes</h5>
+                    <h5 class="mb-0">@Localizer["Profile_MyCodes"]</h5>
                 </div>
                 <div class="card-body p-0">
                     @{
@@ -167,10 +167,10 @@
                                 }
                             </text>;
                         var grantsTable = TableModel.For(Model.CampaignGrants)
-                            .Column("Campaign", g => g.CampaignTitle)
-                            .Column("Code", g => g.Code)
-                            .Column("Assigned", g => g.AssignedAt, c => c.Date())
-                            .Template("Redeemed", redeemedCell)
+                            .Column(Localizer["Profile_Campaign"].Value, g => g.CampaignTitle)
+                            .Column(Localizer["Profile_Code"].Value, g => g.Code)
+                            .Column(Localizer["Profile_Assigned"].Value, g => g.AssignedAt, c => c.Date())
+                            .Template(Localizer["Profile_Redeemed"].Value, redeemedCell)
                             .Build();
                     }
                     <partial name="_Table" model="grantsTable" />
@@ -195,13 +195,13 @@
                             <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
                         }
                     </a>
-                    <a asp-controller="Profile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">Shift Info</a>
+                    <a asp-controller="Profile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">@Localizer["Profile_ShiftInfo"]</a>
                     <a asp-controller="Profile" asp-action="DietaryMedical" class="list-group-item list-group-item-action">@Localizer["Profile_DietaryMedical_PageTitle"]</a>
                     <a asp-controller="Profile" asp-action="Emails" class="list-group-item list-group-item-action">@Localizer["Emails_Title"]</a>
-                    <a asp-controller="Profile" asp-action="CommunicationPreferences" class="list-group-item list-group-item-action">Communication Preferences</a>
+                    <a asp-controller="Profile" asp-action="CommunicationPreferences" class="list-group-item list-group-item-action">@Localizer["CommPrefs_Title"]</a>
                     <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
                     <a asp-controller="Profile" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
-                    <a asp-controller="Profile" asp-action="MyOutbox" class="list-group-item list-group-item-action">My Emails</a>
+                    <a asp-controller="Profile" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Profile_MyEmails"]</a>
                 </div>
             </div>
         </div>

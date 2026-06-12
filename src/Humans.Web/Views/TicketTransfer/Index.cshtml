@@ -1,7 +1,8 @@
 @model Humans.Web.Models.TicketTransferWizardViewModel
 @using Humans.Application.DTOs
+@using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "Transfer a ticket";
+    ViewData["Title"] = Localizer["TicketTransfer_Title"].Value;
     // Show every ticket the user currently holds (not the ones they merely bought for others,
     // and not voided ones); only Valid + no-pending ones are selectable.
     var held = Model.MyTickets
@@ -9,12 +10,12 @@
         .ToList();
     var sendable = held.Where(t => t.CanSendTransfer).ToList();
     string NotSendableReason(MyAttendeeRowDto t) =>
-        t.HasPendingOutgoingTransfer ? "Transfer already pending"
-        : t.Status == TicketAttendeeStatus.CheckedIn ? "Already checked in — can't be transferred"
-        : "Not transferable";
+        t.HasPendingOutgoingTransfer ? Localizer["TicketTransfer_AlreadyPending"].Value
+        : t.Status == TicketAttendeeStatus.CheckedIn ? Localizer["TicketTransfer_CheckedIn"].Value
+        : Localizer["TicketTransfer_NotTransferable"].Value;
 }
 
-<h1>Transfer a ticket</h1>
+<h1>@Localizer["TicketTransfer_Title"]</h1>
 
 
 @if (Model.Error is not null)
@@ -26,15 +27,15 @@
 {
     @if (held.Count == 0)
     {
-        <div class="alert alert-info">You don't have any tickets to transfer.</div>
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back</a>
+        <div class="alert alert-info">@Localizer["TicketTransfer_NoTickets"]</div>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@Localizer["Common_Back"]</a>
     }
     else
     {
         <form asp-action="Confirm" method="post">
             @Html.AntiForgeryToken()
 
-            <h2 class="h5 mb-3">1. Choose the ticket to transfer</h2>
+            <h2 class="h5 mb-3">@Localizer["TicketTransfer_Step1"]</h2>
             <div class="mb-4 d-flex flex-column gap-2">
                 @foreach (var t in held)
                 {
@@ -60,28 +61,28 @@
 
             @if (sendable.Count > 0)
             {
-                <h2 class="h5 mb-3">2. Who are you sending it to?</h2>
+                <h2 class="h5 mb-3">@Localizer["TicketTransfer_Step2"]</h2>
                 <div class="mb-4" style="max-width:480px">
                     <vc:human-search field-name="receiverUserId" scope="Name" allow-email="true"
-                                     placeholder="Search by name, or paste their exact email…" />
+                                     placeholder="@Localizer["TicketTransfer_RecipientPlaceholder"]" />
                 </div>
 
-                <button type="submit" class="btn btn-primary">Continue</button>
-                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Cancel</a>
+                <button type="submit" class="btn btn-primary">@Localizer["TicketTransfer_Continue"]</button>
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@Localizer["Common_Cancel"]</a>
             }
             else
             {
-                <p class="text-muted">None of your tickets can be transferred right now.</p>
-                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back</a>
+                <p class="text-muted">@Localizer["TicketTransfer_NoneTransferable"]</p>
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@Localizer["Common_Back"]</a>
             }
         </form>
     }
 
     <hr class="my-4" />
-    <h2 class="h5 mb-3">Your transfer requests</h2>
+    <h2 class="h5 mb-3">@Localizer["TicketTransfer_YourRequests"]</h2>
     @if (Model.MyTransfers.Count == 0)
     {
-        <p class="text-muted">You haven't requested any transfers.</p>
+        <p class="text-muted">@Localizer["TicketTransfer_NoRequests"]</p>
     }
     else
     {
@@ -90,10 +91,10 @@
             {
                 var (label, cls) = r.Status switch
                 {
-                    TicketTransferStatus.Pending => ("Pending review", "bg-warning text-dark"),
-                    TicketTransferStatus.Approved => ("Completed", "bg-success"),
-                    TicketTransferStatus.Rejected => ("Cancelled by team", "bg-secondary"),
-                    TicketTransferStatus.Cancelled => ("Cancelled", "bg-secondary"),
+                    TicketTransferStatus.Pending => (Localizer["TicketTransfer_Pending"].Value, "bg-warning text-dark"),
+                    TicketTransferStatus.Approved => (Localizer["TicketTransfer_StatusApproved"].Value, "bg-success"),
+                    TicketTransferStatus.Rejected => (Localizer["TicketTransfer_StatusRejected"].Value, "bg-secondary"),
+                    TicketTransferStatus.Cancelled => (Localizer["TicketTransfer_StatusCancelled"].Value, "bg-secondary"),
                     _ => (r.Status.ToString(), "bg-secondary"),
                 };
                 <div class="list-group-item d-flex justify-content-between align-items-center gap-3 flex-wrap">
@@ -101,7 +102,7 @@
                         <div><strong>@r.OriginalAttendeeName</strong> → @r.ReceiverLegalName
                             <span class="text-muted">(@r.ReceiverEmail)</span></div>
                         <small class="text-muted">
-                            Requested @r.RequestedAt.ToDateTime()@(string.IsNullOrWhiteSpace(r.AdminNotes) ? "" : $" · {r.AdminNotes}")
+                            @Localizer["TicketTransfer_Requested"] @r.RequestedAt.ToDateTime()@(string.IsNullOrWhiteSpace(r.AdminNotes) ? "" : $" · {r.AdminNotes}")
                         </small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -111,7 +112,7 @@
                             <form asp-action="Cancel" method="post" class="m-0">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@r.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Cancel request</button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelRequest"]</button>
                             </form>
                         }
                     </div>
@@ -123,21 +124,29 @@
 else
 {
     var c = Model.Confirm;
-    <h2 class="h5 mb-3">3. Confirm</h2>
+    <h2 class="h5 mb-3">@Localizer["TicketTransfer_Step3"]</h2>
     <div class="alert alert-success" style="max-width:560px">
-        This will request transferring ticket <strong>@c.VendorTicketId</strong> (@c.AttendeeName)
-        to <strong>@c.ReceiverLegalName — @c.ReceiverEmail</strong>.<br />
-        Our ticketing team will process this and let you know shortly.
+        @{
+            // AppendFormat HTML-encodes every arg that isn't already IHtmlContent —
+            // AttendeeName goes in plain and is encoded for us.
+            var confirmDetails = new HtmlContentBuilder().AppendFormat(
+                Localizer["TicketTransfer_ConfirmDetails"].Value,
+                new HtmlString($"<strong>{Html.Encode(c.VendorTicketId)}</strong>"),
+                c.AttendeeName,
+                new HtmlString($"<strong>{Html.Encode(c.ReceiverLegalName)} — {Html.Encode(c.ReceiverEmail)}</strong>"));
+        }
+        @confirmDetails<br />
+        @Localizer["TicketTransfer_ConfirmNote"]
     </div>
     <form asp-action="Submit" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="attendeeId" value="@c.AttendeeId" />
         <input type="hidden" name="receiverUserId" value="@c.ReceiverUserId" />
         <div class="mb-3" style="max-width:560px">
-            <label for="reason" class="form-label">Reason for the transfer (optional, visible to the ticket team)</label>
+            <label for="reason" class="form-label">@Localizer["TicketTransfer_ReasonLabel"]</label>
             <textarea id="reason" name="reason" rows="2" class="form-control" maxlength="1000">@Model.Reason</textarea>
         </div>
-        <button type="submit" class="btn btn-primary">Request transfer</button>
-        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+        <button type="submit" class="btn btn-primary">@Localizer["TicketTransfer_RequestTransfer"]</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">@Localizer["Common_Back"]</a>
     </form>
 }

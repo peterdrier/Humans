@@ -27,7 +27,7 @@
                 }
                 else
                 {
-                    <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_MyProfile"]</a></li>
                 }
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["Emails_Title"]</li>
             </ol>
@@ -133,7 +133,7 @@
                                     {
                                         <div class="small text-warning">
                                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                                            Tagged with @row.Provider but no matching AspNetUserLogins row — self-heals on next OAuth sign-in.
+                                            @Localizer["EmailGrid_OrphanProviderTag", row.Provider ?? string.Empty]
                                         </div>
                                     }
                                 </td>
@@ -208,7 +208,7 @@
                                     else if (workspaceLocked && row.IsVerified)
                                     {
                                         @* Verified but Workspace lock held elsewhere — don't claim "verify first" *@
-                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
+                                        <span class="text-muted small" title="@Localizer["EmailGrid_WorkspaceLocked"].Value">—</span>
                                     }
                                     else
                                     {
@@ -258,7 +258,7 @@
                                     }
                                     else if (workspaceLocked && row.IsVerified)
                                     {
-                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
+                                        <span class="text-muted small" title="@Localizer["EmailGrid_WorkspaceLocked"].Value">—</span>
                                     }
                                     else
                                     {

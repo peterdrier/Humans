@@ -1,15 +1,15 @@
 @model Humans.Web.Models.Calendar.CalendarEventFormViewModel
 @{
-    ViewData["Title"] = "Edit event";
+    ViewData["Title"] = Localizer["Calendar_EditEvent"].Value;
 }
 
 <div class="container py-4">
-    <h1 class="h3 mb-3">Edit event</h1>
+    <h1 class="h3 mb-3">@Localizer["Calendar_EditEvent"]</h1>
 
     <form method="post" asp-action="Edit" asp-route-id="@Model.Id">
         @Html.AntiForgeryToken()
         <partial name="_CalendarEventFormFields" model="Model" />
-        <button type="submit" class="btn btn-primary">Save changes</button>
-        <a class="btn btn-link" asp-action="Event" asp-route-id="@Model.Id">Cancel</a>
+        <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+        <a class="btn btn-link" asp-action="Event" asp-route-id="@Model.Id">@Localizer["Common_Cancel"]</a>
     </form>
 </div>

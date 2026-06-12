@@ -2,7 +2,7 @@
 @using Humans.Web.Models.Calendar
 @model Humans.Web.Models.Calendar.CalendarMonthViewModel
 @{
-    ViewData["Title"] = $"Calendar — {Model.Month.Year}-{Model.Month.Month:D2}";
+    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.Year}-{Model.Month.Month:D2}";
     ViewData["ActiveView"] = "grid";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
@@ -39,7 +39,10 @@
     }
 
     var culture = System.Globalization.CultureInfo.CurrentCulture;
-    var dayHeaders = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+    // Monday-first week; abbreviated day names come from culture data, not resources.
+    var dayHeaders = Enumerable.Range(0, 7)
+        .Select(i => culture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((i + 1) % 7)))
+        .ToArray();
 }
 
 <div class="container py-4">
@@ -48,14 +51,14 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">@Model.Month.Year @culture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
         <div>
-            <a class="btn btn-sm btn-primary" asp-action="Create">New event</a>
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month" asp-route-teamId="@Model.FilterTeamId">&larr; Prev</a>
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Today</a>
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-teamId="@Model.FilterTeamId">Next &rarr;</a>
+            <a class="btn btn-sm btn-primary" asp-action="Create">@Localizer["Calendar_NewEvent"]</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month" asp-route-teamId="@Model.FilterTeamId">&larr; @Localizer["Calendar_Prev"]</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@Localizer["Calendar_Today"]</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-teamId="@Model.FilterTeamId">@Localizer["Calendar_Next"] &rarr;</a>
         </div>
     </div>
 
-    <p class="text-muted small">All times shown in @Model.ViewerTimezoneLabel.</p>
+    <p class="text-muted small">@Localizer["Calendar_AllTimesShownIn", Model.ViewerTimezoneLabel]</p>
 
     <table class="table table-bordered calendar-grid" style="table-layout: fixed;">
         <thead>
@@ -143,7 +146,7 @@
                             @if (moreCount > 0)
                             {
                                 var isoDay = day.ToInvariantDate();
-                                <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@moreCount more</a>
+                                <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">@Localizer["Calendar_MoreCount", moreCount]</a>
                             }
                         </td>
                     }

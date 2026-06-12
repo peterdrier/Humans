@@ -11,8 +11,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- Only include English and Spanish satellite assemblies -->
-    <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
+    <!-- Ship satellite assemblies for every culture in CultureCatalog.SupportedCultureCodes -->
+    <SatelliteResourceLanguages>en;es;ca;de;fr;it</SatelliteResourceLanguages>
 
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!--

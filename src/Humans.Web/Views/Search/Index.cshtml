@@ -1,9 +1,10 @@
 @using Humans.Application.DTOs
+@using Microsoft.AspNetCore.Html
 @inject IConfiguration Configuration
 @model Humans.Web.Models.GlobalSearchViewModel
 
 @{
-    ViewData["Title"] = "Search";
+    ViewData["Title"] = Localizer["Search_GlobalTitle"].Value;
     var eventsEnabled = Configuration.GetValue<bool>("Features:Events");
 
     string ChipUrl(SearchResultType? filter)
@@ -23,7 +24,7 @@
         count > 0 && (!Model.Filter.HasValue || Model.Filter == type);
 }
 
-<h2><i class="fa-solid fa-magnifying-glass me-2"></i>Search</h2>
+<h2><i class="fa-solid fa-magnifying-glass me-2"></i>@Localizer["Search_GlobalTitle"]</h2>
 
 <form method="get" class="mb-4" asp-action="Index" asp-controller="Search">
     @if (Model.Filter.HasValue)
@@ -32,10 +33,10 @@
     }
     <div class="input-group" style="max-width: 600px;">
         <input type="text" name="q" class="form-control" value="@Model.Query"
-               placeholder="@(eventsEnabled ? "Search humans, teams, camps, shifts, events…" : "Search humans, teams, camps, shifts…")"
+               placeholder="@(eventsEnabled ? Localizer["Search_GlobalPlaceholderEvents"].Value : Localizer["Search_GlobalPlaceholder"].Value)"
                autofocus aria-label="Search query" />
         <button type="submit" class="btn btn-primary">
-            <i class="fa-solid fa-magnifying-glass me-1"></i>Search
+            <i class="fa-solid fa-magnifying-glass me-1"></i>@Localizer["Search_GlobalTitle"]
         </button>
     </div>
 </form>
@@ -44,38 +45,38 @@
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        Type at least 2 characters to search across humans, teams, camps, shifts@(eventsEnabled ? ", and events" : "").
+        @(eventsEnabled ? Localizer["Search_GlobalHintEvents"] : Localizer["Search_GlobalHint"])
     </div>
 }
 else if (Model.QueryIsTooShort)
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        Please enter at least 2 characters.
+        @Localizer["Search_MinChars"]
     </div>
 }
 else
 {
     <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter results by type">
         <a href="@ChipUrl(null)" class="@ChipClass(null)">
-            All (@Model.TotalCount)
+            @Localizer["Search_FilterAll"] (@Model.TotalCount)
         </a>
         <a href="@ChipUrl(SearchResultType.Human)" class="@ChipClass(SearchResultType.Human)">
-            <i class="fa-solid fa-user me-1"></i>Humans (@Model.HumanCount)
+            <i class="fa-solid fa-user me-1"></i>@Localizer["Search_FilterHumans"] (@Model.HumanCount)
         </a>
         <a href="@ChipUrl(SearchResultType.Team)" class="@ChipClass(SearchResultType.Team)">
-            <i class="fa-solid fa-users me-1"></i>Teams (@Model.TeamCount)
+            <i class="fa-solid fa-users me-1"></i>@Localizer["Search_FilterTeams"] (@Model.TeamCount)
         </a>
         <a href="@ChipUrl(SearchResultType.Camp)" class="@ChipClass(SearchResultType.Camp)">
-            <i class="fa-solid fa-campground me-1"></i>Camps (@Model.CampCount)
+            <i class="fa-solid fa-campground me-1"></i>@Localizer["Search_FilterCamps"] (@Model.CampCount)
         </a>
         <a href="@ChipUrl(SearchResultType.Shift)" class="@ChipClass(SearchResultType.Shift)">
-            <i class="fa-solid fa-clock me-1"></i>Shifts (@Model.ShiftCount)
+            <i class="fa-solid fa-clock me-1"></i>@Localizer["Search_FilterShifts"] (@Model.ShiftCount)
         </a>
         @if (eventsEnabled)
         {
             <a href="@ChipUrl(SearchResultType.Event)" class="@ChipClass(SearchResultType.Event)">
-                <i class="fa-solid fa-calendar-day me-1"></i>Events (@Model.EventCount)
+                <i class="fa-solid fa-calendar-day me-1"></i>@Localizer["Search_FilterEvents"] (@Model.EventCount)
             </a>
         }
     </div>
@@ -83,38 +84,44 @@ else
     @if (!Model.HasResults)
     {
         <div class="alert alert-light">
-            No results for <strong>@Model.Query</strong>.
+            @{
+                // AppendFormat HTML-encodes every arg that isn't already IHtmlContent.
+                var noResults = new HtmlContentBuilder().AppendFormat(
+                    Localizer["Search_GlobalNoResults"].Value,
+                    new HtmlString($"<strong>{Html.Encode(Model.Query)}</strong>"));
+            }
+            @noResults
         </div>
     }
     else
     {
         @if (ShowSection(SearchResultType.Human, Model.HumanCount))
         {
-            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-user me-2"></i>Humans</h3>
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-user me-2"></i>@Localizer["Search_FilterHumans"]</h3>
             @await Html.PartialAsync("_HumanSearchResults", Model.HumanResults)
         }
 
         @if (ShowSection(SearchResultType.Team, Model.TeamCount))
         {
-            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-users me-2"></i>Teams</h3>
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-users me-2"></i>@Localizer["Search_FilterTeams"]</h3>
             <partial name="_GlobalSearchSection" model="Model.TeamResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-users" } })" />
         }
 
         @if (ShowSection(SearchResultType.Camp, Model.CampCount))
         {
-            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-campground me-2"></i>Camps</h3>
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-campground me-2"></i>@Localizer["Search_FilterCamps"]</h3>
             <partial name="_GlobalSearchSection" model="Model.CampResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-campground" } })" />
         }
 
         @if (ShowSection(SearchResultType.Shift, Model.ShiftCount))
         {
-            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>Shifts</h3>
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>@Localizer["Search_FilterShifts"]</h3>
             <partial name="_GlobalSearchSection" model="Model.ShiftResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-clock" } })" />
         }
 
         @if (eventsEnabled && ShowSection(SearchResultType.Event, Model.EventCount))
         {
-            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-calendar-day me-2"></i>Events</h3>
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-calendar-day me-2"></i>@Localizer["Search_FilterEvents"]</h3>
             <partial name="_GlobalSearchSection" model="Model.EventResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-calendar-day" } })" />
         }
     }
