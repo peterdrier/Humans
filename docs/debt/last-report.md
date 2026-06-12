@@ -47,4 +47,6 @@ None.
 ## Questions for Peter
 
 1. HUM0024 nav strips all require FK-drop migrations — dedicated migration PR(s) outside the sweep, or park the theme indefinitely?
+   **Resolved 2026-06-12: fine — handled via dedicated migration PRs outside the sweep; theme stays marked schema-blocked in the ledger so rotation skips it.**
 2. Confirm the `NoDestructiveMigrationOps` staleness exclusion is right (its 23 baseline entries are historical migrations, not fixable debt).
+   **Resolved 2026-06-12: confirmed.**
