@@ -33,7 +33,6 @@ public class EventsControllerTests
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
     private readonly IAuthorizationService _authz = Substitute.For<IAuthorizationService>();
-    private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     [HumansFact]
@@ -147,7 +146,7 @@ public class EventsControllerTests
     }
 
     private EventsController BuildAnonymousController() =>
-        new(_guide, _users, _camps, _authz, _clock, _email, Substitute.For<IEmailMessageFactory>(), NullLogger<EventsController>.Instance)
+        new(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -194,7 +193,7 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(currentUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(currentUserId, "Current User")));
 
-        return new EventsController(_guide, _users, _camps, _authz, _clock, _email, Substitute.For<IEmailMessageFactory>(), NullLogger<EventsController>.Instance)
+        return new EventsController(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance)
         {
             ControllerContext = new ControllerContext
             {

@@ -182,8 +182,8 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
             SubmittedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
             LastUpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
         };
-        await svc.SubmitEventAsync(ev, TestContext.Current.CancellationToken);
-        await svc.ApplyModerationAsync(ev.Id, Guid.NewGuid(), EventModerationActionType.Approved, null, TestContext.Current.CancellationToken);
+        await svc.SubmitEventAsync(ev, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
+        await svc.ApplyModerationAsync(ev.Id, Guid.NewGuid(), EventModerationActionType.Approved, null, submitterEditUrl: null, TestContext.Current.CancellationToken);
 
         (await svc.GetApprovedEventByIdAsync(ev.Id, TestContext.Current.CancellationToken))!.Title.Should().Be("Original title");
 

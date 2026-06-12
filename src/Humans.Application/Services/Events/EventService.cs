@@ -2,11 +2,13 @@ using System.Text.Json;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -15,7 +17,13 @@ using NodaTime;
 namespace Humans.Application.Services.Events;
 
 public sealed class EventService(
-    IEventRepository repo, IBurnSettingsService burnSettings, IClock clock, ILogger<EventService> logger)
+    IEventRepository repo,
+    IBurnSettingsService burnSettings,
+    IUserServiceRead userService,
+    IEmailService emailService,
+    IEmailMessageFactory emailMessages,
+    IClock clock,
+    ILogger<EventService> logger)
     : IEventService, IUserDataContributor, ICalendarFeedContributor
 {
     // EventSettings is owned by Shifts; cross via IBurnSettingsService supplier API (§2c, #719).
@@ -168,8 +176,33 @@ public sealed class EventService(
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
         => repo.GetCampEventAsync(eventId, campId, ct);
 
-    public Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default)
-        => repo.AddEventAsync(guideEvent, ct);
+    public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
+    {
+        await repo.AddEventAsync(guideEvent, ct);
+
+        // Submission-confirmation email is part of the submit workflow. A null
+        // actionUrl opts out (bulk import: one email per CSV row would spam the
+        // uploading event manager).
+        if (lifecycleActionUrl is not null)
+            await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl, ct);
+    }
+
+    private async Task SendLifecycleEmailAsync(
+        Event guideEvent, EventStatus newStatus, string? reason, string actionUrl, CancellationToken ct)
+    {
+        var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
+        var submitterEmail = submitter?.Email;
+        if (submitterEmail is null) return;
+
+        await emailService.SendAsync(emailMessages.EventLifecycle(
+            new EventLifecycleNotification(
+                NewStatus: newStatus,
+                UserName: submitter?.BurnerName ?? submitterEmail,
+                EventTitle: guideEvent.Title,
+                Reason: reason,
+                ActionUrl: actionUrl),
+            submitterEmail));
+    }
 
     public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
     {
@@ -303,7 +336,7 @@ public sealed class EventService(
                     PriorityRank = row.PriorityRank
                 };
                 newEvent.Submit(clock);
-                await SubmitEventAsync(newEvent, ct);
+                await SubmitEventAsync(newEvent, lifecycleActionUrl: null, ct);
                 created++;
             }
         }
@@ -424,7 +457,8 @@ public sealed class EventService(
         => repo.GetActiveCampEventsAsync(ct);
 
     public async Task ApplyModerationAsync(
-        Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default)
+        Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
+        string? submitterEditUrl = null, CancellationToken ct = default)
     {
         var guideEvent = await repo.GetEventForModerationAsync(eventId, ct)
             ?? throw new InvalidOperationException($"Event {eventId} not found.");
@@ -442,6 +476,21 @@ public sealed class EventService(
         };
 
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+
+        // Notifying the submitter of the decision is part of the moderation
+        // workflow; the URL is the caller's routing concern (null opts out).
+        if (submitterEditUrl is not null)
+        {
+            var lifecycleStatus = actionType switch
+            {
+                EventModerationActionType.Approved => (EventStatus?)EventStatus.Approved,
+                EventModerationActionType.Rejected => EventStatus.Rejected,
+                EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
+                _ => null
+            };
+            if (lifecycleStatus.HasValue)
+                await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl, ct);
+        }
     }
 
     public async Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default)

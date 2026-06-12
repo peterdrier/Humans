@@ -57,7 +57,9 @@ public interface IEventService : IApplicationService, IEventServiceRead
     Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     // Read-then-mutate-then-write round trip (see GetUserEventAsync).
     Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
-    Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default);
+    // Persists a new submission and emails the submitter their confirmation (part of
+    // the submit workflow). Null lifecycleActionUrl opts out (bulk import).
+    Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
     Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default);
     Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
 
@@ -104,7 +106,10 @@ public interface IEventService : IApplicationService, IEventServiceRead
     // Read-then-mutate-then-write round trip (see GetUserEventAsync).
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
-    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default);
+    // Applies the decision, records history, and emails the submitter the outcome
+    // (part of the moderation workflow). submitterEditUrl is the caller's routing
+    // concern; null opts out of the notification.
+    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
 
     // ── Dashboard / Export ────────────────────────────────────────────────
     Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);

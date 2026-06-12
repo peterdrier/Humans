@@ -236,9 +236,9 @@ public sealed class CachingEventService(
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetCampEventAsync(eventId, campId, ct));
 
-    public async Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default)
+    public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.SubmitEventAsync(guideEvent, ct));
+        await WithInner(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
         // Submission is Pending, not Approved — no approved-event cache change.
     }
 
@@ -369,9 +369,9 @@ public sealed class CachingEventService(
 
     public async Task ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
-        CancellationToken ct = default)
+        string? submitterEditUrl = null, CancellationToken ct = default)
     {
-        await WithInner(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, ct));
+        await WithInner(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
         // Approve / reject / resubmit-request all transition the event's
         // approved-ness — re-load the single entry against the DB so the
         // cache reflects the post-moderation state (add for new approval,

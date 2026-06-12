@@ -31,8 +31,6 @@ public class EventsController(
     ICampServiceRead camps,
     IAuthorizationService authorizationService,
     IClock clock,
-    IEmailService emailService,
-    IEmailMessageFactory emailMessages,
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
@@ -190,23 +188,10 @@ public class EventsController(
         };
         guideEvent.Submit(clock);
 
-        await guide.SubmitEventAsync(guideEvent);
+        var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
+        await guide.SubmitEventAsync(guideEvent, viewUrl);
 
         logger.LogInformation("User {UserId} submitted individual event '{Title}'", user.Id, model.Title);
-
-        var userEmail = user.Email;
-        if (userEmail != null)
-        {
-            var userInfo = await UserService.GetUserInfoAsync(user.Id);
-            var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-            await emailService.SendAsync(emailMessages.EventLifecycle(
-                new EventLifecycleNotification(
-                    NewStatus: EventStatus.Pending,
-                    UserName: userInfo?.BurnerName ?? userEmail,
-                    EventTitle: model.Title,
-                    ActionUrl: viewUrl),
-                userEmail));
-        }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");
         return RedirectToAction(nameof(MySubmissions));
@@ -724,18 +709,9 @@ public class EventsController(
         };
         guideEvent.Submit(clock);
 
-        await guide.SubmitEventAsync(guideEvent);
+        var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
+        await guide.SubmitEventAsync(guideEvent, viewUrl);
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
-
-        var userEmail = user.Email;
-        if (userEmail != null)
-        {
-            var userInfo = await UserService.GetUserInfoAsync(user.Id);
-            var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-            await emailService.SendAsync(emailMessages.EventLifecycle(
-                new EventLifecycleNotification(EventStatus.Pending, userInfo?.BurnerName ?? userEmail, model.Title, viewUrl),
-                userEmail));
-        }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");
         return RedirectToAction(nameof(MySubmissions));

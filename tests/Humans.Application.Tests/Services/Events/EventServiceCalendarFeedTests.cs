@@ -1,6 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -23,7 +25,7 @@ public class EventServiceCalendarFeedTests
 
     public EventServiceCalendarFeedTests()
     {
-        _service = new EventService(_repo, _burnSettings, new FakeClock(FixedNow), NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _burnSettings, Substitute.For<IUserServiceRead>(), Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), new FakeClock(FixedNow), NullLogger<EventService>.Instance);
         // Default: no guide settings → no recurrence expansion context.
         _repo.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns((EventGuideSettings?)null);

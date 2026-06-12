@@ -1,9 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Events;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,11 +22,14 @@ public sealed class EventServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventRepository _repo = new();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly EventService _service;
 
     public EventServiceTests()
     {
-        _service = new EventService(_repo, _burnSettings, _clock, NullLogger<EventService>.Instance);
+        _service = new EventService(_repo, _burnSettings, _userService, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance);
     }
 
     [HumansTheory]
@@ -232,7 +238,7 @@ public sealed class EventServiceTests
             guideEvent.Id,
             actorUserId,
             EventModerationActionType.ResubmitRequested,
-            "Add location", TestContext.Current.CancellationToken);
+            "Add location", submitterEditUrl: null, TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -243,6 +249,81 @@ public sealed class EventServiceTests
             && action.Reason == "Add location"
             && action.CreatedAt == _clock.GetCurrentInstant());
         _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation()
+    {
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Title = "Fire show",
+            Status = EventStatus.Pending,
+        };
+
+        await _service.SubmitEventAsync(guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
+
+        _repo.Events.Should().Contain(guideEvent);
+        _emailMessages.Received(1).EventLifecycle(
+            Arg.Is<EventLifecycleNotification>(n =>
+                n.NewStatus == EventStatus.Pending
+                && n.UserName == "Burner"
+                && n.EventTitle == "Fire show"
+                && n.ActionUrl == "https://x/Events/MySubmissions"),
+            "sub@example.com");
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>());
+    }
+
+    [HumansFact]
+    public async Task SubmitEventAsync_NullActionUrl_SkipsEmail()
+    {
+        // Bulk import opts out — one email per CSV row would spam the uploader.
+        var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), Status = EventStatus.Pending };
+
+        await _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
+
+        _repo.Events.Should().Contain(guideEvent);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task ApplyModerationAsync_WithEditUrl_EmailsDecisionWithReason()
+    {
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Title = "Fire show",
+            Status = EventStatus.Pending,
+        };
+        _repo.Events.Add(guideEvent);
+
+        await _service.ApplyModerationAsync(
+            guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+            "Too loud", "https://x/edit", TestContext.Current.CancellationToken);
+
+        _emailMessages.Received(1).EventLifecycle(
+            Arg.Is<EventLifecycleNotification>(n =>
+                n.NewStatus == EventStatus.Rejected
+                && n.Reason == "Too loud"
+                && n.ActionUrl == "https://x/edit"),
+            "sub@example.com");
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>());
+    }
+
+    private Guid StubSubmitterWithEmail(string email, string burnerName)
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, DisplayName = burnerName, PreferredLanguage = "en" };
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user.ToUserInfo(userEmails:
+            [
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true },
+            ]));
+        return userId;
     }
 
     [HumansFact]
