@@ -86,7 +86,7 @@ public class ClientStatsTrackerTests
 
     private static Humans.Application.Interfaces.ClientErrorEntry Error(
         int status = 404, string url = "/missing", string ua = WinChrome)
-        => new(DateTimeOffset.UtcNow, status, "GET", url, "203.0.113.7", null, ua);
+        => new(NodaTime.SystemClock.Instance.GetCurrentInstant(), status, "GET", url, "203.0.113.7", null, ua);
 
     [HumansFact]
     public void RecordError_KeepsNewestThousand_AndLifetimeCountsSurviveEviction()
@@ -129,6 +129,20 @@ public class ClientStatsTrackerTests
         var entry = tracker.GetErrorsSnapshot(1).Recent[0];
         entry.Url.Should().HaveLength(200);
         entry.UserAgent.Should().HaveLength(150);
+    }
+
+    [HumansFact]
+    public void RecordError_DerivesClientLabel()
+    {
+        var tracker = new ClientStatsTracker();
+
+        tracker.RecordError(Error(ua: WinChrome));
+        tracker.RecordError(Error(ua: Googlebot));
+
+        var snap = tracker.GetErrorsSnapshot(2);
+        snap.Recent[1].ClientLabel.Should().Be("Chrome · Windows");
+        // Bots get the crawler name, not the collapsed "Bot" bucket.
+        snap.Recent[0].ClientLabel.Should().NotBeEmpty().And.NotBe("Bot · Bot");
     }
 
     [HumansFact]

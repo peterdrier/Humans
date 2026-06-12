@@ -344,6 +344,12 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = async (context, cancellationToken) =>
     {
+        // The rejection short-circuits before ClientStatsMiddleware, so record the
+        // 429 in the /Debug/HttpErrors buffer here.
+        context.HttpContext.RequestServices.GetRequiredService<IClientStatsTracker>()
+            .RecordError(ClientStatsMiddleware.BuildEntry(
+                context.HttpContext, StatusCodes.Status429TooManyRequests));
+
         var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("RateLimiting");
         var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();

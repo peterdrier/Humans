@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Infrastructure;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +58,7 @@ public class DebugController(
     [HttpGet("HttpErrors")]
     public IActionResult HttpErrors(int count = 1000)
     {
-        count = Math.Clamp(count, 1, 1000);
+        count = count.ClampPageSize(1, 1000);
 
         var snapshot = clientStats.GetErrorsSnapshot(count);
 
@@ -67,14 +68,9 @@ public class DebugController(
                 .OrderBy(kv => kv.Key)
                 .Select(kv => new HttpErrorCountRow(kv.Key, kv.Value))
                 .ToList(),
-            Entries: snapshot.Recent.Select(e =>
-            {
-                var c = Humans.Infrastructure.Services.UserAgentClassifier.Classify(e.UserAgent);
-                var label = c.BotName
-                    ?? (c is { Browser: "Unknown", Os: "Unknown" } ? "Unknown" : $"{c.Browser} · {c.Os}");
-                return new HttpErrorRow(
-                    e.Timestamp, e.StatusCode, e.Method, e.Url, e.IpAddress, e.UserId, label, e.UserAgent);
-            }).ToList());
+            Entries: snapshot.Recent.Select(e => new HttpErrorRow(
+                e.Timestamp.ToDateTimeUtc(), e.StatusCode, e.Method, e.Url,
+                e.IpAddress, e.UserId, e.ClientLabel, e.UserAgent)).ToList());
 
         return View(vm);
     }

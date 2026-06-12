@@ -55,15 +55,19 @@ public sealed record ClientStatCount(string Label, long Count);
 /// One error response captured for the <c>/Debug/HttpErrors</c> rolling buffer.
 /// <paramref name="UserId"/> is the authenticated user's id when the request
 /// carried one — bot noise and anonymous traffic leave it null.
+/// <paramref name="ClientLabel"/> is derived from <paramref name="UserAgent"/>
+/// by the tracker at record time (bot name, or browser · OS); callers leave it
+/// at its default.
 /// </summary>
 public sealed record ClientErrorEntry(
-    DateTimeOffset Timestamp,
+    NodaTime.Instant Timestamp,
     int StatusCode,
     string Method,
     string Url,
     string IpAddress,
     Guid? UserId,
-    string UserAgent);
+    string UserAgent,
+    string ClientLabel = "");
 
 /// <summary>Rolling-buffer view: recent entries (newest first) plus lifetime per-code counts.</summary>
 public sealed record ClientErrorsSnapshot(

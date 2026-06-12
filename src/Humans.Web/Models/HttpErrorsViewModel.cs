@@ -14,9 +14,10 @@ public sealed record HttpErrorsViewModel(
 public sealed record HttpErrorCountRow(int StatusCode, long Count);
 
 /// <summary>One buffered error response. <paramref name="ClientLabel"/> is the
-/// classified short form of <paramref name="UserAgent"/> (bot name, or browser · OS).</summary>
+/// classified short form of <paramref name="UserAgent"/> (bot name, or browser · OS).
+/// <paramref name="Timestamp"/> is UTC.</summary>
 public sealed record HttpErrorRow(
-    DateTimeOffset Timestamp,
+    DateTime Timestamp,
     int StatusCode,
     string Method,
     string Url,

@@ -98,6 +98,17 @@ public class ClientStatsMiddlewareTests
     }
 
     [HumansFact]
+    public async Task ExceptionHandlerReExecute_RecordsOriginalPath()
+    {
+        var tracker = await RunAsync(HttpMethods.Get, 500, "text/html",
+            ctx => ctx.Features.Set<IExceptionHandlerPathFeature>(
+                new ExceptionHandlerFeature { Path = "/teams/broken", Error = new InvalidOperationException() }));
+
+        tracker.GetErrorsSnapshot(10).Recent.Should().ContainSingle()
+            .Which.Url.Should().Be("/teams/broken");
+    }
+
+    [HumansFact]
     public async Task StatusCodeReExecutePass_IsNotRecorded()
     {
         var tracker = await RunAsync(HttpMethods.Get, 404, "text/html",

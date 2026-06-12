@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Extensions;
+using NodaTime;
 
 namespace Humans.Web.Middleware;
 
@@ -11,7 +12,9 @@ namespace Humans.Web.Middleware;
 /// count, so static assets, JSON APIs, health/metrics probes and the beacon
 /// endpoint are naturally excluded. Feeds the <c>/Admin/ClientStats</c> screen.
 /// Also records every error response (status &gt; 399, plus aborted requests as
-/// 499) into the tracker's rolling buffer for <c>/Debug/HttpErrors</c>.
+/// 499) into the tracker's rolling buffer for <c>/Debug/HttpErrors</c>. 429s are
+/// recorded by the rate limiter's OnRejected callback instead — its rejection
+/// short-circuits before this middleware runs.
 /// </summary>
 public sealed class ClientStatsMiddleware(RequestDelegate next, IClientStatsTracker tracker)
 {
@@ -62,6 +65,18 @@ public sealed class ClientStatsMiddleware(RequestDelegate next, IClientStatsTrac
         if (context.Features.Get<IStatusCodeReExecuteFeature>() is not null)
             return;
 
+        tracker.RecordError(BuildEntry(
+            context,
+            aborted ? ClientClosedRequest : context.Response.StatusCode));
+    }
+
+    /// <summary>
+    /// Builds a buffer entry from the request. Shared with the rate limiter's
+    /// OnRejected callback in <c>Program.cs</c>, which records 429s this
+    /// middleware never sees.
+    /// </summary>
+    internal static ClientErrorEntry BuildEntry(HttpContext context, int statusCode)
+    {
         Guid? userId = null;
         if (context.User.FindFirst(ClaimTypes.NameIdentifier) is { } claim
             && Guid.TryParse(claim.Value, out var id))
@@ -69,13 +84,19 @@ public sealed class ClientStatsMiddleware(RequestDelegate next, IClientStatsTrac
             userId = id;
         }
 
-        tracker.RecordError(new ClientErrorEntry(
-            Timestamp: DateTimeOffset.UtcNow,
-            StatusCode: aborted ? ClientClosedRequest : context.Response.StatusCode,
+        // Unhandled exceptions are recorded during UseExceptionHandler's re-execute
+        // at /Home/Error; the feature carries the failing request's real path.
+        var url = context.Features.Get<IExceptionHandlerPathFeature>() is { } exceptionFeature
+            ? exceptionFeature.Path
+            : context.Request.GetEncodedPathAndQuery();
+
+        return new ClientErrorEntry(
+            Timestamp: SystemClock.Instance.GetCurrentInstant(),
+            StatusCode: statusCode,
             Method: context.Request.Method,
-            Url: context.Request.GetEncodedPathAndQuery(),
+            Url: url,
             IpAddress: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             UserId: userId,
-            UserAgent: context.Request.Headers.UserAgent.ToString()));
+            UserAgent: context.Request.Headers.UserAgent.ToString());
     }
 }

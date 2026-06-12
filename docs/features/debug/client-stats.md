@@ -97,11 +97,11 @@ every request → ASP.NET Core records http.server.request.duration
 ## What was deliberately left out
 
 - **No persistence / longer windows.** Counts are since-deploy; week/month trends would need a side-table, out of scope for a debug aid.
-- **No 5xx detail buffer (yet).** Only counts today. A circular buffer of recent server-error detail is the natural future addition if errors become a concern.
 - **No tablet class.** Device type is Mobile / Desktop / Bot (collapsed) — sufficient for "pc/mac/phone". The separate Bots table breaks the collapsed Bot bucket down by crawler name.
 
 ## Related Features
 
+- [`docs/features/debug/http-errors.md`](http-errors.md) — the per-request detail buffer behind the status-code tally (status > 399, last 1000).
 - [`docs/sections/Debug.md`](../../sections/Debug.md) — the Debug section that owns this screen.
 - [`docs/features/active-user-metrics.md`](../active-user-metrics.md) — the sibling in-memory metric (active users); same reset-on-restart constraint.
 - `OpenTelemetry` / Prometheus `/metrics` — the existing export the status-code MeterListener rides alongside.

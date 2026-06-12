@@ -68,10 +68,16 @@ public sealed class ClientStatsTracker : IClientStatsTracker
     {
         _errorCounts.AddOrUpdate(entry.StatusCode, 1, static (_, v) => v + 1);
 
+        // Classify before truncation so the label sees the full UA string.
+        var c = UserAgentClassifier.Classify(entry.UserAgent);
+        var label = c.BotName
+            ?? (c is { Browser: "Unknown", Os: "Unknown" } ? "Unknown" : $"{c.Browser} · {c.Os}");
+
         entry = entry with
         {
             Url = Truncate(entry.Url, MaxUrlLength),
-            UserAgent = Truncate(entry.UserAgent, MaxUserAgentLength)
+            UserAgent = Truncate(entry.UserAgent, MaxUserAgentLength),
+            ClientLabel = label
         };
 
         lock (_errorsLock)
