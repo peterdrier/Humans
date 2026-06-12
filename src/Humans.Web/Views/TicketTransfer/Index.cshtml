@@ -1,5 +1,6 @@
 @model Humans.Web.Models.TicketTransferWizardViewModel
 @using Humans.Application.DTOs
+@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Localizer["TicketTransfer_Title"].Value;
     // Show every ticket the user currently holds (not the ones they merely bought for others,
@@ -125,10 +126,16 @@ else
     var c = Model.Confirm;
     <h2 class="h5 mb-3">@Localizer["TicketTransfer_Step3"]</h2>
     <div class="alert alert-success" style="max-width:560px">
-        @Html.Raw(string.Format(Localizer["TicketTransfer_ConfirmDetails"].Value,
-            "<strong>" + Html.Encode(c.VendorTicketId) + "</strong>",
-            Html.Encode(c.AttendeeName),
-            "<strong>" + Html.Encode(c.ReceiverLegalName) + " — " + Html.Encode(c.ReceiverEmail) + "</strong>"))<br />
+        @{
+            // AppendFormat HTML-encodes every arg that isn't already IHtmlContent —
+            // AttendeeName goes in plain and is encoded for us.
+            var confirmDetails = new HtmlContentBuilder().AppendFormat(
+                Localizer["TicketTransfer_ConfirmDetails"].Value,
+                new HtmlString($"<strong>{Html.Encode(c.VendorTicketId)}</strong>"),
+                c.AttendeeName,
+                new HtmlString($"<strong>{Html.Encode(c.ReceiverLegalName)} — {Html.Encode(c.ReceiverEmail)}</strong>"));
+        }
+        @confirmDetails<br />
         @Localizer["TicketTransfer_ConfirmNote"]
     </div>
     <form asp-action="Submit" method="post">
