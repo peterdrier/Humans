@@ -3,6 +3,9 @@
 # detect "build:<CODE>" = distinct sites of that warning code in one fresh build log.
 # Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
 # last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
+# Not seeded — zero real [Grandfathered] sites at seed (rules fully enforced):
+# HUM0009, HUM0020, HUM0025, HUM0029, HUM0032. The staleness check re-creates
+# a theme if any of these is ever grandfathered again.
 version: 1
 recent_sections: []
 themes:
@@ -11,13 +14,13 @@ themes:
     detect: "build:HUM0024"
     review: panel
     last_swept: never
-    remaining: 35
+    remaining: 34
     notes: >-
       Code-side work: migrate readers off the nav to service stitching
       (StitchMemberUserSlicesAsync pattern), then drop the nav + config.
       The EF drift gate decides per item whether a nav drop changes the model —
       pending model changes means schema work: skip + Phase 7 question.
-      35 = [Grandfathered] sites; distinct warning count differs (one attribute
+      34 = [Grandfathered] sites; distinct warning count differs (one attribute
       can cover several configured navs).
   - id: grandfathered-hum0031-controller-logic
     title: Controller business logic over ratchet thresholds (HUM0031)
@@ -41,45 +44,6 @@ themes:
       (memory/architecture/orchestrator-marker.md). Consolidation is design
       work — which invalidators fold into the owning service's cached accessor
       vs. stay. Panel judges each consolidation.
-  - id: grandfathered-hum0009-dbcontext-in-services
-    title: Application services injecting DbContext (HUM0009)
-    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0009\"'"
-    review: panel
-    last_swept: never
-    remaining: 3
-    notes: >-
-      Repo extraction usually needs new repository interface methods —
-      skip-and-ask applies (memory/architecture/interface-method-additions-are-debt.md).
-  - id: grandfathered-hum0020-decorator-repo
-    title: Caching decorator calling a repository (HUM0020)
-    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0020\"'"
-    review: panel
-    last_swept: never
-    remaining: 1
-    notes: Decorator may only depend on its inner interface (memory/architecture/decorators-talk-only-to-inner.md).
-  - id: grandfathered-hum0025-shared-tables
-    title: Multiple repositories owning one table (HUM0025)
-    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0025\"'"
-    review: panel
-    last_swept: never
-    remaining: 3
-    notes: Table-ownership judgment — a table must only exist in one repository (hard rule).
-  - id: grandfathered-hum0029-entity-in-read-interface
-    title: ServiceRead interface exposing entities (HUM0029)
-    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0029\"'"
-    review: panel
-    last_swept: never
-    remaining: 1
-    notes: Convert the signature to DTO/Info projections (memory/architecture/service-read-no-ef.md).
-  - id: grandfathered-hum0032-full-service-injection
-    title: Cross-section full-service injections (HUM0032)
-    detect: "grep -rA3 --include='*.cs' '\\[Grandfathered(' src | grep -c '\"HUM0032\"'"
-    review: panel
-    last_swept: never
-    remaining: 2
-    notes: >-
-      Switch read-only cross-section consumers to I<Section>ServiceRead;
-      /section-read-split is the reference process (Teams, PR 678).
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
@@ -124,7 +88,7 @@ themes:
       `// arch:db-sort-ok`. Remove fixed lines from the baseline.
   - id: inbox
     title: One-off inbox items
-    detect: "grep -c 'added:' docs/architecture/debt-ledger.yml"
+    detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
     review: per-item
     last_swept: never
     remaining: 9

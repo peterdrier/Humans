@@ -38,7 +38,10 @@ Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds oth
 
 1. Read `docs/architecture/debt-ledger.yml`. Validate: `version: 1`; every theme has `id`, `title`, `detect`, `review` (`light`|`panel`; the `inbox` theme alone uses `per-item` — each inbox entry carries its own tier), `last_swept`, `remaining`. Parse error → abort (no partial run), report to Peter.
 2. **Staleness check (every run, cheap):**
-   - Distinct `HUM####` ids appearing in `[Grandfathered(` attribute usages under `$WORKTREE/src` vs. ledger theme ids → each missing rule becomes a new theme (`last_swept: never`, `review: light` unless it is plainly a structural/judgment rule — then `panel`).
+   - Distinct `HUM####` ids in real `[Grandfathered(` attribute usages vs. ledger theme ids → each missing rule becomes a new theme (`last_swept: never`, `review: light` unless it is plainly a structural/judgment rule — then `panel`). **Anchor the grep to attribute syntax** — an unanchored `[Grandfathered(` also matches analyzer doc-comments and message strings, which seeds phantom themes:
+     ```bash
+     grep -rn -A3 --include='*.cs' '^[[:space:]]*\[Grandfathered(' $WORKTREE/src | grep -oE '"HUM[0-9]{4}"' | sort -u
+     ```
    - Files in `tests/Humans.Application.Tests/Architecture/Baselines/` with >0 non-comment entries vs. ledger → same.
    - New themes are committed in the ledger update (Phase 5) even when not worked this run.
 3. **`--inventory` only:** re-run every theme's `detect`, refresh all `remaining`, evict themes whose debt is gone (note each eviction in the report), and look for debt classes the ledger misses (new `[Obsolete]` clusters, new custom warning ids in a fresh build, new ratchet analyzers).
