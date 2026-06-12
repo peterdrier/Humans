@@ -265,6 +265,11 @@ public sealed class UserService(
         await repo.SetICalTokenAsync(userId, token, ct);
     }
 
+    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    {
+        await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

@@ -547,6 +547,12 @@ public sealed class CachingUserService(
         await RefreshEntryAsync(userId, ct);
     }
 
+    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
+        await RefreshEntryAsync(userId, ct);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

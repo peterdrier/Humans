@@ -140,6 +140,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(
@@ -853,8 +855,8 @@ public class AccountProvisioningServiceTests
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
         result.User.Should().BeSameAs(user);
-        user.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
-        await _userManager.Received(1).UpdateAsync(user);
+        // Login stamp goes through the single owner of the rule (A1).
+        await _userService.Received(1).RecordLoginAsync(user.Id, Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
