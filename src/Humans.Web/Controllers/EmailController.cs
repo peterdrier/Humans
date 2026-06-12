@@ -85,11 +85,6 @@ public class EmailController(
     }
 
     [HttpGet("EmailPreview")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 51 statements, cc 2.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
         [FromServices] IOptions<EmailSettings> emailSettings)
@@ -100,18 +95,11 @@ public class EmailController(
         var personas = new Dictionary<string, (string Name, string Email)>(StringComparer.Ordinal)
         {
             ["en"] = ("Sally Smith", "sally@example.com"),
-            ["es"] = ("Mar\u00eda Garc\u00eda", "maria@example.com"),
+            ["es"] = ("María García", "maria@example.com"),
             ["de"] = ("Frieda Fischer", "frieda@example.com"),
-            ["fr"] = ("Fran\u00e7ois Dupont", "francois@example.com"),
+            ["fr"] = ("François Dupont", "francois@example.com"),
             ["it"] = ("Giulia Rossi", "giulia@example.com"),
             ["ca"] = ("Jordi Puig", "jordi@example.com"),
-        };
-
-        var sampleDocs = new[] { "Volunteer Agreement", "Privacy Policy" };
-        var sampleResources = new (string Name, string? Url)[]
-        {
-            ("Art Collective Shared Drive", "https://drive.google.com/drive/folders/example"),
-            ("art-collective@nobodies.team", "https://groups.google.com/g/art-collective"),
         };
 
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
@@ -119,72 +107,50 @@ public class EmailController(
         foreach (var culture in cultures)
         {
             var (name, email) = personas[culture];
-
-            var items = new List<EmailPreviewItem>();
-
-            var c1 = renderer.RenderApplicationSubmitted(Guid.Empty, name);
-            items.Add(new EmailPreviewItem { Id = "application-submitted", Name = "Application Submitted (to Admin)", Recipient = settings.AdminAddress, Subject = c1.Subject, Body = c1.HtmlBody });
-
-            var c2 = renderer.RenderApplicationApproved(name, MembershipTier.Colaborador, culture);
-            items.Add(new EmailPreviewItem { Id = "application-approved", Name = "Application Approved", Recipient = email, Subject = c2.Subject, Body = c2.HtmlBody });
-
-            var c3 = renderer.RenderApplicationRejected(name, MembershipTier.Asociado, "Incomplete profile information", culture);
-            items.Add(new EmailPreviewItem { Id = "application-rejected", Name = "Application Rejected", Recipient = email, Subject = c3.Subject, Body = c3.HtmlBody });
-
-            var c4 = renderer.RenderSignupRejected(name, "Incomplete profile information", culture);
-            items.Add(new EmailPreviewItem { Id = "signup-rejected", Name = "Signup Rejected", Recipient = email, Subject = c4.Subject, Body = c4.HtmlBody });
-
-            var c5 = renderer.RenderReConsentsRequired(name, [sampleDocs[0]], culture);
-            items.Add(new EmailPreviewItem { Id = "reconsent-required", Name = "Re-Consent Required (single doc)", Recipient = email, Subject = c5.Subject, Body = c5.HtmlBody });
-
-            var c6 = renderer.RenderReConsentsRequired(name, sampleDocs, culture);
-            items.Add(new EmailPreviewItem { Id = "reconsents-required", Name = "Re-Consents Required (multiple docs)", Recipient = email, Subject = c6.Subject, Body = c6.HtmlBody });
-
-            var c7 = renderer.RenderReConsentReminder(name, sampleDocs, 14, culture);
-            items.Add(new EmailPreviewItem { Id = "reconsent-reminder", Name = "Re-Consent Reminder", Recipient = email, Subject = c7.Subject, Body = c7.HtmlBody });
-
-            var c8 = renderer.RenderWelcome(name, culture);
-            items.Add(new EmailPreviewItem { Id = "welcome", Name = "Welcome", Recipient = email, Subject = c8.Subject, Body = c8.HtmlBody });
-
-            var c9 = renderer.RenderAccessSuspended(name, "Outstanding consent requirements", culture);
-            items.Add(new EmailPreviewItem { Id = "access-suspended", Name = "Access Suspended", Recipient = email, Subject = c9.Subject, Body = c9.HtmlBody });
-
-            var c10 = renderer.RenderEmailVerification(name, "newemail@example.com", $"{settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", culture: culture);
-            items.Add(new EmailPreviewItem { Id = "email-verification", Name = "Email Verification", Recipient = "newemail@example.com", Subject = c10.Subject, Body = c10.HtmlBody });
-
-            var c10m = renderer.RenderEmailVerification(name, "duplicate@example.com", $"{settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", isConflict: true, culture: culture);
-            items.Add(new EmailPreviewItem { Id = "email-verification-merge", Name = "Email Verification (Merge)", Recipient = "duplicate@example.com", Subject = c10m.Subject, Body = c10m.HtmlBody });
-
-            var c11 = renderer.RenderAccountDeletionRequested(name, "March 15, 2026", culture);
-            items.Add(new EmailPreviewItem { Id = "deletion-requested", Name = "Account Deletion Requested", Recipient = email, Subject = c11.Subject, Body = c11.HtmlBody });
-
-            var c12 = renderer.RenderAccountDeleted(name, culture);
-            items.Add(new EmailPreviewItem { Id = "account-deleted", Name = "Account Deleted", Recipient = email, Subject = c12.Subject, Body = c12.HtmlBody });
-
-            var c13 = renderer.RenderAddedToTeam(name, "Art Collective", "art-collective", sampleResources, culture);
-            items.Add(new EmailPreviewItem { Id = "added-to-team", Name = "Added to Team", Recipient = email, Subject = c13.Subject, Body = c13.HtmlBody });
-
-            var c14 = renderer.RenderTermRenewalReminder(name, "Colaborador", "April 1, 2026", culture);
-            items.Add(new EmailPreviewItem { Id = "term-renewal-reminder", Name = "Term Renewal Reminder", Recipient = email, Subject = c14.Subject, Body = c14.HtmlBody });
-
-            var cMsg1 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", true, "alex@example.com", culture);
-            items.Add(new EmailPreviewItem { Id = "facilitated-message", Name = "Facilitated Message (with contact info)", Recipient = email, Subject = cMsg1.Subject, Body = cMsg1.HtmlBody });
-
-            var cMsg2 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", false, null, culture);
-            items.Add(new EmailPreviewItem { Id = "facilitated-message-anon", Name = "Facilitated Message (without contact info)", Recipient = email, Subject = cMsg2.Subject, Body = cMsg2.HtmlBody });
-
-            var cGroupRemoval = renderer.RenderGoogleGroupRemovalLossOfAccess(name, "Art Collective", "art-collective@nobodies.team", culture);
-            items.Add(new EmailPreviewItem { Id = "google-group-removal-loss", Name = "Google Group Removal — Loss of Access", Recipient = email, Subject = cGroupRemoval.Subject, Body = cGroupRemoval.HtmlBody });
-
-            var cDriveRemoval = renderer.RenderGoogleDriveRemovalLossOfAccess(name, "Art Collective Shared Drive", culture);
-            items.Add(new EmailPreviewItem { Id = "google-drive-removal-loss", Name = "Google Drive Removal — Loss of Access", Recipient = email, Subject = cDriveRemoval.Subject, Body = cDriveRemoval.HtmlBody });
-
-            var cSecondaryCleanup = renderer.RenderGoogleAccessRemovalSecondaryCleanup(name, "old-" + email, email, culture);
-            items.Add(new EmailPreviewItem { Id = "google-removal-secondary-cleanup", Name = "Google Access Removal — Secondary Email Cleanup", Recipient = "old-" + email, Subject = cSecondaryCleanup.Subject, Body = cSecondaryCleanup.HtmlBody });
-
-            previews[culture] = items;
+            previews[culture] = RenderSamples(renderer, settings, name, email, culture)
+                .Select(s => new EmailPreviewItem
+                {
+                    Id = s.Id, Name = s.Name, Recipient = s.Recipient,
+                    Subject = s.Content.Subject, Body = s.Content.HtmlBody
+                })
+                .ToList();
         }
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
+    }
+
+    // One sample per template the renderer exposes — the preview gallery's catalog.
+    private static IEnumerable<(string Id, string Name, string Recipient, EmailContent Content)> RenderSamples(
+        IEmailRenderer renderer, EmailSettings settings, string name, string email, string culture)
+    {
+        var sampleDocs = new[] { "Volunteer Agreement", "Privacy Policy" };
+        var sampleResources = new (string Name, string? Url)[]
+        {
+            ("Art Collective Shared Drive", "https://drive.google.com/drive/folders/example"),
+            ("art-collective@nobodies.team", "https://groups.google.com/g/art-collective"),
+        };
+        const string sampleMessage = "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
+        var verifyUrl = $"{settings.BaseUrl}/Profile/VerifyEmail?token=sample-token";
+
+        yield return ("application-submitted", "Application Submitted (to Admin)", settings.AdminAddress, renderer.RenderApplicationSubmitted(Guid.Empty, name));
+        yield return ("application-approved", "Application Approved", email, renderer.RenderApplicationApproved(name, MembershipTier.Colaborador, culture));
+        yield return ("application-rejected", "Application Rejected", email, renderer.RenderApplicationRejected(name, MembershipTier.Asociado, "Incomplete profile information", culture));
+        yield return ("signup-rejected", "Signup Rejected", email, renderer.RenderSignupRejected(name, "Incomplete profile information", culture));
+        yield return ("reconsent-required", "Re-Consent Required (single doc)", email, renderer.RenderReConsentsRequired(name, [sampleDocs[0]], culture));
+        yield return ("reconsents-required", "Re-Consents Required (multiple docs)", email, renderer.RenderReConsentsRequired(name, sampleDocs, culture));
+        yield return ("reconsent-reminder", "Re-Consent Reminder", email, renderer.RenderReConsentReminder(name, sampleDocs, 14, culture));
+        yield return ("welcome", "Welcome", email, renderer.RenderWelcome(name, culture));
+        yield return ("access-suspended", "Access Suspended", email, renderer.RenderAccessSuspended(name, "Outstanding consent requirements", culture));
+        yield return ("email-verification", "Email Verification", "newemail@example.com", renderer.RenderEmailVerification(name, "newemail@example.com", verifyUrl, culture: culture));
+        yield return ("email-verification-merge", "Email Verification (Merge)", "duplicate@example.com", renderer.RenderEmailVerification(name, "duplicate@example.com", verifyUrl, isConflict: true, culture: culture));
+        yield return ("deletion-requested", "Account Deletion Requested", email, renderer.RenderAccountDeletionRequested(name, "March 15, 2026", culture));
+        yield return ("account-deleted", "Account Deleted", email, renderer.RenderAccountDeleted(name, culture));
+        yield return ("added-to-team", "Added to Team", email, renderer.RenderAddedToTeam(name, "Art Collective", "art-collective", sampleResources, culture));
+        yield return ("term-renewal-reminder", "Term Renewal Reminder", email, renderer.RenderTermRenewalReminder(name, "Colaborador", "April 1, 2026", culture));
+        yield return ("facilitated-message", "Facilitated Message (with contact info)", email, renderer.RenderFacilitatedMessage(name, "Alex Firestone", sampleMessage, true, "alex@example.com", culture));
+        yield return ("facilitated-message-anon", "Facilitated Message (without contact info)", email, renderer.RenderFacilitatedMessage(name, "Alex Firestone", sampleMessage, false, null, culture));
+        yield return ("google-group-removal-loss", "Google Group Removal — Loss of Access", email, renderer.RenderGoogleGroupRemovalLossOfAccess(name, "Art Collective", "art-collective@nobodies.team", culture));
+        yield return ("google-drive-removal-loss", "Google Drive Removal — Loss of Access", email, renderer.RenderGoogleDriveRemovalLossOfAccess(name, "Art Collective Shared Drive", culture));
+        yield return ("google-removal-secondary-cleanup", "Google Access Removal — Secondary Email Cleanup", "old-" + email, renderer.RenderGoogleAccessRemovalSecondaryCleanup(name, "old-" + email, email, culture));
     }
 }
