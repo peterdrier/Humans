@@ -88,6 +88,8 @@ Go to `/Expenses/Review` to see every report waiting for Finance. Open one to ch
 
 From the Finance review page, generate a bank-transfer file covering all the approved, unpaid reports, and confirm once you've sent it — that moves those reports to **SEPA sent**. The system then checks for confirmation periodically and marks each one **Paid** once the money has gone.
 
+If the SEPA file download fails before it's been sent, you can **reopen** an individual report from its detail page — this moves it back to **Approved** so it's picked up in the next batch you generate.
+
 ## Related sections
 
 - [Budget](Budget.md) — reports are filed against budget categories, and the category decides whether a coordinator signs off.

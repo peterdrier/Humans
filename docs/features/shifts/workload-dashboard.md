@@ -107,7 +107,7 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 **Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (§15 Option B at the section level). Signup / shift / rota mutations evict the affected rota cache entries via `IShiftViewInvalidator`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
 
-**Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.SortForDisplay` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer.
+**Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.Index` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer.
 
 ## Deferred — Year filter
 

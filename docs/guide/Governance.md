@@ -77,7 +77,7 @@ On the detail page you see the applicant's profile, their motivation, and the vo
 
 ### Finalize the decision
 
-The system does not count votes for you — this is a consensus model. The Finalize form on the detail page is shown only to **Admin** users; Board members coordinate the decision in their meeting and ask an Admin to record it. (The underlying Finalize endpoint will accept submissions from any Board member or Admin, but only Admin sees the form in the UI today.) Finalization requires at least one Board vote to have been cast on the application.
+The system does not count votes for you — this is a consensus model. The Finalize form on the detail page is shown only to **Admin** users; Board members coordinate the decision in their meeting and ask an Admin to record it. Only Admin can submit the Finalize form. Finalization requires at least one Board vote to have been cast on the application.
 
 On the detail page, fill in the **meeting date** (required) and a **decision note**, then choose **Approve** or **Reject**. The decision note is required for rejections and optional for approvals.
 

@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-10
+**Generated:** 2026-06-12
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -831,9 +831,12 @@ direct `IMemoryCache`.
 
 ### CampContactService (Scoped)
 
-No repository. Rate-limited contact relay. Cross-section calls via
-`IEmailService`, `IAuditLogService`, `INotificationEmitter`,
-`IUserService`, `ICampService`.
+No repository. Rate-limited contact relay. Injects `IEmailService`,
+`IEmailMessageFactory`, `IAuditLogService`, `INotificationEmitter`,
+`IMemoryCache`, `ILogger`. **No `IUserService` or `ICampService` injection**
+— the controller resolves the camp/lead data and passes display names,
+contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
+No cross-section service-to-service calls within the service itself.
 
 | Cache Key | TTL | Type |
 |-----------|-----|------|
@@ -1890,19 +1893,25 @@ Repository: `IStoreRepository`.
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface, #816),
-`IShiftManagementService`, `IStripeService` (Infrastructure), plus
-`IClock`. No `IMemoryCache`.
+`IShiftManagementService`, `IStripeService` (Infrastructure connector —
+creates Checkout sessions, lists sessions for reconciliation, handles
+webhook events including SEPA async-payment transitions), plus `IClock`.
+No `IMemoryCache`.
 
-`StoreService` gained a Stripe **reconciliation** surface
-(`GetStripeReconciliationAsync` pairs live Stripe Checkout sessions against
-recorded `StorePayments` and classifies each Recorded / Unmatched / Missing /
-Unpaid; `RecordMissingStripePaymentsAsync` back-fills the missing
-`StorePayments` rows and writes a `StorePaymentsReconciled` audit entry) and
-**repricing** logic — Open orders reprice live against the single active
-event-year catalog (`StoreProducts`), so legacy `Year = 0` orders still
-reprice correctly. Both surfaces read/write only Store-owned tables through
-`IStoreRepository`; reconciliation reads live Stripe sessions via
-`IStripeService`.
+`StoreService` owns the full Stripe **payment flow**: synchronous card/wallet
+payments are recorded as `Paid` on `checkout.session.completed`; SEPA/delayed
+methods are recorded `Pending` (mandate captured, not yet cleared) and
+transitioned to `Paid` / `Failed` via `async_payment_succeeded` /
+`async_payment_failed` webhooks; a pending payment blocks a second checkout
+to prevent double-charge. `GetStripeReconciliationAsync` pairs live Stripe
+Checkout sessions against recorded `StorePayments` and classifies each row
+as Recorded / Pending / Unmatched / Missing / Unpaid;
+`RecordMissingStripePaymentsAsync` back-fills missing `StorePayments` rows
+and writes a `StorePaymentsReconciled` audit entry. **Repricing** — Open
+orders reprice live against the single active event-year catalog
+(`StoreProducts`), so legacy `Year = 0` orders still reprice correctly.
+All surfaces read/write only Store-owned tables through `IStoreRepository`;
+reconciliation reads live Stripe sessions via `IStripeService`.
 
 ### BalanceCalculator
 
@@ -2190,10 +2199,15 @@ former HUM0025 `[Grandfathered]` markers have been retired:
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserServiceRead`,
    `ITeamServiceRead`, `ICalendarServiceRead`, `IConsentServiceRead`,
-   `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`,
+   `ICampServiceRead`, `ITicketServiceRead`, `IGoogleSyncServiceRead`
+   (consumed by `NotificationMeterProvider` for failed-sync-event counts),
    `ICampaignServiceRead` (consumed by `TicketQueryService`),
-   `IEventServiceRead` (new — #915, consumed by `CampEventsViewComponent`
-   for the camp detail page's events card), and
+   `IEventServiceRead` (consumed by `CampEventsViewComponent`
+   for the camp detail page's events card),
+   `ICityPlanningServiceRead` (exposes `GetSettingsAsync` /
+   `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
+   consumers are Web-layer controllers/handlers, no Application-layer
+   service consumer yet), and
    the Governance pair `IApplicationServiceRead` / `IMembershipCalculatorRead`
    (PR #851). Several of these are the Singleton caching decorators re-cast
    to a narrow surface; the Governance read interfaces are plain

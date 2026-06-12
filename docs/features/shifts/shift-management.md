@@ -151,7 +151,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
-| `VolunteerEventProfile` | Per-event skills, dietary, medical info, email preferences |
+| `VolunteerEventProfile` | Per-event skills (`Skills[]`), work-style quirks (`Quirks[]`), and languages (`Languages[]`). Dietary and medical fields moved to `Profile` (Users section); VEP columns retained in schema pending a post-prod-soak drop |
 | `ShiftTag` | Descriptive label for rotas (Id, Name); shared across all teams |
 | `RotaShiftTag` | Join table: Rota ↔ ShiftTag many-to-many |
 | `VolunteerTagPreference` | Links a volunteer to preferred tags for personalized recommendations |

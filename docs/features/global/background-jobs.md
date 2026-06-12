@@ -228,16 +228,16 @@ See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-rig
       - Updates LastSyncedAt on each resource
 ```
 
-**Sync modes** (configured at `/Admin/SyncSettings` by Admin users):
+**Sync modes** (configured at `/Google/SyncSettings` by Admin users):
 | Mode | Behavior |
 |------|----------|
 | `None` | Job skips this service entirely |
 | `AddOnly` | Only adds missing members — never removes |
 | `AddAndRemove` | Full sync: adds missing + removes extra members |
 
-**Group settings drift check**: After membership reconciliation, the job also checks all active Google Groups for settings drift (e.g., someone changed WhoCanPost in Google Admin). This is detect-only — drifts are logged as warnings but not auto-fixed. Respects the GoogleGroups sync mode: skipped entirely if set to None.
+**Group settings drift check + auto-remediation**: After membership reconciliation, the job checks all active Google Groups for settings drift (e.g., someone changed WhoCanPost in Google Admin). When drift is found, settings are automatically reapplied via `RemediateGroupSettingsAsync` and each remediation is audit-logged. Per-group remediation failures are logged but do not abort the check phase. Respects the GoogleGroups sync mode: skipped entirely if set to None.
 
-> **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Teams/Sync` or configure sync modes at `/Admin/SyncSettings` instead.
+> **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Google/Sync` or configure sync modes at `/Google/SyncSettings` instead.
 
 ## Hangfire Configuration
 

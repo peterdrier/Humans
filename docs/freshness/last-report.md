@@ -1,93 +1,89 @@
 # Freshness sweep report
 
-**Run:** 2026-06-10 (UTC)
+**Run:** 2026-06-12 (UTC)
 **Mode:** diff
-**Previous anchor:** `989786372`
-**New anchor:** `upstream/main` @ `523a44c3e`
-**Worktree base:** `origin/main` @ `b7c0e2282`
-**Dirty:** 11/11 mechanical entries, 113 editorial docs (the TableModel view sweep #932 touched ~100 views, so nearly every doc triggered; semantic drivers were Survey #884, iCal feed #931, gate-terminal login #930, events-admin-edit, and the new HUM0031/HUM0032 analyzers).
+**Previous anchor:** `523a44c3e`
+**New anchor:** `upstream/main` @ `afa6ac5cc`
+**Worktree base:** `origin/main` @ `5d0fa66ac`
+**Dirty:** 11/11 mechanical entries, ~75 editorial docs (one promotion batch #863: Store async-payment state machine #949/#982, Events per-occurrence favourites #983, admin-shell nav regroup #960, ~12 section simplification passes, CSV→CsvHelper #959, post-event stats #952, scanner door context #940, Google-sync alerting/requeue #948/#944, buyer-fallback ownership retirement #953).
+**Note:** upstream/main and origin/main had crossed at sweep start (upstream HEAD is the #863 promotion merge; origin carried 2 newer commits #985/#986). Expected post-promotion state; those 2 commits are the next sweep's input.
+**Entries:** 43 updated (8 mechanical + 35 editorial docs) · 3 verified current · 8 husks pruned (−4,027 lines)
 
 ## Updated automatically
 
-Mechanical (8 updated, 3 verified-current):
+- `dev-stats` — +2 daily rows
+- `reforge-history` — +2 daily rows (105 days)
+- `code-analysis-suppressions` — removed stale xUnit1051 suppression (no longer in tests/Directory.Build.props)
+- `authorization-inventory` — ExpensesController.SepaReopen (FinanceAdminOrAdmin + ExpenseReportOperation.ReopenSepa); ExpenseReportAuthorizationHandler operation list; ToggleCampFavourite→ToggleCardFavourite rename missed by the 2026-06-10 sweep
+- `controller-architecture-audit` — ToggleCardFavourite row + corrected route; SepaReopen row; date bump
+- `dependency-graph` — ICityPlanningServiceRead added to read-split list; CityPlanning read-boundary note; IGoogleSyncServiceRead fan-in clarification
+- `service-data-access-map` — CampContactService stale cross-section claims removed; ICityPlanningServiceRead in read-split list; Store async-payment flow (SEPA transitions + pending-payment double-charge guard)
+- `docs-readme-index` — post-event-stats.md indexed
 
-- `dev-stats` — +1 daily row (2026-06-10, script)
-- `reforge-history` — +1 daily row (script)
-- `docs-readme-index` — indexed `sections/survey.md` + `features/scanner/gate-terminal-login.md`; Scanner description now points at `/Scanner/Tickets`
-- `authorization-inventory` — Survey section (SurveyController `[AllowAnonymous]`, SurveyAdminController BoardOrAdmin, SurveysApiController API-key filter), ICalFeedApiController (secret-in-URL), AccountController.GateLogin, TicketsGateAdminController; ScannerController policy corrected to `ScannerAccess`
-- `controller-architecture-audit` — 5 new controllers + 2 GateLogin actions; controller count → 87
-- `dependency-graph` — ICalFeedService + GoogleTranslationService nodes/edges; linkStyle indices 274..291; UserService fan-in → 56
-- `service-data-access-map` — Surveys section (SurveyService + 6 `survey_*` tables), ICalFeed (pure fan-out orchestrator, no owned tables), GoogleTranslationService; GDPR contributor list updated
-- `data-model-index` — Survey row (6 entities); `SyncServiceSettings.UpdatedByUser` nav ref → `UpdatedByUserId`; Survey cross-section FK entries
-- `about-page-packages` — verified current, no change (all 45 packages match `Directory.Packages.props`)
-- `guid-reservations` — verified current, no change (block `0004` gate-terminal already present)
-- `code-analysis-suppressions` — verified current, no change (HUM0031 went to `WarningsNotAsErrors`, outside the NoWarn block)
+Verified current, no edits: `data-model-index`, `guid-reservations`, `about-page-packages`.
 
-Editorial drift-fix (26 docs changed across 14 cluster subagents):
+## Updated (editorial drift-fix, 35 docs)
 
-- `sections/Tickets.md` — MatchedUser navs on TicketOrder/TicketAttendee recorded as stripped (no longer "target"); ITicketRepository description updated; transfer cache-invalidation trigger now covers all four lifecycle transitions (create/cancel/reject/approve)
-- `sections/Auth.md` — Survey added to MembershipRequiredFilter exempt list
-- `sections/Users.md` — EventParticipation.User forward nav removed; GateLogin routes added
-- `features/auth/authentication.md` — User entity diagram: stripped navs removed, MagicLinkSentAt added
-- `sections/Shifts.md` — ShiftSignupService implements ICalendarFeedContributor (iCal feed #931)
-- `sections/Events.md` — CampEventsViewComponent → EventsCardViewComponent; ToggleCampFavourite → ToggleCardFavourite (`POST /Events/Card/Favourite/{eventId}` with returnUrl); EventService implements ICalendarFeedContributor
-- `sections/Store.md` + `features/store/store.md` — Admin Summary reprices Open orders to live catalog (matches order page, #937)
-- `sections/GoogleIntegration.md` — SyncServiceSettings.UpdatedByUser nav removal; GoogleTranslationService/IGoogleTranslationClient registered in owning-services/external-API/connector lists
-- `sections/LegalAndConsent.md` — ConsentRecord.User nav recorded as stripped (3 places)
-- `sections/Governance.md` — CastBoardVoteAsync controller switch: NotSubmitted arm collapsed into default
-- `sections/Camps.md` + `sections/CityPlanning.md` — CreatedByUser/ReviewedByUser/LastModifiedByUser/ModifiedByUser navs recorded as stripped
-- `features/onboarding/volunteer-status.md` — Survey added to exempt-controllers list
-- `sections/admin-shell.md` — Gate terminal in TicketAdmin sidebar row; Surveys in Board/Governance row
-- `features/global/background-jobs.md` — SendSurveyReminderJob added to catalog
-- `features/global/gdpr-export.md` — SurveyResponses GDPR section added (16 contributors)
-- `features/global/global-search.md` — IEventService → IEventServiceRead
-- `features/debug/client-stats.md` — Bots breakdown table added
-- `features/guide/in-app-guide.md` — guide file count 17 → 28
-- `sections/Notifications.md` — dropped cross-domain navs; meter-provider dependency refresh
-- `sections/AuditLog.md` + `features/audit-log/audit-log.md` — GateTerminalPasswordSet + Survey AuditAction values
-- `docs/architecture/design-rules.md` — §15i repository inventory 33 → 34 (+ SurveyRepository row)
-- `docs/architecture/roslyn-analysis.md` — next-free analyzer id → HUM0033; shipped range → HUM0024–HUM0032
-- `docs/seed-data.md` — gate-terminal well-known-account seeding pattern (GateTerminalAccountSeeder / SystemUserIds.GateTerminal)
+- **Store/Scanner:** sections/Store.md + features/store/store.md + guide/Store.md — deadline gate moved from service-throw to StoreOrderAuthorizationHandler/StoreOrderLineContext (admins exempt); pending-payment double-charge guard + RecordedPending status user-visible notes. sections/Scanner.md — door context (#940): EE grants, check-in, consents, provide list + new cross-section deps.
+- **Events/system:** sections/Events.md — EventFavourite.DayOffset + unique-constraint prose; profile card personal-events-only. guide/Events.md — per-occurrence favouriting sentence. sections/AuditLog.md — StorePaymentSettled/Failed/Expired. sections/Debug.md — /Debug/Timings + minLevel filter on /Debug/Logs.
+- **Shifts:** sections/Shifts.md — GetPostEventStatsAsync under ShiftDashboardAccess. features/shifts/post-event-stats.md + shift-management.md — new dashboard route/DTO/auth. features/shifts/workload-dashboard.md — inlined SortForDisplay reference removed.
+- **Users/Admin/Campaigns:** guide/Admin.md — nav regroup (Money group, Campaigns→Tickets, system zone), googlerejected filter, sync-outbox requeue + per-user re-run. features/global/administration.md — 3 new GoogleController POST routes. features/campaigns/campaigns.md — stale unsubscribe description replaced with current two-path token behavior.
+- **Google/Email:** sections/GoogleIntegration.md + features/google-integration/google-integration.md + features/global/background-jobs.md (recovered from died worker; verified). guide/GoogleIntegration.md — requeue/Re-run Sync admin actions.
+- **Profiles:** sections/Profiles.md — coordinator Sent-Messages panel (AuditAction.FacilitatedMessageSent via IAuditViewerService, limit 50).
+- **Governance/Teams:** sections/Governance.md, guide/Governance.md, features/governance/asociado-applications.md + board-voting.md (recovered from died worker; verified). guide/Teams.md + features/teams/teams.md — Early Entry search by ticket barcode (#936).
+- **Misc sections:** sections/Auth.md — Phase-2 handler list (Container, ExpenseReport+ReopenSepa, IbanAccess, StoreOrder/OrderableUntil). sections/CityPlanning.md — ICityPlanningServiceRead read-split, CampPolygonSaveResult, upload pipeline in service, GetSettingsByYearAsync removal. features/city-planning/city-planning.md + sections/Containers.md — ICityPlanningServiceRead refs. sections/Expenses.md + guide/Expenses.md — ReopenSepa route/actor/trigger + user-facing description. sections/Notifications.md + features/notifications/notification-inbox.md — badge-count caching now inside NotificationInboxService (#954).
+- **Architecture:** design-rules.md — §15i Notifications badge caching corrected to in-service (2-min TTL).
 
-Verified clean (no drift): `sections/survey.md` (full check of new section doc against landed code), Calendar/Cantina/Profiles/Issues/Feedback/Campaigns/guide trees — their matched changes were mechanical refactors (TableModel sweep, nav strips, extract-method).
+## Pruned (Phase 5.5) — 8 husks, 4,027 lines
 
-## Pruned
+Sizing: 82,242 total doc lines → 5% target 4,112, 7% cap 5,757. Pruned 4,027 — within target.
 
-**Wheat migrated:**
-- `docs/superpowers/plans/2026-05-10-early-entry-camps.md` §Task 11 → `docs/sections/Camps.md` (Membership invariants): RejectCampMemberAsync intentionally passes `cascadeRoleAssignments: false` — Pending members can hold no role assignments. Verified against `CampService.cs:1212`.
+**Wheat migrated:** none — every wheat candidate across all 8 docs was verified already captured (and stated more richly) in the living docs. Verification spot-cites: AuditLog append-only triggers → `docs/sections/AuditLog.md` + `AuditLogRepository.cs`; Shifts Stryker MTP-runner bug → `docs/testing/mutation-testing.md:81`; Tickets `/Welcome` route exception → `docs/sections/Tickets.md:134`; ticket-transfer manual-processing model → `docs/features/tickets/ticket-transfer.md` (explicitly records the removed void+reissue engine; zero `TicketTransferVendorStepKind`/`RetryIssue`/`VoidIssuedTicket` refs remain in src/).
 
-**Husks deleted:**
-- `docs/superpowers/plans/2026-05-10-early-entry-camps.md` (1,689 lines) — feature shipped (#490); all design decisions live in the surviving spec `2026-05-10-early-entry-camps-design.md`; section invariants already in `Camps.md`; remainder was task lists, TDD steps, and code samples now in `src/`. Deferred from the previous sweep by budget; processed this sweep.
+| Husk | Lines | Reason |
+|---|---|---|
+| docs/plans/2026-05-12-section-align-auditLog.md | 284 | Executed plan; all durable items in sections/AuditLog.md |
+| docs/plans/2026-05-12-section-align-camps.md | 107 | Executed; CampMemberConfiguration move recorded in Camps.md |
+| docs/plans/2026-05-12-section-align-google-integration.md | 369 | Executed in PR #500; follow-ups tracked in sections/GoogleIntegration.md |
+| docs/plans/2026-05-12-section-align-governance.md | 80 | Executed; routing/DI-cycle rationale in sections/Governance.md |
+| docs/plans/2026-05-12-section-align-scanner.md | 312 | Executed; client-only invariants in sections/Scanner.md |
+| docs/plans/2026-05-12-section-align-shifts.md | 401 | Executed; run recorded in maintenance-log; Stryker gotcha in mutation-testing.md |
+| docs/plans/2026-05-12-section-align-tickets.md | 160 | Executed; /Welcome exception in sections/Tickets.md |
+| docs/superpowers/plans/2026-05-12-ticket-transfer-ui-history.md | 2,314 | Shipped-then-reversed: automated void+reissue engine deliberately removed; survivors documented in ticket-transfer.md + Tickets.md |
 
-**Inbound refs:** none needed retargeting (the only ref was in the prior `last-report.md`, replaced by this report).
-
-**Budget:** total docs 82,453 lines; 5% target 4,122; 7% cap 5,771; deleted 1,689 (~2.0%). Under target because the allowlist is exhausted: no `docs/plans/` file is >30 days old, no spec is >60 days old, and `tech-debt-2026-04-23.md` still has `[OPEN]` items (ineligible). Largest next-sweep candidates: the 2026-05-12/13/14 `docs/plans/section-align-*.md` files (eligible from 2026-06-12).
+**Refs retargeted:**
+- docs/plans/2026-05-13-section-align-teams.md:139 — auditLog plan link → "(historical — invariants live in docs/sections/AuditLog.md)"
+- docs/plans/2026-05-13-section-align-teams.md:142 — scanner plan link → "(historical — invariants live in docs/sections/Scanner.md)"
+- docs/architecture/maintenance-log.md:33 — left untouched by design (sweep never edits maintenance-log; repo convention keeps dead plan paths as git-historical provenance)
 
 ## Flagged for human review
 
-All 12 items were delivered to Peter inline (Phase 7.5); he approved fixing all 12, and all were applied on this PR branch in the follow-up commit.
+Delivered inline at sweep end (Phase 7.5); dispositions recorded here once answered.
 
-1. `features/auth/magic-link-auth.md` — `User.NormalizedEmail` / `FindByEmailAsync` fallback. — **fixed**: lookup flow rewritten to `IUserEmailService.FindVerifiedEmailWithUserAsync` throughout diagrams and examples.
-2. `features/tickets/ticket-vendor-integration.md` — `/Tickets/GateList` "Stub for June implementation". — **fixed**: note now points at the live `/Scanner/Tickets` gate lookup (#930); GateList remains a placeholder.
-3. `sections/Holded.md` — "v1 ships only the four methods" stale. — **fixed**: replaced with the current eleven-method `IHoldedClient` surface.
-4. `features/profiles/contact-fields.md` — `LeadsAndBoard` vs enum `CoordinatorsAndBoard`. — **fixed**: all 8 occurrences renamed (plus one in preferred-email.md US-11.4).
-5. `features/profiles/preferred-email.md` — removed `User.GoogleEmail` / `GetEffectiveEmail()` / `GetGoogleServiceEmail()` still documented. — **fixed**: stale subsections replaced with the FullProfile-based read path; sync/jobs notes updated.
-6. `features/profiles/dietary-medical-nudge.md` — fields documented on VolunteerEventProfile. — **fixed**: Data Model + Cross-section dependencies rewritten — fields live on Profile (VEP columns are retained-only tombstones); saves via `IProfileEditorService.SaveDietaryMedicalAsync`.
-7. `features/profiles/profiles.md` — BurnerName nullability. — **fixed**: `string? (256)` → `string (256)`.
-8. `sections/Profiles.md` — `Services.Profile` vs `Services.Profiles`. — **fixed**: 3 occurrences corrected including the dead freshness trigger glob (`Services/Profiles/**` now matches).
-9. `features/campaigns/campaigns.md` — wave-send exclusion attribution. — **fixed**: now `ICommunicationPreferenceService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes)`; the separate Unsubscribe-route section (which legitimately sets `User.UnsubscribedFromCampaigns`) verified accurate and left alone.
-10. `features/expires-on-deadline.md` — `User.NormalizedEmail` deadline 2026-05-18 past. — **fixed**: the `[ExpiresOn]` in `User.cs` was extended to 2026-09-01; table row updated to match (symbol still exists).
-11. `features/notifications/notification-inbox.md` — Cleanup rules + Sources table out of sync. — **fixed**: 30-day unresolved-Informational rule + actionable-never-deleted rule added; 8 missing sources added.
-12. `design-rules.md` — ICalendarFeedContributor fanout undocumented. — **fixed**: new §8b "Cross-Section Fanout — Contributor Pattern" generalizes the shape (orchestrator owns no tables, sections opt in via contributor interface) and tables both instances (GDPR `IUserDataContributor`, iCal `ICalendarFeedContributor`).
+Concrete pre-existing drift (outside this sweep's changed-file scope, fix proposed):
+1. sections/AuditLog.md — Expenses/IBAN AuditAction group (Expense*, Iban*, incl. new ExpenseSepaReopened) has never been documented.
+2. features/cantina/daily-roster.md:149 — claims "no per-day route" but GET /Cantina/Roster/Day and /Day/Csv exist (Cantina.md lists them correctly).
+3. features/budget/budget.md:252 — claims four auto-created ticketing categories; BudgetRepository.AddDefaultTicketingCategories scaffolds two (guide/Budget.md already says two).
+4. design-rules.md §8 — Event Guide row lists 6 table names that never existed; actual: events, event_guide_settings, event_categories, event_venues, event_moderation_actions, event_favourites, event_preferences.
+5. code-review-rules.md:105 — claims HumansFact/HumansTheory "5s default timeout, project-wide"; actual default 30s (5s only for a specific path).
+
+Judgment calls (new functionality adjacent to doc scope, not contradictions):
+6. features/shifts/coordinator-roles.md — should the new coordinator sent-message history panel (#950) be mentioned under VolunteerCoordinator capabilities?
+7. features/profiles/preferred-email.md — note admin sync-outbox requeue / per-user re-sync, or leave to google-integration docs?
+8. features/profiles/profile-search-detail.md — document the HumanSearch picker's optional TicketLookupUrl second data source (#936), or leave to its spec?
+
+Unmarked editorial (no freshness:triggers; add markers so future sweeps can scope them):
+docs/sections/Agent.md, docs/sections/Mailer.md, docs/sections/_Index.md, docs/features/26-events.md, docs/features/27-guide-browser.md, docs/features/43-google-group-membership-sync.md, docs/features/test-system-reliability.md, docs/features/user-search-overhaul.md, docs/features/agent/agent-section.md, docs/features/scanner/gate-terminal-login.md, docs/features/scanner/scanner-barcode.md, docs/guide/AiHelper.md, docs/guide/EmailAccount.md, docs/guide/SigningIn.md, docs/guide/TicketTransfers.md, docs/guide/TwoStepVerification.md, docs/guide/YourData.md
+
+Informational (no action needed):
+- guide/CityPlanning.md says "/CityPlanning/Admin"; actual route /CityPlanning/BarrioMap/Admin — guide uses the page label, pre-existing, left as-is.
+- HoldedClient ctor now takes ILogger — DI detail, not documented anywhere.
+- admin-shell.md was already accurate for the #960 nav regroup (updated in the same PR).
 
 ## Proposed for review
 
-None — all candidates resolved this sweep.
-
-## Questions
-
-None pending — all 12 inline questions answered ("fix all 12") and applied.
+Pending — items 1–8 above delivered inline; awaiting Peter's answers.
 
 ## Skipped (errors)
 
-None — all 11 mechanical entries and all 14 editorial cluster subagents completed.
+None. (Three background workers died mid-run from a harness host restart; all were re-dispatched and completed — no entry was lost.)

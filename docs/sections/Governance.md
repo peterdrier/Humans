@@ -121,7 +121,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 |------------|--------|-------|
 | `GovernanceController` | `GET /Governance` — overview + tier counts + statutes |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
-| `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
+| `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
 | `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) |
 
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
@@ -133,8 +133,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 | Any authenticated human | View own governance status (tier, active applications). Submit a Colaborador or Asociado application |
 | Board | View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail. Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin) |
 | HumanAdmin | Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin). View admin profile pages. (Cannot vote, cannot finalize.) |
-| Board, Admin | Reach the Finalize endpoint to approve/reject (route allows both). The Finalize UI form is rendered only for Admin (`CanFinalize = isAdmin`) |
-| Admin | Assign and revoke the Admin role. All Board capabilities. Sole UI-visible finalizer for tier applications |
+| Admin | Reach the Finalize endpoint to approve/reject (AdminOnly policy). The Finalize UI form is rendered only for Admin (`CanFinalize = isAdmin`). Assign and revoke the Admin role. All Board capabilities. Sole finalizer for tier applications |
 
 ## Invariants
 

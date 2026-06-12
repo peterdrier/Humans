@@ -56,12 +56,12 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
 
 ### US-18.3: Finalize Application Decision
 
-**As a** Board member (or Admin)
+**As an** Admin
 **I want to** finalize the Board's decision on a tier application
 **So that** the applicant is approved or rejected
 
 **Acceptance Criteria:**
-- Any Board member can finalize (consensus model, not majority vote)
+- Only Admin can finalize (Board members coordinate the decision and ask an Admin to record it)
 - Finalization records: decision (approve/reject), meeting date (required), decision note
 - On approve:
   - Application.Status → Approved
@@ -203,7 +203,7 @@ Application enters Board queue
 Board members cast individual votes (working data)
     │
     ▼
-Any Board member finalizes decision
+Admin finalizes decision
     │
     ├── Approve
     │   ├── Application.Status → Approved
@@ -230,13 +230,13 @@ Any Board member finalizes decision
 | `/Governance/BoardVoting` | GET | Voting dashboard | Board, Admin |
 | `/Governance/BoardVoting/{applicationId}` | GET | Application detail + vote form | Board, Admin |
 | `/Governance/BoardVoting/Vote` | POST | Cast/update vote | Board |
-| `/Governance/BoardVoting/Finalize` | POST | Finalize decision | Board, Admin |
+| `/Governance/BoardVoting/Finalize` | POST | Finalize decision | Admin |
 
 ## Business Rules
 
 1. **Only Board members can vote** — Admin can view and finalize but not vote
 2. **One vote per Board member per application** — can update before finalization
-3. **Any Board member can finalize** — consensus model, not counting votes
+3. **Only Admin can finalize** — Board members coordinate the decision and ask an Admin to record it
 4. **Cannot finalize without at least one vote** — prevents empty decisions
 5. **Finalization is irreversible** — once approved/rejected, the decision stands
 6. **Meeting date required** — audit trail requirement

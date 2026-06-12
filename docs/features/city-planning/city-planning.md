@@ -202,7 +202,7 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 | Place / remove containers on map | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` |
 | Export container GeoJSON | Map admin (all), barrio lead (own camp) |
 
-Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning team (`ICityPlanningService.IsCityPlanningTeamMemberAsync`).
+Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning team (`ICityPlanningServiceRead.IsCityPlanningTeamMemberAsync`).
 
 ## URL Structure
 

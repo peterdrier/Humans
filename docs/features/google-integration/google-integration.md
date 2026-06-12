@@ -382,7 +382,7 @@ Settings applied at group creation can drift if someone changes them manually in
 **Additional hardcoded settings** (applied at creation and checked for drift):
 - IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: true)
 
-**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures are logged but don't stop the reconciliation.
+**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures per group are logged but don't stop the check phase; a phase-level failure that kills the entire check dispatches a `SyncError` Admin alert (covered under per-phase fault isolation above).
 
 **Manual trigger:** The Google admin page at `/Google` has a "Check Group Settings" button. Results show at `/Google/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
@@ -533,6 +533,8 @@ Process: Reads SyncMode per service from sync_service_settings, then calls
 - `SyncMode.AddOnly` — job computes diff and only adds missing members
 - `SyncMode.AddAndRemove` — job computes diff, adds missing and removes extra members
 
+**Per-phase fault isolation:** Each top-level phase (DriveFolder sync, DriveFile sync, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
+
 **Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
 
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at `/Google/SyncSettings` before the job will modify Google resources.
@@ -554,9 +556,9 @@ When system teams are synced, Google permissions are also updated:
 
 The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
 
-**Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships.
+**Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). Additionally, a `SyncError` Admin notification is dispatched immediately so the failure is visible without waiting for a meter refresh. The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships. Permanently-failed outbox events can be requeued individually via `POST /Google/SyncOutbox/{id}/Requeue` or in bulk via `POST /Google/SyncOutbox/RequeueAll`.
 
-**Transient failures (all other errors including 429, 5xx):** Retried up to 10 times with exponential backoff.
+**Transient failures (all other errors including 429, 5xx):** Retried up to 10 times with exponential backoff. When the retry budget is exhausted (dead-lettered), a `SyncError` Admin notification is dispatched.
 
 `GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
 

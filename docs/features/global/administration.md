@@ -147,6 +147,9 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/CheckEmailMismatches` | Admin | POST: Check email mismatches |
 | `/Google/EmailBackfillReview` | HumanAdmin, Admin | GET: Review email backfill |
 | `/Google/ApplyEmailBackfill` | Admin | POST: Apply email backfill |
+| `/Google/SyncOutbox/{id}/Requeue` | Admin | POST: Requeue a single failed sync outbox event |
+| `/Google/SyncOutbox/RequeueAll` | Admin | POST: Requeue all permanently-failed sync outbox events |
+| `/Google/Human/{id}/RerunSync` | Admin | POST: Enqueue Google sync for all of a user's teams |
 
 ### Admin dashboard and diagnostics
 

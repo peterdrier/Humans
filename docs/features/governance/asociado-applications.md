@@ -211,8 +211,8 @@ Abstain = 3  // No position
 
 | Trigger | From | To | Actor | Notes Required |
 |---------|------|-----|-------|----------------|
-| Approve | Submitted | Approved | Board/Admin | Optional (DecisionNote) |
-| Reject | Submitted | Rejected | Board/Admin | Yes (DecisionNote required) |
+| Approve | Submitted | Approved | Admin | Optional (DecisionNote) |
+| Reject | Submitted | Rejected | Admin | Yes (DecisionNote required) |
 | Withdraw | Submitted | Withdrawn | Applicant | No |
 
 ## Application Creation

@@ -52,7 +52,7 @@ While your order is open, you can fill in the billing details (name, VAT ID, add
 
 ### Pay
 
-From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. Bank transfers are recorded by hand against the order by a treasurer; automatic matching from the org's accounts isn't switched on yet.
+From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. If a payment is already awaiting clearance (e.g. a bank debit mandate that hasn't settled yet), the Pay button is hidden until that payment either confirms or fails; this prevents a double charge. Bank transfers are recorded by hand against the order by a treasurer; automatic matching from the org's accounts isn't switched on yet.
 
 ![TODO: screenshot — order detail page showing items, balance, and the Pay button]
 
@@ -70,7 +70,7 @@ Go to `/Store/Admin/Catalog` to see all products, and add or edit one at `/Store
 
 ### Stripe payments
 
-`/Store/Admin/Payments` reconciles card payments taken through Stripe against what's recorded on orders. Card payments normally record themselves automatically, but if that automatic step isn't set up (or a payment slips through), this page lists every Stripe checkout and flags any paid one that hasn't been recorded yet. One click records all the missing ones — pulling the amount straight from Stripe, never re-typing it — and it's safe to run again any time. Payments recorded here but no longer found in Stripe are listed separately for you to look into; nothing is ever removed automatically.
+`/Store/Admin/Payments` reconciles card payments taken through Stripe against what's recorded on orders. Card payments normally record themselves automatically, but if that automatic step isn't set up (or a payment slips through), this page lists every Stripe checkout and flags any paid one that hasn't been recorded yet. One click records all the missing ones — pulling the amount straight from Stripe, never re-typing it — and it's safe to run again any time. Payments recorded here but no longer found in Stripe are listed separately for you to look into; nothing is ever removed automatically. Sessions that are recorded but still awaiting settlement (e.g. a SEPA debit mandate that has been captured but hasn't cleared yet) are shown as **Recorded / Pending** — they are not counted toward the order balance until Stripe confirms the transfer.
 
 > **Heads up:** the Finance order-review screen (entering manual payments by hand and issuing invoices) isn't switched on yet.
 

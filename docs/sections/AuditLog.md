@@ -67,7 +67,7 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 - **Calendar:** `CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`.
 - **Feedback / Communications:** `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FacilitatedMessageSent`.
 - **Issues:** `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`.
-- **Store:** `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductPriceChanged`, `StoreProductDeactivated`, `StorePaymentRecorded`, `StorePaymentsReconciled`.
+- **Store:** `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductPriceChanged`, `StoreProductDeactivated`, `StorePaymentRecorded`, `StorePaymentSettled`, `StorePaymentFailed`, `StorePaymentExpired`, `StorePaymentsReconciled`.
 - **Mailer / Imports:** `MailerLiteReconciliationCompleted` — job-level summary written at the end of each Mailer import. Description carries counts as a structured string; no per-row PII.
 - **Mailer / Audience sync:** `MailerLiteAudienceSyncCompleted` — written once per audience by `MailerAudienceSyncService.SyncAsync` (daily Hangfire job + on-demand admin button). Description is a JSON object with `audience_key`, `group_id`, `group_name`, `candidates`, `excluded_unsubscribed`, `created`, `assigned`, `already_assigned`, `unassigned`, `errors`. No per-row PII.
 - **Scanner:** `GateTerminalPasswordSet` — written when the gate-terminal shared kiosk password is set.

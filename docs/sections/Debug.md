@@ -23,7 +23,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Debug/Logs` | GET | Admin | In-memory warning/error log buffer |
+| `/Debug/Logs` | GET | Admin | In-memory warning/error log buffer; optional `minLevel` query param filters to `Warning`, `Error`, or `Fatal` |
 | `/Debug/Configuration` | GET | Admin | Auto-discovered configuration status |
 | `/Debug/DbVersion` | GET | Anonymous | Migration status JSON for deployment tooling |
 | `/Debug/DbStats` | GET | Admin | Query statistics |
@@ -34,6 +34,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 | `/Debug/FormatGallery` | GET | Admin | Date/time formatting reference |
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
+| `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
 
 ## Actors & Roles
 

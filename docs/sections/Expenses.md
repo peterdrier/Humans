@@ -123,6 +123,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
 | `/Expenses/Sepa/Generate` | POST | FinanceAdminOrAdmin | Generate SEPA file (form on Review page) |
+| `/Expenses/{id}/ReopenSepa` | POST | FinanceAdminOrAdmin (resource-based: `ReopenSepa` operation) | Reopen a SepaSent report back to Approved (download failed — regenerate batch) |
 | `/Users/Admin/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
 
 ## Actors & Roles
@@ -131,7 +132,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 |-------|--------------|
 | Authenticated member | Submit, edit, withdraw own reports. View own reports. Set own IBAN. |
 | Budget Coordinator | All member capabilities. Additionally: endorse or coordinator-reject reports in categories they coordinate. |
-| FinanceAdmin, Admin | All coordinator capabilities. Additionally: full review queue, approve, finance-reject, category override, generate SEPA batch, confirm SEPA sent, view Holded sync status. |
+| FinanceAdmin, Admin | All coordinator capabilities. Additionally: full review queue, approve, finance-reject, category override, generate SEPA batch, confirm SEPA sent, reopen a SepaSent report (back to Approved when the download failed), view Holded sync status. |
 | Admin | All FinanceAdmin capabilities. Additionally: reveal raw IBAN on admin user page (audit-logged). |
 
 ## Invariants
@@ -162,6 +163,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written.
 - On **category override**: `HoldedExpenseOutboxEvent` (UpdateIncomingDocTag) queued. Audit entry `ExpenseCategoryOverride` written.
 - On **SEPA generate + confirm**: all included report IDs transition to `SepaSent`. Audit entries `ExpenseSepaSent` written.
+- On **SEPA reopen** (`ReopenSepaWithResultAsync`): report transitions `SepaSent → Approved`. Requires `SepaSent` status; rejects otherwise. Audit entry `ExpenseSepaReopened` written. Gated on `ReopenSepa` operation (FinanceAdmin or Admin).
 - On **`ExpensePaidPollingJob` mark paid**: Audit entry `ExpensePaid` written.
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
 - **`HoldedExpenseOutboxJob`** runs every minute. **`ExpensePaidPollingJob`** runs every 15 minutes.

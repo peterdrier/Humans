@@ -96,6 +96,12 @@ From `/Google`, **Check Group Settings** lists every group whose settings (who-c
 
 The hourly `DriveActivityMonitorJob` queries the Drive Activity API for permission changes made by anyone other than the service account and logs each as `AnomalousPermissionDetected`. Review at `/AuditLog` with the **Anomalous Permissions** filter; you can also trigger a check on demand from that page.
 
+### Retry failed sync events
+
+The sync outbox queues resource-level access grants and revocations for background processing. When Google permanently rejects an event (HTTP 400/403/404), the event is marked **permanently failed** and stops retrying. At `/Google/SyncOutbox`, permanently-failed events appear in a dedicated tab with a per-event **Retry** button and a **Retry All Failed** button — both requeue the event(s) for another attempt. Each requeue is logged to the audit trail (`GoogleSyncRetryScheduled`).
+
+To re-enqueue all sync events for a specific user across their current teams (for example, after fixing an email configuration), use the **Re-run Sync** action on the human's admin page (`/Users/Admin/{id}`). This enqueues a fresh `AddUserToTeamResources` event for every team the user belongs to. If the user's Google email status is `Rejected`, no events are enqueued — fix the email first on the Emails page.
+
 ### Sync audit
 
 `/AuditLog/Human/{id}` shows every sync event for a given human — useful when access is missing. `/AuditLog/Resource/{id}` does the same for one resource.

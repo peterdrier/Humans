@@ -62,10 +62,12 @@ No new tables or columns. Derived from existing `event_settings`, `rotas`, `shif
 
 ### Period assignment
 
-A shift's period is determined by its rota's `Period` property (`ShiftPeriod` enum: `Build`, `Event`, `Strike`, `All`). Shifts on an `All`-period rota are bucketed by day offset relative to `EventSettings.EventStartDate`:
-- Day offset < 0 → Build
-- Day offset 0..N (within event dates) → Event
-- Day offset > event end → Strike
+A shift's period bucket is computed from its day offset via `Shift.GetShiftPeriod(EventSettings)`, regardless of the rota's `RotaPeriod`:
+- Day offset < 0 → `ShiftPeriod.Build`
+- Day offset 0..`EventEndOffset` → `ShiftPeriod.Event`
+- Day offset > `EventEndOffset` → `ShiftPeriod.Strike`
+
+(`ShiftPeriod` has three values: `Build`, `Event`, `Strike`. `RotaPeriod.All` is the rota-level concept; `ShiftPeriod` has no `All` value.)
 
 ### Signup inclusion
 

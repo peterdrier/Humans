@@ -120,7 +120,7 @@ Department coordinators manage the linked Google Group membership and Shared Dri
 
 ### Grant Early Entry (if your team has it enabled)
 
-Some teams can grant **Early Entry** — letting project crews onto site ahead of the gates. If an admin has turned Early Entry on for your team, an **Early Entry** page appears at `/Teams/{slug}/EarlyEntry`. There you grant access by choosing a person, an entry date, and a project name, and you can edit or remove grants later. Coordinators (including the department coordinator above a sub-team) manage Early Entry for their own team; an Early-Entry Team Administrator can do it for any team that has it enabled. Each grant adds the person to the festival's early-entry roster. If Early Entry is later turned off for the team, existing grants are kept but stop counting.
+Some teams can grant **Early Entry** — letting project crews onto site ahead of the gates. If an admin has turned Early Entry on for your team, an **Early Entry** page appears at `/Teams/{slug}/EarlyEntry`. There you grant access by searching for a person by name or ticket barcode, then choosing an entry date and a project name, and you can edit or remove grants later. Coordinators (including the department coordinator above a sub-team) manage Early Entry for their own team; an Early-Entry Team Administrator can do it for any team that has it enabled. Each grant adds the person to the festival's early-entry roster. If Early Entry is later turned off for the team, existing grants are kept but stop counting.
 
 ### Volunteer coordination, cross-department (2026)
 

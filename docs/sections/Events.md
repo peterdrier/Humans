@@ -152,9 +152,10 @@ Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents ca
 | Id | Guid | PK |
 | UserId | Guid | FK only → User |
 | GuideEventId | Guid | FK → Event |
+| DayOffset | int? | Day offset (from gate opening) of the favourited occurrence of a recurring event. Null = whole event (every occurrence). Rows created before this column existed also mean "whole event". |
 | CreatedAt | Instant | |
 
-Unique constraint on (UserId, GuideEventId).
+Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event.
 
 ### EventPreference
 
@@ -219,7 +220,7 @@ Unique constraint on (UserId, GuideEventId).
 
 - **Users**: controllers call `IUserService.GetUserInfoAsync(userId)` for submitter display name and email (replaces the dropped `Event.SubmitterUser` navigation). `UserManager<User>` (Identity) still resolves the current user.
 - **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column. Camp-event submission authority on `EventsController` barrio actions is sourced from `CampOperationRequirement.SubmitEvent` resource authorization (backed by `CampInfo.IsEventManager`) — the Lead OR Workshop OR-check that consumes `CampRoleAssignment` rows whose `CampRoleDefinition.SpecialRole` is `Lead` or `Workshop` (issue nobodies-collective/Humans#753). Moderation authority remains global (GuideModerator / Admin) — no camp-scoped moderation.
-- **Camps (downstream consumer, PR peterdrier#915):** the Camp detail page (`/Camps/{slug}`) embeds the Events-owned `EventsCardViewComponent` (`src/Humans.Web/ViewComponents/EventsCardViewComponent.cs`), which reads `IEventServiceRead` to list the camp's approved events — title, category, description (PR peterdrier#919), schedule, venue, host — with per-row favourite toggles posting to `POST /Events/Card/Favourite/{eventId}` (redirects back via `returnUrl`). Web-layer view composition only — Camps services do not depend on Events, and no Event types cross into the Camps views (the component is invoked with the camp's id only). Auth-gated at the call site; auto-hides when the camp has no approved events or the Events feature is off. Profile pages also embed the card scoped to `userId` (PR peterdrier#925).
+- **Camps (downstream consumer, PR peterdrier#915):** the Camp detail page (`/Camps/{slug}`) embeds the Events-owned `EventsCardViewComponent` (`src/Humans.Web/ViewComponents/EventsCardViewComponent.cs`), which reads `IEventServiceRead` to list the camp's approved events — title, category, description (PR peterdrier#919), schedule, venue, host — with per-row favourite toggles posting to `POST /Events/Card/Favourite/{eventId}` (redirects back via `returnUrl`). Web-layer view composition only — Camps services do not depend on Events, and no Event types cross into the Camps views (the component is invoked with the camp's id only). Auth-gated at the call site; auto-hides when the camp has no approved events or the Events feature is off. Profile pages also embed the card scoped to `userId` (PR peterdrier#925), showing only the user's personal (non-camp) submitted events — events they submitted under a camp appear on the camp's page, not the profile card.
 - **Shifts (burn settings)** — `EventGuideSettings.EventSettings` navigation was dropped along with the cross-section FK. The Events section reads the linked burn (`event_settings` row owned by Shifts) via `IBurnSettingsService.GetByIdAsync(EventGuideSettings.EventSettingsId)`, which returns a `BurnSettingsInfo` DTO (identity, timezone, gate-opening date, build-calendar offsets, EE capacity) — the Shifts-internal entity never crosses the section boundary. Issue [#719](https://github.com/nobodies-collective/Humans/issues/719).
 - **Email**: `IEmailService` for moderation outcome notifications.
 

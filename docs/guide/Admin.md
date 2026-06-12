@@ -35,7 +35,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Cantina, Expenses, Finance, Store, Event Guide, Governance, Google, Messaging, Agent, Legal, Audit, Diagnostics). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: summary tiles (humans in review, open feedback, pending shifts, recent audit activity) wrapped in the admin shell, with a left sidebar grouping every admin tool (Tickets, Members, Shifts, Barrios, Cantina, Money, Event Guide, Governance, Audit, Feedback, Messaging, and below a divider the system groups Google, Agent, Legal, Diagnostics, Dev, Design, Temp). Reachable by any admin-shaped role; each sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Users/Admin/{id}/Outbox` — per-human email outbox.
@@ -64,7 +64,7 @@ Open `/Admin` for the dashboard. The summary tiles — humans in review, open fe
 
 ### Manage humans
 
-Open `/Users/Admin`. Search by name or email, filter by `UserState` (`bare`, `active`, `suspended`, `rejected`, `deleting`, `merged`, or `deleted`), and click through to a human's detail page. From there you can:
+Open `/Users/Admin`. Search by name or email, filter by `UserState` (`bare`, `active`, `suspended`, `rejected`, `deleting`, `merged`, or `deleted`) or by sync state (`googlerejected` — humans whose Google Workspace email has been permanently rejected by the sync), and click through to a human's detail page. From there you can:
 
 - **Reject** a signup. Audited, and the human is notified. (There is no "approve volunteer" action — app access is automatic once the human enters their legal name (`UserState == Active`); Volunteers-team / Google Workspace provisioning follows from name + consents via the scheduled sync.)
 - **Suspend** or **Unsuspend**. Suspension requires a note; it revokes Google Workspace access on the next sync and ends current memberships. Unsuspension clears the flag and re-queues access.
@@ -82,7 +82,11 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Configure Google sync
 
-`/Google/SyncSettings` (Admin only) sets each Google service to **None**, **AddOnly**, or **AddAndRemove**. **None** is a fast kill switch — no redeploy — that turns off both the scheduled jobs (hourly team sync, daily 03:00 reconciliation) and manual Sync Now for that service. See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
+`/Google/SyncSettings` (Admin only) sets each Google service to **None**, **AddOnly**, or **AddAndRemove**. **None** is a fast kill switch — no redeploy — that turns off both the scheduled jobs (hourly team sync, daily 03:00 reconciliation) and manual Sync Now for that service.
+
+The sync outbox (`/Google/SyncOutbox`) shows pending and failed events. From there you can **Requeue** a single failed event or **Requeue All Failed** to retry all permanently-failed events in bulk; both actions are audited. On a human's admin detail page (`/Users/Admin/{id}`), **Re-run Google Sync** enqueues sync events for all of that human's teams (Admin only, also audited).
+
+See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 
 ### Run technical operations (Admin only)
 

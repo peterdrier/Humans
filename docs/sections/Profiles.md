@@ -345,6 +345,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 |-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
+| Coordinator (any team) or PrivilegedSignupApprover | On another human's `/Profile/{id}`, view the **Sent messages** panel — a history of in-platform messages sent to that human (`AuditAction.FacilitatedMessageSent`, up to 50 entries), sourced via `IAuditViewerService`. Not shown on own-profile views. |
 | HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, approve volunteer, reject signup, view audit log, add or end role assignments). (Membership tier changes go through tier applications in Governance, not the profile admin page.) |
 | Admin | Review duplicate-account candidates and approve/reject `AccountMergeRequest`s at the unified `/Users/Admin/AccountMerges` queue (`PolicyNames.AdminOnly`; **Users** section — see [Users.md](Users.md)). |
 | Admin (non-production only) | Purge a human and all associated data |

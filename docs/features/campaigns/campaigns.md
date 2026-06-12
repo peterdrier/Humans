@@ -61,10 +61,10 @@ Pages:
 ## Unsubscribe
 
 - Route: `/Unsubscribe/{token}` — public, no auth required
-- Token is a URL-safe Base64-encoded user ID
-- Sets `User.UnsubscribedFromCampaigns = true` on first visit
-- Idempotent: visiting again shows a confirmation page
-- All campaign emails include `List-Unsubscribe` headers pointing to this endpoint
+- **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
+- **Legacy tokens** (signed via `CampaignUnsubscribe` time-limited Data Protection purpose, campaign-only): show a confirmation page and POST to confirm. Sets the `Marketing` category preference to opted-out via `ICommunicationPreferenceService.UpdatePreferenceAsync`. `User.UnsubscribedFromCampaigns` is **not** flipped — the per-category `CommunicationPreference` table is the source of truth.
+- RFC 8058 one-click POST (`/Unsubscribe/OneClick`) also routes through `UnsubscribeService.ConfirmUnsubscribeAsync`.
+- All campaign emails include `List-Unsubscribe` headers pointing to this endpoint.
 
 ## Self-Service Code Lookup
 

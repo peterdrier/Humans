@@ -60,6 +60,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Coordinator Roles](features/shifts/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
 | [Department Coverage Pies](features/shifts/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
 | [Email a Rota](features/shifts/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
+| [Post-Event Stats Dashboard](features/shifts/post-event-stats.md) | Post-event no-show and completion-rate breakdown by department and period for coordinators and admins |
 | [Shift Management](features/shifts/shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
 | [Shift Preference Wizard](features/shifts/shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
 | [Shift Signup Visibility](features/shifts/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |

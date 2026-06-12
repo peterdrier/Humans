@@ -136,10 +136,10 @@ None.
 
 ## Follow-up /section-align targets
 
-1. [`section-align-auditLog`](../../docs/plans/2026-05-12-section-align-auditLog.md)
+1. `section-align-auditLog` (historical — plan executed and deleted; current invariants live in `docs/sections/AuditLog.md`)
    - Remove/replace `AuditLogRepository` direct `ctx.Teams` reads.
    - Verify `AuditLogRepository` callers only need display fields already exposed by Teams service interfaces (`team name`, `slug`, `id`, and any other referenced Team metadata).
-2. [`section-align-scanner` or metrics-adjacent pass](../../docs/plans/2026-05-12-section-align-scanner.md)
+2. `section-align-scanner` or metrics-adjacent pass (historical — plan executed and deleted; current invariants live in `docs/sections/Scanner.md`)
    - Remove/replace `HumansMetricsService` direct `Teams`/`TeamJoinRequests` access.
    - Confirm `HumansMetricsService` can be satisfied via Teams API contracts (`ITeamService` reads needed by metrics) before changing any EF reads.
 3. `[section-align-docs for section owning obsolete Team navs]`

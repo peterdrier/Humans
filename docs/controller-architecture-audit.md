@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-10 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-12 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,7 +10,7 @@ Living document. Last updated: 2026-06-10 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-10) adds five new controllers. `SurveyController` is the anonymous public survey-answering wizard with two entry paths: the tokenised invite link (`/Survey/Answer?t=…`) and the public slug link (`/Survey/{slug}`) (#884). `SurveyAdminController` is the Board/Admin survey authoring surface at `/Survey/Admin` (#884). `SurveysApiController` is the key-authed agent-facing read-only survey analysis API at `/api/surveys` (#884). `ICalFeedApiController` is the anonymous personal iCal feed endpoint at `/api/ical/{userId}/{token}.ics` (#931). `TicketsGateAdminController` is the gate-terminal credential management surface at `/Tickets/Admin/Gate` (#930). `AccountController` gained two new actions: `GateLogin` GET (form) and `GateLogin` POST (authenticate and redirect to `/Scanner/Tickets`) for the shared kiosk account (#930). All other controllers carry forward from the 2026-06-09 regeneration unchanged.
+This regeneration (2026-06-12) records two action-surface changes. `EventsController.ToggleCampFavourite` (route `/Events/Barrio/{slug}/Favourite/{eventId:guid}`) was renamed to `ToggleCardFavourite` (route `/Events/Card/Favourite/{eventId:guid}`) and decoupled from the barrio slug — the heart now works from any host page (camp detail, profile events card) by bouncing via `returnUrl` (introduced in #925; missed by the 2026-06-10 sweep). `ExpensesController` gained `SepaReopen` (`POST /Expenses/{id:guid}/Sepa/Reopen`) — reopens a SepaSent expense report back to Approved for inclusion in a new SEPA batch (#982). All other controllers carry forward from the 2026-06-10 regeneration unchanged.
 
 The changes captured in the 2026-06-07 sweep — now all stable in the tables below — were: the account-merge consolidation (#899: deleted `AdminMergeController` / `AdminDuplicateAccountsController`, new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`), the legacy-`/Admin` route relocations (#901: `AdminController` reduced to its dashboard `Index`, debug pages onto `DebugController` and the new `UsersAdminDebugController`), the Profile-section retirement (#881: per-human admin surface onto `UsersAdminController`, account-status wall + cancel-deletion onto the new `UserController`), and the read-only Shift Summary by Camp on `ShiftsController` (#898: `Summary` / `SummaryTeam` / `SummaryRota`, with the old `SignUp` / `SignUpRange` form actions replaced by `ToggleDay`).
 
@@ -393,7 +393,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Browse | /Events/Browse | GET | Browse the event programme | OK |
 | ToggleFavourite | /Events/Browse/Favourite/{eventId:guid} | POST | Toggle favourite from Browse | OK |
 | Unfavourite | /Events/Schedule/Unfavourite/{eventId:guid} | POST | Remove a favourite from Schedule | OK |
-| ToggleCampFavourite | /Events/Barrio/{slug}/Favourite/{eventId:guid} | POST | Toggle favourite from a barrio's event list | OK |
+| ToggleCardFavourite | /Events/Card/Favourite/{eventId:guid} | POST | Toggle whole-event favourite from a camp-detail or profile events card; bounces back via `returnUrl` | OK |
 | BarrioSubmit | /Events/Barrio/{slug}/Submit | GET | Barrio event submission form | OK |
 | BarrioCreate | /Events/Barrio/{slug}/Submit | POST | Submit a barrio event | OK |
 | BarrioEdit | /Events/Barrio/{slug}/{eventId:guid}/Edit | GET | Edit barrio event form | OK |
@@ -454,6 +454,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Review | /Expenses/Review | GET | Finance review queue | OK |
 | Approve | /Expenses/{id:guid}/Approve | POST | Approve an expense | OK |
 | Reject | /Expenses/{id:guid}/Reject | POST | Reject an expense | OK |
+| SepaReopen | /Expenses/{id:guid}/Sepa/Reopen | POST | Reopen a SepaSent report to Approved for inclusion in a new SEPA batch | OK |
 | SepaGenerate | /Expenses/Sepa/Generate | POST | Generate SEPA payment file | OK |
 
 ## FeedbackApiController

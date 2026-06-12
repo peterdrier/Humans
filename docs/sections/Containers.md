@@ -101,7 +101,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Cross-Section Dependencies
 
 - **Camps:** `ICampServiceRead` — `GetCampBySlugAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
-- **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container placement API endpoints (`PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `GET /api/city-planning/containers/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
+- **City Planning:** `ICityPlanningServiceRead` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container placement API endpoints (`PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `GET /api/city-planning/containers/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 
 ## Architecture
 

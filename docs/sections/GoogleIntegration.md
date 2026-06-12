@@ -63,6 +63,9 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
 | `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |
+| `/Google/SyncOutbox/{id}/Requeue` | POST | Admin | Requeue one permanently-failed outbox event for retry |
+| `/Google/SyncOutbox/RequeueAll` | POST | Admin | Requeue all permanently-failed outbox events for retry |
+| `/Google/Human/{id}/RerunSync` | POST | Admin | Enqueue fresh Google sync events for all of a user's current teams |
 | `/Google/Human/{id}/ProvisionEmail` | POST | HumanAdmin, Admin | Provision @nobodies.team email for a human |
 | `/Google/AllGroups` | GET | Admin | Domain-wide group listing with drift status |
 | `/Google/CheckGroupSettings` | POST | Admin | Trigger group settings drift check |
@@ -86,7 +89,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email |
+| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email. Requeue permanently-failed outbox events (individually or all at once). Re-enqueue Google sync for a specific user across all their current teams. |
 | TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamAdminController`. View resource status. Trigger per-resource sync |
 | Coordinator | Link and unlink Google resources for their own department (via `TeamAdminController`). Trigger per-resource sync for their own department |
 | Board, Admin | View Drive activity anomaly check results. View sync audit logs |
