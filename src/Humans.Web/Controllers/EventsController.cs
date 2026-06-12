@@ -419,20 +419,10 @@ public class EventsController(
         }).OrderBy(i => i.StartInstant).ToList();
 
         // Detect time conflicts
-        for (var i = 0; i < scheduleItems.Count; i++)
+        foreach (var index in EventConflictDetector.FindConflictingIndexes(
+                     scheduleItems, i => i.StartInstant, i => i.DurationMinutes))
         {
-            for (var j = i + 1; j < scheduleItems.Count; j++)
-            {
-                var a = scheduleItems[i];
-                var b = scheduleItems[j];
-                var aEnd = a.StartInstant.Plus(Duration.FromMinutes(a.DurationMinutes));
-                var bEnd = b.StartInstant.Plus(Duration.FromMinutes(b.DurationMinutes));
-                if (a.StartInstant < bEnd && b.StartInstant < aEnd)
-                {
-                    a.HasConflict = true;
-                    b.HasConflict = true;
-                }
-            }
+            scheduleItems[index].HasConflict = true;
         }
 
         var model = new ScheduleViewModel

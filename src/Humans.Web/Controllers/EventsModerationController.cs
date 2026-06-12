@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.Events;
 using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
@@ -74,12 +75,12 @@ public class EventsModerationController(
                 var evt = campEvents.FirstOrDefault(e => e.Id == row.Id);
                 if (evt?.CampId == null) continue;
 
-                var endAt = evt.StartAt.Plus(Duration.FromMinutes(evt.DurationMinutes));
                 row.DuplicateCandidates = allCampEvents
                     .Where(other => other.Id != evt.Id
                                  && other.CampId == evt.CampId
-                                 && other.StartAt < endAt
-                                 && evt.StartAt < other.StartAt.Plus(Duration.FromMinutes(other.DurationMinutes)))
+                                 && EventConflictDetector.Overlaps(
+                                     other.StartAt, other.DurationMinutes,
+                                     evt.StartAt, evt.DurationMinutes))
                     .Select(other => new DuplicateCandidateViewModel
                     {
                         Id = other.Id,
