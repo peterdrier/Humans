@@ -36,11 +36,6 @@ public class EventsController(
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 21 statements, cc 19.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> MySubmissions()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -48,7 +43,6 @@ public class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync();
         var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-        var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
@@ -67,28 +61,7 @@ public class EventsController(
         foreach (var camp in managedCamps)
         {
             var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
-            var campName = camp.Active?.Name ?? camp.Slug;
-            barrioBlocks.Add(new BarrioSubmissionsBlock
-            {
-                CampId = camp.Id,
-                CampName = campName,
-                CampSlug = camp.Slug,
-                SubmittedCount = campEvents.Count,
-                ApprovedCount = campEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = campEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = campEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new CampEventRowViewModel
-                {
-                    Id = e.Id,
-                    Title = e.Title,
-                    CategoryName = e.CategoryName,
-                    StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
-                    Status = e.Status,
-                    PriorityRank = e.PriorityRank,
-                    CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
-                    CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
-                }).ToList()
-            });
+            barrioBlocks.Add(BarrioSubmissionsBlock.From(camp, campEvents, tz));
         }
 
         foreach (var block in barrioBlocks)
@@ -100,28 +73,11 @@ public class EventsController(
 
         var model = new MySubmissionsViewModel
         {
-            IsSubmissionOpen = isSubmissionOpen,
+            IsSubmissionOpen = IsSubmissionOpen(guideSettings),
             SubmissionOpenAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionOpenAt, tz) : null,
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
             TimeZoneId = eventSettings?.TimeZoneId,
-            Personal = new PersonalSubmissionsBlock
-            {
-                SubmittedCount = individualEvents.Count,
-                ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = individualEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
-                {
-                    Id = e.Id,
-                    Title = e.Title,
-                    VenueName = e.VenueName ?? "—",
-                    CategoryName = e.CategoryName,
-                    StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
-                    Status = e.Status,
-                    CanEdit = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested,
-                    CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
-                }).ToList()
-            },
+            Personal = PersonalSubmissionsBlock.From(individualEvents, tz),
             Barrios = barrioBlocks
         };
 

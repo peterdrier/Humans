@@ -1,5 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Enums;
+using Humans.Web.Helpers;
+using NodaTime;
 
 namespace Humans.Web.Models.Events;
 
@@ -20,6 +24,15 @@ public class PersonalSubmissionsBlock
     public int ApprovedCount { get; set; }
     public int PendingCount { get; set; }
     public List<IndividualEventRowViewModel> Events { get; set; } = [];
+
+    public static PersonalSubmissionsBlock From(IReadOnlyList<EventInfo> events, DateTimeZone? tz) => new()
+    {
+        SubmittedCount = events.Count,
+        ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
+        PendingCount = events.Count(e => e.Status == EventStatus.Pending),
+        Events = events.OrderByDescending(e => e.SubmittedAt)
+            .Select(e => IndividualEventRowViewModel.From(e, tz)).ToList()
+    };
 }
 
 public class BarrioSubmissionsBlock
@@ -32,6 +45,18 @@ public class BarrioSubmissionsBlock
     public int PendingCount { get; set; }
     public List<CampEventRowViewModel> Events { get; set; } = [];
     public List<BulkRowError> BulkUploadErrors { get; set; } = [];
+
+    public static BarrioSubmissionsBlock From(CampInfo camp, IReadOnlyList<EventInfo> events, DateTimeZone? tz) => new()
+    {
+        CampId = camp.Id,
+        CampName = camp.Active?.Name ?? camp.Slug,
+        CampSlug = camp.Slug,
+        SubmittedCount = events.Count,
+        ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
+        PendingCount = events.Count(e => e.Status == EventStatus.Pending),
+        Events = events.OrderByDescending(e => e.SubmittedAt)
+            .Select(e => CampEventRowViewModel.From(e, tz)).ToList()
+    };
 }
 
 public class BulkRowError
@@ -62,6 +87,19 @@ public class IndividualEventRowViewModel
         EventStatus.ResubmitRequested => "bg-info",
         EventStatus.Withdrawn => "bg-dark",
         _ => "bg-secondary"
+    };
+
+    public static IndividualEventRowViewModel From(EventInfo e, DateTimeZone? tz) => new()
+    {
+        Id = e.Id,
+        Title = e.Title,
+        VenueName = e.VenueName ?? "—",
+        CategoryName = e.CategoryName,
+        StartAt = EventsTimeHelpers.ToLocalDateTime(e.StartAt, tz),
+        DurationMinutes = e.DurationMinutes,
+        Status = e.Status,
+        CanEdit = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested,
+        CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
     };
 }
 

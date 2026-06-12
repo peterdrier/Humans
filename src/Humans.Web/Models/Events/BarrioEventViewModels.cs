@@ -1,5 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Enums;
+using Humans.Web.Helpers;
+using NodaTime;
 
 namespace Humans.Web.Models.Events;
 
@@ -42,6 +45,19 @@ public class CampEventRowViewModel
         EventStatus.ResubmitRequested => "bg-info",
         EventStatus.Withdrawn => "bg-dark",
         _ => "bg-secondary"
+    };
+
+    public static CampEventRowViewModel From(EventInfo e, DateTimeZone? tz) => new()
+    {
+        Id = e.Id,
+        Title = e.Title,
+        CategoryName = e.CategoryName,
+        StartAt = EventsTimeHelpers.ToLocalDateTime(e.StartAt, tz),
+        DurationMinutes = e.DurationMinutes,
+        Status = e.Status,
+        PriorityRank = e.PriorityRank,
+        CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
+        CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
     };
 }
 
