@@ -31,12 +31,14 @@ themes:
     detect: "build:HUM0031"
     review: panel
     last_swept: 2026-06-12
-    remaining: 13
+    remaining: 12
     notes: >-
-      13 distinct warning sites, all grandfathered (15 grandfathers total —
+      12 distinct warning sites, all grandfathered (14 grandfathers total —
       AccountController.ExternalLoginCallback and
       EventsController.BulkUploadTemplate no longer fire; their justification
-      counts disagree with the analyzer's current counting). Raw grep of a
+      counts disagree with the analyzer's current counting).
+      EventsModerationController.ProcessActionAsync fixed + de-grandfathered
+      2026-06-12 (audit E7). Raw grep of a
       full-solution build log double-counts each site (26 lines = 13 sites);
       detect means DISTINCT sites. The rule is "no business
       logic in controllers"; the cc/statement metric is only a proxy
