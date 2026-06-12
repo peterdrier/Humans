@@ -31,9 +31,14 @@ themes:
     detect: "build:HUM0031"
     review: panel
     last_swept: 2026-06-12
-    remaining: 26
+    remaining: 13
     notes: >-
-      26 warning sites (15 of them grandfathered). The rule is "no business
+      13 distinct warning sites, all grandfathered (15 grandfathers total —
+      AccountController.ExternalLoginCallback and
+      EventsController.BulkUploadTemplate no longer fire; their justification
+      counts disagree with the analyzer's current counting). Raw grep of a
+      full-solution build log double-counts each site (26 lines = 13 sites);
+      detect means DISTINCT sites. The rule is "no business
       logic in controllers"; the cc/statement metric is only a proxy
       detector. Exactly two valid fixes: (a) move the domain decisions into
       the section's application service — new/changed interface surface

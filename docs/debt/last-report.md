@@ -73,7 +73,8 @@ sweep scope. Ledger marks the theme schema-blocked so rotation skips it.
 ## Ledger changes
 
 - `grandfathered-hum0024-nav-strip`: `last_swept: 2026-06-12`, schema-blocked note (remaining 34, untouched).
-- `grandfathered-hum0031-controller-logic`: `last_swept: 2026-06-12`, `remaining: 26` (unchanged in reality — the 15→7 claim was reverted), `review: light → panel`, notes rewritten with the valid-fix/forbidden-move guidance above.
+- `grandfathered-hum0031-controller-logic`: `last_swept: 2026-06-12`, `remaining: 13` (distinct warning sites; the earlier 26 was a raw grep double-counting each site in the build log), `review: light → panel`, notes rewritten with the valid-fix/forbidden-move guidance above.
+- Count anomaly worth knowing: 15 grandfathers exist but only 13 fire — `AccountController.ExternalLoginCallback` (justification says 107 stmts / cc 33) and `EventsController.BulkUploadTemplate` (60 / 14) produce no HUM0031 warning today, so the analyzer's statement/cc counting disagrees with the counts frozen in those justifications.
 - `recent_sections: []` (no code fixes survived).
 - Header: explicit staleness-check exclusion for `NoDestructiveMigrationOps.baseline.txt` (immutable history, guard not backlog).
 - Inbox: +1 (flaky test), now 10.
