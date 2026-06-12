@@ -830,11 +830,6 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 60 statements, cc 14.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
@@ -852,9 +847,29 @@ public class EventsController(
             : null;
         LocalDate? gateDate = eventSettings?.GateOpeningDate;
 
-        var categoryNames = string.Join(", ", categories.Select(c => c.Name));
+        var banner = BulkUploadTemplateBanner(string.Join(", ", categories.Select(c => c.Name)));
+        var records = BuildBulkUploadTemplateRecords(campEvents, campName, tz, gateDate,
+            defaultCategory: categories.FirstOrDefault()?.Name ?? "Workshop");
 
-        string[] banner =
+        var bytes = HumansCsv.WriteBytes(
+            csv =>
+            {
+                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
+                foreach (var line in banner)
+                {
+                    csv.WriteComment(line);
+                    csv.NextRecord();
+                }
+                csv.WriteRecords(records);
+            },
+            // Round-trip data file, not a spreadsheet report: injection escaping
+            // would prepend apostrophes that come back as data on re-upload,
+            // dirtying rows the user never touched.
+            config => config.InjectionOptions = InjectionOptions.None);
+        return File(bytes, "text/csv", $"{slug}-events.csv");
+    }
+
+    private static string[] BulkUploadTemplateBanner(string categoryNames) =>
         [
             " ─────────────────────────────────────────────────────────────────────────────",
             " ELSEWHERE EVENT GUIDE — Bulk Upload Template",
@@ -893,6 +908,9 @@ public class EventsController(
             " ─────────────────────────────────────────────────────────────────────────────",
         ];
 
+    private List<BulkEventCsvRecord> BuildBulkUploadTemplateRecords(
+        IReadOnlyList<EventInfo> campEvents, string campName, DateTimeZone? tz, LocalDate? gateDate, string defaultCategory)
+    {
         var nonWithdrawn = campEvents
             .Where(e => e.Status != EventStatus.Withdrawn)
             .OrderByDescending(e => e.SubmittedAt)
@@ -935,7 +953,7 @@ public class EventsController(
                 Barrio = campName,
                 Title = "Example Event",
                 Description = "Describe your event here.",
-                Category = categories.FirstOrDefault()?.Name ?? "Workshop",
+                Category = defaultCategory,
                 Date = exampleDate,
                 StartTime = "12:00",
                 DurationMinutes = "60",
@@ -944,22 +962,7 @@ public class EventsController(
             });
         }
 
-        var bytes = HumansCsv.WriteBytes(
-            csv =>
-            {
-                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
-                foreach (var line in banner)
-                {
-                    csv.WriteComment(line);
-                    csv.NextRecord();
-                }
-                csv.WriteRecords(records);
-            },
-            // Round-trip data file, not a spreadsheet report: injection escaping
-            // would prepend apostrophes that come back as data on re-upload,
-            // dirtying rows the user never touched.
-            config => config.InjectionOptions = InjectionOptions.None);
-        return File(bytes, "text/csv", $"{slug}-events.csv");
+        return records;
     }
 
     [HttpPost("Barrio/{slug}/BulkUpload")]
