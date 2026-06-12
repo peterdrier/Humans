@@ -1,8 +1,13 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Threading;
+using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Application.Services.Profiles;
@@ -10,6 +15,9 @@ namespace Humans.Application.Services.Profiles;
 public sealed class ProfileEditorService(
     IUserService userService,
     IFileStorage fileStorage,
+    IOnboardingService onboardingService,
+    IApplicationDecisionService applicationDecisionService,
+    IAccountDeletionService accountDeletionService,
     ILogger<ProfileEditorService> logger) : IProfileEditorService
 {
     // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
@@ -29,20 +37,110 @@ public sealed class ProfileEditorService(
         Guid userId,
         string displayName,
         ProfileSaveRequest request,
+        TierApplicationRequest? tierApplication = null,
         CancellationToken ct = default)
     {
-        using var _ = await LockFor(userId).AcquireAsync(logger, ct);
+        ValidateSaveRequest(request);
 
-        var storageResult = await userService.SaveProfileAsync(
-            userId,
-            ToUserProfileSaveCommand(displayName, request),
-            ct);
+        // Initial setup = no profile yet or not yet approved — derived here so a
+        // bad submit can't half-apply the setup-only side effects below.
+        var userBefore = await userService.GetUserInfoAsync(userId, ct);
+        var isInitialSetup = userBefore?.Profile is null || !userBefore.Profile.IsApproved;
 
-        await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
+        Guid profileId;
+        using (await LockFor(userId).AcquireAsync(logger, ct))
+        {
+            var storageResult = await userService.SaveProfileAsync(
+                userId,
+                ToUserProfileSaveCommand(displayName, request),
+                ct);
+
+            await ApplyProfilePictureFileMutationAsync(storageResult, request, ct);
+            profileId = storageResult.ProfileId;
+        }
+
+        if (request.VolunteerHistory is not null)
+            await userService.SaveProfileVolunteerHistoryAsync(userId, request.VolunteerHistory.ToList(), ct);
+
+        // After-save side effects are part of the save workflow, not the page.
+        await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+
+        if (isInitialSetup && tierApplication is { Tier: not MembershipTier.Volunteer })
+            await SubmitOrUpdateTierApplicationAsync(userId, tierApplication, ct);
+
+        if (isInitialSetup && userBefore is { IsDeletionPending: true })
+        {
+            await accountDeletionService.CancelDeletionAsync(userId, ct);
+            logger.LogInformation(
+                "Cancelled pending deletion request for user {UserId} on profile creation", userId);
+        }
 
         logger.LogInformation("User {UserId} updated their profile", userId);
 
-        return storageResult.ProfileId;
+        return profileId;
+    }
+
+    // Cross-field invariants enforced server-side regardless of caller (P1/P2).
+    private static void ValidateSaveRequest(ProfileSaveRequest request)
+    {
+        if (request.Allergies is not null
+            && request.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
+            && string.IsNullOrWhiteSpace(request.AllergyOtherText))
+        {
+            throw new ValidationException(
+                "Selecting the \"Other\" allergy requires describing it in the accompanying text field.");
+        }
+
+        // Burner CV completeness: entries OR "no prior experience". Only checked
+        // when the request carries a CV payload — name-only saves leave history
+        // untouched and must not be blocked.
+        if (request.VolunteerHistory is { Count: 0 } && !request.NoPriorBurnExperience)
+        {
+            throw new ValidationException(
+                "Add at least one Burner CV entry, or check \"no prior burn experience\".");
+        }
+    }
+
+    // Initial-setup tier application: update the pending draft when one exists,
+    // submit a new application otherwise — unless a prior application was already
+    // approved (form `isTierLocked` guard + AlreadyPending backstop, see #685).
+    private async Task SubmitOrUpdateTierApplicationAsync(
+        Guid userId, TierApplicationRequest application, CancellationToken ct)
+    {
+        var existingApps = await applicationDecisionService.GetUserApplicationsAsync(userId, ct);
+        var existingDraft = existingApps.FirstOrDefault(a => a.Status == ApplicationStatus.Submitted);
+        var hasApprovedApp = existingApps.Any(a => a.Status == ApplicationStatus.Approved);
+
+        var significantContribution = application.Tier == MembershipTier.Asociado
+            ? application.SignificantContribution
+            : null;
+        var roleUnderstanding = application.Tier == MembershipTier.Asociado
+            ? application.RoleUnderstanding
+            : null;
+
+        if (existingDraft is not null)
+        {
+            await applicationDecisionService.UpdateDraftApplicationAsync(
+                existingDraft.Id,
+                application.Tier,
+                application.Motivation,
+                application.AdditionalInfo,
+                significantContribution,
+                roleUnderstanding,
+                ct);
+        }
+        else if (!hasApprovedApp)
+        {
+            await applicationDecisionService.SubmitAsync(
+                userId,
+                application.Tier,
+                application.Motivation,
+                application.AdditionalInfo,
+                significantContribution,
+                roleUnderstanding,
+                application.Language,
+                ct);
+        }
     }
 
     private static UserProfileSaveCommand ToUserProfileSaveCommand(
@@ -85,8 +183,26 @@ public sealed class ProfileEditorService(
     public Task SaveDietaryMedicalAsync(
         Guid userId,
         UserProfileDietaryMedicalCommand command,
-        CancellationToken ct = default) =>
-        userService.SaveDietaryMedicalAsync(userId, command, ct);
+        CancellationToken ct = default)
+    {
+        // "Other" requires the accompanying free text (same invariant as
+        // ValidateSaveRequest's allergy guard, plus the intolerance twin).
+        if (command.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
+            && string.IsNullOrWhiteSpace(command.AllergyOtherText))
+        {
+            throw new ValidationException(
+                "Selecting the \"Other\" allergy requires describing it in the accompanying text field.");
+        }
+
+        if (command.Intolerances.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
+            && string.IsNullOrWhiteSpace(command.IntoleranceOtherText))
+        {
+            throw new ValidationException(
+                "Selecting the \"Other\" intolerance requires describing it in the accompanying text field.");
+        }
+
+        return userService.SaveDietaryMedicalAsync(userId, command, ct);
+    }
 
     private async Task ApplyProfilePictureFileMutationAsync(
         UserProfileSaveResult storageResult,

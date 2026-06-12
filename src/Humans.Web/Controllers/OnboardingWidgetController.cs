@@ -93,8 +93,8 @@ public class OnboardingWidgetController(
         // data when its name is fixed here.
         var request = BuildNameSaveRequest(vm, info?.Profile);
 
-        await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct);
-        await onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        // The consent-check trigger is part of SaveProfileAsync's save workflow.
+        await profileEditorService.SaveProfileAsync(userId, vm.BurnerName, request, ct: ct);
 
         return RedirectToAction(nameof(Shifts));
     }

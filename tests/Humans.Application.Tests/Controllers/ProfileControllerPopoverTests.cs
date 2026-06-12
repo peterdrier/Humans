@@ -75,7 +75,6 @@ public class ProfileControllerPopoverTests
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IOnboardingService>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
             Substitute.For<IShiftView>(),

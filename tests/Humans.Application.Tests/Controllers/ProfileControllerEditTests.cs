@@ -96,7 +96,6 @@ public class ProfileControllerEditTests
             Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IOnboardingService>(),
             Substitute.For<IShiftSignupService>(),
             _shiftMgmt,
             _shiftView,
@@ -155,6 +154,7 @@ public class ProfileControllerEditTests
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileEditorService.SaveProfileAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
+                Arg.Any<TierApplicationRequest?>(),
                 Arg.Any<CancellationToken>())
             .Returns(_profileId);
         _userService.SaveProfileVolunteerHistoryAsync(
@@ -172,89 +172,49 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_InitialSetup_Volunteer_DoesNotDispatchTierApplication()
+    public async Task Edit_InitialSetup_Volunteer_PassesNoTierApplication()
     {
-
         var model = MakeValidModel(MembershipTier.Volunteer);
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-        await _userService.Received(1).SaveProfileVolunteerHistoryAsync(
-            _userId, Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>());
+        // The save workflow (CV, side effects, application dispatch) is owned by
+        // SaveProfileAsync — the controller's job is the payload: no application
+        // for Volunteer tier, CV entries riding on the request.
+        await _profileEditorService.Received(1).SaveProfileAsync(
+            _userId,
+            Arg.Any<string>(),
+            Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
+            Arg.Is<TierApplicationRequest?>(a => a == null),
+            Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileLanguagesAsync(
             _profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Edit_InitialSetup_Colaborador_NoExistingApp_CallsSubmitAsync()
+    public async Task Edit_InitialSetup_Colaborador_PassesTierApplicationPayload()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "to help");
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.Received(1).SubmitAsync(
-            _userId, MembershipTier.Colaborador, "to help",
-            Arg.Any<string?>(),
-            Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Edit_InitialSetup_ExistingSubmittedApp_CallsUpdateDraftAndNotSubmit()
-    {
-        // No-duplicate guard: when a Submitted application already exists,
-        // the controller must update it in place (UpdateDraftApplicationAsync)
-        // and never call SubmitAsync — otherwise the user can produce two
-        // pending applications by replaying the form. ApplicationDecisionService
-        // also rejects with AlreadyPending as a backstop, but the controller
-        // shouldn't lean on that.
-
-        var existingDraftId = Guid.NewGuid();
-        var existingDraft = new UserApplicationSnapshot(
-            existingDraftId,
+        await _profileEditorService.Received(1).SaveProfileAsync(
             _userId,
-            ApplicationStatus.Submitted,
-            MembershipTier.Colaborador,
-            SystemClock.Instance.GetCurrentInstant(),
-            ResolvedAt: null,
-            TermExpiresAt: null,
-            Motivation: "old motivation",
-            AdditionalInfo: null,
-            SignificantContribution: null,
-            RoleUnderstanding: null);
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([existingDraft]);
-
-        var model = MakeValidModel(MembershipTier.Colaborador, motivation: "updated motivation");
-
-        await _controller.Edit(model);
-
-        await _applicationDecisionService.Received(1).UpdateDraftApplicationAsync(
-            existingDraftId, MembershipTier.Colaborador, "updated motivation",
-            Arg.Any<string?>(),
-            Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null),
+            Arg.Any<string>(),
+            Arg.Any<ProfileSaveRequest>(),
+            Arg.Is<TierApplicationRequest?>(a =>
+                a != null
+                && a.Tier == MembershipTier.Colaborador
+                && a.Motivation == "to help"),
             Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Edit_ApprovedProfile_DoesNotDispatchTierApplication()
+    public async Task Edit_ApprovedProfile_PassesNoTierApplication()
     {
         // Approved profile means the user is past initial setup. Tier radios
-        // on the form are advisory only — the controller must skip the
-        // dispatch entirely regardless of which tier the form arrives with.
+        // on the form are advisory only — no application payload is passed
+        // regardless of which tier the form arrives with.
         var approvedProfile = new Profile
         {
             Id = Guid.NewGuid(),
@@ -271,12 +231,12 @@ public class ProfileControllerEditTests
 
         await _controller.Edit(model);
 
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .UpdateDraftApplicationAsync(Guid.Empty, default, null!, null, null, null, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
+        await _profileEditorService.Received(1).SaveProfileAsync(
+            _userId,
+            Arg.Any<string>(),
+            Arg.Any<ProfileSaveRequest>(),
+            Arg.Is<TierApplicationRequest?>(a => a == null),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -357,6 +317,7 @@ public class ProfileControllerEditTests
                 r.DietaryPreference == "Vegan"
                 && r.Allergies != null && r.Allergies.Contains("Peanut") && r.Allergies.Contains("Other")
                 && r.AllergyOtherText == "Kiwi"),
+            Arg.Any<TierApplicationRequest?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -378,28 +339,34 @@ public class ProfileControllerEditTests
         await _profileEditorService.Received(1).SaveProfileAsync(
             _userId, Arg.Any<string>(),
             Arg.Is<ProfileSaveRequest>(r => r.DietaryPreference == "Vegan"),
+            Arg.Any<TierApplicationRequest?>(),
             Arg.Any<CancellationToken>());
         await _profileEditorService.DidNotReceiveWithAnyArgs()
             .SaveDietaryMedicalAsync(default, default!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Edit_Post_AllergyOtherWithoutText_IsInvalidAndDoesNotSaveProfile()
+    public async Task Edit_Post_ServiceValidationFailure_RerendersWithModelError()
     {
-        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        // Cross-field invariants (allergy "Other" text, Burner CV completeness)
+        // are enforced inside SaveProfileAsync (ValidationException) — the
+        // controller maps the refusal back onto the form.
+        _profileEditorService.SaveProfileAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(),
+                Arg.Any<TierApplicationRequest?>(), Arg.Any<CancellationToken>())
+            .Returns<Guid>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException("Selecting the \"Other\" allergy requires describing it."));
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.Allergies = ["Other"];
-        model.AllergyOtherText = "   "; // whitespace-only triggers the required rule
+        model.AllergyOtherText = "   ";
 
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>();
         _controller.ModelState.IsValid.Should().BeFalse();
-        _controller.ModelState.ContainsKey(nameof(model.AllergyOtherText)).Should().BeTrue();
-        await _profileEditorService.DidNotReceiveWithAnyArgs()
-            .SaveProfileAsync(default, default!, default!, Arg.Any<CancellationToken>());
+        // No page-specific saves run after a refused profile save.
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(
+            Guid.Empty, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

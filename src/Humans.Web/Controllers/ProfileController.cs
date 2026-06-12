@@ -54,7 +54,6 @@ public class ProfileController(
     IUserEmailService userEmailService,
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
-    IOnboardingService onboardingService,
     IShiftSignupService shiftSignupService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,
@@ -206,7 +205,7 @@ public class ProfileController(
     [ValidateAntiForgeryToken]
     [Grandfathered(
         ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 78 statements, cc 46.",
+        justification: "63 statements, cc 33 after the P1-P4 service moves (audit 2026-06-12: validation invariants, CV save, consent trigger, tier-application dispatch, deletion cancel now live in IProfileEditorService.SaveProfileAsync). Remainder is form validation with field-targeted localized errors plus the page-specific contact-field/language/tag saves.",
         since: "2026-06-09",
         issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Edit(ProfileViewModel model)
@@ -243,33 +242,8 @@ public class ProfileController(
                 localizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
         }
 
-        // Allergy "Other" requires accompanying free text (mirrors DietaryMedical POST).
-        // Validated here, before any persistence, so a bad submit can't half-save
-        // (main profile written but shift profile rejected, or vice versa).
-        if (model.Allergies.Contains(DietaryOptions.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
-        {
-            ModelState.AddModelError(nameof(model.AllergyOtherText),
-                localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
-        }
-
         if (ModelState.ErrorCount > 0)
         {
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
-
-        // Burner CV: entries OR "no prior experience".
-        var hasVolunteerHistory = model.EditableVolunteerHistory
-            .Any(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue);
-        if (!model.NoPriorBurnExperience && !hasVolunteerHistory)
-        {
-            ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
-                localizer["Profile_BurnerCVRequired"].Value);
-            var existingProfile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
-            model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
-            model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                && string.IsNullOrEmpty(model.LastName)
-                && string.IsNullOrEmpty(model.EmergencyContactName);
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
@@ -322,6 +296,17 @@ public class ProfileController(
             return View(model);
         }
 
+        // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
+        var cvEntries = model.EditableVolunteerHistory
+            .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
+            .Select(vh => new CVEntry(
+                vh.Id ?? Guid.Empty,
+                vh.ParsedDate!.Value,
+                vh.EventName,
+                vh.Description
+            ))
+            .ToList();
+
         var saveRequest = new ProfileSaveRequest(
             BurnerName: model.BurnerName,
             FirstName: model.FirstName,
@@ -347,52 +332,38 @@ public class ProfileController(
             // Meal pref + allergies (the DietaryMedical page owns intolerances + medical).
             DietaryPreference: string.IsNullOrWhiteSpace(model.DietaryPreference) ? null : model.DietaryPreference,
             Allergies: [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))],
-            AllergyOtherText: model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null);
+            AllergyOtherText: model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null,
+            VolunteerHistory: cvEntries);
 
-        var profileId = await profileEditorService.SaveProfileAsync(
-            user.Id, model.BurnerName, saveRequest);
+        // Initial-setup tier-app payload: form's `isTierLocked` guard + service-side
+        // AlreadyPending backstop. see #685. The save workflow (validation, CV,
+        // consent-check trigger, application submit, deletion cancel) is owned by
+        // SaveProfileAsync.
+        var tierApplication = isInitialSetup && model.SelectedTier != MembershipTier.Volunteer
+            ? new TierApplicationRequest(
+                model.SelectedTier,
+                model.ApplicationMotivation!,
+                model.ApplicationAdditionalInfo,
+                model.ApplicationSignificantContribution,
+                model.ApplicationRoleUnderstanding,
+                CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)
+            : null;
 
-        // Peer-call into Onboarding; ProfileService doesn't.
-        await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
-
-        // Initial-setup tier-app: form's `isTierLocked` guard + ApplicationDecisionService AlreadyPending backstop. see #685.
-        if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
+        Guid profileId;
+        try
         {
-            var existingApps = await applicationDecisionService.GetUserApplicationsAsync(user.Id);
-            var existingDraft = existingApps.FirstOrDefault(a =>
-                a.Status == ApplicationStatus.Submitted);
-            var hasApprovedApp = existingApps.Any(a =>
-                a.Status == ApplicationStatus.Approved);
-
-            if (existingDraft is not null)
-            {
-                await applicationDecisionService.UpdateDraftApplicationAsync(
-                    existingDraft.Id,
-                    model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null);
-            }
-            else if (!hasApprovedApp)
-            {
-                await applicationDecisionService.SubmitAsync(
-                    user.Id, model.SelectedTier,
-                    model.ApplicationMotivation!,
-                    model.ApplicationAdditionalInfo,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
-                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null,
-                    CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
-            }
+            profileId = await profileEditorService.SaveProfileAsync(
+                user.Id, model.BurnerName, saveRequest, tierApplication);
         }
-
-        // Route pending-deletion cancel through IAccountDeletionService, not raw UserManager.
-        if (isInitialSetup && user.IsDeletionPending)
+        catch (ValidationException ex)
         {
-            await accountDeletionService.CancelDeletionAsync(user.Id);
-            logger.LogInformation(
-                "Cancelled pending deletion request for user {UserId} on profile creation",
-                user.Id);
+            ModelState.AddModelError(string.Empty, ex.Message);
+            model.IsInitialSetup = isInitialSetup;
+            model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
+                && string.IsNullOrEmpty(model.LastName)
+                && string.IsNullOrEmpty(model.EmergencyContactName);
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            return View(model);
         }
 
         var contactFieldDtos = model.EditableContactFields
@@ -418,19 +389,6 @@ public class ProfileController(
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
-
-        // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
-        var cvEntries = model.EditableVolunteerHistory
-            .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
-            .Select(vh => new CVEntry(
-                vh.Id ?? Guid.Empty,
-                vh.ParsedDate!.Value,
-                vh.EventName,
-                vh.Description
-            ))
-            .ToList();
-
-        await _userService.SaveProfileVolunteerHistoryAsync(user.Id, cvEntries);
 
         // Languages: remove-and-replace.
         var newLanguages = model.EditableLanguages
@@ -1578,19 +1536,8 @@ public class ProfileController(
         if (!ModelState.IsValid)
             return View(model);
 
-        // Server-side validation for the "Other text required iff Other selected" rule
-        // (DataAnnotations can't express the conditional requirement cleanly).
-        if (model.Allergies.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.AllergyOtherText))
-        {
-            ModelState.AddModelError(nameof(model.AllergyOtherText), localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
-            return View(model);
-        }
-        if (model.Intolerances.Contains(DietaryMedicalViewModel.OtherOption) && string.IsNullOrWhiteSpace(model.IntoleranceOtherText))
-        {
-            ModelState.AddModelError(nameof(model.IntoleranceOtherText), localizer["Profile_DietaryMedical_IntoleranceOther_Required"].Value);
-            return View(model);
-        }
-
+        // The "Other text required iff Other selected" invariant is enforced by
+        // SaveDietaryMedicalAsync (ValidationException), mapped below.
         try
         {
             var user = await GetCurrentUserInfoAsync();
@@ -1657,6 +1604,11 @@ public class ProfileController(
                     SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
                     return RedirectToAction("Index", "Home");
             }
+        }
+        catch (ValidationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
         }
         catch (Exception ex)
         {
