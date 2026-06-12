@@ -180,7 +180,7 @@ public class EventsModerationController(
             VenueId = guideEvent.GuideSharedVenueId,
             StartDate = localStart.Date,
             StartTime = localStart.TimeOfDay,
-            IsAllDay = guideEvent.DurationMinutes == 1440,
+            IsAllDay = guideEvent.IsAllDay,
             DurationMinutes = guideEvent.DurationMinutes,
             LocationNote = guideEvent.LocationNote,
             Host = guideEvent.Host,
@@ -306,12 +306,13 @@ public class EventsModerationController(
     // rank; individual events carry a venue and the all-day flag.
     private void ApplyFormToEvent(Event guideEvent, AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
-        var isAllDay = !isCampEvent && model.IsAllDay;
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            !isCampEvent && model.IsAllDay, model.StartTime, model.DurationMinutes);
         guideEvent.Title = model.Title;
         guideEvent.Description = model.Description;
         guideEvent.CategoryId = model.CategoryId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(isAllDay ? TimeSpan.Zero : model.StartTime), tz);
-        guideEvent.DurationMinutes = isAllDay ? 1440 : model.DurationMinutes;
+        guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
+        guideEvent.DurationMinutes = durationMinutes;
         guideEvent.LocationNote = model.LocationNote;
         guideEvent.Host = model.Host;
         guideEvent.IsRecurring = model.IsRecurring;
