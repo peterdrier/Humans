@@ -301,6 +301,43 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates a team and — when a Google group prefix is set — provisions its
+    /// Google Group, owning the compensation: if provisioning fails the prefix
+    /// is cleared so the team never points at a group that does not exist.
+    /// <c>GroupWarning</c> carries the operator-facing message in that case.
+    /// </summary>
+    Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+        string name,
+        string? description,
+        bool requiresApproval,
+        Guid? parentTeamId = null,
+        string? googleGroupPrefix = null,
+        bool isHidden = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates a team's details, then reconciles its Google Group link.
+    /// <c>GroupWarning</c> carries the operator-facing message when the group
+    /// sync failed or needs reactivation confirmation; the team update itself
+    /// has already succeeded in that case.
+    /// </summary>
+    Task<TeamWithGroupResult> UpdateTeamWithGoogleGroupAsync(
+        Guid teamId,
+        string name,
+        string? description,
+        bool requiresApproval,
+        bool isActive,
+        Guid? parentTeamId = null,
+        string? googleGroupPrefix = null,
+        string? customSlug = null,
+        bool? hasBudget = null,
+        bool? isHidden = null,
+        bool? isSensitive = null,
+        bool? isPromotedToDirectory = null,
+        bool? earlyEntryEnabled = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes (deactivates) a team.
     /// </summary>
     Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
@@ -739,6 +776,13 @@ public sealed record TeamRoleAssignmentSnapshot(
     Guid TeamMemberId,
     int SlotIndex,
     Guid? AssignedUserId);
+
+/// <summary>
+/// A team create/update plus the outcome of its Google Group reconciliation.
+/// <see cref="GroupWarning"/> is null when the group is in order; otherwise the
+/// operator-facing message to surface alongside the success flash.
+/// </summary>
+public sealed record TeamWithGroupResult(Team Team, string? GroupWarning);
 
 /// <summary>What <see cref="ITeamService.JoinTeamAsync"/> did, per the team's join policy.</summary>
 public enum TeamJoinOutcome

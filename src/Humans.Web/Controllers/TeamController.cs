@@ -25,7 +25,6 @@ public class TeamController(
     ITeamService teamService,
     ITeamPageService teamPageService,
     IUserServiceRead userService,
-    IGoogleSyncService googleSyncService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<SharedResource> localizer,
     IConfiguration configuration,
@@ -644,27 +643,14 @@ public class TeamController(
 
         try
         {
-            var team = await teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
+            var result = await teamService.CreateTeamWithGoogleGroupAsync(
+                model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
             var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
+            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team.Id, result.Team.Name);
 
-            if (!string.IsNullOrEmpty(model.GoogleGroupPrefix))
-            {
-                try
-                {
-                    await googleSyncService.EnsureTeamGroupAsync(team.Id);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
-                    await teamService.UpdateTeamAsync(team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive, team.ParentTeamId, googleGroupPrefix: null);
-                    SetSuccess(string.Format(localizer["Admin_TeamCreated"].Value, team.Name));
-                    SetError($"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.");
-                    return RedirectToAction(nameof(Summary));
-                }
-            }
-
-            SetSuccess(string.Format(localizer["Admin_TeamCreated"].Value, team.Name));
+            SetSuccess(string.Format(localizer["Admin_TeamCreated"].Value, result.Team.Name));
+            if (result.GroupWarning is not null)
+                SetError(result.GroupWarning);
             return RedirectToAction(nameof(Summary));
         }
         catch (InvalidOperationException ex)
@@ -747,35 +733,16 @@ public class TeamController(
             // the editor is a global Admin, mirroring the EarlyEntryEnabled leave-unchanged guard.
             var isAdmin = (await authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
             bool? isSensitive = isAdmin ? model.IsSensitive : null;
-            await teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive, model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
+            var result = await teamService.UpdateTeamWithGoogleGroupAsync(
+                id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
+                model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
+                model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
             var currentUser = await GetCurrentUserInfoAsync();
             logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
-            try
-            {
-                var groupResult = await googleSyncService.EnsureTeamGroupAsync(id);
-                if (!groupResult.Success)
-                {
-                    if (groupResult.RequiresConfirmation)
-                    {
-                        SetSuccess(localizer["Admin_TeamUpdated"].Value);
-                        SetError(groupResult.WarningMessage ?? "Confirmation required for group reactivation.");
-                        return RedirectToAction(nameof(Summary));
-                    }
-                    SetSuccess(localizer["Admin_TeamUpdated"].Value);
-                    SetError(groupResult.ErrorMessage ?? "Google Group linking failed.");
-                    return RedirectToAction(nameof(Summary));
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to sync Google Group for team {TeamId}", id);
-                SetSuccess(localizer["Admin_TeamUpdated"].Value);
-                SetError($"Team updated but Google Group setup failed: {ex.Message}");
-                return RedirectToAction(nameof(Summary));
-            }
-
             SetSuccess(localizer["Admin_TeamUpdated"].Value);
+            if (result.GroupWarning is not null)
+                SetError(result.GroupWarning);
             return RedirectToAction(nameof(Summary));
         }
         catch (InvalidOperationException ex)
