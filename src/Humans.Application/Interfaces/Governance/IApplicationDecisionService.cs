@@ -20,6 +20,10 @@ namespace Humans.Application.Interfaces.Governance;
 /// </remarks>
 public interface IApplicationDecisionService : IApplicationServiceRead, IApplicationService
 {
+    /// <summary>
+    /// Finalizes a Submitted application as approved. Error keys:
+    /// <c>NotFound</c>, <c>NotSubmitted</c>, <c>NoVotes</c> (no board votes ⇒ no finalize).
+    /// </summary>
     Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
@@ -27,6 +31,10 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Finalizes a Submitted application as rejected. Error keys:
+    /// <c>NotFound</c>, <c>NotSubmitted</c>, <c>NoVotes</c> (no board votes ⇒ no finalize).
+    /// </summary>
     Task<ApplicationDecisionResult> RejectAsync(
         Guid applicationId,
         Guid reviewerUserId,
@@ -96,12 +104,6 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
     /// </summary>
     Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
         Guid applicationId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if the application has any board votes. Used to gate
-    /// finalization (no votes ⇒ no finalize).
-    /// </summary>
-    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
 
     /// <summary>
     /// Records a board vote (upsert by (applicationId, boardMemberUserId)).

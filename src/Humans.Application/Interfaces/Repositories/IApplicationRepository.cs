@@ -116,12 +116,6 @@ public interface IApplicationRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true if the application has any board votes. Used for
-    /// pre-finalize gating.
-    /// </summary>
-    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
-
-    /// <summary>
     /// Upserts a board vote: if a vote row exists for the
     /// (applicationId, boardMemberUserId) pair, updates its
     /// <see cref="BoardVote.Vote"/>/<see cref="BoardVote.Note"/>/

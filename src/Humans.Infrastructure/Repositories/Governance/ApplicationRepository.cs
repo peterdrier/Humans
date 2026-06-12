@@ -155,9 +155,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .ToListAsync(ct), ct);
 
-    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        WithContextAsync(ctx => ctx.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct), ct);
-
     public async Task UpsertBoardVoteAsync(
         Guid applicationId,
         Guid boardMemberUserId,

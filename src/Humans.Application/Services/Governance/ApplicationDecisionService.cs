@@ -57,6 +57,11 @@ public sealed class ApplicationDecisionService(
         // Voter capture must precede FinalizeAsync (which deletes BoardVote rows).
         var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
 
+        // No votes ⇒ no finalize. Enforced here (not as a caller pre-check) so the
+        // guard and the mutation read the same state.
+        if (voterIds.Count == 0)
+            return new ApplicationDecisionResult(false, "NoVotes");
+
         application.Approve(reviewerUserId, notes, clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = notes;
@@ -129,6 +134,10 @@ public sealed class ApplicationDecisionService(
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
         var voterIds = await repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
+
+        // No votes ⇒ no finalize (same guard as ApproveAsync).
+        if (voterIds.Count == 0)
+            return new ApplicationDecisionResult(false, "NoVotes");
 
         application.Reject(reviewerUserId, reason, clock);
         application.BoardMeetingDate = boardMeetingDate;
@@ -462,9 +471,6 @@ public sealed class ApplicationDecisionService(
             SubmittedAt: application.SubmittedAt,
             Votes: voteRows);
     }
-
-    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        repository.HasBoardVotesAsync(applicationId, ct);
 
     public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
         Guid applicationId,

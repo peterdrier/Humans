@@ -166,13 +166,6 @@ public class GovernanceBoardVotingController(
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
-        var hasVotes = await applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
-        if (!hasVotes)
-        {
-            SetError(localizer["BoardVoting_NoVotes"].Value);
-            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
-        }
-
         try
         {
             var result = model.Approved
@@ -191,10 +184,13 @@ public class GovernanceBoardVotingController(
                 {
                     "NotFound" => localizer["BoardVoting_ApplicationNotFound"].Value,
                     "NotSubmitted" => localizer["BoardVoting_ApplicationNotVotable"].Value,
+                    "NoVotes" => localizer["BoardVoting_NoVotes"].Value,
                     "ConcurrencyConflict" => localizer["BoardVoting_ConcurrencyConflict"].Value,
                     _ => localizer["BoardVoting_ApplicationNotVotable"].Value
                 });
-                return RedirectToAction(nameof(BoardVoting));
+                return string.Equals(result.ErrorKey, "NoVotes", StringComparison.Ordinal)
+                    ? RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId })
+                    : RedirectToAction(nameof(BoardVoting));
             }
 
             SetSuccess(localizer["BoardVoting_Finalized"].Value);
