@@ -163,11 +163,6 @@ public class ShiftsController(
     // 204 with X-Redirect so the client navigates instead of swapping a row.
     [HttpPost("ToggleDay")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 20.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
@@ -196,21 +191,7 @@ public class ShiftsController(
 
         // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only).
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        SignupResult result;
-        bool signedUp;
-        if (existing is not null)
-        {
-            result = await signupService.BailAsync(existing.Id, user.Id, "self-service toggle");
-            signedUp = false;
-        }
-        else
-        {
-            result = await signupService.SignUpAsync(
-                user.Id,
-                shiftId,
-                flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-            signedUp = result.Success;
-        }
+        var (result, signedUp) = await ToggleSignupAsync(existing, user.Id, shiftId, privileged);
 
         // Broad privilege — matches the browse page (Index.cshtml) so a department
         // coordinator's row for an admin-only/hidden shift still renders instead of
@@ -233,17 +214,44 @@ public class ShiftsController(
             .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
             .ToString(CultureInfo.InvariantCulture);
 
+        SetToggleToastHeader(result, signedUp, value.Status);
+
+        return RenderRotaRow(value, es, blocked);
+    }
+
+    private async Task<(SignupResult Result, bool SignedUp)> ToggleSignupAsync(
+        ShiftSignup? existing, Guid userId, Guid shiftId, bool privileged)
+    {
+        if (existing is not null)
+        {
+            var bail = await signupService.BailAsync(existing.Id, userId, "self-service toggle");
+            return (bail, false);
+        }
+
+        var signup = await signupService.SignUpAsync(
+            userId,
+            shiftId,
+            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+        return (signup, signup.Success);
+    }
+
+    private void SetToggleToastHeader(SignupResult result, bool signedUp, SignupStatus? status)
+    {
         if (!result.Success && result.Error is not null)
             SetToastHeader("warning", result.Error);
         else if (result.Warning is not null)
             SetToastHeader("warning", result.Warning);
         else if (signedUp)
-            SetToastHeader("success", value.Status == SignupStatus.Pending
+            SetToastHeader("success", status == SignupStatus.Pending
                 ? localizer["Shifts_Toast_Applied"].Value
                 : localizer["Shifts_Toast_SignedUp"].Value);
         else
             SetToastHeader("success", localizer["Shifts_Toast_Removed"].Value);
+    }
 
+    private IActionResult RenderRotaRow(
+        (ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status) value, EventSettings es, bool blocked)
+    {
         if (value.Item.Shift.IsAllDay)
             return PartialView("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
             {
