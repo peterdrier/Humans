@@ -86,6 +86,18 @@ themes:
       memory/architecture/display-sort-in-controllers.md. Pagination
       tie-breakers, top-N, and identity-ordered streams stay, marked
       `// arch:db-sort-ok`. Remove fixed lines from the baseline.
+  - id: build-warnings-misc
+    title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
+    detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"
+    review: light
+    last_swept: never
+    remaining: 0
+    notes: >-
+      Catch-all: HUM-coded warnings belong to their own themes; everything
+      else (compiler CS, NuGet NU, framework obsoletions) lands here. 0 at
+      seed — the build is warning-clean outside the HUM themes. Reuse the
+      run's shared build log instead of re-building when possible. New
+      custom HUM_* warning ids spotted here should become their own theme.
   - id: inbox
     title: One-off inbox items
     detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"

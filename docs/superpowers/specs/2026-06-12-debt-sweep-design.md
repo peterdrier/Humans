@@ -144,7 +144,7 @@ Only after Phase 7 resolves: `git worktree remove` (never `rm -rf`). Branch stay
 Built during implementation with Peter; the table below was the starting shape — final ids, detect commands, and counts live in `docs/architecture/debt-ledger.yml` (seeded from `origin/main @ e3fdfbcab`, 2026-06-12).
 
 **Seed outcomes that differ from the table:**
-- **"Build warnings" is not a separate theme.** A clean build's 97 warnings are entirely HUM0024 / HUM0028 / HUM0031 / HUM_USER_DISPLAYNAME — the grandfathered themes surfacing. Warning-backed themes use a shared `detect: build:<CODE>` sentinel counted from one build log per run.
+- **HUM-coded build warnings are not a separate theme.** A clean build's 97 warnings are entirely HUM0024 / HUM0028 / HUM0031 / HUM_USER_DISPLAYNAME — the grandfathered themes surfacing. Warning-backed themes use a shared `detect: build:<CODE>` sentinel counted from one build log per run. A `build-warnings-misc` catch-all theme (seeded at 0) owns any future non-HUM warnings (compiler CS, NuGet NU, framework obsoletions).
 - **`NoLinqAtDbLayer` and `NoStartupGuards` baselines were already empty** — drained before the skill existed; retired per the drain rule, not seeded.
 - **`NoDestructiveMigrationOps` baseline is excluded** — its entries are immutable migration history (a guard, not fixable debt).
 - **`tech-debt-2026-04-23-leftovers` became inbox entries** rather than a theme — the doc mixes done/open items, so its open items were enumerated into the inbox once, and the final inbox entry retires the doc itself.
