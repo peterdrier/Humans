@@ -9,8 +9,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
-using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
@@ -28,9 +26,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly InMemoryFileStorage _fileStorage = new();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
-    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
 
     // Delegate to the production helper (made internal for test access)
     // so the test can't drift from the real key construction.
@@ -56,9 +51,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _editor = new ProfileEditorService(
             _userService,
             _fileStorage,
-            _onboardingService,
-            _applicationDecisionService,
-            _accountDeletionService,
             NullLogger<ProfileEditorService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
@@ -225,17 +217,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
     }
 
-
-    // Threshold check (formerly SaveProfileAsync_CallsSetConsentCheckPending)
-    // moved out of ProfileService entirely — it's a director method on
-    // IOnboardingService now, invoked by controllers as a peer call after
-    // SaveProfileAsync. ProfileService has no dep on Onboarding.
-
-    // --- Profile save flow: tier application during initial setup ---
-
-    // Tier-application orchestration moved to ProfileController.Edit POST in
-    // issue nobodies-collective/Humans#685. Deletion request/cancel moved to
-    // IAccountDeletionService (covered by AccountDeletionServiceTests).
 
     [HumansFact]
     public async Task GetProfilePictureAsync_WithPicture_ReturnsData()
@@ -481,95 +462,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             userId,
             Arg.Is<List<CVEntry>>(l => l.Count == 1 && l[0].EventName == "Nowhere"),
             Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_TriggersOnboardingConsentCheck()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        await _editor.SaveProfileAsync(userId, "Test", MakeRequest(), ct: Xunit.TestContext.Current.CancellationToken);
-
-        await _onboardingService.Received(1)
-            .SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_NoExistingApp_SubmitsTierApplication()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        var application = new TierApplicationRequest(
-            MembershipTier.Colaborador, "to help", null, "ignored-for-colaborador", "ignored", "en");
-
-        await _editor.SaveProfileAsync(userId, "Test", MakeRequest(), application, Xunit.TestContext.Current.CancellationToken);
-
-        // Asociado-only fields are nulled for Colaborador.
-        await _applicationDecisionService.Received(1).SubmitAsync(
-            userId, MembershipTier.Colaborador, Arg.Is("to help"), Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null), Arg.Is<string?>(x => x == null),
-            Arg.Is("en"), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_ExistingSubmittedDraft_UpdatesInPlace()
-    {
-        // No-duplicate guard: replaying the form must never create a second
-        // pending application.
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var draftId = Guid.NewGuid();
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([
-                new UserApplicationSnapshot(
-                    draftId, userId, ApplicationStatus.Submitted, MembershipTier.Colaborador,
-                    Clock.GetCurrentInstant(), null, null, "old", null, null, null),
-            ]);
-        var application = new TierApplicationRequest(
-            MembershipTier.Colaborador, "updated", null, null, null, "en");
-
-        await _editor.SaveProfileAsync(userId, "Test", MakeRequest(), application, Xunit.TestContext.Current.CancellationToken);
-
-        await _applicationDecisionService.Received(1).UpdateDraftApplicationAsync(
-            draftId, MembershipTier.Colaborador, Arg.Is("updated"), Arg.Is<string?>(x => x == null),
-            Arg.Is<string?>(x => x == null), Arg.Is<string?>(x => x == null),
-            Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_ApprovedProfile_IgnoresTierApplication()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: true);
-        var application = new TierApplicationRequest(
-            MembershipTier.Colaborador, "irrelevant", null, null, null, "en");
-
-        await _editor.SaveProfileAsync(userId, "Test", MakeRequest(), application, Xunit.TestContext.Current.CancellationToken);
-
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
-        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
-            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_DeletionPending_CancelsDeletion()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-        var user = await Db.Users.SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
-        user.DeletionRequestedAt = Clock.GetCurrentInstant();
-        user.DeletionScheduledFor = Clock.GetCurrentInstant() + Duration.FromDays(30);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _editor.SaveProfileAsync(userId, "Test", MakeRequest(), ct: Xunit.TestContext.Current.CancellationToken);
-
-        await _accountDeletionService.Received(1).CancelDeletionAsync(userId, Arg.Any<CancellationToken>());
     }
 
     private async Task SeedUserAsync(Guid userId,

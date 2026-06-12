@@ -84,6 +84,7 @@ public class ProfileControllerEmailGridTests
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
+            Substitute.For<IOnboardingService>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
             Substitute.For<IShiftView>(),

@@ -89,6 +89,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IOnboardingService>(),
             _signupService,
             _shiftMgmt,
             Substitute.For<IShiftView>(),

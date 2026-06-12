@@ -119,7 +119,6 @@ public class OnboardingWidgetControllerNamesTests
                 userId,
                 "Burner1",
                 Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<TierApplicationRequest?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Guid.NewGuid());
 
@@ -138,8 +137,26 @@ public class OnboardingWidgetControllerNamesTests
                 r.FirstName == "First" &&
                 r.LastName == "Last" &&
                 r.BurnerName == "Burner1"),
-            Arg.Any<TierApplicationRequest?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Names_Post_TriggersOnboardingConsentCheck_AfterSave()
+    {
+        // The consent-check trigger is a controller peer-call after SaveProfileAsync,
+        // per no-leaf-to-director-callbacks — not inside the service.
+        var userId = Guid.NewGuid();
+        _profileEditor.SaveProfileAsync(
+                userId, Arg.Any<string>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Guid.NewGuid());
+
+        var ctrl = BuildSut(userId);
+        var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
+
+        await ctrl.Names(vm, TestContext.Current.CancellationToken);
+
+        await _onboardingService.Received(1)
+            .SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -161,7 +178,8 @@ public class OnboardingWidgetControllerNamesTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
 
-        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(Guid.Empty, null!, null!, null, Arg.Any<CancellationToken>());
+        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
+            Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -190,7 +208,6 @@ public class OnboardingWidgetControllerNamesTests
             "Burner1",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.FirstName == "First" && r.LastName == "Last" && r.BurnerName == "Burner1"),
-            Arg.Any<TierApplicationRequest?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -252,7 +269,6 @@ public class OnboardingWidgetControllerNamesTests
                 r.LastName == "NowSet" &&
                 r.City == "Madrid" &&
                 r.Bio == "existing bio"),
-            Arg.Any<TierApplicationRequest?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -267,6 +283,7 @@ public class OnboardingWidgetControllerNamesTests
         var view = Assert.IsType<ViewResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), view.ViewName ?? nameof(OnboardingWidgetController.Names));
 
-        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(Guid.Empty, null!, null!, null, Arg.Any<CancellationToken>());
+        await _profileEditor.DidNotReceiveWithAnyArgs().SaveProfileAsync(
+            Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
     }
 }
