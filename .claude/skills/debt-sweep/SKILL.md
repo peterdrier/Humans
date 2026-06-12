@@ -70,6 +70,8 @@ Run this build once in Phase 3 (it doubles as the baseline build) and reuse the 
 
 Until budget exhausted or theme drained, per item (one item or one tight cluster per commit):
 
+**Budget checks are real clock reads, never estimates.** Between items run `date -u +%H:%M` and compare against the Phase 0 start time. Narrative time-feel drifts badly (first run stopped at 27 real minutes while "estimating" 85); the only valid stop-on-budget is one backed by a `date` call in the transcript.
+
 1. **Fix it right** — no surgical fixes (constitution). Reuse-first; match existing patterns (the theme's `notes` often names the reference implementation).
 2. `dotnet build Humans.slnx -v quiet`.
 3. Targeted tests: the touched section's tests + `--filter` the Architecture tests. Full `dotnet test Humans.slnx -v quiet` at minimum before each push.
