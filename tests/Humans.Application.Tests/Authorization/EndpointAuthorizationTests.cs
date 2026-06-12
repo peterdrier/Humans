@@ -40,6 +40,7 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(FinanceController), null, "FinanceAdminOrAdmin" },
         { typeof(ScannerController), null, "ScannerAccess" },
+        { typeof(TicketsOnsiteAdminController), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
         { typeof(ShiftDashboardController), null, "ShiftDepartmentManager" },
         { typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess" },

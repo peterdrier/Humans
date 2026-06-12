@@ -85,7 +85,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
 | `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
-| `TicketsOnsiteAdminController` | Class | `TicketAdmin, Admin, Board` | `PolicyNames.TicketAdminBoardOrAdmin` |
+| `TicketsOnsiteAdminController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |
 | `TicketsGateAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` (gate credential management at `/Tickets/Admin/Gate` — `Index` GET, `SetPassword` POST both inherit) |
 
 ### Scanner Section

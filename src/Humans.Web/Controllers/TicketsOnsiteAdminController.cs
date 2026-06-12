@@ -15,8 +15,10 @@ namespace Humans.Web.Controllers;
 /// delegated to <see cref="IOnsiteRosterService"/>; this controller stays a
 /// thin HTTP adapter per
 /// <c>memory/architecture/no-business-logic-in-controllers.md</c>.
+/// ScannerAccess (not TicketAdminBoardOrAdmin) so the shared gate-terminal
+/// account can check the roster from the door alongside the ticket scanner.
 /// </summary>
-[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
+[Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Tickets/Admin/Onsite")]
 public sealed class TicketsOnsiteAdminController(
     IUserServiceRead userService,

@@ -21,7 +21,7 @@ public static class AdminNavTree
             new("Transfer requests",  "TicketTransferAdmin", "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin,
                  PillCount: PillCounts.TransferQueue),
             new("Attendee contacts",  "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", PolicyNames.TicketAdminOrAdmin),
-            new("Onsite roster",      "TicketsOnsiteAdmin", "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.TicketAdminBoardOrAdmin),
+            new("Onsite roster",      "TicketsOnsiteAdmin", "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess),
             // Campaigns distribute ticket-vendor discount codes (email is just the
             // delivery channel) — Tickets, not Messaging. See docs/sections/Campaigns.md.
             new("Campaigns",          "Campaign",       "Index", null, null, "fa-solid fa-bullhorn",    PolicyNames.AdminOnly),
