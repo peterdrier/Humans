@@ -145,8 +145,8 @@ The roster does NOT use the qualifying-shift gate (6+ hours) from the dietary-me
 |---|---|---|
 | `/Cantina/Roster` | GET | Optional `?weekStartOffset=<int>`. Default = Monday of today's week (event tz). |
 | `/Cantina/Roster/Csv` | GET | Optional `?weekStartOffset=<int>`. Same default. |
-
-There is no per-day route. The earlier `?dayOffset=<int>` parameter has been removed.
+| `/Cantina/Roster/Day` | GET | Per-day matrix. Optional `?dayOffset=<int>`; default = today's offset within the active event (0 when no active event). |
+| `/Cantina/Roster/Day/Csv` | GET | CSV companion to the per-day matrix, chip-by-chip column totals at the bottom. Same default. |
 
 ## Data Model
 

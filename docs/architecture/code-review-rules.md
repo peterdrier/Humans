@@ -102,6 +102,6 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 
 ## Test Attribute Policy
 
-- **Bare `[Fact]` and `[Theory]` are forbidden in test code.** All test methods must use `[HumansFact]` / `[HumansTheory]` from `Humans.Testing` (5s default timeout, project-wide). Enforced via `BannedApiAnalyzers` rule `RS0030`.
+- **Bare `[Fact]` and `[Theory]` are forbidden in test code.** All test methods must use `[HumansFact]` / `[HumansTheory]` from `Humans.Testing` (default timeout: 30s for `HumansFact`; 5s for `HumansTheory`, raised to 30s in `Humans.Integration.Tests`). Enforced via `BannedApiAnalyzers` rule `RS0030`.
 - **No `RS0030` suppressions in test code.** Pragma escape hatches (`#pragma warning disable RS0030`) are forbidden anywhere in `tests/` outside `tests/Humans.Testing/` (where the replacement attributes are declared). CI (`Forbid RS0030 suppressions in test code` step) fails the build if any are found.
 - **`Timeout = 0` (or negative) on `HumansFact` / `HumansTheory` is forbidden.** The setter throws `ArgumentException` at attribute construction. To allow a longer cap on a slow test, set `Timeout = N` with `N > 0` (typical: `10000` for DB-fixture-heavy tests, `30000` for tests with explicit retry/backoff timing). Infinite timeout is not an option.

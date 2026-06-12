@@ -58,19 +58,16 @@ Sizing: 82,242 total doc lines → 5% target 4,112, 7% cap 5,757. Pruned 4,027 �
 
 ## Flagged for human review
 
-Delivered inline at sweep end (Phase 7.5); dispositions recorded here once answered.
+Delivered inline at sweep end (Phase 7.5). Peter answered **"fix all"** — dispositions:
 
-Concrete pre-existing drift (outside this sweep's changed-file scope, fix proposed):
-1. sections/AuditLog.md — Expenses/IBAN AuditAction group (Expense*, Iban*, incl. new ExpenseSepaReopened) has never been documented.
-2. features/cantina/daily-roster.md:149 — claims "no per-day route" but GET /Cantina/Roster/Day and /Day/Csv exist (Cantina.md lists them correctly).
-3. features/budget/budget.md:252 — claims four auto-created ticketing categories; BudgetRepository.AddDefaultTicketingCategories scaffolds two (guide/Budget.md already says two).
-4. design-rules.md §8 — Event Guide row lists 6 table names that never existed; actual: events, event_guide_settings, event_categories, event_venues, event_moderation_actions, event_favourites, event_preferences.
-5. code-review-rules.md:105 — claims HumansFact/HumansTheory "5s default timeout, project-wide"; actual default 30s (5s only for a specific path).
-
-Judgment calls (new functionality adjacent to doc scope, not contradictions):
-6. features/shifts/coordinator-roles.md — should the new coordinator sent-message history panel (#950) be mentioned under VolunteerCoordinator capabilities?
-7. features/profiles/preferred-email.md — note admin sync-outbox requeue / per-user re-sync, or leave to google-integration docs?
-8. features/profiles/profile-search-detail.md — document the HumanSearch picker's optional TicketLookupUrl second data source (#936), or leave to its spec?
+1. sections/AuditLog.md Expenses/IBAN AuditAction group — **FIXED**: added the 15-value Expenses/IBAN bullet (incl. ExpenseSepaReopened, IbanReveal note) sourced from AuditAction.cs:143–157.
+2. features/cantina/daily-roster.md "no per-day route" — **FIXED**: replaced with /Cantina/Roster/Day + /Day/Csv rows (default = today's offset within the active event, per CantinaController.ComputeDefaultDayOffsetAsync).
+3. features/budget/budget.md four-categories claim — **FIXED**: now "two auto-created categories: Ticket Revenue and Processing Fees" with a note that VAT Liability/Donations were never scaffolded.
+4. design-rules.md §8 Event Guide table row — **FIXED**: replaced with the 7 real ToTable names verified against HumansDbContextModelSnapshot.cs.
+5. code-review-rules.md timeout claim — **FIXED**: now "30s for HumansFact; 5s for HumansTheory, raised to 30s in Humans.Integration.Tests" (per HumansFactAttribute.DefaultTimeout=30000 and HumansTheoryAttribute.DefaultTimeoutFor). Note: the original flag had the Theory split backwards; fix written from code.
+6. coordinator-roles.md sent-message panel — **NO EDIT (premise wrong)**: the panel gates on rota-team coordinatorship or PrivilegedSignupApprover (= Admin/NoInfoAdmin per AuthorizationPolicyExtensions.cs:134), NOT the VolunteerCoordinator governance role this doc covers. Already correctly documented in sections/Profiles.md; adding it here would have introduced drift.
+7. features/profiles/preferred-email.md — **FIXED**: US-11.6 now notes admins can apply the change sooner via Re-run Google Sync or sync-outbox requeue.
+8. features/profiles/profile-search-detail.md — **FIXED**: added "Extension: ticket-number lookup" subsection documenting HumanSearchPickerViewModel.TicketLookupUrl (Early Entry card, LookupTicket endpoint), cross-referenced to the spec.
 
 Unmarked editorial (no freshness:triggers; add markers so future sweeps can scope them):
 docs/sections/Agent.md, docs/sections/Mailer.md, docs/sections/_Index.md, docs/features/26-events.md, docs/features/27-guide-browser.md, docs/features/43-google-group-membership-sync.md, docs/features/test-system-reliability.md, docs/features/user-search-overhaul.md, docs/features/agent/agent-section.md, docs/features/scanner/gate-terminal-login.md, docs/features/scanner/scanner-barcode.md, docs/guide/AiHelper.md, docs/guide/EmailAccount.md, docs/guide/SigningIn.md, docs/guide/TicketTransfers.md, docs/guide/TwoStepVerification.md, docs/guide/YourData.md
@@ -82,7 +79,7 @@ Informational (no action needed):
 
 ## Proposed for review
 
-Pending — items 1–8 above delivered inline; awaiting Peter's answers.
+None — all candidates resolved this sweep ("fix all", applied above).
 
 ## Skipped (errors)
 

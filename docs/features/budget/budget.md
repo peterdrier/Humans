@@ -249,7 +249,7 @@ Outbound invoices to members/barrios:
 
 ### V1d: Ticketing Budget Projection — IMPLEMENTED (#284)
 - **Ticketing group** auto-created on budget year creation (`IsTicketingGroup = true`)
-  - Contains four auto-created categories: Ticket Revenue, Processing Fees, VAT Liability, Donations
+  - Contains two auto-created categories: Ticket Revenue and Processing Fees (the VAT Liability and Donations categories from the original spec were never scaffolded)
   - `TicketingProjection` entity (1:1 with BudgetGroup) stores configurable parameters:
     Start Date, Event Date, Initial Sales Count, Daily Sales Rate, Avg Ticket Price, VAT Rate,
     Stripe Fee %, Stripe Fixed Fee, TicketTailor Fee %

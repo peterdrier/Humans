@@ -86,7 +86,7 @@ Members sign in using their Google account, which provides their primary email a
 - Only verified emails can be selected
 - If user has a verified @nobodies.team email, it's auto-selected and locked
 - Default is OAuth email (GoogleEmail = null on User)
-- Change takes effect on next Google sync cycle
+- Change takes effect on next Google sync cycle; admins can apply it sooner via the per-human **Re-run Google Sync** action (`POST /Google/Human/{id}/RerunSync`) or by requeueing failed sync-outbox events from `/Google/SyncOutbox`
 - Profile/Emails page shows "Google Services Email" card
 
 ### US-11.7: Admin Provisions @nobodies.team Account
