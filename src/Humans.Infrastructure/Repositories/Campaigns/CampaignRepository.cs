@@ -132,7 +132,7 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
         return await ctx.CampaignCodes
             .Where(c => c.CampaignId == campaignId
                 && !ctx.CampaignGrants.Any(g => g.CampaignCodeId == c.Id))
-            .OrderBy(c => c.ImportOrder)
+            .OrderBy(c => c.ImportOrder) // arch:db-sort-ok top-N available-code allocation selector (Take)
             .Take(limit)
             .ToListAsync(ct);
     }
@@ -304,7 +304,7 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
 
             var grant = unredeemed
                 .Where(g => string.Equals(g.Code.Code, redemption.Code, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(g => g.Campaign.CreatedAt)
+                .OrderByDescending(g => g.Campaign.CreatedAt) // arch:db-sort-ok newest-campaign grant selector (FirstOrDefault)
                 .FirstOrDefault();
 
             if (grant is null)

@@ -505,14 +505,14 @@ internal sealed partial class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampSettings
             .AsNoTracking()
-            .OrderBy(s => s.Id)
+            .OrderBy(s => s.Id) // arch:db-sort-ok deterministic camp-settings selector by identity
             .FirstOrDefaultAsync(ct);
     }
 
     public async Task SetPublicYearAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         settings.PublicYear = year;
         await ctx.SaveChangesAsync(ct);
     }
@@ -529,7 +529,7 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         if (settings.OpenSeasons.Contains(year))
         {
             return false;
@@ -543,7 +543,7 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task<bool> CloseSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         if (!settings.OpenSeasons.Remove(year))
         {
             return false;
