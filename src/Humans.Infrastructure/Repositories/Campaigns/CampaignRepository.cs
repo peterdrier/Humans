@@ -59,7 +59,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(c => c.Codes)
             .Include(c => c.Grants)
             .AsSplitQuery()
-            .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(ct);
     }
 

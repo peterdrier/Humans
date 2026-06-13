@@ -9,7 +9,6 @@
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#3
-src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#4
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#2
