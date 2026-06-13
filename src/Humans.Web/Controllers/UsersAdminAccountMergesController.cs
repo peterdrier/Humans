@@ -41,7 +41,7 @@ public class UsersAdminAccountMergesController(
 
         var rows = new List<AccountMergeRowViewModel>();
 
-        foreach (var r in requests)
+        foreach (var r in requests.OrderBy(r => r.CreatedAt))
         {
             rows.Add(new AccountMergeRowViewModel
             {

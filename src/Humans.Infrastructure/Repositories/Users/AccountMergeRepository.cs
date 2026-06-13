@@ -21,7 +21,6 @@ internal sealed class AccountMergeRepository(IDbContextFactory<HumansDbContext> 
         return await ctx.AccountMergeRequests
             .AsNoTracking()
             .Where(r => r.Status == AccountMergeRequestStatus.Pending)
-            .OrderBy(r => r.CreatedAt)
             .ToListAsync(ct);
     }
 

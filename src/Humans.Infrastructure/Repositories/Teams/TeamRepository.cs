@@ -546,7 +546,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
             .Where(d => d.TeamId == teamId)
-            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name)
             .AsNoTracking()
             .ToListAsync(ct);
     }
