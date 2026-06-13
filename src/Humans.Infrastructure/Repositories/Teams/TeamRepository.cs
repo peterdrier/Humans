@@ -1178,7 +1178,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             .Include(tm => tm.RoleAssignments)
                 .ThenInclude(tra => tra.TeamRoleDefinition)
             .Where(tm => tm.UserId == userId)
-            .OrderByDescending(tm => tm.JoinedAt)
             .ToListAsync(ct);
     }
 
@@ -1190,7 +1189,6 @@ internal sealed class TeamRepository(IDbContextFactory<HumansDbContext> factory)
             .AsNoTracking()
             .Include(tjr => tjr.Team)
             .Where(tjr => tjr.UserId == userId)
-            .OrderByDescending(tjr => tjr.RequestedAt)
             .ToListAsync(ct);
     }
 

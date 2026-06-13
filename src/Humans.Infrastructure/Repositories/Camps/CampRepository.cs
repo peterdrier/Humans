@@ -245,7 +245,7 @@ internal sealed partial class CampRepository : ICampRepository
         return await ctx.CampSeasons
             .AsNoTracking()
             .Where(s => s.CampId == campId)
-            .OrderByDescending(s => s.Year)
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok latest-season selector by identity (FirstOrDefault)
             .FirstOrDefaultAsync(ct);
     }
 

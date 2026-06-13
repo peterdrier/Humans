@@ -15,17 +15,13 @@ src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#3
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#4
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#5
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#3
