@@ -56,7 +56,7 @@ Constraint shaping the design (shared with [active-user-metrics](../active-user-
 
 Three new types, no DB schema:
 
-- `IClientStatsTracker` (Application) — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`. Impl `ClientStatsTracker` (Infrastructure, singleton): `ConcurrentDictionary` tallies for OS / browser / device / bots / resolution.
+- `IClientStatsTracker` (Application) — `RecordPageView(string? ua)`, `RecordResolution(int w, int h)`, `GetSnapshot()`, `RecordError(ClientErrorEntry)`, `GetErrorsSnapshot(int count)`. Impl `ClientStatsTracker` (Infrastructure, singleton): `ConcurrentDictionary` tallies for OS / browser / device / bots / resolution, plus a rolling 1000-entry `ConcurrentQueue` for error responses (see [http-errors.md](http-errors.md)).
 - `IHttpStatusTracker` (Application) — `Total`, `GetCounts()`. Impl `HttpStatusTracker` (Infrastructure, singleton + `IHostedService`).
 - `UserAgentClassifier` (Infrastructure, static) — maps a UA to coarse `(Os, Browser, Device, BotName?)` via `MyCSharp.HttpUserAgentParser`. `BotName` is non-null only for recognised crawlers; OS/Browser/Device still collapse to `"Bot"` so the main device-type table stays bounded.
 
@@ -71,6 +71,16 @@ response produced → ClientStatsMiddleware (after UseAuthorization)
                                                        failed POSTs, re-executed
                                                        error pages)
   → classify UA → bump OS / browser / device counts
+```
+
+**Error-response buffer** (feeds `/Debug/HttpErrors`):
+```
+response produced → ClientStatsMiddleware
+  → if status > 399 (or aborted → 499), and not a status-code-page re-execute
+  → record ClientErrorEntry (timestamp, code, method, URL, IP, user, UA)
+  → tracker.RecordError → enqueue in 1000-entry rolling buffer
+  (429s: rate limiter's OnRejected callback records via ClientStatsMiddleware.BuildEntry
+   before this middleware runs)
 ```
 
 **Resolution beacon:**

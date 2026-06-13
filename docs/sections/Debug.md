@@ -24,6 +24,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
 | `/Debug/Logs` | GET | Admin | In-memory warning/error log buffer; optional `minLevel` query param filters to `Warning`, `Error`, or `Fatal` |
+| `/Debug/HttpErrors` | GET | Admin | Rolling buffer of the last 1000 error responses (status > 399); per-request detail with timestamp, code, method, URL, IP, user, and classified client label |
 | `/Debug/Configuration` | GET | Admin | Auto-discovered configuration status |
 | `/Debug/DbVersion` | GET | Anonymous | Migration status JSON for deployment tooling |
 | `/Debug/DbStats` | GET | Admin | Query statistics |
@@ -32,6 +33,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 | `/Debug/CacheStats/Reset` | POST | Admin | Reset cache statistics |
 | `/Debug/ClientStats` | GET | Admin | Browser/device/status-code telemetry |
 | `/Debug/FormatGallery` | GET | Admin | Date/time formatting reference |
+| `/Debug/Translations` | GET | Admin | Localisation string reference gallery |
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
@@ -57,7 +59,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 
 ## Triggers
 
-The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views) and a `MeterListener` over the ASP.NET Core hosting meter (status codes). The only write trigger is `ClearHangfireLocks`, an explicit maintenance POST.
+The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views; error responses for the `/Debug/HttpErrors` buffer) and a `MeterListener` over the ASP.NET Core hosting meter (status codes). 429s are recorded via the rate limiter's `OnRejected` callback rather than `ClientStatsMiddleware` (the limiter rejects before the middleware runs). The only write trigger is `ClearHangfireLocks`, an explicit maintenance POST.
 
 ## Cross-Section Dependencies
 

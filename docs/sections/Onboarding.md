@@ -98,12 +98,14 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 ## Cross-Section Dependencies
 
-After the nobodies-collective#584 narrowing, `OnboardingService` injects only what its onboarding-proper methods (clear / flag / reject / set-pending) need:
+After the nobodies-collective#584 narrowing, `OnboardingService` injects only what its onboarding-proper methods need:
 
 - **Profiles:** `IUserService` — profile reads, review-queue reads, profile mutations (clear/flag consent check, reject signup). The Profile caching decorator handles `FullProfile` + nav/notification cache invalidation.
 - **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
 - **Governance:** `IApplicationDecisionService` — pending-application lookup (review queue). Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag no longer sync.
+- **Legal & Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
+- **Lifecycle:** `IHumanLifecycleService` — used by `GetNextUnsignedConsentAsync` to self-heal a consent-suspended user who is already compliant (nothing left to sign after the required set shrank).
 - **Notifications / Email:** `IEmailService.SendAsync` (with `IEmailMessageFactory.SignupRejected`), `INotificationService` (`ProfileRejected`, `ConsentReviewNeeded` dispatch). `INotificationInboxService` moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
 - **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + review-queue snapshots), `ILogger`.
 

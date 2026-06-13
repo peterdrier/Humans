@@ -42,7 +42,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Google/SyncSettings` — per-service sync mode (Admin only).
-- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
+- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
 - `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
@@ -92,6 +92,7 @@ See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked. The feedback API key is set here and enables the in-app feedback submission flow described in [Feedback](Feedback.md).
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
+- **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
 - **Hangfire dashboard** (`/hangfire`) is Admin-only for inspecting and re-queueing jobs.

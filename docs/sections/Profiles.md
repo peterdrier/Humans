@@ -208,7 +208,7 @@ Defaults are created lazily by `CommunicationPreferenceService` on first read. A
 
 **Table:** `volunteer_history_entries`
 
-Sub-aggregate of Profile — no separate service. Written through `IProfileService.SaveCVEntriesAsync`; read via `FullProfile.CVEntries`.
+Sub-aggregate of Profile — no separate service. Written through `IProfileEditorService.SaveProfileAsync` (which calls `IUserService.SaveProfileVolunteerHistoryAsync`); read via `FullProfile.CVEntries`.
 
 | Property | Type | Notes |
 |----------|------|-------|

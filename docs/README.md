@@ -22,6 +22,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Cantina Weekly Roster](features/cantina/daily-roster.md) | Printable per-week roster (and CSV) of who is on site, with dietary preferences, allergies, and intolerances for cantina meal planning |
 | [City Planning](features/city-planning/city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
 | [Client Stats (Debug)](features/debug/client-stats.md) | `/Debug/ClientStats` screen showing, since process start, the OS / browser / device-type mix of visitors, their screen-resolution distribution, and HTTP response status-code tallies — all in-memory, no DB |
+| [HTTP Errors (Debug)](features/debug/http-errors.md) | `/Debug/HttpErrors` screen showing the last 1000 error responses (status > 399) with per-request detail: when, code, method, URL, IP, authenticated user, and classified User-Agent — all in-memory, no DB |
 | [Email Flag Violations — Admin & Self Remediation](features/email/email-flag-violations-remediation.md) | Recovery surface for stuck `UserEmail` IsGoogle/IsPrimary duplicates with admin scan page and self-service clear actions |
 | [Feature 21: Email Outbox](features/email/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
 | [`[ExpiresOn]` — Hard removal deadlines](features/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
