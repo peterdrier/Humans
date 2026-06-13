@@ -81,8 +81,8 @@ themes:
       (IEventViewInvalidator — kept for open issue #719; delete-vs-keep is
       Peter's call). None are sweep-mechanical. The HUM0028 ratchet correctly
       blocks NEW invalidators; existing ones are deliberate ordering-sensitive
-      seams. Recommend rotation skips this theme (like the nav-strip theme)
-      pending Peter's decision on #719 and on whether to keep cycling.
+      seams. Peter 2026-06-13: LEAVE in rotation (re-check periodically, do not
+      flag as skip); KEEP IEventViewInvalidator as the #719 placeholder.
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
@@ -106,8 +106,8 @@ themes:
       reach 0. remaining bumped 12->20 to match the detect; treat it as the
       irreducible legit floor, not a backlog. PARKED — re-check only if a new
       rendering caller of User.DisplayName appears (the analyzer will flag it).
-      Open question for Peter: refine the detect to exclude the legit floor, or
-      drop this theme from rotation.
+      Peter 2026-06-13: LEAVE parked in the ledger; the [Obsolete] warning
+      independently guards against new misuse.
   - id: cs0618-pragma-nav-reads
     title: Pragma-wrapped CS0618 cross-section nav reads
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
@@ -152,10 +152,11 @@ themes:
       These were intentionally NOT touched by the autonomous sweep: moving a
       repo OrderBy up changes ordering for ALL consumers and needs UI
       verification — do them in a focused reviewed PR, not a light sweep.
-      SPECIAL CASE (needs Peter): TicketRepository has a sortBy/sortDesc
-      parameterized sort helper (~12 sites, the doc's named anti-pattern) that
-      is genuinely required at the SQL boundary for the paged sortable admin
-      grids — pagination-vs-rule tension, an architectural decision not a mark.
+      SPECIAL CASE — TicketRepository sortBy/sortDesc parameterized sort helper
+      (~12 sites, the doc's named anti-pattern). Peter 2026-06-13 ruled this REAL
+      DEBT, not a pagination exception: it stays in the baseline and needs the
+      paged-grid sort redesigned (server-side pagination currently forces the
+      sort to the DB) — a dedicated effort, NOT a db-sort-ok mark.
   - id: build-warnings-misc
     title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
     detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"

@@ -88,9 +88,13 @@ dodges). No EF drift gate needed — comment-only repository edits, no model cha
 - No themes retired (no enforcer-guarded theme hit 0); no new themes (staleness check clean:
   grandfathered ids HUM0024/0028/0031 and baselines 21/71 all matched the ledger).
 
-## Open questions for Peter
+## Resolved with Peter (2026-06-13)
 
-1. `IEventViewInvalidator` — delete the speculative #719 hook now (YAGNI) or keep it?
-2. HUM0028 invalidators — mark design-blocked/skip-in-rotation (like nav-strip), or keep cycling?
-3. HUM_USER_DISPLAYNAME — refine the detect to exclude the legit floor, or drop from rotation?
-4. TicketRepository `sortBy`/`sortDesc` — accept as a pagination exception (mark), or redesign the paged-grid sort?
+1. `IEventViewInvalidator` — **KEEP** as the #719 placeholder.
+2. HUM0028 invalidators — **LEAVE in rotation** (re-check periodically; do not flag as skip).
+3. HUM_USER_DISPLAYNAME — **LEAVE parked** in the ledger; the `[Obsolete]` warning guards new misuse.
+4. TicketRepository `sortBy`/`sortDesc` — **REAL DEBT**, not a pagination exception: stays in the baseline, needs the paged-grid sort redesigned (separate effort).
+
+## Follow-up authorized
+
+Peter authorized doing the genuine `baseline-display-sort` moves interactively (reforge caller-tracing per method, sort relocated to the presentation layer, build+test). Tracked as additional commits on this branch.
