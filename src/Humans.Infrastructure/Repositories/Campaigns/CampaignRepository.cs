@@ -159,7 +159,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(g => g.Code)
             .Where(g => g.UserId == userId
                 && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed))
-            .OrderByDescending(g => g.AssignedAt)
             .ToListAsync(ct);
     }
 
@@ -172,7 +171,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(g => g.Campaign)
             .Include(g => g.Code)
             .Where(g => g.UserId == userId)
-            .OrderByDescending(g => g.AssignedAt)
             .ToListAsync(ct);
     }
 

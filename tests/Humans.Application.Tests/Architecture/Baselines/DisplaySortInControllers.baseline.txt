@@ -7,13 +7,9 @@
 # When the test reports new violations, fix the code — do not add lines to silence it.
 
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#2
-src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#1
-src/Humans.Infrastructure/Repositories/Camps/CampRepository.Roles.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#2

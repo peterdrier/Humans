@@ -166,7 +166,7 @@
                                     <span class="text-muted">&mdash;</span>
                                 }
                             </text>;
-                        var grantsTable = TableModel.For(Model.CampaignGrants)
+                        var grantsTable = TableModel.For(Model.CampaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
                             .Column(Localizer["Profile_Campaign"].Value, g => g.CampaignTitle)
                             .Column(Localizer["Profile_Code"].Value, g => g.Code)
                             .Column(Localizer["Profile_Assigned"].Value, g => g.AssignedAt, c => c.Date())

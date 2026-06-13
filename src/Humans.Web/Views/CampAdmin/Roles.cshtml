@@ -63,7 +63,7 @@
                 </button>
             </form>
         </text>;
-        var activeTable = TableModel.For(Model.Active)
+        var activeTable = TableModel.For(Model.Active.OrderBy(r => r.SortOrder).ThenBy(r => r.Name).ToList())
             .Column("Sort", r => r.SortOrder)
             .Template("Name", activeNameCell)
             .Column("Slots", r => r.SlotCount, c => c.End())
@@ -93,7 +93,7 @@
                 </button>
             </form>
         </text>;
-    var deactivatedTable = TableModel.For(Model.Deactivated)
+    var deactivatedTable = TableModel.For(Model.Deactivated.OrderBy(r => r.SortOrder).ThenBy(r => r.Name).ToList())
         .RowCss(_ => "text-muted")
         .Column("Sort", r => r.SortOrder)
         .Template("Name", deactivatedNameCell)
