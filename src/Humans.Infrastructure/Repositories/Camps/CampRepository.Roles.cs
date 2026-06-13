@@ -13,7 +13,7 @@ internal sealed partial class CampRepository
         var query = ctx.CampRoleDefinitions.AsNoTracking().AsQueryable();
         if (!includeDeactivated)
             query = query.Where(d => d.DeactivatedAt == null);
-        return await query.ToListAsync(ct);
+        return await query.OrderBy(d => d.SortOrder).ThenBy(d => d.Name).ToListAsync(ct);
     }
 
     public async Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
