@@ -137,6 +137,14 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
 
     /// <summary>
+    /// Stamps <c>User.LastLoginAt = now</c> after a successful sign-in (any
+    /// method: OAuth, magic link, gate terminal) and refreshes the cached
+    /// UserInfo. The single owner of the login-stamp rule — sign-in flows must
+    /// not write <c>LastLoginAt</c> directly. No-op if the user does not exist.
+    /// </summary>
+    Task RecordLoginAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
     /// <paramref name="eligibleAfter"/> is the post-event hold date when the

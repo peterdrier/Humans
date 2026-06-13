@@ -343,8 +343,16 @@ public class SystemTeamSyncJob(
     public Task SyncMembershipForUserAsync(
         Guid userId,
         SystemTeamType teamType,
-        CancellationToken cancellationToken = default) =>
-        teamType switch
+        CancellationToken cancellationToken = default)
+    {
+        // Several callers invoke this from inside their own mutation — e.g.
+        // TeamService.AssignToRoleAsync runs within CachingTeamService's delegate,
+        // before the decorator invalidates — so the cached team set still shows
+        // pre-mutation roles. The mutation is already committed; drop the cache so
+        // the eligibility reads below see the post-mutation state.
+        teamService.InvalidateActiveTeamsCache();
+
+        return teamType switch
         {
             SystemTeamType.Volunteers => SyncVolunteersMembershipForUserAsync(userId, cancellationToken),
             SystemTeamType.Coordinators => SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken),
@@ -355,6 +363,7 @@ public class SystemTeamSyncJob(
             SystemTeamType.BarrioLeads => SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(teamType), teamType, "System team does not support per-user sync.")
         };
+    }
 
     /// <summary>
     /// Syncs Volunteers team membership for a single user. Call this after approving

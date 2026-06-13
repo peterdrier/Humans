@@ -111,8 +111,7 @@ public class AccountController(
         var existingUser = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
         if (existingUser is not null)
         {
-            existingUser.LastLoginAt = clock.GetCurrentInstant();
-            await userManager.UpdateAsync(existingUser);
+            await userService.RecordLoginAsync(existingUser.Id);
             await TryReconcileOAuthIdentityAsync(existingUser.Id, info);
         }
 
@@ -135,8 +134,7 @@ public class AccountController(
         var addLinkResult = await userManager.AddLoginAsync(currentUser, info);
         if (addLinkResult.Succeeded)
         {
-            currentUser.LastLoginAt = clock.GetCurrentInstant();
-            await userManager.UpdateAsync(currentUser);
+            await userService.RecordLoginAsync(currentUser.Id);
 
             if (!string.IsNullOrEmpty(email))
                 await TryReconcileOAuthIdentityAsync(currentUser.Id, info);
@@ -196,8 +194,7 @@ public class AccountController(
                 return null;
             }
 
-            activeTarget.LastLoginAt = clock.GetCurrentInstant();
-            await userManager.UpdateAsync(activeTarget);
+            await userService.RecordLoginAsync(activeTarget.Id);
             await signInManager.SignInAsync(activeTarget, isPersistent: false);
             await TryReconcileOAuthIdentityAsync(activeTarget.Id, info);
 
@@ -231,8 +228,7 @@ public class AccountController(
             var linkResult = await userManager.AddLoginAsync(existingByEmail, info);
             if (linkResult.Succeeded)
             {
-                existingByEmail.LastLoginAt = clock.GetCurrentInstant();
-                await userManager.UpdateAsync(existingByEmail);
+                await userService.RecordLoginAsync(existingByEmail.Id);
                 await TryReconcileOAuthIdentityAsync(existingByEmail.Id, info);
 
                 await signInManager.SignInAsync(existingByEmail, isPersistent: false);
@@ -470,8 +466,7 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
-        user.LastLoginAt = clock.GetCurrentInstant();
-        await userManager.UpdateAsync(user);
+        await userService.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: false);
         logger.LogInformation("User {UserId} logged in via magic link", user.Id);
@@ -595,8 +590,7 @@ public class AccountController(
 
         gateThrottle.Reset(source);
 
-        user.LastLoginAt = clock.GetCurrentInstant();
-        await userManager.UpdateAsync(user);
+        await userService.RecordLoginAsync(user.Id);
 
         await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("Gate terminal signed in");

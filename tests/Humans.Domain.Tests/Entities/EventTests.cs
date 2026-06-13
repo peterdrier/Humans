@@ -78,6 +78,65 @@ public class EventTests
             .WithMessage($"Cannot withdraw event in {source} state");
     }
 
+    [HumansFact]
+    public void Withdraw_CampEventInDraft_Throws()
+    {
+        // Camp (barrio) events have no Draft stage — the asymmetry the
+        // controllers used to encode is now owned by the entity (E2-E4).
+        var guideEvent = CreateEvent(EventStatus.Draft);
+        guideEvent.CampId = Guid.NewGuid();
+
+        var action = () => guideEvent.Withdraw(_clock);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("Cannot withdraw event in Draft state");
+    }
+
+    [HumansTheory]
+    [InlineData(EventStatus.Draft, false, true)]
+    [InlineData(EventStatus.Draft, true, false)]   // camp events have no Draft stage
+    [InlineData(EventStatus.Pending, false, true)]
+    [InlineData(EventStatus.Pending, true, true)]
+    [InlineData(EventStatus.Rejected, false, true)]
+    [InlineData(EventStatus.Rejected, true, true)]
+    [InlineData(EventStatus.ResubmitRequested, false, true)]
+    [InlineData(EventStatus.ResubmitRequested, true, true)]
+    [InlineData(EventStatus.Approved, false, false)]
+    [InlineData(EventStatus.Withdrawn, false, false)]
+    public void IsEditableBySubmitter_CoversStatusAndCampAsymmetry(
+        EventStatus status, bool isCampEvent, bool expected)
+    {
+        Event.IsEditableBySubmitter(status, isCampEvent).Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(EventStatus.Draft, false, true)]
+    [InlineData(EventStatus.Draft, true, false)]   // camp events have no Draft stage
+    [InlineData(EventStatus.Pending, false, true)]
+    [InlineData(EventStatus.Pending, true, true)]
+    [InlineData(EventStatus.Approved, false, true)]
+    [InlineData(EventStatus.Approved, true, true)]
+    [InlineData(EventStatus.Rejected, false, false)]
+    [InlineData(EventStatus.Withdrawn, false, false)]
+    public void IsWithdrawableBySubmitter_CoversStatusAndCampAsymmetry(
+        EventStatus status, bool isCampEvent, bool expected)
+    {
+        Event.IsWithdrawableBySubmitter(status, isCampEvent).Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(true, 90, 1440)]
+    [InlineData(false, 90, 90)]
+    public void ResolveAllDaySchedule_AllDayMeansMidnightStartFullDay(
+        bool isAllDay, int requestedMinutes, int expectedMinutes)
+    {
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            isAllDay, new TimeSpan(14, 30, 0), requestedMinutes);
+
+        durationMinutes.Should().Be(expectedMinutes);
+        startTime.Should().Be(isAllDay ? TimeSpan.Zero : new TimeSpan(14, 30, 0));
+    }
+
     [HumansTheory]
     [InlineData(EventModerationActionType.Approved, EventStatus.Approved)]
     [InlineData(EventModerationActionType.Rejected, EventStatus.Rejected)]

@@ -85,8 +85,8 @@ public class EventsController(
                     DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
                     PriorityRank = e.PriorityRank,
-                    CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
-                    CanWithdraw = e.Status is EventStatus.Pending or EventStatus.Approved
+                    CanEdit = e.CanEdit,
+                    CanWithdraw = e.CanWithdraw
                 }).ToList()
             });
         }
@@ -118,8 +118,8 @@ public class EventsController(
                     StartAt = ToLocalDateTime(e.StartAt, tz),
                     DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
-                    CanEdit = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested,
-                    CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending or EventStatus.Approved
+                    CanEdit = e.CanEdit,
+                    CanWithdraw = e.CanWithdraw
                 }).ToList()
             },
             Barrios = barrioBlocks
@@ -168,8 +168,8 @@ public class EventsController(
         }
 
         var tz = GetTimeZone(eventSettings);
-        var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
-        var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            model.IsAllDay, model.StartTime, model.DurationMinutes);
 
         var guideEvent = new Event
         {
@@ -223,7 +223,7 @@ public class EventsController(
         if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
             return Forbid();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!guideEvent.CanBeEditedBySubmitter)
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -249,7 +249,7 @@ public class EventsController(
         model.VenueId = guideEvent.GuideSharedVenueId ?? Guid.Empty;
         model.StartDate = localStart.Date;
         model.StartTime = localStart.TimeOfDay;
-        model.IsAllDay = guideEvent.DurationMinutes == 1440;
+        model.IsAllDay = guideEvent.IsAllDay;
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
         model.Host = guideEvent.Host;
@@ -277,7 +277,7 @@ public class EventsController(
         if (guideEvent.SubmitterUserId != user.Id && !RoleChecks.IsEventsAdmin(User))
             return Forbid();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!guideEvent.CanBeEditedBySubmitter)
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -301,8 +301,8 @@ public class EventsController(
         }
 
         var tz = GetTimeZone(eventSettings);
-        var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
-        var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            model.IsAllDay, model.StartTime, model.DurationMinutes);
 
         guideEvent.Title = model.Title;
         guideEvent.Description = model.Description;
@@ -343,7 +343,7 @@ public class EventsController(
         var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Approved))
+        if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -419,20 +419,10 @@ public class EventsController(
         }).OrderBy(i => i.StartInstant).ToList();
 
         // Detect time conflicts
-        for (var i = 0; i < scheduleItems.Count; i++)
+        foreach (var index in EventConflictDetector.FindConflictingIndexes(
+                     scheduleItems, i => i.StartInstant, i => i.DurationMinutes))
         {
-            for (var j = i + 1; j < scheduleItems.Count; j++)
-            {
-                var a = scheduleItems[i];
-                var b = scheduleItems[j];
-                var aEnd = a.StartInstant.Plus(Duration.FromMinutes(a.DurationMinutes));
-                var bEnd = b.StartInstant.Plus(Duration.FromMinutes(b.DurationMinutes));
-                if (a.StartInstant < bEnd && b.StartInstant < aEnd)
-                {
-                    a.HasConflict = true;
-                    b.HasConflict = true;
-                }
-            }
+            scheduleItems[index].HasConflict = true;
         }
 
         var model = new ScheduleViewModel
@@ -750,7 +740,7 @@ public class EventsController(
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!guideEvent.CanBeEditedBySubmitter)
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -796,7 +786,7 @@ public class EventsController(
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
+        if (!guideEvent.CanBeEditedBySubmitter)
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -860,7 +850,7 @@ public class EventsController(
         var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Approved))
+        if (!guideEvent.CanBeWithdrawnBySubmitter)
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(MySubmissions));
