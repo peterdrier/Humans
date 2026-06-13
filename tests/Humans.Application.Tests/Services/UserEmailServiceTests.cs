@@ -1218,10 +1218,43 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_UnverifiedRow_SkipsVerifiedFloorCheck()
+    public async Task UnlinkAsync_UnverifiedRow_NoOtherVerifiedEmail_ThrowsAndMutatesNothing()
     {
-        // An unverified linked row was never a sign-in method — unlinking it can't
-        // lock anyone out, so it succeeds even when no other verified email exists.
+        // An unverified row can still carry the user's only OAuth login (reachable via
+        // AddUserEmailAsync IsVerified=false and the provider backfill). OAuth sign-in
+        // resolves off the AspNetUserLogins entry, not the row's IsVerified flag, so
+        // removing this login with no other verified email locks the user out — the
+        // floor check must apply regardless of the unlinked row's verified state.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "pending@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-P",
+            IsVerified = false,
+        };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([row]));
+
+        var act = async () => await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>().WithMessage("*last verified sign-in method*");
+        await _userManager.DidNotReceive().RemoveLoginAsync(
+            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _repository.DidNotReceive().RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_UnverifiedRow_OtherVerifiedEmailRemains_Succeeds()
+    {
+        // The floor check is about what REMAINS, not what's removed: unlinking an
+        // unverified linked row is fine as long as another verified email keeps the
+        // user able to sign in. No over-blocking of the normal case.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -1236,14 +1269,17 @@ public class UserEmailServiceTests
         var user = new User { Id = userId };
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([
+                row,
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "verified@example.com", IsVerified = true },
+            ]));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.RemoveLoginAsync(user, "Google", "sub-P")
             .Returns(IdentityResult.Success);
 
         var result = await _service.UnlinkAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        // No verified row remains anywhere, yet the unlink succeeds — the floor
-        // check applies only to verified rows.
         result.Should().BeTrue();
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
     }

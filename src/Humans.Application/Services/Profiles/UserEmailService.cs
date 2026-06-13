@@ -850,18 +850,22 @@ public sealed class UserEmailService(
             return false;
 
         // Auth-method invariant: at least one verified email must remain after unlink —
-        // otherwise a programmatic unlink locks the user out of sign-in entirely.
-        // Checked before RemoveLoginAsync so a refusal mutates nothing.
-        if (row.IsVerified)
+        // otherwise a programmatic unlink locks the user out of sign-in entirely (magic
+        // link also requires a verified address). This runs regardless of whether the
+        // row being unlinked is itself verified: an unverified row can still carry the
+        // user's only OAuth login — that state is reachable via AddUserEmailAsync with
+        // IsVerified=false and via the provider backfill, which tags existing (possibly
+        // unverified) rows with Provider/ProviderKey — and OAuth sign-in resolves off
+        // the AspNetUserLogins entry, not the row's IsVerified flag. Removing that login
+        // locks the user out just the same. Checked before RemoveLoginAsync so a refusal
+        // mutates nothing.
+        var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
+        var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
+        if (verifiedRemaining == 0)
         {
-            var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
-            var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
-            if (verifiedRemaining == 0)
-            {
-                throw new ValidationException(
-                    "Cannot unlink your last verified sign-in method. Add another verified " +
-                    "email first so you can still sign in.");
-            }
+            throw new ValidationException(
+                "Cannot unlink your last verified sign-in method. Add another verified " +
+                "email first so you can still sign in.");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
