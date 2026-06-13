@@ -104,7 +104,6 @@ public static class AccessMatrixDefinitions
             [
                 Feature("Dashboard & stats", "Board", A),
                 Feature("Audit log", "Board", A),
-                Feature("Member data export", "Board", A),
             ]
         },
 
