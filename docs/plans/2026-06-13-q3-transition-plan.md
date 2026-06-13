@@ -308,6 +308,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Scanner | vertical | — | — | — | — | — |
 | Shifts | vertical | — | — | — | — | — |
 | Store | vertical | — | — | — | — | — |
+| Survey | vertical | — | — | — | — | — |
 | Teams | vertical | — | — | — | — | — |
 | Tickets | vertical | — | — | — | — | — |
 | Users | **shared contract** | — | — | — | — | — |
