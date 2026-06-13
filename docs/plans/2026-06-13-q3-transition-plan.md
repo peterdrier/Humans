@@ -1,7 +1,7 @@
 # Q3-2026 Transition Plan — Gates, Map, Destination
 
 > **Status:** Plan of record for Q3-2026 (post-event quarter). Drafted 2026-06-13 from the
-> 45 open `schedule:q3-2026` issues plus Peter's program framing. Companion to the
+> 46 open `schedule:q3-2026` issues plus Peter's program framing. Companion to the
 > [Q3 UI refactoring plan](2026-06-11-q3-ui-refactoring-plan.md) (which is one workstream
 > inside this one, tracked as nobodies-collective/Humans#861).
 >
@@ -25,7 +25,7 @@ only access state (#834, #844 kill the classifier and `ProfileState`); the warme
 The destructive-DB moratorium lifts in Q3. Everything queued behind it — cross-section FK
 constraints, dead columns, legacy tables — is cleaned up in one careful pass. On the clean
 schema, each section gets its own EF DbContext and migration history (#858), tables are
-renamed to section prefixes, and finally **each section becomes its own C# project**:
+renamed to section prefixes, and finally **each section becomes its own C# project** (#866):
 database layer, repositories, services, and controllers in one vertical assembly.
 
 - Cross-section dependencies become assembly references; circular dependencies become
@@ -180,7 +180,7 @@ The section's slice of #858, peel-off style.
 - [ ] EF-InMemory package gone; analyzer guard keeps it gone (#806).
 - [ ] Hard rules and `design-rules.md` rewritten for the new physics (Peter).
 - [ ] Debt ledger drained of architectural themes; remaining entries are deliberate.
-- [ ] The 45 Q3 issues closed or explicitly re-scheduled with reasons.
+- [ ] The 46 Q3 issues closed or explicitly re-scheduled with reasons.
 
 ## Parallelism model
 
@@ -239,7 +239,7 @@ flowchart LR
     end
     subgraph W4 ["G4/G5 — split"]
         i858["#858 per-section DbContexts"]
-        split["Project split (unfiled)"]
+        split["#866 project split"]
     end
     cross["Cross-gate guarantees:<br/>#832 auth matrix · #853 erasure<br/>#848 resx parity · #845 restore"]
     W0 --> W1 --> W2 --> W3 --> W4
@@ -345,15 +345,14 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 | Section dependency DAG audit | G0 | Reforge-driven; lists shared-contract exceptions; pure analysis |
 | Demolition inventory (dead cols/tables, cross-section FKs, table renames) | G0→G2 | The G2 work-item generator |
 | Table rename pass (section prefixes) | G2 | Before G4 baselines; check raw SQL/backup tooling refs |
-| Per-section project split program | G5 | Views via application parts/RCL design decision; DI composition root; shared-contracts placement |
 | `/section-gate` skill | G0 | Audit mode first |
 
-## Every Q3 issue accounted for (45/45)
+## Every Q3 issue accounted for (46/46)
 
 | Theme | Issues |
 |-------|--------|
 | Identity & state | 515, 516, 603, 507, 828, 834, 844 |
-| Section architecture | 858, 580, 799, 751, 809, 864, 857 |
+| Section architecture | 858, 866, 580, 799, 751, 809, 864, 857 |
 | Verification | 761 (tracker for 764/766/767), 764, 766, 767, 806, 705, 508, 832, 694, 853, 848, 845 |
 | Storage | 528, 529, 530, 187 |
 | Great Cleanup (destructive) | 787, 774 (+ 528, 507, 603, 844, 516 listed above; + unfiled FK/rename) |
