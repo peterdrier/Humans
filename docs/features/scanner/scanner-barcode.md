@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/ScannerController.cs
+  src/Humans.Web/Views/Scanner/Barcode.cshtml
+  src/Humans.Web/Views/Scanner/Tickets.cshtml
+  src/Humans.Web/wwwroot/js/scanner/barcode.js
+  src/Humans.Web/wwwroot/js/scanner/tickets.js
+-->
+<!-- freshness:flag-on-change
+  Camera barcode decode (BarcodeDetector + ZXing fallback), /Scanner/Barcode tool, /Scanner/Tickets camera pane + manual entry field, and the never-a-check-in-tool invariant — review when ScannerController, the scanner views, or the scanner JS change.
+-->
+
 # Scanner — Barcode (Phase 1)
 
 ## Business Context
@@ -42,7 +53,7 @@ Phase 1 stands up the section (`Scanner`) as its own top-level nav area because 
 
 ### In Scope (Phase 1)
 
-- New `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `TicketAdminBoardOrAdmin`.
+- New `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketAdmin/Board/Admin roles or the shared gate-terminal account).
 - Nav entry in the main nav.
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.

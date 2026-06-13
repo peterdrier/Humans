@@ -5,7 +5,7 @@
 **Mode:** diff (batch)
 **Changed files in range:** 218
 **Dirty entries processed:** 9 mechanical + 63 editorial = 72
-**Outcome:** 16 docs updated · 5 husks pruned (3,874 lines) · rest verified clean · 0 errors
+**Outcome:** 20 docs updated (incl. 4 in the Phase 7.5 follow-up) · 5 husks pruned (3,874 lines) · rest verified clean · 0 errors
 
 The bulk of the 218-file range was **mass i18n view localization** (#987 — ~50 views + enums + 3,700 translations) and a **controller-audit compliance refactor** (#994–997 — business logic pushed controller→service, some action moves). Neither changes documented behavior, so most triggered editorial docs verified clean. The genuine behaviour changes were Camps early-entry consumption (#985), the Debug HttpErrors buffer (#993), Scanner manual barcode entry (#986), the gate-terminal onsite roster (#991), and the Profile unlink lockout guard (#1000).
 
@@ -49,15 +49,16 @@ Total **3,874 lines = 4.9% of docs/** (under the 7% cap). No inbound references 
 **None.** Every candidate was a fully-executed plan whose durable decisions already live in the corresponding `docs/sections/*.md` (verified against current source — e.g. the section-align-teams cross-section findings, `AuditLogRepository`/`HumansMetricsService` reading `Teams`, are gone from the code).
 
 ## Flagged for human review
-- **Unmarked editorial docs (no `freshness:triggers` → sweep blind spots, not reviewed):** `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `features/scanner/{gate-terminal-login, scanner-barcode}.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md`. Two are **likely stale**: `features/scanner/gate-terminal-login.md` (#991 gate-terminal onsite roster) and `features/scanner/scanner-barcode.md` (#986 manual barcode) describe behaviour that changed this range but did not fire. → raised inline.
+- **Unmarked editorial docs (no `freshness:triggers` → sweep blind spots, not reviewed):** `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md` (15 docs). A future sweep should add `freshness:triggers` to these so they get scoped review.
+  - **RESOLVED this sweep:** `features/scanner/gate-terminal-login.md` and `features/scanner/scanner-barcode.md` — both gained tailored `freshness:triggers` + `freshness:flag-on-change` markers and were drift-fixed for #991/#986 (see Phase 7.5 below).
 
 ## Proposed for review
 None — all candidates resolved this sweep.
 
-## Questions (raised inline with Peter)
-1. **sections/Users.md** caching note lists sign-in `LastLoginAt` among Identity-machinery writes caught by `UserInfoSaveChangesInterceptor` — but it now routes through `IUserService.RecordLoginAsync` → `repo.SetLastLoginAsync` (a service/repo write, not `UserManager.UpdateAsync`). Reword the attribution, or leave (the interceptor likely still fires on the repo's context)?
-2. **guide/Expenses.md** says "confirm once you've sent it — that moves those reports to SEPA sent," but generating the batch is one operation (`GenerateSepaPayoutAsync`) that flips reports to `SepaSent` immediately. Tighten the user-facing wording? (`sections/Expenses.md` is accurate.)
-3. Add `freshness:triggers` to `features/scanner/gate-terminal-login.md` + `scanner-barcode.md` and drift-fix them for #986/#991 now, or defer to a dedicated pass?
+## Phase 7.5 — review items (raised inline, Peter said "fix all 3")
+1. **sections/Users.md** — reworded the §caching note: sign-in `LastLoginAt` is now described as a normal `IUserService` write-through (`CachingUserService.RecordLoginAsync` → `RefreshEntryAsync`, verified) rather than a `UserManager.UpdateAsync` Identity-machinery write; the interceptor clause now notes it is registered on both the scoped and factory contexts and backstops the writes that bypass the service surface. **Resolved (fixed).**
+2. **guide/Expenses.md** — reworded the SEPA paragraph: generating the batch downloads the file and flips reports to `SepaSent` in one step (no separate post-send confirm), with a parenthetical that the actual bank payment is external. **Resolved (fixed).**
+3. **features/scanner/gate-terminal-login.md** + **scanner-barcode.md** — added tailored `freshness:triggers` + `freshness:flag-on-change` markers (all referenced paths verified to exist) and drift-fixed: gate-terminal-login now documents `ScannerAccess` covering `TicketsOnsiteAdminController` (onsite roster reachable from the door, #991); scanner-barcode's stale `TicketAdminBoardOrAdmin` policy reference updated to `ScannerAccess` (#986). **Resolved (fixed).**
 
 ## Skipped (errors)
 None.

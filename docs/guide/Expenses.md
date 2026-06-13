@@ -86,7 +86,7 @@ Go to `/Expenses/Review` to see every report waiting for Finance. Open one to ch
 
 ### Pay people (SEPA batch)
 
-From the Finance review page, generate a bank-transfer file covering all the approved, unpaid reports, and confirm once you've sent it — that moves those reports to **SEPA sent**. The system then checks for confirmation periodically and marks each one **Paid** once the money has gone.
+From the Finance review page, generate a bank-transfer file covering all the approved, unpaid reports — this downloads the file and moves those reports to **SEPA sent** in one step. (Take that file to your bank to actually pay people.) The system then checks for confirmation periodically and marks each one **Paid** once the money has gone.
 
 If the SEPA file download fails before it's been sent, you can **reopen** an individual report from its detail page — this moves it back to **Approved** so it's picked up in the next batch you generate.
 

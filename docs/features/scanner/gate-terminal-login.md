@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Controllers/TicketsOnsiteAdminController.cs
+  src/Humans.Web/Views/Account/GateLogin.cshtml
+  src/Humans.Web/Views/Tickets/Admin/Gate.cshtml
+  src/Humans.Web/Infrastructure/GateTerminalAccountSeeder.cs
+  src/Humans.Web/Infrastructure/GateLoginThrottle.cs
+  src/Humans.Domain/Constants/SystemUserIds.cs
+-->
+<!-- freshness:flag-on-change
+  Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateLogin, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateLoginThrottle, onsite-roster access) — review when any of these change.
+-->
+
 # Scanner — Gate Terminal Login
 
 ## Business Context
@@ -55,9 +68,11 @@ the design dialogue: "no heroics on the hard read-only bit").
   this connection — possibly someone else on it), what to do (wait, use the correct
   password, ask the ticket team), and that the account itself is NOT locked and
   admins can verify/change the password under Tickets → Gate terminal.
-- **Authorization:** scanner routes moved from `TicketAdminBoardOrAdmin` to the new
-  `ScannerAccess` policy — TicketAdmin/Board/Admin roles OR `NameIdentifier ==
-  SystemUserIds.GateTerminal`. Deliberately NOT a `RoleNames` constant: role
+- **Authorization:** scanner routes and the onsite-roster route moved from
+  `TicketAdminBoardOrAdmin` to the new `ScannerAccess` policy — TicketAdmin/Board/Admin
+  roles OR `NameIdentifier == SystemUserIds.GateTerminal`. This means the gate terminal
+  can also reach `/Tickets/Admin/Onsite` (the who's-onsite roster) directly from the
+  door, without any separate login. Deliberately NOT a `RoleNames` constant: role
   constants flow into the role-assignment UI and dev personas via the test-enforced
   `RoleNames.All`.
 - **Audit:** every password set/rotate writes `AuditAction.GateTerminalPasswordSet`
@@ -69,10 +84,11 @@ the design dialogue: "no heroics on the hard read-only bit").
 ### In Scope
 
 - `SystemUserIds` constants + GUID block `0004` reservation.
-- `ScannerAccess` policy; `ScannerController` switched to it.
+- `ScannerAccess` policy; `ScannerController` and `TicketsOnsiteAdminController` switched to it.
 - `/Account/GateLogin` (localized, all six locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
 - `GateTerminalAccountSeeder` (Web infrastructure, registered in all environments).
+- Onsite roster (`/Tickets/Admin/Onsite`) accessible to the gate terminal via `ScannerAccess`.
 
 ### Out of Scope
 
