@@ -230,7 +230,7 @@ internal sealed partial class ShiftRepository
             .Include(s => s.Shift)
                 .ThenInclude(sh => sh.Rota)
                     .ThenInclude(r => r.EventSettings)
-            .OrderBy(s => s.CreatedAt)
+            .OrderBy(s => s.CreatedAt) // arch:db-sort-ok orphan-scan deterministic order (maintenance job, no UI)
             .ToListAsync(ct);
     }
 

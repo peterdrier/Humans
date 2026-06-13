@@ -46,7 +46,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EventSettings
             .AsNoTracking()
-            .OrderBy(e => e.Id)
+            .OrderBy(e => e.Id) // arch:db-sort-ok deterministic active-settings selector by identity (FirstOrDefault)
             .FirstOrDefaultAsync(e => e.IsActive, ct);
     }
 

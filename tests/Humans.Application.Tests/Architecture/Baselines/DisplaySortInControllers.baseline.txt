@@ -34,8 +34,6 @@ src/Humans.Infrastructure/Repositories/Events/EventRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Events/EventRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Users/AccountMergeRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.ContactFields.cs:OrderBy#1
@@ -44,8 +42,6 @@ src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:OrderByD
 src/Humans.Infrastructure/Repositories/Users/UserRepository.Profiles.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.UserEmails.cs:ThenBy#1
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Signups.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#1
