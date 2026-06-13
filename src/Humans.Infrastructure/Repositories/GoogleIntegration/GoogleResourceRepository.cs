@@ -30,7 +30,6 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext
         return await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => r.TeamId == teamId && r.IsActive)
-            .OrderBy(r => r.ProvisionedAt)
             .ToListAsync(ct);
     }
 
@@ -47,7 +46,6 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext
         var rows = await ctx.GoogleResources
             .AsNoTracking()
             .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
-            .OrderBy(r => r.ProvisionedAt)
             .ToListAsync(ct);
 
         var result = new Dictionary<Guid, IReadOnlyList<GoogleResource>>(teamIds.Count);

@@ -111,7 +111,7 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var categories = await ctx.EventCategories
-            .OrderBy(c => c.DisplayOrder)
+            .OrderBy(c => c.DisplayOrder) // arch:db-sort-ok reorder neighbor lookup (swap operation, not display)
             .ThenBy(c => c.Name)
             .ToListAsync(ct);
         var index = categories.FindIndex(c => c.Id == id);
@@ -188,7 +188,7 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var venues = await ctx.EventVenues
-            .OrderBy(v => v.DisplayOrder)
+            .OrderBy(v => v.DisplayOrder) // arch:db-sort-ok reorder neighbor lookup (swap operation, not display)
             .ThenBy(v => v.Name)
             .ToListAsync(ct);
         var index = venues.FindIndex(v => v.Id == id);

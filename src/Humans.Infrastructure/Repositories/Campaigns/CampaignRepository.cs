@@ -328,7 +328,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(cg => cg.UserId == userId)
-            .OrderByDescending(cg => cg.AssignedAt)
             .Select(cg => new GrantExportRow(
                 cg.Campaign.Title,
                 cg.Code.Code,
