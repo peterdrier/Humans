@@ -95,6 +95,26 @@ dodges). No EF drift gate needed — comment-only repository edits, no model cha
 3. HUM_USER_DISPLAYNAME — **LEAVE parked** in the ledger; the `[Obsolete]` warning guards new misuse.
 4. TicketRepository `sortBy`/`sortDesc` — **REAL DEBT**, not a pagination exception: stays in the baseline, needs the paged-grid sort redesigned (separate effort).
 
-## Follow-up authorized
+## Follow-up — interactive display-sort moves (Peter-directed, 2026-06-13)
 
-Peter authorized doing the genuine `baseline-display-sort` moves interactively (reforge caller-tracing per method, sort relocated to the presentation layer, build+test). Tracked as additional commits on this branch.
+Peter corrected the initial framing: a flagged repo sort whose consumers don't
+render an order-sensitive user-facing list is **wasted work — delete it**, not
+relocate it; only genuinely user-facing lists get sorted **in the rendering
+control** (view / VM assembly). Worked the whole theme down with reforge
+caller-tracing per method. **`baseline-display-sort`: 71 → 25.**
+
+- **Deleted** (~17 — no consumer renders the order): UserEmails/ContactFields/
+  ProfileLanguages reads, GoogleResource sync lists, GDPR-export paths
+  (AccountMerge/Campaign/CampRoles/Team), and the 4 camp-image `Include` sorts
+  that `CampService` + the view already re-sort.
+- **Marked db-sort-ok** (non-display): Camp latest-season selector, Event
+  category/venue reorder-neighbor lookups, plus the earlier 16.
+- **Moved repo → view**: campaign admin list + user/admin grant tables + camp
+  role-definition tables (client-sortable `TableModel`, default order set in the
+  view), team role-definition lists (`@foreach` by SortOrder), account-merge
+  review queue (controller VM assembly, oldest-first).
+- **Remaining 25** = 18 Ticket `sortBy`/`sortDesc` real-debt (stays, needs the
+  paged-grid sort redesigned) + 7 harder view-moves deferred (tracking view not
+  located; multi-consumer camps list; camp-role-assignment view; team roster —
+  its slot DTO lacks `SortOrder` so the view can't re-sort without a DTO field).
+  Each verified green per cluster; full suite was green before the moves began.

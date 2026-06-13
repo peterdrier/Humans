@@ -133,30 +133,34 @@ themes:
     detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
     last_swept: 2026-06-13
-    remaining: 55
+    remaining: 25
     notes: >-
-      Move OrderBy to controllers / view-model assembly per
-      memory/architecture/display-sort-in-controllers.md. Pagination
-      tie-breakers, top-N, and identity-ordered streams stay, marked
+      Rule: repos don't sort for display. Per Peter (2026-06-13) the fix for a
+      flagged repo sort is, in order: (1) if no consumer renders an
+      order-sensitive user-facing list -> DELETE it (the sort is wasted work);
+      (2) if it IS user-facing (list/dropdown/grid) -> sort in the rendering
+      control (view / view-model assembly), NOT the repo. Genuine non-display
+      sorts (selectors, top-N/Take, FIFO batches, identity/chronological
+      streams, Skip/Take pagination, reorder-neighbor lookups) stay, marked
       `// arch:db-sort-ok`. Remove fixed lines from the baseline.
-      Sweep 2026-06-13 removed 16 exception-category FALSE POSITIVES (sorts
-      that were never display debt): selectors (FirstOrDefault/Take), FIFO
-      job/outbox batches, deterministic singleton-config picks by identity,
-      consent/message-thread chronological streams, and SQL ordering required
-      for Skip/Take pagination — across Consent, EmailOutbox, RoleAssignment,
-      Feedback, Application, GoogleSyncOutbox, ShiftMgmt/Signups, Camp(Settings),
-      Campaign. The remaining ~55 are GENUINE display sorts needing caller-side
-      moves (e.g. UserRepository emails/profiles/contactfields by
-      Email/Proficiency/DisplayOrder, Team/Camp departments+roles by
-      SortOrder/Name, Camp images by SortOrder, Event/Ticket/Campaign lists).
-      These were intentionally NOT touched by the autonomous sweep: moving a
-      repo OrderBy up changes ordering for ALL consumers and needs UI
-      verification — do them in a focused reviewed PR, not a light sweep.
-      SPECIAL CASE — TicketRepository sortBy/sortDesc parameterized sort helper
-      (~12 sites, the doc's named anti-pattern). Peter 2026-06-13 ruled this REAL
-      DEBT, not a pagination exception: it stays in the baseline and needs the
-      paged-grid sort redesigned (server-side pagination currently forces the
-      sort to the DB) — a dedicated effort, NOT a db-sort-ok mark.
+      Burned 71 -> 25 on 2026-06-13: ~16 false-positive exceptions marked;
+      ~17 unused/redundant repo sorts DELETED (UserEmails/ContactFields/
+      Languages, GoogleResource sync, GDPR-export paths, camp-image Includes
+      that the service+view already re-sort, AccountMerge); view-moves done for
+      campaign admin list + user/admin grant tables + camp role-definition
+      tables (client-sortable TableModel default set in the view) and team
+      role-definition lists + account-merge review queue (@foreach / controller
+      VM assembly).
+      REMAINING 25 = 18 Ticket sortBy/sortDesc real-debt (Peter ruled: stays,
+      needs the paged-grid sort redesigned — server-side pagination forces it
+      to the DB; NOT a db-sort-ok mark) + 7 harder view-moves deferred:
+      CampaignRepository.GetCodeTrackingSummaries (tracking view not yet
+      located), CampRepository.GetCampsWithLeadsForYear season-name sort
+      (multi-consumer camps list), CampRepository.Roles.GetAssignmentsForSeason
+      (2), and TeamRepository.GetAllRoleDefinitions roster sort (3 — the roster
+      slot DTO TeamRosterSlotSummary lacks SortOrder, so the view can't re-sort
+      without a DTO field added). These need their views located / a DTO field
+      and are a focused follow-up.
   - id: build-warnings-misc
     title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
     detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"
