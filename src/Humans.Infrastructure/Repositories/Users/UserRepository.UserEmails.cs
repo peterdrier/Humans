@@ -15,8 +15,6 @@ internal sealed partial class UserRepository
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.UserId == userId)
-            .OrderBy(e => e.Email)
-            .ThenBy(e => e.CreatedAt)
             .ToListAsync(ct);
     }
 
