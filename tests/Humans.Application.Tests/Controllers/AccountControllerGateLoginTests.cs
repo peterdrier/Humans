@@ -35,6 +35,7 @@ public class AccountControllerGateLoginTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 10, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly GateLoginThrottle _throttle;
     private readonly AccountController _controller;
 
@@ -68,7 +69,7 @@ public class AccountControllerGateLoginTests
 
         _controller = new AccountController(
             _signInManager,
-            Substitute.For<IUserService>(),
+            _userService,
             _userManager,
             _clock,
             NullLogger<AccountController>.Instance,
@@ -228,8 +229,8 @@ public class AccountControllerGateLoginTests
 
         // Persistent session so the laptop survives restarts without an admin.
         await _signInManager.Received(1).SignInAsync(_gateUser, true, Arg.Any<string?>());
-        _gateUser.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
-        await _userManager.Received(1).UpdateAsync(_gateUser);
+        // Login stamp goes through the single owner of the rule (A1).
+        await _userService.Received(1).RecordLoginAsync(_gateUser.Id, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

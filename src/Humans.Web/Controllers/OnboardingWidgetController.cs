@@ -2,12 +2,10 @@ using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Web.Models.OnboardingWidget;
 using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +29,6 @@ public class OnboardingWidgetController(
     IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
-    IHumanLifecycleService humanLifecycle,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -185,35 +182,19 @@ public class OnboardingWidgetController(
         if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
-        var rows = await consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
-        var unsigned = rows.Where(r => !r.Signed).ToList();
-        if (unsigned.Count == 0)
-        {
-            // Self-heal a consent-suspended user who is already compliant (nothing left to sign —
-            // e.g. the required set shrank after they were suspended). Without this they loop
-            // Status → Consents → Index → Home → Status forever, since the un-suspend otherwise only
-            // fires on a fresh signature. No-op for any non-Suspended user.
-            await humanLifecycle.RestoreConsentSuspensionAsync(userId, ct);
+        var step = await onboardingService.GetNextUnsignedConsentAsync(userId, ct);
+        if (step.Next is null)
             return RedirectToAction(nameof(Index));
-        }
-
-        var next = unsigned[0];
-        var detail = await consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
-        if (detail is null)
-            return RedirectToAction(nameof(Index));
-
-        var totalRequired = rows.Count;
-        var currentIndex = totalRequired - unsigned.Count + 1;
 
         var vm = new ConsentsStepViewModel
         {
-            DocumentVersionId = detail.DocumentVersionId,
-            DocumentName = detail.DocumentName,
-            VersionNumber = detail.VersionNumber,
-            Content = new Dictionary<string, string>(detail.Content, StringComparer.Ordinal),
-            ChangesSummary = detail.ChangesSummary,
-            CurrentIndex = currentIndex,
-            TotalRequired = totalRequired,
+            DocumentVersionId = step.Next.DocumentVersionId,
+            DocumentName = step.Next.DocumentName,
+            VersionNumber = step.Next.VersionNumber,
+            Content = new Dictionary<string, string>(step.Next.Content, StringComparer.Ordinal),
+            ChangesSummary = step.Next.ChangesSummary,
+            CurrentIndex = step.CurrentIndex,
+            TotalRequired = step.TotalRequired,
         };
         return View(vm);
     }

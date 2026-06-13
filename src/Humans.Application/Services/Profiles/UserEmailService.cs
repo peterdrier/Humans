@@ -849,6 +849,21 @@ public sealed class UserEmailService(
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
             return false;
 
+        // Auth-method invariant: at least one verified email must remain after unlink —
+        // otherwise a programmatic unlink locks the user out of sign-in entirely.
+        // Checked before RemoveLoginAsync so a refusal mutates nothing.
+        if (row.IsVerified)
+        {
+            var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
+            var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
+            if (verifiedRemaining == 0)
+            {
+                throw new ValidationException(
+                    "Cannot unlink your last verified sign-in method. Add another verified " +
+                    "email first so you can still sign in.");
+            }
+        }
+
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null) return false;
 

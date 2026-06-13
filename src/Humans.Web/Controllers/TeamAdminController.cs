@@ -29,7 +29,6 @@ public class TeamAdminController(
     IUserServiceRead userService,
     IEmailProvisioningService emailProvisioningService,
     IAuthorizationService authorizationService,
-    ISystemTeamSync systemTeamSyncJob,
     ILogger<TeamAdminController> logger,
     IStringLocalizer<SharedResource> localizer,
     ITicketServiceRead tickets)
@@ -222,11 +221,7 @@ public class TeamAdminController(
 
         try
         {
-            var wasCoordinator = await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
-            if (wasCoordinator)
-            {
-                await systemTeamSyncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators);
-            }
+            await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
             SetSuccess(localizer["TeamAdmin_MemberRemoved"].Value);
         }
         catch (InvalidOperationException ex)
@@ -824,7 +819,6 @@ public class TeamAdminController(
         try
         {
             await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
-            await systemTeamSyncJob.SyncMembershipForUserAsync(model.UserId, SystemTeamType.Coordinators);
             SetSuccess("Member assigned to role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
@@ -848,17 +842,7 @@ public class TeamAdminController(
 
         try
         {
-            var teamInfo = await _teamService.GetTeamAsync(team.Id);
-            var member = teamInfo?.Members.FirstOrDefault(m => m.TeamMemberId == memberId);
-            var userId = member?.UserId;
-
             await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
-
-            if (userId.HasValue)
-            {
-                await systemTeamSyncJob.SyncMembershipForUserAsync(userId.Value, SystemTeamType.Coordinators);
-            }
-
             SetSuccess("Member unassigned from role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)

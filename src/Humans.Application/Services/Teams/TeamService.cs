@@ -1190,7 +1190,7 @@ public sealed class TeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public async Task<bool> RemoveMemberAsync(
+    public async Task RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
@@ -1242,7 +1242,10 @@ public sealed class TeamService(
             logger.LogError(ex, "Failed to dispatch TeamMemberRemoved notification for user {UserId} team {TeamId}", userId, teamId);
         }
 
-        return wasCoordinator;
+        // Removing a coordinator changes their Coordinators system-team eligibility —
+        // reconcile as part of the mutation, not as a caller-remembered follow-up.
+        if (wasCoordinator)
+            await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
     }
 
     public async Task<TeamMember> AddMemberToTeamAsync(
@@ -1733,6 +1736,10 @@ public sealed class TeamService(
 
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
+        // Role assignment can change Coordinators system-team eligibility (management
+        // roles promote) — reconcile as part of the mutation.
+        await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
+
         return assignment;
     }
 
@@ -1759,6 +1766,9 @@ public sealed class TeamService(
 
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
+        // Losing a (possibly management) role can change Coordinators system-team
+        // eligibility — reconcile as part of the mutation.
+        await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
     }
 
     public Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(

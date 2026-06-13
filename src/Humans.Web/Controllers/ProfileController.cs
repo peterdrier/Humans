@@ -953,19 +953,11 @@ public class ProfileController(
         }
 
         // Route via UnlinkAsync to keep AspNetUserLogins + user_emails in sync. Orphan logins fall back to RemoveLoginAsync.
+        // The last-verified-sign-in-method invariant is enforced inside UnlinkAsync (ValidationException).
         var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         var matching = rawRows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        // Auth-method invariant: at least one verified UserEmail must remain after unlink (server source-of-truth).
-        var verifiedTotal = rawRows.Count(r => r.IsVerified);
-        var verifiedAfter = verifiedTotal - (matching?.IsVerified == true ? 1 : 0);
-        if (verifiedAfter < 1)
-        {
-            SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-            return RedirectToAction(nameof(Emails));
-        }
 
         try
         {
@@ -976,7 +968,15 @@ public class ProfileController(
             }
             else
             {
-                // Orphan login: no UserEmail row — drop directly.
+                // Orphan login: no UserEmail row — drop directly. UnlinkAsync's guard can't
+                // see this branch, so enforce the auth-method invariant here: with zero
+                // verified emails this login may be the user's only sign-in path.
+                if (rawRows.Count(r => r.IsVerified) < 1)
+                {
+                    SetError(localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+                    return RedirectToAction(nameof(Emails));
+                }
+
                 var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
                 if (removeLogin.Succeeded)
                 {
@@ -1002,7 +1002,11 @@ public class ProfileController(
             logger.LogWarning(
                 "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
                 provider, user.Id, ex.Message);
-            SetError(ex.Message);
+            // UnlinkAsync's auth-method guard is the only ValidationException source here —
+            // surface it via the localized string instead of the English exception message.
+            SetError(ex is ValidationException
+                ? localizer["LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value
+                : ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));

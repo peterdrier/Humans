@@ -58,6 +58,33 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     // ==========================================================================
+    // SetLastLoginAsync (A1 — single owner of the login stamp)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SetLastLoginAsync_StampsLastLoginAt_AndReturnsTrue()
+    {
+        var user = await SeedUserAsync();
+        var at = _clock.GetCurrentInstant();
+
+        var result = await _repo.SetLastLoginAsync(user.Id, at, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeTrue();
+        _dbContext.ChangeTracker.Clear();
+        var reloaded = await _dbContext.Users.SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.LastLoginAt.Should().Be(at);
+    }
+
+    [HumansFact]
+    public async Task SetLastLoginAsync_ReturnsFalse_WhenUserDoesNotExist()
+    {
+        var result = await _repo.SetLastLoginAsync(
+            Guid.NewGuid(), _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeFalse();
+    }
+
+    // ==========================================================================
     // TrySetGoogleEmailAsync
     // ==========================================================================
 

@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
@@ -26,6 +28,8 @@ public sealed class OnboardingServiceTests
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
+    private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
+    private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
 
@@ -38,6 +42,8 @@ public sealed class OnboardingServiceTests
             _notificationService,
             _syncJob,
             _membershipCalculator,
+            _consentService,
+            _humanLifecycle,
             _auditLogService,
             NullLogger<OnboardingService>.Instance);
 
@@ -206,6 +212,66 @@ public sealed class OnboardingServiceTests
 
         data.Flagged.Should().NotContain(u => u.Id == rejectedFlaggedId);
         data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);
+    }
+
+    // --- GetNextUnsignedConsentAsync (widget consent step, G8/G9) ---
+
+    [HumansFact]
+    public async Task GetNextUnsignedConsent_AllSigned_SelfHealsSuspensionAndReturnsNullNext()
+    {
+        var userId = Guid.NewGuid();
+        _consentService.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns([
+                new RequiredConsentRow(Guid.NewGuid(), "Code of Conduct", Signed: true),
+                new RequiredConsentRow(Guid.NewGuid(), "Privacy Policy", Signed: true),
+            ]);
+
+        var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Next.Should().BeNull();
+        await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetNextUnsignedConsent_UnsignedRemaining_ReturnsDetailWithOrdinals_WithoutHealing()
+    {
+        var userId = Guid.NewGuid();
+        var unsignedVersionId = Guid.NewGuid();
+        _consentService.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns([
+                new RequiredConsentRow(unsignedVersionId, "Code of Conduct", Signed: false),
+                new RequiredConsentRow(Guid.NewGuid(), "Privacy Policy", Signed: true),
+            ]);
+        var detail = new ConsentReviewDetail(
+            unsignedVersionId, "Code of Conduct", "2.0",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "content" },
+            Instant.FromUtc(2026, 1, 1, 0, 0), ChangesSummary: null,
+            HasAlreadyConsented: false, ConsentedAt: null, UserFullName: null);
+        _consentService.GetConsentReviewDetailAsync(unsignedVersionId, userId, Arg.Any<CancellationToken>())
+            .Returns(detail);
+
+        var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Next.Should().Be(detail);
+        result.CurrentIndex.Should().Be(2); // 1 of 2 already signed → working on 2 of 2
+        result.TotalRequired.Should().Be(2);
+        await _humanLifecycle.DidNotReceiveWithAnyArgs().RestoreConsentSuspensionAsync(default, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetNextUnsignedConsent_DetailMissing_ReturnsNullNext_WithoutHealing()
+    {
+        var userId = Guid.NewGuid();
+        var unsignedVersionId = Guid.NewGuid();
+        _consentService.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns([new RequiredConsentRow(unsignedVersionId, "Code of Conduct", Signed: false)]);
+        _consentService.GetConsentReviewDetailAsync(unsignedVersionId, userId, Arg.Any<CancellationToken>())
+            .Returns((ConsentReviewDetail?)null);
+
+        var result = await BuildSut().GetNextUnsignedConsentAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Next.Should().BeNull();
+        await _humanLifecycle.DidNotReceiveWithAnyArgs().RestoreConsentSuspensionAsync(default, Arg.Any<CancellationToken>());
     }
 
     private void StubReviewQueueDependencies(IReadOnlyCollection<UserInfo> users)

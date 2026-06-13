@@ -411,9 +411,11 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a member from a team (admin action).
+    /// Removes a member from a team (admin action). When the removed member was a
+    /// coordinator, reconciles their Coordinators system-team membership as part of
+    /// the mutation.
     /// </summary>
-    Task<bool> RemoveMemberAsync(
+    Task RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
@@ -545,14 +547,17 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // ==========================================================================
 
     /// <summary>
-    /// Assigns a team member to the next available slot in a role definition.
+    /// Assigns a team member to the next available slot in a role definition,
+    /// then reconciles the target's Coordinators system-team membership
+    /// (management roles promote).
     /// </summary>
     Task<TeamRoleAssignment> AssignToRoleAsync(
         Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a team member's assignment from a role definition.
+    /// Removes a team member's assignment from a role definition, then
+    /// reconciles the target's Coordinators system-team membership.
     /// </summary>
     Task UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,

@@ -176,7 +176,8 @@ public sealed class CachingCampService(
     public Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default) =>
         WithInnerCampRoleAccess(inner => inner.GetCampMemberStatusAsync(campMemberId, cancellationToken));
 
-    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
+            CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default)
     {
         var camps = await GetCampsForYearAsync(year, ct);
@@ -187,7 +188,10 @@ public sealed class CachingCampService(
                     CampId: camp.Id,
                     CampName: season.Name,
                     CampSlug: camp.Slug,
-                    CampSeasonId: season.Id)))
+                    CampSeasonId: season.Id,
+                    Status: season.Status,
+                    TargetMemberCount: season.MemberCount,
+                    JoinedMemberCount: season.JoinedMemberCount)))
             .ToList();
     }
 

@@ -605,9 +605,10 @@ public class ProfileControllerEmailGridTests
     public async Task UnlinkLinkedAccount_BlocksWhenLastSignInMethod()
     {
         // Auth-method invariant: user has exactly one verified UserEmail row
-        // and that row carries the OAuth tag. Unlinking would remove the row
-        // (via UnlinkAsync) and leave the user with zero verified emails —
-        // no magic-link, no OAuth, no way back in. Must be blocked.
+        // and that row carries the OAuth tag. Unlinking would leave the user
+        // with zero verified emails — no magic-link, no OAuth, no way back in.
+        // The guard lives in UserEmailService.UnlinkAsync (ValidationException);
+        // the controller surfaces it as an error flash and the linkage remains.
         var rowId = Guid.NewGuid();
         const string provider = "Google";
         const string providerKey = "google-sub-only";
@@ -619,15 +620,46 @@ public class ProfileControllerEmailGridTests
             .Returns([
                 Snapshot(_userId, rowId, "only@example.com", isVerified: true, provider, providerKey),
             ]);
+        _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
+            .Returns<bool>(_ => throw new System.ComponentModel.DataAnnotations.ValidationException(
+                "Cannot unlink your last verified sign-in method."));
 
         var result = await _controller.UnlinkLinkedAccount(provider, providerKey, Xunit.TestContext.Current.CancellationToken);
 
-        // Must NOT call UnlinkAsync / RemoveLoginAsync — the action returns
-        // with an error flash and the linkage remains.
-        await _userEmailService.DidNotReceive().UnlinkAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        // The Identity login row must remain untouched — the service refused
+        // before any mutation, and the controller never bypasses it.
+        await _userEmailService.Received(1).UnlinkAsync(
+            _userId, rowId, _userId, Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().RemoveLoginAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
+    }
+
+    [HumansFact]
+    public async Task UnlinkLinkedAccount_BlocksOrphanRemoval_WhenNoVerifiedEmailRemains()
+    {
+        // Orphan branch of the invariant: the login has no UserEmail row, so
+        // UnlinkAsync's service-side guard never runs. With zero verified
+        // emails the orphan login may be the user's only sign-in path — the
+        // controller must refuse before RemoveLoginAsync.
+        const string provider = "Google";
+        const string providerKey = "google-sub-orphan";
+
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo> { new(provider, providerKey, "Google") });
+
+        _userEmailService.GetEntitiesByUserIdAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns([
+                Snapshot(_userId, Guid.NewGuid(), "unverified@example.com", isVerified: false, null, null),
+            ]);
+
+        var result = await _controller.UnlinkLinkedAccount(provider, providerKey, Xunit.TestContext.Current.CancellationToken);
+
+        await _userManager.DidNotReceive().RemoveLoginAsync(
+            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userEmailService.DidNotReceive().UnlinkAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("Emails");
     }

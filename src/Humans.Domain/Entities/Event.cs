@@ -127,6 +127,46 @@ public class Event
     /// </summary>
     public ICollection<EventFavourite> EventFavourites { get; } = new List<EventFavourite>();
 
+    // Schedule encoding
+
+    /// <summary>All-day events are stored as a midnight start + 1440-minute duration.</summary>
+    public const int AllDayDurationMinutes = 1440;
+
+    /// <summary>
+    /// Resolves the form-level "all day" flag into the stored schedule encoding:
+    /// all-day ⇒ midnight start + <see cref="AllDayDurationMinutes"/>.
+    /// </summary>
+    public static (TimeSpan StartTime, int DurationMinutes) ResolveAllDaySchedule(
+        bool isAllDay, TimeSpan startTime, int durationMinutes) =>
+        isAllDay ? (TimeSpan.Zero, AllDayDurationMinutes) : (startTime, durationMinutes);
+
+    /// <summary>True when the stored duration carries the all-day encoding.</summary>
+    public bool IsAllDay => DurationMinutes == AllDayDurationMinutes;
+
+    // Submitter eligibility predicates
+
+    /// <summary>
+    /// Statuses the submitter may edit/resubmit from. Camp (barrio) events have
+    /// no Draft stage; individual events may also be edited while Draft.
+    /// </summary>
+    public static bool IsEditableBySubmitter(EventStatus status, bool isCampEvent) =>
+        status is EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested
+        || (!isCampEvent && status is EventStatus.Draft);
+
+    /// <summary>
+    /// Statuses the submitter may withdraw from. Camp (barrio) events have no
+    /// Draft stage.
+    /// </summary>
+    public static bool IsWithdrawableBySubmitter(EventStatus status, bool isCampEvent) =>
+        status is EventStatus.Pending or EventStatus.Approved
+        || (!isCampEvent && status is EventStatus.Draft);
+
+    /// <inheritdoc cref="IsEditableBySubmitter(EventStatus, bool)"/>
+    public bool CanBeEditedBySubmitter => IsEditableBySubmitter(Status, CampId is not null);
+
+    /// <inheritdoc cref="IsWithdrawableBySubmitter(EventStatus, bool)"/>
+    public bool CanBeWithdrawnBySubmitter => IsWithdrawableBySubmitter(Status, CampId is not null);
+
     // State transition methods
 
     /// <summary>
@@ -144,11 +184,12 @@ public class Event
     }
 
     /// <summary>
-    /// Withdraw the submission. Available from Draft, Pending, or Approved.
+    /// Withdraw the submission. Available from Pending or Approved — plus Draft
+    /// for individual events (camp events have no Draft stage).
     /// </summary>
     public void Withdraw(IClock clock)
     {
-        if (Status is not (EventStatus.Draft or EventStatus.Pending or EventStatus.Approved))
+        if (!CanBeWithdrawnBySubmitter)
             throw new InvalidOperationException($"Cannot withdraw event in {Status} state");
         Status = EventStatus.Withdrawn;
         LastUpdatedAt = clock.GetCurrentInstant();

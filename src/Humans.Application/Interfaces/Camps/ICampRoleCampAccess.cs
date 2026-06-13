@@ -1,3 +1,5 @@
+using Humans.Domain.Enums;
+
 namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
@@ -10,7 +12,13 @@ public interface ICampRoleCampAccess
 
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+    /// <summary>
+    /// One row per camp season participating in <paramref name="year"/>.
+    /// <c>JoinedMemberCount</c> (active members) is only available from the cached
+    /// read model; the uncached implementation returns <c>null</c>.
+    /// </summary>
+    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
+            CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default);
 
     /// <summary>

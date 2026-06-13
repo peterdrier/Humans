@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.Events;
 using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
@@ -72,12 +73,12 @@ public class EventsModerationController(
                 var evt = campEvents.FirstOrDefault(e => e.Id == row.Id);
                 if (evt?.CampId == null) continue;
 
-                var endAt = evt.StartAt.Plus(Duration.FromMinutes(evt.DurationMinutes));
                 row.DuplicateCandidates = allCampEvents
                     .Where(other => other.Id != evt.Id
                                  && other.CampId == evt.CampId
-                                 && other.StartAt < endAt
-                                 && evt.StartAt < other.StartAt.Plus(Duration.FromMinutes(other.DurationMinutes)))
+                                 && EventConflictDetector.Overlaps(
+                                     other.StartAt, other.DurationMinutes,
+                                     evt.StartAt, evt.DurationMinutes))
                     .Select(other => new DuplicateCandidateViewModel
                     {
                         Id = other.Id,
@@ -178,7 +179,7 @@ public class EventsModerationController(
             VenueId = guideEvent.GuideSharedVenueId,
             StartDate = localStart.Date,
             StartTime = localStart.TimeOfDay,
-            IsAllDay = guideEvent.DurationMinutes == 1440,
+            IsAllDay = guideEvent.IsAllDay,
             DurationMinutes = guideEvent.DurationMinutes,
             LocationNote = guideEvent.LocationNote,
             Host = guideEvent.Host,
@@ -304,12 +305,13 @@ public class EventsModerationController(
     // rank; individual events carry a venue and the all-day flag.
     private void ApplyFormToEvent(Event guideEvent, AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
-        var isAllDay = !isCampEvent && model.IsAllDay;
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            !isCampEvent && model.IsAllDay, model.StartTime, model.DurationMinutes);
         guideEvent.Title = model.Title;
         guideEvent.Description = model.Description;
         guideEvent.CategoryId = model.CategoryId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(isAllDay ? TimeSpan.Zero : model.StartTime), tz);
-        guideEvent.DurationMinutes = isAllDay ? 1440 : model.DurationMinutes;
+        guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
+        guideEvent.DurationMinutes = durationMinutes;
         guideEvent.LocationNote = model.LocationNote;
         guideEvent.Host = model.Host;
         guideEvent.IsRecurring = model.IsRecurring;

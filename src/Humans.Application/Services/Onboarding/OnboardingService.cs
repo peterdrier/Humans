@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -24,6 +26,8 @@ public sealed class OnboardingService(
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IMembershipCalculatorRead membershipCalculator,
+    IConsentServiceRead consentService,
+    IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
     ILogger<OnboardingService> logger) : IOnboardingService
 {
@@ -233,6 +237,33 @@ public sealed class OnboardingService(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
 
         return true;
+    }
+
+    // --- Onboarding widget consent step ---
+
+    public async Task<NextConsentStepData> GetNextUnsignedConsentAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var rows = await consentService.GetRequiredConsentRowsForUserAsync(
+            userId, SystemTeamIds.Volunteers, ct);
+        var unsigned = rows.Where(r => !r.Signed).ToList();
+        if (unsigned.Count == 0)
+        {
+            // Self-heal a consent-suspended user who is already compliant (nothing left
+            // to sign — e.g. the required set shrank after they were suspended). Without
+            // this they loop Status → Consents → Index → Home → Status forever, since the
+            // un-suspend otherwise only fires on a fresh signature in SubmitConsentAsync.
+            // No-op for any non-Suspended user.
+            await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
+            return new NextConsentStepData(null, 0, rows.Count);
+        }
+
+        var detail = await consentService.GetConsentReviewDetailAsync(
+            unsigned[0].DocumentVersionId, userId, ct);
+        if (detail is null)
+            return new NextConsentStepData(null, 0, rows.Count);
+
+        return new NextConsentStepData(detail, rows.Count - unsigned.Count + 1, rows.Count);
     }
 
     // --- Helpers ---

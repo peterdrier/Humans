@@ -622,16 +622,15 @@ public sealed class CachingTeamService(
         return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
-    public async Task<bool> RemoveMemberAsync(
+    public async Task RemoveMemberAsync(
         Guid teamId,
         Guid userId,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var result = await WithInner(inner => inner.RemoveMemberAsync(
+        await WithInner(inner => inner.RemoveMemberAsync(
             teamId, userId, actorUserId, cancellationToken));
         InvalidateTeamsCache();
-        return result;
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(

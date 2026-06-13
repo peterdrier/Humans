@@ -66,7 +66,15 @@ public interface IExpenseReportService : IExpenseReportServiceRead, IApplication
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
+    /// <summary>
+    /// One domain operation for the SEPA payout (M2+M3): re-checks Approved
+    /// eligibility on fresh state, builds the pain.001 XML <b>before</b> flipping
+    /// the included reports to <see cref="ExpenseReportStatus.SepaSent"/> — so a
+    /// failure at either step leaves every report Approved and the batch
+    /// regenerable — then flips and audits. Caller authorizes per report and
+    /// passes only the ids it allowed.
+    /// </summary>
+    Task<SepaPayoutResult> GenerateSepaPayoutAsync(
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
         CancellationToken ct = default);
 
@@ -107,6 +115,20 @@ public sealed record ExpenseIbanSaveResult(
     bool Succeeded,
     bool IsValidationError,
     string Message);
+
+/// <summary>Result of <see cref="IExpenseReportService.GenerateSepaPayoutAsync"/>.</summary>
+public sealed record SepaPayoutResult(
+    bool Succeeded,
+    string? ErrorMessage,
+    string? Xml,
+    string? FileName,
+    IReadOnlyList<Guid> FlippedIds)
+{
+    public static SepaPayoutResult Failure(string message) => new(false, message, null, null, []);
+
+    public static SepaPayoutResult Success(string xml, string fileName, IReadOnlyList<Guid> flippedIds) =>
+        new(true, null, xml, fileName, flippedIds);
+}
 
 /// <summary>Round-trip timeline for the submitter, sourced from the Holded creditor balance.</summary>
 public sealed record ExpenseHoldedTimeline(

@@ -53,9 +53,11 @@ public class ExpenseReportServiceHoldedPollingTests
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _holdedFinance,
+            new SepaPaymentFileBuilder(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
-            Options.Create(new TravelReimbursementConfig()));
+            Options.Create(new TravelReimbursementConfig()),
+            Options.Create(new SepaConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

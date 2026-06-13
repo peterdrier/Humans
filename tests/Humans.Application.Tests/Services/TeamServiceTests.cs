@@ -40,6 +40,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
     {
@@ -69,7 +70,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             .With<ITeamService>()
             .With<IRoleAssignmentService>(_roleAssignmentService)
             .With<IEmailService>()
-            .With<ISystemTeamSync>()
+            .With(_systemTeamSync)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_teamResourceService)
@@ -1057,7 +1058,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task RemoveMemberAsync_RegularMember_SetsLeftAtAndReturnsFalse()
+    public async Task RemoveMemberAsync_RegularMember_SetsLeftAt_WithoutCoordinatorSync()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
@@ -1066,16 +1067,17 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var member = SeedTeamMember(team.Id, target.Id);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        wasCoordinator.Should().BeFalse();
         Db.ChangeTracker.Clear();
         var reloaded = await Db.TeamMembers.AsNoTracking().SingleAsync(tm => tm.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.LeftAt.Should().Be(Clock.GetCurrentInstant());
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task RemoveMemberAsync_Coordinator_ReturnsTrue()
+    public async Task RemoveMemberAsync_Coordinator_SyncsCoordinatorsSystemTeam()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -1085,9 +1087,11 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedTeamMember(team.Id, target.Id, TeamMemberRole.Coordinator);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var wasCoordinator = await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+        await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
 
-        wasCoordinator.Should().BeTrue();
+        // The coordinator-eligibility reconcile is part of the mutation (T1).
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            target.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================

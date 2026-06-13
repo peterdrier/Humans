@@ -226,13 +226,15 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
     }
 
-    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
+            CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
         var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
-        // Canonical name lives on CampSeason (per-season), not Camp.
+        // Canonical name lives on CampSeason (per-season), not Camp. Members are not
+        // loaded by this query, so JoinedMemberCount is null on the uncached path.
         return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
-            (c.Id, s.Name, c.Slug, s.Id))).ToList();
+            (c.Id, s.Name, c.Slug, s.Id, s.Status, s.MemberCount, (int?)null))).ToList();
     }
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)

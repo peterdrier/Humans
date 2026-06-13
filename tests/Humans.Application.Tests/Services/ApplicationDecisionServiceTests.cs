@@ -212,6 +212,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_SubmittedApplication_SetsApproved()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
 
         var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Approved", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -225,6 +226,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_SetsTermExpiry()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -240,6 +242,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -272,6 +275,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -286,6 +290,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -299,6 +304,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task ApproveAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -351,6 +357,36 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task ApproveAsync_NoBoardVotes_ReturnsNoVotesWithoutFinalizing()
+    {
+        // The guard lives here (not as a controller pre-check) so it reads the same
+        // state as the mutation — no TOCTOU window between check and finalize.
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+
+        var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NoVotes");
+        Db.ChangeTracker.Clear();
+        var unchanged = await Db.Applications.FirstAsync(a => a.Id == app.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.Status.Should().Be(ApplicationStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task RejectAsync_NoBoardVotes_ReturnsNoVotesWithoutFinalizing()
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+
+        var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NoVotes");
+        Db.ChangeTracker.Clear();
+        var unchanged = await Db.Applications.FirstAsync(a => a.Id == app.Id, Xunit.TestContext.Current.CancellationToken);
+        unchanged.Status.Should().Be(ApplicationStatus.Submitted);
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_NotFound_ReturnsError()
     {
         var result = await _service.ApproveAsync(Guid.NewGuid(), Guid.NewGuid(), null, null, Xunit.TestContext.Current.CancellationToken);
@@ -364,6 +400,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
         var user = new User
         {
             Id = userId,
@@ -393,6 +430,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
         var user = new User
         {
             Id = userId,
@@ -427,6 +465,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBoardVoteAsync(app.Id);
         var user = new User
         {
             Id = userId,
@@ -453,6 +492,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task RejectAsync_SubmittedApplication_SetsRejected()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
 
         var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Not ready", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -488,6 +528,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -499,6 +540,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     public async Task RejectAsync_DoesNotSyncTeams()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        await SeedBoardVoteAsync(app.Id);
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -818,6 +860,20 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     }
 
     // --- Helpers ---
+
+    // Finalize (Approve/Reject) requires at least one board vote (NoVotes guard).
+    private async Task SeedBoardVoteAsync(Guid applicationId)
+    {
+        Db.BoardVotes.Add(new BoardVote
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = applicationId,
+            BoardMemberUserId = Guid.NewGuid(),
+            Vote = VoteChoice.Yay,
+            VotedAt = Clock.GetCurrentInstant()
+        });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+    }
 
     private async Task<MemberApplication> SeedSubmittedApplicationAsync(
         Guid userId,

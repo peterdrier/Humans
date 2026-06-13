@@ -211,6 +211,18 @@ public sealed record EventInfo(
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
     /// <summary>
+    /// Whether the submitter may edit/resubmit this event — single source:
+    /// <see cref="Event.IsEditableBySubmitter"/> (camp events have no Draft stage).
+    /// </summary>
+    public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
+
+    /// <summary>
+    /// Whether the submitter may withdraw this event — single source:
+    /// <see cref="Event.IsWithdrawableBySubmitter"/>.
+    /// </summary>
+    public bool CanWithdraw => Event.IsWithdrawableBySubmitter(Status, CampId is not null);
+
+    /// <summary>
     /// Expands this event into concrete occurrence instants. A non-null
     /// <paramref name="dayOffset"/> narrows a recurring event to the single
     /// occurrence on that day offset (non-recurring events ignore it).

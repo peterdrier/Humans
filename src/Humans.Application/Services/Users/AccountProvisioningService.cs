@@ -123,8 +123,7 @@ public sealed class AccountProvisioningService(
                     User: null);
             }
 
-            existingUser.LastLoginAt = clock.GetCurrentInstant();
-            await userManager.UpdateAsync(existingUser);
+            await userService.RecordLoginAsync(existingUser.Id, ct);
             return new MagicLinkSignupCompletionResult(
                 MagicLinkSignupCompletionOutcome.ExistingUser,
                 existingUser);
