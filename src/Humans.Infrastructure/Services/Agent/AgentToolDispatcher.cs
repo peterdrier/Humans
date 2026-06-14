@@ -18,6 +18,7 @@ namespace Humans.Infrastructure.Services.Agent;
 public sealed class AgentToolDispatcher(
     AgentSectionDocReader sections,
     AgentFeatureSpecReader features,
+    CommunityFaqReader community,
     IAuditViewerService auditViewer,
     IShiftView shiftView,
     IShiftManagementService shiftManagement,
@@ -57,6 +58,14 @@ public sealed class AgentToolDispatcher(
                         return body is null
                             ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}"), IsError: true)
                             : new AnthropicToolResult(call.Id, body, IsError: false);
+                    }
+                case AgentToolNames.FetchCommunityFaq:
+                    {
+                        var topic = args.TryGetProperty("topic", out var t) ? t.GetString() ?? "" : "";
+                        var body = await community.ReadAsync(topic, cancellationToken);
+                        return body is null
+                            ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}"), IsError: true)
+                            : new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false);
                     }
                 case AgentToolNames.GetAuditHistory:
                     {

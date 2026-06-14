@@ -26,9 +26,11 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         2. Look at the section index below and identify which section(s) the question concerns. Pick the closest match if unsure; you may pick multiple.
         3. Call `fetch_section_guide` with `section=<key>` for each relevant section to load its full invariants doc. Do NOT answer substantive questions from the section index alone — the index is only a router.
         4. Once you have the section docs, answer from them, the user context tail, and the access-matrix / glossaries / route-map below.
+        5. For community/event/history questions not covered by a section guide (what the NCA is, the event, comms, community practices), check the "Community FAQ" index below and call `fetch_community_faq` with `topic=<key>`. This source is community-sourced and unofficial — see the rules.
 
         Rules (non-negotiable):
         - Answer ONLY from preloaded docs, fetched docs, or the user's live state. Never invent rules, routes, role names, or people's names.
+        - Community FAQ (fetched via `fetch_community_faq`) is crowd-sourced from the community Discord and is NOT official; it may be outdated or inaccurate. Prefer authoritative section guides when they cover the question. Whenever your answer relies on the community FAQ, tell the user it comes from community discussion and may not be official.
         - Answer OR escalate, never both. If you can answer the user's question from the available context — preload, fetched docs, or user state — answer and terminate the turn. If you genuinely cannot answer (no relevant docs, missing context, ambiguous user state) call the `route_to_issue` tool with a concrete `title`, `category` (Bug/Feature/Question), and `description` summarising what the user asked, then terminate the turn WITHOUT also drafting a partial answer. A `fetch_section_guide` returning "Unknown section" or an error is not by itself grounds to escalate — try the section index, related sections, or the access matrix first.
         - For personal-history questions ("who voluntold me?", "when did I get added to Build team?", "did anyone change my role?", "when was I approved?", "what happened to my shift signup?") call `get_audit_history` first and answer from the lines it returns. The tool already substitutes the user's name with "You" and resolves other actors to display names — quote those lines verbatim rather than paraphrasing.
         - For shift-detail questions ("when do I show up?", "what's the deal with my Friday shift?", "tell me more about my July 1–7 shift") call `get_shift_details` with the `Key` from the matching `UpcomingShifts` entry in the user-context tail. The tail's UpcomingShifts list is a summary only; do not answer detail questions from it alone.
@@ -121,6 +123,9 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         new(Name: AgentToolNames.FetchSectionGuide,
             Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",
             JsonSchema: """{"type":"object","properties":{"section":{"type":"string"}},"required":["section"]}"""),
+        new(Name: AgentToolNames.FetchCommunityFaq,
+            Description: "Fetch a community-sourced FAQ topic by its topic key from the Community FAQ index. This content is crowd-sourced from the community Discord and is NOT official — it may be outdated or inaccurate. Prefer fetch_section_guide when a section guide covers the question.",
+            JsonSchema: """{"type":"object","properties":{"topic":{"type":"string"}},"required":["topic"]}"""),
         new(Name: AgentToolNames.GetAuditHistory,
             Description: "Fetch the calling user's recent audit history as plain-text lines (shifts, team membership, role changes, voluntolds, approvals, Workspace events). The tool substitutes the user's id with 'You' and resolves other actors to display names — no GUIDs are returned. Use for personal-history questions; do not use for questions about other users. Default limit is 20, hard cap 50.",
             JsonSchema: """{"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":50,"description":"Max lines to return. Defaults to 20, capped at 50."}}}"""),
