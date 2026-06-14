@@ -36,6 +36,7 @@ internal static class AgentSectionExtensions
         // so capturing it here is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
+        services.AddSingleton<CommunityFaqReader>();
         services.AddSingleton<IAgentPreloadCorpusBuilder, AgentPreloadCorpusBuilder>();
         services.AddSingleton<IAgentPromptAssembler, AgentPromptAssembler>();
         services.AddSingleton<IAgentAbuseDetector, AgentAbuseDetector>();
@@ -50,6 +51,7 @@ internal static class AgentSectionExtensions
 
         services.AddScoped<AgentConversationRetentionJob>();
         services.AddHostedService<AgentSettingsStoreWarmupHostedService>();
+        services.AddHostedService<AgentPreloadWarmupHostedService>();
 
         // Agent API key — gates GET /api/agent (read-only chat-history review).
         // Bound to its own env var so a leaked feedback/log key cannot read transcripts.
