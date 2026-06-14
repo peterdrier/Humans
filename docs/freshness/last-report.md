@@ -47,14 +47,14 @@ Total **4,480 lines = 5.9% of docs/** (above the 5% soft target, under the 7% ca
 `tech-debt-2026-04-23.md` was **not** pruned: it carries 19 still-open items (header preserves it as a historical record) and so fails the all-`[DONE]` gate.
 
 ## Flagged for human review
-- **Access-matrix coverage gap (informational).** `sections/Auth.md` §"Access Matrix UI" documents the matrix mechanism and names `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as its source, but Auth.md's `freshness:triggers` don't include that file (nor `AccessMatrixViewComponent`). This sweep demonstrated the gap: #1003 edited `AccessMatrixDefinitions.cs` + `SectionHelpContent.cs` with zero doc review. No drift resulted (Auth.md describes the mechanism — "static data, no table" — not the per-feature rows), so this is a future-coverage suggestion, not a broken fact. Raised inline (Phase 7.5).
+- **Access-matrix coverage gap (informational).** `sections/Auth.md` §"Access Matrix UI" documents the matrix mechanism and names `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as its source, but Auth.md's `freshness:triggers` don't include that file (nor `AccessMatrixViewComponent`). This sweep demonstrated the gap: #1003 edited `AccessMatrixDefinitions.cs` + `SectionHelpContent.cs` with zero doc review. No drift resulted (Auth.md describes the mechanism — "static data, no table" — not the per-feature rows), so this was a future-coverage suggestion, not a broken fact. **Resolved this sweep** — both files added to Auth.md's triggers (Phase 7.5).
 - **Unmarked-editorial blind spots persist** (carried from prior sweeps): `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md`. None triggered this sweep; a future sweep should add `freshness:triggers` to scope them.
 
 ## Proposed for review
 None — all prune candidates resolved this sweep (every husk verified all-chaff against source).
 
-## Phase 7.5 — review items (raised inline)
-1. **Access-matrix trigger gap** — add `src/Humans.Web/Models/AccessMatrixDefinitions.cs` (and `src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs`) to `sections/Auth.md`'s `freshness:triggers`, so a future change to the matrix mechanism gets a scoped doc review? Or leave it (the file rarely touches the mechanism)? — _pending Peter_
+## Phase 7.5 — review items (raised inline, Peter said "add it")
+1. **Access-matrix trigger gap** — added `src/Humans.Web/Models/AccessMatrixDefinitions.cs` and `src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs` to `sections/Auth.md`'s `freshness:triggers`, and extended its `flag-on-change` reason to name the access-matrix mechanism (§"Access Matrix UI"). The rendering view (`Views/Shared/Components/AccessMatrix/Default.cshtml`) was deliberately left out — cosmetic view edits shouldn't trigger an Auth.md review. **Resolved (fixed).**
 
 ## Skipped (errors)
 None.

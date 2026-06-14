@@ -10,9 +10,11 @@
   src/Humans.Web/Authorization/RoleChecks.cs
   src/Humans.Web/Authorization/Requirements/**
   src/Humans.Application/Authorization/**
+  src/Humans.Web/Models/AccessMatrixDefinitions.cs
+  src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  Role-assignment temporal invariants, magic-link rate-limit/replay rules, and role-name constants — review when Auth services, role constants, or claims transformation change.
+  Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change.
 -->
 
 # Auth — Section Invariants
