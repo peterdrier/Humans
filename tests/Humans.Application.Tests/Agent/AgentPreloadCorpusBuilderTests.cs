@@ -90,5 +90,8 @@ public class AgentPreloadCorpusBuilderTests
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 }

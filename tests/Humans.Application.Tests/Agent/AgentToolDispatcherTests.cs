@@ -361,6 +361,9 @@ public class AgentToolDispatcherTests
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}");
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     private static Interfaces.Shifts.IShiftView MakeViewFor(

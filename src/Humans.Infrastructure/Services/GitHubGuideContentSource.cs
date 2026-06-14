@@ -52,4 +52,29 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
 
         return System.Text.Encoding.UTF8.GetString(rawBytes);
     }
+
+    public async Task<IReadOnlyList<string>> ListMarkdownStemsAsync(
+        string folderPath, CancellationToken cancellationToken = default)
+    {
+        var settings = _guideSettings.Value;
+        try
+        {
+            var contents = await _client.Repository.Content.GetAllContentsByRef(
+                settings.Owner,
+                settings.Repository,
+                folderPath.TrimEnd('/'),
+                settings.Branch);
+
+            return contents
+                .Where(c => c.Type == ContentType.File &&
+                            c.Name.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Name[..^3]) // strip ".md"
+                .ToList();
+        }
+        catch (NotFoundException)
+        {
+            _logger.LogWarning("Folder not found in GitHub: {FolderPath}", folderPath);
+            return [];
+        }
+    }
 }

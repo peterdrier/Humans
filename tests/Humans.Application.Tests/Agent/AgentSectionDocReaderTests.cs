@@ -103,5 +103,8 @@ public class AgentSectionDocReaderTests
             if (FailWith is not null) throw FailWith;
             return Task.FromResult($"# {fileStem}\n\nBody.");
         }
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 }

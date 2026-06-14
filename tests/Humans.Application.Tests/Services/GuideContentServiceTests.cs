@@ -26,6 +26,9 @@ public class GuideContentServiceTests
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
             GetMarkdownAsync(fileStem, cancellationToken);
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     private sealed class StubRenderer : IGuideRenderer

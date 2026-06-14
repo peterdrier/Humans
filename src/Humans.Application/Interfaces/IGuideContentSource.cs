@@ -20,4 +20,12 @@ public interface IGuideContentSource
     /// that want null-on-miss must catch it explicitly.
     /// </summary>
     Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the markdown file stems (filename without the <c>.md</c> extension) in a folder
+    /// inside the configured Humans repo/branch (e.g. <c>docs/community-kb</c>). Returns an
+    /// empty list when the folder is absent. Used for dynamically-discovered corpora whose
+    /// file set changes without a code change.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default);
 }
