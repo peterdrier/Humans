@@ -179,14 +179,15 @@ The differentiator is the map, and the key realisation is that **computing a rou
 | `GET/POST /Rideshare/Offer` | Create/edit a ride offer. On create, auto-seeds the inverse return leg. | Members (own) |
 | `GET/POST /Rideshare/Request` | Create/edit a ride request. | Members (own) |
 | `GET /Rideshare/Mine` | My offers + requests + interest received/sent. | Members (own) |
-| `GET/POST /Rideshare/Admin` | Set destination + travel windows; statistics dashboard. | Rideshare admin |
+| `GET/POST /Rideshare/Admin` | Set destination + travel windows; admin views (day roster + statistics). | Rideshare admin |
+| `GET /Rideshare/Admin/Day?date=` | Operational day view: every ride *happening* that day — including full and cancelled — with its accepted rider roster. Safety/incident visibility + retrospective. | Rideshare admin |
 | `POST /Rideshare/Interest` | Express interest in a trip or request (creates Pending interest, fires notification). | Members |
 | `POST /Rideshare/Interest/{id}/Accept` · `/Decline` · `/Withdraw` | Lifecycle transitions. | Posting owner (accept/decline) / interest author (withdraw) |
 | `GET /api/rideshare/board?year=&date=&direction=` | FeatureCollection: route lines (offers) + pickup pins (requests) for the day. Mirrors `CityPlanningApiController`. | Members |
 
 ## 9. Lifecycle
 
-**Offer:** `Active` → `Cancelled`. Derives `Full` when seats remaining reaches zero. Seasonal: after the outbound window closes the trip is historical (kept for stats; not shown on the live board).
+**Offer:** `Active` → `Cancelled`. Derives `Full` when seats remaining reaches zero. Seasonal: after the outbound window closes the trip is historical (kept for stats; not shown on the live board). The public board offers only **joinable** rides (Active, seats remaining > 0); once a ride is full or cancelled it drops off the openly-offered board but stays visible to admins in the day view (§12.1).
 
 **Request:** `Active` → `Cancelled`. Derives `Matched`.
 
@@ -215,9 +216,16 @@ These are stated as hard invariants so an implementer cannot "helpfully" weaken 
 - **Driver discretion is absolute.** Accept/decline is a gut call on comfort/safety; the app neither prompts for justification nor records one.
 - **Coarse locations only.** City-level points, never precise home addresses. Profile location is a pre-fill, always overridable.
 - **No vetting, scoring, or surveillance.** The safety model is simply that profiles let members know a little about each other — the app surfaces real people and stays out of the way.
+- **Rosters are admin-and-driver only.** Who is riding with whom (a trip's accepted riders) is visible to that trip's driver and to Rideshare admins (incident/safety visibility, §12.1), never on the public board.
 - **GDPR.** The section owns user-scoped data and implements `IUserDataContributor` for export; right-to-deletion cascades a user's trips, requests, and interests.
 
-## 12. Admin statistics ("is this working?")
+## 12. Admin views
+
+### 12.1 Operational day view — rides *happening* on a day
+
+`GET /Rideshare/Admin/Day?date=` lists every ride happening that day — **including full and cancelled trips** (which the public board no longer offers to new riders) — each with its accepted **roster** (driver + accepted riders). Two purposes: **safety/incident visibility** (who was travelling together on a given day if there's a problem) and **retrospective/celebration** (we ran all these rides — yay). No new data: it reads the same trips and interests, expands accepted interests into rosters, and applies no seats-remaining filter.
+
+### 12.2 Season statistics — "is this working?"
 
 A **derived** dashboard on `/Rideshare/Admin` — no analytics table; aggregate over the three tables for the active year:
 
