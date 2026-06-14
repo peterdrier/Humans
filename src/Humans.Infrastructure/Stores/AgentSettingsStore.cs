@@ -15,7 +15,7 @@ public sealed class AgentSettingsStore : IAgentSettingsStore
         Id = 1,
         Enabled = false,
         Model = "claude-sonnet-4-6",
-        PreloadConfig = AgentPreloadConfig.Tier1,
+        PreloadConfig = AgentPreloadConfig.Tier2,
         DailyMessageCap = 30,
         HourlyMessageCap = 10,
         DailyTokenCap = 50000,
