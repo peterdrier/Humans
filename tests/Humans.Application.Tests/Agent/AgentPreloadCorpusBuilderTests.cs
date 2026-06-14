@@ -83,7 +83,7 @@ public class AgentPreloadCorpusBuilderTests
         var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
         var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
 
-        text.Should().Contain("covers: Keyword for FAQ-general");
+        text.Should().Contain("covers: kw-FAQ-general, alpha, beta");
     }
 
     [HumansFact]
@@ -132,7 +132,7 @@ public class AgentPreloadCorpusBuilderTests
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult(
                 string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
-                    ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}.\n\n## Key facts\n- **Keyword for {fileStem}.** detail."
+                    ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}.\n\n## Keywords\nkw-{fileStem}, alpha, beta"
                     : $"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>

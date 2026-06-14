@@ -41,34 +41,29 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_harvests_routing_keywords_from_key_facts_and_faq()
+    public async Task ListTopicsAsync_reads_the_explicit_keywords_section()
     {
-        // The Overview alone hides terms like "urinals"/"VIPee" that only appear in Key facts /
-        // FAQ. The index must surface those so the router can tell the topic is relevant.
+        // The Overview alone hides terms like "urinals"/"VIPee" the router needs. Coverage is made
+        // legible via an explicit `## Keywords` line the KB generator emits — the app does not
+        // derive keywords from prose. Multi-line sections collapse to one space-joined string.
         const string body =
             "# Leave No Trace\nLast updated: 2026-06-14\n\n## Overview\nKeeping the site clean.\n\n" +
-            "## Key facts\n" +
-            "- **PMS is now TAP.** What were called PMS have been renamed TAP.\n" +
-            "- **Vulva urinals: VIPees dropped.** SLI will order standard vulva urinals.\n\n" +
-            "## FAQ\n" +
-            "**What about female / vulva urinals (the \"Octopee\" / \"VIPee\")?**\nAfter a vote, the VIPees are not being used.";
+            "## Keywords\ntoilets, TAP, PMS, urinals, vulva urinals, VIPee, Octopee, grey water\n\n" +
+            "## FAQ\n**Q?**\nA.";
         var source = new FakeSource { Files = { ["lnt"] = body } };
         var reader = MakeReader(source);
 
         var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
 
-        var keywords = entries[0].Keywords;
-        keywords.Should().Contain("PMS is now TAP");
-        keywords.Should().Contain("Vulva urinals: VIPees dropped");
-        keywords.Should().Contain("What about female / vulva urinals (the \"Octopee\" / \"VIPee\")");
-        // The Overview paragraph remains the Summary, not a keyword source.
+        entries[0].Keywords.Should().Be("toilets, TAP, PMS, urinals, vulva urinals, VIPee, Octopee, grey water");
+        // The Overview paragraph remains the Summary, separate from keywords.
         entries[0].Summary.Should().Be("Keeping the site clean.");
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_yields_no_keywords_when_no_bold_lead_ins()
+    public async Task ListTopicsAsync_yields_no_keywords_when_no_keywords_section()
     {
-        var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\nNo overview here." } };
+        var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\n## Overview\nNo keywords here." } };
         var reader = MakeReader(source);
 
         var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
