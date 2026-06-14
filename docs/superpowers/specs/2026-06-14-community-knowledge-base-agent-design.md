@@ -12,7 +12,7 @@ The agent today answers from authoritative app docs. It already runs the exact p
 - `AgentPreloadCorpusBuilder` (singleton) assembles a small **section index** — one tagline per section — plus the access matrix, glossaries, route map, and FAQ. The assembled string is cached under `agent:preload:{config}` with a **30-minute absolute TTL** and inlined into the Anthropic system prompt (server-side prompt-cached by `AnthropicClient`).
 - The model reads the index, picks a section, and calls **`fetch_section_guide`** → `AgentSectionDocReader.ReadAsync(key)` → `IGuideContentSource.GetMarkdownAsync("docs/sections", key)` (Octokit raw fetch from `nobodies-collective/Humans`, memory-cached, sliding TTL `GuideSettings.CacheTtlHours`). `fetch_feature_spec` works the same way against `docs/features/`.
 
-So an index + on-demand fetch tool already exists; this feature is a **parallel instance of it** pointed at a new corpus, plus the startup warm-up Peter asked for.
+So an index + on-demand fetch tool already exists; this feature is a **parallel instance of it** pointed at a new corpus. The 30-minute preload TTL and the readers' sliding TTLs are also unnecessary — see Goal 3 and Component 5: the agent's content is GitHub-backed and the right model is preload-once-and-hold, not expire-and-refetch.
 
 Separately, `nca-discord/knowledge-base/` holds knowledge extracted from the community Discord by an offline pipeline. Its `public/` folder contains clean, topic-partitioned markdown (`FAQ-general.md`, `FAQ-comms.md`, `FAQ-site.md`, `RETROSPECTIVE-2027.md`, …), each shaped as: `# Title` / `Last updated: …` / `## Overview` / `## Key facts` / `## FAQ` (bold question, answer). The first window is ~4 public docs; ~4 months of further windows are coming — expect this to grow ~100×, with ~50+ facts per topic file. A sibling `confidential/` folder (board dossiers, internal docs) is **out of bounds**.
 
@@ -22,7 +22,7 @@ This knowledge is community-sourced and **not 100% accurate** — the agent must
 
 1. Give the agent a **community FAQ corpus** it can consult: an always-present index of available topics + an on-demand fetch tool, mirroring `fetch_section_guide`.
 2. **Provenance caveat** on every use: the agent tells users community knowledge is unofficial and may be outdated.
-3. **Warm the agent's GitHub-backed caches at startup** (non-blocking) so the first real request after a deploy doesn't pay the cold-cache latency — replacing the current lazy-on-first-request behaviour.
+3. **Drop the TTLs on the agent's GitHub-backed caches and preload them once, early in startup (non-blocking), held in RAM for the process lifetime.** The current 30-minute preload TTL and the readers' sliding TTLs are pointless churn: the content is GitHub-backed and only effectively changes at release, and a release restarts the process. Restart *is* the refresh; nothing expires in between.
 
 ## Non-goals
 
@@ -44,8 +44,8 @@ This knowledge is community-sourced and **not 100% accurate** — the agent must
 
 Mirror `AgentSectionDocReader` (same folder, same registration/interface shape — follow whatever that reader does exactly; do not invent new surface). Responsibilities:
 
-- **`ListTopicsAsync()`** — dynamic directory listing of `docs/community-kb/` via the Octokit path used by `GitHubLegalDocumentConnector`. Returns the set of topic keys (filename without `.md`) plus, for each, a parsed **index entry**: the `# H1` title, the `Last updated:` date, and the first non-empty paragraph of `## Overview` (fallback: just the H1). Memory-cached (sliding TTL `GuideSettings.CacheTtlHours`, key prefix `community-kb:index`).
-- **`ReadAsync(topic)`** — validate `topic` against `[A-Za-z0-9\-_]+` (path-traversal guard, like `AgentFeatureSpecReader`) **and** against the discovered topic set; fetch `docs/community-kb/{topic}.md` via `IGuideContentSource.GetMarkdownAsync`; memory-cache per file (key prefix `community-kb:`). Returns the raw markdown.
+- **`ListTopicsAsync()`** — dynamic directory listing of `docs/community-kb/` via the Octokit path used by `GitHubLegalDocumentConnector`. Returns the set of topic keys (filename without `.md`) plus, for each, a parsed **index entry**: the `# H1` title, the `Last updated:` date, and the first non-empty paragraph of `## Overview` (fallback: just the H1). Held in RAM with **no expiration** (key prefix `community-kb:index`) — populated by the startup warm-up, refreshed only on restart.
+- **`ReadAsync(topic)`** — validate `topic` against `[A-Za-z0-9\-_]+` (path-traversal guard, like `AgentFeatureSpecReader`) **and** against the discovered topic set; fetch `docs/community-kb/{topic}.md` via `IGuideContentSource.GetMarkdownAsync`; cache per file with **no expiration** (key prefix `community-kb:`). Returns the raw markdown.
 
 No DbContext, no cross-section call. Pure GitHub-backed infrastructure service.
 
@@ -83,19 +83,21 @@ Included regardless of `AgentPreloadConfig` tier — the index is one line per f
 - **Policy rule** appended to `AgentPromptAssembler.SystemPromptHeader`: community FAQ is crowd-sourced from Discord, may be outdated or inaccurate; when relying on it, tell the user it's community discussion and not official; prefer authoritative section guides/specs when they cover the question.
 - **Per-result wrapper** (Component 3) guarantees the provenance is in front of the model even late in a long turn, when the system-prompt rule has faded.
 
-## Component 5 — startup warm-up (the cold-cache fix)
+## Component 5 — preload + hold in RAM (no TTL)
 
-Add a hosted service modelled on the existing `AgentSettingsStoreWarmupHostedService`. Hook `IHostApplicationLifetime.ApplicationStarted` and run the warm-up **fire-and-forget off the startup path** (startup is never blocked). It warms the **memory caches**:
+**Remove the TTLs from the agent's caches.** The `agent:preload:{config}` entry loses its 30-minute absolute TTL; the agent readers (`AgentSectionDocReader`, `AgentFeatureSpecReader`, and the new `CommunityFaqReader`) lose their sliding TTL. Agent cache entries are written with **no absolute/sliding expiration and `CacheItemPriority.NeverRemove`** so memory pressure can't evict them either — once loaded, they stay for the process lifetime. This is scoped to the **agent's** caches; the user-facing `/Guide` cache and its `POST /Guide/Refresh` admin path are left exactly as they are.
 
-- `AgentPreloadCorpusBuilder.BuildAsync` for each active `AgentPreloadConfig` — removes the first-request 30-minute cold miss.
-- `CommunityFaqReader.ListTopicsAsync()` (the index).
-- The full-document caches the agent fetches on demand — every `docs/sections/*` guide and every `docs/community-kb/*` file — so tool fetches are served from RAM.
+**Preload once, early, without gating startup.** Add a hosted service modelled on the existing `AgentSettingsStoreWarmupHostedService`. Hook `IHostApplicationLifetime.ApplicationStarted` and run the load **fire-and-forget off the startup path** (startup is never blocked). It populates, into RAM:
 
-Then **re-warm on a timer set just under the cache TTL** so the caches never lapse back to cold.
+- `AgentPreloadCorpusBuilder.BuildAsync` for the active `AgentPreloadConfig` (a runtime admin tier-flip rebuilds lazily once, then is held).
+- `CommunityFaqReader.ListTopicsAsync()` (the community index).
+- The full documents the agent fetches on demand — every `docs/sections/*` guide and every `docs/community-kb/*` file — so tool fetches are served from RAM from the first request.
 
-Key distinction this encodes: warming the **memory cache** makes fetches instant at **zero standing prompt-token cost** — only the small indexes are inlined into the prompt; full docs live in RAM and are served via the tools. That is what "keep the docs in RAM, serve them as a tool" means here, and why the memory cost is minimal.
+**No re-warm timer.** Nothing expires, so there is nothing to refresh on a schedule. Content changes ship in a release, and a release restarts the process, which re-runs the load — restart is the refresh. (No admin refresh endpoint for the agent; not asked for, and restart covers it.)
 
-Failures are swallowed and logged (a warm-up miss must never crash the host); the lazy paths still work, so a failed warm-up degrades to today's behaviour.
+Key distinction this encodes: holding the docs **in RAM** makes fetches instant at **zero standing prompt-token cost** — only the small indexes are inlined into the prompt; full docs live in RAM and are served via the tools. That is what "keep the docs in RAM, serve them as a tool" means here, and why the memory cost is minimal.
+
+Failures are swallowed and logged (a load miss must never crash the host); the lazy fetch paths still work as a fallback, so a failed preload only costs first-request latency, never correctness.
 
 ## Registration & health
 
@@ -119,4 +121,4 @@ Failures are swallowed and logged (a warm-up miss must never crash the host); th
 ## Open implementation questions (for the plan, not blocking)
 
 - Whether `AgentSectionDocReader` is fronted by an interface; mirror it exactly for `CommunityFaqReader` either way.
-- Exact re-warm interval (a timer just under `GuideSettings.CacheTtlHours` / the 30-min preload TTL).
+- Confirm the agent readers' cache entries are distinct from the user-facing `GuideContentService` (`guide:`) entries, so removing the agent TTLs leaves `/Guide` untouched. If any entry is shared, split it rather than changing `/Guide` behaviour.
