@@ -32,6 +32,11 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "Guide:CacheTtlHours", "Guide");
             configuration.GetOptionalSetting(configRegistry, "Guide:AccessToken", "Guide", isSensitive: true);
 
+            configuration.GetOptionalSetting(configRegistry, "CommunityKb:Owner", "Community KB");
+            configuration.GetOptionalSetting(configRegistry, "CommunityKb:Repository", "Community KB");
+            configuration.GetOptionalSetting(configRegistry, "CommunityKb:Branch", "Community KB");
+            configuration.GetOptionalSetting(configRegistry, "CommunityKb:AccessToken", "Community KB", isSensitive: true);
+
             configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
             configuration.GetOptionalSetting(configRegistry, "GoogleWorkspace:ServiceAccountKeyPath", "Google Workspace",
