@@ -141,9 +141,11 @@ public sealed class CommunityFaqReader(
             if (line.StartsWith("Last updated", StringComparison.OrdinalIgnoreCase))
             {
                 var colon = line.IndexOf(':');
-                return colon >= 0 && colon < line.Length - 1
-                    ? line[(colon + 1)..].Trim()
-                    : line;
+                var value = colon >= 0 && colon < line.Length - 1 ? line[(colon + 1)..].Trim() : line;
+                // Keep only the date itself; drop trailing pipeline prose like
+                // "· windows merged through ..." so the provenance header stays terse.
+                var sep = value.IndexOf('·');
+                return sep > 0 ? value[..sep].Trim() : value;
             }
         }
         return null;
@@ -164,7 +166,11 @@ public sealed class CommunityFaqReader(
             if (line.StartsWith("##", StringComparison.Ordinal)) return null; // next heading, no body
             if (line.Trim().Length == 0) continue;
             var text = line.Trim();
-            return text.Length > 200 ? text[..200] : text;
+            if (text.Length <= 200) return text;
+            // Trim back to the last word boundary so the routing summary doesn't cut mid-word.
+            var cut = text[..200];
+            var lastSpace = cut.LastIndexOf(' ');
+            return (lastSpace > 0 ? cut[..lastSpace] : cut) + "…";
         }
         return null;
     }

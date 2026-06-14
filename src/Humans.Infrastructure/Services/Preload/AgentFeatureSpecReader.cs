@@ -7,7 +7,8 @@ namespace Humans.Infrastructure.Services.Preload;
 
 /// <summary>
 /// Reads a <c>docs/features/{stem}.md</c> file from the Humans repo on GitHub at runtime
-/// via the shared <see cref="IGuideContentSource"/>. Cached in memory with the Guide TTL.
+/// via the shared <see cref="IGuideContentSource"/>. Held in memory with no expiration
+/// (loaded once at startup or first call, refreshed only on restart).
 /// Returns <c>null</c> on miss (invalid stem, GitHub 404, or transient failure).
 /// </summary>
 public sealed class AgentFeatureSpecReader(

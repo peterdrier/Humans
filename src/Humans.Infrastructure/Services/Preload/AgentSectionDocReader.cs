@@ -7,8 +7,9 @@ namespace Humans.Infrastructure.Services.Preload;
 
 /// <summary>
 /// Reads a whitelisted <c>docs/sections/{key}.md</c> file from the Humans repo on GitHub
-/// at runtime via the shared <see cref="IGuideContentSource"/>. Cached in memory with the
-/// Guide TTL so per-tool-call round trips are avoided. Returns <c>null</c> on miss (unknown
+/// at runtime via the shared <see cref="IGuideContentSource"/>. Held in memory with no
+/// expiration (loaded once at startup or first call, refreshed only on restart) so
+/// per-tool-call round trips are avoided. Returns <c>null</c> on miss (unknown
 /// key, GitHub 404, or transient fetch failure) so the caller can degrade gracefully.
 /// </summary>
 public sealed class AgentSectionDocReader(
