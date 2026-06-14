@@ -28,7 +28,7 @@ public sealed class CommunityFaqReader(
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
-    public sealed record IndexEntry(string Topic, string Title, string? LastUpdated, string Summary);
+    public sealed record IndexEntry(string Topic, string Title, string? LastUpdated, string Summary, string Keywords);
 
     public async Task<IReadOnlyList<IndexEntry>> ListTopicsAsync(CancellationToken cancellationToken)
     {
@@ -171,7 +171,53 @@ public sealed class CommunityFaqReader(
         }
 
         var summary = ExtractOverview(lines) ?? title;
-        return new IndexEntry(topic, title, ExtractLastUpdated(body), summary);
+        return new IndexEntry(topic, title, ExtractLastUpdated(body), summary, ExtractKeywords(lines));
+    }
+
+    /// <summary>
+    /// Harvests routing keywords from a topic file so the preloaded index can show what each
+    /// topic actually covers — the one-line Overview alone hides terms like "urinals", "EE", or
+    /// "VIPee" that only appear in Key facts / FAQ, leaving the router unable to tell the topic
+    /// is relevant. We take the bold lead-in of every bullet (<c>- **…**</c>) and every standalone
+    /// bold line (the FAQ questions), de-duplicate case-insensitively, and cap the count so the
+    /// index stays bounded as the corpus grows. The Overview paragraph itself is unchanged
+    /// (<see cref="ExtractOverview"/>); keywords are an additive routing aid.
+    /// </summary>
+    internal static string ExtractKeywords(string[] lines)
+    {
+        const int maxKeywords = 100;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ordered = new List<string>();
+        foreach (var raw in lines)
+        {
+            var line = raw.TrimEnd('\r').Trim();
+            // Bullet lead-ins (Key facts) and standalone bold lines (FAQ questions) are the
+            // signal; prose paragraphs (Overview) and headings are skipped.
+            if (!line.StartsWith("- ", StringComparison.Ordinal) && !line.StartsWith("**", StringComparison.Ordinal))
+                continue;
+
+            var bold = FirstBoldSpan(line);
+            if (bold is null) continue;
+            var keyword = bold.Trim().TrimEnd('.', ':', '?', '!', ',').Trim();
+            if (keyword.Length == 0) continue;
+            if (seen.Add(keyword))
+            {
+                ordered.Add(keyword);
+                if (ordered.Count >= maxKeywords) break;
+            }
+        }
+        return string.Join(" · ", ordered);
+    }
+
+    /// <summary>Returns the text inside the first <c>**bold**</c> span on a line, or null if there is none.</summary>
+    private static string? FirstBoldSpan(string line)
+    {
+        var open = line.IndexOf("**", StringComparison.Ordinal);
+        if (open < 0) return null;
+        var close = line.IndexOf("**", open + 2, StringComparison.Ordinal);
+        if (close < 0) return null;
+        var inner = line[(open + 2)..close];
+        return inner.Length == 0 ? null : inner;
     }
 
     private static string? ExtractLastUpdated(string body)

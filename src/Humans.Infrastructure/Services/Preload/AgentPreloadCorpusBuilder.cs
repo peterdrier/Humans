@@ -80,11 +80,13 @@ public sealed class AgentPreloadCorpusBuilder(
             sb.AppendLine();
             sb.AppendLine("## Community FAQ (community-sourced — unofficial, may be outdated)");
             sb.AppendLine();
-            sb.AppendLine("Crowd-sourced answers from the community Discord. Fetch a topic on demand with the `fetch_community_faq` tool (topic=<key>). Always tell the user these answers are community discussion, not official.");
+            sb.AppendLine("Crowd-sourced answers from the community Discord about the Elsewhere event, the association, on-site life, and community practices. Match the user's question — and any expanded abbreviations/jargon — against each topic's `covers:` keywords, then fetch the relevant topic(s) on demand with the `fetch_community_faq` tool (topic=<key>). Always tell the user these answers are community discussion, not official.");
             sb.AppendLine();
             foreach (var entry in communityEntries)
             {
                 sb.Append("- **").Append(entry.Topic).Append("** — ").Append(entry.Summary);
+                if (entry.Keywords.Length > 0)
+                    sb.Append(" — covers: ").Append(entry.Keywords);
                 if (entry.LastUpdated is not null)
                     sb.Append(" (last updated ").Append(entry.LastUpdated).Append(')');
                 sb.AppendLine();

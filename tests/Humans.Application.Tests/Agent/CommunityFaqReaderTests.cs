@@ -41,6 +41,42 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
+    public async Task ListTopicsAsync_harvests_routing_keywords_from_key_facts_and_faq()
+    {
+        // The Overview alone hides terms like "urinals"/"VIPee" that only appear in Key facts /
+        // FAQ. The index must surface those so the router can tell the topic is relevant.
+        const string body =
+            "# Leave No Trace\nLast updated: 2026-06-14\n\n## Overview\nKeeping the site clean.\n\n" +
+            "## Key facts\n" +
+            "- **PMS is now TAP.** What were called PMS have been renamed TAP.\n" +
+            "- **Vulva urinals: VIPees dropped.** SLI will order standard vulva urinals.\n\n" +
+            "## FAQ\n" +
+            "**What about female / vulva urinals (the \"Octopee\" / \"VIPee\")?**\nAfter a vote, the VIPees are not being used.";
+        var source = new FakeSource { Files = { ["lnt"] = body } };
+        var reader = MakeReader(source);
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        var keywords = entries[0].Keywords;
+        keywords.Should().Contain("PMS is now TAP");
+        keywords.Should().Contain("Vulva urinals: VIPees dropped");
+        keywords.Should().Contain("What about female / vulva urinals (the \"Octopee\" / \"VIPee\")");
+        // The Overview paragraph remains the Summary, not a keyword source.
+        entries[0].Summary.Should().Be("Keeping the site clean.");
+    }
+
+    [HumansFact]
+    public async Task ListTopicsAsync_yields_no_keywords_when_no_bold_lead_ins()
+    {
+        var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\nNo overview here." } };
+        var reader = MakeReader(source);
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries[0].Keywords.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ReadAsync_returns_body_for_a_discovered_topic()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };

@@ -78,6 +78,15 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
+    public async Task Community_index_renders_covers_keywords_so_the_router_can_match()
+    {
+        var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+
+        text.Should().Contain("covers: Keyword for FAQ-general");
+    }
+
+    [HumansFact]
     public async Task Index_omits_community_block_when_no_files()
     {
         var builder = MakeBuilder(communityFiles: []);
@@ -123,7 +132,7 @@ public class AgentPreloadCorpusBuilderTests
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult(
                 string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
-                    ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}."
+                    ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}.\n\n## Key facts\n- **Keyword for {fileStem}.** detail."
                     : $"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
