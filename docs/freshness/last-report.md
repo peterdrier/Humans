@@ -1,64 +1,60 @@
-# Freshness Sweep Report — 2026-06-13
+# Freshness Sweep Report — 2026-06-14
 
-**Anchor:** `afa6ac5cc` → `18c308a52` (upstream/main HEAD)
-**Worktree base:** `origin/main` @ `18c308a52` (origin and upstream were in sync at sweep start)
+**Anchor:** `18c308a52` → `909323e33` (upstream/main HEAD)
+**Worktree base:** `origin/main` @ `c9749fe90`
 **Mode:** diff (batch)
-**Changed files in range:** 218
-**Dirty entries processed:** 9 mechanical + 63 editorial = 72
-**Outcome:** 20 docs updated (incl. 4 in the Phase 7.5 follow-up) · 5 husks pruned (3,874 lines) · rest verified clean · 0 errors
+**Changed files in range:** 56
+**Dirty entries processed:** 6 mechanical + 20 editorial = 26
+**Outcome:** 2 docs updated · 3 husks pruned (4,480 lines) · rest verified clean · 0 errors
 
-The bulk of the 218-file range was **mass i18n view localization** (#987 — ~50 views + enums + 3,700 translations) and a **controller-audit compliance refactor** (#994–997 — business logic pushed controller→service, some action moves). Neither changes documented behavior, so most triggered editorial docs verified clean. The genuine behaviour changes were Camps early-entry consumption (#985), the Debug HttpErrors buffer (#993), Scanner manual barcode entry (#986), the gate-terminal onsite roster (#991), and the Profile unlink lockout guard (#1000).
+> **Anchors crossed.** At sweep start `git merge-base --is-ancestor upstream/main origin/main` was **false** — `upstream/main` (`909323e33`) and `origin/main` (`c9749fe90`) have diverged, the normal state right after a prod promotion. Per the spec the anchors are frozen at start and not reconciled mid-run; the PR diffs against the frozen `origin/main` base. Noted once, proceeding.
+
+The entire `18c308a52..909323e33` range is **non-behavioural**. The bulk is the **display-sort burndown** (#1002 — repositories shed redundant `.OrderBy()` and gained `// arch:db-sort-ok` annotations; the dropped sorts re-appear at the display layer in the matching controller/view, so user-visible ordering is unchanged) plus the **access-matrix correction** (#1003 — dropped the "Member data export" row from the Board access matrix + Dashboard help because that bulk export was never built; only the self-service GDPR download exists). Neither changes documented behaviour, so every triggered editorial doc verified clean.
 
 ## Updated automatically
 
 ### Mechanical
-- **dev-stats** — appended the 2026-06-13 codebase-growth row (script).
-- **reforge-history** — appended the 2026-06-13 semantic snapshot row (script).
-- **controller-architecture-audit** — verified all 87 controllers against source; no action-level drift since 2026-06-12; header date → 2026-06-13.
-- **authorization-inventory** — added `GovernanceBoardVotingController.Finalize` (AdminOnly override), `VolunteerTrackingController.SetAvailabilityDay/ClearAvailabilityDay` (VolunteerTrackingWrite), and a `ProfileController` PrivilegedSignupApprover call site; refreshed §6 call-site line numbers.
-- **dependency-graph** — 3 edge corrections: removed `OnsiteRoster→ShiftMgmt`; added `EventService→User` and `EventService→Email`; added `Team⇢GoogleSync` (lazy).
-- **service-data-access-map** — regenerated the service→repo→table + cache-key map from current source (largest change): removed `GeneralAvailabilityService` (absorbed into `VolunteerTrackingService`), merged `IShiftSignupRepository` into `IShiftManagementRepository`, added `ICalendarFeedContributor` to `ShiftSignupService`, documented `UnsubscribeService`'s `IUserServiceRead`.
-- **docs-readme-index** — added the missing `features/debug/http-errors.md` index entry; all other rows verified.
-
-### Editorial drift-fix
-- **sections/Camps.md** — 3 early-entry-consumption fixes (#985): `HasEarlyEntry` retained on `Removed` when the holder already entered; `GetGrantedCountForSeasonAsync` no longer filters `Status=Active`; new `MemberAlreadyEntered` negative-access rule.
-- **sections/Debug.md** + **features/debug/client-stats.md** — added `/Debug/HttpErrors` + `/Debug/Translations` routes (#993); corrected `IClientStatsTracker` signature; documented the error-buffer workflow.
-- **sections/Scanner.md** — manual barcode entry added to the `/Scanner/Tickets` concept (#986).
-- **sections/Events.md** — 3 attribution fixes (lifecycle email orchestration moved `EventsModerationController` → `EventService`).
-- **sections/Governance.md** — removed the deleted `HasBoardVotesAsync` (inlined as a NoVotes guard).
-- **sections/Onboarding.md** — added `IConsentServiceRead` + `IHumanLifecycleService` cross-section dependencies.
-- **guide/Admin.md** — added the `/Debug/HttpErrors` diagnostic page.
-- **sections/Profiles.md** — corrected the CV-entries write path (`IProfileService.SaveCVEntriesAsync` → `IProfileEditorService.SaveProfileAsync`).
+- **dev-stats** — appended the 2026-06-14 codebase-growth row (script; reforge=1 day, regex-fallback=0).
+- **reforge-history** — appended the 2026-06-14 semantic snapshot row (script; `c9749fe90`, 144,924 prod LOC / 2,169 classes / 233 interfaces).
 
 ## Verified clean (dirty but no drift)
-- **Mechanical:** `data-model-index` (Event.cs gained only computed/non-persisted members — the DB-column entity-index is unchanged); `code-analysis-suppressions` (only `SatelliteResourceLanguages` `en;es`→`en;es;ca;de;fr;it` changed; no NoWarn/analyzer change).
-- **Editorial clusters with no contradictions:** Teams (4 docs), Google-integration (4), Expenses (2), Profiles-email (4), misc/global/shifts (12), and the architecture rule docs (conventions, code-review-rules, design-rules, roslyn-analysis). Compliance refactors moved code *toward* the documented rules, so the rules themselves were not contradicted.
+
+### Mechanical (regen skipped — triggering change provably no-op)
+- **docs-readme-index** — triggered by editorial body edits + the two scanner docs' new freshness markers; no docs added/removed/renamed and no first-paragraph/H1 changes, so every derived description is unchanged.
+- **authorization-inventory** — only `UsersAdminAccountMergesController.cs` matched, and its diff is a `.OrderBy(r => r.CreatedAt)` added inside an existing action's `foreach` — no `[Authorize]`/policy/role/`RoleChecks`/`AuthorizeAsync` change. Output identical.
+- **controller-architecture-audit** — same file; no new/renamed action and no route change. The action/route/purpose table is unchanged.
+- **service-data-access-map** — all matches are sort-add/remove repository edits; no new DbSet access, repository method, or cache key. The service→repo→table→cache map is unchanged.
+
+### Editorial — all 20 triggered `flag-on-change` docs, no contradictions
+Every match is a display-sort-burndown edit. Repository-internal `OrderBy` relocation does not contradict any section/feature/guide invariant (the field that was sorted — e.g. `CampImage.SortOrder` — still exists and is still *tracked*; the sort merely moved to the view, preserving displayed order). The three concrete-fact candidates were each checked against source and confirmed clean:
+- **architecture rule docs** (`design-rules`, `conventions`, `code-review-rules`, `roslyn-analysis`) — the edits *apply* the existing display-sort convention; they don't change it. `roslyn-analysis.md` describes `DisplaySortInControllersRule` as "baseline-ratcheted" and cites no baseline count, so the baseline shrinking (false-positives removed) contradicts nothing.
+- **sections/Camps.md** — says image "display order is *tracked* per camp"; `CampRepository` dropping `.Include(b => b.Images.OrderBy(i => i.SortOrder))` leaves `CampImage.SortOrder` intact, so still true.
+- **admin/GDPR docs** — no doc claims a Board/bulk member export; the #1003 removal of that never-built capability from the matrix contradicts nothing. `gdpr-export.md` correctly scopes the export to self-service own-data; `dietary-medical-nudge.md` even states "No bulk export."
+- Section/feature/guide docs for Auth, Campaigns, Email, Events, Feedback, Governance, Guide, Profiles, Teams, administration, and the matching guides — all triggered by sort-only edits, no invariant contradicted.
 
 ## Pruned
 | Husk | Lines | Reason |
 |------|------:|--------|
-| docs/plans/2026-05-13-section-align-budget.md | 102 | all chaff (executed inventory checklist) |
-| docs/plans/2026-05-13-section-align-campaigns.md | 179 | all chaff (clean-pass checklist) |
-| docs/plans/2026-05-13-section-align-events.md | 1015 | all chaff (pre-impl plan for #539) |
-| docs/plans/2026-05-13-section-align-teams.md | 167 | all chaff (findings since remediated) |
-| docs/superpowers/plans/2026-05-13-ticket-attendee-contact-import.md | 2411 | all chaff (fully-executed TDD plan) |
+| docs/plans/2026-05-14-section-align-notifications.md | 217 | all chaff (shipped section-alignment work plan; rationale already in `sections/Notifications.md`) |
+| docs/superpowers/plans/2026-05-14-userinfo-debug-and-venn.md | 1,823 | all chaff (shipped impl plan; durable signal in `sections/Users.md` + `features/global/administration.md`; plan's `GetAllUserInfos()`/`HasTicket` claims now superseded) |
+| docs/superpowers/plans/2026-05-14-mailer-outbound-audiences.md | 2,440 | all chaff (shipped impl plan; all invariants already in `sections/Mailer.md`; plan's bulk-import + cache-invalidation notes diverge from shipped code) |
 
-Total **3,874 lines = 4.9% of docs/** (under the 7% cap). No inbound references from living docs (only `last-report.md`, overwritten this sweep, and a self-ref).
+Total **4,480 lines = 5.9% of docs/** (above the 5% soft target, under the 7% cap). No inbound references from any living doc (only each husk's self-reference to its own design spec, which stays). Each husk's wheat was mined by a dedicated analysis subagent and verified against current source before deletion.
 
 ### Wheat migrated
-**None.** Every candidate was a fully-executed plan whose durable decisions already live in the corresponding `docs/sections/*.md` (verified against current source — e.g. the section-align-teams cross-section findings, `AuditLogRepository`/`HumansMetricsService` reading `Teams`, are gone from the code).
+**None.** All three are fully-executed implementation/alignment plans for shipped features; every durable decision already lives in the corresponding `docs/sections/*.md` (verified against source). Two husks additionally contained *stale* implementer claims (superseded APIs, a bulk-import strategy that didn't ship) — migrating them would have injected inaccuracy.
+
+`tech-debt-2026-04-23.md` was **not** pruned: it carries 19 still-open items (header preserves it as a historical record) and so fails the all-`[DONE]` gate.
 
 ## Flagged for human review
-- **Unmarked editorial docs (no `freshness:triggers` → sweep blind spots, not reviewed):** `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md` (15 docs). A future sweep should add `freshness:triggers` to these so they get scoped review.
-  - **RESOLVED this sweep:** `features/scanner/gate-terminal-login.md` and `features/scanner/scanner-barcode.md` — both gained tailored `freshness:triggers` + `freshness:flag-on-change` markers and were drift-fixed for #991/#986 (see Phase 7.5 below).
+- **Access-matrix coverage gap (informational).** `sections/Auth.md` §"Access Matrix UI" documents the matrix mechanism and names `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as its source, but Auth.md's `freshness:triggers` don't include that file (nor `AccessMatrixViewComponent`). This sweep demonstrated the gap: #1003 edited `AccessMatrixDefinitions.cs` + `SectionHelpContent.cs` with zero doc review. No drift resulted (Auth.md describes the mechanism — "static data, no table" — not the per-feature rows), so this is a future-coverage suggestion, not a broken fact. Raised inline (Phase 7.5).
+- **Unmarked-editorial blind spots persist** (carried from prior sweeps): `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md`. None triggered this sweep; a future sweep should add `freshness:triggers` to scope them.
 
 ## Proposed for review
-None — all candidates resolved this sweep.
+None — all prune candidates resolved this sweep (every husk verified all-chaff against source).
 
-## Phase 7.5 — review items (raised inline, Peter said "fix all 3")
-1. **sections/Users.md** — reworded the §caching note: sign-in `LastLoginAt` is now described as a normal `IUserService` write-through (`CachingUserService.RecordLoginAsync` → `RefreshEntryAsync`, verified) rather than a `UserManager.UpdateAsync` Identity-machinery write; the interceptor clause now notes it is registered on both the scoped and factory contexts and backstops the writes that bypass the service surface. **Resolved (fixed).**
-2. **guide/Expenses.md** — reworded the SEPA paragraph: generating the batch downloads the file and flips reports to `SepaSent` in one step (no separate post-send confirm), with a parenthetical that the actual bank payment is external. **Resolved (fixed).**
-3. **features/scanner/gate-terminal-login.md** + **scanner-barcode.md** — added tailored `freshness:triggers` + `freshness:flag-on-change` markers (all referenced paths verified to exist) and drift-fixed: gate-terminal-login now documents `ScannerAccess` covering `TicketsOnsiteAdminController` (onsite roster reachable from the door, #991); scanner-barcode's stale `TicketAdminBoardOrAdmin` policy reference updated to `ScannerAccess` (#986). **Resolved (fixed).**
+## Phase 7.5 — review items (raised inline)
+1. **Access-matrix trigger gap** — add `src/Humans.Web/Models/AccessMatrixDefinitions.cs` (and `src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs`) to `sections/Auth.md`'s `freshness:triggers`, so a future change to the matrix mechanism gets a scoped doc review? Or leave it (the file rarely touches the mechanism)? — _pending Peter_
 
 ## Skipped (errors)
 None.
