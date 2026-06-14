@@ -362,15 +362,13 @@ public class AgentToolDispatcherTests
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var guideSettings = Microsoft.Extensions.Options.Options.Create(
-            new Humans.Infrastructure.Configuration.GuideSettings { CacheTtlHours = 6 });
         var source = new StubGuideSource();
         var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(
-            source, cache, guideSettings,
+            source, cache,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<
                 Humans.Infrastructure.Services.Preload.AgentSectionDocReader>.Instance);
         var features = new Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader(
-            source, cache, guideSettings,
+            source, cache,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<
                 Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader>.Instance);
         var community = new Humans.Infrastructure.Services.Preload.CommunityFaqReader(

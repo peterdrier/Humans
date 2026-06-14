@@ -7,6 +7,7 @@ namespace Humans.Infrastructure.Services.Preload;
 
 public sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,
+    CommunityFaqReader community,
     IMemoryCache cache,
     IAgentPreloadAugmentor? augmentor = null) : IAgentPreloadCorpusBuilder
 {
@@ -51,8 +52,25 @@ public sealed class AgentPreloadCorpusBuilder(
             sb.AppendLine(augmentor.BuildFaqMarkdown());
         }
 
+        var communityEntries = await community.ListTopicsAsync(cancellationToken);
+        if (communityEntries.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Community FAQ (community-sourced — unofficial, may be outdated)");
+            sb.AppendLine();
+            sb.AppendLine("Crowd-sourced answers from the community Discord. Fetch a topic on demand with the `fetch_community_faq` tool (topic=<key>). Always tell the user these answers are community discussion, not official.");
+            sb.AppendLine();
+            foreach (var entry in communityEntries)
+            {
+                sb.Append("- **").Append(entry.Topic).Append("** — ").Append(entry.Summary);
+                if (entry.LastUpdated is not null)
+                    sb.Append(" (last updated ").Append(entry.LastUpdated).Append(')');
+                sb.AppendLine();
+            }
+        }
+
         var result = sb.ToString();
-        cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+        cache.Set(cacheKey, result, new MemoryCacheEntryOptions { Priority = CacheItemPriority.NeverRemove });
         return result;
     }
 

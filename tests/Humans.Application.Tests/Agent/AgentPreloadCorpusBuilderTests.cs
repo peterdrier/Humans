@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -68,30 +66,50 @@ public class AgentPreloadCorpusBuilderTests
         estimatedTokens.Should().BeLessThan(2_000, "Tier1 preload is now a section index; full bodies are fetched on demand");
     }
 
-    private static IAgentPreloadCorpusBuilder MakeBuilder()
+    [HumansFact]
+    public async Task Index_includes_community_faq_block_when_files_exist()
     {
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var reader = new AgentSectionDocReader(
-            new StubSource(),
-            cache,
-            Options.Create(new GuideSettings { CacheTtlHours = 6 }),
-            NullLogger<AgentSectionDocReader>.Instance);
-        return new AgentPreloadCorpusBuilder(reader, cache);
+        var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+
+        text.Should().Contain("Community FAQ");
+        text.Should().Contain("**FAQ-general**");
+        text.Should().Contain("unofficial");
     }
 
-    /// <summary>
-    /// Returns synthetic section bodies whose H1 tagline contains the key — enough for the
-    /// builder's index assertions (it only reads the first non-empty line after the H1).
-    /// </summary>
+    [HumansFact]
+    public async Task Index_omits_community_block_when_no_files()
+    {
+        var builder = MakeBuilder(communityFiles: []);
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+
+        text.Should().NotContain("Community FAQ");
+    }
+
+    private static IAgentPreloadCorpusBuilder MakeBuilder(IReadOnlyList<string>? communityFiles = null)
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var source = new StubSource { CommunityFiles = communityFiles ?? [] };
+        var reader = new AgentSectionDocReader(
+            source, cache, NullLogger<AgentSectionDocReader>.Instance);
+        var community = new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance);
+        return new AgentPreloadCorpusBuilder(reader, community, cache);
+    }
+
     private sealed class StubSource : IGuideContentSource
     {
+        public IReadOnlyList<string> CommunityFiles { get; init; } = [];
+
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
-            Task.FromResult($"# {fileStem}\n\nTagline for {fileStem}.");
+            Task.FromResult(
+                string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal)
+                    ? $"# {fileStem} title\nLast updated: 2026-02-01\n\n## Overview\nCommunity summary for {fileStem}."
+                    : $"# {fileStem}\n\nTagline for {fileStem}.");
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>([]);
+            Task.FromResult(string.Equals(folderPath, CommunityFaqReader.FolderPath, StringComparison.Ordinal) ? CommunityFiles : []);
     }
 }

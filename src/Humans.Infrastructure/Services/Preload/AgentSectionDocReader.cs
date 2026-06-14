@@ -1,8 +1,6 @@
 using Humans.Application.Interfaces;
-using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Octokit;
 
 namespace Humans.Infrastructure.Services.Preload;
@@ -16,7 +14,6 @@ namespace Humans.Infrastructure.Services.Preload;
 public sealed class AgentSectionDocReader(
     IGuideContentSource source,
     IMemoryCache cache,
-    IOptions<GuideSettings> settings,
     ILogger<AgentSectionDocReader> logger)
 {
     internal const string FolderPath = "docs/sections";
@@ -29,6 +26,11 @@ public sealed class AgentSectionDocReader(
             "Tickets", "Profiles", "Auth", "Budget", "Camps",
             "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"
         };
+
+    // No expiration + NeverRemove: GitHub-backed content that only changes at release.
+    // Loaded once (startup warm-up or first call) and held for the process lifetime.
+    private static readonly MemoryCacheEntryOptions HoldForever =
+        new() { Priority = CacheItemPriority.NeverRemove };
 
     public async Task<string?> ReadAsync(string key, CancellationToken cancellationToken)
     {
@@ -45,8 +47,7 @@ public sealed class AgentSectionDocReader(
         try
         {
             var body = await source.GetMarkdownAsync(FolderPath, canonicalKey, cancellationToken);
-            var ttl = TimeSpan.FromHours(Math.Max(1, settings.Value.CacheTtlHours));
-            cache.Set(cacheKey, body, new MemoryCacheEntryOptions { SlidingExpiration = ttl });
+            cache.Set(cacheKey, body, HoldForever);
             return body;
         }
         catch (NotFoundException)
