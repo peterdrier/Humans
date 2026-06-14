@@ -6,12 +6,12 @@ using Octokit;
 namespace Humans.Infrastructure.Services.Preload;
 
 /// <summary>
-/// Reads the community-sourced FAQ corpus (Discord-extracted markdown vendored into
-/// <c>docs/community-kb/</c>) from the Humans repo on GitHub via the shared
-/// <see cref="IGuideContentSource"/>. The file set is discovered dynamically (no hardcoded
-/// list) so new topics appear without a code change. Held in RAM with no expiration —
-/// content is GitHub-backed and only changes at release, which restarts the process.
-/// This corpus is unofficial; callers must surface its provenance (see
+/// Reads the community-sourced FAQ corpus (Discord-extracted markdown under
+/// <c>docs/community-kb/</c>) from the dedicated knowledge-base repo on GitHub via an
+/// <see cref="IGuideContentSource"/> bound to that repo. The file set is discovered
+/// dynamically (no hardcoded list) so new topics appear without a code change. Held in RAM
+/// with no expiration; refreshed by the admin "Reload KB" action (<see cref="ReloadAsync"/>)
+/// or an app restart. This corpus is unofficial; callers must surface its provenance (see
 /// <see cref="WrapWithProvenance"/>).
 /// </summary>
 public sealed class CommunityFaqReader(
@@ -70,6 +70,44 @@ public sealed class CommunityFaqReader(
             return null;
 
         return await ReadRawAsync(topic, cancellationToken);
+    }
+
+    /// <summary>
+    /// Force-refreshes the corpus from GitHub and swaps it into the cache: re-lists the folder,
+    /// re-fetches every file (bypassing the cache), and overwrites the per-file + index entries.
+    /// On a listing failure the existing cache is left intact (no blow-away).
+    /// </summary>
+    public async Task ReloadAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<string> stems;
+        try
+        {
+            stems = await source.ListMarkdownStemsAsync(FolderPath, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Community KB reload: listing {Folder} failed; keeping existing cache", FolderPath);
+            return;
+        }
+
+        var entries = new List<IndexEntry>();
+        foreach (var stem in stems.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
+        {
+            string body;
+            try
+            {
+                body = await source.GetMarkdownAsync(FolderPath, stem, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Community KB reload: fetch failed for {Stem}; skipping", stem);
+                continue;
+            }
+            cache.Set(DocCacheKeyPrefix + stem, body, HoldForever);
+            entries.Add(ParseIndexEntry(stem, body));
+        }
+
+        cache.Set(IndexCacheKey, (IReadOnlyList<IndexEntry>)entries, HoldForever);
     }
 
     private async Task<string?> ReadRawAsync(string stem, CancellationToken cancellationToken)

@@ -103,6 +103,25 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
+    public async Task ReloadAsync_refetches_and_swaps_in_new_content()
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+        await reader.ListTopicsAsync(TestContext.Current.CancellationToken); // initial fetch + cache
+
+        source.Files["FAQ-general"] = "# New Title\nLast updated: 2026-07-01\n\n## Overview\nFresh content.";
+        await reader.ReloadAsync(TestContext.Current.CancellationToken);
+
+        var body = await reader.ReadAsync("FAQ-general", TestContext.Current.CancellationToken);
+        body.Should().Contain("Fresh content.");
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+        entries[0].Title.Should().Be("New Title");
+
+        source.RawFetches["FAQ-general"].Should().Be(2); // one initial list, one reload
+    }
+
+    [HumansFact]
     public async Task ListTopicsAsync_returns_empty_when_folder_absent()
     {
         var reader = MakeReader(new FakeSource()); // no files

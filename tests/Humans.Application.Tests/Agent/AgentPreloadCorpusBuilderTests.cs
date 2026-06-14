@@ -86,6 +86,23 @@ public class AgentPreloadCorpusBuilderTests
         text.Should().NotContain("Community FAQ");
     }
 
+    [HumansFact]
+    public async Task ReloadAllAsync_rebuilds_corpus_with_new_community_files()
+    {
+        var files = new List<string> { "FAQ-general" };
+        var builder = MakeBuilder(communityFiles: files);
+
+        var before = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        before.Should().Contain("**FAQ-general**");
+        before.Should().NotContain("**FAQ-comms**");
+
+        files.Add("FAQ-comms");
+        await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var after = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        after.Should().Contain("**FAQ-comms**");
+    }
+
     private static IAgentPreloadCorpusBuilder MakeBuilder(IReadOnlyList<string>? communityFiles = null)
     {
         var cache = new MemoryCache(new MemoryCacheOptions());

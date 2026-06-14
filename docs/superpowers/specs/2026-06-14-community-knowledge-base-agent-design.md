@@ -122,3 +122,11 @@ Failures are swallowed and logged (a load miss must never crash the host); the l
 
 - Whether `AgentSectionDocReader` is fronted by an interface; mirror it exactly for `CommunityFaqReader` either way.
 - Confirm the agent readers' cache entries are distinct from the user-facing `GuideContentService` (`guide:`) entries, so removing the agent TTLs leaves `/Guide` untouched. If any entry is shared, split it rather than changing `/Guide` behaviour.
+
+## Addendum (2026-06-14) — separate KB repo + admin Reload
+
+Two revisions adopted after the initial design, during implementation:
+
+1. **Dedicated repo, not vendored into the code repo.** The corpus lives in a standalone public repo **`nobodies-collective/knowledge-base`** (files under `docs/community-kb/`), read via a second `IGuideContentSource` (`GitHubCommunityKbContentSource`) bound to `CommunityKbSettings` (`CommunityKb:Owner/Repository/Branch/AccessToken`, defaulting to that repo's `main`). Rationale: vendoring into the Humans repo would force every content drop through the two-remote prod-promotion flow and bloat code history/PRs with non-code churn at ~100× growth. A separate repo lets content ship on its own cadence. `CommunityFaqReader` is unchanged — only its injected source differs (DI factory). The `confidential/` folder is structurally excluded by reading a clean public repo. Seeded with `docs/community-kb/_seed.md`.
+
+2. **Admin "Reload KB" button.** `IAgentPreloadCorpusBuilder.ReloadAllAsync` (`POST /Agent/Admin/ReloadKnowledgeBase`, `AdminOnly`) force-refetches the community KB and rebuilds + atomically swaps the cached preload corpus for every tier — so content updates land without an app restart. Reload+swap: fetch fresh, then overwrite cache keys (reads keep the old value until the swap). Still no TTL; restart remains a refresh, and this adds an on-demand one.

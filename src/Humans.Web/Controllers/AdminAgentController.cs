@@ -13,6 +13,7 @@ public class AdminAgentController(
     IAgentSettingsService settings,
     IAgentService agent,
     IAgentAdminStatusService status,
+    IAgentPreloadCorpusBuilder preload,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
     /// <summary>Index lands on Status — the operational view is the default
@@ -65,6 +66,15 @@ public class AdminAgentController(
         }, ct);
         SetSuccess("Settings saved.");
         return RedirectToAction(nameof(Settings));
+    }
+
+    [HttpPost("ReloadKnowledgeBase")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReloadKnowledgeBase(CancellationToken ct)
+    {
+        await preload.ReloadAllAsync(ct);
+        SetSuccess("Knowledge base reloaded from GitHub.");
+        return RedirectToAction(nameof(Status));
     }
 
     [HttpGet("Conversations/{id:guid}/Prompt")]

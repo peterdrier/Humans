@@ -18,12 +18,34 @@ public sealed class AgentPreloadCorpusBuilder(
         ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth",
          "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"];
 
+    private static readonly MemoryCacheEntryOptions HoldForever =
+        new() { Priority = CacheItemPriority.NeverRemove };
+
     public async Task<string> BuildAsync(AgentPreloadConfig config, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"agent:preload:{config}";
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
             return cached;
 
+        var result = await BuildCorpusAsync(config, cancellationToken);
+        cache.Set(cacheKey, result, HoldForever);
+        return result;
+    }
+
+    public async Task ReloadAllAsync(CancellationToken cancellationToken = default)
+    {
+        // Refresh the KB source first so the rebuilt index reflects the latest repo state,
+        // then rebuild + atomically overwrite every tier's cached corpus (reload + swap).
+        await community.ReloadAsync(cancellationToken);
+        foreach (var config in Enum.GetValues<AgentPreloadConfig>())
+        {
+            var fresh = await BuildCorpusAsync(config, cancellationToken);
+            cache.Set($"agent:preload:{config}", fresh, HoldForever);
+        }
+    }
+
+    private async Task<string> BuildCorpusAsync(AgentPreloadConfig config, CancellationToken cancellationToken)
+    {
         var sections1 = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
@@ -69,9 +91,7 @@ public sealed class AgentPreloadCorpusBuilder(
             }
         }
 
-        var result = sb.ToString();
-        cache.Set(cacheKey, result, new MemoryCacheEntryOptions { Priority = CacheItemPriority.NeverRemove });
-        return result;
+        return sb.ToString();
     }
 
     private static string ExtractTagline(string body)
