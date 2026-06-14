@@ -43,7 +43,7 @@ Build this only if it earns its keep — the admin statistics view (§12) exists
 
 - A **Ride offer** (a `RideshareTrip`) is one driver's leg — a route from their city to the burn (inbound) or from the burn to their city (outbound), with seats and cargo space on offer.
 - A **Ride request** (a `RideshareRequest`) is one rider's need — a pickup point and a desired date, with party size and the cargo they're hauling.
-- An **Interest** (a `RideshareInterest`) is the "I'm interested" / "I can take you" action linking a member to an offer or a request. It carries a status and fires a notification. It is **not** a booking.
+- An **Interest** (a `RideshareInterest`) is the "I'm interested" / "I can take you" action. It **always anchors to the `Trip` whose seat would be consumed** (so seat-draining and stats stay correct on both the offer-join and the request-pin paths), and *optionally* records the rider's `Request` it answered. It carries a status and fires a notification. It is **not** a booking.
 - The **burn end** of any trip is fixed: every trip has one end at the burn destination (from section settings) and one end at the member's city.
 - A trip is **inbound** (to the burn) or **outbound** (from the burn). Creating an inbound offer **auto-seeds** the inverse outbound offer; the two then detach and are edited/deleted independently.
 - **Seats remaining** is *derived*: `SeatsOffered − Σ(seats of accepted interests)`. A trip is `Full` when this hits zero.
@@ -111,7 +111,7 @@ Four owned tables. All point/coordinate fields are stored as owned scalar column
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
-**Derived:** a request is `Matched` when its owner holds an `Accepted` interest for the same direction/date neighbourhood. Used by the stats view's "still looking" count; kept derived to avoid a stored flag drifting.
+**Derived:** a request is `Matched` when its owner has secured a ride — i.e. there exists an `Accepted` interest either authored by the rider on an offer, or referencing this request (`RequestId`). Used by the stats view's "still looking" count; kept derived to avoid a stored flag drifting.
 
 ### 6.3 `rideshare_interests` — the "I'm interested" log
 
@@ -119,15 +119,15 @@ Four owned tables. All point/coordinate fields are stored as owned scalar column
 |----------|------|-------|
 | Id | Guid | PK |
 | FromUserId | Guid | FK → User — FK only |
-| TripId | Guid? | FK → rideshare_trips (rider → driver's offer) |
-| RequestId | Guid? | FK → rideshare_requests (driver → rider's request) |
+| TripId | Guid | FK → rideshare_trips — **required**. The trip whose seat this interest consumes; the capacity/stats anchor for **both** paths (rider→offer and driver→request-pin). |
+| RequestId | Guid? | FK → rideshare_requests — **optional origin pointer**. Set when a driver answers a rider's pickup pin ("I can take you"); records which request it answered. Null on the rider→offer path. |
 | Seats | int | How many people this interest is for (defaults to the request's PartySize, else 1) |
 | Message | string? | Optional intro note |
 | Status | InterestStatus | Pending → Accepted / Declined / Withdrawn |
 | CreatedAt | Instant | |
 | RespondedAt | Instant? | When the owner accepted/declined |
 
-**Constraint:** exactly one of `TripId` / `RequestId` is set (DB check constraint). An interest fires a notification on create (§10); it is a log + signal, never a reservation.
+**Constraint:** `TripId` is **always** set — every interest consumes (or would consume) a seat on a specific trip, so capacity and fill-rate stay correct regardless of which side initiated. `RequestId` is the optional origin pointer (no XOR). On the request-pin path, the driver picks or creates the trip the seat comes from when they click "I can take you." An interest fires a notification on create (§10); it is a log + signal, never a reservation.
 
 ### 6.4 `rideshare_settings` — per-year singleton
 
@@ -175,7 +175,7 @@ The differentiator is the map, and the key realisation is that **computing a rou
 
 | Route | Purpose | Access |
 |-------|---------|--------|
-| `GET /Rideshare` | The board: date picker + inbound/outbound toggle → all offers (lines) + requests (pins) for that day. Click a line → driver card + "I'm interested". Click a pin → rider card + "I can take you". Humans match by eye — no automated proximity ranking. | Members |
+| `GET /Rideshare` | The board: date picker + inbound/outbound toggle → all offers (lines) + requests (pins) for that day. Click a line → driver card + "I'm interested". Click a pin → rider card + "I can take you" (driver picks/creates the trip the seat comes from). Humans match by eye — no automated proximity ranking. | Members |
 | `GET/POST /Rideshare/Offer` | Create/edit a ride offer. On create, auto-seeds the inverse return leg. | Members (own) |
 | `GET/POST /Rideshare/Request` | Create/edit a ride request. | Members (own) |
 | `GET /Rideshare/Mine` | My offers + requests + interest received/sent. | Members (own) |
@@ -217,7 +217,9 @@ These are stated as hard invariants so an implementer cannot "helpfully" weaken 
 - **Coarse locations only.** City-level points, never precise home addresses. Profile location is a pre-fill, always overridable.
 - **No vetting, scoring, or surveillance.** The safety model is simply that profiles let members know a little about each other — the app surfaces real people and stays out of the way.
 - **Rosters are admin-and-driver only.** Who is riding with whom (a trip's accepted riders) is visible to that trip's driver and to Rideshare admins (incident/safety visibility, §12.1), never on the public board.
-- **GDPR.** The section owns user-scoped data and implements `IUserDataContributor` for export; right-to-deletion cascades a user's trips, requests, and interests.
+- **GDPR.** The section owns user-scoped data, with **export and erasure as two separate integrations** (they are not the same hook):
+  - **Export:** implement `IUserDataContributor` (read-only `ContributeForUserAsync`), fanned out by `GdprExportService`.
+  - **Right-to-erasure:** `IUserDataContributor` does **not** delete. Add an explicit per-section cleanup call (delete/anonymize the user's trips, requests, interests) into `AccountDeletionService.AnonymizeExpiredAccountAsync` (with `PurgeAsync` parity), the way Teams/Shifts rows are cleaned today. A bare-FK `UserId` has no DB cascade, so the rows must be removed explicitly or they outlive the account.
 
 ## 12. Admin views
 
@@ -242,7 +244,7 @@ Headline reads like *"78 offers · 100 seats filled · 12 riders still looking."
 - **Owning service:** `RideshareService` (`Humans.Application.Services.Rideshare`), never imports EF. **Repository:** `RideshareRepository` (`Humans.Infrastructure/Repositories/Rideshare/`) — the only code path touching the four `rideshare_*` tables.
 - **Caching decorator (§15), following the Events pattern.** The board is a hot, read-heavy seasonal surface; cache the active-year snapshot (trips + requests + stored route geometry) and invalidate inline on every write. The day/direction filter runs in memory over the snapshot.
 - **Cross-section read interface** `IRideshareServiceRead` only if another section consumes rideshare data (none anticipated at v1; do not pre-build it).
-- **`IUserDataContributor`** implemented for GDPR export + deletion cascade.
+- **GDPR** — implement `IUserDataContributor` for export (read-only); wire right-to-erasure **separately** into `AccountDeletionService` (explicit per-section delete/anonymize of trips/requests/interests), not via the contributor — which is export-only.
 - **Architecture test:** `RideshareArchitectureTests` pins the service/repository split, route names, the no-cross-section-nav rule, and the caching-decorator shape. The universal `HUM0025` analyzer enforces single-repository table ownership.
 - **On build:** add the four tables to `design-rules.md §8`, add `docs/sections/Rideshare.md`, add nav links (no orphan pages), and add the CLAUDE.md Extended Docs entry if warranted.
 
