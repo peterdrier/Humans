@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Nobodies">
+  <rect width="240" height="240" fill="#3d2b1f"/>
+  <g transform="translate(0,4)">
+    <g fill="none" stroke="#c9a96e" stroke-width="4.5" stroke-linecap="round">
+      <circle cx="120" cy="116" r="100"/>
+      <rect x="32" y="36" width="176" height="176"/>
+    </g>
+    <g fill="none" stroke="#c9a96e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      <g id="vmlimb">
+        <line x1="138" y1="86" x2="202" y2="84"/>
+        <line x1="138" y1="86" x2="176" y2="35"/>
+        <line x1="132" y1="144" x2="132" y2="209"/>
+        <line x1="122" y1="150" x2="179" y2="189"/>
+      </g>
+      <use href="#vmlimb" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+    <g fill="#c9a96e" stroke="none">
+      <path d="M120,70 L140,84 L130,118 L135,144 L120,151 L105,144 L110,118 L100,84 Z"/>
+      <rect x="114" y="58" width="12" height="16" rx="5"/>
+      <circle cx="120" cy="48" r="14"/>
+      <circle cx="206" cy="84" r="7"/><circle cx="34" cy="84" r="7"/>
+      <circle cx="177" cy="33" r="7"/><circle cx="63" cy="33" r="7"/>
+      <ellipse cx="132" cy="210" rx="8" ry="5"/><ellipse cx="108" cy="210" rx="8" ry="5"/>
+      <ellipse cx="183" cy="191" rx="8" ry="6" transform="rotate(35 183 191)"/>
+      <ellipse cx="57" cy="191" rx="8" ry="6" transform="rotate(-35 57 191)"/>
+    </g>
+  </g>
+</svg>
