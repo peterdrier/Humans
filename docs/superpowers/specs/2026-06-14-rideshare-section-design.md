@@ -34,7 +34,7 @@ Build this only if it earns its keep — the admin statistics view (§12) exists
 - **No in-app chat threads.** Contact is a single notification intro; the conversation happens off-platform.
 - **No precise home addresses.** Endpoints are coarse city-level points the user chooses to publish.
 - **No multi-event.** One active burn at a time.
-- **No server-side proximity/geo matching.** Matching is visual (eyeball the map); an optional client-side "highlight routes within N km of my pin" is the only assist, computed in the browser.
+- **No automated matching — humans match by eye.** Neither the server nor the client computes "who's near whom." The board simply renders every offer (line) and request (pin) for the date; riders and drivers look at the map, spot who's there, and reach out. (A client-side "highlight near my pickup" aid is noted as a possible *future* enhancement in §15 — explicitly **not** v1.)
 - **No per-day route-position tracking.** A multi-day trip shows its whole route on every covered date; we do not compute where along the route a driver is on day 2.
 - **No safety scoring, vetting workflow, or surveillance.** Accept/decline is the driver's gut call; the app stays out of it.
 - **No automatic cargo-capacity math.** Cargo does not subtract cleanly; the driver eyeballs it via the capacity note as riders are accepted.
@@ -175,7 +175,7 @@ The differentiator is the map, and the key realisation is that **computing a rou
 
 | Route | Purpose | Access |
 |-------|---------|--------|
-| `GET /Rideshare` | The board: date picker + inbound/outbound toggle → all offers (lines) + requests (pins) for that day. Click a line → driver card + "I'm interested". Click a pin → rider card + "I can take you". Optional client-side "highlight routes within N km of my pickup". | Members |
+| `GET /Rideshare` | The board: date picker + inbound/outbound toggle → all offers (lines) + requests (pins) for that day. Click a line → driver card + "I'm interested". Click a pin → rider card + "I can take you". Humans match by eye — no automated proximity ranking. | Members |
 | `GET/POST /Rideshare/Offer` | Create/edit a ride offer. On create, auto-seeds the inverse return leg. | Members (own) |
 | `GET/POST /Rideshare/Request` | Create/edit a ride request. | Members (own) |
 | `GET /Rideshare/Mine` | My offers + requests + interest received/sent. | Members (own) |
@@ -262,6 +262,7 @@ Minor decisions explicitly punted to the implementer:
 - **Travel windows** — admin-set in `rideshare_settings` vs. derived from the burn gate date.
 - **Luggage scale labels** — the four-point scale wording can be refined; keep it coarse.
 - **Rideshare admin role** — reuse `Admin`, or introduce a dedicated coordinator role.
+- **Client-side "highlight near my pickup/route" aid** — a possible future convenience (point-to-line distance in the browser); **not v1**. v1 keeps matching fully manual — the map shows everyone, the actual humans decide and reach out.
 
 ---
 
