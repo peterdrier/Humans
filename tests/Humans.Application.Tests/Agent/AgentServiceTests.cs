@@ -173,6 +173,56 @@ public class AgentServiceTests
         attackerHistory.Should().HaveCount(1, "exactly one new conversation was started for the refusal");
     }
 
+    [HumansFact]
+    public async Task PromptPreview_reports_system_prompt_token_count_from_count_tokens()
+    {
+        var userId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+        client.CountTokensResult = 4096;
+
+        var conversationId = await StartConversation(svc, client, userId);
+
+        var preview = await svc.GetPromptPreviewForAdminAsync(
+            conversationId, Xunit.TestContext.Current.CancellationToken);
+
+        preview.Should().NotBeNull();
+        preview!.SystemPromptTokens.Should().Be(4096);
+    }
+
+    [HumansFact]
+    public async Task PromptPreview_renders_without_a_token_count_when_count_tokens_fails()
+    {
+        var userId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+
+        var conversationId = await StartConversation(svc, client, userId);
+
+        client.CountTokensThrows = true;
+        var preview = await svc.GetPromptPreviewForAdminAsync(
+            conversationId, Xunit.TestContext.Current.CancellationToken);
+
+        preview.Should().NotBeNull();
+        preview!.SystemPromptTokens.Should().BeNull(
+            "a count_tokens failure must never break the admin prompt-preview page");
+    }
+
+    private static async Task<Guid> StartConversation(
+        IAgentService svc, AnthropicClientFake client, Guid userId)
+    {
+        client.EnqueueTurn(
+            new AgentTurnToken("hi", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        var conversationId = Guid.Empty;
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "hi", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            if (t.Finalizer is { } f) conversationId = f.ConversationId;
+        }
+        return conversationId;
+    }
+
     private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildService(
         Action<AgentSettings> tune,
         IAgentRateLimitStore? rateLimitStore = null)

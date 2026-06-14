@@ -361,12 +361,25 @@ public sealed class AgentService : IAgentService
             .Select(t => new AgentPromptToolDefinition(t.Name, t.Description, t.JsonSchema))
             .ToList();
 
+        // Measure the system prompt with the real tokenizer (count_tokens). This is a diagnostic
+        // nicety — a failed/rate-limited count must never break the admin page, so null on error.
+        int? systemPromptTokens = null;
+        try
+        {
+            systemPromptTokens = await _client.CountTokensAsync(settings.Model, systemPrompt, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "count_tokens failed for prompt preview; rendering without a token count");
+        }
+
         return new AgentPromptPreview(
             Model: settings.Model,
             SystemPrompt: systemPrompt,
             UserContextTail: tail,
             Tools: tools,
-            ReplayedHistory: replayed);
+            ReplayedHistory: replayed,
+            SystemPromptTokens: systemPromptTokens);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

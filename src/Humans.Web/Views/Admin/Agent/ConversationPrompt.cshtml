@@ -18,7 +18,21 @@
 </div>
 
 <details class="mb-4" open>
-    <summary class="h5">System prompt</summary>
+    <summary class="h5">
+        System prompt
+        @if (Model.SystemPromptTokens is int tokens)
+        {
+            <span class="badge bg-secondary ms-2">@tokens.ToString("N0") tokens</span>
+        }
+        else
+        {
+            <span class="badge bg-light text-muted border ms-2" title="Anthropic token-count API was unavailable">token count unavailable</span>
+        }
+    </summary>
+    @if (Model.SystemPromptTokens is not null)
+    {
+        <div class="small text-muted mt-1">Measured via Anthropic's token-count API for <code>@Model.Model</code>.</div>
+    }
     <pre class="bg-light border rounded p-3 small mt-2" style="white-space: pre-wrap; max-height: 60vh; overflow: auto;">@Model.SystemPrompt</pre>
 </details>
 

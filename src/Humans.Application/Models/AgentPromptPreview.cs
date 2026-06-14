@@ -12,7 +12,8 @@ public sealed record AgentPromptPreview(
     string SystemPrompt,
     string UserContextTail,
     IReadOnlyList<AgentPromptToolDefinition> Tools,
-    IReadOnlyList<AgentPromptHistoryTurn> ReplayedHistory);
+    IReadOnlyList<AgentPromptHistoryTurn> ReplayedHistory,
+    int? SystemPromptTokens);
 
 public sealed record AgentPromptToolDefinition(string Name, string Description, string JsonSchema);
 

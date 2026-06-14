@@ -195,6 +195,32 @@ public sealed class AnthropicClient : IAnthropicClient
         }
     }
 
+    public async Task<int> CountTokensAsync(
+        string model, string text, CancellationToken cancellationToken = default)
+    {
+        // count_tokens requires a non-empty messages array; the system field is optional.
+        // Counting the text as a single user message yields the tokenizer's count of the text
+        // itself (plus a few tokens of message framing) — accurate, and it reuses the same
+        // proven param types as the streaming path.
+        var request = new MessageCountTokensParams
+        {
+            Model = model,
+            Messages = new List<MessageParam>
+            {
+                new()
+                {
+                    Role = Role.User,
+                    Content = new MessageParamContent(
+                        new List<ContentBlockParam> { new(new TextBlockParam(text)) }),
+                },
+            },
+        };
+
+        var result = await _sdk.Messages.CountTokens(request, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return ClampToInt(result.InputTokens);
+    }
+
     private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;
 
     private static List<MessageParam> MapMessages(IReadOnlyList<AnthropicMessage> messages)
