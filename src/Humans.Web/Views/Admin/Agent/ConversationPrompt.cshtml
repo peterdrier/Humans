@@ -22,7 +22,7 @@
         System prompt
         @if (Model.SystemPromptTokens is int tokens)
         {
-            <span class="badge bg-secondary ms-2">@tokens.ToString("N0") tokens</span>
+            <span class="badge bg-secondary ms-2" title="System block measured via Anthropic's count_tokens API; includes a few tokens of minimal request framing">≈ @tokens.ToString("N0") tokens</span>
         }
         else
         {

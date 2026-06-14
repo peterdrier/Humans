@@ -198,20 +198,22 @@ public sealed class AnthropicClient : IAnthropicClient
     public async Task<int> CountTokensAsync(
         string model, string text, CancellationToken cancellationToken = default)
     {
-        // count_tokens requires a non-empty messages array; the system field is optional.
-        // Counting the text as a single user message yields the tokenizer's count of the text
-        // itself (plus a few tokens of message framing) — accurate, and it reuses the same
-        // proven param types as the streaming path.
+        // Mirror the real request shape: the prompt is sent as the cached System block (see
+        // StreamAsync), so count it there — counting it as a user turn would add user-role
+        // framing and disagree with the actual cached system block. count_tokens still requires
+        // a non-empty messages array, so a minimal placeholder rides along; its handful of
+        // framing tokens are why the figure is ≈, not exact.
         var request = new MessageCountTokensParams
         {
             Model = model,
+            System = new List<TextBlockParam> { new(text) },
             Messages = new List<MessageParam>
             {
                 new()
                 {
                     Role = Role.User,
                     Content = new MessageParamContent(
-                        new List<ContentBlockParam> { new(new TextBlockParam(text)) }),
+                        new List<ContentBlockParam> { new(new TextBlockParam(".")) }),
                 },
             },
         };

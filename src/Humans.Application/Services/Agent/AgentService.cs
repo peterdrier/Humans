@@ -370,7 +370,10 @@ public sealed class AgentService : IAgentService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "count_tokens failed for prompt preview; rendering without a token count");
+            // Expected/transient (rate limit, network) — log the reason at Warning, drop the
+            // stack trace per memory/code/always-log-problems.md.
+            _logger.LogWarning(
+                "count_tokens failed for prompt preview; rendering without a token count: {Reason}", ex.Message);
         }
 
         return new AgentPromptPreview(
