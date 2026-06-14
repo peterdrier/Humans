@@ -225,16 +225,9 @@ public sealed class NotificationMeterProvider(
         return counts!;
     }
 
-    private async Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken)
-    {
-        var cacheKey = CacheKeys.VotingBadge(boardMemberUserId);
-        return await cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            return await applicationDecisionService
-                .GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
-        });
-    }
+    // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (CacheKeys.VotingBadge).
+    private Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken) =>
+        applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {

@@ -55,6 +55,8 @@ public sealed class AdminDashboardService(
             setMembership);
     }
 
+    // No local cache: GetAllUserInfosAsync is already cache-served (CachingUserService,
+    // write-through), so this count stays fresh-on-write. See viewcomponent-no-cache.md.
     public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
     {
         var count = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false)).Count(u => u.NeedsConsentReview);

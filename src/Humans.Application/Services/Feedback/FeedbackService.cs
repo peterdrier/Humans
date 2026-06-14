@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -36,10 +37,13 @@ public sealed class FeedbackService(
     INotificationEmitter notificationService,
     IAuditLogService auditLogService,
     INavBadgeCacheInvalidator navBadge,
+    IMemoryCache cache,
     IClock clock,
     IHostEnvironment env,
     ILogger<FeedbackService> logger) : IFeedbackService, IUserDataContributor, IUserMerge
 {
+    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
+
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/png", "image/webp"
@@ -391,9 +395,13 @@ public sealed class FeedbackService(
             id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
     }
 
-    public Task<int> GetActionableCountAsync(
+    public async Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default) =>
-        repository.GetActionableCountAsync(cancellationToken);
+        await cache.GetOrCreateAsync(CacheKeys.FeedbackBadgeCount, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
+            return await repository.GetActionableCountAsync(cancellationToken);
+        });
 
     public async Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default)

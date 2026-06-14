@@ -62,11 +62,11 @@ public class TrackingMemoryCacheTests : IDisposable
     [HumansFact]
     public void DeriveKeyType_UseFullKeyWhenNoColon()
     {
-        _tracker.TryGetValue("NavBadgeCounts", out _);
+        _tracker.TryGetValue("FeedbackBadgeCount", out _);
 
         var stats = _tracker.GetSnapshot();
         stats.Should().ContainSingle();
-        stats[0].KeyType.Should().Be("NavBadgeCounts");
+        stats[0].KeyType.Should().Be("FeedbackBadgeCount");
     }
 
     [HumansFact]

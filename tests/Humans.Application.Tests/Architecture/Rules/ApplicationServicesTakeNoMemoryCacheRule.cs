@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
+using Humans.Application.Services.Feedback;
+using Humans.Application.Services.Governance;
 using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
 using Humans.Application.Services.Notifications;
@@ -31,6 +33,8 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationMeterProvider"/> — meter cache</item>
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
+///   <item><see cref="FeedbackService"/> — feedback-badge count cache (nav badges)</item>
+///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -55,7 +59,16 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(NotificationInboxService),
         typeof(NotificationMeterProvider),
         typeof(NotificationService),
-        typeof(ShiftManagementService)
+        typeof(ShiftManagementService),
+        // Nav-badge count caches moved out of NavBadgesViewComponent into their
+        // owning services (memory/code/viewcomponent-no-cache.md) — same inline
+        // badge-count caching IssuesService/NotificationMeterProvider already do.
+        // Each wraps a real repo/DB query and is evicted via the existing
+        // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (The review
+        // count is NOT here — its read is already cache-served by CachingUserService,
+        // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
+        typeof(FeedbackService),        // CacheKeys.FeedbackBadgeCount
+        typeof(ApplicationDecisionService)  // CacheKeys.VotingBadge(userId)
     ];
 
     [HumansFact]

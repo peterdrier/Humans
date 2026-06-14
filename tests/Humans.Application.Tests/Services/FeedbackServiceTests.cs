@@ -11,6 +11,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Feedback;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -28,6 +29,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     private readonly ITeamService _teamService;
     private readonly INotificationEmitter _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
+    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IFeedbackRepository _repository;
     private readonly FeedbackApplicationService _service;
 
@@ -108,7 +110,7 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
 
         _service = new FeedbackApplicationService(
             _repository, _userService, _userEmailService, _teamService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge, Clock, env,
+            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge, _cache, Clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }
 

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -35,6 +36,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -60,6 +62,7 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             _navBadge,
             _notificationMeter,
             _votingBadge,
+            _cache,
             Clock,
             NullLogger<ApplicationDecisionService>.Instance);
     }

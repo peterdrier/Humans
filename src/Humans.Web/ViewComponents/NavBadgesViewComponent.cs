@@ -1,7 +1,5 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
-using Humans.Application;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Governance;
@@ -10,27 +8,17 @@ using Humans.Domain.Constants;
 
 namespace Humans.Web.ViewComponents;
 
+// No IMemoryCache here (memory/code/viewcomponent-no-cache.md). Each count comes from
+// its owning service: feedback/voting/issues are cached inside those services; the review
+// count reads the already-cache-served UserInfo store, so it needs no extra cache.
 public class NavBadgesViewComponent(
     IAdminDashboardService adminDashboardService,
     IApplicationServiceRead applicationDecisionService,
     IFeedbackService feedbackService,
-    IIssuesService issuesService,
-    IMemoryCache cache) : ViewComponent
+    IIssuesService issuesService) : ViewComponent
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
     public async Task<IViewComponentResult> InvokeAsync(string queue)
     {
-        var counts = await cache.GetOrCreateAsync(CacheKeys.NavBadgeCounts, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
-            var reviewCount = await adminDashboardService.GetPendingReviewCountAsync();
-            var feedbackCount = await feedbackService.GetActionableCountAsync();
-
-            return (Review: reviewCount, Feedback: feedbackCount);
-        });
-
         int count;
         if (string.Equals(queue, "voting", StringComparison.OrdinalIgnoreCase))
         {
@@ -38,7 +26,7 @@ public class NavBadgesViewComponent(
         }
         else if (string.Equals(queue, "review", StringComparison.OrdinalIgnoreCase))
         {
-            count = counts.Review;
+            count = await adminDashboardService.GetPendingReviewCountAsync();
         }
         else if (string.Equals(queue, "issues", StringComparison.OrdinalIgnoreCase))
         {
@@ -46,7 +34,7 @@ public class NavBadgesViewComponent(
         }
         else
         {
-            count = counts.Feedback;
+            count = await feedbackService.GetActionableCountAsync();
         }
 
         return View(count);
@@ -58,13 +46,7 @@ public class NavBadgesViewComponent(
         if (!Guid.TryParse(claim, out var currentUserId))
             return 0;
 
-        var cacheKey = CacheKeys.VotingBadge(currentUserId);
-        return await cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
-            return await applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
-        });
+        return await applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
     }
 
     /// <summary>

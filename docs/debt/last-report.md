@@ -1,120 +1,120 @@
-# Debt Sweep Report — 2026-06-13
+# Debt Sweep Report — 2026-06-14
 
-- **Started:** 2026-06-13T20:29:52Z
-- **Budget:** 2h (default); finished well within budget
-- **Branch:** `debt-sweep/2026-06-13T203001Z` (off `origin/main` @ `18c308a52`)
-- **Themes touched:** 3 (rotation walked the `never`-swept front; two were non-actionable, one delivered burndown)
-- **Verification:** full `dotnet test` green — Web 340/340, Application 3698/3698, Integration 115 passed/1 skipped
+- **Started:** 2026-06-14T19:09:01Z
+- **Budget:** 2h (default); finished well within budget (~35 min)
+- **Branch:** `debt-sweep/2026-06-14T190908Z` (off `origin/main` @ `c9749fe90`)
+- **Worked theme:** `inbox` (fell through to it — see Rotation below)
 
-## Rotation walk
+## Rotation — this ledger is in a "hard cores only" state
 
-The `never`-swept themes at the front of rotation were audited in order. The
-first two turned out non-actionable for an autonomous sweep; the rotation
-advanced (nav-strip precedent) to the first theme with real, safe burndown.
+The two oldest (`never`) panel themes yield no sweep-mechanical fixes, so the run
+fell through to the `inbox` theme:
 
-| # | Theme | Outcome |
-|---|-------|---------|
-| 1 | `grandfathered-hum0028-invalidators` | **Design-blocked** — verified, no code change |
-| 2 | `obsolete-user-displayname` | **Actionable = 0** — all 20 sites legit, no code change |
-| 3 | `cs0618-pragma-nav-reads` | Assessed **blocked** (schema configs + interface-stitching) — left at `never`, not marked swept |
-| 4 | `baseline-entity-read-returns` | Deferred — every fix changes a public interface return type (approval-gated) |
-| 5 | `baseline-display-sort` | **Worked** — 16 false-positive exceptions marked, ~55 genuine sorts characterized |
+1. **`cs0618-pragma-nav-reads`** (pick #1, `never`) — audited all 27 pragma'd
+   files → **0 cross-section nav-read fixes**. The detect counts FILES-with-pragma
+   and conflates five unrelated things, none sweep-mechanical:
+   - ~15 `Data/Configurations/*.cs` HasOne nav **mappings** = the SCHEMA side
+     (`grandfathered-hum0024-nav-strip`, schema-blocked);
+   - 3 **false positives** where the arch scan's `.User` textual heuristic matches
+     a non-domain member — `HttpCurrentUserContext` + `CurrentUserEnricher`
+     (`HttpContext.User`), `AccountController` (record field `result.User`);
+   - 2 obsolete `ContactFieldType.Email` **enum** reads (legit legacy display, a
+     different obsolete concern) — `ProfileApiController`, `ProfileViewModel`;
+   - the **approved §6b in-memory stitch** (already migrated) — `FeedbackService`,
+     `TeamService` (`member.User`) + consumers `AboutController`, `ProfileController`,
+     `TeamController`, `TeamAdminController`, `TeamViewModels`;
+   - 3 **in-section** Team-nav reads in `TeamService` — off-theme; the only "fix"
+     relocates the pragma into a repo projection (still CS0618), non-mechanical.
 
-## Fixed (baseline-display-sort)
+   Like `obsolete-user-displayname`, the detect floors (~27) and can't reach 0
+   without forbidden pragmas/schema work. **Parked**; `last_swept` bumped to
+   2026-06-14; ledger note rewritten with the 5-category breakdown + re-scope
+   recommendation.
 
-16 ratchet entries removed by marking genuine non-display sorts
-`// arch:db-sort-ok` (exception categories per the rule doc). These were never
-display debt — selectors, FIFO batches, deterministic identity picks,
-chronological streams, pagination ordering:
+2. **`baseline-entity-read-returns`** (pick #2, `never`) — passed over: all 21
+   entries are public-interface read methods whose fix CHANGES the return type
+   entity→DTO, rippling to every caller (e.g. `IUserService.GetByIdsAsync:User`,
+   `ITeamService.GetTeamByIdAsync:Team` are pervasive). Per the work-loop's
+   skip-and-ask rule (public-surface changes), each is skip-and-ask. `last_swept`
+   left `never`; note added. **Needs Peter's call** (see Questions).
 
-**Commit `2adb25a6e`** — 6 sorts:
-- ConsentRepository — latest-consent selector (`FirstOrDefault`) + consent-records chronological stream
-- EmailOutboxRepository — outbox FIFO claim batch (`OrderBy CreatedAt` + `Take`)
-- RoleAssignmentRepository — `ThenByDescending` tie-breaker completing the already-marked paged admin window
-- FeedbackRepository — append-only message-thread chronological order
-- ApplicationRepository — mandatory SQL ordering for `Skip/Take` pagination
+## Fixed
 
-**Commit `2b5e5e958`** — 4 sorts:
-- GoogleSyncOutboxRepository — top-N recent-events selector + outbox FIFO batch
-- ShiftRepository.Management — deterministic active-settings selector by identity
-- ShiftRepository.Signups — maintenance orphan-scan order (no UI)
+- **`inbox`: View components must not inject `IMemoryCache`** (this PR) —
+  `NavBadgesViewComponent` no longer injects `IMemoryCache`. Its three nav-badge
+  counts now resolve through their owning services:
+  - **feedback count** → cached in `FeedbackService.GetActionableCountAsync`
+    (`CacheKeys.FeedbackBadgeCount`); wraps a real repo query, evicted by the
+    existing `INavBadgeCacheInvalidator`.
+  - **voting count** → cached in `ApplicationDecisionService.GetUnvotedApplicationCountAsync`
+    (`CacheKeys.VotingBadge(userId)`); a **consolidation** — the same cache moved
+    out of both the VC and `NotificationMeterProvider` (whose redundant inline copy
+    was removed) into the one owning service, evicted by `IVotingBadgeCacheInvalidator`.
+  - **review count** → reads `AdminDashboardService.GetPendingReviewCountAsync`
+    directly with **no new cache**: its source (`GetAllUserInfosAsync`) is already
+    cache-served by `CachingUserService` (write-through, fresh-on-write).
+  - The bundled static `NavBadgeCounts` (`(review, feedback)` tuple) was retired;
+    `InvalidateNavBadgeCounts()` now clears `FeedbackBadgeCount` only (review needs
+    no eviction — it's fresh-on-write).
+  - `FeedbackService` + `ApplicationDecisionService` added to the
+    `ApplicationServicesTakeNoMemoryCache` architecture allowlist with rationale
+    (sanctioned "add when intentional and reviewed" path; precedent: `IssuesService`,
+    `NotificationMeterProvider` already allowlisted for the identical badge-count
+    concern). **`AdminDashboardService` deliberately NOT allowlisted.**
+  - Build: 0 errors, 0 new warnings. Tests: 4627 passed, 0 failed.
+  - Files: `NavBadgesViewComponent.cs`, `FeedbackService.cs`,
+    `ApplicationDecisionService.cs`, `AdminDashboardService.cs`,
+    `NotificationMeterProvider.cs`, `CacheKeys.cs`, `MemoryCacheExtensions.cs`,
+    `ApplicationServicesTakeNoMemoryCacheRule.cs` + 4 touched test files.
 
-**Commit `505992d90`** — 6 sorts:
-- CampRepository — `CampSettings.OrderBy(Id).First*` singleton-config selectors (×4)
-- CampaignRepository — top-N available-code allocation selector + newest-campaign grant selector
+## Panel review
 
-`DisplaySortInControllers` arch test green after each cluster; full suite green at the end.
+Elevated this `light` inbox item to a **panel** review (opus, score-blind,
+default-reject) because it expanded an architecture allowlist.
 
-## Skipped / deferred (recorded, not chased)
+- **First verdict: REJECT.** The reviewer caught a §4b anti-pattern in the
+  **review-count** half: `GetPendingReviewCountAsync` reads `GetAllUserInfosAsync`,
+  which is **already** cache-served by the write-through `CachingUserService`.
+  Layering a 2-min TTL `ReviewBadgeCount` cache on top added a staleness window,
+  **regressed** `AdminController`/`AdminNavTree` (which had fresh-on-write reads),
+  and had an eviction gap (`OnboardingService` never calls `navBadge.Invalidate()`).
+  The voting (consolidation) and feedback (real DB query) halves were sound.
+- **Rework (one allowed):** applied the reviewer's prescription verbatim — dropped
+  the review-count cache entirely, removed `ReviewBadgeCount`, kept
+  `AdminDashboardService` off the allowlist; kept feedback + voting. Re-built +
+  re-tested green. The reworked design is strictly better than both the original
+  code and the first attempt.
 
-- **HUM0028 invalidators (all 17):** folding is correctness-breaking, not mechanical.
-  Proof on the best candidate (`IRoleAssignmentCacheInvalidator`): inner service
-  invalidates after the write but before `SyncBoardTeamAsync` reads (read-after-write
-  regression if folded into the decorator), and `ReassignAsync` defers invalidation
-  to a post-`TransactionScope` cross-section caller. 16 of 17 are deliberate
-  ordering-sensitive cross-section/sibling seams that must stay; 1
-  (`IEventViewInvalidator`) is a speculative hook for open issue #719.
-- **HUM_USER_DISPLAYNAME (all 20):** every firing site is a legit consumer
-  (creation-time writes, BurnerName-fallback derivation, GDPR export, purge labels,
-  write-side sync, GDPR sentinel, dev seeders). Rendering-caller debt already migrated
-  (#691). The `build:` detect overcounts — legit consumers can't be silenced without a
-  forbidden pragma, so the count floors at 20.
-- **~55 genuine display sorts (baseline-display-sort):** UserRepository
-  emails/profiles/contact-fields, Team/Camp departments+roles by `SortOrder`/`Name`,
-  Camp images by `SortOrder`, Event/Ticket/Campaign lists, and ambiguous "user's list
-  newest-first". These need caller-side moves + UI verification — out of safe scope for
-  a `review: light` autonomous sweep (moving a repo `OrderBy` up changes order for all
-  consumers). Recommend a focused reviewed PR.
-- **TicketRepository `sortBy`/`sortDesc` parameterized helper (~12 sites):** the doc's
-  named anti-pattern, but genuinely required at the SQL boundary for paged sortable
-  admin grids — pagination-vs-rule architectural tension, Peter's call.
+## Skipped
 
-## Forbidden-move reverts
+- All `cs0618-pragma-nav-reads` items — non-actionable (see Rotation).
+- All `baseline-entity-read-returns` items — skip-and-ask (public-surface return
+  changes).
+- No forbidden-move reverts. No EF drift (no entity/nav/config touched).
 
-None. Diff scanned each cluster for `#pragma warning disable HUM`, `[SuppressMessage`,
-new `[Grandfathered]`, `// ReSharper disable` — clean. All edits are
-`// arch:db-sort-ok` markers on genuine exception-category sorts (not display-debt
-dodges). No EF drift gate needed — comment-only repository edits, no model change.
+## Inbox additions
+
+- None. Removed the completed "ViewComponents injecting IMemoryCache" item
+  (inbox 10 → 9).
 
 ## Ledger changes
 
-- `recent_sections`: `[] -> [Camps, Campaigns, Shifts]`
-- `grandfathered-hum0028-invalidators`: `last_swept -> 2026-06-13`; note = DESIGN-BLOCKED
-  with per-item classification of all 17; recommend rotation skip pending Peter on #719.
-- `obsolete-user-displayname`: `last_swept -> 2026-06-13`; `remaining 12 -> 20` (matches
-  detect); note = ACTIONABLE=0, detect overcounts the legit floor; parked.
-- `baseline-display-sort`: `last_swept -> 2026-06-13`; `remaining 71 -> 55`; note =
-  16 false-positives removed, ~55 genuine sorts + Ticket tension characterized.
-- No themes retired (no enforcer-guarded theme hit 0); no new themes (staleness check clean:
-  grandfathered ids HUM0024/0028/0031 and baselines 21/71 all matched the ledger).
+- `inbox`: `last_swept` → 2026-06-14, `remaining` 10 → 9 (ViewComponent item removed).
+- `cs0618-pragma-nav-reads`: `last_swept` `never` → 2026-06-14; note rewritten
+  (5-category audit, parked, re-scope recommendation). `remaining` 27 (floored).
+- `baseline-entity-read-returns`: note added (all skip-and-ask); `last_swept` stays
+  `never`.
+- `recent_sections`: `[Camps, Campaigns, Shifts]` → `[Campaigns, Feedback, Governance]`.
+- No new themes, retirements, or evictions.
 
-## Resolved with Peter (2026-06-13)
+## Questions for Peter (resolved inline at end of run)
 
-1. `IEventViewInvalidator` — **KEEP** as the #719 placeholder.
-2. HUM0028 invalidators — **LEAVE in rotation** (re-check periodically; do not flag as skip).
-3. HUM_USER_DISPLAYNAME — **LEAVE parked** in the ledger; the `[Obsolete]` warning guards new misuse.
-4. TicketRepository `sortBy`/`sortDesc` — **REAL DEBT**, not a pagination exception: stays in the baseline, needs the paged-grid sort redesigned (separate effort).
-
-## Follow-up — interactive display-sort moves (Peter-directed, 2026-06-13)
-
-Peter corrected the initial framing: a flagged repo sort whose consumers don't
-render an order-sensitive user-facing list is **wasted work — delete it**, not
-relocate it; only genuinely user-facing lists get sorted **in the rendering
-control** (view / VM assembly). Worked the whole theme down with reforge
-caller-tracing per method. **`baseline-display-sort`: 71 → 25.**
-
-- **Deleted** (~17 — no consumer renders the order): UserEmails/ContactFields/
-  ProfileLanguages reads, GoogleResource sync lists, GDPR-export paths
-  (AccountMerge/Campaign/CampRoles/Team), and the 4 camp-image `Include` sorts
-  that `CampService` + the view already re-sort.
-- **Marked db-sort-ok** (non-display): Camp latest-season selector, Event
-  category/venue reorder-neighbor lookups, plus the earlier 16.
-- **Moved repo → view**: campaign admin list + user/admin grant tables + camp
-  role-definition tables (client-sortable `TableModel`, default order set in the
-  view), team role-definition lists (`@foreach` by SortOrder), account-merge
-  review queue (controller VM assembly, oldest-first).
-- **Remaining 25** = 18 Ticket `sortBy`/`sortDesc` real-debt (stays, needs the
-  paged-grid sort redesigned) + 7 harder view-moves deferred (tracking view not
-  located; multi-consumer camps list; camp-role-assignment view; team roster —
-  its slot DTO lacks `SortOrder` so the view can't re-sort without a DTO field).
-  Each verified green per cluster; full suite was green before the moves began.
+1. **Allowlist expansion** — OK to allowlist `FeedbackService` +
+   `ApplicationDecisionService` for inline badge-count caching (matching
+   `IssuesService`/`NotificationMeterProvider`), or do you want Infrastructure
+   `Caching*Service` decorators (§15 Option B) instead?
+2. **`baseline-entity-read-returns`** — do the 21 entity→DTO return-type
+   migrations belong in the sweep (each is a public-surface change touching many
+   callers), or as dedicated per-method PRs? Until decided it stays skip-and-ask.
+3. **`cs0618-pragma-nav-reads`** — agree to park it (floored at ~27, 0 actionable)
+   and re-scope its detect to count only un-stitched cross-section nav reads?

@@ -10,7 +10,7 @@
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
 # history; the baseline guards against NEW destructive ops, it is not a backlog.
 version: 1
-recent_sections: [Camps, Campaigns, Shifts]
+recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0024-nav-strip
     title: Cross-section EF navigations in entity configurations (HUM0024)
@@ -112,13 +112,38 @@ themes:
     title: Pragma-wrapped CS0618 cross-section nav reads
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
     review: panel
-    last_swept: never
+    last_swept: 2026-06-14
     remaining: 27
     notes: >-
-      Replace pragma-wrapped [Obsolete] nav reads with service stitching — the
-      cross-section fix done on both sides at once. Closely coupled to
-      grandfathered-hum0024-nav-strip; working one may shrink the other.
-      The deferred NavStitching.Suppress consolidation idea lives here too.
+      ACTIONABLE = 0 cross-section nav reads (audited all 27 files, sweep
+      2026-06-14). The detect counts FILES-with-pragma and conflates five
+      unrelated things, none sweep-mechanical:
+      (1) ~15 src/Humans.Infrastructure/Data/Configurations/*.cs HasOne nav
+      MAPPINGS = the SCHEMA side, owned by grandfathered-hum0024-nav-strip
+      (dropping any fires has-pending-model-changes; out of sweep scope);
+      (2) 3 FALSE POSITIVES where the arch scan's textual `.User` heuristic
+      matches a non-domain member — HttpCurrentUserContext + CurrentUserEnricher
+      (HttpContext.User principal) and AccountController (record field
+      result.User);
+      (3) 2 obsolete ContactFieldType.Email ENUM reads (legit legacy-data
+      display, a different obsolete concern, not nav reads) — ProfileApiController,
+      ProfileViewModel;
+      (4) the APPROVED §6b in-memory cross-domain stitch (entity nav populated
+      from service data, design-rules §6b/§15i) — already migrated: FeedbackService
+      (r.User after userService.GetByIdsAsync), TeamService (member.User), and the
+      consumers AboutController, ProfileController, TeamController, TeamAdminController,
+      TeamViewModels (file-wide);
+      (5) 3 IN-SECTION obsolete Team-nav reads in TeamService
+      (TeamRoleDefinition.Team, TeamJoinRequest.Team, TeamMember.Team) — off-theme
+      (in-section, not cross-section); the only "fix" relocates the pragma into a
+      repo projection expression (still CS0618), non-mechanical, panel.
+      Like obsolete-user-displayname this detect FLOORS (~27) and can never reach 0
+      without forbidden pragmas/schema work. The cross-section reads are ALL already
+      service-stitched. PARKED — re-check only when a NEW un-stitched cross-section
+      nav read appears (the CS0618 ratchet flags it). Future re-scope: count only
+      un-stitched cross-section nav reads (currently 0). TeamViewModels file-wide
+      pragma clears only when its VMs are built from service DTOs (large refactor,
+      separate). Still closely coupled to grandfathered-hum0024-nav-strip.
   - id: baseline-entity-read-returns
     title: Application services returning entities from reads
     detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt"
@@ -128,6 +153,15 @@ themes:
     notes: >-
       Convert to DTO/Info returns (read-model pattern, design-rules §15).
       Remove each fixed locator line from the baseline file — never add lines.
+      PASSED OVER as #2 rotation candidate (sweep 2026-06-14): all 21 entries are
+      public-interface read methods whose fix CHANGES the return type
+      entity→DTO — a surface-changing refactor that ripples to every caller
+      (e.g. IUserService.GetByIdsAsync:User and ITeamService.GetTeamByIdAsync:Team
+      are called pervasively). Per the work-loop's skip-and-ask rule
+      (public-surface changes), each item is skip-and-ask, so a sweep can't burn
+      these down mechanically — they need Peter's go on doing entity→DTO return
+      migrations as sweep work vs. dedicated per-method PRs. last_swept stays
+      `never` (not per-item audited; only pattern-classified this run).
   - id: baseline-display-sort
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
@@ -184,8 +218,8 @@ themes:
     title: One-off inbox items
     detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
     review: per-item
-    last_swept: never
-    remaining: 10
+    last_swept: 2026-06-14
+    remaining: 9
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
@@ -193,9 +227,6 @@ inbox:
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
-  - added: 2026-06-12
-    what: "ViewComponents injecting IMemoryCache directly (3 sites) — owning service exposes a cached accessor instead (memory/code/viewcomponent-no-cache.md)"
-    review: light
   - added: 2026-06-12
     what: "UsersAdminController.Audience direct DbContext reads — route through IAdminDatabaseDiagnosticsService"
     review: panel

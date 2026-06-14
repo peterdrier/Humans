@@ -230,14 +230,14 @@ public class NotificationServiceTests : IDisposable
 
         _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(userId), out _).Should().BeFalse();
 
-        // Global NavBadgeCounts should NOT be affected (it's for admin queues, not notifications).
-        _cache.Set(CacheKeys.NavBadgeCounts, (Review: 1, Voting: 2, Feedback: 0));
+        // Admin nav-badge counts should NOT be affected (they're for admin queues, not notifications).
+        _cache.Set(CacheKeys.FeedbackBadgeCount, 1);
         await _service.SendAsync(
             NotificationSource.TeamMemberAdded,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Test2",
             [Guid.NewGuid()], cancellationToken: Xunit.TestContext.Current.CancellationToken);
-        _cache.TryGetValue(CacheKeys.NavBadgeCounts, out _).Should().BeTrue();
+        _cache.TryGetValue(CacheKeys.FeedbackBadgeCount, out _).Should().BeTrue();
     }
 }

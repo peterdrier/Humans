@@ -2,7 +2,10 @@ namespace Humans.Application;
 
 public static class CacheKeys
 {
-    public const string NavBadgeCounts = "NavBadgeCounts";
+    // Feedback nav-badge count cached at its owning service (FeedbackService).
+    // Evicted coarsely via InvalidateNavBadgeCounts(). The review count is not
+    // cached here — its source read is already cache-served by CachingUserService.
+    public const string FeedbackBadgeCount = "FeedbackBadgeCount";
 
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string NotificationMeters = "NotificationMeters";
@@ -47,7 +50,7 @@ public static class CacheKeys
     public static readonly IReadOnlyDictionary<string, CacheKeyMeta> Metadata =
         new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
         {
-            ["NavBadgeCounts"] = new("2 min", CacheKeyType.Static),
+            ["FeedbackBadgeCount"] = new("2 min", CacheKeyType.Static),
             ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["ActiveTeams"] = new("10 min", CacheKeyType.Static),

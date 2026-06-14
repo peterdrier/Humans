@@ -52,7 +52,7 @@ public static class MemoryCacheExtensions
     }
 
     public static void InvalidateNavBadgeCounts(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.NavBadgeCounts);
+        cache.Remove(CacheKeys.FeedbackBadgeCount);
 
     public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NotificationMeters);
