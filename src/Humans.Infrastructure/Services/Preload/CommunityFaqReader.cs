@@ -180,8 +180,8 @@ public sealed class CommunityFaqReader(
     /// "urinals", "EE", or "VIPee" that the router needs to recognise a topic is relevant. The app
     /// deliberately does NOT derive keywords from the prose: real per-file keyword extraction
     /// (stopwords, proper nouns, EN/ES) is an offline, reviewable concern owned by the KB generator
-    /// (see docs/superpowers/specs/2026-06-15-community-kb-keyword-section-generator-spec.md).
-    /// Returns the section's text (newlines collapsed to spaces) or "" when the file declares no
+    /// pipeline, not the app. Reads from the <c>## Keywords</c> heading until the next <c>##</c>,
+    /// returning that text with newlines collapsed to spaces, or "" when the file declares no
     /// Keywords section, in which case the index shows the Overview summary alone.
     /// </summary>
     internal static string ExtractKeywords(string[] lines)
