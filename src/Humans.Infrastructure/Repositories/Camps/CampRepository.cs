@@ -29,7 +29,7 @@ internal sealed partial class CampRepository : ICampRepository
             .Include(b => b.Seasons)
                 .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
             .Include(b => b.HistoricalNames)
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
+            .Include(b => b.Images)
             .FirstOrDefaultAsync(b => b.Slug == normalizedSlug, ct);
     }
 
@@ -43,7 +43,7 @@ internal sealed partial class CampRepository : ICampRepository
             .Include(b => b.Seasons)
                 .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
             .Include(b => b.HistoricalNames)
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
+            .Include(b => b.Images)
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
     }
 
@@ -54,7 +54,7 @@ internal sealed partial class CampRepository : ICampRepository
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons.Where(s => s.Year == year))
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
+            .Include(b => b.Images)
             .Include(b => b.HistoricalNames)
             .Where(b => b.Seasons.Any(s => s.Year == year))
             .ToListAsync(ct);
@@ -70,7 +70,7 @@ internal sealed partial class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
                 .ThenInclude(s => s.Members.Where(m => m.Status != CampMemberStatus.Removed))
-            .Include(c => c.Images.OrderBy(i => i.SortOrder))
+            .Include(c => c.Images)
             .Include(c => c.HistoricalNames)
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
@@ -245,7 +245,7 @@ internal sealed partial class CampRepository : ICampRepository
         return await ctx.CampSeasons
             .AsNoTracking()
             .Where(s => s.CampId == campId)
-            .OrderByDescending(s => s.Year)
+            .OrderByDescending(s => s.Year) // arch:db-sort-ok latest-season selector by identity (FirstOrDefault)
             .FirstOrDefaultAsync(ct);
     }
 
@@ -505,14 +505,14 @@ internal sealed partial class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampSettings
             .AsNoTracking()
-            .OrderBy(s => s.Id)
+            .OrderBy(s => s.Id) // arch:db-sort-ok deterministic camp-settings selector by identity
             .FirstOrDefaultAsync(ct);
     }
 
     public async Task SetPublicYearAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         settings.PublicYear = year;
         await ctx.SaveChangesAsync(ct);
     }
@@ -529,7 +529,7 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         if (settings.OpenSeasons.Contains(year))
         {
             return false;
@@ -543,7 +543,7 @@ internal sealed partial class CampRepository : ICampRepository
     public async Task<bool> CloseSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
         if (!settings.OpenSeasons.Remove(year))
         {
             return false;

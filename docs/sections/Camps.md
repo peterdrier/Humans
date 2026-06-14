@@ -98,7 +98,7 @@ Per-season, post-hoc human/camp affiliation. Status: Pending → Active → Remo
 | ConfirmedByUserId | Guid? | Lead who approved (scalar) |
 | RemovedAt | Instant? | Set on remove/withdraw/leave/reject |
 | RemovedByUserId | Guid? | Actor who closed the row (scalar) |
-| HasEarlyEntry | bool | Default false; cleared on Removed transition |
+| HasEarlyEntry | bool | Default false; cleared on Removed transition unless the holder had already entered the event (consumed grant — retained so the slot-cap count stays accurate) |
 
 ### CampRoleDefinition
 
@@ -228,7 +228,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - The `/Camps ↔ /Barrios` and `/api/camps ↔ /api/barrios` dual-route aliases are the **only sanctioned URL aliases in the codebase**. No other section may add URL aliases without explicit owner approval.
 - Early Entry slot count is per-season (`CampSeason.EeSlotCount`, CampAdmin-managed). The EE start date is global per year (`CampSettings.EeStartDate`).
 - A `CampMember.HasEarlyEntry` grant requires `Status = Active`. Granting beyond `EeSlotCount` is rejected; lowering `EeSlotCount` below current grants is allowed (no auto-revoke; overflow flagged in UI).
-- Member-removal transitions (Remove / Leave / Withdraw / Reject) clear `HasEarlyEntry` in the same `SaveChangesAsync` as the status flip.
+- Member-removal transitions (Remove / Leave / Withdraw / Reject) clear `HasEarlyEntry` in the same `SaveChangesAsync` as the status flip — **except** when the removed member has already entered the event (gate check-in detected via `IUserServiceRead`). In that case `HasEarlyEntry` is retained on the `Removed` row so the slot-cap count (`GetGrantedCountForSeasonAsync`, which no longer filters by `Status = Active`) still includes the consumed slot, preventing remove-and-regrant from yielding extra early entries.
 - EE state is **never** rendered on anonymous or public views — only on `/Camps/Admin` and `/Camps/{slug}/Edit/Members` for CampAdmin/leads.
 
 ## Negative Access Rules
@@ -243,6 +243,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Anyone **cannot** assign a role to a human who is not an Active CampMember of the same season — service rejects with `MemberNotActive` / `MemberSeasonMismatch`.
 - Camp leads **cannot** edit `EeSlotCount` (CampAdmin/Admin only).
 - Anyone **cannot** grant EE to a non-Active member (service rejects with `MemberNotActive`).
+- Anyone **cannot** revoke EE from a member who has already entered the event (service rejects with `MemberAlreadyEntered`). Once the grant is consumed at the gate the slot remains allocated to prevent extra early entries from remove-and-regrant.
 
 ## Triggers
 

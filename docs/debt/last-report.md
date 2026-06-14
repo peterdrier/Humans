@@ -1,88 +1,120 @@
-# Debt Sweep Report — 2026-06-12
+# Debt Sweep Report — 2026-06-13
 
-- **Branch:** `debt-sweep/2026-06-12T150757Z` (base `origin/main @ aaad87962`)
-- **Budget:** 2h (default)
-- **Themes worked:** `grandfathered-hum0024-nav-strip` (schema-blocked finding), `grandfathered-hum0031-controller-logic` (attempted, approach rejected, all code changes reverted)
+- **Started:** 2026-06-13T20:29:52Z
+- **Budget:** 2h (default); finished well within budget
+- **Branch:** `debt-sweep/2026-06-13T203001Z` (off `origin/main` @ `18c308a52`)
+- **Themes touched:** 3 (rotation walked the `never`-swept front; two were non-actionable, one delivered burndown)
+- **Verification:** full `dotnet test` green — Web 340/340, Application 3698/3698, Integration 115 passed/1 skipped
 
-## Fixed — 0 code items
+## Rotation walk
 
-The sweep removed 12 HUM0031 grandfathers across 11 commits, but **Peter
-reviewed and rejected the approach, and all 11 commits were reverted**
-(`d6c569c0a`). Every fix split the controller method into controller-local
-private helpers / VM factories — satisfying the cc/statement metric while
-moving **zero** domain decisions into services. Goodhart's law: worse than
-nothing, because it removed the debt markers while keeping the debt.
+The `never`-swept themes at the front of rotation were audited in order. The
+first two turned out non-actionable for an autonomous sweep; the rotation
+advanced (nav-strip precedent) to the first theme with real, safe burndown.
 
-All 15 `[Grandfathered("HUM0031")]` attributes are restored; the ledger entry
-is back to 26 warning sites with corrected guidance.
+| # | Theme | Outcome |
+|---|-------|---------|
+| 1 | `grandfathered-hum0028-invalidators` | **Design-blocked** — verified, no code change |
+| 2 | `obsolete-user-displayname` | **Actionable = 0** — all 20 sites legit, no code change |
+| 3 | `cs0618-pragma-nav-reads` | Assessed **blocked** (schema configs + interface-stitching) — left at `never`, not marked swept |
+| 4 | `baseline-entity-read-returns` | Deferred — every fix changes a public interface return type (approval-gated) |
+| 5 | `baseline-display-sort` | **Worked** — 16 false-positive exceptions marked, ~55 genuine sorts characterized |
 
-### The lesson (now encoded in the ledger notes and the skill)
+## Fixed (baseline-display-sort)
 
-The rule is **"no business logic in controllers"** — the metric is only a
-proxy detector. Controller turf: parse/bind, authorize, call service, shape
-response (sort/filter/page, DTO→VM mapping, redirects, flash). Business
-logic: decisions about the domain — state-transition rules, domain meanings
-(all-day ⇒ 1440 min), workflow (who gets notified), derived domain facts,
-toggle semantics. Litmus per statement: *would a Hangfire job doing the same
-operation need this line?* Yes → it belongs in the service.
+16 ratchet entries removed by marking genuine non-display sorts
+`// arch:db-sort-ok` (exception categories per the rule doc). These were never
+display debt — selectors, FIFO batches, deterministic identity picks,
+chronological streams, pagination ordering:
 
-Only two valid fixes:
+**Commit `2adb25a6e`** — 6 sorts:
+- ConsentRepository — latest-consent selector (`FirstOrDefault`) + consent-records chronological stream
+- EmailOutboxRepository — outbox FIFO claim batch (`OrderBy CreatedAt` + `Take`)
+- RoleAssignmentRepository — `ThenByDescending` tie-breaker completing the already-marked paged admin window
+- FeedbackRepository — append-only message-thread chronological order
+- ApplicationRepository — mandatory SQL ordering for `Skip/Take` pagination
 
-1. **Service move** — relocate the domain decisions into the section's
-   application service. Interface surface changes need per-item Peter
-   approval (skip-and-ask). Right-shaped existing pattern:
-   `DietaryMedicalViewModel.ToCommand()` →
-   `profileEditorService.SaveDietaryMedicalAsync(userId, command)`.
-2. **Threshold-calibration finding** — the method is genuinely
-   presentation (sorting/filtering/mapping) and just exceeds a low
-   threshold. Say so; the grandfather stays.
+**Commit `2b5e5e958`** — 4 sorts:
+- GoogleSyncOutboxRepository — top-N recent-events selector + outbox FIFO batch
+- ShiftRepository.Management — deterministic active-settings selector by identity
+- ShiftRepository.Signups — maintenance orphan-scan order (no UI)
 
-Splitting a method into controller-local helpers is **forbidden**, full stop.
+**Commit `505992d90`** — 6 sorts:
+- CampRepository — `CampSettings.OrderBy(Id).First*` singleton-config selectors (×4)
+- CampaignRepository — top-N available-code allocation selector + newest-campaign grant selector
 
-## Theme finding — `grandfathered-hum0024-nav-strip` is SCHEMA-BLOCKED
+`DisplaySortInControllers` arch test green after each cluster; full suite green at the end.
 
-Verified empirically: removing the `HasOne` block from
-`IssueCommentConfiguration` fires `dotnet ef migrations
-has-pending-model-changes`. The config blocks own DB-level FK constraints +
-cascade behavior, so **every** HUM0024 fix is an FK-drop migration — out of
-sweep scope. Ledger marks the theme schema-blocked so rotation skips it.
+## Skipped / deferred (recorded, not chased)
 
-## Skill fixes that survived the sweep
-
-- Real `date -u` budget checks (`8016d1f3e`) — first run "estimated" 85 min
-  elapsed while really at 27; never guess time.
-- Anchored `[Grandfathered(` grep (landed earlier in PR #989).
-- Forbidden-moves list now includes the controller-local-helper split
-  (this sweep's lesson).
-
-## Skipped
-
-- All HUM0031 items — approach rejected; future sweeps need per-item Peter
-  approval on service-move surface changes, so this theme is `review: panel`.
+- **HUM0028 invalidators (all 17):** folding is correctness-breaking, not mechanical.
+  Proof on the best candidate (`IRoleAssignmentCacheInvalidator`): inner service
+  invalidates after the write but before `SyncBoardTeamAsync` reads (read-after-write
+  regression if folded into the decorator), and `ReassignAsync` defers invalidation
+  to a post-`TransactionScope` cross-section caller. 16 of 17 are deliberate
+  ordering-sensitive cross-section/sibling seams that must stay; 1
+  (`IEventViewInvalidator`) is a speculative hook for open issue #719.
+- **HUM_USER_DISPLAYNAME (all 20):** every firing site is a legit consumer
+  (creation-time writes, BurnerName-fallback derivation, GDPR export, purge labels,
+  write-side sync, GDPR sentinel, dev seeders). Rendering-caller debt already migrated
+  (#691). The `build:` detect overcounts — legit consumers can't be silenced without a
+  forbidden pragma, so the count floors at 20.
+- **~55 genuine display sorts (baseline-display-sort):** UserRepository
+  emails/profiles/contact-fields, Team/Camp departments+roles by `SortOrder`/`Name`,
+  Camp images by `SortOrder`, Event/Ticket/Campaign lists, and ambiguous "user's list
+  newest-first". These need caller-side moves + UI verification — out of safe scope for
+  a `review: light` autonomous sweep (moving a repo `OrderBy` up changes order for all
+  consumers). Recommend a focused reviewed PR.
+- **TicketRepository `sortBy`/`sortDesc` parameterized helper (~12 sites):** the doc's
+  named anti-pattern, but genuinely required at the SQL boundary for paged sortable
+  admin grids — pagination-vs-rule architectural tension, Peter's call.
 
 ## Forbidden-move reverts
 
-- 11 commits, 12 methods (`d6c569c0a`): controller-local helper splits across
-  UsersAdminDebug/Events/EventsModeration/TeamAdmin/Team/Shifts/Email/Profile
-  controllers — the entire HUM0031 work product of this sweep.
-
-## Inbox additions
-
-- Flaky integration test `UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid` — fails under full-suite parallel load (`TaskCanceledException` in cleanup), passes in isolation.
+None. Diff scanned each cluster for `#pragma warning disable HUM`, `[SuppressMessage`,
+new `[Grandfathered]`, `// ReSharper disable` — clean. All edits are
+`// arch:db-sort-ok` markers on genuine exception-category sorts (not display-debt
+dodges). No EF drift gate needed — comment-only repository edits, no model change.
 
 ## Ledger changes
 
-- `grandfathered-hum0024-nav-strip`: `last_swept: 2026-06-12`, schema-blocked note (remaining 34, untouched).
-- `grandfathered-hum0031-controller-logic`: `last_swept: 2026-06-12`, `remaining: 13` (distinct warning sites; the earlier 26 was a raw grep double-counting each site in the build log), `review: light → panel`, notes rewritten with the valid-fix/forbidden-move guidance above.
-- Count anomaly worth knowing: 15 grandfathers exist but only 13 fire — `AccountController.ExternalLoginCallback` (justification says 107 stmts / cc 33) and `EventsController.BulkUploadTemplate` (60 / 14) produce no HUM0031 warning today, so the analyzer's statement/cc counting disagrees with the counts frozen in those justifications.
-- `recent_sections: []` (no code fixes survived).
-- Header: explicit staleness-check exclusion for `NoDestructiveMigrationOps.baseline.txt` (immutable history, guard not backlog).
-- Inbox: +1 (flaky test), now 10.
+- `recent_sections`: `[] -> [Camps, Campaigns, Shifts]`
+- `grandfathered-hum0028-invalidators`: `last_swept -> 2026-06-13`; note = DESIGN-BLOCKED
+  with per-item classification of all 17; recommend rotation skip pending Peter on #719.
+- `obsolete-user-displayname`: `last_swept -> 2026-06-13`; `remaining 12 -> 20` (matches
+  detect); note = ACTIONABLE=0, detect overcounts the legit floor; parked.
+- `baseline-display-sort`: `last_swept -> 2026-06-13`; `remaining 71 -> 55`; note =
+  16 false-positives removed, ~55 genuine sorts + Ticket tension characterized.
+- No themes retired (no enforcer-guarded theme hit 0); no new themes (staleness check clean:
+  grandfathered ids HUM0024/0028/0031 and baselines 21/71 all matched the ledger).
 
-## Questions for Peter
+## Resolved with Peter (2026-06-13)
 
-1. HUM0024 nav strips all require FK-drop migrations — dedicated migration PR(s) outside the sweep, or park the theme indefinitely?
-   **Resolved 2026-06-12: fine — handled via dedicated migration PRs outside the sweep; theme stays marked schema-blocked in the ledger so rotation skips it.**
-2. Confirm the `NoDestructiveMigrationOps` staleness exclusion is right (its 23 baseline entries are historical migrations, not fixable debt).
-   **Resolved 2026-06-12: confirmed.**
-3. HUM0031 helper-split approach: **rejected 2026-06-12, reverted.** Follow-up is an intention-based controller audit (findings report, no code changes without per-item approval).
+1. `IEventViewInvalidator` — **KEEP** as the #719 placeholder.
+2. HUM0028 invalidators — **LEAVE in rotation** (re-check periodically; do not flag as skip).
+3. HUM_USER_DISPLAYNAME — **LEAVE parked** in the ledger; the `[Obsolete]` warning guards new misuse.
+4. TicketRepository `sortBy`/`sortDesc` — **REAL DEBT**, not a pagination exception: stays in the baseline, needs the paged-grid sort redesigned (separate effort).
+
+## Follow-up — interactive display-sort moves (Peter-directed, 2026-06-13)
+
+Peter corrected the initial framing: a flagged repo sort whose consumers don't
+render an order-sensitive user-facing list is **wasted work — delete it**, not
+relocate it; only genuinely user-facing lists get sorted **in the rendering
+control** (view / VM assembly). Worked the whole theme down with reforge
+caller-tracing per method. **`baseline-display-sort`: 71 → 25.**
+
+- **Deleted** (~17 — no consumer renders the order): UserEmails/ContactFields/
+  ProfileLanguages reads, GoogleResource sync lists, GDPR-export paths
+  (AccountMerge/Campaign/CampRoles/Team), and the 4 camp-image `Include` sorts
+  that `CampService` + the view already re-sort.
+- **Marked db-sort-ok** (non-display): Camp latest-season selector, Event
+  category/venue reorder-neighbor lookups, plus the earlier 16.
+- **Moved repo → view**: campaign admin list + user/admin grant tables + camp
+  role-definition tables (client-sortable `TableModel`, default order set in the
+  view), team role-definition lists (`@foreach` by SortOrder), account-merge
+  review queue (controller VM assembly, oldest-first).
+- **Remaining 25** = 18 Ticket `sortBy`/`sortDesc` real-debt (stays, needs the
+  paged-grid sort redesigned) + 7 harder view-moves deferred (tracking view not
+  located; multi-consumer camps list; camp-role-assignment view; team roster —
+  its slot DTO lacks `SortOrder` so the view can't re-sort without a DTO field).
+  Each verified green per cluster; full suite was green before the moves began.

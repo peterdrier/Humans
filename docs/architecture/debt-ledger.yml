@@ -10,7 +10,7 @@
 # NoDestructiveMigrationOps.baseline.txt — entries are immutable migration
 # history; the baseline guards against NEW destructive ops, it is not a backlog.
 version: 1
-recent_sections: []
+recent_sections: [Camps, Campaigns, Shifts]
 themes:
   - id: grandfathered-hum0024-nav-strip
     title: Cross-section EF navigations in entity configurations (HUM0024)
@@ -58,24 +58,56 @@ themes:
     title: Invalidator interface ratchet (HUM0028)
     detect: "build:HUM0028"
     review: panel
-    last_swept: never
+    last_swept: 2026-06-13
     remaining: 17
     notes: >-
-      17 grandfathered invalidator interfaces
-      (memory/architecture/orchestrator-marker.md). Consolidation is design
-      work — which invalidators fold into the owning service's cached accessor
-      vs. stay. Panel judges each consolidation.
+      DESIGN-BLOCKED (audited empirically, sweep 2026-06-13): folding an
+      invalidator into its owning decorator breaks correctness, it is not a
+      mechanical sweep fix. Proof on the best fold candidate
+      IRoleAssignmentCacheInvalidator (pure self-invalidation): the inner
+      RoleAssignmentService calls InvalidateAll() right after the repo write
+      but BEFORE SyncBoardTeamAsync reads role data — moving invalidation into
+      the decorator's write pass-through (after the whole inner method) makes
+      that read see stale cache (read-after-write regression); and
+      ReassignAsync deliberately defers invalidation to the cross-section
+      caller after a TransactionScope commit, which a decorator-owns fold also
+      breaks. Caller-map classification of all 17: 1 self/ordering-sensitive
+      (RoleAssignment — stays); 15 cross-section merge/lifecycle or
+      intra-section sibling signals that must stay (Consent, ActiveTeams,
+      UserInfo, RoleAssignmentClaims, ShiftAuthorization, NavBadge,
+      NotificationMeter, VotingBadge, EarlyEntry, ShiftView, LegalDocument [EF
+      interceptor], Ticket, CampInfo [CampRoleService sibling], IssuesBadge,
+      CampLeadJoinRequestsBadge); 1 speculative future hook with no live caller
+      (IEventViewInvalidator — kept for open issue #719; delete-vs-keep is
+      Peter's call). None are sweep-mechanical. The HUM0028 ratchet correctly
+      blocks NEW invalidators; existing ones are deliberate ordering-sensitive
+      seams. Peter 2026-06-13: LEAVE in rotation (re-check periodically, do not
+      flag as skip); KEEP IEventViewInvalidator as the #719 placeholder.
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
-    last_swept: never
-    remaining: 12
+    last_swept: 2026-06-13
+    remaining: 20
     notes: >-
-      Migrate to UserInfo.BurnerName / <vc:human> per
-      memory/architecture/burnername-is-the-display-name.md. The obsolete
-      message names legitimate consumers (creation-time fallback, merge/purge
-      labels, GDPR export, debug screens) — those are not debt; leave them.
+      ACTIONABLE = 0 (audited every site, sweep 2026-06-13). All 20 sites that
+      fire HUM_USER_DISPLAYNAME are legitimate consumers per the obsolete
+      message: creation-time writes (AccountController.CreateExternalLoginUser,
+      AccountProvisioningService ×2), BurnerName-fallback derivation
+      (UserInfo.cs, CachingUserService.WithUserFields/RehydrateUser),
+      write-side sync (UserInfoSaveChangesInterceptor), repository
+      merge/purge/delete labels (UserRepository ×6), GDPR export
+      (UserService GdprExport shape), GDPR-anonymized sentinel state
+      (UserStateClassifier), and debug/dev seeders (DevPersonaSeeder ×2,
+      DevelopmentDashboardSeeder, GateTerminalAccountSeeder). Rendering-caller
+      debt was already migrated (#691). DETECT OVERCOUNTS: build:HUM_USER_DISPLAYNAME
+      counts all 20 firing sites, but legit consumers cannot be silenced
+      without a forbidden pragma, so the count floors at ~20 and can never
+      reach 0. remaining bumped 12->20 to match the detect; treat it as the
+      irreducible legit floor, not a backlog. PARKED — re-check only if a new
+      rendering caller of User.DisplayName appears (the analyzer will flag it).
+      Peter 2026-06-13: LEAVE parked in the ledger; the [Obsolete] warning
+      independently guards against new misuse.
   - id: cs0618-pragma-nav-reads
     title: Pragma-wrapped CS0618 cross-section nav reads
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
@@ -100,13 +132,42 @@ themes:
     title: Display sorting below the presentation layer
     detect: "grep -cv '^#\\|^$' tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt"
     review: light
-    last_swept: never
-    remaining: 71
+    last_swept: 2026-06-13
+    remaining: 29
     notes: >-
-      Move OrderBy to controllers / view-model assembly per
-      memory/architecture/display-sort-in-controllers.md. Pagination
-      tie-breakers, top-N, and identity-ordered streams stay, marked
+      Rule: repos don't sort for display. Per Peter (2026-06-13) the fix for a
+      flagged repo sort is, in order: (1) if no consumer renders an
+      order-sensitive user-facing list -> DELETE it (the sort is wasted work);
+      (2) if it IS user-facing (list/dropdown/grid) -> sort in the rendering
+      control (view / view-model assembly), NOT the repo. Genuine non-display
+      sorts (selectors, top-N/Take, FIFO batches, identity/chronological
+      streams, Skip/Take pagination, reorder-neighbor lookups) stay, marked
       `// arch:db-sort-ok`. Remove fixed lines from the baseline.
+      Burned 71 -> 29 on 2026-06-13: ~16 false-positive exceptions marked;
+      ~15 unused/redundant repo sorts DELETED (UserEmails/ContactFields/
+      Languages, GDPR-export paths, camp-image Includes that the service+view
+      already re-sort, AccountMerge); view-moves done for campaign admin list +
+      user/admin grant tables (client-sortable TableModel default set in the
+      view) and team role-definition lists + account-merge review queue
+      (@foreach / controller VM assembly).
+      REVERTED after Codex review (PR #1002): GoogleResourceRepository
+      GetActiveByTeamId(s) and CampRepository.Roles.ListDefinitions deletions
+      were premature — those reads have order-dependent rendering consumers that
+      do NOT re-sort (CampRoleService.BuildPanelAsync renders defs in repo order
+      for the roles panel/members/lead-pills; TeamResourceService maps straight
+      to UI/API snapshots). Repo sorts restored + re-baselined; they join the
+      deferred multi-consumer view-moves below.
+      REMAINING 29 = 18 Ticket sortBy/sortDesc real-debt (Peter ruled: stays,
+      needs the paged-grid sort redesigned — server-side pagination forces it
+      to the DB; NOT a db-sort-ok mark) + 11 harder multi-consumer view-moves
+      deferred: GoogleResource GetActiveByTeamId(s) (2), CampRoles.ListDefinitions
+      (2), CampaignRepository.GetCodeTrackingSummaries (tracking view not yet
+      located), CampRepository.GetCampsWithLeadsForYear season-name sort
+      (multi-consumer camps list), CampRepository.Roles.GetAssignmentsForSeason
+      (2), and TeamRepository.GetAllRoleDefinitions roster sort (3 — the roster
+      slot DTO TeamRosterSlotSummary lacks SortOrder, so the view can't re-sort
+      without a DTO field added). These need their views located / a DTO field
+      and are a focused follow-up.
   - id: build-warnings-misc
     title: Build warnings not owned by another theme (CS/NU/non-HUM codes)
     detect: "dotnet build Humans.slnx -v quiet --no-incremental 2>&1 | grep -E ': warning ' | grep -v 'warning HUM' | sed 's/ \\[.*//' | sort -u | wc -l"

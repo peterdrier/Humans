@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-12 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-13 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 

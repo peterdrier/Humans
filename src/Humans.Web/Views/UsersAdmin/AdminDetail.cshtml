@@ -255,7 +255,7 @@
                     <span class="badge @badgeClass">@item.LatestEmailStatus</span>
                 }
             </text>;
-            var campaignCodesTable = TableModel.For(campaignGrants.ToList())
+            var campaignCodesTable = TableModel.For(campaignGrants.OrderByDescending(g => g.AssignedAt).ToList())
                 .Column("Campaign", g => g.CampaignTitle)
                 .Template("Code", codeCell)
                 .Column("Assigned", g => g.AssignedAt, c => c.Date())

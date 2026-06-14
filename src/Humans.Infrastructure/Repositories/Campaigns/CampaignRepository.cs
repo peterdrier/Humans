@@ -59,7 +59,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(c => c.Codes)
             .Include(c => c.Grants)
             .AsSplitQuery()
-            .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -132,7 +131,7 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
         return await ctx.CampaignCodes
             .Where(c => c.CampaignId == campaignId
                 && !ctx.CampaignGrants.Any(g => g.CampaignCodeId == c.Id))
-            .OrderBy(c => c.ImportOrder)
+            .OrderBy(c => c.ImportOrder) // arch:db-sort-ok top-N available-code allocation selector (Take)
             .Take(limit)
             .ToListAsync(ct);
     }
@@ -160,7 +159,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(g => g.Code)
             .Where(g => g.UserId == userId
                 && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed))
-            .OrderByDescending(g => g.AssignedAt)
             .ToListAsync(ct);
     }
 
@@ -173,7 +171,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
             .Include(g => g.Campaign)
             .Include(g => g.Code)
             .Where(g => g.UserId == userId)
-            .OrderByDescending(g => g.AssignedAt)
             .ToListAsync(ct);
     }
 
@@ -304,7 +301,7 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
 
             var grant = unredeemed
                 .Where(g => string.Equals(g.Code.Code, redemption.Code, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(g => g.Campaign.CreatedAt)
+                .OrderByDescending(g => g.Campaign.CreatedAt) // arch:db-sort-ok newest-campaign grant selector (FirstOrDefault)
                 .FirstOrDefault();
 
             if (grant is null)
@@ -328,7 +325,6 @@ internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> fact
         return await ctx.CampaignGrants
             .AsNoTracking()
             .Where(cg => cg.UserId == userId)
-            .OrderByDescending(cg => cg.AssignedAt)
             .Select(cg => new GrantExportRow(
                 cg.Campaign.Title,
                 cg.Code.Code,

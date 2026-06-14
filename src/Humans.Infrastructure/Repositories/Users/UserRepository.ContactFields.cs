@@ -17,8 +17,6 @@ internal sealed partial class UserRepository
         return await ctx.ContactFields
             .AsNoTracking()
             .Where(cf => cf.ProfileId == profileId)
-            .OrderBy(cf => cf.DisplayOrder)
-            .ThenBy(cf => cf.CreatedAt)
             .ToListAsync(ct);
     }
 

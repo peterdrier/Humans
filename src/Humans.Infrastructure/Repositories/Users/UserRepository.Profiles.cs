@@ -83,8 +83,6 @@ internal sealed partial class UserRepository
         return await ctx.ProfileLanguages
             .AsNoTracking()
             .Where(pl => pl.ProfileId == profileId)
-            .OrderByDescending(pl => pl.Proficiency)
-            .ThenBy(pl => pl.LanguageCode)
             .ToListAsync(ct);
     }
 

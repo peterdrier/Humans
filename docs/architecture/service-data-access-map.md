@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-12
+**Generated:** 2026-06-13
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -269,14 +269,18 @@ writes go through owning services.
 
 ### UnsubscribeService (Scoped)
 
-Repository: `IUserRepository` (read-only — token validation).
+Repositories: `IUserRepository` (read-only — token validation / user guard).
 
 | Table | R/W |
 |-------|-----|
-| Users | R |
+| Users | R (existence check via `IUserRepository.GetByIdAsync`) |
 
-Calls `ICommunicationPreferenceService` to flip per-category opt-outs;
-uses `IDataProtectionProvider` for token validation. No cache.
+Calls `ICommunicationPreferenceService` to validate the token and flip
+per-category opt-outs; uses `IDataProtectionProvider` for legacy token
+validation. Also injects `IUserServiceRead` to resolve the user's
+`BurnerName` for the unsubscribe-confirm display (reads from the
+`CachingUserService` TrackedCache — no extra DB round-trip on hit).
+No cache on the service itself.
 
 ### UserEmailProviderBackfillService (Scoped)
 
@@ -933,23 +937,31 @@ Folder: `src/Humans.Application/Services/Shifts/`. Owns `Rotas`,
 > **Change since prior sweep:** `IShiftManagementRepository` and
 > `IShiftSignupRepository` are now backed by **one concrete partial class
 > `ShiftRepository`** (PR #806; `.Management.cs` + `.Signups.cs` partials).
-> The two interfaces are preserved so service-layer injection patterns and
-> the management/signup split remain visible at the call site, but
-> persistence-side ownership has converged. `IGeneralAvailabilityRepository`
-> was previously folded into `IVolunteerTrackingRepository`. **PR #882
-> converged the remaining shared Shifts-internal reads:**
-> `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync` (which
-> read `ShiftSignups` + `EventSettings`) moved off `VolunteerTrackingRepository`
-> onto `ShiftRepository` (`.Signups.cs` partial, surfaced on
-> `IShiftManagementRepository`). `VolunteerTrackingService` now reads
-> eligible-build signups via `IShiftManagementRepository`, and
-> `VolunteerTrackingExportService` injects `IShiftManagementRepository`
-> (was `IVolunteerTrackingRepository`) for the confirmed-shift export.
-> `VolunteerTrackingRepository` is back to owning only its two user-oriented
-> tables (`VolunteerBuildStatuses`, `GeneralAvailability`), and the
-> `[Grandfathered("HUM0025", …)]` markers on `ShiftRepository` /
-> `VolunteerTrackingRepository` for `EventSettings` / `ShiftSignups` are
-> retired.
+> `IGeneralAvailabilityRepository` was previously folded into
+> `IVolunteerTrackingRepository`. **PR #882 converged the remaining
+> shared Shifts-internal reads:** `GetEligibleBuildSignupsAsync` and
+> `GetConfirmedShiftsInRangeAsync` (which read `ShiftSignups` +
+> `EventSettings`) moved off `VolunteerTrackingRepository` onto
+> `ShiftRepository` (`.Signups.cs` partial, surfaced on
+> `IShiftManagementRepository`). `VolunteerTrackingExportService` injects
+> `IShiftManagementRepository` (was `IVolunteerTrackingRepository`) for
+> the confirmed-shift export. `VolunteerTrackingRepository` is back to
+> owning only its two user-oriented tables (`VolunteerBuildStatuses`,
+> `GeneralAvailability`), and the `[Grandfathered("HUM0025", …)]`
+> markers on `ShiftRepository` / `VolunteerTrackingRepository` for
+> `EventSettings` / `ShiftSignups` are retired.
+>
+> **New this sweep:** `IShiftSignupRepository` has been **fully removed
+> as a separate interface** — its signup-side methods are now surfaced
+> exclusively on `IShiftManagementRepository` (via
+> `IShiftManagementRepository.Signups.cs` partial). Services that
+> previously injected both interfaces now inject only
+> `IShiftManagementRepository`. `GeneralAvailabilityService` has been
+> **removed** — its `GeneralAvailability` R/W operations (availability
+> upsert, set/clear day availability, camp-setup management) and
+> `IUserMerge` implementation are now consolidated into
+> `VolunteerTrackingService`. `ShiftSignupService` gained
+> `ICalendarFeedContributor` (personal iCal feed — shift signups).
 
 The Application-layer `ShiftViewService` provides the inner
 implementation of `IShiftView`; it is wrapped by
@@ -1007,40 +1019,40 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R (via `IVolunteerTrackingRepository`, GDPR export) |
 
 Cross-section calls via `IShiftManagementService`, `IBurnSettingsService`,
-`IAuditLogService`, `INotificationService`, `IAdminAuthorizationService`,
+`IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, `IEarlyEntryInvalidator`, plus `IServiceProvider`
 (lazy-resolves `ITeamServiceRead` for coordinator/team-name lookups).
-Implements `IUserDataContributor`, `IUserMerge`. No `IMemoryCache`.
-
-### GeneralAvailabilityService (Scoped)
-
-Repository: `IVolunteerTrackingRepository`.
-
-| Table | R/W |
-|-------|-----|
-| GeneralAvailability | R/W |
-
-Cross-section calls via `IShiftViewInvalidator`. Implements `IUserMerge`.
-No `IMemoryCache`.
+Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
+(personal iCal feed contributor — the user's Confirmed and Pending shift
+signups; Cancelled/Bailed/NoShow history excluded). No `IMemoryCache`.
 
 ### VolunteerTrackingService (Scoped)
 
 Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 
+> **Change since prior sweep:** `GeneralAvailabilityService` has been
+> **removed** — its availability R/W surface (`SetAvailabilityAsync`,
+> `SetDayAvailabilityAsync`, `GetAvailableForDayAsync`,
+> camp-setup management, `IUserMerge`) is consolidated here.
+> `VolunteerTrackingService` now owns all `GeneralAvailability` mutations
+> in addition to its existing `VolunteerBuildStatuses` / heatmap surface.
+
 | Table | R/W | Repo |
 |-------|-----|------|
 | VolunteerBuildStatuses | R/W | IVolunteerTrackingRepository |
-| GeneralAvailability | R/W | IVolunteerTrackingRepository |
+| GeneralAvailability | R/W | IVolunteerTrackingRepository (availability upsert, set/clear day-off, camp-setup — formerly `GeneralAvailabilityService`) |
 | ShiftSignups | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync`, converged PR #882) |
 | EventSettings | R | IShiftManagementRepository (`GetEligibleBuildSignupsAsync` / `GetActiveEventSettingsAsync`) |
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
 Cross-section calls via `IUserServiceRead`, `IShiftViewInvalidator`. No
-cache. Holds the gap-detection algorithm + heatmap data assembly. Build-eligibility
-signups (`ShiftSignups` + `EventSettings`) now read through the converged
-`IShiftManagementRepository.GetEligibleBuildSignupsAsync` rather than the
-tracking repo (PR #882).
+cache. Holds the gap-detection algorithm + heatmap data assembly,
+plus the full day-availability / camp-setup / day-off mutation surface
+(absorbed from `GeneralAvailabilityService`). Build-eligibility signups
+(`ShiftSignups` + `EventSettings`) read through the converged
+`IShiftManagementRepository.GetEligibleBuildSignupsAsync` (PR #882).
+Implements `IVolunteerTrackingService`, `IUserMerge`.
 
 ### VolunteerTrackingExportService (Scoped)
 
@@ -1061,23 +1073,27 @@ direct DB access beyond the export query.
 
 ### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
 
-Repositories: `IShiftManagementRepository`, `IShiftSignupRepository`,
-`IVolunteerTrackingRepository`.
+Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 
-| Table | R/W |
-|-------|-----|
-| EventSettings | R |
-| Rotas | R |
-| Shifts | R |
-| ShiftSignups | R |
-| GeneralAvailability | R |
-| VolunteerEventProfiles | R |
-| VolunteerBuildStatuses | R |
-| ShiftTags | R |
-| VolunteerTagPreferences | R |
+> **Change since prior sweep:** `IShiftSignupRepository` is **removed** —
+> signup reads now route through `IShiftManagementRepository` (the merged
+> `.Signups.cs` partial's `GetForUsersAsync` / `GetRotaAsync`). The
+> service now injects two repositories instead of three.
+
+| Table | R/W | Repo |
+|-------|-----|------|
+| EventSettings | R | IShiftManagementRepository |
+| Rotas | R | IShiftManagementRepository |
+| Shifts | R | IShiftManagementRepository |
+| ShiftSignups | R | IShiftManagementRepository (via `GetForUsersAsync` / rota view signups) |
+| VolunteerEventProfiles | R | IShiftManagementRepository |
+| ShiftTags | R | IShiftManagementRepository |
+| VolunteerTagPreferences | R | IShiftManagementRepository |
+| GeneralAvailability | R | IVolunteerTrackingRepository |
+| VolunteerBuildStatuses | R | IVolunteerTrackingRepository |
 
 Implements `IShiftView`. Pure read assembler — composes user + rota
-views from the four repositories. Wrapped by `CachingShiftViewService`
+views from two repositories. Wrapped by `CachingShiftViewService`
 which caches both projection types per-entity (per-user view and
 per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
 can resolve it without self-recursion.
@@ -1108,21 +1124,27 @@ shifts surface. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 
-Repositories: `IShiftSignupRepository`, `IShiftManagementRepository`.
+Repository: `IShiftManagementRepository`.
+
+> **Change since prior sweep:** `IShiftSignupRepository` removed; signup
+> reads now route through `IShiftManagementRepository` (`GetRotaAsync`
+> with `RotaReadShape.View` eager-loads signups; team-level path uses
+> `GetActiveEventSettingsAsync` + rota enumeration). The service now
+> injects one repository instead of two.
 
 | Table | R/W |
 |-------|-----|
-| ShiftSignups | R |
-| Rotas | R (via repos) |
-| Shifts | R (via repos) |
-| EventSettings | R (via `IShiftManagementRepository.GetActiveEventSettingsAsync` — team-level dispatch path) |
+| ShiftSignups | R (loaded via `GetRotaAsync(RotaReadShape.View)`) |
+| Rotas | R |
+| Shifts | R |
+| EventSettings | R (team-level dispatch path — `GetActiveEventSettingsAsync`) |
 
 Cross-section calls via `ITeamServiceRead`, `IUserServiceRead`,
-`IEmailService`, `IAuditLogService`. Implements per-rota
-(`SendRotaMessageAsync`) and team-level (`SendTeamRotasMessageAsync`,
-PR #795) dispatch — groups active signups by user across one or many
-rotas and enqueues one personalised email per recipient via the outbox.
-No cache.
+`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`. Implements
+per-rota (`SendRotaMessageAsync`) and team-level
+(`SendTeamRotasMessageAsync`, PR #795) dispatch — groups active signups
+by user across one or many rotas and enqueues one personalised email per
+recipient via the outbox. No cache.
 
 ### WorkloadService (Scoped) — `Shifts/Workload/`
 
@@ -2157,8 +2179,11 @@ After the §15 / `IUserMerge` consolidation, the
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
 `ShiftSignupRepository` / `TicketRepository` cleanups, the Profiles
 repository consolidation (PRs #810/#811: three Profiles repositories
-folded into `IUserRepository`), and this sweep's #882 / #889 repository
-convergences, **no cross-section repository-level table reads remain.**
+folded into `IUserRepository`), this sweep's #882 / #889 repository
+convergences, and the current sweep's removal of `IShiftSignupRepository`
+as a separate interface (signup methods merged into
+`IShiftManagementRepository.Signups.cs`), **no cross-section
+repository-level table reads remain.**
 Because the consolidated `IUserRepository` is now the single owner of every
 per-user table across the Users+Profiles section merge, the
 previously-tracked `IUserEmailRepository` violations are recategorised —

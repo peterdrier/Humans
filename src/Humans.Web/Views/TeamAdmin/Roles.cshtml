@@ -18,7 +18,7 @@
 
 @if (Model.RoleDefinitions.Any())
 {
-    @foreach (var role in Model.RoleDefinitions)
+    @foreach (var role in Model.RoleDefinitions.OrderBy(r => r.SortOrder).ThenBy(r => r.Name))
     {
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">

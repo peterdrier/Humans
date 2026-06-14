@@ -294,7 +294,6 @@ graph LR
     AttendeeImport --> ShiftMgmt
     AttendeeImport --> Audit
     OnsiteRoster --> User
-    OnsiteRoster --> ShiftMgmt
     OnsiteRoster --> Camp
     OnsiteRoster --> Team
     OnsiteRoster --> Role
@@ -519,6 +518,8 @@ graph LR
     %% ctor-injects IUserServiceRead / IShiftView / ITicketServiceRead directly — per-audience
     %% deps, not MailerSync ctor edges, so they are not drawn as MailerSync arrows.
     EventSvc --> BurnSettings
+    EventSvc --> User
+    EventSvc --> Email
     %% EarlyEntryService fans out IEnumerable<IEarlyEntryProvider> — no eager service-typed deps.
     %% Providers registered: TeamService (camp-team EE allocation) + VolunteerTrackingExportService.
     %% These are implemented BY existing section services, so they add no new service→service edges.
@@ -540,6 +541,7 @@ graph LR
     Team -. "lazy" .-> Role
     Team -. "lazy" .-> Email
     Team -. "lazy" .-> GSyncOutbox
+    Team -. "lazy" .-> GSyncSvc
     TRes -. "lazy" .-> Role
     Camp -. "lazy" .-> CampRole
     Consent -. "lazy" .-> MembershipCalc
@@ -559,11 +561,12 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 274 eager links, indices 0..273. (Net +2 vs prior sweep's 272:
-    %% +Survey → GTrans (GoogleTranslationService cross-section for survey translation pre-fill);
-    %% +ICalFeed → User (ICalFeedService fan-out orchestrator validates token via IUserServiceRead).)
-    %% The 18 lazy edges are indices 274..291.
-    linkStyle 274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290,291 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 275 eager links, indices 0..274. (Net +1 vs prior sweep's 274:
+    %% -OnsiteRoster → ShiftMgmt (OnsiteRosterService ctor does not inject ShiftMgmt);
+    %% +EventSvc → User (EventService injects IUserServiceRead for display-name stitching);
+    %% +EventSvc → Email (EventService injects IEmailService for attendee emails).)
+    %% The 19 lazy edges are indices 275..293.
+    linkStyle 275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290,291,292,293 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -583,6 +586,7 @@ Other notable one-way lazy edges (not cycles):
 - **UserEmail → AccountMerge** (now Users section, #899) — UserEmailService lazy-resolves `IAccountMergeService` for merge-driven email reparenting. AccountMergeService takes neither `IUserEmailService` nor `IUserEmailRepository`: section re-FK during a merge runs through the `IEnumerable<IUserMerge>` fan-out (UserEmail registers its own `IUserMerge`), so no reverse eager edge to UserEmail exists.
 - **CampService → CampRoleService** — CampService holds `Lazy<ICampRoleService>` (intra-section) to break the Camp↔CampRole construction cycle; CampRoleService eagerly injects the narrow `ICampRoleCampAccess` port (implemented by CampService / CachingCampService), not the full `ICampService` — the `CampRole --> Camp` edge in the diagram reflects this port.
 - **Team → GoogleSyncOutbox** (#889) — TeamService lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue transactional-outbox Google-sync events on membership/role changes. One-way; `GoogleSyncOutboxService` is a repo-only adapter that calls back into nothing.
+- **Team → GoogleWorkspaceSync** — TeamService lazy-resolves `IGoogleSyncService` for ad-hoc Drive/Group reconciliation triggered from team admin actions (e.g. renaming a team updates the Google Group). One-way; `GoogleWorkspaceSyncService` eagerly injects `ITeamServiceRead` (not the full `ITeamService`), so this does not close a cycle, but lazy is required because the scoped instance must be resolved at call time.
 - **ShiftManagement → Role / User / Camp**, **Team → Role / Email**, **TeamResource → Role**, **GoogleWorkspaceSync → TeamResource** are one-way lazy edges where the target service does not call back. Lazy is used because eager injection would still create a cycle through other paths in the graph (notably through `ISystemTeamSync`, the job interface omitted from this service-only graph). ShiftManagementService resolves `ICampServiceRead` lazily (#898 Shift-Summary-by-Camp) via `IServiceProvider`.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.

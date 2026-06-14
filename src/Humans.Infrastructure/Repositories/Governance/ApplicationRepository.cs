@@ -61,7 +61,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
-            .OrderBy(a => a.SubmittedAt)
+            .OrderBy(a => a.SubmittedAt) // arch:db-sort-ok pagination ordering for Skip/Take
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
