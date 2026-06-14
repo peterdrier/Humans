@@ -131,6 +131,20 @@ public class CommunityFaqReaderTests
         entries.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task ReadAsync_resolves_caller_casing_to_canonical_stem()
+    {
+        // LLMs routinely lowercase the topic key; the reader must fetch the canonical
+        // (case-sensitive) filename stem, not the caller's casing.
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        var body = await reader.ReadAsync("faq-general", TestContext.Current.CancellationToken);
+
+        body.Should().Be(GeneralBody);
+        source.RawFetches.Should().NotContainKey("faq-general"); // no case-mismatched fetch/404
+    }
+
     private static CommunityFaqReader MakeReader(FakeSource source) =>
         new(source, new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CommunityFaqReader>.Instance);

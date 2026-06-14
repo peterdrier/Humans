@@ -63,13 +63,16 @@ public sealed class CommunityFaqReader(
     {
         if (!IsSafeTopic(topic)) return null;
 
-        // Only serve topics that actually exist in the discovered set — defends against
-        // a crafted-but-safe-looking key and keeps the cache key space bounded.
+        // Resolve the caller's casing to the canonical filename stem from the discovered set.
+        // LLMs routinely lowercase the topic key, but GitHub paths and the per-doc cache key
+        // are case-sensitive, so we must fetch with the canonical stem, not the caller's
+        // (mirrors AgentSectionDocReader). This also restricts reads to known topics and
+        // bounds the cache key space.
         var known = await ListTopicsAsync(cancellationToken);
-        if (!known.Any(e => string.Equals(e.Topic, topic, StringComparison.OrdinalIgnoreCase)))
-            return null;
+        var canonical = known.FirstOrDefault(e => string.Equals(e.Topic, topic, StringComparison.OrdinalIgnoreCase))?.Topic;
+        if (canonical is null) return null;
 
-        return await ReadRawAsync(topic, cancellationToken);
+        return await ReadRawAsync(canonical, cancellationToken);
     }
 
     /// <summary>
