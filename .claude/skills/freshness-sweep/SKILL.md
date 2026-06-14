@@ -134,6 +134,8 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft 
 | `docs/architecture/tech-debt-*.md` where all items are `[DONE]` | Same (wheat may be `[DONE]` summaries worth keeping in maintenance-log) |
 | Orphan refs in living docs to already-deleted files | Edit out or retarget |
 
+**Age is measured by the `YYYY-MM-DD` prefix in the filename — NOT the last-commit date or mtime.** A husk's topic date is when its work happened; that's its true age. Last-commit date is the wrong signal: a doc sweep, a link retarget, or any minor edit touches a husk without making it less legacy, and gating on last-commit would let those incidental edits silently reset the clock and keep a husk alive forever. The section docs (`docs/sections/*.md`) are the canonical, living record — the repo; these plans/specs are **contextual legacy** that must age out on schedule regardless of how recently something brushed against them. So `docs/plans/2026-05-14-foo.md` is "older than 30 days" once the calendar is past 2026-06-13, full stop — even if its last commit was yesterday's freshness sweep. (Files lacking a date prefix: fall back to mtime, and flag them in the report as candidates to rename with a date prefix.)
+
 ### Never touched by prune
 
 - Anything outside `docs/`
