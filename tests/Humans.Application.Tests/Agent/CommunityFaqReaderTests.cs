@@ -1,0 +1,138 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces;
+using Humans.Infrastructure.Services.Preload;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+using Octokit;
+using Xunit;
+
+namespace Humans.Application.Tests.Agent;
+
+public class CommunityFaqReaderTests
+{
+    private const string GeneralBody =
+        "# General & Community — NCA\nLast updated: 2026-02-01 · windows merged through 2026-02-01\n\n## Overview\nWhat the NCA is and how to join.\n\n## FAQ\n**Q?**\nA.";
+
+    [HumansFact]
+    public async Task ListTopicsAsync_parses_title_date_and_overview_summary()
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries.Should().ContainSingle();
+        var e = entries[0];
+        e.Topic.Should().Be("FAQ-general");
+        e.Title.Should().Be("General & Community — NCA");
+        e.LastUpdated.Should().Contain("2026-02-01");
+        e.Summary.Should().Be("What the NCA is and how to join.");
+    }
+
+    [HumansFact]
+    public async Task ListTopicsAsync_falls_back_to_title_when_no_overview()
+    {
+        var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\nNo overview here." } };
+        var reader = MakeReader(source);
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries[0].Summary.Should().Be("Bare Title");
+    }
+
+    [HumansFact]
+    public async Task ReadAsync_returns_body_for_a_discovered_topic()
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        var body = await reader.ReadAsync("FAQ-general", TestContext.Current.CancellationToken);
+
+        body.Should().Be(GeneralBody);
+    }
+
+    [HumansFact]
+    public async Task ReadAsync_returns_null_for_unknown_topic()
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        var body = await reader.ReadAsync("does-not-exist", TestContext.Current.CancellationToken);
+
+        body.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("../secrets")]
+    [InlineData("a/b")]
+    [InlineData("")]
+    public async Task ReadAsync_rejects_unsafe_topic_keys(string topic)
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        var body = await reader.ReadAsync(topic, TestContext.Current.CancellationToken);
+
+        body.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ReadAsync_caches_the_doc_fetch()
+    {
+        var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
+        var reader = MakeReader(source);
+
+        await reader.ListTopicsAsync(TestContext.Current.CancellationToken); // warms via index parse
+        await reader.ReadAsync("FAQ-general", TestContext.Current.CancellationToken);
+        await reader.ReadAsync("FAQ-general", TestContext.Current.CancellationToken);
+
+        // One raw fetch per file across list + reads.
+        source.RawFetches["FAQ-general"].Should().Be(1);
+    }
+
+    [HumansFact]
+    public void WrapWithProvenance_prepends_an_unofficial_header_with_the_date()
+    {
+        var wrapped = CommunityFaqReader.WrapWithProvenance(GeneralBody);
+
+        wrapped.Should().StartWith("SOURCE: community Discord FAQ");
+        wrapped.Should().Contain("NOT official");
+        wrapped.Should().Contain("2026-02-01");
+        wrapped.Should().Contain("not be official");
+        wrapped.Should().Contain(GeneralBody);
+    }
+
+    [HumansFact]
+    public async Task ListTopicsAsync_returns_empty_when_folder_absent()
+    {
+        var reader = MakeReader(new FakeSource()); // no files
+
+        var entries = await reader.ListTopicsAsync(TestContext.Current.CancellationToken);
+
+        entries.Should().BeEmpty();
+    }
+
+    private static CommunityFaqReader MakeReader(FakeSource source) =>
+        new(source, new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CommunityFaqReader>.Instance);
+
+    private sealed class FakeSource : IGuideContentSource
+    {
+        public Dictionary<string, string> Files { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, int> RawFetches { get; } = new(StringComparer.Ordinal);
+
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
+        {
+            if (!Files.TryGetValue(fileStem, out var body))
+                throw new NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
+            RawFetches[fileStem] = RawFetches.GetValueOrDefault(fileStem) + 1;
+            return Task.FromResult(body);
+        }
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>(Files.Keys.ToList());
+    }
+}
