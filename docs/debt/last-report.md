@@ -94,8 +94,23 @@ default-reject) because it expanded an architecture allowlist.
 
 ## Inbox additions
 
-- None. Removed the completed "ViewComponents injecting IMemoryCache" item
-  (inbox 10 → 9).
+- Removed the completed "ViewComponents injecting IMemoryCache" item; added a new
+  item for the **VotingBadge eviction-completeness gap** surfaced by Codex on PR
+  #1010 (pre-existing, TTL-bounded — submit/withdraw/non-voter-resolve don't clear
+  per-user voting badges). Net inbox count unchanged at 10.
+
+## PR #1010 review triage (/pr-fix)
+
+- **claude bot** — "no issues found" (no action).
+- **Codex P2** — *"Invalidate all affected voting badge counts."* DECLINED in this
+  PR + recorded as inbox debt. Valid observation but pre-existing: the
+  VotingBadge(userId) eviction wiring is UNCHANGED by this PR (same key/TTL/invalidator
+  existed in the VC + NotificationMeterProvider before). This PR only makes AdminNavTree
+  share the same cache — the intended owning-service caching outcome, matching the nav
+  badge's long-standing 2-min staleness, for a real DB query the panel endorsed caching.
+  Broadcast-invalidating all board members on submit/withdraw/resolve is a correctness
+  improvement that touches 4 mutation paths + needs Board-role enumeration → its own
+  targeted pass (now ledgered).
 
 ## Ledger changes
 

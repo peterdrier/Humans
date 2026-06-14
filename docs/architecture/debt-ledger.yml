@@ -219,7 +219,7 @@ themes:
     detect: "grep -c '^  - added:' docs/architecture/debt-ledger.yml"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 9
+    remaining: 10
     notes: Each inbox entry carries its own review tier; drained entries are deleted from the list.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
@@ -254,3 +254,6 @@ inbox:
   - added: 2026-06-12
     what: "Flaky integration test: UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid fails under full-suite parallel load (TaskCanceledException in test cleanup), passes in isolation — observed in sweep 2026-06-12"
     review: light
+  - added: 2026-06-14
+    what: "VotingBadge(userId) eviction is incomplete (pre-existing; surfaced by Codex on PR 1010). Only the acting voter's badge is cleared on Approve/Reject/CastBoardVote; SubmitAsync/WithdrawAsync clear nobody, and Approve/Reject don't clear non-voting board members — yet a submit/withdraw/resolve shifts every board member's unvoted count. Bounded by the 2-min TTL. Not introduced by the badge-caching consolidation (same key/TTL/invalidator existed in the VC + NotificationMeterProvider before). Fix = broadcast-invalidate all board members' VotingBadge on submit/withdraw/resolve (enumerate Board role via roleAssignmentService); touches mutation paths + has a per-mutation enumeration cost, so its own targeted pass."
+    review: panel
