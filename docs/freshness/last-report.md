@@ -5,7 +5,7 @@
 **Mode:** diff (batch)
 **Changed files in range:** 66
 **Dirty entries processed:** 7 mechanical + 23 editorial = 30
-**Outcome:** 8 docs updated · 0 husks pruned (nothing aged out) · 22 entries verified clean · 0 errors
+**Outcome:** 8 docs updated + 3 agent docs given `freshness:triggers` (Phase 7.5) · 0 husks pruned (nothing aged out) · 22 entries verified clean · 0 errors
 
 > **Anchors in sync.** At sweep start `origin/main` and `upstream/main` were both at `c10d07400` — a prod promotion landed just before this run, so the two remotes are identical. `merge-base --is-ancestor upstream/main origin/main` is true; nothing crossed.
 
@@ -45,11 +45,11 @@ None this sweep. Strict filename-date aging (today = 2026-06-15):
 
 ## Flagged for human review
 
-1. **Agent docs are unmarked and now lag a major feature.** The community knowledge-base feature (#1008/#1013/#1014) is described in **no** marked doc. The docs that *should* carry it — `docs/sections/Agent.md`, `docs/features/agent/agent-section.md`, `docs/guide/AiHelper.md` — have no `freshness:triggers`, so they didn't trigger and the sweep cannot scope them. This is the recurring blind spot named in the prior two reports. Resolution proposed inline (Phase 7.5): add `freshness:triggers` to these three docs and decide whether to update their content for community-KB now or as a dedicated docs task.
+None outstanding. The one flag this sweep — the unmarked agent docs lagging the community-KB feature — was resolved in the Phase 7.5 follow-up commit (see Questions).
 
 ## Unmarked editorial blind spots (carried forward)
 
-`features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md`. None triggered this sweep (no `freshness:triggers`). The three agent docs are the active concern (see Flagged #1).
+`features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `guide/{EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Mailer, _Index}.md`. None triggered this sweep (no `freshness:triggers`). The three agent docs were removed from this list this sweep — they now carry `freshness:triggers`.
 
 ## Proposed for review
 
@@ -57,7 +57,7 @@ None — all candidates resolved this sweep.
 
 ## Questions
 
-Raised inline at Phase 7.5 (see Flagged #1). Nothing else pending.
+**Resolved this sweep (Peter, inline):** the three agent docs (`sections/Agent.md`, `features/agent/agent-section.md`, `guide/AiHelper.md`) were unmarked and lagging the community-KB feature. Per Peter's "yes add", `freshness:triggers` + `freshness:flag-on-change` blocks were added to all three (scoped to the agent services / preload+community-KB readers / tool catalog / agent controllers; the guide doc scoped to user-visible surface only). The community-KB **content rewrite** of these docs is deferred to a dedicated docs task — out of scope for a drift-fix sweep. The next sweep will now flag these docs on agent-code changes.
 
 ## Skipped (errors)
 

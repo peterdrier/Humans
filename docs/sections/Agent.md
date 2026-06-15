@@ -1,3 +1,29 @@
+<!-- freshness:triggers
+  src/Humans.Domain/Entities/AgentConversation.cs
+  src/Humans.Domain/Entities/AgentMessage.cs
+  src/Humans.Domain/Entities/AgentSettings.cs
+  src/Humans.Domain/Enums/AgentRole.cs
+  src/Humans.Domain/Enums/AgentPreloadConfig.cs
+  src/Humans.Application/Services/Agent/**
+  src/Humans.Application/Constants/AgentToolNames.cs
+  src/Humans.Application/Interfaces/IAnthropicClient.cs
+  src/Humans.Application/Interfaces/IAgentPreloadCorpusBuilder.cs
+  src/Humans.Infrastructure/Services/Agent/**
+  src/Humans.Infrastructure/Services/Anthropic/**
+  src/Humans.Infrastructure/Services/Preload/**
+  src/Humans.Infrastructure/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Infrastructure/Configuration/CommunityKbSettings.cs
+  src/Humans.Infrastructure/Stores/AgentSettingsStore.cs
+  src/Humans.Infrastructure/Stores/AgentRateLimitStore.cs
+  src/Humans.Web/Controllers/AgentController.cs
+  src/Humans.Web/Controllers/AgentApiController.cs
+  src/Humans.Web/Controllers/AdminAgentController.cs
+  src/Humans.Web/Extensions/Sections/AgentSectionExtensions.cs
+-->
+<!-- freshness:flag-on-change
+  Agent conversation/message/settings invariants, preload-corpus tiers + the tool surface (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue / get_audit_history), the community knowledge base (separate nobodies-collective/knowledge-base repo, cached in RAM, admin-reloadable), rate-limit/abuse gating, and the admin status/reload/prompt-preview surface — review when agent services, stores, the tool catalog, the preload/community-KB readers, or the agent controllers change.
+-->
+
 # Agent — Section Invariants
 
 Conversational helper backed by Anthropic Claude. Available to any authenticated, consented user when `AgentSettings.Enabled = true`.
