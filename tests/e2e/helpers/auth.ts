@@ -45,7 +45,10 @@ export async function liveLoginAndSave(context: BrowserContext, slug: string): P
   const page = await context.newPage();
   await seedCookieConsent(page);
   await page.goto(`/dev/login/${slug}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector(NAV_SELECTOR, { timeout: 60_000 });
+  // 90 s instead of 60 s: QA cold-start and seed-lock contention on the first
+  // persona occasionally push the response past 60 s, causing a flaky setup failure
+  // that Playwright then heals on retry. The extra headroom eliminates the retry.
+  await page.waitForSelector(NAV_SELECTOR, { timeout: 90_000 });
   await context.storageState({ path: authFile(slug) });
   await page.close();
 }
