@@ -28,6 +28,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
+    private readonly IHoldedFinanceService _holdedFinance;
     private readonly IFileStorage _fileStorage;
     private readonly FakeClock _clock;
     private readonly ExpenseReportService _sut;
@@ -72,9 +73,12 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));
 
-        // Contact enrichment (Feature 2): the create path upserts the Holded contact and then
-        // resolves its supplier-account number, so stub both calls for the outbox-mechanics tests.
-        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+        // Contact enrichment now lives in Finance: ExpenseReportService delegates to
+        // EnsureCreditorContactAsync for the contact id, then resolves its supplier-account number.
+        _holdedFinance = Substitute.For<IHoldedFinanceService>();
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("holded-contact-1");
         _holdedClient.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 });
@@ -87,7 +91,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
-            Substitute.For<IHoldedFinanceService>(),
+            _holdedFinance,
             new SepaPaymentFileBuilder(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
@@ -478,7 +482,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _userService,
             Substitute.For<IAuditLogService>(),
             _holdedClient,
-            Substitute.For<IHoldedFinanceService>(),
+            _holdedFinance,
             new SepaPaymentFileBuilder(),
             _clock,
             logger,

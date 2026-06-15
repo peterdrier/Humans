@@ -1493,7 +1493,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     // ─────────────────────── Holded contact enrichment ───────────────────────
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_UpsertContactWithLegalNameBurnerAndCustomId_PersistsContactLink()
+    public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
     {
         // Arrange — active year + user with distinct legal name and burner
         var (_, category) = SetupActiveYear();
@@ -1522,8 +1522,10 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var reportBefore = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         var line = reportBefore!.Lines[0];
 
-        // Configure Holded substitutes
-        _holdedClient.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+        // Configure Holded substitutes — contact enrichment is delegated to Finance now.
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -1550,16 +1552,17 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         // Act
         await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
 
-        // Assert — contact upserted with legal name in Name, burner in TradeName, userId as CustomId
-        await _holdedClient.Received(1).UpsertContactAsync(
-            Arg.Is<HoldedContactInput>(i =>
-                i.Name == legalName &&
-                i.TradeName == burnerName &&
-                i.CustomId == userId.ToString() &&
-                i.Type == "creditor"),
-            Arg.Any<CancellationToken>());
+        // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
+        // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            userId, legalName, burnerName, iban,
+            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
 
-        // Assert — contact link persisted on the report
+        // Assert — the resolved 400000xx number is written back to the member's binding
+        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+            userId, 40000007, Arg.Any<CancellationToken>());
+
+        // Assert — contact link mirrored onto the report
         var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         loaded!.HoldedContactId.Should().Be("contact-123");
         loaded.HoldedSupplierAccountNum.Should().Be(40000007);

@@ -1025,12 +1025,19 @@ public sealed class ExpenseReportService(
         Instant now,
         CancellationToken ct)
     {
-        // 1. Enrich/upsert the Holded contact. Legal name -> name; burner -> tradeName (only with a legal name).
-        var holdedContactId = await UpsertHoldedContactAsync(report, ct);
+        // 1. Ensure the member's Holded creditor contact + binding (Finance owns creditor identity).
+        //    Reuses the binding — including an admin's manual bind — or lazy-seeds from this report's
+        //    cached contact id; never mints a duplicate. Legal name -> name; burner -> tradeName.
+        string? burnerName = null;
+        if (!string.IsNullOrWhiteSpace(report.PayeeName))
+            burnerName = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.BurnerName;
 
-        // Persist the contact id immediately (before the retryable doc-create + attachment steps) so a later
-        // transient/permanent failure can't leave HoldedContactId null and make the retry create a DUPLICATE
-        // contact — the retry reuses this id as an update. The supplier-account number is backfilled in step 4.
+        var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
+            report.SubmitterUserId, report.PayeeName, burnerName, report.PayeeIban,
+            report.HoldedContactId, report.HoldedSupplierAccountNum, ct);
+
+        // Mirror the contact id onto the report (keeps the paid-poll/timeline reads working) before the
+        // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
         var input = new HoldedPurchaseDocumentInput
@@ -1107,39 +1114,10 @@ public sealed class ExpenseReportService(
                 holdedContactId, ex.Message);
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
+        if (supplierAccountNum is not null)
+            await holdedFinance.SetCreditorAccountNumAsync(report.SubmitterUserId, supplierAccountNum.Value, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
-    }
-
-    /// <summary>
-    /// Upserts the submitter's Holded contact. Reuses an existing <c>HoldedContactId</c> when present
-    /// (update), else creates. Legal name is the official identity; the burner is recognizability only
-    /// and is never written to the official <c>name</c> slot.
-    /// </summary>
-    private async Task<string> UpsertHoldedContactAsync(ExpenseReportDto report, CancellationToken ct)
-    {
-        var legalName = report.PayeeName;
-        string? burner = null;
-        if (!string.IsNullOrWhiteSpace(legalName))
-        {
-            var info = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
-            var display = info?.BurnerName;
-            if (!string.IsNullOrWhiteSpace(display) &&
-                !string.Equals(display, legalName, StringComparison.Ordinal))
-            {
-                burner = display;
-            }
-        }
-
-        return await holdedClient.UpsertContactAsync(new HoldedContactInput
-        {
-            Name = legalName,
-            TradeName = burner,
-            CustomId = report.SubmitterUserId.ToString(),
-            Type = "creditor",
-            Iban = string.IsNullOrWhiteSpace(report.PayeeIban) ? null : report.PayeeIban,
-            ExistingContactId = string.IsNullOrEmpty(report.HoldedContactId) ? null : report.HoldedContactId,
-        }, ct);
     }
 
     private async Task<ExpenseReportDto> RequireEditableReportAsync(

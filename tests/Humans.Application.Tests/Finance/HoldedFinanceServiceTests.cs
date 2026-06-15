@@ -354,4 +354,110 @@ public class HoldedFinanceServiceTests
         status.Payments!.Should().HaveCount(2);
         status.Payments!.Should().ContainEquivalentOf(new HoldedPaymentInfo(new LocalDate(2026, 4, 1), 100m, "purchase"));
     }
+
+    // ─── EnsureCreditorContact (binding write path) ──────────────────────────────
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_NewMember_CreatesContact_AndRecordsAutoBinding()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("new-contact");
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Maria Garcia", "Meri", "ES9121000418450200051332", null, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("new-contact");
+        // No binding/seed -> POST create (ExistingContactId null); legal->Name, burner->TradeName, userId->CustomId.
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i =>
+                i.Name == "Maria Garcia" &&
+                i.TradeName == "Meri" &&
+                i.CustomId == userId.ToString() &&
+                i.Type == "creditor" &&
+                i.ExistingContactId == null),
+            Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c =>
+                c.UserId == userId && c.HoldedContactId == "new-contact" &&
+                c.Source == CreditorContactSource.Auto),
+            FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_BurnerSameAsLegal_OmitsTradeName()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Maria Garcia", "Maria Garcia", null, null, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.TradeName == null), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_ExistingBinding_ReusesContactIdAsUpdate()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(), UserId = userId, HoldedContactId = "existing-c",
+                SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto,
+            });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("existing-c");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, null, null, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Existing binding -> PUT update (ExistingContactId set), never a duplicate create.
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "existing-c"), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_NoBindingButSeed_AdoptsSeedContactId()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("seed-c");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, null, "seed-c", 40000004,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Lazy-seed from a prior pushed report -> PUT update on the seeded contact, not a new create.
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "seed-c"), Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000004),
+            FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_ManualBinding_NotDowngradedToAuto()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(), UserId = userId, HoldedContactId = "m-c",
+                SupplierAccountNum = 40000001, Source = CreditorContactSource.Manual,
+            });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("m-c");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Daniela Marquez", null, null, null, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.Source == CreditorContactSource.Manual),
+            FixedNow, Arg.Any<CancellationToken>());
+    }
 }

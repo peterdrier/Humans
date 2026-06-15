@@ -12,6 +12,13 @@ public sealed record HoldedCreditorAccountRow(
     Guid? BoundUserId,              // the Humans member bound to this account, if any
     CreditorContactSource? BindingSource);
 
+/// <summary>A member's binding to their Holded creditor account (DTO projection of the entity).</summary>
+public sealed record CreditorContactBinding(
+    Guid UserId,
+    string HoldedContactId,
+    int? SupplierAccountNum,
+    CreditorContactSource Source);
+
 /// <summary>Per-account statement: balance plus itemized journal lines (credit = owed/in, debit = paid/out).</summary>
 public sealed record HoldedCreditorLedger(
     int SupplierAccountNum,

@@ -440,8 +440,14 @@ public sealed class HoldedFinanceService(
         }).ToList();
     }
 
-    public Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default)
-        => repo.GetCreditorContactByUserAsync(userId, ct);
+    public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var b = await repo.GetCreditorContactByUserAsync(userId, ct);
+        return b is null
+            ? null
+            : new CreditorContactBinding(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source);
+    }
 
     public async Task<bool> SetCreditorContactAsync(
         Guid userId, int supplierAccountNum, CancellationToken ct = default)
@@ -484,6 +490,66 @@ public sealed class HoldedFinanceService(
             Balance: balance,
             OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
             Lines: lines);
+    }
+
+    public async Task<string> EnsureCreditorContactAsync(
+        Guid userId, string legalName, string? burnerName, string? iban,
+        string? seedContactId, int? seedAccountNum, CancellationToken ct = default)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        // Reuse the bound contact, else lazy-seed from the report's previously-cached contact id.
+        var existingContactId = !string.IsNullOrEmpty(binding?.HoldedContactId)
+            ? binding!.HoldedContactId
+            : (string.IsNullOrEmpty(seedContactId) ? null : seedContactId);
+
+        // Burner goes in tradeName only — and only when it differs from the official legal name.
+        var tradeName = !string.IsNullOrWhiteSpace(burnerName)
+                        && !string.Equals(burnerName, legalName, StringComparison.Ordinal)
+            ? burnerName
+            : null;
+
+        var contactId = await client.UpsertContactAsync(new HoldedContactInput
+        {
+            Name = legalName,
+            TradeName = tradeName,
+            CustomId = userId.ToString(),
+            Type = "creditor",
+            Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
+            ExistingContactId = existingContactId,
+        }, ct);
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = Guid.NewGuid(),                                   // ignored on update (keyed by UserId)
+            UserId = userId,
+            HoldedContactId = contactId,
+            SupplierAccountNum = binding?.SupplierAccountNum ?? seedAccountNum,
+            Source = binding?.Source ?? CreditorContactSource.Auto, // preserve a Manual binding
+            CreatedAt = now,
+            UpdatedAt = now,
+        }, now, ct);
+
+        return contactId;
+    }
+
+    public async Task SetCreditorAccountNumAsync(
+        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        if (binding is null) return;
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = binding.Id,
+            UserId = userId,
+            HoldedContactId = binding.HoldedContactId,
+            SupplierAccountNum = supplierAccountNum,
+            Source = binding.Source,
+            CreatedAt = binding.CreatedAt,
+            UpdatedAt = now,
+        }, now, ct);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────────
