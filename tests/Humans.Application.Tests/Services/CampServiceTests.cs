@@ -23,6 +23,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
+    private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
 
     public CampServiceTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
@@ -35,6 +36,8 @@ public sealed class CampServiceTests : ServiceTestHarness
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
+        _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
+
         _service = new CampService(
             repo,
             AuditLog,
@@ -43,10 +46,30 @@ public sealed class CampServiceTests : ServiceTestHarness
             Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
-            Substitute.For<IEarlyEntryInvalidator>(),
+            _earlyEntryInvalidator,
             Substitute.For<IUserServiceRead>(),
             Clock,
             NullLogger<CampService>.Instance);
+    }
+
+    // ==========================================================================
+    // ReassignAsync (account-merge fold) — cache invalidation
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ReassignAsync_InvalidatesEarlyEntryCache_ForBothUsers()
+    {
+        // The fold can move HasEarlyEntry CampMember rows between users, so both
+        // users' per-user early-entry caches must be evicted.
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+
+        await _service.ReassignAsync(
+            source, target, Guid.NewGuid(), Clock.GetCurrentInstant(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        _earlyEntryInvalidator.Received(1).InvalidateUser(source);
+        _earlyEntryInvalidator.Received(1).InvalidateUser(target);
     }
 
     // ==========================================================================
