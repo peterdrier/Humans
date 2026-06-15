@@ -76,6 +76,48 @@ public sealed class GoogleGroupSyncServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOneAsync_GmailPlusTagMember_AddsCanonicalAddress()
+    {
+        // Google's Directory API rejects the "+tag" form of a Gmail address
+        // (HTTP 404). The expected member email is canonicalized to the form
+        // Google resolves it to before the add.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice+travel@gmail.com"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.MembersToAdd.Should().ContainSingle().Which.Should().Be("alice@gmail.com");
+        await _membershipClient.Received(1)
+            .CreateMembershipAsync("group-1", "alice@gmail.com", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_GmailPlusTagMember_AlreadyPresentAsCanonical_NotReAdded()
+    {
+        // The member is already in the group under its canonical address while
+        // the stored email keeps its "+tag". Matching must treat them as the
+        // same member so the sync doesn't re-add (and re-remove) every pass.
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource("team@nobodies.team", userId));
+        StubUsers((userId, "Alice", "alice+travel@gmail.com"));
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("alice@gmail.com", "groups/group-1/memberships/alice"));
+
+        var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        diff.MembersToAdd.Should().BeEmpty();
+        diff.MembersToRemove.Should().BeEmpty();
+        await _membershipClient.DidNotReceiveWithAnyArgs()
+            .CreateMembershipAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _membershipClient.DidNotReceiveWithAnyArgs()
+            .DeleteMembershipAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ReconcileOneAsync_GoogleFailure_SchedulesScopedRetry()
     {
         var userId = Guid.NewGuid();

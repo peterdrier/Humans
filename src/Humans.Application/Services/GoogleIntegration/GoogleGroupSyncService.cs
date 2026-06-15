@@ -549,7 +549,12 @@ public sealed class GoogleGroupSyncService(
 
             var displayName = user.BurnerName;
 
-            result[user.Id] = new ExpectedMember(user.Id, email, displayName, user.ProfilePictureUrl);
+            // Google's Directory API rejects a Gmail "+tag" address (HTTP 404),
+            // and Google stores/returns the canonical form — so we canonicalize
+            // here for both the add and the membership match. Other domains pass
+            // through untouched.
+            result[user.Id] = new ExpectedMember(
+                user.Id, EmailNormalization.CanonicalizeGmail(email), displayName, user.ProfilePictureUrl);
         }
 
         return result;
