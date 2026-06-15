@@ -245,14 +245,26 @@ public sealed class UserService(
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
-        if (status == GoogleEmailStatus.Valid)
-        {
-            var user = await repo.GetByIdAsync(userId, ct);
-            if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                return false;
-        }
+        // Status is per-address (#687): it belongs to the canonical Google email — the address
+        // sync actually targets — not the user. No verified Google email → nothing to stamp.
+        var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
+        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle);
+        if (googleRow is null)
+            return false;
 
-        return await repo.SetGoogleEmailStatusAsync(userId, status, ct);
+        // Rejected is terminal for a given address: a later successful sync MUST NOT silently flip
+        // it back to Valid. The user clears it by selecting a different Google email, which lands on
+        // a different row that starts Unknown — so the rejection never strands sync again.
+        if (status == GoogleEmailStatus.Valid && googleRow.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+            return false;
+
+        if (googleRow.GoogleEmailStatus == status)
+            return false;
+
+        googleRow.GoogleEmailStatus = status;
+        googleRow.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateUserEmailAsync(googleRow, ct);
+        return true;
     }
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)

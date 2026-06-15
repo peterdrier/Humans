@@ -111,15 +111,18 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
     /// <summary>
-    /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
-    /// the "Rejected is terminal" invariant: once flagged
-    /// <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP 403 on a
-    /// group-add), a later successful sync MUST NOT flip the user back to
-    /// <see cref="GoogleEmailStatus.Valid"/> until they change their email.
-    /// Call this from any outbox-processor / reconciliation writer; the
-    /// invariant lives here so a future second caller cannot silently bypass
-    /// it. Returns true if a write occurred, false if short-circuited by
-    /// the rule or the user does not exist.
+    /// Sync-driven Google status write targeting the user's canonical verified
+    /// <see cref="UserEmail.IsGoogle"/> address — status is per-address (#687),
+    /// not on the user. Preserves the "Rejected is terminal" invariant: once the
+    /// address is flagged <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP
+    /// 403 on a group/drive add), a later successful sync MUST NOT flip that same
+    /// address back to <see cref="GoogleEmailStatus.Valid"/>. The user clears it
+    /// by selecting a different Google email — a fresh row that starts
+    /// <see cref="GoogleEmailStatus.Unknown"/> — so a rejection never strands sync
+    /// after the address changes. Call this from any outbox-processor /
+    /// reconciliation writer; the invariant lives here so a future second caller
+    /// cannot silently bypass it. Returns true if a write occurred, false if
+    /// short-circuited by the rule or the user has no verified Google email.
     /// </summary>
     Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);

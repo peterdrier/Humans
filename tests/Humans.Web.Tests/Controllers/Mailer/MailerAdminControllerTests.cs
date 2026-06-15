@@ -396,7 +396,6 @@ public class MailerAdminControllerTests
                 DisplayName = "Member",
                 PreferredLanguage = "en",
                 CreatedAt = now,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: [new UserEmail
             {
@@ -434,7 +433,6 @@ public class MailerAdminControllerTests
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 ContactSource = source,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: [],
             eventParticipations: [],

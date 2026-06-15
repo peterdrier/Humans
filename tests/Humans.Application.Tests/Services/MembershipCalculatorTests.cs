@@ -856,7 +856,6 @@ public class MembershipCalculatorTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

@@ -159,7 +159,7 @@ Repository: `IUserRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.GoogleEmailStatus` / `Users.Email`; also a read for `UserEmailWithUser` lookups) |
+| Users | R/W (the only direct EF write to `Users.GoogleEmail` / `Users.Email`; also a read for `UserEmailWithUser` lookups). Google sync status is now per-address on `UserEmails.GoogleEmailStatus` (#687) — `Users.GoogleEmailStatus` is deprecated/unwritten. |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
 `IServiceProvider` for lazy resolution. Implements `IUserMerge`. No
@@ -593,8 +593,9 @@ Read-only assemblers — no repository, no cache. Fan out over
 
 Folder: `src/Humans.Application/Services/GoogleIntegration/`. Owns
 `SyncServiceSettings`, `GoogleSyncOutboxEvents`, and `GoogleResources`
-(the latter via `TeamResourceService`). `Users.GoogleEmail` /
-`GoogleEmailStatus` writes go through `IUserService` / `IUserEmailService`
+(the latter via `TeamResourceService`). The per-address
+`UserEmails.GoogleEmailStatus` write (#687) goes through `IUserService`
+(`TrySetGoogleEmailStatusFromSyncAsync`, targeting the canonical Google row)
 per §15.
 
 > **Change since prior sweep (#889):** `GoogleSyncOutboxEvents` is now

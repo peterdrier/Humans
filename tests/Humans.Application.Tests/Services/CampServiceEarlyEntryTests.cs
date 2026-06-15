@@ -391,7 +391,6 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Clock.GetCurrentInstant(),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         };
         var participation = new EventParticipation
         {

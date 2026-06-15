@@ -119,7 +119,6 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
             DisplayName = "Actor",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         };
         var profile = new Profile
         {

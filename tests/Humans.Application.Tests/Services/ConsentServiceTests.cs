@@ -118,7 +118,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

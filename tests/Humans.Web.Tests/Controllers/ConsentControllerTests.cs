@@ -102,7 +102,6 @@ public class ConsentControllerTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

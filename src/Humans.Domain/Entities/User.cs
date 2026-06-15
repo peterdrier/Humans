@@ -113,7 +113,14 @@ public class User : IdentityUser<Guid>
     /// <summary>When the last magic link login email was sent (rate limiting).</summary>
     public Instant? MagicLinkSentAt { get; set; }
 
-    /// <summary>Rejected on permanent Google API error; reset to Unknown on email change.</summary>
+    /// <summary>
+    /// DEPRECATED (nobodies-collective/Humans#687): the Google rejection/validation state is now
+    /// per-address on <see cref="UserEmail.GoogleEmailStatus"/> — the address Google actually
+    /// rejected — instead of stranded on the user. Hanging it here meant switching the canonical
+    /// Google email left the stale rejection in place and kept sync paused. No live reader/writer
+    /// remains; the column is retained only so EF keeps it until a later drop migration.
+    /// </summary>
+    [Obsolete("Moved to UserEmail.GoogleEmailStatus (per-address) — #687. Do not read or write; retained for the DB column until a drop migration.")]
     public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
 
     /// <summary>Source of this user; null for self-registered.</summary>

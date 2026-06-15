@@ -107,7 +107,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - **App is source of truth for expected membership.** Reconciliation computes expected members from team membership in the database; anyone present in Google but absent from the DB is classified as "extra" and shows as a removal candidate.
 - **One sync code path for preview / scheduled / manual.** Diff computation is shared; the `SyncAction` parameter (`Preview` / `AddOnly` / `AddAndRemove`) is the only variable controlling which mutations execute.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
-- Each human has a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`). When Google permanently rejects an email (HTTP 400/403/404), the status is set to `Rejected` and new outbox events are not enqueued for that human. When a human changes their Google email, the status resets to `Unknown` and fresh sync events are enqueued.
+- Each Google email **address** carries a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`) on its `UserEmail` row (#687) — the status belongs to the address Google rejected, not the human. When Google permanently rejects the canonical address (HTTP 400/403/404), that address is set to `Rejected` and new outbox events are not enqueued for the human. Because the status lives on the address, selecting a different Google email (a fresh `Unknown` row) resets sync naturally and fresh events are enqueued.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
 - The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.
 - Drive permissions are modified only by the Drive paths in `IGoogleSyncService`. Google Group membership is modified only by `IGoogleGroupSync`; `IGoogleSyncService` still provisions groups and remediates group settings.
@@ -125,7 +125,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 ## Triggers
 
 - When team membership changes, Drive sync outbox events are queued and scoped Google Group membership sync requests are enqueued after the team write commits.
-- When a human's Google email changes, `GoogleEmailStatus` resets to `Unknown`; fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
+- When a human selects a different Google email, the new canonical address starts `Unknown` (status is per-address, #687); fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
 - When a Google resource is linked to a team, current team members are synced to that resource.
 - When a Google resource is unlinked, managed permissions are removed (if sync mode allows).
 - The system team sync job runs hourly, reconciling system team membership.

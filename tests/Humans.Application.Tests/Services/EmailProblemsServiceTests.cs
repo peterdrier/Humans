@@ -52,7 +52,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             DisplayName = "Test User",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
             Email = identityEmailColumn,
         };
         Profile? profile = hasProfile

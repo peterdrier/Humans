@@ -64,6 +64,17 @@ public class UserEmail
     public bool IsGoogle { get; set; }
 
     /// <summary>
+    /// Google Workspace sync status for THIS address. <see cref="GoogleEmailStatus.Rejected"/>
+    /// is set when Google permanently rejects this email (HTTP 400/403, "no Google account")
+    /// while granting Drive/Group access; sync is then suppressed for the address until it
+    /// changes. Because the status lives on the address Google actually rejected — not on the
+    /// user — selecting a different <see cref="IsGoogle"/> address (a fresh row, status
+    /// <see cref="GoogleEmailStatus.Unknown"/>) naturally resumes sync. Replaces the deprecated
+    /// user-level <c>User.GoogleEmailStatus</c> (nobodies-collective/Humans#687).
+    /// </summary>
+    public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
+
+    /// <summary>
     /// True when this row is the canonical recipient for system notifications
     /// to this user. Exactly-one-true-per-UserId is service-enforced inside
     /// UserEmailService — no DB partial unique index per

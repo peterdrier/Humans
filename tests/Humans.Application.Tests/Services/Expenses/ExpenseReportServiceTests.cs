@@ -66,7 +66,6 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

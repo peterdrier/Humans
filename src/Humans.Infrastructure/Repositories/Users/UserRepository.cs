@@ -193,23 +193,11 @@ internal sealed partial class UserRepository : IUserRepository
             return false;
 
         ctx.Entry(user).Property<string?>("GoogleEmail").CurrentValue = email;
+        // Dead/obsolete legacy path (#687). The reset is meaningless now that status is per-address;
+        // suppress CS0618 — there is no live writer of User.GoogleEmailStatus.
+#pragma warning disable CS0618
         user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<bool> SetGoogleEmailStatusAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null)
-            return false;
-
-        if (user.GoogleEmailStatus == status)
-            return false;
-
-        user.GoogleEmailStatus = status;
+#pragma warning restore CS0618
         await ctx.SaveChangesAsync(ct);
         return true;
     }

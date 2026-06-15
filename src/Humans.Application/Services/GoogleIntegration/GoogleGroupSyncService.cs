@@ -669,7 +669,7 @@ public sealed class GoogleGroupSyncService(
 
             logger.LogWarning(
                 "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
-                "Legacy User.GoogleEmailStatus was marked Rejected when a matching user was found. Google error: {ErrorMessage}",
+                "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
                 email,
                 groupKey,
                 resource?.GoogleId,

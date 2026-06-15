@@ -284,7 +284,6 @@ public class CachingUserServiceTests
             Id = userId,
             PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
             ICalToken = Guid.NewGuid(),
         };
         var userEmail = new UserEmail
@@ -295,6 +294,7 @@ public class CachingUserServiceTests
             IsVerified = true,
             IsPrimary = true,
             IsGoogle = true,
+            GoogleEmailStatus = GoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };
@@ -420,7 +420,6 @@ public class CachingUserServiceTests
             PreferredLanguage = "es",
             ProfilePictureUrl = "https://example.com/pic.png",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
         };
         var userEmail = new UserEmail
         {
@@ -430,6 +429,7 @@ public class CachingUserServiceTests
             IsVerified = true,
             IsPrimary = true,
             IsGoogle = true,
+            GoogleEmailStatus = GoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subj-1",
         };
@@ -458,7 +458,7 @@ public class CachingUserServiceTests
         var hit = result[userId];
         LegacyDisplayName(hit).Should().Be("Cached");
         hit.ProfilePictureUrl.Should().Be("https://example.com/pic.png");
-        hit.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
+        hit.UserEmails.Single(e => e.IsGoogle).GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
         hit.UserEmails.Should().ContainSingle(e =>
             e.Id == emailId && e.Email == "cached@example.com" && e.IsPrimary && e.IsGoogle && e.IsVerified);
 

@@ -361,7 +361,6 @@ public sealed class GoogleGroupSyncServiceTests
             {
                 Id = userId,
                 DisplayName = "Alice",
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
                 CreatedAt = _clock.GetCurrentInstant()
             }.ToUserInfo());
 
@@ -371,7 +370,7 @@ public sealed class GoogleGroupSyncServiceTests
         _logger.Messages.Should().Contain(m =>
             m.Contains("alice@nobodies.team", StringComparison.Ordinal)
             && m.Contains("team@nobodies.team", StringComparison.Ordinal)
-            && m.Contains("User.GoogleEmailStatus", StringComparison.Ordinal));
+            && m.Contains("Google email status marked Rejected", StringComparison.Ordinal));
         await _userService.Received(1).TrySetGoogleEmailStatusFromSyncAsync(
             userId,
             GoogleEmailStatus.Rejected,
@@ -399,7 +398,6 @@ public sealed class GoogleGroupSyncServiceTests
             {
                 Id = userId,
                 DisplayName = "Alice",
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
                 CreatedAt = _clock.GetCurrentInstant()
             }.ToUserInfo());
 

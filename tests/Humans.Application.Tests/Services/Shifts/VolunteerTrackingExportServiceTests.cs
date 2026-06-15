@@ -80,7 +80,6 @@ public sealed class VolunteerTrackingExportServiceTests
                 DisplayName = burnerName,
                 PreferredLanguage = "en",
                 CreatedAt = TestNow,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: [],
             eventParticipations: [],

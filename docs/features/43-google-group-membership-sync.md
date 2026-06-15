@@ -34,4 +34,4 @@ Group-key collisions are fail-closed. If more than one source claims the same ke
 
 Team membership and Google-email changes enqueue scoped group reconciliation after the application write commits. Drive permissions still use the Google sync outbox and `IGoogleSyncService`; group membership uses `IGoogleGroupSync`.
 
-When Google rejects a target member email specifically, legacy `User.GoogleEmailStatus` is marked `Rejected` and the warning log includes the email address. Generic Google API failures such as billing, quota, and backend errors do not mutate user email state; they leave the group sync eligible for the capped scoped retry path.
+When Google rejects a target member email specifically, that address's `UserEmail.GoogleEmailStatus` is marked `Rejected` (#687) and the warning log includes the email address. Generic Google API failures such as billing, quota, and backend errors do not mutate user email state; they leave the group sync eligible for the capped scoped retry path.

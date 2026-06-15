@@ -36,7 +36,6 @@ public class ICalFeedServiceTests
             DisplayName = "Test Human",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
             ICalToken = icalToken,
             MergedToUserId = mergedToUserId,
         };
