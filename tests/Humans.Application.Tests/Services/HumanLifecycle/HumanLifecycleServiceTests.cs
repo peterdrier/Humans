@@ -84,6 +84,7 @@ public class HumanLifecycleServiceTests
             "/Profile",
             "View profile",
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         _metrics.Received(1).RecordMemberSuspended("admin");
     }
@@ -116,6 +117,7 @@ public class HumanLifecycleServiceTests
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<Guid>>(),
             "Your access has been suspended by an administrator.",
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -226,6 +228,7 @@ public class HumanLifecycleServiceTests
                 Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(),
                 Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),

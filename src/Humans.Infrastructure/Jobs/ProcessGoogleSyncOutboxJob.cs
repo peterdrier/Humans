@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -33,7 +32,6 @@ public class ProcessGoogleSyncOutboxJob(
     IUserService userService,
     ITeamServiceRead teamService,
     IGoogleSyncService googleSyncService,
-    INotificationService notificationService,
     IHumansMetrics metrics,
     IClock clock,
     ILogger<ProcessGoogleSyncOutboxJob> logger) : IRecurringJob
@@ -134,32 +132,15 @@ public class ProcessGoogleSyncOutboxJob(
                     await userService.TrySetGoogleEmailStatusFromSyncAsync(
                         outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
 
-                    // Notify Admin so the failure is visible immediately
-                    // (badge fix nobodies-collective/Humans#847 also surfaces this in the meter).
-                    try
-                    {
-                        await notificationService.SendToRoleAsync(
-                            NotificationSource.SyncError,
-                            NotificationClass.Actionable,
-                            NotificationPriority.High,
-                            $"Google sync permanently failed for {userEmail}",
-                            RoleNames.Admin,
-                            body: $"Event {outboxEvent.EventType} for team {teamName} failed with HTTP {ex.Error?.Code}: {ex.Message}",
-                            actionUrl: "/Google/SyncOutbox",
-                            actionLabel: "View outbox",
-                            cancellationToken: cancellationToken);
-                    }
-                    catch (Exception notifyEx)
-                    {
-                        logger.LogError(notifyEx,
-                            "Failed to send Admin notification for permanent outbox failure {OutboxId}", outboxEvent.Id);
-                    }
+                    // Failure stays visible via the "Failed Google sync events" meter and
+                    // the /Google/SyncOutbox admin page (with per-event Retry) — no per-event
+                    // notification (removed: the alert was non-actionable noise).
                 }
                 catch (Exception ex)
                 {
                     metrics.RecordSyncOperation("failure");
 
-                    var (exhausted, retryCount) = await outboxRepository.IncrementRetryAsync(
+                    var (_, retryCount) = await outboxRepository.IncrementRetryAsync(
                         outboxEvent.Id,
                         clock.GetCurrentInstant(),
                         ex.Message,
@@ -179,28 +160,9 @@ public class ProcessGoogleSyncOutboxJob(
                         retryCount,
                         MaxRetryCount);
 
-                    // Notify Admin when retry budget is exhausted (dead-lettered by retry limit).
-                    if (exhausted)
-                    {
-                        try
-                        {
-                            await notificationService.SendToRoleAsync(
-                                NotificationSource.SyncError,
-                                NotificationClass.Actionable,
-                                NotificationPriority.High,
-                                $"Google sync dead-lettered for {userEmail} (retry limit reached)",
-                                RoleNames.Admin,
-                                body: $"Event {outboxEvent.EventType} for team {teamName} exhausted {MaxRetryCount} retries. Last error: {ex.Message}",
-                                actionUrl: "/Google/SyncOutbox",
-                                actionLabel: "View outbox",
-                                cancellationToken: cancellationToken);
-                        }
-                        catch (Exception notifyEx)
-                        {
-                            logger.LogError(notifyEx,
-                                "Failed to send Admin notification for dead-lettered outbox event {OutboxId}", outboxEvent.Id);
-                        }
-                    }
+                    // Dead-lettered events (IncrementRetryAsync marks FailedPermanently on
+                    // exhaustion) surface via the "Failed Google sync events" meter and the
+                    // /Google/SyncOutbox admin page with Retry — no per-event notification.
                 }
             }
 

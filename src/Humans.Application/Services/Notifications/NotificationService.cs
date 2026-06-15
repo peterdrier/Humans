@@ -35,10 +35,11 @@ public sealed class NotificationService(
         string? actionUrl = null,
         string? actionLabel = null,
         string? targetGroupName = null,
+        string? sourceKey = null,
         CancellationToken cancellationToken = default) =>
         emitter.SendAsync(
             source, notificationClass, priority, title, recipientUserIds,
-            body, actionUrl, actionLabel, targetGroupName, cancellationToken);
+            body, actionUrl, actionLabel, targetGroupName, sourceKey, cancellationToken);
 
     public async Task SendToRoleAsync(
         NotificationSource source,

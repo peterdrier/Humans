@@ -44,6 +44,15 @@ public class Notification
     public NotificationSource Source { get; set; }
 
     /// <summary>
+    /// Optional correlation key identifying the specific source entity (e.g. the
+    /// issue id behind an <see cref="NotificationSource.IssueSubmitted"/> alert).
+    /// Lets the originating section auto-resolve this notification when that entity
+    /// reaches a terminal state, via <c>ResolveBySourceKeyAsync(source, sourceKey)</c>.
+    /// Null for notifications not tied to a single entity.
+    /// </summary>
+    public string? SourceKey { get; set; }
+
+    /// <summary>
     /// Classification: Informational (dismissable) or Actionable (requires action).
     /// </summary>
     public NotificationClass Class { get; set; }

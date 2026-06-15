@@ -85,6 +85,16 @@ public interface INotificationInboxService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Resolves all unresolved notifications matching a source + source-entity key,
+    /// across every recipient. Called by the owning section when the source entity
+    /// reaches a terminal state (e.g., an issue is resolved → its IssueSubmitted
+    /// alerts clear). <paramref name="resolvedByUserId"/> attributes the resolution.
+    /// </summary>
+    Task ResolveBySourceKeyAsync(
+        NotificationSource source, string sourceKey, Guid? resolvedByUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Gets unread notification badge counts for a user (actionable + informational).
     /// Used by the notification bell ViewComponent.
     /// </summary>

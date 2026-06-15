@@ -35,6 +35,7 @@ public sealed class NotificationEmitter(
         string? actionUrl = null,
         string? actionLabel = null,
         string? targetGroupName = null,
+        string? sourceKey = null,
         CancellationToken cancellationToken = default)
     {
         if (recipientUserIds.Count == 0)
@@ -70,6 +71,7 @@ public sealed class NotificationEmitter(
                 ActionLabel = actionLabel,
                 Priority = priority,
                 Source = source,
+                SourceKey = sourceKey,
                 Class = notificationClass,
                 TargetGroupName = targetGroupName,
                 CreatedAt = now,

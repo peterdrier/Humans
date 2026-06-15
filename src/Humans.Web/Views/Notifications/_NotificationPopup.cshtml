@@ -29,6 +29,14 @@
 else
 {
     <div class="notification-popup-body">
+        @if (Model.Actionable.Count > 0)
+        {
+            <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
+            @foreach (var item in Model.Actionable)
+            {
+                <partial name="_NotificationRow" model="item" />
+            }
+        }
         @if (Model.Meters.Count > 0)
         {
             <div class="notification-section-label">@Localizer["Notification_Section_WorkQueues"]</div>
@@ -43,14 +51,6 @@ else
                         @Localizer["Notification_DefaultActionLabel"]
                     </a>
                 </div>
-            }
-        }
-        @if (Model.Actionable.Count > 0)
-        {
-            <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
-            @foreach (var item in Model.Actionable)
-            {
-                <partial name="_NotificationRow" model="item" />
             }
         }
         @if (Model.Informational.Count > 0)
