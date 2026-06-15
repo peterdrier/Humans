@@ -19,6 +19,7 @@ public interface IHoldedRepository : IRepository
     // Creditor balances (chartofaccounts cache)
     Task UpsertCreditorBalancesAsync(IReadOnlyList<HoldedCreditorBalance> rows, Instant now, CancellationToken ct = default);
     Task<HoldedCreditorBalance?> GetCreditorBalanceByAccountNumAsync(int accountNum, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedCreditorBalance>> GetCreditorBalancesAsync(CancellationToken ct = default);
 
     // Payments cache
     Task UpsertPaymentsAsync(IReadOnlyList<HoldedPayment> rows, Instant now, CancellationToken ct = default);

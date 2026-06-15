@@ -417,6 +417,75 @@ public sealed class HoldedFinanceService(
             Payments: payments.Select(p => new HoldedPaymentInfo(p.Date, p.Amount, p.DocumentType)).ToList());
     }
 
+    // ─── Creditor bindings + statement ──────────────────────────────────────────
+
+    public async Task<IReadOnlyList<HoldedCreditorAccountRow>> ListCreditorAccountsAsync(
+        CancellationToken ct = default)
+    {
+        var balances = await repo.GetCreditorBalancesAsync(ct);
+        var bindings = (await repo.GetCreditorContactsAsync(ct))
+            .Where(b => b.SupplierAccountNum is not null)
+            .ToDictionary(b => b.SupplierAccountNum!.Value);
+
+        return balances.Select(b =>
+        {
+            bindings.TryGetValue(b.SupplierAccountNum, out var binding);
+            return new HoldedCreditorAccountRow(
+                SupplierAccountNum: b.SupplierAccountNum,
+                Name: b.Name,
+                Balance: b.Balance,
+                OwedToMember: Math.Max(0m, -b.Balance),
+                BoundUserId: binding?.UserId,
+                BindingSource: binding?.Source);
+        }).ToList();
+    }
+
+    public Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default)
+        => repo.GetCreditorContactByUserAsync(userId, ct);
+
+    public async Task<bool> SetCreditorContactAsync(
+        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+    {
+        var contact = (await client.ListContactsAsync(ct))
+            .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
+        if (contact is null) return false;
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldedContactId = contact.Id,
+            SupplierAccountNum = supplierAccountNum,
+            Source = CreditorContactSource.Manual,
+            CreatedAt = now,
+            UpdatedAt = now,
+        }, now, ct);
+        return true;
+    }
+
+    public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
+        int supplierAccountNum, CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        // Holded caps a dailyledger window at one year; 364 days stays safely under.
+        var from = now.Minus(Duration.FromDays(364));
+        var lines = (await client.ListDailyLedgerAsync(from, now, ct))
+            .Where(l => l.AccountNum == supplierAccountNum)
+            .ToList();
+
+        var balanceRow = await repo.GetCreditorBalanceByAccountNumAsync(supplierAccountNum, ct);
+        if (balanceRow is null && lines.Count == 0) return null;
+
+        var balance = balanceRow?.Balance;
+        return new HoldedCreditorLedger(
+            SupplierAccountNum: supplierAccountNum,
+            Name: balanceRow?.Name,
+            Balance: balance,
+            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
+            Lines: lines);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>

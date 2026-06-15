@@ -119,6 +119,12 @@ internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factor
             .FirstOrDefaultAsync(b => b.SupplierAccountNum == accountNum, ct);
     }
 
+    public async Task<IReadOnlyList<HoldedCreditorBalance>> GetCreditorBalancesAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedCreditorBalances.AsNoTracking().ToListAsync(ct);
+    }
+
     // ── Payments ──────────────────────────────────────────────────────────────
 
     public async Task UpsertPaymentsAsync(
