@@ -108,6 +108,28 @@ public interface INotificationRepository : IRepository
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default);
 
     /// <summary>
+    /// Resolves every unresolved notification matching both <paramref name="source"/>
+    /// and <paramref name="sourceKey"/> (the source-entity correlation key), across
+    /// all recipients. Used when the underlying entity reaches a terminal state
+    /// (e.g., an issue is resolved → its IssueSubmitted alerts clear for everyone).
+    /// Returns the distinct recipient user ids affected, for badge cache invalidation.
+    /// <paramref name="resolvedByUserId"/> attributes the resolution (e.g. the actor
+    /// who closed the issue); null when system-driven with no actor.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ResolveBySourceKeyAsync(
+        NotificationSource source, string sourceKey, Instant now,
+        Guid? resolvedByUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all unresolved notifications whose <c>Source</c> is in
+    /// <paramref name="sources"/>. Used by <c>CleanupNotificationsJob</c> to purge
+    /// retired-source rows (e.g. pre-PR-642 ApplicationSubmitted / ConsentReviewNeeded)
+    /// that are no longer emitted and have no resolution path. Returns rows deleted.
+    /// </summary>
+    Task<int> DeleteUnresolvedBySourcesAsync(
+        IReadOnlyList<NotificationSource> sources, CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes resolved notifications whose <c>ResolvedAt</c> is earlier
     /// than <paramref name="resolvedCutoff"/>. Returns the number of rows
     /// deleted. Used by <c>CleanupNotificationsJob</c>.

@@ -289,6 +289,92 @@ public class NotificationRepositoryTests : IDisposable
         rows.Should().NotContain(r => r.UserId == source);
     }
 
+    // ── ResolveBySourceKeyAsync (entity-scoped auto-resolve) ──────────────────
+
+    [HumansFact]
+    public async Task ResolveBySourceKeyAsync_ResolvesOnlyMatchingSourceAndKey_AcrossRecipients()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+
+        // Two per-recipient rows for the same issue (issue-1).
+        var a = CreateNotification(u1, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
+        var b = CreateNotification(u2, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
+        // Same source, different issue — must NOT resolve.
+        var other = CreateNotification(u1, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-2");
+        // Same key, different source — must NOT resolve.
+        var diff = CreateNotification(u1, NotificationClass.Informational, NotificationSource.IssueStatusChanged, "issue-1");
+
+        await _repo.AddRangeAsync([a, b, other, diff], Xunit.TestContext.Current.CancellationToken);
+
+        var affected = await _repo.ResolveBySourceKeyAsync(
+            NotificationSource.IssueSubmitted, "issue-1", _now, actor, Xunit.TestContext.Current.CancellationToken);
+
+        affected.Should().BeEquivalentTo([u1, u2]);
+        var byId = await _dbContext.Notifications.AsNoTracking()
+            .ToDictionaryAsync(n => n.Id, Xunit.TestContext.Current.CancellationToken);
+        byId[a.Id].ResolvedAt.Should().Be(_now);
+        byId[a.Id].ResolvedByUserId.Should().Be(actor);
+        byId[b.Id].ResolvedAt.Should().Be(_now);
+        byId[other.Id].ResolvedAt.Should().BeNull();
+        byId[diff.Id].ResolvedAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ResolveBySourceKeyAsync_ReturnsEmpty_WhenNothingMatches()
+    {
+        var affected = await _repo.ResolveBySourceKeyAsync(
+            NotificationSource.IssueSubmitted, "nope", _now, null, Xunit.TestContext.Current.CancellationToken);
+
+        affected.Should().BeEmpty();
+    }
+
+    // ── DeleteUnresolvedBySourcesAsync (retired-source purge) ─────────────────
+
+    [HumansFact]
+    public async Task DeleteUnresolvedBySourcesAsync_DeletesOnlyUnresolvedRetiredSources()
+    {
+        var userId = Guid.NewGuid();
+
+        var retiredApp = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ApplicationSubmitted, null);
+        var retiredConsent = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ConsentReviewNeeded, null);
+        var liveIssue = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
+        var resolvedApp = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ApplicationSubmitted, null);
+        resolvedApp.ResolvedAt = _now;
+
+        await _repo.AddRangeAsync([retiredApp, retiredConsent, liveIssue, resolvedApp], Xunit.TestContext.Current.CancellationToken);
+
+        var deleted = await _repo.DeleteUnresolvedBySourcesAsync(
+            [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded],
+            Xunit.TestContext.Current.CancellationToken);
+
+        deleted.Should().Be(2);
+        var remaining = await _dbContext.Notifications.AsNoTracking()
+            .Select(n => n.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remaining.Should().BeEquivalentTo([liveIssue.Id, resolvedApp.Id]);
+    }
+
+    private Notification CreateNotification(
+        Guid userId,
+        NotificationClass cls,
+        NotificationSource source,
+        string? sourceKey)
+    {
+        var n = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test",
+            Source = source,
+            SourceKey = sourceKey,
+            Class = cls,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = _now,
+        };
+        n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = userId });
+        return n;
+    }
+
     private Notification CreateNotification(
         Guid userId,
         NotificationClass cls = NotificationClass.Informational,

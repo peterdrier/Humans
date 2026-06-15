@@ -102,7 +102,7 @@ public sealed class NotificationMeterProvider(
             {
                 Title = "Failed Google sync events",
                 Count = counts.FailedSyncEvents,
-                ActionUrl = "/Google/Sync",
+                ActionUrl = "/Google/SyncOutbox",
                 Priority = 7,
             });
         }

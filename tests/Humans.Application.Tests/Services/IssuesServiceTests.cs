@@ -31,6 +31,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
+    private readonly INotificationInboxService _notificationInbox;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
@@ -71,6 +72,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
         _notificationService = Substitute.For<INotificationEmitter>();
+        _notificationInbox = Substitute.For<INotificationInboxService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
 
@@ -78,7 +80,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
 
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
     }
@@ -134,6 +136,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
                 Arg.Any<string>(),
                 Arg.Do<IReadOnlyList<Guid>>(r => capturedRecipients = r),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
 
         await _service.SubmitIssueAsync(
@@ -267,6 +270,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -316,6 +320,34 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
+    }
+
+    [HumansFact]
+    public async Task UpdateStatusAsync_to_terminal_resolves_IssueSubmitted_notifications()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var actorId = Guid.NewGuid();
+
+        await _service.UpdateStatusAsync(issueId, IssueStatus.Resolved, actorId, Xunit.TestContext.Current.CancellationToken);
+
+        // The "New issue filed" alerts that fanned out on submission clear once the
+        // issue is terminal, attributed to the actor who closed it.
+        await _notificationInbox.Received(1).ResolveBySourceKeyAsync(
+            NotificationSource.IssueSubmitted,
+            issueId.ToString(),
+            actorId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateStatusAsync_to_nonterminal_does_not_resolve_IssueSubmitted_notifications()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+
+        await _service.UpdateStatusAsync(issueId, IssueStatus.InProgress, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await _notificationInbox.DidNotReceive().ResolveBySourceKeyAsync(
+            Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -375,6 +407,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -393,6 +426,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -475,6 +509,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -494,6 +529,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -626,7 +662,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -654,7 +690,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -686,7 +722,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -769,7 +805,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -796,7 +832,7 @@ public sealed class IssuesServiceTests : ServiceTestHarness
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 

@@ -882,6 +882,7 @@ public sealed class CampServiceTests : ServiceTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -932,6 +933,7 @@ public sealed class CampServiceTests : ServiceTestHarness
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -1282,6 +1284,7 @@ public sealed class CampServiceTests : ServiceTestHarness
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),

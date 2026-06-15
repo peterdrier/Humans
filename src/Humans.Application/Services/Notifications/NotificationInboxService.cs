@@ -170,6 +170,16 @@ public sealed class NotificationInboxService(
             InvalidateBadgeCaches([userId]);
     }
 
+    public async Task ResolveBySourceKeyAsync(
+        NotificationSource source, string sourceKey, Guid? resolvedByUserId,
+        CancellationToken ct = default)
+    {
+        var affected = await repo.ResolveBySourceKeyAsync(
+            source, sourceKey, clock.GetCurrentInstant(), resolvedByUserId, ct);
+        if (affected.Count > 0)
+            InvalidateBadgeCaches(affected);
+    }
+
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
