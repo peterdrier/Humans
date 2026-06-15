@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Application.Interfaces.Holded;
 
 public interface IHoldedClient
@@ -47,4 +49,12 @@ public interface IHoldedClient
 
     /// <summary>Reads all payment rows (contactId, amount, date) in one call.</summary>
     Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default);
+
+    /// <summary>Lists journal lines from the daily ledger across a date window. Paginates internally
+    /// (250/page); the window must be one year or less (the Holded API rejects wider ranges).</summary>
+    Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
+        Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact resolution.</summary>
+    Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
 }

@@ -18,6 +18,21 @@ public sealed record HoldedPurchaseLineDto
     public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
+/// <summary>One journal line from GET accounting/v1/dailyledger. Field names verified against the live
+/// Holded API (2026-06-15): entryNumber/line/timestamp/account/debit/credit/type/description.
+/// <c>account</c> is the literal 400000xx number (not an internal id); amounts are in euros.</summary>
+public sealed record HoldedLedgerLineDto
+{
+    public required int EntryNumber { get; init; }
+    public required int Line { get; init; }
+    public required Instant Date { get; init; }        // `timestamp` (epoch s)
+    public required int AccountNum { get; init; }      // `account` — literal 400000xx
+    public required decimal Debit { get; init; }
+    public required decimal Credit { get; init; }
+    public string? Type { get; init; }                 // e.g. "purchase", "payment"
+    public string? Description { get; init; }
+}
+
 /// <summary>A purchase document as returned by the list endpoint.</summary>
 public sealed record HoldedPurchaseDocListItemDto
 {
