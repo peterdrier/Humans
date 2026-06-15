@@ -28,6 +28,7 @@ public record UserEmailEditDto(
     bool IsPrimary,
     ContactFieldVisibility? Visibility,
     bool IsPendingVerification,
+    GoogleEmailStatus GoogleEmailStatus,
     bool IsMergePending = false);
 
 /// <summary>

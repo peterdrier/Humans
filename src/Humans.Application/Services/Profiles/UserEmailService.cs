@@ -52,6 +52,7 @@ public sealed class UserEmailService(
             e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
+            GoogleEmailStatus: e.GoogleEmailStatus,
             IsMergePending: mergePendingSet.Contains(e.Id)
         )).ToList();
     }

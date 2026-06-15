@@ -2245,6 +2245,7 @@ public class ProfileController(
                 Email = e.Email,
                 IsVerified = e.IsVerified,
                 IsGoogle = e.IsGoogle,
+                GoogleEmailStatus = e.GoogleEmailStatus,
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,

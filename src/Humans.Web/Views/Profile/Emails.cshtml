@@ -160,6 +160,19 @@
                                     {
                                         <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
                                     }
+                                    @* Per-address Google sync status (#687) — so a problem address is visible per row. *@
+                                    @if (row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+                                    {
+                                        <span class="badge bg-danger ms-1" title="@Localizer["EmailGrid_GoogleProblem"].Value">
+                                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_GoogleProblem"]
+                                        </span>
+                                    }
+                                    else if (row.GoogleEmailStatus == GoogleEmailStatus.Valid)
+                                    {
+                                        <span class="badge bg-success ms-1" title="@Localizer["EmailGrid_GoogleOk"].Value">
+                                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_GoogleOk"]
+                                        </span>
+                                    }
                                 </td>
                                 <td>
                                     @{
@@ -228,6 +241,21 @@
                                     {
                                         <span class="d-inline-flex align-items-center">
                                             <i class="fa-brands fa-google text-success me-1" aria-label="@Localizer["EmailGrid_Google"]"></i>
+                                            @if (!isLockedRow && row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+                                            {
+                                                @* The current/sole rejected Google address has no other retry surface — re-assert it
+                                                   as the Google email (resets Rejected→Unknown, #687) so the next reconcile retries. *@
+                                                <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
+                                                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                                      method="post" class="d-inline me-1">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="emailId" value="@row.Id" />
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0"
+                                                            title="@Localizer["EmailGrid_RetryGoogle"].Value">
+                                                        <i class="fa-solid fa-rotate-right me-1"></i>@Localizer["EmailGrid_RetryGoogle"]
+                                                    </button>
+                                                </form>
+                                            }
                                             @if (showClearGoogle)
                                             {
                                                 <form asp-action="@(Model.IsAdminContext ? "AdminClearGoogle" : "ClearGoogle")"

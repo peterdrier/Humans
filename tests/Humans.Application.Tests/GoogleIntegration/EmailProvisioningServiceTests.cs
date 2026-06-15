@@ -271,7 +271,8 @@ public class EmailProvisioningServiceTests
             IsVerified: false, IsGoogle: false,
             Provider: null, ProviderKey: null,
             IsPrimary: false, Visibility: null,
-            IsPendingVerification: true);
+            IsPendingVerification: true,
+            GoogleEmailStatus: GoogleEmailStatus.Unknown);
         var verifiedRow = unverifiedRow with { IsVerified = true, IsPendingVerification = false };
 
         var callCount = 0;

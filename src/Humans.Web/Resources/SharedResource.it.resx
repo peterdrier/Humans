@@ -5119,6 +5119,15 @@
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
     <value>Email usata per la sincronizzazione con Google Workspace.</value>
   </data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
+    <value>Problema di sincronizzazione Google</value>
+  </data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve">
+    <value>Google OK</value>
+  </data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
+    <value>Riprova</value>
+  </data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
     <value>Principale e Google sono gestiti da Google Workspace finché il tuo indirizzo @nobodies.team è presente.</value>
   </data>
