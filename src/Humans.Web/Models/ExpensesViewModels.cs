@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -34,6 +35,9 @@ public sealed class ExpensesIndexViewModel
     /// <summary>Non-null when the member has a Holded creditor account with activity.</summary>
     public ExpenseIouSummary? Iou { get; init; }
     public IReadOnlyList<ExpenseLedgerRow> Ledger { get; init; } = [];
+
+    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.</summary>
+    public HoldedCreditorLedger? AccountLedger { get; init; }
 
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }

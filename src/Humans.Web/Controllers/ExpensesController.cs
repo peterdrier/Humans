@@ -2,8 +2,10 @@ using System.Text;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
@@ -23,6 +25,7 @@ public sealed class ExpensesController(
     IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetService budgetService,
+    IHoldedFinanceService holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {
@@ -92,6 +95,24 @@ public sealed class ExpensesController(
             var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
+            // The member's own Holded creditor-account statement (read-only, real ledger lines). Only
+            // populated once they're bound to a 400000xx account; nothing shows until then. Own account only.
+            HoldedCreditorLedger? accountLedger = null;
+            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
+            if (binding?.SupplierAccountNum is { } accNum)
+            {
+                var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
+                if (led is not null)
+                    accountLedger = led with
+                    {
+                        Lines = led.Lines
+                            .OrderByDescending(l => l.Date)
+                            .ThenByDescending(l => l.EntryNumber)
+                            .ThenBy(l => l.Line)
+                            .ToList()
+                    };
+            }
+
             var model = new ExpensesIndexViewModel
             {
                 Reports = reports,
@@ -100,6 +121,7 @@ public sealed class ExpensesController(
                 CategoryNames = categoryNames,
                 Iou = iou,
                 Ledger = ledger,
+                AccountLedger = accountLedger,
                 IsCoordinator = coordinatorTeamIds.Count > 0,
                 CoordinatorQueueCount = coordinatorQueue.Count,
             };
