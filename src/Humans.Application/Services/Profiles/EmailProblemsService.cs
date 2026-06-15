@@ -13,7 +13,14 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         var problems = new List<EmailProblem>();
 
         var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var profiled = allInfos.Where(i => i.Profile is not null).ToList();
+
+        // Merge-source / GDPR-deleted tombstones are not live accounts: their scrubbed sentinel
+        // emails (…@merged.local / …@deleted.local) yield only false per-user hygiene positives,
+        // so exclude them from the profile scan (and the legacy scan below). The orphan-email and
+        // ghost-login scans are deliberately NOT filtered — a row still pointing at a tombstone is
+        // genuine leftover data from an incomplete merge/deletion, and this page is the only place
+        // an admin can clean it up from (see GetOrphanUserEmailsAsync).
+        var profiled = allInfos.Where(i => i.Profile is not null && !i.IsTombstone).ToList();
 
         foreach (var p in profiled)
         {
@@ -63,6 +70,8 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
+            if (info.IsTombstone) continue; // scrubbed sentinel email — not a real hygiene problem
+
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
@@ -75,17 +84,7 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
                 info.Id, null, null, legacy, null));
         }
 
-        // Merge-source and GDPR-deleted tombstones are not live accounts to act on, and their
-        // scrubbed sentinel emails (…@merged.local / …@deleted.local) would otherwise surface as
-        // false hygiene problems. Drop every problem keyed to a tombstone user from the report —
-        // a single source of truth covering the profile scan, orphans, ghosts, and legacy cases.
-        // (Genuinely orphaned rows whose UserId belongs to no user remain: their id isn't a tombstone.)
-        var tombstoneIds = allInfos.Where(i => i.IsTombstone).Select(i => i.Id).ToHashSet();
-        var liveProblems = problems
-            .Where(p => p.UserId is not { } uid || !tombstoneIds.Contains(uid))
-            .ToList();
-
-        return new EmailProblemsReport(clock.GetCurrentInstant(), liveProblems);
+        return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
     }
 
     public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
