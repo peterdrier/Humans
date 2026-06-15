@@ -246,9 +246,16 @@ public sealed class UserService(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
         // Status is per-address (#687): it belongs to the canonical Google email — the address
-        // sync actually targets — not the user. No verified Google email → nothing to stamp.
+        // sync actually targets — not the user. Resolve the SAME target as the sync services
+        // (GoogleWorkspaceSyncService.TryGetGoogleEmail): verified IsGoogle row, else the verified
+        // provider (OAuth) fallback. Stamping the fallback row keeps suppression working for users
+        // with no IsGoogle row (~pre-#687). No such address → nothing to stamp.
         var emails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle);
+        var googleRow = emails.FirstOrDefault(e => e.IsVerified && e.IsGoogle)
+            ?? emails
+                .Where(e => e.IsVerified && e.Provider != null)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
         if (googleRow is null)
             return false;
 

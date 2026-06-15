@@ -245,15 +245,25 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Effective Google Workspace sync status for this user — the per-address status of the
-    /// canonical verified <see cref="UserEmailInfo.IsGoogle"/> row (the address sync targets),
-    /// or <see cref="Humans.Domain.Enums.GoogleEmailStatus.Unknown"/> when there is no verified
-    /// Google email. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c> column
-    /// (nobodies-collective/Humans#687); a rejection no longer survives switching Google address.
+    /// address sync actually targets. That target mirrors
+    /// <c>GoogleWorkspaceSyncService.TryGetGoogleEmail</c>: the verified
+    /// <see cref="UserEmailInfo.IsGoogle"/> row, else the verified provider (OAuth) fallback row
+    /// (covers ~pre-#687 users with no IsGoogle row). <see cref="Humans.Domain.Enums.GoogleEmailStatus.Unknown"/>
+    /// when there is no such address. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c>
+    /// column (nobodies-collective/Humans#687); a rejection no longer survives switching Google address.
     /// </summary>
-    public GoogleEmailStatus GoogleEmailStatus => UserEmails
-        .Where(e => e.IsGoogle && e.IsVerified)
-        .Select(e => e.GoogleEmailStatus)
-        .FirstOrDefault();
+    public GoogleEmailStatus GoogleEmailStatus
+    {
+        get
+        {
+            var target = UserEmails.FirstOrDefault(e => e.IsGoogle && e.IsVerified)
+                ?? UserEmails
+                    .Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+            return target?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown;
+        }
+    }
 
     /// <summary>All verified addresses, primary first.</summary>
     public IReadOnlyList<string> AllVerifiedEmails => UserEmails
