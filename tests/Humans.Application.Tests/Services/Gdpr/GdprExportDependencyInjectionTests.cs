@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using ExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
+using HoldedFinanceService = Humans.Application.Services.Finance.HoldedFinanceService;
 using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
@@ -89,6 +90,7 @@ public class GdprExportDependencyInjectionTests
         typeof(BudgetService),
         typeof(Humans.Application.Services.Agent.AgentService),
         typeof(ExpenseReportService),
+        typeof(HoldedFinanceService),
         typeof(SurveyService)
     ];
 

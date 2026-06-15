@@ -206,12 +206,18 @@
                         <input type="hidden" name="userId" value="@Model.Report.SubmitterUserId" />
                         <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                         <div class="col-auto">
-                            <select name="supplierAccountNum" class="form-select form-select-sm" required>
-                                <option value="">Select account…</option>
-                                @foreach (var a in Model.CreditorAccounts)
+                            @{
+                                var accountItems = Model.CreditorAccounts.Select(a => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
                                 {
-                                    <option value="@a.SupplierAccountNum" selected="@(Model.BoundAccountNum == a.SupplierAccountNum)">@a.SupplierAccountNum — @a.Name@(a.OwedToMember > 0 ? $" (owed {a.OwedToMember.ToEuro()})" : "")</option>
-                                }
+                                    Value = a.SupplierAccountNum.ToString(),
+                                    Text = a.OwedToMember > 0
+                                        ? $"{a.SupplierAccountNum} — {a.Name} (owed {a.OwedToMember.ToEuro()})"
+                                        : $"{a.SupplierAccountNum} — {a.Name}",
+                                    Selected = Model.BoundAccountNum == a.SupplierAccountNum,
+                                });
+                            }
+                            <select name="supplierAccountNum" class="form-select form-select-sm" asp-items="accountItems" required>
+                                <option value="">Select account…</option>
                             </select>
                         </div>
                         <div class="col-auto">

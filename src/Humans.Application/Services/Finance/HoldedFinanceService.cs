@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Finance;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance.Dtos;
@@ -21,7 +22,7 @@ public sealed class HoldedFinanceService(
     // Future: narrow to an IBudgetServiceRead via the section read/write split.
     IBudgetService budget,
     IClock clock,
-    ILogger<HoldedFinanceService> logger) : IHoldedFinanceService
+    ILogger<HoldedFinanceService> logger) : IHoldedFinanceService, IUserDataContributor
 {
     private const int SyncPageSafetyCap = 200;
 
@@ -423,9 +424,12 @@ public sealed class HoldedFinanceService(
         CancellationToken ct = default)
     {
         var balances = await repo.GetCreditorBalancesAsync(ct);
+        // Group-by-first, not ToDictionary: only UserId is unique in the DB, so two members
+        // could (mis)bind to the same account number — that must not throw the whole list.
         var bindings = (await repo.GetCreditorContactsAsync(ct))
             .Where(b => b.SupplierAccountNum is not null)
-            .ToDictionary(b => b.SupplierAccountNum!.Value);
+            .GroupBy(b => b.SupplierAccountNum!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
 
         return balances.Select(b =>
         {
@@ -476,9 +480,23 @@ public sealed class HoldedFinanceService(
         var now = clock.GetCurrentInstant();
         // Holded caps a dailyledger window at one year; 364 days stays safely under.
         var from = now.Minus(Duration.FromDays(364));
-        var lines = (await client.ListDailyLedgerAsync(from, now, ct))
-            .Where(l => l.AccountNum == supplierAccountNum)
-            .ToList();
+        IReadOnlyList<HoldedLedgerLineDto> lines;
+        try
+        {
+            lines = (await client.ListDailyLedgerAsync(from, now, ct))
+                .Where(l => l.AccountNum == supplierAccountNum)
+                .ToList();
+        }
+        catch (HoldedApiException ex)
+        {
+            // Non-fatal: a Holded outage must not 500 the statement or a member's /Expenses page.
+            // Serve the cached balance with no lines rather than throwing (the live read is the
+            // intentional design — option B — but it is best-effort).
+            logger.LogWarning(ex,
+                "Holded dailyledger unavailable for account {Account}; serving balance without ledger lines",
+                supplierAccountNum);
+            lines = [];
+        }
 
         var balanceRow = await repo.GetCreditorBalanceByAccountNumAsync(supplierAccountNum, ct);
         if (balanceRow is null && lines.Count == 0) return null;
@@ -550,6 +568,25 @@ public sealed class HoldedFinanceService(
             CreatedAt = binding.CreatedAt,
             UpdatedAt = now,
         }, now, ct);
+    }
+
+    // ─── GDPR (Article 15 export) ───────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        return
+        [
+            new UserDataSlice(GdprExportSections.HoldedCreditorAccount,
+                binding is null
+                    ? null
+                    : new
+                    {
+                        binding.SupplierAccountNum,
+                        binding.HoldedContactId,
+                        Source = binding.Source.ToString(),
+                    }),
+        ];
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────────

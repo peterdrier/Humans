@@ -113,7 +113,7 @@
                     // Credit = owed to the member (in, +); debit = paid/settled (out, −).
                     var net = l.Credit - l.Debit;
                     <tr>
-                        <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
+                        <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
                         <td>@l.Description</td>
                         <td class="text-end @(net < 0 ? "text-success" : "")">@net.ToEuro()</td>
                     </tr>

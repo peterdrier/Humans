@@ -46,7 +46,7 @@
             @foreach (var l in lines)
             {
                 <tr>
-                    <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
+                    <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
                     <td>@l.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
