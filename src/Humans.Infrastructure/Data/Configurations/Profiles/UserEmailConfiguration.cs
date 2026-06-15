@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 namespace Humans.Infrastructure.Data.Configurations.Profiles;
 
 public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
@@ -46,6 +47,15 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .HasMaxLength(256);
 
         builder.Property(e => e.IsGoogle)
+            .IsRequired();
+
+        // Per-address Google sync status (#687) — moved off the user. Mirrors the legacy
+        // User.GoogleEmailStatus column mapping: string-converted enum, Unknown default/sentinel.
+        builder.Property(e => e.GoogleEmailStatus)
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(GoogleEmailStatus.Unknown)
+            .HasSentinel(GoogleEmailStatus.Unknown)
             .IsRequired();
 
         // The IsOAuth / DisplayOrder columns survive on disk as EF shadow

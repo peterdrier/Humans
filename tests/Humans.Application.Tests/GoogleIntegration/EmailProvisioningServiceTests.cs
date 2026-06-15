@@ -127,7 +127,6 @@ public class EmailProvisioningServiceTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],
@@ -272,7 +271,8 @@ public class EmailProvisioningServiceTests
             IsVerified: false, IsGoogle: false,
             Provider: null, ProviderKey: null,
             IsPrimary: false, Visibility: null,
-            IsPendingVerification: true);
+            IsPendingVerification: true,
+            GoogleEmailStatus: GoogleEmailStatus.Unknown);
         var verifiedRow = unverifiedRow with { IsVerified = true, IsPendingVerification = false };
 
         var callCount = 0;

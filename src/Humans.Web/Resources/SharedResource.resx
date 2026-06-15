@@ -2036,6 +2036,9 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Primary</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email used for Google Workspace sync.</value></data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve"><value>Google sync problem</value></data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve"><value>Google OK</value></data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve"><value>Retry</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>

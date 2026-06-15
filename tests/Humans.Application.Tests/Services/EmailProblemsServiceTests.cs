@@ -40,6 +40,19 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             IsGoogle = isGoogle,
         };
 
+    private static Profile MakeProfile(Guid userId) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = "Test",
+            FirstName = "Test",
+            LastName = "User",
+            IsApproved = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+
     private static UserInfo MakeInfo(
         Guid userId,
         bool hasProfile = true,
@@ -52,7 +65,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             DisplayName = "Test User",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
             Email = identityEmailColumn,
         };
         Profile? profile = hasProfile
@@ -94,6 +106,102 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     private void SetGhosts(params Guid[] ghostUserIds) =>
         _userService.GetUsersWithLoginsButNoEmailsAsync(Arg.Any<CancellationToken>())
             .Returns(ghostUserIds);
+
+    [HumansFact]
+    public async Task ScanAsync_ExcludesPerUserHygieneProblemsForTombstones()
+    {
+        // Per-user email hygiene problems must not be reported for merge-source / GDPR-deleted
+        // tombstones — their scrubbed sentinel emails (…@merged.local / …@deleted.local) yield
+        // only false ZeroIsGoogle / Unverified positives. (Leftover orphan/ghost cleanup rows are
+        // a separate case — see ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved.)
+        var liveId = Guid.NewGuid();
+        AddInfo(MakeInfo(liveId, emails:
+        [
+            Email(liveId, "live@x.com", isVerified: true, isPrimary: true) // real ZeroIsGoogle problem
+        ]));
+
+        var mergedId = Guid.NewGuid();
+        var mergedUser = new User
+        {
+            Id = mergedId,
+            DisplayName = "Test User",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
+            MergedToUserId = Guid.NewGuid(),
+        };
+        AddInfo(mergedUser.ToUserInfo(
+            userEmails: [Email(mergedId, "merged-1@merged.local", isVerified: false)],
+            profile: MakeProfile(mergedId)));
+
+        var deletedId = Guid.NewGuid();
+        var deletedUser = new User
+        {
+            Id = deletedId,
+            DisplayName = "Deleted User", // GDPR-anonymized sentinel → IsGdprAnonymized → IsTombstone
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        AddInfo(deletedUser.ToUserInfo(
+            userEmails: [Email(deletedId, "deleted-1@deleted.local", isVerified: false)],
+            profile: MakeProfile(deletedId)));
+
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Problems.Should().NotContain(p => p.UserId == mergedId);
+        report.Problems.Should().NotContain(p => p.UserId == deletedId);
+        // The live account's hygiene problem is untouched.
+        report.Problems.Should().Contain(p =>
+            p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == liveId);
+    }
+
+    [HumansFact]
+    public async Task ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved()
+    {
+        // A UserEmail row or external login still pointing at a merged/deleted tombstone is
+        // genuine leftover data from an incomplete merge/deletion — this page is the only place an
+        // admin can clean it up. The tombstone suppression covers per-user hygiene noise only and
+        // must NOT hide these system-level cleanup targets.
+        var mergedId = Guid.NewGuid();
+        var mergedUser = new User
+        {
+            Id = mergedId,
+            DisplayName = "Test User",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
+            MergedToUserId = Guid.NewGuid(),
+        };
+        AddInfo(mergedUser.ToUserInfo(profile: MakeProfile(mergedId)));
+
+        var ghostId = Guid.NewGuid();
+        var ghostUser = new User
+        {
+            Id = ghostId,
+            DisplayName = "Test User",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
+            MergedToUserId = Guid.NewGuid(),
+        };
+        AddInfo(ghostUser.ToUserInfo());
+
+        var orphanEmailId = Guid.NewGuid();
+        SetOrphans(new UserEmailOrphan(mergedId, orphanEmailId, "leftover@merged.local"));
+        SetGhosts(ghostId);
+
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Problems.Should().Contain(p =>
+            p.Kind == EmailProblemKind.OrphanUserEmail
+            && p.UserId == mergedId
+            && p.UserEmailId == orphanEmailId);
+        report.Problems.Should().Contain(p =>
+            p.Kind == EmailProblemKind.GhostExternalLogins && p.UserId == ghostId);
+    }
 
     [HumansFact]
     public async Task EmptySnapshot_ReturnsEmptyReport()

@@ -119,7 +119,6 @@ public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
                 DisplayName = "",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.MinValue,
-                GoogleEmailStatus = default,
             },
             userEmails: [],
             eventParticipations: [],

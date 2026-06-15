@@ -43,7 +43,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 `User.GoogleEmail` C# property has been removed (issue #635 §15i). The `GoogleEmail` column is kept on disk as an EF shadow property (`UserConfiguration.cs:27`) pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. The canonical read path is `FullProfile.GoogleEmail` (derived from `UserEmail.IsGoogle` rows). The `GetGoogleServiceEmail()` and `GetEffectiveEmail()` methods have been removed from `User`; callers use `FullProfile.GoogleEmail` and `FullProfile.PrimaryEmail` / `FullProfile.NotificationEmail` respectively.
 
-`User.GoogleEmailStatus` (`GoogleEmailStatus` enum stored as string, default `Unknown`) remains on the entity. Set to `Rejected` on a permanent Google API error; reset to `Unknown` on email change via `IUserService.SetGoogleEmailAsync`.
+Google sync status is per-address on `UserEmail.GoogleEmailStatus` (`GoogleEmailStatus` enum stored as string, default `Unknown`) — it belongs to the address Google rejected, not the user (#687). Set to `Rejected` on a permanent Google API error for that address; selecting a different Google email is a fresh `Unknown` row, so switching address resets sync naturally. The legacy `User.GoogleEmailStatus` column is `[Obsolete]` and retained on disk pending a deferred drop migration; no live reader/writer.
 
 #### Contact-import properties
 

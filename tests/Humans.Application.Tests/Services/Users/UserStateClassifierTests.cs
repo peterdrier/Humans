@@ -101,7 +101,6 @@ public class UserStateClassifierTests
         DisplayName = displayName,
         PreferredLanguage = "en",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        GoogleEmailStatus = GoogleEmailStatus.Unknown,
     };
 
     private static Profile NewNamedProfile(Guid userId) => new()

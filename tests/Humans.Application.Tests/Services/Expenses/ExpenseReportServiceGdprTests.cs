@@ -72,7 +72,6 @@ public class ExpenseReportServiceGdprTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

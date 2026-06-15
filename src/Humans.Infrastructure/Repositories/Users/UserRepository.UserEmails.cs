@@ -3,6 +3,7 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Repositories.Users;
 
@@ -378,9 +379,25 @@ internal sealed partial class UserRepository
         foreach (var row in rows)
         {
             var shouldBeGoogle = row.Id == userEmailId;
-            if (row.IsGoogle == shouldBeGoogle) continue;
-            row.IsGoogle = shouldBeGoogle;
-            row.UpdatedAt = updatedAt;
+            var rowChanged = false;
+
+            if (row.IsGoogle != shouldBeGoogle)
+            {
+                row.IsGoogle = shouldBeGoogle;
+                rowChanged = true;
+            }
+
+            // Designating a row as the Google identity clears a prior rejection ON THAT ROW so sync
+            // retries the address (#687 retry path). Applies even when IsGoogle is unchanged — that's
+            // how the sole/current rejected address gets a retry. Don't downgrade a Valid status.
+            if (shouldBeGoogle && row.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+            {
+                row.GoogleEmailStatus = GoogleEmailStatus.Unknown;
+                rowChanged = true;
+            }
+
+            if (rowChanged)
+                row.UpdatedAt = updatedAt;
         }
 
         await ctx.SaveChangesAsync(cancellationToken);

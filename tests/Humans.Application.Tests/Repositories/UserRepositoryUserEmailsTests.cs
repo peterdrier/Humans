@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Users;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +60,56 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
         reloadedC.UpdatedAt.Should().Be(SeedInstant);
     }
 
+    [HumansFact]
+    public async Task SetUserEmailGoogleExclusiveAsync_ClearsRejectedStatus_OnPromotedRow()
+    {
+        // Switching the Google identity to a previously-rejected address retries it (#687).
+        var userId = Guid.NewGuid();
+        await SeedVerifiedAsync(userId, "a@x.test", isGoogle: true);
+        var rowB = await SeedVerifiedAsync(userId, "b@x.test", isGoogle: false, googleStatus: GoogleEmailStatus.Rejected);
+
+        var updatedAt = Instant.FromUtc(2026, 4, 30, 12, 0);
+        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowB.Id, updatedAt, Xunit.TestContext.Current.CancellationToken);
+
+        var reloadedB = await GetByIdAsync(rowB.Id);
+        reloadedB!.IsGoogle.Should().BeTrue();
+        reloadedB.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Unknown);
+        reloadedB.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [HumansFact]
+    public async Task SetUserEmailGoogleExclusiveAsync_ClearsRejectedStatus_WhenReassertingCurrentGoogleRow()
+    {
+        // The sole/current Google address got rejected — re-asserting it (the Retry path) must
+        // clear the rejection even though IsGoogle does not change (#687).
+        var userId = Guid.NewGuid();
+        var rowA = await SeedVerifiedAsync(userId, "a@x.test", isGoogle: true, googleStatus: GoogleEmailStatus.Rejected);
+
+        var updatedAt = Instant.FromUtc(2026, 4, 30, 12, 0);
+        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowA.Id, updatedAt, Xunit.TestContext.Current.CancellationToken);
+
+        var reloadedA = await GetByIdAsync(rowA.Id);
+        reloadedA!.IsGoogle.Should().BeTrue();
+        reloadedA.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Unknown);
+        reloadedA.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [HumansFact]
+    public async Task SetUserEmailGoogleExclusiveAsync_DoesNotDowngradeValidStatus()
+    {
+        // A working (Valid) Google address re-designated must not be needlessly reset to Unknown.
+        var userId = Guid.NewGuid();
+        await SeedVerifiedAsync(userId, "a@x.test", isGoogle: false);
+        var rowB = await SeedVerifiedAsync(userId, "b@x.test", isGoogle: false, googleStatus: GoogleEmailStatus.Valid);
+
+        var updatedAt = Instant.FromUtc(2026, 4, 30, 12, 0);
+        await _repo.SetUserEmailGoogleExclusiveAsync(userId, rowB.Id, updatedAt, Xunit.TestContext.Current.CancellationToken);
+
+        var reloadedB = await GetByIdAsync(rowB.Id);
+        reloadedB!.IsGoogle.Should().BeTrue();
+        reloadedB.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
+    }
+
     // Note: the OAuth-callback write path is now driven by
     // UserEmailService.ReconcileOAuthIdentityAsync (issue
     // nobodies-collective/Humans#697); the legacy repo-level UpdateEmailAsync
@@ -68,7 +119,9 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
 
     private static readonly Instant SeedInstant = Instant.FromUtc(2026, 3, 1, 12, 0);
 
-    private async Task<UserEmail> SeedVerifiedAsync(Guid userId, string email, bool isGoogle)
+    private async Task<UserEmail> SeedVerifiedAsync(
+        Guid userId, string email, bool isGoogle,
+        GoogleEmailStatus googleStatus = GoogleEmailStatus.Unknown)
     {
         var row = new UserEmail
         {
@@ -77,6 +130,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
             Email = email,
             IsVerified = true,
             IsGoogle = isGoogle,
+            GoogleEmailStatus = googleStatus,
             IsPrimary = false,
             CreatedAt = SeedInstant,
             UpdatedAt = SeedInstant,

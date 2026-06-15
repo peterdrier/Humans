@@ -37,7 +37,6 @@ public sealed class DuplicateAccountServiceTests
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Now,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
             Email = identityEmailColumn,
             MergedAt = mergedAt,
             MergedToUserId = mergedToUserId,

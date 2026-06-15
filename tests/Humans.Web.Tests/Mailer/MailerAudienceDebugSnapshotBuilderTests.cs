@@ -292,7 +292,6 @@ public class MailerAudienceDebugSnapshotBuilderTests
                 DisplayName = displayName,
                 PreferredLanguage = "en",
                 CreatedAt = now,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: emails,
             eventParticipations: [],

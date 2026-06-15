@@ -357,7 +357,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
                 DisplayName = "",
                 PreferredLanguage = "en",
                 CreatedAt = profile.CreatedAt,
-                GoogleEmailStatus = default,
             },
             userEmails: [],
             eventParticipations: [],
