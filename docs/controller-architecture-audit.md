@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-13 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-15 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -48,6 +48,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Status | /Agent/Admin/Status | GET | Agent service status dashboard | OK |
 | Settings | /Agent/Admin/Settings | GET | Agent settings form | OK |
 | Settings | /Agent/Admin/Settings | POST | Save agent settings | OK |
+| ReloadKnowledgeBase | /Agent/Admin/ReloadKnowledgeBase | POST | Re-fetch the community knowledge base from GitHub and rebuild the agent's in-memory index | OK |
 | ConversationPrompt | /Agent/Admin/Conversations/{id:guid}/Prompt | GET | View the resolved prompt for a conversation | OK |
 
 ## AdminController

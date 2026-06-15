@@ -401,11 +401,14 @@ Repository: `IApplicationRepository`.
 | ApplicationStateHistories | R/W |
 | BoardVotes | R/W (removed for GDPR after decision) |
 
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NavBadge:Voting:{userId}` (`IVotingBadgeCacheInvalidator`) | 2 min | yes | yes | yes (per voter, via `IVotingBadgeCacheInvalidator`) |
+
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
-| `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | yes |
+| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
-| `NavBadge:Voting:{userId}` (`IVotingBadgeCacheInvalidator`) | yes (per voter) |
 
 Cross-section calls via `IUserService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
@@ -459,7 +462,7 @@ Repository: `IRoleAssignmentRepository`.
 | Cache (via invalidators) | Invalidate |
 |-------------------------|------------|
 | `Auth.RoleAssignmentRow` TrackedCache (`IRoleAssignmentCacheInvalidator`) | yes (wholesale flush on write) |
-| `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | yes |
+| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | yes |
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
@@ -1386,7 +1389,6 @@ No repository. Pure read-aggregation over owning services.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
-| `NavBadge:Voting:{userId}` | 2 min | yes | yes | (per `IVotingBadgeCacheInvalidator`) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
 Cross-section calls via `IUserServiceRead`, `IGoogleSyncServiceRead`,
@@ -1730,15 +1732,14 @@ Repository: `IFeedbackRepository`.
 | FeedbackReports | R/W |
 | FeedbackMessages | R/W |
 
-| Cache (via invalidators) | Invalidate |
-|-------------------------|------------|
-| `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | yes |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `FeedbackBadgeCount` | 2 min | yes | yes | yes (via `INavBadgeCacheInvalidator`) |
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `ITeamService`, `IEmailService`, `INotificationService`,
 `IAuditLogService`, `IHostEnvironment`. Implements `IUserDataContributor`,
-`IUserMerge`. `IMemoryCache` is injected only as the substrate for
-`INavBadgeCacheInvalidator`.
+`IUserMerge`. Owns and caches `FeedbackBadgeCount` inside `GetActionableCountAsync`.
 
 ---
 
@@ -1759,7 +1760,7 @@ Repository: `IIssuesRepository`.
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
 | `NavBadge:Issues:{userId}` (`IIssuesBadgeCacheInvalidator`) | 2 min | yes | yes | yes |
-| `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
+| `FeedbackBadgeCount` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`, `INotificationService`,
@@ -2373,13 +2374,13 @@ separately below the key table.
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `NavBadgeCounts` | 2 min | Static | **NavBadgesViewComponent** | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
+| `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationBellViewComponent** | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
 | `ActiveTeams` | 10 min | Static | _(retired — replaced by `CachingTeamService` `TrackedCache<Guid, TeamInfo>`; key remains in `CacheKeys.Metadata` for invalidator compat)_ | `IActiveTeamsCacheInvalidator` → `ITeamService.InvalidateActiveTeamsCache()` |
 | `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
 | `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
-| `NavBadge:Voting:{userId}` | 2 min | Per-User | NavBadgesViewComponent, NotificationMeterProvider | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
+| `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
 | `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
@@ -2415,12 +2416,14 @@ separately below the key table.
 
 ### Cache Issues / Notes
 
-1. **View components still populate two caches** that services
-   invalidate. `NavBadgeCounts` and `NotificationBadge:{userId}` are
-   populated by `NavBadgesViewComponent` and `NotificationBellViewComponent`
-   respectively. This is the same backwards pattern called out in prior
-   sweeps — services know how to invalidate but not to recompute.
-   (`NobodiesTeamEmails_All` is gone — replaced by a service method.)
+1. **One view component still populates a cache** that services
+   invalidate. `NotificationBadge:{userId}` is populated by
+   `NotificationBellViewComponent`. This is the same backwards pattern
+   called out in prior sweeps — services know how to invalidate but not
+   to recompute. (`NavBadgeCounts` is retired — `FeedbackBadgeCount` is
+   now owned and populated by `FeedbackService`; `NavBadge:Voting:{userId}`
+   is now owned and populated by `ApplicationDecisionService`.
+   `NobodiesTeamEmails_All` is gone — replaced by a service method.)
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,
@@ -2480,12 +2483,14 @@ interfaces.
 
 | Component | Cache Key |
 |-----------|-----------|
-| **NavBadgesViewComponent** | `NavBadgeCounts` (read/write), `NavBadge:Voting:{userId}` (read/write) |
 | **NotificationBellViewComponent** | `NotificationBadge:{userId}` (read/write) |
 
-All other view components read via owning services post-§15 audit. The
-former `NobodiesEmailBadgeViewComponent` cache populator was retired
-along with the `NobodiesTeamEmails_All` key.
+All other view components read via owning services post-§15 audit.
+`NavBadgesViewComponent` no longer owns or reads/writes any cache entries
+(PR #1010) — `FeedbackBadgeCount` is now owned by `FeedbackService` and
+`NavBadge:Voting:{userId}` by `ApplicationDecisionService`. The former
+`NobodiesEmailBadgeViewComponent` cache populator was retired along with
+the `NobodiesTeamEmails_All` key.
 
 ### Background Jobs (Infrastructure)
 
@@ -2504,13 +2509,13 @@ Controllers and components that touch `IMemoryCache` directly.
 
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
-| **NavBadgesViewComponent** | GetOrCreate | `NavBadgeCounts`, `NavBadge:Voting:{userId}` |
 | **NotificationBellViewComponent** | GetOrCreate | `NotificationBadge:{userId}` |
 
 The §15 work continues to push cache populators into the owning service
-behind transparent decorators. The remaining view-component populators
-are the next slice; collapsing them into owning-section services would
-retire the last out-of-service cache writes. The previous
-`NobodiesTeamEmails_All` invalidation that was scattered across three
-controllers has already been retired by moving the lookup into
+behind transparent decorators. `NavBadgesViewComponent` no longer injects
+`IMemoryCache` (PR #1010) — its badge counts are now owned by
+`FeedbackService` (`FeedbackBadgeCount`) and `ApplicationDecisionService`
+(`NavBadge:Voting:{userId}`). The previous `NobodiesTeamEmails_All`
+invalidation that was scattered across three controllers has already been
+retired by moving the lookup into
 `IUserEmailService.GetNobodiesTeamEmailsByUserIdsAsync`.

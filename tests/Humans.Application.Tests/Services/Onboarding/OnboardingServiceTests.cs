@@ -214,6 +214,77 @@ public sealed class OnboardingServiceTests
         data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);
     }
 
+    [HumansFact]
+    public async Task GetReviewQueueAsync_MergedTombstoneNeedingReview_IsExcludedFromPending()
+    {
+        // Merge-source tombstones are not live accounts. Even though the merged row's profile
+        // survives with names filled and IsApproved=false (which otherwise satisfies
+        // NeedsConsentReview), it must never surface in the CC queue or its nav badge.
+        var mergedId = Guid.NewGuid();
+        var now = Instant.FromUnixTimeSeconds(1);
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = mergedId,
+            BurnerName = "Burner",
+            FirstName = "Merged",
+            LastName = "Away",
+            State = ProfileState.Active,
+            IsApproved = false,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var mergedUser = new User
+        {
+            Id = mergedId,
+            PreferredLanguage = "en",
+            MergedAt = now,
+            MergedToUserId = Guid.NewGuid(),
+        };
+
+        StubReviewQueueDependencies([mergedUser.ToUserInfo(profile: profile)]);
+
+        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
+
+        data.Pending.Should().NotContain(u => u.Id == mergedId);
+        data.Flagged.Should().NotContain(u => u.Id == mergedId);
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_MergedTombstoneFlagged_IsExcludedFromFlagged()
+    {
+        // A merged tombstone whose surviving profile still carries a Flagged consent check must
+        // not appear in the flagged queue — there is no live account left to clear.
+        var mergedId = Guid.NewGuid();
+        var now = Instant.FromUnixTimeSeconds(1);
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = mergedId,
+            BurnerName = "Burner",
+            FirstName = "Flagged",
+            LastName = "Merged",
+            State = ProfileState.Active,
+            ConsentCheckStatus = ConsentCheckStatus.Flagged,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var mergedUser = new User
+        {
+            Id = mergedId,
+            PreferredLanguage = "en",
+            MergedAt = now,
+            MergedToUserId = Guid.NewGuid(),
+        };
+
+        StubReviewQueueDependencies([mergedUser.ToUserInfo(profile: profile)]);
+
+        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
+
+        data.Flagged.Should().NotContain(u => u.Id == mergedId);
+        data.Pending.Should().NotContain(u => u.Id == mergedId);
+    }
+
     // --- GetNextUnsignedConsentAsync (widget consent step, G8/G9) ---
 
     [HumansFact]

@@ -13,7 +13,14 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         var problems = new List<EmailProblem>();
 
         var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var profiled = allInfos.Where(i => i.Profile is not null).ToList();
+
+        // Merge-source / GDPR-deleted tombstones are not live accounts: their scrubbed sentinel
+        // emails (…@merged.local / …@deleted.local) yield only false per-user hygiene positives,
+        // so exclude them from the profile scan (and the legacy scan below). The orphan-email and
+        // ghost-login scans are deliberately NOT filtered — a row still pointing at a tombstone is
+        // genuine leftover data from an incomplete merge/deletion, and this page is the only place
+        // an admin can clean it up from (see GetOrphanUserEmailsAsync).
+        var profiled = allInfos.Where(i => i.Profile is not null && !i.IsTombstone).ToList();
 
         foreach (var p in profiled)
         {
@@ -63,9 +70,7 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
-            // Tombstones carry a scrubbed sentinel Identity email (merged-/deleted-…@….local)
-            // with no matching UserEmail row — not a real hygiene problem. Skip them.
-            if (info.IsTombstone) continue;
+            if (info.IsTombstone) continue; // scrubbed sentinel email — not a real hygiene problem
 
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;

@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Agent/**
+  src/Humans.Application/Constants/AgentToolNames.cs
+  src/Humans.Infrastructure/Services/Agent/**
+  src/Humans.Infrastructure/Services/Preload/**
+  src/Humans.Infrastructure/Services/Anthropic/**
+  src/Humans.Infrastructure/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Web/Controllers/AgentController.cs
+  src/Humans.Web/Controllers/AdminAgentController.cs
+-->
+<!-- freshness:flag-on-change
+  Agent user stories and acceptance criteria: the grounded-answer flow, the tool catalog (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue), community-KB grounding consulted before refusal, and the admin reload/prompt-preview surface — review when the agent feature's services, tools, preload/community-KB readers, or controllers change.
+-->
+
 # 40. Agent Section
 
 ## Business Context
