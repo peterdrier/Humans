@@ -276,26 +276,40 @@ internal sealed partial class CampRepository
 
         var sourceSeasonIds = sourceMembers.Select(m => m.CampSeasonId).Distinct().ToList();
 
-        // Survivor's live (non-Removed) membership per affected season. A live source
-        // member in one of these seasons would collide on IX_camp_members_active_unique,
-        // so it is folded-then-dropped rather than re-pointed. Removed source members
-        // never collide (the partial index excludes them) and always re-point.
-        var targetLiveMemberIdBySeason = (await ctx.CampMembers.AsNoTracking()
+        // Survivor's live (non-Removed) member per affected season — tracked, so a
+        // colliding fold can reconcile its state below. A live source member in one of
+        // these seasons would collide on IX_camp_members_active_unique, so it is
+        // folded-then-dropped rather than re-pointed; removed source members never
+        // collide (the partial index excludes them) and always re-point. At most one
+        // live member per season, so the dictionary key is unique.
+        var targetLiveMemberBySeason = (await ctx.CampMembers
                 .Where(m => m.UserId == targetUserId
                     && m.Status != CampMemberStatus.Removed
                     && sourceSeasonIds.Contains(m.CampSeasonId))
-                .Select(m => new { m.Id, m.CampSeasonId })
                 .ToListAsync(ct))
-            .ToDictionary(m => m.CampSeasonId, m => m.Id);
+            .ToDictionary(m => m.CampSeasonId);
 
         // source CampMemberId -> survivor CampMemberId, for colliding seasons only.
         var collidingMemberToTarget = new Dictionary<Guid, Guid>();
         foreach (var sm in sourceMembers)
         {
             var isLive = sm.Status != CampMemberStatus.Removed;
-            if (isLive && targetLiveMemberIdBySeason.TryGetValue(sm.CampSeasonId, out var targetMemberId))
+            if (isLive && targetLiveMemberBySeason.TryGetValue(sm.CampSeasonId, out var tm))
             {
-                collidingMemberToTarget[sm.Id] = targetMemberId;
+                // Both accounts hold a live membership this season; the rows collapse
+                // onto the survivor's. Reconcile so the survivor keeps the best of both
+                // before the source row is dropped: Active beats Pending (a more
+                // authoritative source must not be downgraded — active-assignment
+                // queries filter Status == Active), and an inherited early-entry grant
+                // is OR-ed in rather than lost.
+                if (sm.Status == CampMemberStatus.Active && tm.Status != CampMemberStatus.Active)
+                {
+                    tm.Status = CampMemberStatus.Active;
+                    tm.ConfirmedAt ??= sm.ConfirmedAt;
+                    tm.ConfirmedByUserId ??= sm.ConfirmedByUserId;
+                }
+                tm.HasEarlyEntry |= sm.HasEarlyEntry;
+                collidingMemberToTarget[sm.Id] = tm.Id;
             }
             else
             {

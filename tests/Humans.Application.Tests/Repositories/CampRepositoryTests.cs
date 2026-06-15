@@ -381,6 +381,47 @@ public sealed class CampRepositoryTests : IDisposable
             .CountAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct)).Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_KeepsActiveStatus_WhenFoldingActiveSourceIntoPendingTarget()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("status-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        await SeedMemberAsync(season.Id, target, CampMemberStatus.Pending);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // Survivor must not be downgraded to the target's Pending state — active
+        // role-assignment queries filter Status == Active, so a Pending survivor
+        // would silently lose the leads the archived account held.
+        var survivor = await _dbContext.CampMembers.AsNoTracking()
+            .SingleAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct);
+        survivor.Status.Should().Be(CampMemberStatus.Active);
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_PreservesEarlyEntry_WhenFoldingIntoCollidingMember()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("ee-fold-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceMember = await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        sourceMember.HasEarlyEntry = true;
+        await _dbContext.SaveChangesAsync(ct);
+        await SeedMemberAsync(season.Id, target, CampMemberStatus.Active); // survivor has no EE grant
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // The archived member's early-entry grant must survive the collision-drop.
+        var survivor = await _dbContext.CampMembers.AsNoTracking()
+            .SingleAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct);
+        survivor.HasEarlyEntry.Should().BeTrue();
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

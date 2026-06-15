@@ -1316,6 +1316,11 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
         _leadBadgeInvalidator.Invalidate(sourceUserId);
         _leadBadgeInvalidator.Invalidate(targetUserId);
+
+        // The fold can move HasEarlyEntry CampMember rows between the two users, so evict
+        // both per-user early-entry caches (mirrors the Teams membership fold).
+        _earlyEntryInvalidator.InvalidateUser(sourceUserId);
+        _earlyEntryInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
