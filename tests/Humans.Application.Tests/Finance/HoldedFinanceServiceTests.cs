@@ -407,8 +407,11 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
             {
-                Id = Guid.NewGuid(), UserId = userId, HoldedContactId = "existing-c",
-                SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto,
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "existing-c",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Auto,
             });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("existing-c");
 
@@ -447,8 +450,11 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
             {
-                Id = Guid.NewGuid(), UserId = userId, HoldedContactId = "m-c",
-                SupplierAccountNum = 40000001, Source = CreditorContactSource.Manual,
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "m-c",
+                SupplierAccountNum = 40000001,
+                Source = CreditorContactSource.Manual,
             });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("m-c");
 
