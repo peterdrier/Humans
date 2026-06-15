@@ -4,8 +4,7 @@
   src/Humans.Domain/Entities/HoldedExpenseDoc.cs
   src/Humans.Domain/Entities/HoldedCategoryMap.cs
   src/Humans.Domain/Entities/HoldedSyncState.cs
-  src/Humans.Domain/Entities/HoldedCreditorBalance.cs
-  src/Humans.Domain/Entities/HoldedPayment.cs
+  src/Humans.Domain/Entities/HoldedLedgerLine.cs
   src/Humans.Infrastructure/Repositories/Finance/HoldedRepository.cs
   src/Humans.Infrastructure/Services/Holded/HoldedClient.cs
   src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
@@ -25,7 +24,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 **Today — Holded actuals integration** (built, Feature 1): Finance-owned entities (`HoldedExpenseDoc`, `HoldedCategoryMap`, `HoldedSyncState`) with a dedicated repository, `IHoldedFinanceService`/`HoldedFinanceService`, nightly sync job, and treasurer UI pages for account provisioning and unmatched-doc resolution. Actuals displayed on the budget year detail view.
 
-**Today — Holded creditor-data cache** (built, Feature 2): nightly sync of creditor balances and payment rows from Holded; `GetCreditorStatusAsync` exposes the read surface to Expenses for paid-detection. See [Feature 2](#feature-2--holded-creditor-data-cache) below.
+**Today — Holded creditor ledger cache** (built, Feature 2): nightly sync of the Holded daybook (dailyledger) journal lines into one table, `HoldedLedgerLine`. Creditor balance, owed, and payments are **derived** from these lines (no separate balance/payment tables, no live API call on page load); `GetCreditorStatusAsync` / `GetCreditorLedgerAsync` expose the read surface to Expenses. See [Feature 2](#feature-2--holded-creditor-ledger-cache) below.
 
 ## Concepts
 
@@ -85,17 +84,11 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
-### HoldedCreditorBalance
+### HoldedLedgerLine
 
-**Table:** `holded_creditor_balances`
+**Table:** `holded_ledger_lines`
 
-Cached chartofaccounts row for a 400000xx supplier account. Keyed by `SupplierAccountNum` (unique). `Balance` is signed; negative = org owes the creditor. Refreshed nightly by `SyncCreditorDataAsync`. `LastSyncedAt` updated on every upsert.
-
-### HoldedPayment
-
-**Table:** `holded_payments`
-
-Cached Holded payment row, keyed by `HoldedPaymentId` (unique). Indexed by `HoldedContactId` for fast per-supplier look-up. Refreshed nightly by `SyncCreditorDataAsync`.
+Cached Holded daybook (dailyledger) journal line for a 400000xx creditor account — the **single source of truth** for creditor activity. Unique on `(EntryNumber, Line)` for idempotent upsert (journal lines are immutable facts); indexed on `AccountNum`. Fields: `EntryNumber`, `Line`, `AccountNum`, `Date` (Instant), `Type`, `Description`, `Debit`, `Credit`, plus sync bookkeeping. Refreshed by `SyncCreditorLedgerAsync` (full-history backfill on first run, incremental append nightly). Everything derives from these lines: balance = Σdebit − Σcredit (negative = org owes), owed = max(0, Σcredit − Σdebit), payments = debit lines, ins = credit lines.
 
 ### HoldedSyncState
 
@@ -215,9 +208,9 @@ Budget never calls into Finance.
 **Owning service:** `IHoldedFinanceService` / `HoldedFinanceService`  
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)  
 **Owned repository:** `IHoldedRepository` / `HoldedRepository`  
-**Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_creditor_balances`, `holded_payments`  
+**Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_ledger_lines`, `holded_creditor_contacts`  
 **Job:** `HoldedSyncJob` (cron `0 3 * * *`)  
-**Migrations:** `20260525163748_HoldedActuals` (F1), `20260525_HoldedCreditorData` (F2)  
+**Migrations:** `20260525163748_HoldedActuals` (F1), `20260525_HoldedCreditorData` (F2 — superseded), `20260615144222_HoldedCreditorContact` (#1021), `20260615201620_HoldedLedgerSingleSource` (ledger single-source)  
 **Architecture tests:** `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
 
 > **What exists (Feature 1):**
@@ -237,28 +230,28 @@ Budget never calls into Finance.
 > - `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
 > - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
 >
-> **What exists (Feature 2):**
-> - `src/Humans.Domain/Entities/HoldedCreditorBalance.cs`
-> - `src/Humans.Domain/Entities/HoldedPayment.cs`
-> - `src/Humans.Application/Services/Finance/Dtos/HoldedPaymentInfo.cs` — read-only row DTO (date / amount / document type) surfaced on `HoldedCreditorStatus.Payments`
-> - `IHoldedRepository.UpsertCreditorBalancesAsync`, `GetCreditorBalanceByAccountNumAsync`, `UpsertPaymentsAsync`, `GetPaymentsByContactAsync`
-> - `IHoldedFinanceService.SyncCreditorDataAsync` — nightly cache refresh (called from `HoldedSyncJob`)
-> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum, string holdedContactId)` — Expenses→Finance read surface; return type `HoldedCreditorStatus` now includes `Payments` (individual payment rows for the per-member ledger)
-> - `IHoldedClient.GetContactAsync`, `ListChartOfAccountsAsync`, `ListPaymentsAsync`, `UpsertContactAsync` — extended Holded API surface
+> **What exists (Feature 2 — ledger single-source):**
+> - `src/Humans.Domain/Entities/HoldedLedgerLine.cs` — the cached daybook line (everything derives from these)
+> - `src/Humans.Domain/Entities/HoldedCreditorContact.cs` — member → 400000xx binding (from #1021)
+> - `src/Humans.Application/Services/Finance/Dtos/HoldedPaymentInfo.cs` — read-only row DTO (date / amount / document type) surfaced on `HoldedCreditorStatus.Payments` (derived from debit lines)
+> - `IHoldedRepository.UpsertLedgerLinesAsync`, `GetLedgerLinesByAccountNumAsync`, `GetAllLedgerLinesAsync`, `GetLatestLedgerLineDateAsync`
+> - `IHoldedFinanceService.SyncCreditorLedgerAsync` — nightly cache refresh (called from `HoldedSyncJob`)
+> - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum)` / `GetCreditorLedgerAsync(int supplierAccountNum)` — Expenses→Finance read surface, derived from cached lines; `HoldedCreditorStatus` carries `Payments` (debit lines, for the per-member ledger)
+> - `IHoldedClient.GetContactAsync`, `ListContactsAsync`, `ListDailyLedgerAsync`, `UpsertContactAsync` — Holded API surface (the chartofaccounts/payments calls were removed)
 
-### Feature 2 — Holded creditor-data cache
+### Feature 2 — Holded creditor ledger cache
 
-`SyncCreditorDataAsync` runs nightly as part of `HoldedSyncJob`. It pulls the chartofaccounts and payments from Holded and upserts them into `holded_creditor_balances` and `holded_payments` respectively. The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum, holdedContactId)`: it checks the cached balance (balance ≥ 0 means settled) and falls back to the payments cache for the contact.
+`SyncCreditorLedgerAsync` runs nightly as part of `HoldedSyncJob`. On the first run (empty cache) it backfills full history by sweeping the daybook in ≤1-year backward windows until an empty window; thereafter it appends incrementally from the latest cached line. Only `400000xx` creditor lines are stored (the dailyledger has no server-side account filter, so the fetch sweeps the whole daybook regardless). Page loads read `holded_ledger_lines` from Postgres and aggregate — **zero Holded calls per view**; the API cost is a fixed nightly job, independent of traffic.
 
-`HoldedCreditorStatus` (the return type of `GetCreditorStatusAsync`) now also exposes individual `Payments` rows (`IReadOnlyList<HoldedPaymentInfo>?` — each row carries date, amount, and document type). These are mapped directly from the `holded_payments` cache and consumed read-only by the Expenses dashboard ledger (`GetHoldedTimelineAsync`). No new `IHoldedFinanceService` interface method was added; `Payments` is an optional field on the existing return record (defaults to `null` for callers that do not need it).
+The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum)` and the statement via `GetCreditorLedgerAsync(supplierAccountNum)`. Both derive from the cached lines: balance = Σdebit − Σcredit (balance ≥ 0 = settled), owed = max(0, −balance), payments = debit lines. `HoldedCreditorStatus.Payments` (`IReadOnlyList<HoldedPaymentInfo>?`) is mapped from the debit lines and consumed read-only by the Expenses dashboard ledger (`GetHoldedTimelineAsync`).
 
-**Org-accounting boundary (HARD):** Humans only reads Holded balances. It never writes debt-reassignment journal entries or modifies the chartofaccounts to reflect internal transfers. The `holded_creditor_balances` table is a read-through cache, not a ledger.
+**Org-accounting boundary (HARD):** Humans only reads the Holded daybook. It never writes debt-reassignment journal entries or modifies the chart of accounts to reflect internal transfers. `holded_ledger_lines` is a read-through cache of immutable journal facts, not a ledger Humans writes to.
 
 ### Owned repository
 
-- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_creditor_balances`, `holded_payments`
-  - No cross-domain navs: `BudgetCategoryId` is FK-only, no navigation property
-  - No append-only constraint: expense docs and creditor rows are upserted (full overwrite on re-sync)
+- **`IHoldedRepository`** — owns `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_ledger_lines`, `holded_creditor_contacts`
+  - No cross-domain navs: `BudgetCategoryId` and `HoldedCreditorContact.UserId` are FK-only, no navigation property
+  - Ledger lines upsert idempotently on `(EntryNumber, Line)`; expense docs upsert (full overwrite on re-sync)
 
 ### Current violations
 
