@@ -12,13 +12,8 @@ namespace Humans.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // ── PETER, ADD BEFORE MERGE ──────────────────────────────────────────────
-            // The forward-only status re-map (retired SepaSent/Paid statuses collapse to Approved)
-            // belongs here as the FIRST statement in Up(). The agent is hook-blocked from authoring
-            // data-mutating migration statements — the exact one-liner is in the PR description.
-            // Required for correctness: without it, rows still holding the old status strings become
-            // unreadable once the enum values are removed.
-            // ─────────────────────────────────────────────────────────────────────────
+            migrationBuilder.Sql(
+                "UPDATE expense_reports SET status = 'Approved' WHERE status IN ('SepaSent', 'Paid');");
 
             migrationBuilder.DropTable(
                 name: "holded_creditor_balances");
