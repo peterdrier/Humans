@@ -306,6 +306,27 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task SyncCreditorLedger_incremental_chunks_a_long_gap_into_year_windows()
+    {
+        // A >1-year gap (sync disabled / no creditor activity) must be swept in ≤1-year windows —
+        // the dailyledger API rejects wider ranges, so a single latest..now call would fail forever.
+        var latest = Instant.FromUtc(2024, 1, 1, 0, 0); // ~2.3 years before FixedNow (2026-05-01)
+        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns(latest);
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineDto>());
+
+        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Each call's window must be ≤ 364 days; the gap spans >2 of them, so it took multiple calls.
+        var calls = _client.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListDailyLedgerAsync), StringComparison.Ordinal))
+            .Select(c => c.GetArguments())
+            .ToList();
+        calls.Count.Should().BeGreaterThan(1);
+        calls.Should().OnlyContain(a => ((Instant)a[1]!) - ((Instant)a[0]!) <= Duration.FromDays(364));
+    }
+
+    [HumansFact]
     public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
     {
         // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.

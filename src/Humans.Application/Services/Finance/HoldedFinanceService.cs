@@ -338,11 +338,13 @@ public sealed class HoldedFinanceService(
             var latest = await repo.GetLatestLedgerLineDateAsync(ct);
 
             // First run (empty cache) → full-history backfill in ≤1-year backward windows.
-            // Steady state → incremental append from the latest cached line forward (idempotent upsert
-            // on (EntryNumber, Line), so re-fetching the boundary day is safe).
+            // Steady state → incremental append from the latest cached line forward, also in ≤1-year
+            // windows so a long gap (sync disabled or no creditor activity for >1 year) still catches up
+            // instead of failing on an over-wide request. Idempotent upsert on (EntryNumber, Line) makes
+            // re-fetching the boundary safe.
             var fetched = latest is null
                 ? await BackfillLedgerAsync(now, ct)
-                : await client.ListDailyLedgerAsync(latest.Value, now, ct);
+                : await IncrementalLedgerAsync(latest.Value, now, ct);
 
             // Persist only creditor-account (400000xx) lines — the only accounts the read paths derive
             // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
@@ -411,6 +413,23 @@ public sealed class HoldedFinanceService(
         logger.LogWarning(
             "Holded ledger backfill hit the {Cap}-window cap; journal history older than {To} was not swept.",
             BackfillWindowCap, to);
+        return all;
+    }
+
+    /// <summary>Sweeps forward from the latest cached line in ≤1-year windows (the API rejects wider
+    /// ranges). In steady state this is a single window; after a long dormancy it chunks so the sync
+    /// catches up rather than failing on an over-wide request.</summary>
+    private async Task<IReadOnlyList<HoldedLedgerLineDto>> IncrementalLedgerAsync(Instant from, Instant now, CancellationToken ct)
+    {
+        var all = new List<HoldedLedgerLineDto>();
+        var windowStart = from;
+        while (windowStart < now)
+        {
+            var windowEnd = windowStart.Plus(LedgerWindow);
+            if (windowEnd > now) windowEnd = now;
+            all.AddRange(await client.ListDailyLedgerAsync(windowStart, windowEnd, ct));
+            windowStart = windowEnd.Plus(Duration.FromSeconds(1));
+        }
         return all;
     }
 
