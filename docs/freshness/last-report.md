@@ -1,60 +1,64 @@
-# Freshness Sweep Report — 2026-06-14
+# Freshness Sweep Report — 2026-06-15
 
-**Anchor:** `18c308a52` → `909323e33` (upstream/main HEAD)
-**Worktree base:** `origin/main` @ `c9749fe90`
+**Anchor:** `909323e33` → `c10d07400` (upstream/main HEAD)
+**Worktree base:** `origin/main` @ `c10d07400`
 **Mode:** diff (batch)
-**Changed files in range:** 56
-**Dirty entries processed:** 6 mechanical + 20 editorial = 26
-**Outcome:** 2 docs updated · 3 husks pruned (4,480 lines) · rest verified clean · 0 errors
+**Changed files in range:** 66
+**Dirty entries processed:** 7 mechanical + 23 editorial = 30
+**Outcome:** 8 docs updated + 3 agent docs given `freshness:triggers` (Phase 7.5) · 0 husks pruned (nothing aged out) · 22 entries verified clean · 0 errors
 
-> **Anchors crossed.** At sweep start `git merge-base --is-ancestor upstream/main origin/main` was **false** — `upstream/main` (`909323e33`) and `origin/main` (`c9749fe90`) have diverged, the normal state right after a prod promotion. Per the spec the anchors are frozen at start and not reconciled mid-run; the PR diffs against the frozen `origin/main` base. Noted once, proceeding.
+> **Anchors in sync.** At sweep start `origin/main` and `upstream/main` were both at `c10d07400` — a prod promotion landed just before this run, so the two remotes are identical. `merge-base --is-ancestor upstream/main origin/main` is true; nothing crossed.
 
-The entire `18c308a52..909323e33` range is **non-behavioural**. The bulk is the **display-sort burndown** (#1002 — repositories shed redundant `.OrderBy()` and gained `// arch:db-sort-ok` annotations; the dropped sorts re-appear at the display layer in the matching controller/view, so user-visible ordering is unchanged) plus the **access-matrix correction** (#1003 — dropped the "Member data export" row from the Board access matrix + Dashboard help because that bulk export was never built; only the self-service GDPR download exists). Neither changes documented behaviour, so every triggered editorial doc verified clean.
+The `909323e33..c10d07400` range carries three themes: (1) the **community knowledge-base agent** feature (#1008, #1013, #1014 — new `fetch_community_faq` tool, a separate `nobodies-collective/knowledge-base` GitHub repo cached in RAM, a "Reload KB" admin button, and a system-prompt token-count badge on the prompt-preview page); (2) the **NavBadges caching → owning services** debt sweep (#1010 — `NavBadgesViewComponent` stopped injecting `IMemoryCache`; the feedback badge count now caches inside `FeedbackService` as `FeedbackBadgeCount`, the voting count inside `ApplicationDecisionService` as `NavBadge:Voting:{userId}`; both services were added to the `ApplicationServicesTakeNoMemoryCacheRule` allowlist); and (3) a **cosmetic logo/favicon** redesign (#1006, #1007). Themes (2) drove real doc drift (stale "no `IMemoryCache`" invariants); themes (1) and (3) were contained.
 
 ## Updated automatically
 
-### Mechanical
-- **dev-stats** — appended the 2026-06-14 codebase-growth row (script; reforge=1 day, regex-fallback=0).
-- **reforge-history** — appended the 2026-06-14 semantic snapshot row (script; `c9749fe90`, 144,924 prod LOC / 2,169 classes / 233 interfaces).
+- **dev-stats** — appended the 2026-06-15 codebase-growth row (`generate-stats.sh`).
+- **reforge-history** — appended the 2026-06-15 semantic-metrics row (`generate-reforge-history.sh`).
+- **service-data-access-map** — retired the `NavBadgeCounts` key throughout (now `FeedbackBadgeCount`, owned by `FeedbackService.GetActionableCountAsync`); moved `NavBadge:Voting:{userId}` ownership from `NavBadgesViewComponent`/`NotificationMeterProvider` to `ApplicationDecisionService.GetUnvotedApplicationCountAsync`; removed `NavBadgesViewComponent` from every cache-owner/read-write table and appendix; corrected the "view components still populate two caches" note to one (`NotificationBellViewComponent`). Verified against `CacheKeys.cs`, `FeedbackService.cs`, `ApplicationDecisionService.cs`.
+- **controller-architecture-audit** — added the new `AdminAgentController.ReloadKnowledgeBase` (`POST /Agent/Admin/ReloadKnowledgeBase`) action row; bumped the "Last updated" date.
+
+## Editorial drift fixed in place
+
+The #1010 refactor moved nav-badge caching out of `NavBadgesViewComponent` into the owning services and added a view-component-may-not-inject-`IMemoryCache` analyzer rule. Four docs still asserted the pre-refactor invariants and were corrected against current source (`ApplicationServicesTakeNoMemoryCacheRule.cs`, `FeedbackArchitectureTests.cs`, `GovernanceArchitectureTests.cs`, the two services):
+
+- **conventions.md** §view-components — "view components that query aggregate data *may* use `IMemoryCache`" → now states they **must not** (a documented convention from `memory/code/viewcomponent-no-cache.md`; the analyzer in `roslyn-analysis.md` is proposed but not yet built — `Current coverage: none`), and the cache lives inline in the owning service with the view component as a thin pass-through.
+- **sections/Feedback.md** — the "Caching" bullet now names the inline `FeedbackBadgeCount` (2-min) cache; the architecture-test bullet no longer claims a pinned "no `IMemoryCache` constructor param" (the check is delegated to the allowlist rule, which now permits `FeedbackService`); the touch-and-clean "do not inject `IMemoryCache`" rule was inverted to describe the now-correct inline badge cache.
+- **sections/Governance.md** — same correction for `ApplicationDecisionService` (`NavBadge:Voting:{userId}`, allowlisted); `MembershipCalculator`/`MembershipQuery` still hold no cache.
+- **design-rules.md** §15 Governance note — "dropped its caching layer entirely / DB reads per request are fine" reframed to "dropped its §15 projection layer entirely," with the one #1010 exception (the per-board-member badge count cached inline 2-min) called out as a request-acceleration cache, not a §15 projection.
 
 ## Verified clean (dirty but no drift)
 
-### Mechanical (regen skipped — triggering change provably no-op)
-- **docs-readme-index** — triggered by editorial body edits + the two scanner docs' new freshness markers; no docs added/removed/renamed and no first-paragraph/H1 changes, so every derived description is unchanged.
-- **authorization-inventory** — only `UsersAdminAccountMergesController.cs` matched, and its diff is a `.OrderBy(r => r.CreatedAt)` added inside an existing action's `foreach` — no `[Authorize]`/policy/role/`RoleChecks`/`AuthorizeAsync` change. Output identical.
-- **controller-architecture-audit** — same file; no new/renamed action and no route change. The action/route/purpose table is unchanged.
-- **service-data-access-map** — all matches are sort-add/remove repository edits; no new DbSet access, repository method, or cache key. The service→repo→table→cache map is unchanged.
-
-### Editorial — all 20 triggered `flag-on-change` docs, no contradictions
-Every match is a display-sort-burndown edit. Repository-internal `OrderBy` relocation does not contradict any section/feature/guide invariant (the field that was sorted — e.g. `CampImage.SortOrder` — still exists and is still *tracked*; the sort merely moved to the view, preserving displayed order). The three concrete-fact candidates were each checked against source and confirmed clean:
-- **architecture rule docs** (`design-rules`, `conventions`, `code-review-rules`, `roslyn-analysis`) — the edits *apply* the existing display-sort convention; they don't change it. `roslyn-analysis.md` describes `DisplaySortInControllersRule` as "baseline-ratcheted" and cites no baseline count, so the baseline shrinking (false-positives removed) contradicts nothing.
-- **sections/Camps.md** — says image "display order is *tracked* per camp"; `CampRepository` dropping `.Include(b => b.Images.OrderBy(i => i.SortOrder))` leaves `CampImage.SortOrder` intact, so still true.
-- **admin/GDPR docs** — no doc claims a Board/bulk member export; the #1003 removal of that never-built capability from the matrix contradicts nothing. `gdpr-export.md` correctly scopes the export to self-service own-data; `dietary-medical-nudge.md` even states "No bulk export."
-- Section/feature/guide docs for Auth, Campaigns, Email, Events, Feedback, Governance, Guide, Profiles, Teams, administration, and the matching guides — all triggered by sort-only edits, no invariant contradicted.
+- **Mechanical (regen no-op): 3** — `docs-readme-index` (only `Auth.md`'s freshness-comment header changed, not its intro paragraph → README description unchanged); `authorization-inventory` (the new `ReloadKnowledgeBase` action inherits the class-level `PolicyNames.AdminOnly`, no new `[Authorize]`); `dependency-graph` (the only Application-service ctor change was `+IMemoryCache`, which is not a graphed node; fan-in/out unchanged).
+- **Editorial (no drift): 19** — the caching-refactor-triggered docs (`features/feedback`, `features/issues`, `features/notifications`, `features/governance/*`, `features/onboarding/onboarding-pipeline`, `features/global/gdpr-export`, `guide/{Feedback,Governance,Admin}`, `sections/{Notifications,Onboarding,Guide}`) describe behaviour, not cache internals — no editorial doc referenced the renamed key (verified by grep), and behaviour is unchanged. `features/global/administration.md` has no agent-page prose to drift; `guide/Admin.md` only lists "Agent" as a sidebar group. `sections/admin-shell.md` + `code-review-rules.md` + `roslyn-analysis.md` triggered on cosmetic icon-link / generic-rule changes with no factual contradiction (`roslyn-analysis.md` already documents the view-component no-cache rule). `sections/Guide.md` + `features/guide/in-app-guide.md` triggered on `GitHubGuideContentSource.ListMarkdownStemsAsync` — a purely additive method serving the community KB, no guide-browser behaviour change.
 
 ## Pruned
-| Husk | Lines | Reason |
-|------|------:|--------|
-| docs/plans/2026-05-14-section-align-notifications.md | 217 | all chaff (shipped section-alignment work plan; rationale already in `sections/Notifications.md`) |
-| docs/superpowers/plans/2026-05-14-userinfo-debug-and-venn.md | 1,823 | all chaff (shipped impl plan; durable signal in `sections/Users.md` + `features/global/administration.md`; plan's `GetAllUserInfos()`/`HasTicket` claims now superseded) |
-| docs/superpowers/plans/2026-05-14-mailer-outbound-audiences.md | 2,440 | all chaff (shipped impl plan; all invariants already in `sections/Mailer.md`; plan's bulk-import + cache-invalidation notes diverge from shipped code) |
 
-Total **4,480 lines = 5.9% of docs/** (above the 5% soft target, under the 7% cap). No inbound references from any living doc (only each husk's self-reference to its own design spec, which stays). Each husk's wheat was mined by a dedicated analysis subagent and verified against current source before deletion.
+None this sweep. Strict filename-date aging (today = 2026-06-15):
+- `docs/plans/*` — earliest is `2026-05-16-cache-migration.md` (exactly 30 days, not yet *older* than 30 — eligible 2026-06-16). None eligible.
+- `docs/superpowers/plans/*` — earliest is `2026-05-18-store-summary-aggregates.md` (28 days). None eligible.
+- `docs/superpowers/specs/*` (60-day rule) — earliest is `2026-04-19-volunteer-coordinator-dashboard-design.md` (57 days, eligible 2026-06-18). None eligible.
+- `docs/architecture/tech-debt-2026-04-23.md` — **not** all-`[DONE]` (its own summary notes layering/purity items "still real"). Retained.
+- No orphan refs to the husks the prior sweep (#1009) deleted.
 
-### Wheat migrated
-**None.** All three are fully-executed implementation/alignment plans for shipped features; every durable decision already lives in the corresponding `docs/sections/*.md` (verified against source). Two husks additionally contained *stale* implementer claims (superseded APIs, a bulk-import strategy that didn't ship) — migrating them would have injected inaccuracy.
-
-`tech-debt-2026-04-23.md` was **not** pruned: it carries 19 still-open items (header preserves it as a historical record) and so fails the all-`[DONE]` gate.
+**Next-sweep candidates:** `2026-05-16-cache-migration.md` (2026-06-16), then the `2026-05-18`/`2026-05-20` superpowers/plans, and `2026-04-19`+ specs (from 2026-06-18).
 
 ## Flagged for human review
-- **Access-matrix coverage gap (informational).** `sections/Auth.md` §"Access Matrix UI" documents the matrix mechanism and names `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as its source, but Auth.md's `freshness:triggers` don't include that file (nor `AccessMatrixViewComponent`). This sweep demonstrated the gap: #1003 edited `AccessMatrixDefinitions.cs` + `SectionHelpContent.cs` with zero doc review. No drift resulted (Auth.md describes the mechanism — "static data, no table" — not the per-feature rows), so this was a future-coverage suggestion, not a broken fact. **Resolved this sweep** — both files added to Auth.md's triggers (Phase 7.5).
-- **Unmarked-editorial blind spots persist** (carried from prior sweeps): `features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `features/agent/agent-section.md`, `guide/{AiHelper, EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Agent, Mailer, _Index}.md`. None triggered this sweep; a future sweep should add `freshness:triggers` to scope them.
+
+None outstanding. The one flag this sweep — the unmarked agent docs lagging the community-KB feature — was resolved in the Phase 7.5 follow-up commit (see Questions).
+
+## Unmarked editorial blind spots (carried forward)
+
+`features/{26-events, 27-guide-browser, 43-google-group-membership-sync, test-system-reliability, user-search-overhaul}.md`, `guide/{EmailAccount, SigningIn, TicketTransfers, TwoStepVerification, YourData}.md`, `sections/{Mailer, _Index}.md`. None triggered this sweep (no `freshness:triggers`). The three agent docs were removed from this list this sweep — they now carry `freshness:triggers`.
 
 ## Proposed for review
-None — all prune candidates resolved this sweep (every husk verified all-chaff against source).
 
-## Phase 7.5 — review items (raised inline, Peter said "add it")
-1. **Access-matrix trigger gap** — added `src/Humans.Web/Models/AccessMatrixDefinitions.cs` and `src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs` to `sections/Auth.md`'s `freshness:triggers`, and extended its `flag-on-change` reason to name the access-matrix mechanism (§"Access Matrix UI"). The rendering view (`Views/Shared/Components/AccessMatrix/Default.cshtml`) was deliberately left out — cosmetic view edits shouldn't trigger an Auth.md review. **Resolved (fixed).**
+None — all candidates resolved this sweep.
+
+## Questions
+
+**Resolved this sweep (Peter, inline):** the three agent docs (`sections/Agent.md`, `features/agent/agent-section.md`, `guide/AiHelper.md`) were unmarked and lagging the community-KB feature. Per Peter's "yes add", `freshness:triggers` + `freshness:flag-on-change` blocks were added to all three (scoped to the agent services / preload+community-KB readers / tool catalog / agent controllers; the guide doc scoped to user-visible surface only). The community-KB **content rewrite** of these docs is deferred to a dedicated docs task — out of scope for a drift-fix sweep. The next sweep will now flag these docs on agent-code changes.
 
 ## Skipped (errors)
+
 None.
