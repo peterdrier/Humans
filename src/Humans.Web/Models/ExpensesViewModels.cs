@@ -89,6 +89,13 @@ public sealed class ExpenseDetailViewModel
     public string? LastRejectionReason => Report.LastRejectionReason;
 
     public ExpenseHoldedTimeline? HoldedTimeline { get; init; }
+
+    /// <summary>True when the viewer is a finance admin who may bind the submitter to a Holded account.</summary>
+    public bool CanBindCreditor { get; init; }
+    /// <summary>The submitter's currently-bound 400000xx account, or null if unbound.</summary>
+    public int? BoundAccountNum { get; init; }
+    /// <summary>Creditor accounts available to bind to (finance-admin only).</summary>
+    public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
 }
 
 public sealed class AddLineInputModel

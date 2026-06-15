@@ -221,6 +221,19 @@ public sealed class ExpensesController(
                 ? await expenseReadService.GetHoldedTimelineAsync(report)
                 : null;
 
+            // Finance admins reviewing a report can bind the submitter to a Holded creditor account
+            // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
+            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            CreditorContactBinding? submitterBinding = null;
+            IReadOnlyList<HoldedCreditorAccountRow> creditorAccounts = [];
+            if (isFinanceAdmin)
+            {
+                submitterBinding = await holdedFinance.GetCreditorContactByUserAsync(report.SubmitterUserId);
+                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync())
+                    .OrderBy(a => a.SupplierAccountNum)
+                    .ToList();
+            }
+
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
@@ -230,7 +243,10 @@ public sealed class ExpensesController(
                 CanWithdraw = isSubmitter && canWithdraw,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
-                HoldedTimeline = timeline
+                HoldedTimeline = timeline,
+                CanBindCreditor = isFinanceAdmin,
+                BoundAccountNum = submitterBinding?.SupplierAccountNum,
+                CreditorAccounts = creditorAccounts,
             };
             return View(model);
         }

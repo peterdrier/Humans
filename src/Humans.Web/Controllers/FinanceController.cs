@@ -615,6 +615,29 @@ public class FinanceController(
         return View(ledger);
     }
 
+    [HttpPost("Creditors/Bind")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
+    {
+        try
+        {
+            var ok = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            if (ok)
+                SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
+            else
+                SetError($"No Holded contact carries account {supplierAccountNum} — nothing bound.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to bind user {UserId} to creditor account {AccountNum}", userId, supplierAccountNum);
+            SetError("Failed to bind creditor account.");
+        }
+
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+        return RedirectToAction(nameof(Creditors));
+    }
+
     [HttpPost("HoldedSync/Run")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RunHoldedSync()
