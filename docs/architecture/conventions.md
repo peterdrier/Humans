@@ -151,7 +151,7 @@ Promote a partial to a view component when any of these apply:
 
 Keep as a partial when the rendering is genuinely pure (badges, alerts, validation script tags, language chooser, role/dietary badges driven from a model already loaded by the page).
 
-**Caching at this scale:** view components that query aggregate data may use `IMemoryCache` with 1–2 minute expiry; the owning service is still responsible for invalidation on writes that affect the aggregate.
+**Caching at this scale:** view components must **not** inject or use `IMemoryCache` — analyzer-enforced (see [`roslyn-analysis.md`](roslyn-analysis.md) §"View components may not inject `IMemoryCache`" and [`../../memory/code/viewcomponent-no-cache.md`](../../memory/code/viewcomponent-no-cache.md)). When a view component renders an aggregate count that warrants a short cache, the cache lives inline in the owning service (1–2 minute TTL) and that service owns invalidation on writes that affect the aggregate; the view component is a thin pass-through. (`NavBadgesViewComponent` works this way — the feedback / voting / issue counts cache inside `FeedbackService` / `ApplicationDecisionService` / `IssuesService`.)
 
 **Conventions:**
 
