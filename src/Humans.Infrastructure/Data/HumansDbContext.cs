@@ -122,6 +122,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<HoldedSyncState> HoldedSyncStates => Set<HoldedSyncState>();
     public DbSet<HoldedCreditorBalance> HoldedCreditorBalances => Set<HoldedCreditorBalance>();
     public DbSet<HoldedPayment> HoldedPayments => Set<HoldedPayment>();
+    public DbSet<HoldedCreditorContact> HoldedCreditorContacts => Set<HoldedCreditorContact>();
 
     // Survey section
     public DbSet<Survey> Surveys => Set<Survey>();
