@@ -2863,44 +2863,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("holded_creditor_balances", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedCreditorContact", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("HoldedContactId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<int?>("SupplierAccountNum")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SupplierAccountNum");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("holded_creditor_contacts", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.HoldedExpenseDoc", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5694,7 +5656,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
