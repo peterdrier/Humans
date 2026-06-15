@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql(
-                "UPDATE expense_reports SET status = 'Approved' WHERE status IN ('SepaSent', 'Paid');");
+                "UPDATE expense_reports SET \"Status\" = 'Approved' WHERE \"Status\" IN ('SepaSent', 'Paid');");
 
             migrationBuilder.DropTable(
                 name: "holded_creditor_balances");
