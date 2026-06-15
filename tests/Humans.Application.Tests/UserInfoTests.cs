@@ -97,15 +97,29 @@ public class UserInfoTests
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
         var isGoogleRow = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "canonical@example.com",
-            IsVerified = true, IsGoogle = true, Provider = "Google", ProviderKey = "sub-canon",
-            GoogleEmailStatus = GoogleEmailStatus.Valid, CreatedAt = now, UpdatedAt = now,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "canonical@example.com",
+            IsVerified = true,
+            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "sub-canon",
+            GoogleEmailStatus = GoogleEmailStatus.Valid,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         var providerFallback = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "fallback@example.com",
-            IsVerified = true, IsGoogle = false, Provider = "Google", ProviderKey = "sub-fb",
-            GoogleEmailStatus = GoogleEmailStatus.Rejected, CreatedAt = now, UpdatedAt = now,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "fallback@example.com",
+            IsVerified = true,
+            IsGoogle = false,
+            Provider = "Google",
+            ProviderKey = "sub-fb",
+            GoogleEmailStatus = GoogleEmailStatus.Rejected,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
 
         var info = UserInfo.Create(
