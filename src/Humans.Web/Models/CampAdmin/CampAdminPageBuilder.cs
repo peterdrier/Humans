@@ -89,6 +89,8 @@ public sealed class CampAdminPageBuilder(
                     }).ToList()
             });
         }
-        return rows;
+        return rows
+            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }
