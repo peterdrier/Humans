@@ -63,10 +63,6 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
         // Case 9: legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
         foreach (var info in allInfos)
         {
-            // Tombstones carry a scrubbed sentinel Identity email (merged-/deleted-…@….local)
-            // with no matching UserEmail row — not a real hygiene problem. Skip them.
-            if (info.IsTombstone) continue;
-
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
@@ -79,7 +75,17 @@ public sealed class EmailProblemsService(IUserEmailService userEmailService, IUs
                 info.Id, null, null, legacy, null));
         }
 
-        return new EmailProblemsReport(clock.GetCurrentInstant(), problems);
+        // Merge-source and GDPR-deleted tombstones are not live accounts to act on, and their
+        // scrubbed sentinel emails (…@merged.local / …@deleted.local) would otherwise surface as
+        // false hygiene problems. Drop every problem keyed to a tombstone user from the report —
+        // a single source of truth covering the profile scan, orphans, ghosts, and legacy cases.
+        // (Genuinely orphaned rows whose UserId belongs to no user remain: their id isn't a tombstone.)
+        var tombstoneIds = allInfos.Where(i => i.IsTombstone).Select(i => i.Id).ToHashSet();
+        var liveProblems = problems
+            .Where(p => p.UserId is not { } uid || !tombstoneIds.Contains(uid))
+            .ToList();
+
+        return new EmailProblemsReport(clock.GetCurrentInstant(), liveProblems);
     }
 
     public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)

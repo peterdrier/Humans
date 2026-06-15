@@ -311,18 +311,21 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.FirstName)
         && !string.IsNullOrWhiteSpace(Profile.LastName);
 
-    /// <summary>In CC review queue: active, named, not yet approved. Shared by queue list + nav badge so they cannot drift.</summary>
+    /// <summary>In CC review queue: active, named, not yet approved, and not a merged/deleted
+    /// tombstone. Shared by queue list + nav badge + admin dashboard so they cannot drift.</summary>
     public bool NeedsConsentReview =>
-        IsActive && HasRequiredNameFields && !Profile!.IsApproved;
+        IsActive && HasRequiredNameFields && !Profile!.IsApproved && !IsTombstone;
 
     /// <summary>
     /// Carries an unresolved Flagged consent check. Excludes rejected profiles — those have already
-    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue.
+    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue —
+    /// and merged/deleted tombstones, which are not live accounts left to review.
     /// Drives the /OnboardingReview flagged section.
     /// </summary>
     public bool IsConsentCheckFlagged =>
         Profile?.ConsentCheckStatus == ConsentCheckStatus.Flagged
-        && Profile.RejectedAt is null;
+        && Profile.RejectedAt is null
+        && !IsTombstone;
 
     /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
     public static UserInfo Create(
