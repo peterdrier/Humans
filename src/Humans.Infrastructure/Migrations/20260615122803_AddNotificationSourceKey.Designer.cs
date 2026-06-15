@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260615100139_AddNotificationSourceKey")]
+    [Migration("20260615122803_AddNotificationSourceKey")]
     partial class AddNotificationSourceKey
     {
         /// <inheritdoc />
@@ -5430,6 +5430,13 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("GoogleEmailStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Unknown");
 
                     b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");
