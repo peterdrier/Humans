@@ -10,13 +10,14 @@ public interface IHoldedFinanceService : IApplicationService
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 
-    /// <summary>Nightly cache refresh: creditor balances (chartofaccounts) + payments rows.</summary>
-    Task SyncCreditorDataAsync(CancellationToken ct = default);
+    /// <summary>Nightly cache refresh of the Holded daybook (creditor journal lines): full-history
+    /// backfill on first run, incremental append thereafter. Everything else derives from these lines.</summary>
+    Task SyncCreditorLedgerAsync(CancellationToken ct = default);
 
-    /// <summary>Reads cached creditor status for a member by their supplier-account number + contact id.
-    /// Returns null when nothing is cached yet (not registered in Holded).</summary>
+    /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
+    /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
-        int? supplierAccountNum, string holdedContactId, CancellationToken ct = default);
+        int? supplierAccountNum, CancellationToken ct = default);
 
     /// <summary>Admin overview: every cached 400000xx creditor balance joined with its member binding.</summary>
     Task<IReadOnlyList<HoldedCreditorAccountRow>> ListCreditorAccountsAsync(CancellationToken ct = default);

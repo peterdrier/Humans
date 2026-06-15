@@ -7,10 +7,4 @@ public interface IExpenseReportBackgroundProcessor
     /// for each approved expense report.
     /// </summary>
     Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
-
-    /// <summary>
-    /// Reconciles payment status on SepaSent expense reports against the member's Holded creditor
-    /// balance and marks them Paid when that balance is settled.
-    /// </summary>
-    Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);
 }

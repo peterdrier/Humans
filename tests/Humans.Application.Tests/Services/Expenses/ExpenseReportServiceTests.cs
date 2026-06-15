@@ -52,11 +52,9 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             AuditLog,
             _holdedClient,
             _holdedFinance,
-            new SepaPaymentFileBuilder(),
             Clock,
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()),
-            Options.Create(new SepaConfig()));
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -1116,155 +1114,6 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task MarkSepaSentAsync_FlipsBatch_AndAuditsEach()
-    {
-        var (_, category) = SetupActiveYear();
-        var actor = Guid.NewGuid();
-        var yearId = Guid.NewGuid();
-        var id1 = Guid.NewGuid();
-        var id2 = Guid.NewGuid();
-        var id3 = Guid.NewGuid();
-        await SeedReportWithStatus(id1, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(id2, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(id3, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted); // not Approved
-
-        var flipped = await _sut.MarkSepaSentAsync([id1, id2], actor, Xunit.TestContext.Current.CancellationToken);
-        flipped.Should().BeEquivalentTo([id1, id2]);
-
-        (await _sut.GetAsync(id1, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetAsync(id2, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetAsync(id3, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSepaSent, "ExpenseReport", id1,
-            Arg.Any<string>(), actor);
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSepaSent, "ExpenseReport", id2,
-            Arg.Any<string>(), actor);
-    }
-
-    [HumansFact]
-    public async Task MarkSepaSentAsync_DoesNotAudit_NonApprovedIdsInInput()
-    {
-        var (_, category) = SetupActiveYear();
-        var actor = Guid.NewGuid();
-        var yearId = Guid.NewGuid();
-        var aId = Guid.NewGuid(); // Approved → will flip
-        var bId = Guid.NewGuid(); // Submitted → will be skipped by repo
-        await SeedReportWithStatus(aId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(bId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
-
-        var flipped = await _sut.MarkSepaSentAsync([aId, bId], actor, Xunit.TestContext.Current.CancellationToken);
-
-        flipped.Should().BeEquivalentTo([aId]);
-        (await _sut.GetAsync(bId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSepaSent, "ExpenseReport", aId,
-            Arg.Any<string>(), actor);
-        await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseSepaSent, "ExpenseReport", bId,
-            Arg.Any<string>(), actor);
-    }
-
-    [HumansFact]
-    public async Task GenerateSepaPayoutAsync_FiltersToApproved_BuildsXml_ThenFlips()
-    {
-        var (_, category) = SetupActiveYear();
-        var actor = Guid.NewGuid();
-        var yearId = Guid.NewGuid();
-        var approvedId = Guid.NewGuid();
-        var submittedId = Guid.NewGuid();
-        await SeedReportWithStatus(approvedId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
-
-        var result = await _sut.GenerateSepaPayoutAsync([approvedId, submittedId], actor, Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeTrue();
-        result.FlippedIds.Should().BeEquivalentTo([approvedId]);
-        result.Xml.Should().Contain("pain.001.001.09");
-        result.FileName.Should().StartWith("sepa-").And.EndWith(".xml");
-        (await _sut.GetAsync(approvedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetAsync(submittedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSepaSent, "ExpenseReport", approvedId,
-            Arg.Any<string>(), actor);
-    }
-
-    [HumansFact]
-    public async Task GenerateSepaPayoutAsync_NoEligibleReports_FailsWithoutFlipping()
-    {
-        var (_, category) = SetupActiveYear();
-        var submittedId = Guid.NewGuid();
-        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
-
-        var result = await _sut.GenerateSepaPayoutAsync([submittedId], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Approved");
-        result.Xml.Should().BeNull();
-        (await _sut.GetAsync(submittedId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseSepaSent, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>());
-    }
-
-    [HumansFact]
-    public async Task ReopenSepaWithResultAsync_RevertsToApproved_AndAudits()
-    {
-        var (_, category) = SetupActiveYear();
-        var actor = Guid.NewGuid();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.SepaSent);
-
-        var result = await _sut.ReopenSepaWithResultAsync(reportId, actor);
-        result.Succeeded.Should().BeTrue();
-
-        (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Approved);
-        (await _sut.GetAsync(reportId))!.SepaSentAt.Should().BeNull();
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSepaReopened, "ExpenseReport", reportId,
-            Arg.Any<string>(), actor);
-    }
-
-    [HumansFact]
-    public async Task ReopenSepaWithResultAsync_ReturnsFailure_WhenNotSepaSent()
-    {
-        var (_, category) = SetupActiveYear();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.Approved);
-
-        var result = await _sut.ReopenSepaWithResultAsync(reportId, Guid.NewGuid());
-        result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().NotBeNullOrEmpty();
-
-        (await _sut.GetAsync(reportId))!.Status.Should().Be(ExpenseReportStatus.Approved);
-        await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseSepaReopened, "ExpenseReport", reportId,
-            Arg.Any<string>(), Arg.Any<Guid>());
-    }
-
-    [HumansFact]
-    public async Task MarkPaidAsync_FlipsToPaid_AndAuditsJob()
-    {
-        var (_, category) = SetupActiveYear();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.SepaSent);
-
-        var ok = await _sut.MarkPaidAsync(reportId, FakeNow, Xunit.TestContext.Current.CancellationToken);
-        ok.Should().BeTrue();
-
-        (await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Paid);
-        await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpensePaid, "ExpenseReport", reportId,
-            Arg.Any<string>(),
-            "ExpensePaidJob");
-    }
-
-    [HumansFact]
     public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawn()
     {
         var (_, category) = SetupActiveYear();
@@ -1332,7 +1181,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
-        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
@@ -1355,7 +1204,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
 
-        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
                 LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m,
                 Payments: new List<HoldedPaymentInfo> { new(new LocalDate(2026, 4, 20), 50m, "purchase") }));
@@ -1415,79 +1264,6 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines.Single();
         line.Amount.Should().Be(26.67m);
         line.Description.Should().Be("Per diem: 1 day day-trip @ €26.67 = €26.67");
-    }
-
-    // ─────────────────────── PollHoldedPaidStatus (creditor balance) ──────────
-
-    [HumansFact]
-    public async Task PollHoldedPaidStatus_marks_paid_when_creditor_balance_settled()
-    {
-        var userId = Guid.NewGuid();
-        var (_, category) = SetupActiveYear();
-        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
-
-        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: 0m, OwedToMember: 0m,
-                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 121m));
-
-        await _sut.PollHoldedPaidStatusAsync(batchSize: 50, ct: Xunit.TestContext.Current.CancellationToken);
-
-        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
-        loaded!.Status.Should().Be(ExpenseReportStatus.Paid);
-        loaded.PaidAt.Should().Be(new LocalDate(2026, 5, 20).AtStartOfDayInZone(
-            DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
-    }
-
-    [HumansFact]
-    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_still_negative()
-    {
-        var userId = Guid.NewGuid();
-        var (_, category) = SetupActiveYear();
-        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
-
-        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
-                LastPaymentDate: null, TotalPaid: 0m));
-
-        await _sut.PollHoldedPaidStatusAsync(batchSize: 50, ct: Xunit.TestContext.Current.CancellationToken);
-
-        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
-        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-    }
-
-    [HumansFact]
-    public async Task PollHoldedPaidStatus_does_not_mark_paid_when_balance_unknown()
-    {
-        // No cached balance row (Balance == null) even though a payment exists — must NOT settle.
-        var userId = Guid.NewGuid();
-        var (_, category) = SetupActiveYear();
-        var reportId = await SeedSepaSentReportAsync(userId, category.Id, contactId: "c1", accountNum: 40000007);
-
-        _holdedFinance.GetCreditorStatusAsync(40000007, "c1", Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: null, OwedToMember: 0m,
-                LastPaymentDate: new LocalDate(2026, 5, 20), TotalPaid: 60m));
-
-        await _sut.PollHoldedPaidStatusAsync(batchSize: 50, ct: Xunit.TestContext.Current.CancellationToken);
-
-        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
-        loaded!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-    }
-
-    /// <summary>
-    /// Seeds a report through Draft → Submit → Approve → SepaSent and sets the contact link,
-    /// mirroring the production flow that precedes paid polling.
-    /// </summary>
-    private async Task<Guid> SeedSepaSentReportAsync(
-        Guid userId, Guid categoryId, string contactId, int accountNum)
-    {
-        SetupUserAndProfile(userId, "Test User", "ES9121000418450200051332");
-        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, categoryId);
-        var flipped = await _sut.MarkSepaSentAsync([reportId], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        if (!flipped.Contains(reportId))
-            throw new InvalidOperationException("SeedSepaSentReportAsync: MarkSepaSentAsync did not flip the report");
-
-        await _expenseRepo.SetHoldedContactLinkAsync(reportId, contactId, accountNum, FakeNow, Xunit.TestContext.Current.CancellationToken);
-        return reportId;
     }
 
     // ─────────────────────── Holded contact enrichment ───────────────────────

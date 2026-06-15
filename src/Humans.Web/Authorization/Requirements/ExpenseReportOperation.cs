@@ -14,7 +14,5 @@ public enum ExpenseReportOperation
     CoordinatorReject,
     Approve,
     FinanceReject,
-    CategoryOverride,
-    IncludeInSepaPayout,
-    ReopenSepa
+    CategoryOverride
 }

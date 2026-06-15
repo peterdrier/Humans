@@ -6,7 +6,5 @@ public enum ExpenseReportStatus
     Submitted,
     CoordinatorEndorsed,
     Approved,
-    SepaSent,
-    Paid,
     Withdrawn
 }

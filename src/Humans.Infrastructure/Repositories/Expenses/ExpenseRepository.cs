@@ -33,19 +33,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> facto
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetByStatusAsync(
-        ExpenseReportStatus status, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var entities = await ctx.ExpenseReports.AsNoTracking()
-            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
-            .Where(r => r.Status == status)
-            // arch:db-sort-ok FIFO poll order — oldest SubmittedAt first feeds the SepaSent→Paid poller deterministically
-            .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
-            .ToListAsync(ct);
-        return entities.Select(ExpenseReportMapper.ToDto).ToList();
-    }
-
     public async Task<IReadOnlyList<ExpenseReportDto>> GetByCategoryIdsAndStatusAsync(
         IReadOnlyCollection<Guid> categoryIds,
         ExpenseReportStatus status,
@@ -209,10 +196,8 @@ internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> facto
         if (r is null) return false;
         // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved per section invariant.
         // Draft has no UI Withdraw path (use Delete-while-Draft when that ships) and a direct
-        // POST should not silently succeed; post-payout terminal states stay locked.
+        // POST should not silently succeed; Withdrawn is already terminal.
         if (r.Status is ExpenseReportStatus.Draft
-                     or ExpenseReportStatus.SepaSent
-                     or ExpenseReportStatus.Paid
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;
         r.UpdatedAt = updatedAt;
@@ -298,52 +283,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> facto
         r.CoordinatorEndorsedAt = null;
         r.CoordinatorEndorsedByUserId = null;
         r.UpdatedAt = rejectedAt;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
-        IReadOnlyCollection<Guid> reportIds, Instant sepaSentAt,
-        CancellationToken ct = default)
-    {
-        if (reportIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.ExpenseReports
-            .Where(r => reportIds.Contains(r.Id) && r.Status == ExpenseReportStatus.Approved)
-            .ToListAsync(ct);
-        foreach (var r in rows)
-        {
-            r.Status = ExpenseReportStatus.SepaSent;
-            r.SepaSentAt = sepaSentAt;
-            r.UpdatedAt = sepaSentAt;
-        }
-        await ctx.SaveChangesAsync(ct);
-        return rows.Select(r => r.Id).ToList();
-    }
-
-    public async Task<bool> ReopenSepaAsync(Guid reportId, Instant updatedAt, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var r = await ctx.ExpenseReports
-            .FirstOrDefaultAsync(x => x.Id == reportId, ct);
-        if (r is null || r.Status != ExpenseReportStatus.SepaSent) return false;
-        r.Status = ExpenseReportStatus.Approved;
-        r.SepaSentAt = null;
-        r.UpdatedAt = updatedAt;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<bool> MarkPaidAsync(
-        Guid reportId, Instant paidAt, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var r = await ctx.ExpenseReports
-            .FirstOrDefaultAsync(x => x.Id == reportId, ct);
-        if (r is null || r.Status != ExpenseReportStatus.SepaSent) return false;
-        r.Status = ExpenseReportStatus.Paid;
-        r.PaidAt = paidAt;
-        r.UpdatedAt = paidAt;
         await ctx.SaveChangesAsync(ct);
         return true;
     }

@@ -19,8 +19,6 @@ public sealed record ExpenseReportDto
     public Instant? CoordinatorEndorsedAt { get; init; }
     public Guid? ApprovedByUserId { get; init; }
     public Instant? ApprovedAt { get; init; }
-    public Instant? SepaSentAt { get; init; }
-    public Instant? PaidAt { get; init; }
     public string? LastRejectionReason { get; init; }
     public Guid? LastRejectedByUserId { get; init; }
     public Instant? LastRejectedAt { get; init; }

@@ -324,55 +324,58 @@ public sealed class HoldedFinanceService(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 40000099;
 
-    public async Task SyncCreditorDataAsync(CancellationToken ct = default)
+    // Holded caps a dailyledger window at one year; 364 days stays safely under.
+    private static readonly Duration LedgerWindow = Duration.FromDays(364);
+    // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
+    private const int BackfillWindowCap = 25;
+
+    public async Task SyncCreditorLedgerAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var epoch = Instant.FromUnixTimeSeconds(0);
 
         try
         {
-            var chart = await client.ListChartOfAccountsAsync(ct);
-            var balances = chart
-                .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
-                .Select(a => new HoldedCreditorBalance
-                {
-                    Id = Guid.NewGuid(),
-                    SupplierAccountNum = a.Num,
-                    Name = a.Name,
-                    Balance = a.Balance,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                })
-                .ToList();
-            await repo.UpsertCreditorBalancesAsync(balances, now, ct);
+            var latest = await repo.GetLatestLedgerLineDateAsync(ct);
 
-            var payments = (await client.ListPaymentsAsync(ct))
-                // Skip malformed rows: no id/contact, or a missing/epoch-0 date (would store 1970-01-01).
-                .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId)
-                         && p.Date != epoch)
-                .Select(p => new HoldedPayment
+            // First run (empty cache) → full-history backfill in ≤1-year backward windows.
+            // Steady state → incremental append from the latest cached line forward (idempotent upsert
+            // on (EntryNumber, Line), so re-fetching the boundary day is safe).
+            var fetched = latest is null
+                ? await BackfillLedgerAsync(now, ct)
+                : await client.ListDailyLedgerAsync(latest.Value, now, ct);
+
+            // Persist only creditor-account (400000xx) lines — the only accounts the read paths derive
+            // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
+            // daybook regardless; we keep the subset we use. (Budget actuals run on a separate path.)
+            var lines = fetched
+                .Where(l => l.AccountNum >= CreditorAccountMin && l.AccountNum <= CreditorAccountMax)
+                .Select(l => new HoldedLedgerLine
                 {
                     Id = Guid.NewGuid(),
-                    HoldedPaymentId = p.Id,
-                    HoldedContactId = p.ContactId,
-                    Amount = p.Amount,
-                    Date = p.Date.InZone(zone).Date,
-                    DocumentType = p.DocumentType,
+                    EntryNumber = l.EntryNumber,
+                    Line = l.Line,
+                    AccountNum = l.AccountNum,
+                    Date = l.Date,
+                    Type = l.Type,
+                    Description = l.Description,
+                    Debit = l.Debit,
+                    Credit = l.Credit,
                     CreatedAt = now,
+                    LastSyncedAt = now,
                 })
                 .ToList();
-            await repo.UpsertPaymentsAsync(payments, now, ct);
+
+            await repo.UpsertLedgerLinesAsync(lines, now, ct);
 
             logger.LogInformation(
-                "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
-                balances.Count, payments.Count);
+                "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
+                latest is null ? "backfill" : "incremental", lines.Count);
         }
         catch (Exception ex)
         {
             // Surface the failure in the same sync-state widget the actuals pull uses, then rethrow
             // so Hangfire records the job failure too.
-            logger.LogError(ex, "HoldedFinanceService.SyncCreditorDataAsync failed");
+            logger.LogError(ex, "HoldedFinanceService.SyncCreditorLedgerAsync failed");
             try
             {
                 var state = await repo.GetSyncStateAsync(CancellationToken.None);
@@ -389,33 +392,64 @@ public sealed class HoldedFinanceService(
         }
     }
 
-    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
-        int? supplierAccountNum, string holdedContactId, CancellationToken ct = default)
+    /// <summary>Sweeps inception→now in ≤1-year backward windows, stopping at the first empty window
+    /// (the org's books are contiguous back to inception). Logs if the window cap is hit (no silent caps).</summary>
+    private async Task<IReadOnlyList<HoldedLedgerLineDto>> BackfillLedgerAsync(Instant now, CancellationToken ct)
     {
-        var balanceRow = supplierAccountNum is { } num
-            ? await repo.GetCreditorBalanceByAccountNumAsync(num, ct)
-            : null;
-        var payments = string.IsNullOrEmpty(holdedContactId)
-            ? Array.Empty<HoldedPayment>()
-            : (await repo.GetPaymentsByContactAsync(holdedContactId, ct)).ToArray();
+        var all = new List<HoldedLedgerLineDto>();
+        var to = now;
+        for (var window = 0; window < BackfillWindowCap; window++)
+        {
+            var from = to.Minus(LedgerWindow);
+            var page = await client.ListDailyLedgerAsync(from, to, ct);
+            if (page.Count == 0)
+                return all;
+            all.AddRange(page);
+            to = from.Minus(Duration.FromSeconds(1));
+        }
 
-        if (balanceRow is null && payments.Length == 0)
+        logger.LogWarning(
+            "Holded ledger backfill hit the {Cap}-window cap; journal history older than {To} was not swept.",
+            BackfillWindowCap, to);
+        return all;
+    }
+
+    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
+        int? supplierAccountNum, CancellationToken ct = default)
+    {
+        if (supplierAccountNum is not { } num)
             return null;
 
-        // Leave Balance null when no balance row is cached — a missing balance is UNKNOWN, not settled.
-        // Coercing to 0 would make downstream polling falsely mark reports Paid (Codex P1).
-        var balance = balanceRow?.Balance;
-        var lastPaymentDate = payments.Length == 0
-            ? (LocalDate?)null
-            : payments.Max(p => p.Date);
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(num, ct);
+        if (lines.Count == 0)
+            return null;
+
+        var balance = LedgerBalance(lines);
+        var payments = LedgerPayments(lines);
 
         return new HoldedCreditorStatus(
-            SupplierAccountNum: balanceRow?.SupplierAccountNum ?? supplierAccountNum,
+            SupplierAccountNum: num,
             Balance: balance,
-            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
-            LastPaymentDate: lastPaymentDate,
+            OwedToMember: Math.Max(0m, -balance),
+            LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
             TotalPaid: payments.Sum(p => p.Amount),
-            Payments: payments.Select(p => new HoldedPaymentInfo(p.Date, p.Amount, p.DocumentType)).ToList());
+            Payments: payments);
+    }
+
+    // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
+    //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
+    //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
+
+    private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLine> lines) =>
+        lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
+
+    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLine> lines)
+    {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        return lines
+            .Where(l => l.Debit > 0m)
+            .Select(l => new HoldedPaymentInfo(l.Date.InZone(zone).Date, l.Debit, l.Type))
+            .ToList();
     }
 
     // ─── Creditor bindings + statement ──────────────────────────────────────────
@@ -423,7 +457,10 @@ public sealed class HoldedFinanceService(
     public async Task<IReadOnlyList<HoldedCreditorAccountRow>> ListCreditorAccountsAsync(
         CancellationToken ct = default)
     {
-        var balances = await repo.GetCreditorBalancesAsync(ct);
+        var byAccount = (await repo.GetAllLedgerLinesAsync(ct))
+            .GroupBy(l => l.AccountNum)
+            .ToDictionary(g => g.Key, g => (IReadOnlyCollection<HoldedLedgerLine>)g.ToList());
+
         // Group-by-first, not ToDictionary: only UserId is unique in the DB, so two members
         // could (mis)bind to the same account number — that must not throw the whole list.
         var bindings = (await repo.GetCreditorContactsAsync(ct))
@@ -431,17 +468,22 @@ public sealed class HoldedFinanceService(
             .GroupBy(b => b.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
-        return balances.Select(b =>
-        {
-            bindings.TryGetValue(b.SupplierAccountNum, out var binding);
-            return new HoldedCreditorAccountRow(
-                SupplierAccountNum: b.SupplierAccountNum,
-                Name: b.Name,
-                Balance: b.Balance,
-                OwedToMember: Math.Max(0m, -b.Balance),
-                BoundUserId: binding?.UserId,
-                BindingSource: binding?.Source);
-        }).ToList();
+        // Every creditor account with ledger activity, plus bound accounts that have no lines yet.
+        // Name (the Holded chart-account label) is no longer cached; the bound member's name is
+        // resolved by the controller for display.
+        return byAccount.Keys.Union(bindings.Keys)
+            .Select(num =>
+            {
+                decimal? balance = byAccount.TryGetValue(num, out var lines) ? LedgerBalance(lines) : null;
+                bindings.TryGetValue(num, out var binding);
+                return new HoldedCreditorAccountRow(
+                    SupplierAccountNum: num,
+                    Name: "",
+                    Balance: balance,
+                    OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
+                    BoundUserId: binding?.UserId,
+                    BindingSource: binding?.Source);
+            }).ToList();
     }
 
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
@@ -477,37 +519,28 @@ public sealed class HoldedFinanceService(
     public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
         int supplierAccountNum, CancellationToken ct = default)
     {
-        var now = clock.GetCurrentInstant();
-        // Holded caps a dailyledger window at one year; 364 days stays safely under.
-        var from = now.Minus(Duration.FromDays(364));
-        IReadOnlyList<HoldedLedgerLineDto> lines;
-        try
-        {
-            lines = (await client.ListDailyLedgerAsync(from, now, ct))
-                .Where(l => l.AccountNum == supplierAccountNum)
-                .ToList();
-        }
-        catch (HoldedApiException ex)
-        {
-            // Non-fatal: a Holded outage must not 500 the statement or a member's /Expenses page.
-            // Serve the cached balance with no lines rather than throwing (the live read is the
-            // intentional design — option B — but it is best-effort).
-            logger.LogWarning(ex,
-                "Holded dailyledger unavailable for account {Account}; serving balance without ledger lines",
-                supplierAccountNum);
-            lines = [];
-        }
+        // Reads cached daybook lines only — zero Holded calls per view.
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(supplierAccountNum, ct);
+        if (lines.Count == 0)
+            return null;
 
-        var balanceRow = await repo.GetCreditorBalanceByAccountNumAsync(supplierAccountNum, ct);
-        if (balanceRow is null && lines.Count == 0) return null;
-
-        var balance = balanceRow?.Balance;
+        var balance = LedgerBalance(lines);
         return new HoldedCreditorLedger(
             SupplierAccountNum: supplierAccountNum,
-            Name: balanceRow?.Name,
+            Name: null,
             Balance: balance,
-            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
-            Lines: lines);
+            OwedToMember: Math.Max(0m, -balance),
+            Lines: lines.Select(l => new HoldedLedgerLineDto
+            {
+                EntryNumber = l.EntryNumber,
+                Line = l.Line,
+                Date = l.Date,
+                AccountNum = l.AccountNum,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                Type = l.Type,
+                Description = l.Description,
+            }).ToList());
     }
 
     public async Task<string> EnsureCreditorContactAsync(
