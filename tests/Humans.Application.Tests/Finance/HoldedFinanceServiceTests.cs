@@ -466,4 +466,39 @@ public class HoldedFinanceServiceTests
             Arg.Is<HoldedCreditorContact>(c => c.Source == CreditorContactSource.Manual),
             FixedNow, Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_DuplicateAccountBinding_DoesNotThrow()
+    {
+        _repo.GetCreditorBalancesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorBalance>
+        {
+            new() { SupplierAccountNum = 40000004, Name = "Peter D", Balance = -10m },
+        });
+        // Two members mis-bound to the same account number — only UserId is unique in the DB.
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
+        });
+
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004);
+    }
+
+    [HumansFact]
+    public async Task GetCreditorLedger_HoldedUnavailable_ServesCachedBalanceWithoutLines()
+    {
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HoldedTransientException("Holded down"));
+        _repo.GetCreditorBalanceByAccountNumAsync(40000004, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorBalance { SupplierAccountNum = 40000004, Name = "Peter D", Balance = -50m });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger!.Balance.Should().Be(-50m);
+        ledger.OwedToMember.Should().Be(50m);
+        ledger.Lines.Should().BeEmpty();
+    }
 }
