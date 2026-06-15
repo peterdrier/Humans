@@ -1307,8 +1307,9 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         CancellationToken ct)
     {
         // AccountMergeService.AcceptAsync wraps the save in its TransactionScope.
-        // Camp Lead is a CampRoleAssignment now, so the role-side reassignment moves leads too.
-        await _repo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        // Folds the source's CampMember rows onto the survivor and carries their
+        // CampRoleAssignments along — Camp Lead is a CampRoleAssignment now, so leads move too.
+        await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Lead moves change Barrio Leads team membership + lead-badge cache for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
