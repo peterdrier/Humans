@@ -85,7 +85,7 @@ public class ShiftsController(
         // when this human has a qualifying signup but no dietary preference on file.
         model.UserId = user.Id;
         model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted);
-        model.EarlyEntrySignupsClosed = IsEarlyEntrySignupsClosed(es, isPrivileged, clock.GetCurrentInstant());
+        model.EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(isPrivileged, clock.GetCurrentInstant());
 
         return View(model);
     }
@@ -253,7 +253,7 @@ public class ShiftsController(
                 IsSignedUp = value.IsSignedUp,
                 SignupStatus = value.Status,
                 SignupsBlockedByMissingDietary = blocked,
-                EarlyEntrySignupsClosed = IsEarlyEntrySignupsClosed(es, canViewRestricted, clock.GetCurrentInstant()),
+                EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
                 Interaction = ShiftSignupInteraction.InstantToggle
             });
 
@@ -264,7 +264,7 @@ public class ShiftsController(
             IsSignedUp = value.IsSignedUp,
             SignupStatus = value.Status,
             SignupsBlockedByMissingDietary = blocked,
-            EarlyEntrySignupsClosed = IsEarlyEntrySignupsClosed(es, canViewRestricted, clock.GetCurrentInstant()),
+            EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
             Interaction = ShiftSignupInteraction.InstantToggle
         });
     }
@@ -294,15 +294,6 @@ public class ShiftsController(
         if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(user.Id, ct)) return false;
         return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
-
-    // Early-entry lockout flag for the rota Sign-Up toggles: true once
-    // EarlyEntryClose has passed (EventSettings.IsEarlyEntryClosed — the shared
-    // home for the clock rule, also used by the SignUp gate in ShiftSignupService)
-    // and the viewer is not privileged. The row partials AND this with
-    // Shift.IsEarlyEntry so only build shifts lock. Pure + internal-static so the
-    // privilege/clock composition is unit-testable.
-    internal static bool IsEarlyEntrySignupsClosed(EventSettings es, bool isPrivileged, Instant now) =>
-        !isPrivileged && es.IsEarlyEntryClosed(now);
 
     private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
     {
