@@ -6,13 +6,18 @@
 *@
 @{
     var pending = Model.IsSignedUp && Model.Status == SignupStatus.Pending;
-    var disabled = (Model.IsFull && !Model.IsSignedUp) || Model.DietaryBlocked;
+    // Early-entry close only blocks NEW signups; humans already on the shift keep
+    // their Remove affordance (the server still bars bailing — see ShiftSignupService).
+    var earlyEntryLocked = Model.EarlyEntryClosed && !Model.IsSignedUp;
+    var disabled = (Model.IsFull && !Model.IsSignedUp) || Model.DietaryBlocked || earlyEntryLocked;
     var stateClass = Model.IsSignedUp
         ? (pending ? "btn-warning" : "btn-success")
         : "btn-outline-success";
-    var title = Model.DietaryBlocked
-        ? Localizer["Shifts_SignupDisabledTooltip_MissingDietary"].Value
-        : null;
+    var title = earlyEntryLocked
+        ? Localizer["Shifts_SignupDisabledTooltip_EarlyEntryClosed"].Value
+        : Model.DietaryBlocked
+            ? Localizer["Shifts_SignupDisabledTooltip_MissingDietary"].Value
+            : null;
 }
 <button type="button"
         class="btn btn-sm js-day-toggle @stateClass"
@@ -29,6 +34,10 @@
     else if (Model.IsSignedUp)
     {
         <i class="fa-solid fa-check me-1" aria-hidden="true"></i>@Localizer["Shifts_Toggle_Remove"]
+    }
+    else if (earlyEntryLocked)
+    {
+        <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_SetupClosedBadge"]</span>
     }
     else if (Model.IsFull)
     {

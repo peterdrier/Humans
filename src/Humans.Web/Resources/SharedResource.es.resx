@@ -6019,6 +6019,8 @@
   <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Texto de otra intolerancia</value></data>
   <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALES</value></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Primero cuéntanos tus necesidades alimentarias.</value></data>
+  <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montaje cerrado</value></data>
+  <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>

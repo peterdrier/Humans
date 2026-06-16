@@ -199,6 +199,14 @@ public class ShiftBrowseViewModel
     public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>
+    /// True when early-entry (build) signups have closed
+    /// (<see cref="EventSettings.EarlyEntryClose"/> passed) and the viewer is not
+    /// privileged. Row partials combine this with <see cref="Shift.IsEarlyEntry"/>
+    /// so only build shifts lock; mirrors the server gate in ShiftSignupService.
+    /// </summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+
+    /// <summary>
     /// Department coverage pies rendered above the page. One row per
     /// top-level department + each promoted sub-team. Empty when the event
     /// has no rotas that contribute pie hours.
@@ -680,6 +688,10 @@ public class BuildStrikeRotaTableViewModel
     /// </summary>
     public bool SignupsBlockedByMissingDietary { get; set; }
 
+    /// <summary>True when early-entry signups have closed for a non-privileged
+    /// viewer; propagated to each build/strike row (see ShiftBrowseViewModel).</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+
     public Guid? FilterDepartmentId { get; set; }
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
@@ -713,6 +725,10 @@ public class EventRotaTableViewModel
     /// buttons are rendered disabled with the locked-out copy.
     /// </summary>
     public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>True when early-entry signups have closed for a non-privileged
+    /// viewer; propagated to each event row (see ShiftBrowseViewModel).</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
 
     public Guid? FilterDepartmentId { get; set; }
     public string? FilterFromDate { get; set; }
@@ -753,6 +769,10 @@ public class BuildStrikeRotaRowViewModel
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>Page-level early-entry-closed flag; the row combines it with
+    /// <see cref="Shift.IsEarlyEntry"/> to lock only build shifts.</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
 
@@ -768,6 +788,14 @@ public class ShiftToggleButtonModel
     public SignupStatus? Status { get; set; }
     public bool IsFull { get; set; }
     public bool DietaryBlocked { get; set; }
+
+    /// <summary>
+    /// True when this is an early-entry (build) shift, early-entry signups have
+    /// closed (<see cref="EventSettings.EarlyEntryClose"/> passed) and the viewer
+    /// is not privileged. The button is rendered as a disabled "set-up closed"
+    /// state; the server-side gate in ShiftSignupService still enforces it.
+    /// </summary>
+    public bool EarlyEntryClosed { get; set; }
 }
 
 /// <summary>One timed Event-shift row. Action cell varies by Interaction; FormPost reuses the per-row signup form.</summary>
@@ -778,6 +806,10 @@ public class EventRotaRowViewModel
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>Page-level early-entry-closed flag; the row combines it with
+    /// <see cref="Shift.IsEarlyEntry"/> to lock only build shifts.</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 
     // FormPost-only: where the per-row signup form posts, plus filter context for the PRG redirect.

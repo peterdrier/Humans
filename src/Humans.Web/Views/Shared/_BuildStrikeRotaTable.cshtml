@@ -25,6 +25,7 @@
                         IsSignedUp = Model.UserSignupShiftIds.Contains(item.Shift.Id),
                         SignupStatus = Model.UserSignupStatuses.GetValueOrDefault(item.Shift.Id),
                         SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
+                        EarlyEntrySignupsClosed = Model.EarlyEntrySignupsClosed,
                         Interaction = Model.Interaction
                     })
                 }

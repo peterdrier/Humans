@@ -75,7 +75,8 @@
                 IsSignedUp = Model.IsSignedUp,
                 Status = Model.SignupStatus,
                 IsFull = isFull,
-                DietaryBlocked = Model.SignupsBlockedByMissingDietary
+                DietaryBlocked = Model.SignupsBlockedByMissingDietary,
+                EarlyEntryClosed = Model.EarlyEntrySignupsClosed && shift.IsEarlyEntry
             })
         }
         else
