@@ -48,7 +48,7 @@ public class OnboardingWidgetControllerNamesTests
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
@@ -69,7 +69,7 @@ public class OnboardingWidgetControllerNamesTests
         // never the claims.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
-            _userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, _localizer);
+            _userService, _state, _profileEditor, _signups, _shiftMgmt, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

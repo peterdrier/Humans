@@ -90,6 +90,16 @@
             {
                 <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
             }
+            else if (Model.EarlyEntrySignupsClosed && shift.IsEarlyEntry)
+            {
+                <button type="button"
+                        class="btn btn-sm btn-success"
+                        disabled
+                        aria-disabled="true"
+                        title="@Localizer["Shifts_SignupDisabledTooltip_EarlyEntryClosed"]">
+                    <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_SetupClosedBadge"]</span>
+                </button>
+            }
             else
             {
                 <form asp-controller="@Model.SignUpController" asp-action="@Model.SignUpAction" method="post" class="d-inline">

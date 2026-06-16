@@ -296,12 +296,13 @@ public class ShiftsController(
     }
 
     // Early-entry lockout flag for the rota Sign-Up toggles: true once
-    // EarlyEntryClose has passed and the viewer is not privileged. The row
-    // partials AND this with Shift.IsEarlyEntry so only build shifts lock.
-    // Mirrors the non-privileged branch of the SignUp gate in ShiftSignupService.
-    // Pure + internal-static so the privilege/clock boundary is unit-testable.
+    // EarlyEntryClose has passed (EventSettings.IsEarlyEntryClosed — the shared
+    // home for the clock rule, also used by the SignUp gate in ShiftSignupService)
+    // and the viewer is not privileged. The row partials AND this with
+    // Shift.IsEarlyEntry so only build shifts lock. Pure + internal-static so the
+    // privilege/clock composition is unit-testable.
     internal static bool IsEarlyEntrySignupsClosed(EventSettings es, bool isPrivileged, Instant now) =>
-        !isPrivileged && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value;
+        !isPrivileged && es.IsEarlyEntryClosed(now);
 
     private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
     {

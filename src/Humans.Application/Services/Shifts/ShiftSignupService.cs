@@ -61,7 +61,7 @@ public sealed class ShiftSignupService(
         if (shift.AdminOnly && !isPrivileged)
             return SignupResult.Fail("This shift is restricted to coordinators and admins.");
 
-        if (shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
+        if (shift.IsEarlyEntry && es.IsEarlyEntryClosed(now) && !isPrivileged)
             return SignupResult.Fail("Early entry signups are closed.");
 
         var overlapWarning = await CheckOverlapAsync(userId, shift, es);
@@ -154,7 +154,7 @@ public sealed class ShiftSignupService(
         }
 
         var now = clock.GetCurrentInstant();
-        if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value)
+        if (signup.Shift.IsEarlyEntry && es.IsEarlyEntryClosed(now))
         {
             var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
             if (!isPrivileged)
@@ -224,7 +224,7 @@ public sealed class ShiftSignupService(
             return SignupResult.Fail("This signup has already been bailed.");
         }
 
-        if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
+        if (signup.Shift.IsEarlyEntry && es.IsEarlyEntryClosed(now) && !isPrivileged)
             return SignupResult.Fail("Cannot bail from build shifts after early entry close.");
 
         signup.Bail(actorUserId, clock, reason);
@@ -521,8 +521,7 @@ public sealed class ShiftSignupService(
             return SignupResult.Fail("Shift browsing is not currently open.");
 
         if (rota.Period == RotaPeriod.Build
-            && es.EarlyEntryClose.HasValue
-            && now >= es.EarlyEntryClose.Value
+            && es.IsEarlyEntryClosed(now)
             && !isPrivileged)
         {
             return SignupResult.Fail("Early entry signups are closed.");
@@ -819,7 +818,7 @@ public sealed class ShiftSignupService(
                     warnings.Add(eeWarning);
             }
 
-            if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value)
+            if (signup.Shift.IsEarlyEntry && es.IsEarlyEntryClosed(now))
             {
                 var isPrivileged = await shiftMgmt.CanApproveSignupsAsync(reviewerUserId, signup.Shift.Rota.TeamId);
                 if (!isPrivileged)
@@ -942,7 +941,7 @@ public sealed class ShiftSignupService(
         if (!isOwner && !isPrivileged)
             throw new InvalidOperationException("Not authorized to bail this signup block.");
 
-        if (signups.Any(s => s.Shift.IsEarlyEntry) && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
+        if (signups.Any(s => s.Shift.IsEarlyEntry) && es.IsEarlyEntryClosed(now) && !isPrivileged)
             throw new InvalidOperationException("Cannot bail from build shifts after early entry close.");
 
         foreach (var signup in signups)

@@ -11,6 +11,7 @@ using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -29,6 +30,7 @@ public class OnboardingWidgetController(
     IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
+    IClock clock,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -132,8 +134,12 @@ public class OnboardingWidgetController(
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
         var userShiftView = await shiftView.GetUserAsync(CurrentUserId(), ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
+        // Onboarding viewers are regular (non-privileged) volunteers, so the early-entry
+        // lock applies whenever the close has passed — same surfacing the /Shifts browse
+        // grid gives non-privileged users (the server gate still enforces it on submit).
+        var earlyEntryClosed = es.IsEarlyEntryClosed(clock.GetCurrentInstant());
         var vm = OnboardingShiftsBrowseModelBuilder.Build(
-            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
+            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty, earlyEntryClosed);
         return View(vm);
     }
 
