@@ -24,12 +24,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("GoogleEmail")
             .HasMaxLength(256);
 
+        // DEPRECATED (#687): status moved to UserEmail.GoogleEmailStatus. This mapping is the one
+        // remaining reference to the obsolete property — kept only so EF retains the column until a
+        // drop migration. Suppress CS0618 here; there must be no other reader/writer.
+#pragma warning disable CS0618
         builder.Property(u => u.GoogleEmailStatus)
             .HasConversion<string>()
             .HasMaxLength(50)
             .HasDefaultValue(GoogleEmailStatus.Unknown)
             .HasSentinel(GoogleEmailStatus.Unknown)
             .IsRequired();
+#pragma warning restore CS0618
 
         builder.Property(u => u.CreatedAt)
             .IsRequired();

@@ -58,11 +58,9 @@ public class ExpenseReportServiceGdprTests
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             Substitute.For<IHoldedFinanceService>(),
-            new SepaPaymentFileBuilder(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance,
-            Options.Create(new TravelReimbursementConfig()),
-            Options.Create(new SepaConfig()));
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
@@ -72,7 +70,6 @@ public class ExpenseReportServiceGdprTests
             DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
         userEmails: [],
         eventParticipations: [],

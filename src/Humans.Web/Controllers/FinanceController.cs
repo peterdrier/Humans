@@ -577,6 +577,67 @@ public class FinanceController(
     public async Task<IActionResult> HoldedUnmatched()
         => View(await holdedFinance.GetUnmatchedAsync());
 
+    [HttpGet("Creditors")]
+    public async Task<IActionResult> Creditors()
+    {
+        var rows = await holdedFinance.ListCreditorAccountsAsync();
+
+        var names = new Dictionary<Guid, string>();
+        var boundIds = rows.Where(r => r.BoundUserId is not null)
+            .Select(r => r.BoundUserId!.Value).Distinct().ToList();
+        if (boundIds.Count > 0)
+            foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
+                names[kv.Key] = kv.Value.BurnerName;
+
+        var model = rows
+            .Select(r => new CreditorAccountRowVm(
+                r.SupplierAccountNum, r.Name, r.Balance, r.OwedToMember, r.BoundUserId,
+                r.BoundUserId is { } id && names.TryGetValue(id, out var nm) ? nm : null,
+                r.BindingSource?.ToString()))
+            .OrderByDescending(r => r.OwedToMember)
+            .ThenBy(r => r.SupplierAccountNum)
+            .ToList();
+        return View(model);
+    }
+
+    [HttpGet("Creditors/{accountNum:int}")]
+    public async Task<IActionResult> CreditorStatement(int accountNum)
+    {
+        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum);
+        if (ledger is null) return NotFound();
+
+        // Controllers sort for display: newest activity first.
+        ViewBag.Lines = ledger.Lines
+            .OrderByDescending(l => l.Date)
+            .ThenByDescending(l => l.EntryNumber)
+            .ThenBy(l => l.Line)
+            .ToList();
+        return View(ledger);
+    }
+
+    [HttpPost("Creditors/Bind")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
+    {
+        try
+        {
+            var ok = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            if (ok)
+                SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
+            else
+                SetError($"No Holded contact carries account {supplierAccountNum} — nothing bound.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to bind user {UserId} to creditor account {AccountNum}", userId, supplierAccountNum);
+            SetError("Failed to bind creditor account.");
+        }
+
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+        return RedirectToAction(nameof(Creditors));
+    }
+
     [HttpPost("HoldedSync/Run")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RunHoldedSync()

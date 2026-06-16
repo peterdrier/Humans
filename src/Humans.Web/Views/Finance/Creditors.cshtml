@@ -1,0 +1,63 @@
+@model IReadOnlyList<Humans.Web.Models.CreditorAccountRowVm>
+@{
+    ViewData["Title"] = "Creditor Accounts";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Creditor Accounts</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</div>
+
+<p class="text-muted">
+    Holded creditor accounts (400000xx). A negative balance is money the organisation owes the member;
+    <strong>Owed</strong> shows that amount. Bind a member to an account from their expense report.
+</p>
+
+@if (!Model.Any())
+{
+    <div class="card"><div class="card-body text-center py-5 text-muted">
+        No creditor balances cached yet — run a Holded sync from the Unmatched page.
+    </div></div>
+}
+else
+{
+    <div class="card">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th class="text-end">Balance</th>
+                    <th class="text-end">Owed</th>
+                    <th>Member</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td><a asp-action="CreditorStatement" asp-route-accountNum="@r.SupplierAccountNum">@r.SupplierAccountNum</a></td>
+                    <td>@r.Name</td>
+                    <td class="text-end">@(r.Balance.HasValue ? r.Balance.Value.ToEuro() : "—")</td>
+                    <td class="text-end">
+                        <span class="@(r.OwedToMember > 0 ? "text-danger fw-semibold" : "text-muted")">@r.OwedToMember.ToEuro()</span>
+                    </td>
+                    <td>
+                        @if (r.BoundMemberName is not null)
+                        {
+                            <i class="fa-solid fa-link me-1 text-success"></i><span>@r.BoundMemberName</span>
+                            <span class="text-muted small">(@r.BindingSource)</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted"><i class="fa-solid fa-link-slash me-1"></i>unbound</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

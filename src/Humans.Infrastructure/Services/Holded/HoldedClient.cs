@@ -206,36 +206,58 @@ public sealed class HoldedClient : IHoldedClient
         };
     }
 
-    public async Task<IReadOnlyList<HoldedChartAccountDto>> ListChartOfAccountsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/accounting/v1/chartofaccounts");
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/contacts");
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Where(n => n is not null).Select(n => new HoldedChartAccountDto
+        return arr.Where(n => n is not null).Select(n => new HoldedContactDto
         {
-            Num = ReadInt(n!["num"]) ?? 0,
-            Name = n["name"]?.GetValue<string>() ?? "",
-            Balance = ReadDecimal(n["balance"]),
+            Id = n!["id"]?.GetValue<string>() ?? "",
+            Name = n["name"]?.GetValue<string>(),
+            SupplierAccountNum = ReadInt(n["supplierRecord"]?["num"]),
         }).ToList();
     }
 
-    public async Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
+        Instant from, Instant to, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/payments");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Where(n => n is not null).Select(n => new HoldedPaymentDto
+        const int pageSize = 250;
+        const int pageSafetyCap = 100; // 25 000 lines/window — far above a small nonprofit's volume
+        var start = from.ToUnixTimeSeconds();
+        var end = to.ToUnixTimeSeconds();
+        var lines = new List<HoldedLedgerLineDto>();
+        for (var page = 1; page <= pageSafetyCap; page++)
         {
-            Id = n!["id"]?.GetValue<string>() ?? "",
-            ContactId = n["contactId"]?.GetValue<string>() ?? "",
-            Amount = ReadDecimal(n["amount"]),
-            Date = ReadInstant(n["date"]) ?? Instant.FromUnixTimeSeconds(0),
-            DocumentType = n["documentType"]?.GetValue<string>(),
-        }).ToList();
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"/api/accounting/v1/dailyledger?starttmp={start}&endtmp={end}&page={page}");
+            AttachAuth(req);
+            using var resp = await SendAsync(req, ct);
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+            foreach (var n in arr)
+            {
+                if (n is null) continue;
+                lines.Add(new HoldedLedgerLineDto
+                {
+                    EntryNumber = ReadInt(n["entryNumber"]) ?? 0,
+                    Line = ReadInt(n["line"]) ?? 0,
+                    Date = ReadInstant(n["timestamp"]) ?? Instant.FromUnixTimeSeconds(0),
+                    AccountNum = ReadInt(n["account"]) ?? 0,
+                    Debit = ReadDecimal(n["debit"]),
+                    Credit = ReadDecimal(n["credit"]),
+                    Type = n["type"]?.GetValue<string>(),
+                    Description = n["description"]?.GetValue<string>(),
+                });
+            }
+            if (arr.Count < pageSize) return lines;
+        }
+        _logger.LogWarning(
+            "Holded dailyledger hit the {Cap}-page safety cap for window {From}..{To}; results may be truncated.",
+            pageSafetyCap, from, to);
+        return lines;
     }
 
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()

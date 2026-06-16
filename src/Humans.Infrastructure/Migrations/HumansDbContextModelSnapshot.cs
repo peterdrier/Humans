@@ -2451,9 +2451,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Instant?>("PaidAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("PayeeIban")
                         .IsRequired()
                         .HasMaxLength(34)
@@ -2463,9 +2460,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<Instant?>("SepaSentAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2829,38 +2823,42 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("holded_category_map", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedCreditorBalance", b =>
+            modelBuilder.Entity("Humans.Domain.Entities.HoldedCreditorContact", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Balance")
-                        .HasColumnType("decimal(12,2)");
-
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Instant>("LastSyncedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("HoldedContactId")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
-                    b.Property<int>("SupplierAccountNum")
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("SupplierAccountNum")
                         .HasColumnType("integer");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("SupplierAccountNum")
+                    b.HasIndex("SupplierAccountNum");
+
+                    b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("holded_creditor_balances", (string)null);
+                    b.ToTable("holded_creditor_contacts", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.HoldedExpenseDoc", b =>
@@ -2988,46 +2986,51 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("holded_expense_outbox_events", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedPayment", b =>
+            modelBuilder.Entity("Humans.Domain.Entities.HoldedLedgerLine", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(12,2)");
+                    b.Property<int>("AccountNum")
+                        .HasColumnType("integer");
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<LocalDate>("Date")
-                        .HasColumnType("date");
+                    b.Property<decimal>("Credit")
+                        .HasColumnType("decimal(12,2)");
 
-                    b.Property<string>("DocumentType")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                    b.Property<Instant>("Date")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("HoldedContactId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                    b.Property<decimal>("Debit")
+                        .HasColumnType("decimal(12,2)");
 
-                    b.Property<string>("HoldedPaymentId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("EntryNumber")
+                        .HasColumnType("integer");
 
                     b.Property<Instant>("LastSyncedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Line")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("HoldedContactId");
+                    b.HasIndex("AccountNum");
 
-                    b.HasIndex("HoldedPaymentId")
+                    b.HasIndex("EntryNumber", "Line")
                         .IsUnique();
 
-                    b.ToTable("holded_payments", (string)null);
+                    b.ToTable("holded_ledger_lines", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.HoldedSyncState", b =>
@@ -3287,6 +3290,10 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("TargetGroupName")
                         .HasMaxLength(100)
@@ -5423,6 +5430,13 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("GoogleEmailStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Unknown");
 
                     b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");

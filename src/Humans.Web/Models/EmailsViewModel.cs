@@ -204,6 +204,14 @@ public class EmailRowViewModel
     public string Email { get; set; } = string.Empty;
     public bool IsVerified { get; set; }
     public bool IsGoogle { get; set; }
+
+    /// <summary>
+    /// Per-address Google sync status (#687). `Rejected` means Google refused this specific
+    /// address (no Google account behind it); `Valid` means a Google API call accepted it.
+    /// Drives the per-row badge and the Retry control on the rejected canonical row.
+    /// </summary>
+    public GoogleEmailStatus GoogleEmailStatus { get; set; }
+
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }

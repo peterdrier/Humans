@@ -139,23 +139,33 @@ public partial interface ICampRepository
     // Account-merge fold
 
     /// <summary>
-    /// Account-merge fold: bulk-moves <c>CampRoleAssignment</c> rows from
-    /// source to target. Walks via <c>CampMember</c>: for each source
-    /// assignment, looks up target's <c>CampMember</c> in the same
-    /// <c>CampSeason</c>. If target has a member there, re-FKs the
-    /// assignment to target's <c>CampMember</c>; on collision against the
-    /// unique <c>(CampSeasonId, CampRoleDefinitionId, CampMemberId)</c>
-    /// index target wins (source's row is dropped). If target has no
-    /// member in the source assignment's season, the row is left in place
-    /// (still pointing at source's <c>CampMember</c>, which remains as a
-    /// tombstone — the role-section spec carries this row forward
-    /// untouched). <c>CampRoleAssignment</c> has no <c>UpdatedAt</c>, so
-    /// <paramref name="updatedAt"/> is unused for this table and accepted
-    /// for caller-side symmetry. Returns the count of
-    /// <c>CampRoleAssignment</c> rows whose <c>CampMember</c> belongs to
-    /// <paramref name="targetUserId"/> after the move.
+    /// Account-merge fold: moves the source user's whole camp footprint —
+    /// <c>CampMember</c> rows and the <c>CampRoleAssignment</c> rows that hang
+    /// off them — onto the target user, so nothing is stranded on the
+    /// tombstoned source account.
+    /// <para>
+    /// Per source <c>CampMember</c>: if the target has no live (non-<c>Removed</c>)
+    /// member in that <c>CampSeason</c>, the membership is re-pointed to the
+    /// target (its assignments ride along on the unchanged <c>CampMemberId</c> —
+    /// no per-assignment work). If the target already holds a live membership
+    /// for the season, re-pointing would violate
+    /// <c>IX_camp_members_active_unique</c>, so the source member's assignments
+    /// are folded onto the target's member (re-FK'd, or dropped on collision
+    /// against <c>IX_camp_role_assignments_unique</c>) and the now-empty source
+    /// member is deleted. <c>Removed</c> source members never collide (the
+    /// partial index excludes them) and are always re-pointed, carrying history
+    /// forward.
+    /// </para>
+    /// <para>
+    /// Idempotent: re-running after a partial merge finds no source members and
+    /// is a no-op. <c>CampMember</c>/<c>CampRoleAssignment</c> carry no
+    /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for these
+    /// tables and accepted for caller-side symmetry. Returns the count of
+    /// <c>CampMember</c> rows belonging to <paramref name="targetUserId"/> after
+    /// the fold.
+    /// </para>
     /// </summary>
-    Task<int> ReassignAssignmentsToUserAsync(
+    Task<int> ReassignMembershipsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

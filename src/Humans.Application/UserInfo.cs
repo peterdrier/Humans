@@ -17,7 +17,8 @@ public sealed record UserEmailInfo(
     ContactFieldVisibility? Visibility,
     Instant? VerificationSentAt,
     Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant UpdatedAt,
+    GoogleEmailStatus GoogleEmailStatus);
 
 /// <summary>Compact projection of <see cref="ContactField"/> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
@@ -148,7 +149,6 @@ public sealed record UserInfo(
     Guid? ICalToken,
     bool SuppressScheduleChangeEmails,
     Instant? MagicLinkSentAt,
-    GoogleEmailStatus GoogleEmailStatus,
     ContactSource? ContactSource,
     string? ExternalSourceId,
     Guid? MergedToUserId,
@@ -243,6 +243,28 @@ public sealed record UserInfo(
         .Select(e => e.Email)
         .FirstOrDefault();
 
+    /// <summary>
+    /// Effective Google Workspace sync status for this user — the per-address status of the
+    /// address sync actually targets. That target mirrors
+    /// <c>GoogleWorkspaceSyncService.TryGetGoogleEmail</c>: the verified
+    /// <see cref="UserEmailInfo.IsGoogle"/> row, else the verified provider (OAuth) fallback row
+    /// (covers ~pre-#687 users with no IsGoogle row). <see cref="Humans.Domain.Enums.GoogleEmailStatus.Unknown"/>
+    /// when there is no such address. Replaces the deprecated user-level <c>User.GoogleEmailStatus</c>
+    /// column (nobodies-collective/Humans#687); a rejection no longer survives switching Google address.
+    /// </summary>
+    public GoogleEmailStatus GoogleEmailStatus
+    {
+        get
+        {
+            var target = UserEmails.FirstOrDefault(e => e.IsGoogle && e.IsVerified)
+                ?? UserEmails
+                    .Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+            return target?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown;
+        }
+    }
+
     /// <summary>All verified addresses, primary first.</summary>
     public IReadOnlyList<string> AllVerifiedEmails => UserEmails
         .Where(e => e.IsVerified)
@@ -311,18 +333,21 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.FirstName)
         && !string.IsNullOrWhiteSpace(Profile.LastName);
 
-    /// <summary>In CC review queue: active, named, not yet approved. Shared by queue list + nav badge so they cannot drift.</summary>
+    /// <summary>In CC review queue: active, named, not yet approved, and not a merged/deleted
+    /// tombstone. Shared by queue list + nav badge + admin dashboard so they cannot drift.</summary>
     public bool NeedsConsentReview =>
-        IsActive && HasRequiredNameFields && !Profile!.IsApproved;
+        IsActive && HasRequiredNameFields && !Profile!.IsApproved && !IsTombstone;
 
     /// <summary>
     /// Carries an unresolved Flagged consent check. Excludes rejected profiles — those have already
-    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue.
+    /// been dealt with and the Clear mutation is blocked, so they'd be unresolvable in the queue —
+    /// and merged/deleted tombstones, which are not live accounts left to review.
     /// Drives the /OnboardingReview flagged section.
     /// </summary>
     public bool IsConsentCheckFlagged =>
         Profile?.ConsentCheckStatus == ConsentCheckStatus.Flagged
-        && Profile.RejectedAt is null;
+        && Profile.RejectedAt is null
+        && !IsTombstone;
 
     /// <summary>Builds <see cref="UserInfo"/> from the 8 contributing tables; snapshotting + ordering happen here so the cached payload is immutable.</summary>
     public static UserInfo Create(
@@ -342,7 +367,7 @@ public sealed record UserInfo(
             .Select(e => new UserEmailInfo(
                 e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
                 e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
-                e.CreatedAt, e.UpdatedAt))
+                e.CreatedAt, e.UpdatedAt, e.GoogleEmailStatus))
             .ToList();
 
         var participationInfos = eventParticipations
@@ -452,7 +477,6 @@ public sealed record UserInfo(
             ICalToken: user.ICalToken,
             SuppressScheduleChangeEmails: user.SuppressScheduleChangeEmails,
             MagicLinkSentAt: user.MagicLinkSentAt,
-            GoogleEmailStatus: user.GoogleEmailStatus,
             ContactSource: user.ContactSource,
             ExternalSourceId: user.ExternalSourceId,
             MergedToUserId: user.MergedToUserId,

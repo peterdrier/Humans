@@ -1,9 +1,10 @@
-using System.Text;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Web.Authorization;
@@ -23,6 +24,7 @@ public sealed class ExpensesController(
     IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
     IBudgetService budgetService,
+    IHoldedFinanceService holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)
 {
@@ -92,6 +94,24 @@ public sealed class ExpensesController(
             var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
+            // The member's own Holded creditor-account statement (read-only, real ledger lines). Only
+            // populated once they're bound to a 400000xx account; nothing shows until then. Own account only.
+            HoldedCreditorLedger? accountLedger = null;
+            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
+            if (binding?.SupplierAccountNum is { } accNum)
+            {
+                var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
+                if (led is not null)
+                    accountLedger = led with
+                    {
+                        Lines = led.Lines
+                            .OrderByDescending(l => l.Date)
+                            .ThenByDescending(l => l.EntryNumber)
+                            .ThenBy(l => l.Line)
+                            .ToList()
+                    };
+            }
+
             var model = new ExpensesIndexViewModel
             {
                 Reports = reports,
@@ -100,6 +120,7 @@ public sealed class ExpensesController(
                 CategoryNames = categoryNames,
                 Iou = iou,
                 Ledger = ledger,
+                AccountLedger = accountLedger,
                 IsCoordinator = coordinatorTeamIds.Count > 0,
                 CoordinatorQueueCount = coordinatorQueue.Count,
             };
@@ -199,6 +220,19 @@ public sealed class ExpensesController(
                 ? await expenseReadService.GetHoldedTimelineAsync(report)
                 : null;
 
+            // Finance admins reviewing a report can bind the submitter to a Holded creditor account
+            // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
+            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            CreditorContactBinding? submitterBinding = null;
+            IReadOnlyList<HoldedCreditorAccountRow> creditorAccounts = [];
+            if (isFinanceAdmin)
+            {
+                submitterBinding = await holdedFinance.GetCreditorContactByUserAsync(report.SubmitterUserId);
+                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync())
+                    .OrderBy(a => a.SupplierAccountNum)
+                    .ToList();
+            }
+
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
@@ -208,7 +242,10 @@ public sealed class ExpensesController(
                 CanWithdraw = isSubmitter && canWithdraw,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
-                HoldedTimeline = timeline
+                HoldedTimeline = timeline,
+                CanBindCreditor = isFinanceAdmin,
+                BoundAccountNum = submitterBinding?.SupplierAccountNum,
+                CreditorAccounts = creditorAccounts,
             };
             return View(model);
         }
@@ -695,84 +732,6 @@ public sealed class ExpensesController(
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Review));
-    }
-
-    [HttpPost("{id:guid}/Sepa/Reopen")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
-    public async Task<IActionResult> SepaReopen(Guid id)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.ReopenSepa));
-        if (!authResult.Succeeded) return Forbid();
-
-        var result = await service.ReopenSepaWithResultAsync(id, user.Id);
-        if (result.Succeeded)
-            SetSuccess("Report reopened — it is now Approved and can be included in a new SEPA batch.");
-        else
-            SetError(result.ErrorMessage ?? "Could not reopen the report.");
-
-        return RedirectToAction(nameof(Review));
-    }
-
-    [HttpPost("Sepa/Generate")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
-    public async Task<IActionResult> SepaGenerate(
-        [FromForm] List<Guid> ids,
-        CancellationToken ct)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        if (ids.Count == 0)
-        {
-            SetError("No reports selected.");
-            return RedirectToAction(nameof(Review));
-        }
-
-        try
-        {
-            // Per-report authorization is controller turf; eligibility + XML-before-flip
-            // ordering live in GenerateSepaPayoutAsync (one domain operation).
-            var authorizedIds = await ResolveAuthorizedForSepaAsync(ids, ct);
-            var result = await service.GenerateSepaPayoutAsync(authorizedIds, user.Id, ct);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorMessage ?? "Failed to generate SEPA file.");
-                return RedirectToAction(nameof(Review));
-            }
-
-            return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error generating SEPA pain.001 for user {UserId}", user.Id);
-            SetError("Failed to generate SEPA file.");
-            return RedirectToAction(nameof(Review));
-        }
-    }
-
-    private async Task<List<Guid>> ResolveAuthorizedForSepaAsync(
-        IEnumerable<Guid> ids, CancellationToken ct)
-    {
-        var result = new List<Guid>();
-        foreach (var id in ids)
-        {
-            var report = await expenseReadService.GetAsync(id, ct);
-            if (report is null) continue;
-
-            var authResult = await authService.AuthorizeAsync(User, report,
-                new ExpenseReportOperationRequirement(ExpenseReportOperation.IncludeInSepaPayout));
-            if (authResult.Succeeded) result.Add(id);
-        }
-        return result;
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(

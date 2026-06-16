@@ -368,7 +368,6 @@ public class UserEmailServiceTests
                 DisplayName = "test-" + userId.ToString("N")[..6],
                 PreferredLanguage = "en",
                 CreatedAt = Instant.MinValue,
-                GoogleEmailStatus = default,
             },
             userEmails: emails,
             eventParticipations: [],

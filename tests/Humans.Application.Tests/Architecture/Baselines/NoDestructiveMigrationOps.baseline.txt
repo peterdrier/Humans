@@ -33,3 +33,12 @@ src/Humans.Infrastructure/Migrations/20260514170550_AddContainers.cs:DropColumn(
 # migration — the old index forbids the per-occurrence rows the feature writes. Index-only,
 # no data touched. See memory/architecture/no-drops-until-prod-verified.md.
 src/Humans.Infrastructure/Migrations/20260611203803_AddEventFavouriteDayOffset.cs:DropIndex(name=IX_event_favourites_UserId_GuideEventId)#1
+# Peter-approved per-incident (2026-06-15): Holded ledger single-source redesign. The creditor
+# read model moves to one cache table (holded_ledger_lines); the derived holded_creditor_balances
+# and holded_payments tables, plus the retired expense_reports.SepaSentAt/PaidAt columns, are dropped
+# in the same migration that ships the replacement. Authorized because those tables aren't in use yet
+# (relatively safe to drop). See memory/architecture/no-drops-until-prod-verified.md.
+src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropColumn(name=PaidAt)#1
+src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropColumn(name=SepaSentAt)#1
+src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropTable(name=holded_creditor_balances)#1
+src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropTable(name=holded_payments)#1

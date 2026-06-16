@@ -50,7 +50,6 @@ public class UsersAdminDebugControllerTests
                 DisplayName = displayName,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-                GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
             userEmails: [],
             eventParticipations: participations,

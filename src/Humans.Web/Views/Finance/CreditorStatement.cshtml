@@ -1,0 +1,59 @@
+@model Humans.Application.Services.Finance.Dtos.HoldedCreditorLedger
+@{
+    ViewData["Title"] = $"Creditor {Model.SupplierAccountNum}";
+    var lines = (IReadOnlyList<Humans.Application.Interfaces.Holded.HoldedLedgerLineDto>)ViewBag.Lines;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@Model.SupplierAccountNum@(string.IsNullOrEmpty(Model.Name) ? "" : $" · {Model.Name}")</h1>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center"><div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">Owed to member</h6>
+            <span class="fs-4 @(Model.OwedToMember > 0 ? "text-danger" : "")">@Model.OwedToMember.ToEuro()</span>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center"><div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">Balance</h6>
+            <span class="fs-4">@(Model.Balance.HasValue ? Model.Balance.Value.ToEuro() : "—")</span>
+        </div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Ledger — last 12 months (credit = owed/in, debit = paid/out)</div>
+    @if (lines.Count == 0)
+    {
+        <div class="card-body text-muted text-center py-4">No ledger lines in the last year.</div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead><tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th class="text-end">In</th>
+                <th class="text-end">Out</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var l in lines)
+            {
+                <tr>
+                    <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
+                    <td>@l.Description</td>
+                    <td class="text-muted small">@l.Type</td>
+                    <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
+                    <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

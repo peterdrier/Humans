@@ -23,7 +23,6 @@ public class AdminHumanListAssemblerTests
             DisplayName = displayName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
             State = state,
         };
 

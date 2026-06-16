@@ -89,6 +89,41 @@
     </div>
 }
 
+@if (Model.AccountLedger is { } acct)
+{
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info-subtle d-flex justify-content-between align-items-center">
+            <strong><i class="fa-solid fa-building-columns me-1"></i>@Localizer["Expenses_IouHeader"] · @acct.SupplierAccountNum</strong>
+            <span>
+                <span class="text-muted small me-1">@Localizer["Expenses_IouOwed"]</span>
+                <span class="fs-5 fw-semibold @(acct.OwedToMember > 0 ? "text-danger" : "")">@acct.OwedToMember.ToEuro()</span>
+            </span>
+        </div>
+        @if (acct.Lines.Count > 0)
+        {
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead><tr>
+                    <th>@Localizer["Common_Date"]</th>
+                    <th>@Localizer["Expenses_LedgerColItem"]</th>
+                    <th class="text-end">@Localizer["Common_Amount"]</th>
+                </tr></thead>
+                <tbody>
+                @foreach (var l in acct.Lines)
+                {
+                    // Credit = owed to the member (in, +); debit = paid/settled (out, −).
+                    var net = l.Credit - l.Debit;
+                    <tr>
+                        <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
+                        <td>@l.Description</td>
+                        <td class="text-end @(net < 0 ? "text-success" : "")">@net.ToEuro()</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
 @if (!Model.HasActiveYear)
 {
     <div class="alert alert-info">

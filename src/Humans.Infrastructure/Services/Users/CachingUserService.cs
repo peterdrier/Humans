@@ -342,7 +342,8 @@ public sealed class CachingUserService(
             ICalToken = user.ICalToken,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
             MagicLinkSentAt = user.MagicLinkSentAt,
-            GoogleEmailStatus = user.GoogleEmailStatus,
+            // GoogleEmailStatus is computed from the canonical Google UserEmail row (#687) —
+            // UserEmails carry over via `with`, so no explicit assignment here.
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,
@@ -412,8 +413,8 @@ public sealed class CachingUserService(
     /// <summary>
     /// Inverse of <see cref="UserInfo.Create"/> for the User-side columns —
     /// rebuilds the read-only fields the section consumers actually touch
-    /// (BurnerName fallback, Email/UserEmails, ProfilePictureUrl, GoogleEmailStatus,
-    /// and the rest of the User columns UserInfo carries) plus the full
+    /// (BurnerName fallback, Email/UserEmails incl. per-address GoogleEmailStatus,
+    /// ProfilePictureUrl, and the rest of the User columns UserInfo carries) plus the full
     /// <see cref="User.UserEmails"/> collection. Identity-machinery fields
     /// (PasswordHash, SecurityStamp, lockout, phone) are not carried in
     /// UserInfo and therefore not rehydrated; callers reading those go
@@ -439,7 +440,8 @@ public sealed class CachingUserService(
             ICalToken = info.ICalToken,
             SuppressScheduleChangeEmails = info.SuppressScheduleChangeEmails,
             MagicLinkSentAt = info.MagicLinkSentAt,
-            GoogleEmailStatus = info.GoogleEmailStatus,
+            // GoogleEmailStatus moved per-address (#687) — rehydrated below on each UserEmail row,
+            // not on the obsolete User column.
             ContactSource = info.ContactSource,
             ExternalSourceId = info.ExternalSourceId,
             MergedToUserId = info.MergedToUserId,
@@ -457,6 +459,7 @@ public sealed class CachingUserService(
                 IsVerified = e.IsVerified,
                 IsPrimary = e.IsPrimary,
                 IsGoogle = e.IsGoogle,
+                GoogleEmailStatus = e.GoogleEmailStatus,
                 Provider = e.Provider,
                 ProviderKey = e.ProviderKey,
                 Visibility = e.Visibility,

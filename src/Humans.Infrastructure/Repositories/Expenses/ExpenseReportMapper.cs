@@ -21,8 +21,6 @@ internal static class ExpenseReportMapper
         CoordinatorEndorsedAt = r.CoordinatorEndorsedAt,
         ApprovedByUserId = r.ApprovedByUserId,
         ApprovedAt = r.ApprovedAt,
-        SepaSentAt = r.SepaSentAt,
-        PaidAt = r.PaidAt,
         LastRejectionReason = r.LastRejectionReason,
         LastRejectedByUserId = r.LastRejectedByUserId,
         LastRejectedAt = r.LastRejectedAt,

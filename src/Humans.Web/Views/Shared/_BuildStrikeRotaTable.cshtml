@@ -25,6 +25,7 @@
                         IsSignedUp = Model.UserSignupShiftIds.Contains(item.Shift.Id),
                         SignupStatus = Model.UserSignupStatuses.GetValueOrDefault(item.Shift.Id),
                         SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
+                        EarlyEntrySignupsClosed = Model.EarlyEntrySignupsClosed,
                         Interaction = Model.Interaction
                     })
                 }
@@ -38,6 +39,8 @@ else
     var es = Model.EventSettings;
     var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
     var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
+    // Build (early-entry) date-range form locks once early-entry close has passed; strike shifts are never early-entry.
+    var earlyEntryLocked = Model.EarlyEntrySignupsClosed && availableShifts.Any(s => s.Shift.IsEarlyEntry);
 @if (availableShifts.Count > 0)
 {
     <form asp-controller="@Model.SignUpRangeController" asp-action="@Model.SignUpRangeAction" method="post" class="row g-2 align-items-end mb-3">
@@ -77,7 +80,16 @@ else
             </select>
         </div>
         <div class="col-auto">
-            @if (Model.SignupsBlockedByMissingDietary)
+            @if (earlyEntryLocked)
+            {
+                <button type="button" class="btn btn-sm btn-success"
+                        disabled
+                        aria-disabled="true"
+                        title="@Localizer["Shifts_SignupDisabledTooltip_EarlyEntryClosed"]">
+                    <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_SetupClosedBadge"]</span>
+                </button>
+            }
+            else if (Model.SignupsBlockedByMissingDietary)
             {
                 <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
                         disabled

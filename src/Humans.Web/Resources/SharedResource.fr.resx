@@ -5119,6 +5119,15 @@
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve">
     <value>E-mail utilisé pour la synchronisation Google Workspace.</value>
   </data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve">
+    <value>Problème de synchronisation Google</value>
+  </data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve">
+    <value>Google OK</value>
+  </data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve">
     <value>Principal et Google sont gérés par Google Workspace tant que votre adresse @nobodies.team est présente.</value>
   </data>
@@ -5961,6 +5970,8 @@
   <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Other intolerance text</value></data>
   <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALS</value></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
+  <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montage fermé</value></data>
+  <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscriptions au montage sont closes — nous sommes déjà sur place.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
@@ -6306,8 +6317,6 @@
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Approuvée</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Validée par le coordinateur</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Brouillon</value></data>
-  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Payée</value></data>
-  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA envoyé</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Soumise</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirée</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>

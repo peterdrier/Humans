@@ -243,6 +243,50 @@ internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> 
         return true;
     }
 
+    public async Task<IReadOnlyList<Guid>> ResolveBySourceKeyAsync(
+        NotificationSource source, string sourceKey, Instant now,
+        Guid? resolvedByUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var notifications = await ctx.Notifications
+            .Include(n => n.Recipients)
+            .Where(n => n.Source == source
+                        && n.SourceKey == sourceKey
+                        && n.ResolvedAt == null)
+            .ToListAsync(ct);
+
+        if (notifications.Count == 0) return [];
+
+        var affected = new HashSet<Guid>();
+        foreach (var notification in notifications)
+        {
+            notification.ResolvedAt = now;
+            notification.ResolvedByUserId = resolvedByUserId;
+            foreach (var r in notification.Recipients)
+                affected.Add(r.UserId);
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return [.. affected];
+    }
+
+    public async Task<int> DeleteUnresolvedBySourcesAsync(
+        IReadOnlyList<NotificationSource> sources, CancellationToken ct = default)
+    {
+        if (sources.Count == 0) return 0;
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var toDelete = await ctx.Notifications
+            .Where(n => n.ResolvedAt == null && sources.Contains(n.Source))
+            .ToListAsync(ct);
+
+        if (toDelete.Count == 0) return 0;
+
+        ctx.Notifications.RemoveRange(toDelete);
+        await ctx.SaveChangesAsync(ct);
+        return toDelete.Count;
+    }
+
     public async Task<int> DeleteResolvedOlderThanAsync(Instant resolvedCutoff, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

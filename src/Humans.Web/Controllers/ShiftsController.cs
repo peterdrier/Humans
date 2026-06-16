@@ -85,6 +85,7 @@ public class ShiftsController(
         // when this human has a qualifying signup but no dietary preference on file.
         model.UserId = user.Id;
         model.SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted);
+        model.EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(isPrivileged, clock.GetCurrentInstant());
 
         return View(model);
     }
@@ -252,6 +253,7 @@ public class ShiftsController(
                 IsSignedUp = value.IsSignedUp,
                 SignupStatus = value.Status,
                 SignupsBlockedByMissingDietary = blocked,
+                EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
                 Interaction = ShiftSignupInteraction.InstantToggle
             });
 
@@ -262,6 +264,7 @@ public class ShiftsController(
             IsSignedUp = value.IsSignedUp,
             SignupStatus = value.Status,
             SignupsBlockedByMissingDietary = blocked,
+            EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
             Interaction = ShiftSignupInteraction.InstantToggle
         });
     }

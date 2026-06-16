@@ -271,8 +271,199 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     // ==========================================================================
+    // ReassignMembershipsToUserAsync (account-merge fold)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_MovesMembership_WhenTargetNotMemberOfSeason()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("merge-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+        var moved = await _dbContext.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == target, ct);
+        moved.CampSeasonId.Should().Be(season.Id);
+        moved.Status.Should().Be(CampMemberStatus.Active);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_CarriesRoleAssignments_WhenMembershipMoves()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("role-camp");
+        var leadDef = await SeedSpecialRoleDefinitionAsync(CampSpecialRole.Lead);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var member = await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        await SeedAssignmentAsync(season.Id, leadDef.Id, member.Id);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        var assignment = await _dbContext.CampRoleAssignments.AsNoTracking()
+            .Include(a => a.CampMember)
+            .SingleAsync(a => a.CampSeasonId == season.Id, ct);
+        assignment.CampMember.UserId.Should().Be(target);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_FoldsRolesAndDropsSourceMember_WhenTargetAlreadyMemberOfSeason()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("collide-camp");
+        var leadDef = await SeedSpecialRoleDefinitionAsync(CampSpecialRole.Lead);
+        var workshopDef = await SeedSpecialRoleDefinitionAsync(CampSpecialRole.Workshop);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceMember = await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        var targetMember = await SeedMemberAsync(season.Id, target, CampMemberStatus.Active);
+        // Shared role (lead) must dedup to one; source-only role (workshop) must move across.
+        await SeedAssignmentAsync(season.Id, leadDef.Id, sourceMember.Id);
+        await SeedAssignmentAsync(season.Id, leadDef.Id, targetMember.Id);
+        await SeedAssignmentAsync(season.Id, workshopDef.Id, sourceMember.Id);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // Source's duplicate membership is gone; survivor keeps exactly one for the season.
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+        (await _dbContext.CampMembers.AsNoTracking()
+            .CountAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct)).Should().Be(1);
+        // Survivor's member now holds both roles, lead deduped.
+        var targetAssignments = await _dbContext.CampRoleAssignments.AsNoTracking()
+            .Where(a => a.CampMemberId == targetMember.Id).ToListAsync(ct);
+        targetAssignments.Select(a => a.CampRoleDefinitionId)
+            .Should().BeEquivalentTo(new[] { leadDef.Id, workshopDef.Id });
+        // Nothing left dangling on the deleted source member.
+        (await _dbContext.CampRoleAssignments.AsNoTracking()
+            .CountAsync(a => a.CampMemberId == sourceMember.Id, ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_RepointsRemovedSourceMember_EvenWhenTargetHasLiveMember()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("history-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedMemberAsync(season.Id, source, CampMemberStatus.Removed);
+        await SeedMemberAsync(season.Id, target, CampMemberStatus.Active);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // Removed rows ignore the active-unique index, so the history row carries over
+        // and coexists with the survivor's live membership.
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+        var targetMembers = await _dbContext.CampMembers.AsNoTracking()
+            .Where(m => m.UserId == target && m.CampSeasonId == season.Id).ToListAsync(ct);
+        targetMembers.Select(m => m.Status)
+            .Should().BeEquivalentTo(new[] { CampMemberStatus.Active, CampMemberStatus.Removed });
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_IsIdempotent_WhenRunTwice()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("idem-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        // Second run finds nothing left on source — must be a safe no-op, not a duplicate or throw.
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+        (await _dbContext.CampMembers.AsNoTracking()
+            .CountAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct)).Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_KeepsActiveStatus_WhenFoldingActiveSourceIntoPendingTarget()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("status-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        await SeedMemberAsync(season.Id, target, CampMemberStatus.Pending);
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // Survivor must not be downgraded to the target's Pending state — active
+        // role-assignment queries filter Status == Active, so a Pending survivor
+        // would silently lose the leads the archived account held.
+        var survivor = await _dbContext.CampMembers.AsNoTracking()
+            .SingleAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct);
+        survivor.Status.Should().Be(CampMemberStatus.Active);
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ReassignMembershipsToUserAsync_PreservesEarlyEntry_WhenFoldingIntoCollidingMember()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("ee-fold-camp");
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceMember = await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
+        sourceMember.HasEarlyEntry = true;
+        await _dbContext.SaveChangesAsync(ct);
+        await SeedMemberAsync(season.Id, target, CampMemberStatus.Active); // survivor has no EE grant
+
+        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+
+        // The archived member's early-entry grant must survive the collision-drop.
+        var survivor = await _dbContext.CampMembers.AsNoTracking()
+            .SingleAsync(m => m.UserId == target && m.CampSeasonId == season.Id, ct);
+        survivor.HasEarlyEntry.Should().BeTrue();
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
+
+    private async Task<CampSeason> SeedCampWithSeasonAsync(string slug)
+    {
+        var camp = await SeedCampAsync(slug);
+        var season = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return season;
+    }
+
+    private async Task<CampMember> SeedMemberAsync(Guid seasonId, Guid userId, CampMemberStatus status)
+    {
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            UserId = userId,
+            Status = status,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = status == CampMemberStatus.Active ? _clock.GetCurrentInstant() : null,
+        };
+        _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return member;
+    }
+
+    private async Task SeedAssignmentAsync(Guid seasonId, Guid roleDefinitionId, Guid campMemberId)
+    {
+        _dbContext.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            CampRoleDefinitionId = roleDefinitionId,
+            CampMemberId = campMemberId,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = Guid.NewGuid(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+    }
 
     private async Task<Camp> SeedCampAsync(string slug)
     {

@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Finance;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance;
@@ -28,7 +29,10 @@ public static class HoldedSectionExtensions
         });
 
         services.AddScoped<IHoldedRepository, HoldedRepository>();
-        services.AddScoped<IHoldedFinanceService, HoldedFinanceService>();
+        services.AddScoped<HoldedFinanceService>();
+        services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<HoldedFinanceService>());
+        // Owns the user-scoped holded_creditor_contacts table → GDPR export contributor (design-rules §8a).
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<HoldedFinanceService>());
         services.AddScoped<HoldedSyncJob>();
 
         return services;

@@ -119,12 +119,13 @@ public class CleanupNotificationsJobTests : IDisposable
             CreatedAt = now - Duration.FromDays(10),
         };
 
-        // Unresolved actionable, 60 days old — should NOT be deleted (actionable never auto-cleaned)
+        // Unresolved actionable of a LIVE source, 60 days old — should NOT be deleted
+        // (actionable of live sources are never auto-cleaned).
         var oldActionable = new Notification
         {
             Id = Guid.NewGuid(),
             Title = "Old actionable",
-            Source = NotificationSource.ConsentReviewNeeded,
+            Source = NotificationSource.ShiftCoverageGap,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.High,
             CreatedAt = now - Duration.FromDays(60),
@@ -139,5 +140,42 @@ public class CleanupNotificationsJobTests : IDisposable
         remaining.Should().HaveCount(2);
         remaining.Select(n => n.Title).Should().Contain("Recent informational");
         remaining.Select(n => n.Title).Should().Contain("Old actionable");
+    }
+
+    [HumansFact]
+    public async Task DeletesUnresolvedRetiredSourceNotifications()
+    {
+        var now = _clock.GetCurrentInstant();
+
+        // Retired-source actionable (no longer emitted, no resolution path) — purged
+        // regardless of age, even though it is actionable.
+        var retired = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Legacy application submitted",
+            Source = NotificationSource.ApplicationSubmitted,
+            Class = NotificationClass.Actionable,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = now - Duration.FromHours(1),
+        };
+
+        // Live-source actionable — survives.
+        var live = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Live issue",
+            Source = NotificationSource.IssueSubmitted,
+            Class = NotificationClass.Actionable,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = now - Duration.FromHours(1),
+        };
+
+        await _dbContext.Notifications.AddRangeAsync(retired, live);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var remaining = await _dbContext.Notifications.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        remaining.Should().ContainSingle().Which.Title.Should().Be("Live issue");
     }
 }

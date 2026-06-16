@@ -152,7 +152,6 @@ public class EventsApiControllerTests
             DisplayName = "Test Submitter",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         };
         return UserInfo.Create(
             user: user,

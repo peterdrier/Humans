@@ -25,12 +25,17 @@
         <h1 class="mb-0">@Model.Year.Name</h1>
         <span class="badge bg-success fs-6">@Model.Year.Status</span>
     </div>
-    @if (Model.IsFinanceAdmin)
-    {
-        <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">
-            <i class="fa-solid fa-gear me-1"></i>Finance Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
+    <div class="d-flex gap-2">
+        <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-receipt me-1"></i>Expenses
         </a>
-    }
+        @if (Model.IsFinanceAdmin)
+        {
+            <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">
+                <i class="fa-solid fa-gear me-1"></i>Finance Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        }
+    </div>
 </div>
 
 

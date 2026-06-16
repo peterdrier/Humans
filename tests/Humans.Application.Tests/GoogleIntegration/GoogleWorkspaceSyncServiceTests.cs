@@ -447,8 +447,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 Id = userId,
                 UserName = $"user-{userId:N}",
                 DisplayName = "Alice Test",
-                Email = email,
-                GoogleEmailStatus = GoogleEmailStatus.Unknown
+                Email = email
             },
             [], [], [], null, [], [], [], []);
 }

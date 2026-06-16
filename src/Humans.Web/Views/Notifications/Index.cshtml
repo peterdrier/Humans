@@ -78,22 +78,6 @@
         }
         else
         {
-            @if (Model.Meters.Count > 0)
-            {
-                <div class="notification-section-label">@Localizer["Notification_Section_WorkQueues"]</div>
-                @foreach (var meter in Model.Meters)
-                {
-                    <div class="notification-meter-row">
-                        <div class="notification-meter-info">
-                            <span class="notification-meter-title">@meter.Title</span>
-                            <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
-                        </div>
-                        <a href="@meter.ActionUrl" class="btn btn-sm btn-outline-primary notification-meter-action">
-                            @Localizer["Notification_DefaultActionLabel"]
-                        </a>
-                    </div>
-                }
-            }
             @if (Model.NeedsAttention.Count > 0)
             {
                 <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
@@ -108,6 +92,22 @@
                         <div class="flex-grow-1">
                             <partial name="_NotificationRow" model="item" />
                         </div>
+                    </div>
+                }
+            }
+            @if (Model.Meters.Count > 0)
+            {
+                <div class="notification-section-label">@Localizer["Notification_Section_WorkQueues"]</div>
+                @foreach (var meter in Model.Meters)
+                {
+                    <div class="notification-meter-row">
+                        <div class="notification-meter-info">
+                            <span class="notification-meter-title">@meter.Title</span>
+                            <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
+                        </div>
+                        <a href="@meter.ActionUrl" class="btn btn-sm btn-outline-primary notification-meter-action">
+                            @Localizer["Notification_DefaultActionLabel"]
+                        </a>
                     </div>
                 }
             }

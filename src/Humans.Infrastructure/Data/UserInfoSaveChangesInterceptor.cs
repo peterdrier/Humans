@@ -173,7 +173,8 @@ public sealed class UserInfoSaveChangesInterceptor(
             ICalToken = user.ICalToken,
             SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
             MagicLinkSentAt = user.MagicLinkSentAt,
-            GoogleEmailStatus = user.GoogleEmailStatus,
+            // GoogleEmailStatus removed — now per-address on UserEmail; UserInfo derives it from
+            // the canonical Google row, and a UserEmail change already invalidates the cache below.
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,

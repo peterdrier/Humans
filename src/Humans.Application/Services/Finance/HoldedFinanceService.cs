@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Finance;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance.Dtos;
@@ -21,7 +22,7 @@ public sealed class HoldedFinanceService(
     // Future: narrow to an IBudgetServiceRead via the section read/write split.
     IBudgetService budget,
     IClock clock,
-    ILogger<HoldedFinanceService> logger) : IHoldedFinanceService
+    ILogger<HoldedFinanceService> logger) : IHoldedFinanceService, IUserDataContributor
 {
     private const int SyncPageSafetyCap = 200;
 
@@ -323,55 +324,60 @@ public sealed class HoldedFinanceService(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 40000099;
 
-    public async Task SyncCreditorDataAsync(CancellationToken ct = default)
+    // Holded caps a dailyledger window at one year; 364 days stays safely under.
+    private static readonly Duration LedgerWindow = Duration.FromDays(364);
+    // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
+    private const int BackfillWindowCap = 25;
+
+    public async Task SyncCreditorLedgerAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var epoch = Instant.FromUnixTimeSeconds(0);
 
         try
         {
-            var chart = await client.ListChartOfAccountsAsync(ct);
-            var balances = chart
-                .Where(a => a.Num >= CreditorAccountMin && a.Num <= CreditorAccountMax)
-                .Select(a => new HoldedCreditorBalance
-                {
-                    Id = Guid.NewGuid(),
-                    SupplierAccountNum = a.Num,
-                    Name = a.Name,
-                    Balance = a.Balance,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                })
-                .ToList();
-            await repo.UpsertCreditorBalancesAsync(balances, now, ct);
+            var latest = await repo.GetLatestLedgerLineDateAsync(ct);
 
-            var payments = (await client.ListPaymentsAsync(ct))
-                // Skip malformed rows: no id/contact, or a missing/epoch-0 date (would store 1970-01-01).
-                .Where(p => !string.IsNullOrEmpty(p.Id) && !string.IsNullOrEmpty(p.ContactId)
-                         && p.Date != epoch)
-                .Select(p => new HoldedPayment
+            // First run (empty cache) → full-history backfill in ≤1-year backward windows.
+            // Steady state → incremental append from the latest cached line forward, also in ≤1-year
+            // windows so a long gap (sync disabled or no creditor activity for >1 year) still catches up
+            // instead of failing on an over-wide request. Idempotent upsert on (EntryNumber, Line) makes
+            // re-fetching the boundary safe.
+            var fetched = latest is null
+                ? await BackfillLedgerAsync(now, ct)
+                : await IncrementalLedgerAsync(latest.Value, now, ct);
+
+            // Persist only creditor-account (400000xx) lines — the only accounts the read paths derive
+            // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
+            // daybook regardless; we keep the subset we use. (Budget actuals run on a separate path.)
+            var lines = fetched
+                .Where(l => l.AccountNum >= CreditorAccountMin && l.AccountNum <= CreditorAccountMax)
+                .Select(l => new HoldedLedgerLine
                 {
                     Id = Guid.NewGuid(),
-                    HoldedPaymentId = p.Id,
-                    HoldedContactId = p.ContactId,
-                    Amount = p.Amount,
-                    Date = p.Date.InZone(zone).Date,
-                    DocumentType = p.DocumentType,
+                    EntryNumber = l.EntryNumber,
+                    Line = l.Line,
+                    AccountNum = l.AccountNum,
+                    Date = l.Date,
+                    Type = l.Type,
+                    Description = l.Description,
+                    Debit = l.Debit,
+                    Credit = l.Credit,
                     CreatedAt = now,
+                    LastSyncedAt = now,
                 })
                 .ToList();
-            await repo.UpsertPaymentsAsync(payments, now, ct);
+
+            await repo.UpsertLedgerLinesAsync(lines, now, ct);
 
             logger.LogInformation(
-                "Holded creditor sync cached {BalanceCount} creditor balances and {PaymentCount} payments",
-                balances.Count, payments.Count);
+                "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
+                latest is null ? "backfill" : "incremental", lines.Count);
         }
         catch (Exception ex)
         {
             // Surface the failure in the same sync-state widget the actuals pull uses, then rethrow
             // so Hangfire records the job failure too.
-            logger.LogError(ex, "HoldedFinanceService.SyncCreditorDataAsync failed");
+            logger.LogError(ex, "HoldedFinanceService.SyncCreditorLedgerAsync failed");
             try
             {
                 var state = await repo.GetSyncStateAsync(CancellationToken.None);
@@ -388,33 +394,251 @@ public sealed class HoldedFinanceService(
         }
     }
 
-    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
-        int? supplierAccountNum, string holdedContactId, CancellationToken ct = default)
+    /// <summary>Sweeps inception→now in ≤1-year backward windows, stopping at the first empty window
+    /// (the org's books are contiguous back to inception). Logs if the window cap is hit (no silent caps).</summary>
+    private async Task<IReadOnlyList<HoldedLedgerLineDto>> BackfillLedgerAsync(Instant now, CancellationToken ct)
     {
-        var balanceRow = supplierAccountNum is { } num
-            ? await repo.GetCreditorBalanceByAccountNumAsync(num, ct)
-            : null;
-        var payments = string.IsNullOrEmpty(holdedContactId)
-            ? Array.Empty<HoldedPayment>()
-            : (await repo.GetPaymentsByContactAsync(holdedContactId, ct)).ToArray();
+        var all = new List<HoldedLedgerLineDto>();
+        var to = now;
+        for (var window = 0; window < BackfillWindowCap; window++)
+        {
+            var from = to.Minus(LedgerWindow);
+            var page = await client.ListDailyLedgerAsync(from, to, ct);
+            if (page.Count == 0)
+                return all;
+            all.AddRange(page);
+            to = from.Minus(Duration.FromSeconds(1));
+        }
 
-        if (balanceRow is null && payments.Length == 0)
+        logger.LogWarning(
+            "Holded ledger backfill hit the {Cap}-window cap; journal history older than {To} was not swept.",
+            BackfillWindowCap, to);
+        return all;
+    }
+
+    /// <summary>Sweeps forward from the latest cached line in ≤1-year windows (the API rejects wider
+    /// ranges). In steady state this is a single window; after a long dormancy it chunks so the sync
+    /// catches up rather than failing on an over-wide request.</summary>
+    private async Task<IReadOnlyList<HoldedLedgerLineDto>> IncrementalLedgerAsync(Instant from, Instant now, CancellationToken ct)
+    {
+        var all = new List<HoldedLedgerLineDto>();
+        var windowStart = from;
+        while (windowStart < now)
+        {
+            var windowEnd = windowStart.Plus(LedgerWindow);
+            if (windowEnd > now) windowEnd = now;
+            all.AddRange(await client.ListDailyLedgerAsync(windowStart, windowEnd, ct));
+            windowStart = windowEnd.Plus(Duration.FromSeconds(1));
+        }
+        return all;
+    }
+
+    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
+        int? supplierAccountNum, CancellationToken ct = default)
+    {
+        if (supplierAccountNum is not { } num)
             return null;
 
-        // Leave Balance null when no balance row is cached — a missing balance is UNKNOWN, not settled.
-        // Coercing to 0 would make downstream polling falsely mark reports Paid (Codex P1).
-        var balance = balanceRow?.Balance;
-        var lastPaymentDate = payments.Length == 0
-            ? (LocalDate?)null
-            : payments.Max(p => p.Date);
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(num, ct);
+        if (lines.Count == 0)
+            return null;
+
+        var balance = LedgerBalance(lines);
+        var payments = LedgerPayments(lines);
 
         return new HoldedCreditorStatus(
-            SupplierAccountNum: balanceRow?.SupplierAccountNum ?? supplierAccountNum,
+            SupplierAccountNum: num,
             Balance: balance,
-            OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
-            LastPaymentDate: lastPaymentDate,
+            OwedToMember: Math.Max(0m, -balance),
+            LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
             TotalPaid: payments.Sum(p => p.Amount),
-            Payments: payments.Select(p => new HoldedPaymentInfo(p.Date, p.Amount, p.DocumentType)).ToList());
+            Payments: payments);
+    }
+
+    // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
+    //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
+    //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
+
+    private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLine> lines) =>
+        lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
+
+    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLine> lines)
+    {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        return lines
+            .Where(l => l.Debit > 0m)
+            .Select(l => new HoldedPaymentInfo(l.Date.InZone(zone).Date, l.Debit, l.Type))
+            .ToList();
+    }
+
+    // ─── Creditor bindings + statement ──────────────────────────────────────────
+
+    public async Task<IReadOnlyList<HoldedCreditorAccountRow>> ListCreditorAccountsAsync(
+        CancellationToken ct = default)
+    {
+        var byAccount = (await repo.GetAllLedgerLinesAsync(ct))
+            .GroupBy(l => l.AccountNum)
+            .ToDictionary(g => g.Key, g => (IReadOnlyCollection<HoldedLedgerLine>)g.ToList());
+
+        // Group-by-first, not ToDictionary: only UserId is unique in the DB, so two members
+        // could (mis)bind to the same account number — that must not throw the whole list.
+        var bindings = (await repo.GetCreditorContactsAsync(ct))
+            .Where(b => b.SupplierAccountNum is not null)
+            .GroupBy(b => b.SupplierAccountNum!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Every creditor account with ledger activity, plus bound accounts that have no lines yet.
+        // Name (the Holded chart-account label) is no longer cached; the bound member's name is
+        // resolved by the controller for display.
+        return byAccount.Keys.Union(bindings.Keys)
+            .Select(num =>
+            {
+                decimal? balance = byAccount.TryGetValue(num, out var lines) ? LedgerBalance(lines) : null;
+                bindings.TryGetValue(num, out var binding);
+                return new HoldedCreditorAccountRow(
+                    SupplierAccountNum: num,
+                    Name: "",
+                    Balance: balance,
+                    OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
+                    BoundUserId: binding?.UserId,
+                    BindingSource: binding?.Source);
+            }).ToList();
+    }
+
+    public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var b = await repo.GetCreditorContactByUserAsync(userId, ct);
+        return b is null
+            ? null
+            : new CreditorContactBinding(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source);
+    }
+
+    public async Task<bool> SetCreditorContactAsync(
+        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+    {
+        var contact = (await client.ListContactsAsync(ct))
+            .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
+        if (contact is null) return false;
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldedContactId = contact.Id,
+            SupplierAccountNum = supplierAccountNum,
+            Source = CreditorContactSource.Manual,
+            CreatedAt = now,
+            UpdatedAt = now,
+        }, now, ct);
+        return true;
+    }
+
+    public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
+        int supplierAccountNum, CancellationToken ct = default)
+    {
+        // Reads cached daybook lines only — zero Holded calls per view.
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(supplierAccountNum, ct);
+        if (lines.Count == 0)
+            return null;
+
+        var balance = LedgerBalance(lines);
+        return new HoldedCreditorLedger(
+            SupplierAccountNum: supplierAccountNum,
+            Name: null,
+            Balance: balance,
+            OwedToMember: Math.Max(0m, -balance),
+            Lines: lines.Select(l => new HoldedLedgerLineDto
+            {
+                EntryNumber = l.EntryNumber,
+                Line = l.Line,
+                Date = l.Date,
+                AccountNum = l.AccountNum,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                Type = l.Type,
+                Description = l.Description,
+            }).ToList());
+    }
+
+    public async Task<string> EnsureCreditorContactAsync(
+        Guid userId, string legalName, string? burnerName, string? iban,
+        string? seedContactId, int? seedAccountNum, CancellationToken ct = default)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        // Reuse the bound contact, else lazy-seed from the report's previously-cached contact id.
+        var existingContactId = !string.IsNullOrEmpty(binding?.HoldedContactId)
+            ? binding!.HoldedContactId
+            : (string.IsNullOrEmpty(seedContactId) ? null : seedContactId);
+
+        // Burner goes in tradeName only — and only when it differs from the official legal name.
+        var tradeName = !string.IsNullOrWhiteSpace(burnerName)
+                        && !string.Equals(burnerName, legalName, StringComparison.Ordinal)
+            ? burnerName
+            : null;
+
+        var contactId = await client.UpsertContactAsync(new HoldedContactInput
+        {
+            Name = legalName,
+            TradeName = tradeName,
+            CustomId = userId.ToString(),
+            Type = "creditor",
+            Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
+            ExistingContactId = existingContactId,
+        }, ct);
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = Guid.NewGuid(),                                   // ignored on update (keyed by UserId)
+            UserId = userId,
+            HoldedContactId = contactId,
+            SupplierAccountNum = binding?.SupplierAccountNum ?? seedAccountNum,
+            Source = binding?.Source ?? CreditorContactSource.Auto, // preserve a Manual binding
+            CreatedAt = now,
+            UpdatedAt = now,
+        }, now, ct);
+
+        return contactId;
+    }
+
+    public async Task SetCreditorAccountNumAsync(
+        Guid userId, int supplierAccountNum, CancellationToken ct = default)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        if (binding is null) return;
+
+        var now = clock.GetCurrentInstant();
+        await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
+        {
+            Id = binding.Id,
+            UserId = userId,
+            HoldedContactId = binding.HoldedContactId,
+            SupplierAccountNum = supplierAccountNum,
+            Source = binding.Source,
+            CreatedAt = binding.CreatedAt,
+            UpdatedAt = now,
+        }, now, ct);
+    }
+
+    // ─── GDPR (Article 15 export) ───────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        return
+        [
+            new UserDataSlice(GdprExportSections.HoldedCreditorAccount,
+                binding is null
+                    ? null
+                    : new
+                    {
+                        binding.SupplierAccountNum,
+                        binding.HoldedContactId,
+                        Source = binding.Source.ToString(),
+                    }),
+        ];
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────────

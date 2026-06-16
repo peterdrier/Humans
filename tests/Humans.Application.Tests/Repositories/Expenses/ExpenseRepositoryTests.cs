@@ -57,19 +57,6 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetByStatusAsync_FiltersExactly()
-    {
-        await Seed(
-            MakeReport(status: ExpenseReportStatus.Draft),
-            MakeReport(status: ExpenseReportStatus.Submitted),
-            MakeReport(status: ExpenseReportStatus.Approved));
-
-        var submitted = await _sut.GetByStatusAsync(ExpenseReportStatus.Submitted, Xunit.TestContext.Current.CancellationToken);
-        submitted.Should().HaveCount(1);
-        submitted[0].Status.Should().Be(ExpenseReportStatus.Submitted);
-    }
-
-    [HumansFact]
     public async Task AddDraftAsync_PersistsReport()
     {
         var report = MakeReport();
@@ -182,23 +169,6 @@ public class ExpenseRepositoryTests
         var ev = await ctx.HoldedExpenseOutboxEvents.FirstAsync(e => e.Id == outboxId, Xunit.TestContext.Current.CancellationToken);
         ev.ExpenseReportId.Should().Be(r.Id);
         ev.EventType.Should().Be(HoldedExpenseOutboxEventType.CreateIncomingDoc);
-    }
-
-    [HumansFact]
-    public async Task MarkSepaSentAsync_FlipsAllInBatch()
-    {
-        var a = MakeReport(status: ExpenseReportStatus.Approved);
-        var b = MakeReport(status: ExpenseReportStatus.Approved);
-        var c = MakeReport(status: ExpenseReportStatus.Submitted); // not in batch
-        await Seed(a, b, c);
-
-        var flipped = await _sut.MarkSepaSentAsync([a.Id, b.Id],
-            Instant.FromUtc(2026, 5, 4, 10, 0), Xunit.TestContext.Current.CancellationToken);
-        flipped.Should().BeEquivalentTo([a.Id, b.Id]);
-
-        (await _sut.GetByIdAsync(a.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetByIdAsync(b.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
-        (await _sut.GetByIdAsync(c.Id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
     }
 
     [HumansFact]

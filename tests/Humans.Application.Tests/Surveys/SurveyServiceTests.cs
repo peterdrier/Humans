@@ -518,7 +518,7 @@ public class SurveyServiceTests
 
     private static UserInfo UserInfoWithName(Guid id, string burnerName) => new(
         id, burnerName, false, "en", null, Instant.MinValue, null, null, null, null, null,
-        false, null, false, null, GoogleEmailStatus.Unknown, null, null, null, null, null,
+        false, null, false, null, null, null, null, null, null,
         [], [], [], null, []);
 
     // ── Answering (wizard entry) ───────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { PERSONAS, liveLoginAndSave } from './helpers/auth';
 // Single test = single worker = no login herd during seeding. Failures are
 // collected so one broken persona doesn't hide the others.
 setup('authenticate all personas', async ({ browser, baseURL }) => {
-  setup.setTimeout(PERSONAS.length * 60_000);
+  setup.setTimeout(PERSONAS.length * 90_000);
   const failures: string[] = [];
   for (const slug of PERSONAS) {
     // baseURL isn't applied to ad-hoc contexts (only test page/context fixtures

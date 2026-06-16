@@ -120,8 +120,8 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<HoldedExpenseDoc> HoldedExpenseDocs => Set<HoldedExpenseDoc>();
     public DbSet<HoldedCategoryMap> HoldedCategoryMap => Set<HoldedCategoryMap>();
     public DbSet<HoldedSyncState> HoldedSyncStates => Set<HoldedSyncState>();
-    public DbSet<HoldedCreditorBalance> HoldedCreditorBalances => Set<HoldedCreditorBalance>();
-    public DbSet<HoldedPayment> HoldedPayments => Set<HoldedPayment>();
+    public DbSet<HoldedLedgerLine> HoldedLedgerLines => Set<HoldedLedgerLine>();
+    public DbSet<HoldedCreditorContact> HoldedCreditorContacts => Set<HoldedCreditorContact>();
 
     // Survey section
     public DbSet<Survey> Surveys => Set<Survey>();

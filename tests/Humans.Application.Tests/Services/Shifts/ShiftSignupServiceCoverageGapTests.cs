@@ -103,6 +103,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -130,6 +131,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),

@@ -68,7 +68,6 @@ public class PersonSearchMatcherTests
             DisplayName = displayName,
             PreferredLanguage = "en",
             CreatedAt = At,
-            GoogleEmailStatus = GoogleEmailStatus.Unknown,
         };
 
         var contactEntities = (contactFields ?? [])

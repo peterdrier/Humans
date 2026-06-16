@@ -24,6 +24,33 @@ public static class EmailNormalization
     }
 
     /// <summary>
+    /// Canonicalizes a Gmail address to the form Google itself resolves it to:
+    /// builds on <see cref="NormalizeForComparison"/> (lowercase, @googlemail.com → @gmail.com)
+    /// then strips the "+tag" sub-address from the local part
+    /// (peter+travel@gmail.com → peter@gmail.com). Non-Gmail addresses are returned
+    /// unchanged — plus-addressing is not a universal alias outside Gmail.
+    /// Used at the Google Workspace boundary, where the raw "+tag" form is rejected
+    /// (HTTP 404) and would otherwise be re-added on every sync pass.
+    /// </summary>
+    public static string CanonicalizeGmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return email;
+
+        const string gmailSuffix = "@gmail.com";
+        var normalized = NormalizeForComparison(email);
+        if (!normalized.EndsWith(gmailSuffix, StringComparison.Ordinal))
+            return email;
+
+        var localPart = normalized[..^gmailSuffix.Length];
+        var plusIndex = localPart.IndexOf('+');
+        if (plusIndex < 0)
+            return normalized;
+
+        return string.Concat(localPart.AsSpan(0, plusIndex), gmailSuffix);
+    }
+
+    /// <summary>
     /// Compares two email addresses for equivalence, treating @googlemail.com and @gmail.com as the same domain.
     /// </summary>
     public static bool EmailsMatch(string? a, string? b)

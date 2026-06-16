@@ -24,6 +24,11 @@ public interface INotificationEmitter
     /// Sends a notification to specific individual users.
     /// Creates one notification per user (individual resolution scope).
     /// </summary>
+    /// <param name="sourceKey">
+    /// Optional correlation key for the source entity (e.g. an issue id) so the
+    /// originating section can later auto-resolve these notifications via
+    /// <c>ResolveBySourceKeyAsync</c> when that entity is dealt with.
+    /// </param>
     Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
@@ -34,5 +39,6 @@ public interface INotificationEmitter
         string? actionUrl = null,
         string? actionLabel = null,
         string? targetGroupName = null,
+        string? sourceKey = null,
         CancellationToken cancellationToken = default);
 }

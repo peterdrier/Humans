@@ -183,8 +183,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> SetGoogleEmailStatusAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>

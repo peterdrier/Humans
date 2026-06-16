@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Agent/AgentService.cs
+  src/Humans.Application/Constants/AgentToolNames.cs
+  src/Humans.Infrastructure/Services/Agent/AgentToolDispatcher.cs
+  src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs
+  src/Humans.Web/Controllers/AgentController.cs
+  src/Humans.Web/Views/Agent/**
+-->
+<!-- freshness:flag-on-change
+  End-user behaviour of the in-app AI helper: how to open it (the help-button menu), what it can answer, the talk-with-AI / create-issue / send-feedback menu options, and that it explains-but-never-acts — review only when user-visible agent behaviour changes, not internal preload/store refactors.
+-->
+
 # The in-app AI helper
 
 See the round **help button** in the bottom-right corner of the app (it's got a

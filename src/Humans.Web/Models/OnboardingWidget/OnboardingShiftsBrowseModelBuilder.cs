@@ -27,7 +27,8 @@ public static class OnboardingShiftsBrowseModelBuilder
         IReadOnlyList<UrgentShift> allShifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,
-        string selectedPriority)
+        string selectedPriority,
+        bool earlyEntrySignupsClosed = false)
     {
         var normalizedPriority = NormalizePriority(selectedPriority);
 
@@ -51,6 +52,7 @@ public static class OnboardingShiftsBrowseModelBuilder
             UrgencyRankedRotas = rotaGroups,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
+            EarlyEntrySignupsClosed = earlyEntrySignupsClosed,
         };
 
         return new ShiftsStepViewModel

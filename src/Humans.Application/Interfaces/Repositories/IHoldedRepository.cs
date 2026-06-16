@@ -16,13 +16,18 @@ public interface IHoldedRepository : IRepository
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
-    // Creditor balances (chartofaccounts cache)
-    Task UpsertCreditorBalancesAsync(IReadOnlyList<HoldedCreditorBalance> rows, Instant now, CancellationToken ct = default);
-    Task<HoldedCreditorBalance?> GetCreditorBalanceByAccountNumAsync(int accountNum, CancellationToken ct = default);
+    // Daybook journal lines (the single source of truth — balance/owed/payments all derive from these).
+    /// <summary>Idempotent upsert keyed on (EntryNumber, Line); journal lines are immutable facts.</summary>
+    Task UpsertLedgerLinesAsync(IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(int accountNum, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedLedgerLine>> GetAllLedgerLinesAsync(CancellationToken ct = default);
+    /// <summary>The most recent cached line's date, or null when the cache is empty (drives backfill vs incremental).</summary>
+    Task<Instant?> GetLatestLedgerLineDateAsync(CancellationToken ct = default);
 
-    // Payments cache
-    Task UpsertPaymentsAsync(IReadOnlyList<HoldedPayment> rows, Instant now, CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedPayment>> GetPaymentsByContactAsync(string holdedContactId, CancellationToken ct = default);
+    // Creditor contact bindings (member -> Holded creditor account)
+    Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
+    Task UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
 
     // Sync state (singleton, seeded by migration)
     Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default);

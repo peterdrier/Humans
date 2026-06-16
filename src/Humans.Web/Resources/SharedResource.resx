@@ -2036,6 +2036,9 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Primary</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email used for Google Workspace sync.</value></data>
+  <data name="EmailGrid_GoogleProblem" xml:space="preserve"><value>Google sync problem</value></data>
+  <data name="EmailGrid_GoogleOk" xml:space="preserve"><value>Google OK</value></data>
+  <data name="EmailGrid_RetryGoogle" xml:space="preserve"><value>Retry</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
   <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
   <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
@@ -2422,6 +2425,8 @@
   <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Other intolerance text</value></data>
   <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALS</value></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
+  <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Set-up closed</value></data>
+  <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Set-up sign-ups are closed — we're already on site.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
@@ -2755,8 +2760,6 @@
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Approved</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Coordinator endorsed</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Draft</value></data>
-  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Paid</value></data>
-  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA sent</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Submitted</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>

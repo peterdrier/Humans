@@ -32,6 +32,7 @@ public sealed class IssuesService(
     IEmailService email,
     IEmailMessageFactory emailMessages,
     INotificationEmitter notifications,
+    INotificationInboxService notificationInbox,
     IAuditLogService audit,
     INavBadgeCacheInvalidator navBadge,
     IIssuesBadgeCacheInvalidator issuesBadge,
@@ -393,6 +394,12 @@ public sealed class IssuesService(
             AuditAction.IssueStatusChanged, issueId, actorUserId,
             $"status: {oldStatus} → {newStatus}");
         await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
+
+        // Once the issue is terminal there is nothing left to act on, so clear the
+        // "New issue filed" alerts that fanned out to admins + section role-holders.
+        if (newStatus.IsTerminal())
+            await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
+
         navBadge.Invalidate();
         issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
@@ -859,12 +866,29 @@ public sealed class IssuesService(
                 body: issue.Description,
                 actionUrl: $"/Issues/{issue.Id}",
                 actionLabel: "View issue",
+                sourceKey: issue.Id.ToString(),
                 cancellationToken: ct);
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
                 "Failed to dispatch IssueSubmitted notification for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    private async Task ResolveSubmittedNotificationsAsync(
+        Issue issue, Guid? actorUserId, CancellationToken ct)
+    {
+        try
+        {
+            await notificationInbox.ResolveBySourceKeyAsync(
+                NotificationSource.IssueSubmitted, issue.Id.ToString(), actorUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to resolve IssueSubmitted notifications for issue {IssueId}",
                 issue.Id);
         }
     }

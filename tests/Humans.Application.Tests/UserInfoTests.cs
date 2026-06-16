@@ -13,7 +13,6 @@ public class UserInfoTests
         DisplayName = "Test",
         PreferredLanguage = "en",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        GoogleEmailStatus = GoogleEmailStatus.Unknown,
     };
 
     [HumansFact]
@@ -63,6 +62,70 @@ public class UserInfoTests
             .Should().Equal(MessageCategory.Marketing, MessageCategory.Governance);
         info.CommunicationPreferences[0].OptedOut.Should().BeFalse();
         info.CommunicationPreferences[0].UpdateSource.Should().Be("Profile");
+    }
+
+    [HumansFact]
+    public void GoogleEmailStatus_falls_back_to_verified_provider_row_when_no_IsGoogle_row()
+    {
+        // ~pre-#687 users have no IsGoogle row; sync targets the verified provider (OAuth) row,
+        // so its rejection must drive suppression (Codex review on #1015).
+        var userId = Guid.NewGuid();
+        var providerRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "fallback@example.com",
+            IsVerified = true,
+            IsGoogle = false,
+            Provider = "Google",
+            ProviderKey = "sub-1",
+            GoogleEmailStatus = GoogleEmailStatus.Rejected,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+
+        var info = UserInfo.Create(
+            MinimalUser(userId), [providerRow], [], [], profile: null, [], [], [], []);
+
+        info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Rejected);
+    }
+
+    [HumansFact]
+    public void GoogleEmailStatus_prefers_IsGoogle_row_over_provider_fallback()
+    {
+        var userId = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var isGoogleRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "canonical@example.com",
+            IsVerified = true,
+            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "sub-canon",
+            GoogleEmailStatus = GoogleEmailStatus.Valid,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var providerFallback = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "fallback@example.com",
+            IsVerified = true,
+            IsGoogle = false,
+            Provider = "Google",
+            ProviderKey = "sub-fb",
+            GoogleEmailStatus = GoogleEmailStatus.Rejected,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var info = UserInfo.Create(
+            MinimalUser(userId), [isGoogleRow, providerFallback], [], [], profile: null, [], [], [], []);
+
+        info.GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
     }
 
     [HumansFact]

@@ -188,6 +188,46 @@
             </div>
         }
 
+        @if (Model.CanBindCreditor)
+        {
+            <div class="card mb-3 border-warning">
+                <div class="card-header bg-warning-subtle"><strong><i class="fa-solid fa-link me-1"></i>Holded creditor account</strong></div>
+                <div class="card-body">
+                    @if (Model.BoundAccountNum is { } boundAcct)
+                    {
+                        <p class="small mb-2"><i class="fa-solid fa-circle-check text-success me-1"></i>Bound to account <strong>@boundAcct</strong>. Change below if needed.</p>
+                    }
+                    else
+                    {
+                        <p class="small mb-2 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Not bound &mdash; set this before approving so the push reuses the right account instead of creating a new one.</p>
+                    }
+                    <form asp-controller="Finance" asp-action="BindCreditor" method="post" class="row g-2 align-items-center">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" value="@Model.Report.SubmitterUserId" />
+                        <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                        <div class="col-auto">
+                            @{
+                                var accountItems = Model.CreditorAccounts.Select(a => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                {
+                                    Value = a.SupplierAccountNum.ToString(),
+                                    Text = a.OwedToMember > 0
+                                        ? $"{a.SupplierAccountNum} — {a.Name} (owed {a.OwedToMember.ToEuro()})"
+                                        : $"{a.SupplierAccountNum} — {a.Name}",
+                                    Selected = Model.BoundAccountNum == a.SupplierAccountNum,
+                                });
+                            }
+                            <select name="supplierAccountNum" class="form-select form-select-sm" asp-items="accountItems" required>
+                                <option value="">Select account…</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Bind</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+
         @if (Model.CanSubmit)
         {
             <div class="card border-primary">
