@@ -2758,8 +2758,6 @@
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Approved</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Coordinator endorsed</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Draft</value></data>
-  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Paid</value></data>
-  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA sent</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Submitted</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Withdrawn</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>

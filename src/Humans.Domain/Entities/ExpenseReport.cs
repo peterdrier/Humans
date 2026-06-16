@@ -19,8 +19,6 @@ public class ExpenseReport
     public Instant? CoordinatorEndorsedAt { get; set; }
     public Guid? ApprovedByUserId { get; set; }
     public Instant? ApprovedAt { get; set; }
-    public Instant? SepaSentAt { get; set; }
-    public Instant? PaidAt { get; set; }
     public string? LastRejectionReason { get; set; }
     public Guid? LastRejectedByUserId { get; set; }
     public Instant? LastRejectedAt { get; set; }

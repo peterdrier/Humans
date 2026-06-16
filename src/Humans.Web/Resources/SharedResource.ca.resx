@@ -6315,8 +6315,6 @@
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Aprovat</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avalat pel coordinador</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
-  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Pagat</value></data>
-  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA enviat</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Error</value></data>

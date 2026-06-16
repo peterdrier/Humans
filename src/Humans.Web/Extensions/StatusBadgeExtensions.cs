@@ -41,8 +41,6 @@ public static class StatusBadgeExtensions
             ExpenseReportStatus.Submitted => "bg-primary",
             ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
             ExpenseReportStatus.Approved => "bg-success",
-            ExpenseReportStatus.SepaSent => "bg-warning text-dark",
-            ExpenseReportStatus.Paid => "bg-success",
             ExpenseReportStatus.Withdrawn => "bg-secondary",
             _ => "bg-secondary"
         };

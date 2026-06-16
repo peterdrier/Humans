@@ -92,11 +92,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _holdedFinance,
-            new SepaPaymentFileBuilder(),
             _clock,
             Substitute.For<ILogger<ExpenseReportService>>(),
-            Options.Create(new TravelReimbursementConfig()),
-            Options.Create(new SepaConfig()));
+            Options.Create(new TravelReimbursementConfig()));
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -483,11 +481,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _holdedFinance,
-            new SepaPaymentFileBuilder(),
             _clock,
             logger,
-            Options.Create(new TravelReimbursementConfig()),
-            Options.Create(new SepaConfig()));
+            Options.Create(new TravelReimbursementConfig()));
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 

@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -733,84 +732,6 @@ public sealed class ExpensesController(
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Review));
-    }
-
-    [HttpPost("{id:guid}/Sepa/Reopen")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
-    public async Task<IActionResult> SepaReopen(Guid id)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-
-        var authResult = await authService.AuthorizeAsync(User, report,
-            new ExpenseReportOperationRequirement(ExpenseReportOperation.ReopenSepa));
-        if (!authResult.Succeeded) return Forbid();
-
-        var result = await service.ReopenSepaWithResultAsync(id, user.Id);
-        if (result.Succeeded)
-            SetSuccess("Report reopened — it is now Approved and can be included in a new SEPA batch.");
-        else
-            SetError(result.ErrorMessage ?? "Could not reopen the report.");
-
-        return RedirectToAction(nameof(Review));
-    }
-
-    [HttpPost("Sepa/Generate")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
-    public async Task<IActionResult> SepaGenerate(
-        [FromForm] List<Guid> ids,
-        CancellationToken ct)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        if (ids.Count == 0)
-        {
-            SetError("No reports selected.");
-            return RedirectToAction(nameof(Review));
-        }
-
-        try
-        {
-            // Per-report authorization is controller turf; eligibility + XML-before-flip
-            // ordering live in GenerateSepaPayoutAsync (one domain operation).
-            var authorizedIds = await ResolveAuthorizedForSepaAsync(ids, ct);
-            var result = await service.GenerateSepaPayoutAsync(authorizedIds, user.Id, ct);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorMessage ?? "Failed to generate SEPA file.");
-                return RedirectToAction(nameof(Review));
-            }
-
-            return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error generating SEPA pain.001 for user {UserId}", user.Id);
-            SetError("Failed to generate SEPA file.");
-            return RedirectToAction(nameof(Review));
-        }
-    }
-
-    private async Task<List<Guid>> ResolveAuthorizedForSepaAsync(
-        IEnumerable<Guid> ids, CancellationToken ct)
-    {
-        var result = new List<Guid>();
-        foreach (var id in ids)
-        {
-            var report = await expenseReadService.GetAsync(id, ct);
-            if (report is null) continue;
-
-            var authResult = await authService.AuthorizeAsync(User, report,
-                new ExpenseReportOperationRequirement(ExpenseReportOperation.IncludeInSepaPayout));
-            if (authResult.Succeeded) result.Add(id);
-        }
-        return result;
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(

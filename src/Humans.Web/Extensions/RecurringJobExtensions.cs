@@ -81,13 +81,9 @@ public static class RecurringJobExtensions
             ("holded-expense-outbox", () => RecurringJob.AddOrUpdate<HoldedExpenseOutboxJob>(
                 "holded-expense-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
-            // Nightly pull of Holded purchase docs → budget-category actuals — daily at 03:00 UTC.
+            // Nightly pull of Holded purchase docs → budget-category actuals + creditor daybook — daily at 03:00 UTC.
             ("holded-sync", () => RecurringJob.AddOrUpdate<HoldedSyncJob>(
                 "holded-sync", job => job.ExecuteAsync(CancellationToken.None), "0 3 * * *")),
-
-            // Poll Holded for payment confirmation on SepaSent reports — every 6 hours.
-            ("expense-paid-polling", () => RecurringJob.AddOrUpdate<ExpensePaidPollingJob>(
-                "expense-paid-polling", job => job.ExecuteAsync(CancellationToken.None), "0 */6 * * *")),
 
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
@@ -117,7 +113,7 @@ public static class RecurringJobExtensions
 
         // Retired job entries — best-effort cleanup so old Hangfire records
         // referencing deleted job types don't try to instantiate them.
-        foreach (var retired in new[] { "send-board-daily-digest", "send-admin-daily-digest" })
+        foreach (var retired in new[] { "send-board-daily-digest", "send-admin-daily-digest", "expense-paid-polling" })
         {
             try { RecurringJob.RemoveIfExists(retired); }
             catch (Exception ex)

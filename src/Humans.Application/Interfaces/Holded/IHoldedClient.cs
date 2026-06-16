@@ -44,12 +44,6 @@ public interface IHoldedClient
     /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 
-    /// <summary>Reads the full chart of accounts (trial balance) in one call.</summary>
-    Task<IReadOnlyList<HoldedChartAccountDto>> ListChartOfAccountsAsync(CancellationToken ct = default);
-
-    /// <summary>Reads all payment rows (contactId, amount, date) in one call.</summary>
-    Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default);
-
     /// <summary>Lists journal lines from the daily ledger across a date window. Paginates internally
     /// (250/page); the window must be one year or less (the Holded API rejects wider ranges).</summary>
     Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(

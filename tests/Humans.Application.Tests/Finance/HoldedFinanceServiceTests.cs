@@ -258,101 +258,161 @@ public class HoldedFinanceServiceTests
         savedState.LastError.Should().NotBeNullOrEmpty();
     }
 
-    // ─── Creditor data ──────────────────────────────────────────────────────────────
+    // ─── Creditor data (derived from the cached daybook ledger) ─────────────────
 
     [HumansFact]
-    public async Task SyncCreditorData_caches_only_400000xx_balances_and_all_payments()
+    public async Task SyncCreditorLedger_backfill_stores_only_creditor_account_lines()
     {
-        _client.ListChartOfAccountsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedChartAccountDto>
+        // Empty cache → backfill: sweep backward until an empty window, store only 400000xx lines.
+        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
+        var page = new List<HoldedLedgerLineDto>
         {
-            new() { Num = 40000001, Name = "Daniela", Balance = -3180m },
-            new() { Num = 40000004, Name = "Peter",   Balance = -23m },
-            new() { Num = 62900000, Name = "Otros",   Balance = 12m },  // not a creditor acct
-        });
-        _client.ListPaymentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPaymentDto>
-        {
-            new() { Id = "p1", ContactId = "c1", Amount = 50m, Date = FixedNow, DocumentType = "purchase" },
-        });
+            new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = FixedNow, Debit = 0m, Credit = 100m },
+            new() { EntryNumber = 1, Line = 1, AccountNum = 62900000, Date = FixedNow, Debit = 100m, Credit = 0m }, // not a creditor acct
+        };
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(page, new List<HoldedLedgerLineDto>()); // first window has data, second is empty → stop
 
-        IReadOnlyList<HoldedCreditorBalance>? balances = null;
-        await _repo.UpsertCreditorBalancesAsync(
-            Arg.Do<IReadOnlyList<HoldedCreditorBalance>>(b => balances = b), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        IReadOnlyList<HoldedPayment>? payments = null;
-        await _repo.UpsertPaymentsAsync(
-            Arg.Do<IReadOnlyList<HoldedPayment>>(p => payments = p), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        IReadOnlyList<HoldedLedgerLine>? stored = null;
+        await _repo.UpsertLedgerLinesAsync(
+            Arg.Do<IReadOnlyList<HoldedLedgerLine>>(r => stored = r), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await MakeService().SyncCreditorDataAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
 
-        balances.Should().NotBeNull();
-        balances!.Select(b => b.SupplierAccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000004 });
-        payments.Should().ContainSingle();
+        stored.Should().NotBeNull();
+        stored!.Select(l => l.AccountNum).Should().BeEquivalentTo(new[] { 40000001 });
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_computes_owed_and_paid()
+    public async Task SyncCreditorLedger_incremental_fetches_single_window_from_latest()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -3180m });
-        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
+        var latest = Instant.FromUtc(2026, 4, 1, 0, 0);
+        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns(latest);
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineDto>
+            {
+                new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
+            });
+
+        IReadOnlyList<HoldedLedgerLine>? stored = null;
+        await _repo.UpsertLedgerLinesAsync(
+            Arg.Do<IReadOnlyList<HoldedLedgerLine>>(r => stored = r), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Incremental = exactly one dailyledger call, windowed from the latest cached date.
+        await _client.Received(1).ListDailyLedgerAsync(latest, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        stored.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task SyncCreditorLedger_incremental_chunks_a_long_gap_into_year_windows()
+    {
+        // A >1-year gap (sync disabled / no creditor activity) must be swept in ≤1-year windows —
+        // the dailyledger API rejects wider ranges, so a single latest..now call would fail forever.
+        var latest = Instant.FromUtc(2024, 1, 1, 0, 0); // ~2.3 years before FixedNow (2026-05-01)
+        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns(latest);
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineDto>());
+
+        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Each call's window must be ≤ 364 days; the gap spans >2 of them, so it took multiple calls.
+        var calls = _client.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListDailyLedgerAsync), StringComparison.Ordinal))
+            .Select(c => c.GetArguments())
+            .ToList();
+        calls.Count.Should().BeGreaterThan(1);
+        calls.Should().OnlyContain(a => ((Instant)a[1]!) - ((Instant)a[0]!) <= Duration.FromDays(364));
+    }
+
+    [HumansFact]
+    public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
+    {
+        // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.
+        _repo.GetLedgerLinesByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
         {
-            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1) },
-            new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
+            new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = Instant.FromUtc(2026, 4, 1, 0, 0), Credit = 12720m, Type = "purchase" },
+            new() { EntryNumber = 2, Line = 0, AccountNum = 40000001, Date = Instant.FromUtc(2026, 4, 20, 0, 0), Debit = 9540m, Type = "payment" },
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1", Xunit.TestContext.Current.CancellationToken);
+        var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
 
         status.Should().NotBeNull();
+        status!.Balance.Should().Be(-3180m);
         status.OwedToMember.Should().Be(3180m);
-        status.TotalPaid.Should().Be(150m);
+        status.TotalPaid.Should().Be(9540m);                 // debit lines only
         status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
+        status.Payments!.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new HoldedPaymentInfo(new LocalDate(2026, 4, 20), 9540m, "payment"));
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_returns_null_when_nothing_cached()
+    public async Task GetCreditorStatus_returns_null_when_no_lines_cached()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(default, Arg.Any<CancellationToken>()).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync(default!, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>());
+        _repo.GetLedgerLinesByAccountNumAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLine>());
 
-        var status = await MakeService().GetCreditorStatusAsync(40000099, "c-unknown", Xunit.TestContext.Current.CancellationToken);
+        var status = await MakeService().GetCreditorStatusAsync(40000099, Xunit.TestContext.Current.CancellationToken);
 
         status.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_balance_is_null_when_no_balance_row_even_with_payments()
+    public async Task GetCreditorStatus_returns_null_when_account_num_null()
     {
-        // Payments cached but the 400000xx balance row is missing (cache gap / unresolved account).
-        // Balance must stay null (unknown) — NOT coerced to 0 — so polling never falsely marks Paid.
-        _repo.GetCreditorBalanceByAccountNumAsync(default, Arg.Any<CancellationToken>()).ReturnsForAnyArgs((HoldedCreditorBalance?)null);
-        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
-        {
-            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 60m, Date = new LocalDate(2026, 4, 1) },
-        });
+        var status = await MakeService().GetCreditorStatusAsync(null, Xunit.TestContext.Current.CancellationToken);
 
-        var status = await MakeService().GetCreditorStatusAsync(40000007, "c1", Xunit.TestContext.Current.CancellationToken);
-
-        status.Should().NotBeNull();
-        status.Balance.Should().BeNull();
-        status.OwedToMember.Should().Be(0m);
-        status.TotalPaid.Should().Be(60m);
+        status.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_surfaces_individual_payment_rows()
+    public async Task ListCreditorAccounts_DerivesFromLedger_AndDuplicateBindingDoesNotThrow()
     {
-        _repo.GetCreditorBalanceByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            new HoldedCreditorBalance { SupplierAccountNum = 40000001, Balance = -100m });
-        _repo.GetPaymentsByContactAsync("c1", Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedPayment>
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
         {
-            new() { HoldedPaymentId = "p1", HoldedContactId = "c1", Amount = 100m, Date = new LocalDate(2026, 4, 1), DocumentType = "purchase" },
-            new() { HoldedPaymentId = "p2", HoldedContactId = "c1", Amount = 50m,  Date = new LocalDate(2026, 4, 20) },
+            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 10m },
+        });
+        // Two members mis-bound to the same account number — only UserId is unique in the DB.
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
 
-        var status = await MakeService().GetCreditorStatusAsync(40000001, "c1", Xunit.TestContext.Current.CancellationToken);
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        status!.Payments.Should().NotBeNull();
-        status.Payments!.Should().HaveCount(2);
-        status.Payments!.Should().ContainEquivalentOf(new HoldedPaymentInfo(new LocalDate(2026, 4, 1), 100m, "purchase"));
+        var row = rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004).Subject;
+        row.Balance.Should().Be(-10m);
+        row.OwedToMember.Should().Be(10m);
+        row.BoundUserId.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
+    {
+        _repo.GetLedgerLinesByAccountNumAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
+        {
+            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 50m },
+        });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger!.Balance.Should().Be(-50m);
+        ledger.OwedToMember.Should().Be(50m);
+        ledger.Lines.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task GetCreditorLedger_returns_null_when_no_lines()
+    {
+        _repo.GetLedgerLinesByAccountNumAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLine>());
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+
+        ledger.Should().BeNull();
     }
 
     // ─── EnsureCreditorContact (binding write path) ──────────────────────────────
@@ -467,38 +527,4 @@ public class HoldedFinanceServiceTests
             FixedNow, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ListCreditorAccounts_DuplicateAccountBinding_DoesNotThrow()
-    {
-        _repo.GetCreditorBalancesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorBalance>
-        {
-            new() { SupplierAccountNum = 40000004, Name = "Peter D", Balance = -10m },
-        });
-        // Two members mis-bound to the same account number — only UserId is unique in the DB.
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
-        {
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
-        });
-
-        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004);
-    }
-
-    [HumansFact]
-    public async Task GetCreditorLedger_HoldedUnavailable_ServesCachedBalanceWithoutLines()
-    {
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HoldedTransientException("Holded down"));
-        _repo.GetCreditorBalanceByAccountNumAsync(40000004, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorBalance { SupplierAccountNum = 40000004, Name = "Peter D", Balance = -50m });
-
-        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
-
-        ledger.Should().NotBeNull();
-        ledger!.Balance.Should().Be(-50m);
-        ledger.OwedToMember.Should().Be(50m);
-        ledger.Lines.Should().BeEmpty();
-    }
 }

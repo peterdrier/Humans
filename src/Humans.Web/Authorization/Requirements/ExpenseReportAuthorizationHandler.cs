@@ -33,8 +33,6 @@ public sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetServi
                     or ExpenseReportOperation.Approve
                     or ExpenseReportOperation.FinanceReject
                     or ExpenseReportOperation.CategoryOverride
-                    or ExpenseReportOperation.IncludeInSepaPayout
-                    or ExpenseReportOperation.ReopenSepa
                 || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
                     && resource.Status == ExpenseReportStatus.Submitted)))
         {

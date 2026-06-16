@@ -206,38 +206,6 @@ public sealed class HoldedClient : IHoldedClient
         };
     }
 
-    public async Task<IReadOnlyList<HoldedChartAccountDto>> ListChartOfAccountsAsync(CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/accounting/v1/chartofaccounts");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Where(n => n is not null).Select(n => new HoldedChartAccountDto
-        {
-            Num = ReadInt(n!["num"]) ?? 0,
-            Name = n["name"]?.GetValue<string>() ?? "",
-            Balance = ReadDecimal(n["balance"]),
-        }).ToList();
-    }
-
-    public async Task<IReadOnlyList<HoldedPaymentDto>> ListPaymentsAsync(CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/payments");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Where(n => n is not null).Select(n => new HoldedPaymentDto
-        {
-            Id = n!["id"]?.GetValue<string>() ?? "",
-            ContactId = n["contactId"]?.GetValue<string>() ?? "",
-            Amount = ReadDecimal(n["amount"]),
-            Date = ReadInstant(n["date"]) ?? Instant.FromUnixTimeSeconds(0),
-            DocumentType = n["documentType"]?.GetValue<string>(),
-        }).ToList();
-    }
-
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/contacts");

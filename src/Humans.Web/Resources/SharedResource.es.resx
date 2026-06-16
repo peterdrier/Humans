@@ -6352,8 +6352,6 @@
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Aprobado</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avalado por el coordinador</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Borrador</value></data>
-  <data name="Enum_ExpenseReportStatus_Paid" xml:space="preserve"><value>Pagado</value></data>
-  <data name="Enum_ExpenseReportStatus_SepaSent" xml:space="preserve"><value>SEPA enviado</value></data>
   <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Enviado</value></data>
   <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirado</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Error</value></data>

@@ -21,16 +21,6 @@ internal static class ExpensesSectionExtensions
         services.AddScoped<IExpenseReportBackgroundProcessor>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<HoldedExpenseOutboxJob>();
-        services.AddScoped<ExpensePaidPollingJob>();
-
-        services.Configure<SepaConfig>(opts =>
-        {
-            config.GetSection("Sepa").Bind(opts);
-            var ibanOverride = Environment.GetEnvironmentVariable("SEPA_CREDITOR_IBAN");
-            if (!string.IsNullOrEmpty(ibanOverride))
-                opts.CreditorIban = ibanOverride;
-        });
-        services.AddSingleton<ISepaPaymentFileBuilder, SepaPaymentFileBuilder>();
 
         services.Configure<TravelReimbursementConfig>(config.GetSection("TravelReimbursement"));
 
