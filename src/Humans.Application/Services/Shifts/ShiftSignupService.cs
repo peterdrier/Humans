@@ -427,20 +427,23 @@ public sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(firstSignup!, assignable[0], rota,
             $"Voluntold range for '{rota.Name}' ({assignable.Count} shifts).");
 
-        try
+        if (assignable.Any(s => s.GetAbsoluteEnd(es) > now))
         {
-            await notificationService.SendAsync(
-                NotificationSource.ShiftAssigned,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                $"You were assigned to {rota.Name} ({assignable.Count} shifts)",
-                [userId],
-                actionUrl: "/Shifts",
-                actionLabel: "View shifts");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} rota {RotaId}", userId, rotaId);
+            try
+            {
+                await notificationService.SendAsync(
+                    NotificationSource.ShiftAssigned,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    $"You were assigned to {rota.Name} ({assignable.Count} shifts)",
+                    [userId],
+                    actionUrl: "/Shifts",
+                    actionLabel: "View shifts");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} rota {RotaId}", userId, rotaId);
+            }
         }
 
         return SignupResult.Ok(firstSignup!, warning);
