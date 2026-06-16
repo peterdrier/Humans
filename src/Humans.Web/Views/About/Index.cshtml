@@ -531,3 +531,23 @@
         </div>
     </div>
 </section>
+
+<hr />
+
+@*
+    Personal dedication — intentionally hardcoded in English and NOT localized.
+    This is Peter's signed note in his own voice; do not wire it through @Localizer
+    or add it to the SharedResource .resx files. An es==en (etc.) entry would read
+    as a missing translation and get "fixed" by a future i18n sweep, which is wrong:
+    the author's wording is the point.
+*@
+<section class="text-center my-5">
+    <img src="~/img/lucy.jpg" asp-append-version="true" alt="Lucy"
+         class="img-fluid rounded shadow-sm mb-3" style="max-width: 240px;" />
+    <p class="fst-italic text-muted mx-auto mb-2" style="max-width: 560px;">
+        Special thanks go to Lucy, nearly all of Humans was dreamed up, thought about, and
+        designed while taking you on long walks and to the spot for swimming. You kept me sane
+        during a quite challenging period.
+    </p>
+    <p class="mb-0 text-muted">&lt;3 -Peter</p>
+</section>
