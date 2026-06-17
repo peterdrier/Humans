@@ -57,7 +57,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             _shiftMgmt,
             Substitute.For<IBurnSettingsService>(),
             AuditLog,
-            Substitute.For<INotificationEmitter>(),
+            Notifier,
             AdminAuthorization,
             Substitute.For<IShiftViewInvalidator>(),
             Substitute.For<IEarlyEntryInvalidator>(),
@@ -299,6 +299,50 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         result.Signup.Enrolled.Should().BeTrue();
         result.Signup.EnrolledByUserId.Should().Be(enrollerId);
         result.Signup.ReviewedByUserId.Should().Be(enrollerId);
+    }
+
+    [HumansFact]
+    public async Task Voluntell_FutureShift_SendsAssignedNotification()
+    {
+        // Default scenario seeds shifts around gate opening 2026-07-01 → future vs TestNow (2026-06-15).
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftAssignedSent(Notifier, 1);
+    }
+
+    [HumansFact]
+    public async Task Voluntell_PastShift_SuppressesAssignedNotification_ButStillAuditsAndConfirms()
+    {
+        // Make the shift end in the past, mirroring MarkNoShow_AfterShiftEnd:
+        // gate opening 2026-06-14, day 0, 08:00 +2h → ends 10:00 Madrid = 08:00 UTC < TestNow (12:00 UTC).
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        shift.DayOffset = 0;
+        shift.StartTime = new LocalTime(8, 0);
+        shift.Duration = Duration.FromHours(2);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
+
+        result.Success.Should().BeTrue();
+        result.Signup!.Status.Should().Be(SignupStatus.Confirmed);
+
+        // Volunteer-facing ShiftAssigned must NOT be sent for a past shift...
+        await AssertShiftAssignedNotSent(Notifier);
+
+        // ...but the audit entry is still written.
+        await AuditLog.Received().LogAsync(
+            AuditAction.ShiftSignupVoluntold, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), enrollerId,
+            Arg.Any<Guid?>(), Arg.Any<string>());
     }
 
     // ============================================================
@@ -832,6 +876,46 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         result.Error.Should().Contain("Rota not found");
     }
 
+    [HumansFact]
+    public async Task VoluntellRange_AllPast_SuppressesAssignedNotification()
+    {
+        // gate opening 2026-06-14 → build days -3..-1 = 2026-06-11..13, all-day windows end
+        // 18:00 Madrid = 16:00 UTC, all before TestNow (2026-06-15 12:00 UTC) → all past.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftAssignedNotSent(Notifier);
+    }
+
+    [HumansFact]
+    public async Task VoluntellRange_SpansPastAndFuture_SendsAssignedNotification()
+    {
+        // gate opening 2026-06-16 → days -3..-1 = 2026-06-13,14,15. Day -1 (2026-06-15) all-day
+        // window ends 18:00 Madrid = 16:00 UTC > TestNow (12:00 UTC) → future present in range.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        es.GateOpeningDate = new LocalDate(2026, 6, 16);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
+
+        result.Success.Should().BeTrue();
+        await AssertShiftAssignedSent(Notifier, 1);
+    }
+
     // ============================================================
     // Audit completeness — ShiftSignupCreated
     // ============================================================
@@ -1042,4 +1126,20 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         Db.ShiftSignups.Add(signup);
         return signup;
     }
+
+    private static async Task AssertShiftAssignedSent(INotificationEmitter n, int times) =>
+        await n.Received(times).SendAsync(
+            NotificationSource.ShiftAssigned,
+            Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+    private static async Task AssertShiftAssignedNotSent(INotificationEmitter n) =>
+        await n.DidNotReceive().SendAsync(
+            NotificationSource.ShiftAssigned,
+            Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
 }

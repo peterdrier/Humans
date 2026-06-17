@@ -413,7 +413,7 @@
                                                 _ => ""
                                             };
                                         }
-                                        <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@shiftDateLabel</td>
+                                        <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@if (isPast){<span class="badge bg-secondary bg-opacity-50 me-1">past</span>}@shiftDateLabel</td>
                                         <td>@shift.StartTime.ToTime()</td>
                                         <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                         @{
@@ -479,6 +479,9 @@
                                                         Manage (@confirmedSignups.Count)
                                                     </button>
                                                 }
+                                            }
+                                            @if (Model.CanApproveSignups)
+                                            {
                                                 var voluntellBtnId = "dept-voluntell-" + shift.Id.ToString("N");
                                                 <button class="btn btn-sm btn-outline-success ms-1" type="button"
                                                         data-bs-toggle="collapse" data-bs-target="#@voluntellBtnId">
@@ -659,7 +662,7 @@
                                             </td>
                                         </tr>
                                     }
-                                    @if (Model.CanApproveSignups && !isPast)
+                                    @if (Model.CanApproveSignups)
                                     {
                                         var voluntellCollapseId = "dept-voluntell-" + shift.Id.ToString("N");
                                         <tr class="collapse" id="@voluntellCollapseId">
