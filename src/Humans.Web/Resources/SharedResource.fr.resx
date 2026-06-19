@@ -6502,11 +6502,13 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Bienvenue — commençons par votre nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critique</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>L'événement n'a que {0} % des quarts « critiques » pourvus. S'ils ne sont pas pourvus, l'événement pourrait être annulé car il ne serait pas viable ni sûr de l'organiser.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si vous pouvez en pourvoir certains, ou si vous pouvez venir avant l'événement ou rester pour le démontage, veuillez les prioriser lors du choix de vos quarts.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>IMPORTANT :</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Seuls {0} % des quarts « critiques » sont pourvus. Aidez-nous à rendre l'événement possible en en prenant quelques-uns si vous le pouvez.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si vous pouvez venir tôt pour le montage ou rester pour le démontage, ce sont les quarts les plus difficiles à pourvoir — veuillez les prioriser lors du choix de vos quarts.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Les inscriptions au montage sont closes — nous sommes déjà sur place. Veuillez vous concentrer sur les quarts pendant l'événement et de démontage.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>Nous avons besoin de vous !</value></data>
   <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Il y a également {0} quarts « importants » à pourvoir.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Il y a {0} quarts « importants » à pourvoir. Si vous pouvez venir avant l'événement ou rester pour le démontage, veuillez les prioriser.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Il y a {0} quarts « importants » à pourvoir. Si vous pouvez venir tôt pour le montage ou rester pour le démontage, veuillez les prioriser.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Il y a {0} quarts « importants » à pourvoir — veuillez vous concentrer sur les quarts pendant l'événement et de démontage.</value></data>
   <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Aucun événement actif pour le moment. Vous pouvez terminer l'intégration sans choisir de quart.</value></data>
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Aucun quart critique à pourvoir pour le moment — essayez Important ou Tous.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Aucun quart important à pourvoir pour le moment — essayez Tous.</value></data>

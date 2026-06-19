@@ -22,13 +22,17 @@
                     {
                         <div class="mt-2 mb-0">@Localizer["Onboarding_ShiftsImportantAlsoOpen", Model.ImportantOpenCount]</div>
                     }
-                    <div class="mt-2 mb-0">@Localizer["Onboarding_ShiftsCriticalCta"]</div>
+                    <div class="mt-2 mb-0">@(browse.EarlyEntrySignupsClosed
+                        ? Localizer["Onboarding_ShiftsCriticalCtaSetupClosed"]
+                        : Localizer["Onboarding_ShiftsCriticalCta"])</div>
                 </div>
             }
             else if (Model.HasAnyImportant)
             {
                 <div class="alert alert-warning" role="alert">
-                    @Localizer["Onboarding_ShiftsImportantBody", Model.ImportantOpenCount]
+                    @(browse.EarlyEntrySignupsClosed
+                        ? Localizer["Onboarding_ShiftsImportantBodySetupClosed", Model.ImportantOpenCount]
+                        : Localizer["Onboarding_ShiftsImportantBody", Model.ImportantOpenCount])
                 </div>
             }
 

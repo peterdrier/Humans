@@ -2934,11 +2934,13 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Welcome — let's start with your name</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critical</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>The event has only {0}% of the "critical" shifts filled. If these are not filled, the event might be cancelled as it would not be viable or safe to run it.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>If you're able to fill some of those, or you're able to come pre-event or stay for strike, please prioritize those when picking your shifts.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>IMPORTANT:</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Only {0}% of the "critical" shifts are filled. Please help us make the event happen by picking up a few where you can.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>If you can come early for set-up or stay for strike, those slots are the hardest to fill — please prioritise them when picking your shifts.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Set-up sign-ups are closed — we're already on site. Please focus on event-time and strike shifts.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>We need you!</value></data>
   <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>There are also {0} "important" shifts open.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>There are {0} "important" shifts open. If you're able to come pre-event or stay for strike, please prioritize those.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>There are {0} "important" shifts open. If you can come early for set-up or stay for strike, please prioritise those.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>There are {0} "important" shifts open — please focus on event-time and strike shifts.</value></data>
   <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>No active event right now. You can finish onboarding without picking a shift.</value></data>
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>No critical shifts open at the moment — try Important or All.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>No important shifts open at the moment — try All.</value></data>

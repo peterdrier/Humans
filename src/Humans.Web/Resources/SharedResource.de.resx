@@ -6502,11 +6502,13 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Willkommen — fangen wir mit deinem Namen an</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritisch</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Wichtig</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Bei der Veranstaltung sind nur {0}% der „kritischen“ Schichten besetzt. Wenn diese nicht besetzt werden, könnte die Veranstaltung abgesagt werden, da es nicht möglich oder sicher wäre, sie durchzuführen.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Wenn du einige davon übernehmen kannst oder vor der Veranstaltung kommen bzw. zum Abbau bleiben kannst, priorisiere diese bitte bei der Auswahl deiner Schichten.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>WICHTIG:</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Nur {0}% der „kritischen“ Schichten sind besetzt. Hilf uns, die Veranstaltung möglich zu machen, indem du ein paar übernimmst, wo du kannst.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Wenn du früh zum Aufbau kommen oder zum Abbau bleiben kannst, sind das die am schwersten zu besetzenden Schichten — bitte priorisiere sie bei der Auswahl deiner Schichten.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort. Bitte konzentriere dich auf Schichten während der Veranstaltung und beim Abbau.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>Wir brauchen dich!</value></data>
   <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Es sind außerdem {0} „wichtige“ Schichten offen.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen. Wenn du vor der Veranstaltung kommen oder zum Abbau bleiben kannst, priorisiere diese bitte.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen. Wenn du früh zum Aufbau kommen oder zum Abbau bleiben kannst, priorisiere diese bitte.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen — bitte konzentriere dich auf Schichten während der Veranstaltung und beim Abbau.</value></data>
   <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Derzeit keine aktive Veranstaltung. Du kannst das Onboarding abschließen, ohne eine Schicht auszuwählen.</value></data>
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Derzeit keine kritischen Schichten offen — probiere Wichtig oder Alle.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Derzeit keine wichtigen Schichten offen — probiere Alle.</value></data>

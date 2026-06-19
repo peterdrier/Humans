@@ -6502,11 +6502,13 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Benvingut/da — comencem pel teu nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Crític</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Important</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>L'esdeveniment només té un {0}% dels torns "crítics" coberts. Si no s'omplen, l'esdeveniment podria cancel·lar-se, ja que no seria viable ni segur tirar-lo endavant.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si en pots omplir alguns, o pots venir abans de l'esdeveniment o quedar-te al desmuntatge, prioritza'ls a l'hora de triar els teus torns.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>IMPORTANT:</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Només està cobert el {0}% dels torns "crítics". Ajuda'ns a fer possible l'esdeveniment cobrint-ne alguns quan puguis.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si pots venir abans per al muntatge o quedar-te al desmuntatge, aquests són els torns més difícils de cobrir — si us plau, prioritza'ls a l'hora de triar els teus torns.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Les inscripcions de muntatge estan tancades — ja som al lloc. Si us plau, centra't en els torns de l'esdeveniment i de desmuntatge.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>Et necessitem!</value></data>
   <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>També hi ha {0} torns "importants" oberts.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Hi ha {0} torns "importants" oberts. Si pots venir abans de l'esdeveniment o quedar-te al desmuntatge, prioritza'ls.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Hi ha {0} torns "importants" oberts. Si pots venir abans per al muntatge o quedar-te al desmuntatge, si us plau, prioritza'ls.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Hi ha {0} torns "importants" oberts — si us plau, centra't en els torns de l'esdeveniment i de desmuntatge.</value></data>
   <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Ara mateix no hi ha cap esdeveniment actiu. Pots acabar la incorporació sense triar cap torn.</value></data>
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>De moment no hi ha torns crítics oberts — prova amb Importants o Tots.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>De moment no hi ha torns importants oberts — prova amb Tots.</value></data>

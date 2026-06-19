@@ -6502,11 +6502,13 @@
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Benvenuto — iniziamo dal tuo nome</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critico</value></data>
   <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Importante</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>L'evento ha riempito solo il {0}% dei turni "critici". Se non vengono riempiti, l'evento potrebbe essere annullato perché non sarebbe sostenibile o sicuro organizzarlo.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Se riesci a riempirne alcuni, o se puoi venire prima dell'evento o restare per lo smontaggio, dai priorità a questi quando scegli i tuoi turni.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>IMPORTANTE:</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>È coperto solo il {0}% dei turni "critici". Aiutaci a rendere possibile l'evento coprendone alcuni quando puoi.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Se puoi venire prima per il montaggio o restare per lo smontaggio, sono i turni più difficili da coprire — dai loro priorità quando scegli i tuoi turni.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Le iscrizioni al montaggio sono chiuse — siamo già sul posto. Concentrati sui turni durante l'evento e di smontaggio.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>Abbiamo bisogno di te!</value></data>
   <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Ci sono anche {0} turni "importanti" aperti.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Ci sono {0} turni "importanti" aperti. Se puoi venire prima dell'evento o restare per lo smontaggio, dai priorità a questi.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Ci sono {0} turni "importanti" aperti. Se puoi venire prima per il montaggio o restare per lo smontaggio, dai loro priorità.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Ci sono {0} turni "importanti" aperti — concentrati sui turni durante l'evento e di smontaggio.</value></data>
   <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Nessun evento attivo al momento. Puoi completare l'onboarding senza scegliere un turno.</value></data>
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Nessun turno critico aperto al momento — prova Importanti o Tutti.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Nessun turno importante aperto al momento — prova Tutti.</value></data>
