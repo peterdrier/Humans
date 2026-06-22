@@ -8,15 +8,27 @@ setup('authenticate all personas', async ({ browser, baseURL }) => {
   setup.setTimeout(PERSONAS.length * 90_000);
   const failures: string[] = [];
   for (const slug of PERSONAS) {
-    // baseURL isn't applied to ad-hoc contexts (only test page/context fixtures
-    // get use.* options), so pass it through for liveLoginAndSave's relative goto.
-    const context = await browser.newContext({ baseURL });
-    try {
-      await liveLoginAndSave(context, slug);
-    } catch (e) {
-      failures.push(`${slug}: ${(e as Error).message.split('\n')[0]}`);
-    } finally {
-      await context.close();
+    // Try each persona up to twice. QA cold-start or SeedLock contention on the
+    // first persona can push the response past the waitForSelector ceiling; a 5 s
+    // pause then a second attempt recovers without forcing Playwright to retry all
+    // 19 personas from scratch (baseURL isn't applied to ad-hoc contexts — only
+    // test page/context fixtures get use.* options — so pass it through here).
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 5_000));
+      const context = await browser.newContext({ baseURL });
+      try {
+        await liveLoginAndSave(context, slug);
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e as Error;
+      } finally {
+        await context.close();
+      }
+    }
+    if (lastError !== null) {
+      failures.push(`${slug}: ${lastError.message.split('\n')[0]}`);
     }
   }
   expect(failures, `personas failed to seed/login:\n${failures.join('\n')}`).toEqual([]);
