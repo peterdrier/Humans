@@ -5,7 +5,10 @@ import { PERSONAS, liveLoginAndSave } from './helpers/auth';
 // Single test = single worker = no login herd during seeding. Failures are
 // collected so one broken persona doesn't hide the others.
 setup('authenticate all personas', async ({ browser, baseURL }) => {
-  setup.setTimeout(PERSONAS.length * 90_000);
+  // Worst-case: 2 attempts × 90 s + 5 s inter-attempt pause per persona,
+  // so the test always reaches the aggregate "personas failed" message rather
+  // than timing out mid-list when multiple personas are slow.
+  setup.setTimeout(PERSONAS.length * (90_000 * 2 + 5_000));
   const failures: string[] = [];
   for (const slug of PERSONAS) {
     // Try each persona up to twice. QA cold-start or SeedLock contention on the
