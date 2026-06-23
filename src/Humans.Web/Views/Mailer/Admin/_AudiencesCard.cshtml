@@ -1,8 +1,18 @@
 @model IReadOnlyList<Humans.Web.Models.Mailer.AudienceCardRow>
 
 <section class="card mb-4">
-    <header class="card-header">
+    <header class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Audiences</h2>
+        @if (Model.Count > 0)
+        {
+            <form asp-action="SyncAll" method="post" class="m-0"
+                  data-confirm="Push all @Model.Count audiences to MailerLite sequentially?">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-bolt me-1"></i>Push All
+                </button>
+            </form>
+        }
     </header>
     <div class="card-body">
         @if (Model.Count == 0)
@@ -40,3 +50,14 @@
         }
     </div>
 </section>
+
+<script>
+    (function () {
+        document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+            form.addEventListener('submit', function (ev) {
+                var msg = form.getAttribute('data-confirm');
+                if (msg && !window.confirm(msg)) ev.preventDefault();
+            });
+        });
+    })();
+</script>

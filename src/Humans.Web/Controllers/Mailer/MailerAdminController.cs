@@ -188,6 +188,35 @@ public sealed class MailerAdminController(
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("SyncAll")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncAll(CancellationToken ct)
+    {
+        try
+        {
+            var actor = await GetCurrentUserInfoAsync();
+            var results = await audienceSync.SyncAllAsync(actor?.Id, ct);
+
+            var created = results.Sum(r => r.Created);
+            var assigned = results.Sum(r => r.Assigned);
+            var unassigned = results.Sum(r => r.Unassigned);
+            var errors = results.Sum(r => r.Errors);
+            var failed = _audiences.Count - results.Count;
+
+            var banner = $"Push All: {results.Count}/{_audiences.Count} audiences synced — " +
+                $"{created} created, {assigned} newly assigned, {unassigned} unassigned, {errors} errors.";
+            if (failed > 0) banner += $" {failed} audience(s) failed — see logs.";
+            TempData["Banner"] = banner;
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // HttpClient timeout surfaces as TaskCanceledException when caller didn't cancel.
+            logger.LogWarning("Push All timed out");
+            TempData["Banner"] = "Push All timed out. Some audiences may have synced; try again shortly.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost("Refresh")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Refresh(CancellationToken ct)
