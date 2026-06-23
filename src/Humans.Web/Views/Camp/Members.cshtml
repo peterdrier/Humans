@@ -204,8 +204,13 @@
                         @foreach (var active in Model.ActiveMembers)
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <vc:human user-id="@active.UserId" />
+                                    <span class="badge rounded-pill @active.EventShiftSignupBadgeClass"
+                                          title="@Localizer["Camp_ShiftSignupBadgeTitle"]"
+                                          aria-label="@Localizer["Camp_ShiftSignupBadgeAriaLabel", active.EventShiftSignupCount]">
+                                        @active.EventShiftSignupDisplay
+                                    </span>
                                 </div>
                                 <div class="d-flex gap-2 align-items-center">
                                     @{

@@ -3079,6 +3079,8 @@
   <data name="Camp_AdminTitle" xml:space="preserve">
     <value>Barrios Admin</value>
   </data>
+  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Inscripciones a turnos activas para el evento actual (pendientes o confirmadas)</value></data>
+  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} inscripciones a turnos activas</value></data>
   <data name="Camp_SwissCampLabel" xml:space="preserve">
     <value>¿Este camp se ha llamado alguna vez "Swiss Camp"?</value>
   </data>

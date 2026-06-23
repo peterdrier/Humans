@@ -1306,6 +1306,8 @@
   <data name="Camp_Singular" xml:space="preserve"><value>Barrio</value></data>
   <data name="Camp_Plural" xml:space="preserve"><value>Barrios</value></data>
   <data name="Camp_AdminTitle" xml:space="preserve"><value>Barrios Admin</value></data>
+  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Active shift signups for the current event (pending or confirmed)</value></data>
+  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} active shift signups</value></data>
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Has this camp ever been called "Swiss Camp"</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>

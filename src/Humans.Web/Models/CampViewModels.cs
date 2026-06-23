@@ -190,7 +190,22 @@ public class CampMemberRowViewModel
     public NodaTime.Instant RequestedAt { get; set; }
     public NodaTime.Instant? ConfirmedAt { get; set; }
     public bool HasEarlyEntry { get; set; }
+    public int EventShiftSignupCount { get; set; }
     public CampMemberStatus Status { get; set; }
+
+    public string EventShiftSignupDisplay => EventShiftSignupCount >= 5
+        ? "5+"
+        : EventShiftSignupCount.ToString(CultureInfo.InvariantCulture);
+
+    public string EventShiftSignupBadgeClass => EventShiftSignupCount switch
+    {
+        <= 0 => "bg-danger",
+        1 => "bg-success-subtle text-success-emphasis border border-success-subtle",
+        2 => "bg-success bg-opacity-25 text-success-emphasis border border-success-subtle",
+        3 => "bg-success bg-opacity-50 text-dark border border-success",
+        4 => "bg-success bg-opacity-75 text-white border border-success",
+        _ => "bg-success text-white"
+    };
 }
 
 public class CampImageViewModel

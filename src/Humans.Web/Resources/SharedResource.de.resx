@@ -3055,6 +3055,8 @@
   <data name="Camp_AdminTitle" xml:space="preserve">
     <value>Barrios Admin</value>
   </data>
+  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Aktive Schichtanmeldungen für das aktuelle Event (ausstehend oder bestätigt)</value></data>
+  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} aktive Schichtanmeldungen</value></data>
   <data name="Camp_SwissCampLabel" xml:space="preserve">
     <value>Wurde dieses Camp jemals "Swiss Camp" genannt?</value>
   </data>
