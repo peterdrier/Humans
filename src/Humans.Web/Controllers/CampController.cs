@@ -437,13 +437,11 @@ public class CampController(
             .ToList();
         if (memberUserIds.Count > 0)
         {
-            var activeMemberUserIds = viewModel.ActiveMembers.Select(m => m.UserId).Distinct().ToList();
-            var shiftViews = await shiftView.GetUsersAsync(activeMemberUserIds, ct);
+            var shiftViews = await shiftView.GetUsersAsync(
+                viewModel.ActiveMembers.Select(m => m.UserId), ct);
             foreach (var member in viewModel.ActiveMembers)
             {
-                member.EventShiftSignupCount = shiftViews.TryGetValue(member.UserId, out var userShiftView)
-                    ? userShiftView.Signups.Count(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-                    : 0;
+                member.EventShiftSignupCount = shiftViews[member.UserId].ActiveSignupCount;
             }
 
             var memberUsers = await _userService.GetUserInfosAsync(memberUserIds, ct);

@@ -207,8 +207,8 @@
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <vc:human user-id="@active.UserId" />
                                     <span class="badge rounded-pill @active.EventShiftSignupBadgeClass"
-                                          title="Active shift signups for the current event (pending or confirmed)"
-                                          aria-label="@active.EventShiftSignupCount active shift signups">
+                                          title="@Localizer["Camp_ShiftSignupBadgeTitle"]"
+                                          aria-label="@Localizer["Camp_ShiftSignupBadgeAriaLabel", active.EventShiftSignupCount]">
                                         @active.EventShiftSignupDisplay
                                     </span>
                                 </div>

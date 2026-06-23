@@ -3055,6 +3055,8 @@
   <data name="Camp_AdminTitle" xml:space="preserve">
     <value>Admin de barris</value>
   </data>
+  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Inscripcions a torns actives per a l'esdeveniment actual (pendents o confirmades)</value></data>
+  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} inscripcions a torns actives</value></data>
   <data name="Camp_SwissCampLabel" xml:space="preserve">
     <value>Aquest camp s’ha anomenat mai "Swiss Camp"?</value>
   </data>

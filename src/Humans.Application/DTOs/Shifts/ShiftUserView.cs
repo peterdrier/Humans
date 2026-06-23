@@ -35,6 +35,15 @@ public sealed record ShiftUserView(
         s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
 
     /// <summary>
+    /// Number of active-state signups (<see cref="SignupStatus.Pending"/> or
+    /// <see cref="SignupStatus.Confirmed"/>) the user holds in the active event.
+    /// Refused / Bailed / Cancelled / NoShow signups don't count. Same
+    /// "active commitment" rule as <see cref="HasShift"/>, expressed as a count.
+    /// </summary>
+    public int ActiveSignupCount => Signups.Count(s =>
+        s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
+
+    /// <summary>
     /// True when the user has at least one active signup (Pending/Confirmed) on
     /// a shift classified into the given <paramref name="period"/>. Each shift's
     /// period is derived from its <see cref="Shift.DayOffset"/> against the
