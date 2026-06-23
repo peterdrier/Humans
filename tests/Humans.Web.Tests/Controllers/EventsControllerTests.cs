@@ -107,53 +107,6 @@ public class EventsControllerTests
         result.Should().BeOfType<ForbidResult>();
     }
 
-    [HumansFact]
-    public async Task ToggleCardFavourite_Authenticated_TogglesAndRedirectsToReturnUrl()
-    {
-        var userId = Guid.NewGuid();
-        var eventId = Guid.NewGuid();
-        var controller = BuildController(userId);
-        controller.Url = Substitute.For<IUrlHelper>();
-        controller.Url.IsLocalUrl("/Barrios/shenanicamp").Returns(true);
-
-        var result = await controller.ToggleCardFavourite(eventId, "/Barrios/shenanicamp");
-
-        await _guide.Received(1).ToggleFavouriteAsync(userId, eventId, null, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Barrios/shenanicamp");
-    }
-
-    [HumansFact]
-    public async Task ToggleCardFavourite_NonLocalReturnUrl_RedirectsToBrowse()
-    {
-        var controller = BuildController(Guid.NewGuid());
-        controller.Url = Substitute.For<IUrlHelper>(); // IsLocalUrl → false by default
-
-        var result = await controller.ToggleCardFavourite(Guid.NewGuid(), "https://evil.example/phish");
-
-        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Browse");
-    }
-
-    [HumansFact]
-    public async Task ToggleCardFavourite_Unauthenticated_ReturnsChallenge()
-    {
-        var controller = BuildAnonymousController();
-
-        var result = await controller.ToggleCardFavourite(Guid.NewGuid(), "/Barrios/shenanicamp");
-
-        result.Should().BeOfType<ChallengeResult>();
-        await _guide.DidNotReceive().ToggleFavouriteAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
-    }
-
-    private EventsController BuildAnonymousController() =>
-        new(_guide, _users, _camps, _authz, _clock, NullLogger<EventsController>.Instance)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
-            },
-        };
-
     private Guid StubEvent(Guid submitterId, Guid? campId, EventStatus status)
     {
         var guideEvent = MakeEvent(campId, submitterId, status);

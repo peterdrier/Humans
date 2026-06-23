@@ -39,12 +39,14 @@ else
                             <strong>@item.Title</strong>
                             <span class="badge bg-secondary ms-1">@item.CategoryName</span>
                         </div>
-                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" asp-route-day="@item.FavouriteDayOffset" class="d-inline" data-confirm="@Localizer["Events_RemoveFromScheduleConfirm"].Value">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Events_RemoveFromSchedule"]">
-                                <i class="fa-solid fa-heart-crack"></i>
-                            </button>
-                        </form>
+                        @await Html.PartialAsync("_FavouriteButton", new FavouriteButtonModel
+                        {
+                            EventId = item.EventId,
+                            DayOffset = item.FavouriteDayOffset,
+                            IsFavourited = true,
+                            RemoveRow = true,
+                            ConfirmMessage = Localizer["Events_RemoveFromScheduleConfirm"].Value
+                        })
                     </div>
                     <div class="mt-1 small text-muted">
                         <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToTime() — @item.StartAt.AddMinutes(item.DurationMinutes).ToTime()

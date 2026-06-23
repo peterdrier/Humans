@@ -7,9 +7,6 @@ namespace Humans.Web.Models.Events;
 /// </summary>
 public class EventsCardViewModel
 {
-    /// <summary>Local URL of the host page — the favourite toggle redirects back here.</summary>
-    public string ReturnUrl { get; set; } = string.Empty;
-
     public List<EventsCardRow> Rows { get; set; } = [];
 }
 

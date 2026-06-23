@@ -29,14 +29,13 @@
                             </span>
                         }
                     </div>
-                    <form method="post" asp-controller="Events" asp-action="ToggleCardFavourite"
-                          asp-route-eventId="@row.EventId" asp-route-returnUrl="@Model.ReturnUrl" class="d-inline ms-2">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm @(row.IsFavourited ? "btn-danger" : "btn-outline-danger")"
-                                title="@(row.IsFavourited ? "Remove from favourites" : "Add to favourites")">
-                            <i class="fa-solid fa-heart"></i>
-                        </button>
-                    </form>
+                    <span class="ms-2">
+                        @await Html.PartialAsync("_FavouriteButton", new FavouriteButtonModel
+                        {
+                            EventId = row.EventId,
+                            IsFavourited = row.IsFavourited
+                        })
+                    </span>
                 </div>
                 <div class="mt-1 small text-muted">
                     <i class="fa-solid fa-clock me-1"></i>@row.StartAt.ToWeekdayDayMonth() &middot;

@@ -21,8 +21,6 @@ namespace Humans.Application.Tests.ViewComponents;
 /// </summary>
 public class EventsCardViewComponentTests
 {
-    private const string RequestPath = "/Barrios/shenanicamp";
-
     private readonly IEventServiceRead _events = Substitute.For<IEventServiceRead>();
 
     private EventsCardViewComponent BuildSut(Guid? viewerId, bool eventsEnabled = true)
@@ -31,7 +29,6 @@ public class EventsCardViewComponentTests
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.Value.ToString())], "Test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-        http.Request.Path = RequestPath;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Features:Events"] = eventsEnabled ? "true" : "false" })
             .Build();
@@ -77,7 +74,6 @@ public class EventsCardViewComponentTests
 
         var view = result.Should().BeOfType<ViewViewComponentResult>().Subject;
         var vm = view.ViewData!.Model.Should().BeOfType<EventsCardViewModel>().Subject;
-        vm.ReturnUrl.Should().Be(RequestPath);
         vm.Rows.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
         vm.Rows[0].IsFavourited.Should().BeTrue();   // Early — favourited
         vm.Rows[1].IsFavourited.Should().BeFalse();  // Late — not favourited

@@ -584,3 +584,54 @@ function showToast(message, type) {
         });
     });
 })();
+
+// Favourite hearts (Events): toggle the favourite in place — or remove the row
+// on My Schedule — via the JSON favourites API, so the action never reloads the
+// page and the user's filters/scroll survive. The JS contract is rendered by
+// Views/Shared/_FavouriteButton.cshtml. The API is same-origin + cookie-auth and
+// carries no antiforgery requirement.
+(function () {
+    function removeRow(btn) {
+        var row = btn.closest('.list-group-item');
+        if (!row) return;
+        var list = row.closest('.list-group');
+        row.remove();
+        // Drop an emptied day group (its heading + list) so no orphan date header lingers.
+        if (list && !list.querySelector('.list-group-item')) {
+            var heading = list.previousElementSibling;
+            if (heading && heading.tagName === 'H4') heading.remove();
+            list.remove();
+        }
+        // Whole schedule cleared — reload so the canonical empty-state message renders.
+        if (!document.querySelector('.js-favourite-toggle[data-remove-row="true"]')) window.location.reload();
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.js-favourite-toggle');
+        if (!btn || btn.disabled) return;
+
+        var confirmMsg = btn.getAttribute('data-favourite-confirm');
+        if (confirmMsg && !confirm(confirmMsg)) return;
+
+        var favourited = btn.getAttribute('data-favourited') === 'true';
+        var url = '/api/events/favourites/' + encodeURIComponent(btn.getAttribute('data-event-id'));
+        var day = btn.getAttribute('data-day');
+        if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
+
+        btn.disabled = true;
+        fetch(url, { method: favourited ? 'DELETE' : 'POST' })
+            .then(function (r) {
+                if (!r.ok) throw new Error(r.status);
+                if (btn.getAttribute('data-remove-row') === 'true') { removeRow(btn); return; }
+                var nowFav = !favourited;
+                btn.setAttribute('data-favourited', nowFav ? 'true' : 'false');
+                btn.setAttribute('aria-pressed', nowFav ? 'true' : 'false');
+                btn.classList.toggle('btn-danger', nowFav);
+                btn.classList.toggle('btn-outline-danger', !nowFav);
+                var label = btn.getAttribute(nowFav ? 'data-title-remove' : 'data-title-add');
+                if (label) { btn.title = label; btn.setAttribute('aria-label', label); }
+            })
+            .catch(function () { showToast(btn.getAttribute('data-error') || 'Something went wrong.', 'danger'); })
+            .finally(function () { btn.disabled = false; });
+    });
+})();

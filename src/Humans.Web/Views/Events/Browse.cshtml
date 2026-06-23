@@ -113,23 +113,12 @@ else
                             <strong>@item.Title</strong>
                             <span class="badge bg-secondary ms-1">@item.CategoryName</span>
                         </div>
-                        @{
-                            var favTitle = item.IsFavourited ? Localizer["Events_RemoveFromFavourites"].Value : Localizer["Events_AddToFavourites"].Value;
-                        }
-                        @* Hearts toggle in place via the JSON API (handler in the Scripts section
-                           below) so the search filters and scroll position survive. A full-page
-                           POST used to reload Browse and reset both on every toggle. *@
-                        <button type="button"
-                                class="btn btn-sm js-favourite-toggle @(item.IsFavourited ? "btn-danger" : "btn-outline-danger")"
-                                data-event-id="@item.EventId"
-                                data-day="@item.FavouriteDayOffset"
-                                data-favourited="@item.IsFavourited.ToString().ToLowerInvariant()"
-                                data-title-add="@Localizer["Events_AddToFavourites"].Value"
-                                data-title-remove="@Localizer["Events_RemoveFromFavourites"].Value"
-                                aria-pressed="@item.IsFavourited.ToString().ToLowerInvariant()"
-                                title="@favTitle" aria-label="@favTitle">
-                            <i class="fa-solid fa-heart" aria-hidden="true"></i>
-                        </button>
+                        @await Html.PartialAsync("_FavouriteButton", new FavouriteButtonModel
+                        {
+                            EventId = item.EventId,
+                            DayOffset = item.FavouriteDayOffset,
+                            IsFavourited = item.IsFavourited
+                        })
                     </div>
                     <div class="mt-1 small text-muted">
                         <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToTime() — @item.StartAt.AddMinutes(item.DurationMinutes).ToTime()
@@ -169,39 +158,3 @@ else
         <i class="fa-solid fa-list me-1"></i>@Localizer["Events_MySubmissions"]
     </a>
 </div>
-
-@section Scripts {
-    <script>
-        // Favourite heart toggle: hit the JSON favourites API and flip the button
-        // in place, so adding/removing a favourite never reloads Browse and the
-        // user's filters and scroll position are preserved. The API is same-origin
-        // and authenticated by cookie; it carries no antiforgery requirement.
-        (function () {
-            var errorMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Common_Error"].Value));
-            document.addEventListener('click', function (e) {
-                var btn = e.target.closest('.js-favourite-toggle');
-                if (!btn || btn.disabled) return;
-
-                var favourited = btn.getAttribute('data-favourited') === 'true';
-                var url = '/api/events/favourites/' + encodeURIComponent(btn.getAttribute('data-event-id'));
-                var day = btn.getAttribute('data-day');
-                if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
-
-                btn.disabled = true;
-                fetch(url, { method: favourited ? 'DELETE' : 'POST' })
-                    .then(function (r) {
-                        if (!r.ok) throw new Error(r.status);
-                        var nowFav = !favourited;
-                        btn.setAttribute('data-favourited', nowFav ? 'true' : 'false');
-                        btn.setAttribute('aria-pressed', nowFav ? 'true' : 'false');
-                        btn.classList.toggle('btn-danger', nowFav);
-                        btn.classList.toggle('btn-outline-danger', !nowFav);
-                        var label = btn.getAttribute(nowFav ? 'data-title-remove' : 'data-title-add');
-                        if (label) { btn.title = label; btn.setAttribute('aria-label', label); }
-                    })
-                    .catch(function () { showToast(errorMsg, 'danger'); })
-                    .finally(function () { btn.disabled = false; });
-            });
-        })();
-    </script>
-}

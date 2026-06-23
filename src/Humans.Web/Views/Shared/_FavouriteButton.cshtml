@@ -1,0 +1,31 @@
+@model Humans.Web.Models.Events.FavouriteButtonModel
+@*
+    Instant favourite heart — single source of truth for the JS contract:
+    .js-favourite-toggle + data-event-id [+ data-day] + data-favourited, handled by
+    wwwroot/js/site.js. Two modes:
+      • toggle (Browse, events card) — flips the heart in place.
+      • remove (My Schedule) — removes the row; sets data-remove-row + data-favourite-confirm.
+*@
+@{
+    var addTitle = Localizer["Events_AddToFavourites"].Value;
+    var removeTitle = Localizer["Events_RemoveFromFavourites"].Value;
+    var title = Model.RemoveRow
+        ? Localizer["Events_RemoveFromSchedule"].Value
+        : (Model.IsFavourited ? removeTitle : addTitle);
+    var stateClass = !Model.RemoveRow && Model.IsFavourited ? "btn-danger" : "btn-outline-danger";
+    var favourited = Model.IsFavourited.ToString().ToLowerInvariant();
+}
+<button type="button"
+        class="btn btn-sm js-favourite-toggle @stateClass"
+        data-event-id="@Model.EventId"
+        data-day="@Model.DayOffset"
+        data-favourited="@favourited"
+        data-title-add="@addTitle"
+        data-title-remove="@removeTitle"
+        data-error="@Localizer["Common_Error"].Value"
+        data-remove-row="@(Model.RemoveRow ? "true" : null)"
+        data-favourite-confirm="@Model.ConfirmMessage"
+        aria-pressed="@(Model.RemoveRow ? null : favourited)"
+        title="@title" aria-label="@title">
+    <i class="fa-solid @(Model.RemoveRow ? "fa-heart-crack" : "fa-heart")" aria-hidden="true"></i>
+</button>

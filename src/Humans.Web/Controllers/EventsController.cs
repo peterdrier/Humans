@@ -553,34 +553,6 @@ public class EventsController(
         return View(model);
     }
 
-    [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Unfavourite(Guid eventId, int? day)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user == null) return Challenge();
-
-        if (await guide.RemoveFavouriteAsync(user.Id, eventId, day))
-            SetSuccess("Event removed from your schedule.");
-
-        return RedirectToAction(nameof(Schedule));
-    }
-
-    // Favourite toggle for the events card (camp detail page, profile page).
-    // Bounces back to the host page via returnUrl, falling back to Browse when
-    // the URL is missing or not local.
-    [HttpPost("Card/Favourite/{eventId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleCardFavourite(Guid eventId, string? returnUrl)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user == null) return Challenge();
-
-        // The card lists one row per event, so its heart is whole-event.
-        await guide.ToggleFavouriteAsync(user.Id, eventId, null);
-        return Url.IsLocalUrl(returnUrl) ? Redirect(returnUrl!) : RedirectToAction(nameof(Browse));
-    }
-
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 

@@ -13,8 +13,8 @@ namespace Humans.Web.ViewComponents;
 /// events card) or a user's personal (non-camp) submitted events — their
 /// profile page; camp events they submitted live on the camp's page. Invoked with
 /// ids only — no Event types cross into the host section's views. The favourite
-/// toggle bounces back to the current request's URL. Auth-gated at the call
-/// site (logged-in Humans users); returns empty content when the Events feature
+/// heart toggles in place via the JSON favourites API (no page reload). Auth-gated
+/// at the call site (logged-in Humans users); returns empty content when the Events feature
 /// is disabled or there are no approved events in scope so the card auto-hides.
 /// </summary>
 public class EventsCardViewComponent(
@@ -27,7 +27,7 @@ public class EventsCardViewComponent(
         try
         {
             // Mirror EventsFeatureFilter: when the Event Guide is off, the Events
-            // routes 404 — so the card (and its favourite POST target) must vanish too.
+            // routes 404 — so the card (and its favourite API target) must vanish too.
             if (!configuration.GetValue<bool>("Features:Events"))
                 return Content(string.Empty);
 
@@ -71,10 +71,8 @@ public class EventsCardViewComponent(
                 })
                 .ToList();
 
-            var request = ViewContext.HttpContext.Request;
             return View(new EventsCardViewModel
             {
-                ReturnUrl = request.Path + request.QueryString,
                 Rows = rows
             });
         }
