@@ -11,23 +11,23 @@
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
-    <PackageVersion Include="Ical.Net" Version="5.2.2" />
+    <PackageVersion Include="Ical.Net" Version="5.2.3" />
     <PackageVersion Include="Markdig" Version="1.3.2" />
     <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
     <PackageVersion Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
     <!-- Database -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.2" />
     <!-- NodaTime -->
     <PackageVersion Include="NodaTime" Version="3.3.2" />
-    <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.3.1" />
+    <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     <!-- State Machine -->
     <PackageVersion Include="Stateless" Version="5.20.1" />
     <!-- Background Jobs -->
@@ -40,18 +40,18 @@
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4168" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4176" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4185" />
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.74.0.4135" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
     <!-- Resilience -->
-    <PackageVersion Include="Polly" Version="8.6.6" />
+    <PackageVersion Include="Polly" Version="8.7.0" />
     <!-- Observability -->
     <!-- 1.15.3 patches GHSA-g94r-2vxg-569j (OpenTelemetry.Api) and GHSA-mr8r-92fq-pj8p (OpenTelemetry.Exporter.OpenTelemetryProtocol). -->
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.0-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
@@ -64,12 +64,12 @@
     <!-- Image Processing -->
     <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.14.0" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262 -->
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.8" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.9" />
     <!-- Localization -->
-    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.9" />
     <!-- Data Protection: 10.0.7 patches GHSA-9mv3-2cwr-p262; 10.0.8 backports ManagedAuthenticatedEncryptor calc fix -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Hangfire" Version="9.0.0" />
@@ -78,15 +78,15 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.108" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.111" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageVersion Include="NodaTime.Testing" Version="3.3.2" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
-    <PackageVersion Include="Stripe.net" Version="51.1.0" />
+    <PackageVersion Include="Stripe.net" Version="51.2.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
     <PackageVersion Include="AngleSharp" Version="0.17.1" />
