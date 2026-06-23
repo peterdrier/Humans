@@ -553,17 +553,6 @@ public class EventsController(
         return View(model);
     }
 
-    [HttpPost("Browse/Favourite/{eventId:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleFavourite(Guid eventId, int? day, [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
-    {
-        var user = await GetCurrentUserInfoAsync();
-        if (user == null) return Challenge();
-
-        await guide.ToggleFavouriteAsync(user.Id, eventId, day);
-        return RedirectToAction(nameof(Browse), null, new { days, categoryId, venueId, q, favouritesOnly }, $"event-{eventId}");
-    }
-
     [HttpPost("Schedule/Unfavourite/{eventId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Unfavourite(Guid eventId, int? day)
