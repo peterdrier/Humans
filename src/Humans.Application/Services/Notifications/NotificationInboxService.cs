@@ -190,7 +190,7 @@ public sealed class NotificationInboxService(
             {
                 entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
                 return await repo.GetUnreadBadgeCountsAsync(userId, ct);
-            })!;
+            });
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

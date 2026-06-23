@@ -2,7 +2,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Stores;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Health;
 

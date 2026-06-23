@@ -32,7 +32,7 @@ public sealed class SurveyBuilderViewModelTests
         var showIf = vm.ToInput(0).ShowIf;
 
         showIf.Should().NotBeNull();
-        showIf!.Combine.Should().Be(BranchCombine.Any);
+        showIf.Combine.Should().Be(BranchCombine.Any);
         var clause = showIf.Clauses.Should().ContainSingle().Subject;
         clause.QuestionId.Should().Be(gate);
         clause.Operator.Should().Be(BranchOperator.Is);

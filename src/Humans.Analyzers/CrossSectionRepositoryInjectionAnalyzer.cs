@@ -27,7 +27,6 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "HUM0017";
     public const string IndeterminateSectionId = "HUM0018";
 
-    private const string ServiceNamespacePrefix = "Humans.Application.Services.";
     private const string ApplicationServiceMarkerFullName = "Humans.Application.Interfaces.IApplicationService";
     private const string RepositoryMarkerFullName = "Humans.Application.Interfaces.Repositories.IRepository";
     private const string SectionAttributeFullName = "Humans.Domain.Attributes.SectionAttribute";

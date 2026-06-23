@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Web.Infrastructure;
 using Serilog.Events;
-using Serilog.Parsing;
 
 namespace Humans.Web.Tests.Infrastructure;
 

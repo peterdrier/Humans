@@ -14,7 +14,6 @@ using Humans.Infrastructure.Stores;
 using Humans.Web.Filters;
 using Humans.Web.Services.Agent;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Extensions.Sections;
 

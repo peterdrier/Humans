@@ -569,7 +569,7 @@ public sealed class HoldedFinanceService(
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         // Reuse the bound contact, else lazy-seed from the report's previously-cached contact id.
         var existingContactId = !string.IsNullOrEmpty(binding?.HoldedContactId)
-            ? binding!.HoldedContactId
+            ? binding.HoldedContactId
             : (string.IsNullOrEmpty(seedContactId) ? null : seedContactId);
 
         // Burner goes in tradeName only — and only when it differs from the official legal name.

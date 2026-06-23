@@ -198,7 +198,7 @@ public class EventServiceCalendarFeedTests
     {
         var userId = Guid.NewGuid();
         _repo.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<EventFavourite>)[]);
+            .Returns([]);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 

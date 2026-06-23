@@ -41,7 +41,6 @@ public static class StatusBadgeExtensions
             ExpenseReportStatus.Submitted => "bg-primary",
             ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
             ExpenseReportStatus.Approved => "bg-success",
-            ExpenseReportStatus.Withdrawn => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -55,7 +54,6 @@ public static class StatusBadgeExtensions
         {
             BudgetYearStatus.Draft => "bg-warning text-dark",
             BudgetYearStatus.Active => "bg-success",
-            BudgetYearStatus.Closed => "bg-secondary",
             _ => "bg-secondary"
         };
     }
