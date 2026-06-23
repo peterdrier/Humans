@@ -10,6 +10,7 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Web.Models.Camp;
@@ -23,6 +24,7 @@ public class CampController(
     ICampContactService campContactService,
     ICampRoleService campRoleService,
     ICityPlanningServiceRead cityPlanningService,
+    IShiftView shiftView,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -435,6 +437,15 @@ public class CampController(
             .ToList();
         if (memberUserIds.Count > 0)
         {
+            var activeMemberUserIds = viewModel.ActiveMembers.Select(m => m.UserId).Distinct().ToList();
+            var shiftViews = await shiftView.GetUsersAsync(activeMemberUserIds, ct);
+            foreach (var member in viewModel.ActiveMembers)
+            {
+                member.EventShiftSignupCount = shiftViews.TryGetValue(member.UserId, out var userShiftView)
+                    ? userShiftView.Signups.Count(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+                    : 0;
+            }
+
             var memberUsers = await _userService.GetUserInfosAsync(memberUserIds, ct);
             string MemberName(CampMemberRowViewModel m) =>
                 memberUsers.TryGetValue(m.UserId, out var u) ? u.BurnerName : "";

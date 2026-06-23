@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
+using Humans.Application.Services.Camps;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -27,6 +30,7 @@ public class CampControllerTests
     private readonly ICampContactService _contacts = Substitute.For<ICampContactService>();
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
     private readonly ICityPlanningService _cityPlanning = Substitute.For<ICityPlanningService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserServiceRead _users = Substitute.For<IUserServiceRead>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
     private readonly IClock _clock = Substitute.For<IClock>();
@@ -90,6 +94,67 @@ public class CampControllerTests
         vm.Camps.Select(c => c.Id).Should().Equal(leadCamp.Id, alphabeticalFirst.Id);
     }
 
+    [HumansFact]
+    public async Task Members_Shows_Active_Event_Shift_Counts_From_Shift_View()
+    {
+        var leadUserId = Guid.NewGuid();
+        var zeroShiftMemberId = Guid.NewGuid();
+        var oneShiftMemberId = Guid.NewGuid();
+        var fivePlusShiftMemberId = Guid.NewGuid();
+
+        var members = new[]
+        {
+            MakeSeasonMember(zeroShiftMemberId),
+            MakeSeasonMember(oneShiftMemberId),
+            MakeSeasonMember(fivePlusShiftMemberId),
+        };
+        var camp = MakeCamp("garden-of-joy", "Garden of Joy", CampSeasonStatus.Active, leadUserId, members: members);
+        var season = camp.Seasons.Single();
+
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(camp));
+        _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampEditData?>(MakeEditData(camp, season)));
+        _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.ArgAt<IReadOnlyCollection<Guid>>(0).ToDictionary(id => id, MakeUserInfo)));
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new CampRolesPanelData(season.Id, [])));
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
+                new Dictionary<Guid, ShiftUserView>
+                {
+                    [zeroShiftMemberId] = MakeShiftUserView(zeroShiftMemberId),
+                    [oneShiftMemberId] = MakeShiftUserView(oneShiftMemberId, SignupStatus.Confirmed),
+                    [fivePlusShiftMemberId] = MakeShiftUserView(
+                        fivePlusShiftMemberId,
+                        SignupStatus.Confirmed,
+                        SignupStatus.Pending,
+                        SignupStatus.Confirmed,
+                        SignupStatus.Pending,
+                        SignupStatus.Confirmed,
+                        SignupStatus.Bailed),
+                }));
+
+        var controller = BuildController(leadUserId);
+
+        var result = await controller.Members(camp.Slug, null, Xunit.TestContext.Current.CancellationToken);
+
+        var vm = result.Should().BeOfType<ViewResult>().Subject
+            .Model.Should().BeOfType<CampEditViewModel>().Subject;
+        vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
+        vm.ActiveMembers.Single(m => m.UserId == oneShiftMemberId).EventShiftSignupCount.Should().Be(1);
+        vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupCount.Should().Be(5);
+        vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupDisplay.Should().Be("5+");
+    }
+
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
     {
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -105,6 +170,7 @@ public class CampControllerTests
             _contacts,
             _roles,
             _cityPlanning,
+            _shiftView,
             _users,
             _authorization,
             _clock,
@@ -136,7 +202,8 @@ public class CampControllerTests
         string name,
         CampSeasonStatus status,
         Guid? leadUserId = null,
-        YesNoMaybe kidsWelcome = YesNoMaybe.Yes)
+        YesNoMaybe kidsWelcome = YesNoMaybe.Yes,
+        IReadOnlyList<CampSeasonMemberInfo>? members = null)
     {
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
@@ -161,7 +228,8 @@ public class CampControllerTests
             EeGrantedCount: 0,
             JoinedMemberCount: 0)
         {
-            LeadUserIds = leadUserId.HasValue ? [leadUserId.Value] : []
+            LeadUserIds = leadUserId.HasValue ? [leadUserId.Value] : [],
+            Members = members ?? []
         };
 
         return new CampInfo(
@@ -173,6 +241,64 @@ public class CampControllerTests
             TimesAtNowhere: 1,
             Seasons: [season]);
     }
+
+    private static CampSeasonMemberInfo MakeSeasonMember(Guid userId) =>
+        new(
+            Guid.NewGuid(),
+            userId,
+            CampMemberStatus.Active,
+            SystemClock.Instance.GetCurrentInstant(),
+            SystemClock.Instance.GetCurrentInstant(),
+            HasEarlyEntry: false);
+
+    private static CampEditData MakeEditData(CampInfo camp, CampSeasonInfo season) =>
+        new(
+            camp.Id,
+            camp.Slug,
+            season.Id,
+            season.Year,
+            IsNameLocked: false,
+            season.Name,
+            camp.ContactEmail,
+            camp.ContactPhone,
+            Links: [],
+            camp.IsSwissCamp,
+            camp.HideHistoricalNames,
+            camp.TimesAtNowhere,
+            season.BlurbLong,
+            season.BlurbShort,
+            season.Languages,
+            season.AcceptingMembers,
+            season.KidsWelcome,
+            season.KidsVisiting,
+            season.KidsAreaDescription,
+            season.HasPerformanceSpace,
+            season.PerformanceTypes,
+            season.Vibes,
+            season.AdultPlayspace,
+            season.MemberCount,
+            season.SpaceRequirement,
+            season.SoundZone,
+            season.ElectricalGrid,
+            Images: [],
+            HistoricalNames: []);
+
+    private static ShiftUserView MakeShiftUserView(Guid userId, params SignupStatus[] statuses) =>
+        new(
+            userId,
+            Profile: null,
+            Availability: null,
+            BuildStatus: null,
+            TagPreferences: [],
+            Signups: statuses.Select(status => new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftId = Guid.NewGuid(),
+                Status = status,
+                CreatedAt = SystemClock.Instance.GetCurrentInstant(),
+                UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
+            }).ToList());
 
     private static UserInfo MakeUserInfo(Guid userId) =>
         UserInfo.Create(
