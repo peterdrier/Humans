@@ -592,16 +592,25 @@ function showToast(message, type) {
 // carries no antiforgery requirement.
 (function () {
     function removeRow(btn) {
-        var row = btn.closest('.list-group-item');
-        if (!row) return;
-        var list = row.closest('.list-group');
-        row.remove();
-        // Drop an emptied day group (its heading + list) so no orphan date header lingers.
-        if (list && !list.querySelector('.list-group-item')) {
-            var heading = list.previousElementSibling;
-            if (heading && heading.tagName === 'H4') heading.remove();
-            list.remove();
-        }
+        // A whole-event unfavourite (empty data-day) deletes every occurrence
+        // server-side, so remove every occurrence row for this event; a day-specific
+        // unfavourite removes only the clicked row.
+        var day = btn.getAttribute('data-day');
+        var toggles = (day === null || day === '')
+            ? document.querySelectorAll('.js-favourite-toggle[data-remove-row="true"][data-event-id="' + btn.getAttribute('data-event-id') + '"]')
+            : [btn];
+        Array.prototype.forEach.call(toggles, function (t) {
+            var row = t.closest('.list-group-item');
+            if (!row) return;
+            var list = row.closest('.list-group');
+            row.remove();
+            // Drop an emptied day group (its heading + list) so no orphan date header lingers.
+            if (list && !list.querySelector('.list-group-item')) {
+                var heading = list.previousElementSibling;
+                if (heading && heading.tagName === 'H4') heading.remove();
+                list.remove();
+            }
+        });
         // Whole schedule cleared — reload so the canonical empty-state message renders.
         if (!document.querySelector('.js-favourite-toggle[data-remove-row="true"]')) window.location.reload();
     }

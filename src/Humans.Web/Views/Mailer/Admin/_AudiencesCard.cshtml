@@ -50,14 +50,3 @@
         }
     </div>
 </section>
-
-<script>
-    (function () {
-        document.querySelectorAll('form[data-confirm]').forEach(function (form) {
-            form.addEventListener('submit', function (ev) {
-                var msg = form.getAttribute('data-confirm');
-                if (msg && !window.confirm(msg)) ev.preventDefault();
-            });
-        });
-    })();
-</script>
