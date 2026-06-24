@@ -116,10 +116,18 @@ date inside the
 visible week window, add that date to the user's on-site day set — pulling the user into the cohort
 even if they have no shift in this week (e.g. first shift is the Monday of next week → arrival is
 the Sunday shown this week). Downstream this means:
-- `ArrivesOn` (`daysList[0]`) becomes the true arrival day.
-- The arrival day appears in `NoShift` (present, no shift) — existing treatment, no new field.
-- Dietary breakdown, allergy/intolerance rollups, totals and unanswered counts include arrival-only
-  humans automatically, because they join `uniqueUserIds`.
+- `ArrivesOn` (`daysList[0]`) becomes the true arrival day (the arrival date is now the user's
+  earliest on-site day).
+- The arrival day is an **on-site day**, so it is NOT in `NoShift` (which is the week-complement of
+  on-site days). It surfaces as `ArrivesOn`. (The original spec draft said "appears in NoShift" —
+  that was wrong and is corrected here.)
+- Weekly-level aggregates (`TotalUniqueOnSite`, dietary breakdown, allergy/intolerance rollups,
+  unanswered) include arrival-only humans automatically, because they join `uniqueUserIds`.
+- The **per-day `Days` summary** (the clickable day-strip that links into the daily drill-down) must
+  ALSO count arrivals on their arrival day, so the weekly strip count matches the drill-down. This
+  requires `BuildDaySummaries` to derive each day's `TotalOnSite`/`UnansweredOnDay` from the
+  post-injection `daysOnSiteByUserId` (+ profiles) rather than from the raw visible-week load. Counts
+  are identical to today on every non-arrival day.
 
 **(d) Daily drill-down (`GetDailyRosterAsync(dayOffset = N)`).**
 Cohort = confirmed users on day N **∪** users whose `firstConfirmedOffsetByUser == N + 1`. The added
