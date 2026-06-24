@@ -74,6 +74,64 @@ public class CantinaDailyRosterServiceTests
         IsActive = true
     };
 
+    /// <summary>
+    /// Active event with an explicit build→strike offset range so the
+    /// arrival-day scan (<c>BuildFirstConfirmedOffsetByUserAsync</c>) covers
+    /// days outside the viewed day. The default <see cref="ActiveEvent"/>
+    /// leaves both offsets at 0, which would scan only day 0.
+    /// </summary>
+    private static EventSettings ActiveEventWithRange(int buildStart, int strikeEnd) => new()
+    {
+        Id = Guid.NewGuid(),
+        EventName = EventName,
+        TimeZoneId = "Europe/Madrid",
+        GateOpeningDate = GateOpening,
+        IsActive = true,
+        BuildStartOffset = buildStart,
+        StrikeEndOffset = strikeEnd,
+    };
+
+    [HumansFact]
+    public async Task GetDailyRoster_IncludesNextDayArrivals()
+    {
+        // A human whose only confirmed shift is offset 2 arrives on day 1
+        // (the day before their first shift). Viewing day 1 — which has no
+        // shift cohort of its own — must still surface them in People and
+        // count them in the day's aggregates.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        SetupDay(2, id); // first (and only) confirmed shift is on day 2
+        SetupHumans(Human(id, "Arriver", "Vegan"));
+
+        var result = await _service.GetDailyRosterAsync(dayOffset: 1, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Should().ContainSingle(p => p.UserId == id);
+        result.TotalOnSite.Should().Be(1);
+        result.DietaryBreakdown["Vegan"].Should().Be(1);
+        result.UnansweredCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetDailyRoster_DoesNotIncludeArrivalsTwoDaysOut()
+    {
+        // Same human, first confirmed shift on day 2. Viewing day 0: they
+        // neither work day 0 nor arrive on it (their arrival is day 1), so
+        // they must be absent.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        SetupDay(2, id);
+        SetupHumans(Human(id, "Arriver", "Vegan"));
+
+        var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Should().BeEmpty();
+        result.TotalOnSite.Should().Be(0);
+    }
+
     [HumansFact]
     public async Task GetDailyRoster_NoActiveEventSettings_ReturnsEmpty()
     {

@@ -225,9 +225,32 @@ public sealed class CantinaRosterService : ICantinaRosterService
             weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
         }
 
-        var userIds = eventSettings is null
+        var shiftUserIds = eventSettings is null
             ? Array.Empty<Guid>()
             : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct).ConfigureAwait(false);
+
+        // Arrival-day feeding: a human is fed (present, no shift) the day before
+        // their FIRST confirmed shift across the whole event. For day N that
+        // means anyone whose first confirmed shift offset == N+1 arrives today.
+        // Union them with the day-N shift cohort so the drill-down stays
+        // consistent with the weekly strip (which injects the same arrival day).
+        // CRITICAL: compute the union BEFORE the empty-check — a day can have
+        // zero shifts but still have arrivals, so the early-return must be
+        // evaluated on the unioned set. Guarded on an active event; the no-event
+        // branch leaves the set as the (empty) shift cohort.
+        var unionedUserIds = new HashSet<Guid>(shiftUserIds);
+        if (eventSettings is not null)
+        {
+            var firstConfirmedOffsetByUser =
+                await BuildFirstConfirmedOffsetByUserAsync(eventSettings, ct).ConfigureAwait(false);
+            foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
+            {
+                if (minOffset == dayOffset + 1)
+                    unionedUserIds.Add(userId);
+            }
+        }
+
+        var userIds = unionedUserIds.ToList();
 
         if (userIds.Count == 0)
         {
