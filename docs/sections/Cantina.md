@@ -17,7 +17,8 @@ Read-only weekly roster surface for the food-service team — who is on site eac
 ## Concepts
 
 - The **Cantina** is the food-service team. It plans meals around who is on site for the week, not who is medically vulnerable.
-- A human is **on site for a day** when they hold a Pending or Confirmed `ShiftSignup` on a Shift whose `DayOffset` matches that calendar day (relative to `EventSettings.GateOpeningDate`). All-day shifts cover one day each.
+- A human is **on site for a day** when they hold a Confirmed `ShiftSignup` on a Shift whose `DayOffset` matches that calendar day (relative to `EventSettings.GateOpeningDate`). All-day shifts cover one day each.
+- **Arrival-day rule:** a human is also counted as on site (fed) on the day before their first confirmed shift: `arrivalDay = firstConfirmedShiftDay − 1`. This arrival day is stored as `ArrivesOn` on the roster person. The rule applies to the weekly roster, the per-day summary, the daily drill-down, and the CSV export.
 - The **Weekly Roster** is the page payload: the cohort of unique humans on site at any point in the Mon–Sun window, their `ArrivesOn` date, their `NoShift` dates (days within the week with no on-site signup), and their non-medical dietary fields (preference, allergies, intolerances, "Other" free-text). Aggregates (dietary preference roll-up, allergy/intolerance counts) are computed over **unique humans** for the week — never summed per day.
 - The **Daily Mini-Summary** lists the same per-day cohort counts as a sanity check; same uniqueness rule applies within the day.
 
@@ -25,7 +26,7 @@ Read-only weekly roster surface for the food-service team — who is on site eac
 
 None — Cantina owns no tables. The section is a pure read/aggregate composition over:
 
-- `shift_signups` — owned by **Shifts** ([`Shifts.md`](Shifts.md)). Filtered to `Status ∈ {Pending, Confirmed}` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
+- `shift_signups` — owned by **Shifts** ([`Shifts.md`](Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
 - Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserServiceRead.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
 - `profiles` / `users` — owned by **Users/Identity**. Burner names are read via the cross-section **`IUserServiceRead.GetUserInfosAsync`** (cached `UserInfo`); no entity reads, no new surface.
 
@@ -53,11 +54,11 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 ## Invariants
 
 - **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data continues to flow only through the `_VolunteerProfileBadges` partial with `ShowMedical=true`, gated to NoInfoAdmin / Admin — not through Cantina.
-- "On site" is strictly defined as a Pending or Confirmed `ShiftSignup` on a Shift with matching `DayOffset`. Refused, Bailed, Cancelled, and NoShow signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
+- "On site" is strictly defined as a Confirmed `ShiftSignup` on a Shift with matching `DayOffset`, **plus the arrival day** (`arrivalDay = firstConfirmedShiftDay − 1`). Refused, Bailed, Cancelled, NoShow, and Pending signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once.
 - The section is **read-only** — no writes to any table, no audit entries, no notifications.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
-- Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable.
+- Every `RosterPersonDto` in the cohort has at least one on-site day in the window by construction; `ArrivesOn` is therefore non-nullable. The arrival day is a real on-site day, so the `ArrivesOn`-is-non-nullable invariant holds for all roster humans including arrival-day humans.
 - Burner-name stitching reads `UserInfo.BurnerName` (from `IUserServiceRead`), falling through to `"(unknown)"` when absent. `UserInfo.BurnerName` itself derives from `Profile.BurnerName` with the legacy `DisplayName` fallback handled inside the Users section.
 
 ## Negative Access Rules
