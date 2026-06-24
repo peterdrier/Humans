@@ -83,31 +83,36 @@ Also update the now-stale doc comments that say "Pending/Confirmed": the XML sum
 `IShiftManagementService.GetOnSiteUserIdsForDayAsync` (`IShiftManagementService.cs:354`) and any
 parallel comment near the implementation → "Confirmed signup" (fix-it-right, no misleading comment).
 
-**(b) Earliest-confirmed-day map (inline, computed from a single range scan).**
-Inside `CantinaRosterService`, scan the **full event day range**, inclusive of both ends:
+**(b) Earliest-confirmed-day map (inline helper).**
+Add a private helper in `CantinaRosterService`:
+`BuildFirstConfirmedOffsetByUserAsync(eventSettings, ct)` that scans the **full event day range**,
+inclusive of both ends:
 `for (offset = eventSettings.BuildStartOffset; offset <= eventSettings.StrikeEndOffset; offset++)`,
 calling the existing (now confirmed-only) `GetOnSiteUserIdsForDayAsync(eventId, offset, ct)` per
-offset. From that single pass build both:
-  - `confirmedByOffset`: `Dictionary<int, IReadOnlyList<Guid>>` — the per-day cohorts, and
-  - `firstConfirmedOffsetByUser`: `Dictionary<Guid,int>` — the minimum offset seen per user.
+offset, recording the minimum offset seen per user id. Returns `Dictionary<Guid,int>`.
 
 Scanning the whole event range — not just the visible week — is required so that "first shift" is
 the human's *true* earliest confirmed shift, not merely their first appearance within the current
 week window (which would wrongly grant an arrival day to multi-week attendees).
 
-NOTE (conscious trade): this is one DB round-trip per event-day (`BuildStartOffset` can be ≈ −25
-through `StrikeEndOffset`, so ~40-60 sequential queries) per roster render, where the weekly view
-previously issued 7. Result sets are tiny (id lists at ~500 humans) — the cost is round-trip count,
-not data volume. Accepted under CLAUDE.md "prefer in-memory over query tuning / don't over-engineer
-for scale," and because the cheaper alternative (a single `MIN(DayOffset) GROUP BY UserId` repo
-query) would require a new repository + interface method, which this design deliberately avoids. The
-weekly view derives its 7-day slice from `confirmedByOffset` (no separate 7 calls), so it is not
-more expensive than the scan itself.
+**This helper is kept SEPARATE from the visible-week / single-day cohort load** (it does not replace
+them). The weekly view continues to scan its 7 requested days via the existing
+`LoadWeeklyOnSiteUsersAsync`, and the daily view its one day, exactly as today — so the *displayed*
+window stays decoupled from the event bounds and existing cohort behavior/tests are unchanged. The
+min-day helper runs in addition, purely to drive arrival-day computation.
+
+NOTE (conscious trade): the helper adds one DB round-trip per event-day (`BuildStartOffset` ≈ −25
+through `StrikeEndOffset`, so ~40-60 sequential queries) per roster render, on top of the existing
+7 (weekly) / 1 (daily). Result sets are tiny (id lists at ~500 humans) — the cost is round-trip
+count, not data volume. Accepted under CLAUDE.md "prefer in-memory over query tuning / don't
+over-engineer for scale"; the cheaper alternative (a single `MIN(DayOffset) GROUP BY UserId` repo
+query) is deliberately rejected because it would require a new repository + interface method.
 
 **(c) Weekly view (`GetWeeklyRosterAsync`).**
-After building `daysOnSiteByUserId` from the week's confirmed cohorts (the 7-day slice of
-`confirmedByOffset`), for each user compute `arrivalOffset = firstConfirmedOffsetByUser[user] − 1`.
-If `arrivalOffset` maps to a date inside the
+After building `daysOnSiteByUserId` from the week's confirmed cohorts (unchanged
+`LoadWeeklyOnSiteUsersAsync`), call the (b) helper for `firstConfirmedOffsetByUser`. For each user in
+that map compute `arrivalOffset = firstConfirmedOffsetByUser[user] − 1`. If `arrivalOffset` maps to a
+date inside the
 visible week window, add that date to the user's on-site day set — pulling the user into the cohort
 even if they have no shift in this week (e.g. first shift is the Monday of next week → arrival is
 the Sunday shown this week). Downstream this means:
